@@ -54,7 +54,7 @@ test('the singular of a table name follows the fixed rules on its last word, and
   assert.equal(tableSingular('team_people', { people: 'person' }), 'team_person');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_PRIMARY_KEY_SHAPE@${edition} refuses a table keyed by anything but id uuid`, async (t) => {
     for (const sql of ['create table public.orders (code text primary key);', 'create table public.orders (id bigint primary key);', 'create table public.orders (a uuid, b uuid, primary key (a, b));', 'create table public.orders (id uuid);']) {
       const findings = await keyFindings(t, edition, `${sql}\n${RLS('orders')}`);
@@ -109,7 +109,7 @@ test('the key shape of a migration already on the base is the backlog: reported 
 });
 
 test('the lite skeleton baseline, with its sync-managed identity module, passes the key shape rules it is judged by', async (t) => {
-  const template = fs.readFileSync(new URL('../templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql', import.meta.url), 'utf8');
+  const template = fs.readFileSync(new URL('../templates/app/skeleton/db/migrations/__timestamp___baseline.sql', import.meta.url), 'utf8');
   const sql = template.split('\n').filter((line) => !line.trimStart().startsWith('{{>')).join('\n');
   assert.deepEqual((await keyFindings(t, 'lite', sql)).map(({ code, table, column }) => [code, table, column]), []);
 });

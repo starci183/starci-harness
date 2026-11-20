@@ -22,10 +22,9 @@ const jsx = (count: number): string => ["<section>", ...Array(count - 2).fill("{
 const error = (lines: number, max = 80) => ({ messageId: "lines", data: { lines, max } })
 const languageOptions = { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } as const
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`fe ${edition}: HFS_FUNCTION_BUDGET accepts 80 body lines and refuses 81 across function forms`, () => {
     const hfs = fixtureHfs(edition)
-    assert.equal(hfs.edition, edition)
     const tester = canonTester(new RuleTester({ languageOptions, settings: { starci: { hfs } } }))
     tester.run("function-line-budget", functionLineBudget, {
       valid: [

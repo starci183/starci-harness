@@ -22,7 +22,7 @@ export class AppModule {}
 const filter = '{ provide: APP_FILTER, useClass: AllExceptionsFilter }';
 const graphql = 'GraphQLModule.forRoot({ formatError })';
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition}: valid masked error registration and invalid missing filter or GraphQL mapper`, (t) => {
         const files = {
             ...errorsFiles,

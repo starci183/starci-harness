@@ -20,9 +20,9 @@ const NOT_SCANNED = /(^|\/)package-lock\.json$/;
 /** True when the slot `id` of the manifest reports HFS_PLAINTEXT_SECRET for the paths it forbids. */
 export const slotOwnsSecrets = (slot: Parsed) => slot?.rules?.includes(PLAINTEXT_SECRET) === true;
 
-/** A legacy lite root secrets.env is reported even when ignored; its presence is enough, so no value is read. */
+/** A legacy root secrets.env is reported even when ignored; its presence is enough, so no value is read. */
 export function untrackedSecretFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
-  if (repo.profile !== 'app' || repo.edition !== 'lite' || files.includes('secrets.env')) return [];
+  if (repo.profile !== 'app' || files.includes('secrets.env')) return [];
   try {
     if (!fs.statSync(path.join(repoRoot, 'secrets.env')).isFile()) return [];
   } catch {

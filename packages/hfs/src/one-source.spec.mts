@@ -45,7 +45,7 @@ const APP: Record<string, string> = {
   'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const GlobalErrorNotice = () => <html><body><ErrorNotice /></body></html>\n',
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   const fe = { profile: 'fe', edition };
 
   test(`one source ${edition}: the template shape passes all three finders`, () => {
@@ -140,7 +140,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-const APP_ROOT = { kind: 'app', edition: 'lite' };
+const APP_ROOT = { kind: 'app' };
 const BRAND_PATH = 'fe/apps/web/src/modules/brand/brand.css';
 
 test('FE_BRAND_CANVAS_LITERAL: a canvas generator holds no colour; the kit copy and a tokens read are lawful', () => {
@@ -199,7 +199,7 @@ function filesUnder(root: string): string[] {
   return out.sort();
 }
 
-for (const [edition, folder] of [['lite', 'skeleton-lite'], ['full', 'skeleton']] as const) {
+for (const [edition, folder] of [['lite', 'skeleton-lite']] as const) {
   test(`the ${edition} front-end template ships the one-source shape: one brand, one globals, shared system-state pages in every route group`, () => {
     const root = path.join(import.meta.dirname, '..', 'templates', 'fe', folder);
     const files = filesUnder(root);

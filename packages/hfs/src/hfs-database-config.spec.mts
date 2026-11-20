@@ -39,7 +39,7 @@ function findings(contents: Record<string, string>, edition?: string, options?: 
 const only = (list: Finding[], code: string) => list.filter((finding: Finding) => finding.code === code);
 const has = (list: Finding[], code: string) => assert.ok(only(list, code).length > 0, `${code} expected: ${JSON.stringify(list)}`);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the shipped extension policy preserves booking exclusion support and refuses unlisted extensions`, () => {
     const manifest = loadSlotManifest();
     assert.ok(manifest.ruleParams.db!.extensions.includes('btree_gist'));
@@ -159,7 +159,7 @@ test('config finder is synchronous and respects root, profile and finding scope'
   const input = fixture({ [MIGRATION]: 'create extension hstore;' });
   assert.ok(Array.isArray(databaseConfigFindings(input)));
   assert.deepEqual(databaseConfigFindings({ ...input, isRoot: false }), []);
-  for (const profile of ['be', 'fe']) assert.deepEqual(databaseConfigFindings({ ...input, repo: { edition: 'lite', profile } }), []);
+  for (const profile of ['be', 'fe']) assert.deepEqual(databaseConfigFindings({ ...input, repo: { profile } }), []);
   assert.deepEqual(databaseConfigFindings({ ...input, inScope: (file: string) => file === CONFIG }), []);
 });
 
@@ -184,7 +184,7 @@ function historyGit(contents: Record<string, string>, headFiles = Object.keys(co
   };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an explicit content-preserving restamp retires its old version without bypassing unrelated history`, async () => {
     const old = 'db/migrations/29990101120000_old.sql';
     const next = 'db/migrations/20261014120000_old.sql';

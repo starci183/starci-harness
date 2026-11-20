@@ -132,7 +132,7 @@ test('a refused candidate push stops before any wait', async () => {
 });
 
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: generated CI judges pull requests, main, candidates and tags; images and the deploy are reusable workflows and nothing else starts a run`, () => {
     const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
     const workflows = targets.filter(target => target.path.startsWith('.github/workflows/'));

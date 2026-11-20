@@ -31,7 +31,7 @@ test("R321 is registered universally at error with its finding code", () => {
   assert.equal(why["no-grammar-shim"].code, "FE_GRAMMAR_SHIM")
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R321 ${edition}: a Grammar component is imported where it renders, never re-exported from an app path`, () => {
   assert.doesNotThrow(() => {
     tester().run("no-grammar-shim", shimRule, {

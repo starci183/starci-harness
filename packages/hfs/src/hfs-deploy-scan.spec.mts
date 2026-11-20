@@ -34,7 +34,7 @@ function workflow(run: string, environment = 'production') {
   return `on: workflow_dispatch\njobs:\n  ship:\n    environment: ${environment}\n    steps:\n      - run: |\n${body}\n`;
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_HOST_CRON@${edition}: host cron, timer and at jobs are refused across deployment surfaces`, (t) => {
     const entries = {
       'deploy/install.sh': 'crontab deploy/watchdog.crontab\n',
@@ -159,10 +159,10 @@ for (const edition of ['lite', 'full']) {
 
 test('deploy scan reads the whole app tree once at its root and honors edition, app ownership and inScope', (t) => {
   const entries = { 'be/scripts/timer.sh': 'crontab timer.txt\n', 'fe/scripts/boot.sh': 'at -f job.sh now\n' };
-  const context = { repoRoot: tree(t, entries), files: [], all: Object.keys(entries), repo: { kind: 'app', edition: 'lite' }, isRoot: true };
+  const context = { repoRoot: tree(t, entries), files: [], all: Object.keys(entries), repo: { kind: 'app' }, isRoot: true };
   assert.deepEqual(paths(only(deployScanFindings(context), 'HFS_HOST_CRON')), Object.keys(entries).sort((left, right) => left.localeCompare(right)));
   assert.deepEqual(deployScanFindings({ ...context, isRoot: false }), []);
-  assert.deepEqual(deployScanFindings({ ...context, repo: { kind: 'runtime', edition: 'lite' } }), []);
+  assert.deepEqual(deployScanFindings({ ...context, repo: { kind: 'runtime' } }), []);
   assert.deepEqual(deployScanFindings({ ...context, repo: { kind: 'app', edition: 'unknown' } }), []);
   assert.deepEqual(paths(only(deployScanFindings({ ...context, inScope: (file) => file.startsWith('be/') }), 'HFS_HOST_CRON')), ['be/scripts/timer.sh']);
 });
@@ -183,7 +183,7 @@ test('deploy scan findings never expose source values and skip credential files,
 
 test('HFS_HOST_CRON: app check wiring reports side deployment sources once with catalog explanations', (t) => {
   const entries = { 'be/scripts/timer.sh': 'crontab timer.txt\n', 'deploy/ship.sh': 'docker stack deploy -c stack.yaml app\n' };
-  const declaration = { hfs: 3, kind: 'app', edition: 'lite', project: 'demo', sides: { be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
+  const declaration = { hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
   const result = checkRepo({ repoRoot: tree(t, entries), declaration, files: Object.keys(entries), tree: false });
   const findings = result.findings.filter((finding) => CODES.has(finding.code));
   const catalog = new Set(ALL_CHECK_CODES);

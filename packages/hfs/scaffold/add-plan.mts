@@ -4,7 +4,7 @@ import { createSlotResolver, loadSlotManifest, readRepoDeclaration, ruleParams }
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { TEMPLATES_DIR } from '../sync/index.mjs';
 import { ScaffoldError, pascalOf } from './service.mjs';
-import { refuseFullAdapterInLite, refuseInEdition } from './edition-gate.mjs';
+import { refuseFullAdapterInLite, refuseOutsideSlots } from './scaffold-gate.mjs';
 import { selectLiteWebhookEntries } from './add-inbox-lite.mjs';
 import { LITE_TEMPLATED_TOPICS, selectLiteQueueEntries } from './add-queue-lite.mjs';
 import { ensureLiteCli } from './add-cli-lite.mjs';
@@ -104,7 +104,7 @@ export function readAddContext(input: AddInput): AddContext {
 
 /** Lite's built-in migrate and seed groups come from its one CLI bootstrap, without a second instance tree. */
 export function addBuiltinLiteCli({ noun, name, repo, repoRoot, manifest }: Pick<AddContext, 'noun' | 'name' | 'repo' | 'repoRoot' | 'manifest'>): { created: string[], registered: { patterns: string[], kinds: string[] }, notes: string[] } | null {
-  if (noun !== 'cli' || repo.edition !== 'lite' || !['migrate', 'seed'].includes(name)) return null;
+  if (noun !== 'cli' || !['migrate', 'seed'].includes(name)) return null;
   if (repo.sides.be.apps.some((app: { kind: string }) => app.kind === 'cli')) throw new ScaffoldError('HFS_ADD_EXISTS', `the lite cli already carries its built-in ${name} group`);
   return { created: ensureLiteCli({ root: repoRoot, manifest, repo }), registered: { patterns: [], kinds: ['cli'] }, notes: [LITE_CLI_INSTALL] };
 }
@@ -115,12 +115,12 @@ export const LITE_CLI_INSTALL = 'npm install (the cli app adds nest-commander to
 const readTopic = (topic: string) => ({ id: topic, doc: parseYaml(fs.readFileSync(path.join(TOPICS_DIR, `${topic}.yaml`), 'utf8')) });
 
 /** The files tree of a pattern topic (knowledge/patterns/be/<topic>.yaml), its lite tree for a lite app. */
-export function readTree(topic: string, edition?: string): TreeEntry[] {
+export function readTree(topic: string): TreeEntry[] {
   const file = path.join(TOPICS_DIR, `${topic}.yaml`);
   if (!fs.existsSync(file)) throw new ScaffoldError('HFS_ADD_TOPIC_MISSING', `the pattern topic ${topic} (knowledge/patterns/be/${topic}.yaml) is not carried by this package`);
   const doc = parseYaml(fs.readFileSync(file, 'utf8'));
   if (!Array.isArray(doc?.files)) throw new ScaffoldError('HFS_ADD_TREE_MISSING', `knowledge/patterns/be/${topic}.yaml has no files tree`);
-  return edition === 'lite' && Array.isArray(doc.liteFiles) ? doc.liteFiles : doc.files;
+  return Array.isArray(doc.liteFiles) ? doc.liteFiles : doc.files;
 }
 
 const selectLiteApiEntries = (entries: readonly TreeEntry[]): TreeEntry[] => entries.map(entry => {
@@ -196,10 +196,10 @@ const renderBody = (text: string, forms: Forms, template: string): string => tex
 export const fillKnownForms = (text: string, forms: Readonly<Record<string, string>>): string => text.replace(PLACEHOLDER, (whole: string, name: string) => forms[name] ?? whole);
 
 function treesOf({ topics, repo, noun, spec }: { topics: ReadonlySet<string>, repo: AddContext['repo'], noun: string, spec: AddKindSpec }): Map<string, TreeEntry[]> {
-  const liteApi = noun === 'api' && repo.edition === 'lite';
+  const liteApi = noun === 'api';
   const contract = apiContractOf(repo);
   return new Map([...topics].map((topic): [string, TreeEntry[]] => {
-    const read = repo.edition === 'lite' ? selectLiteQueueEntries(topic, selectLiteWebhookEntries(readTree(topic, repo.edition))) : readTree(topic);
+    const read = selectLiteQueueEntries(topic, selectLiteWebhookEntries(readTree(topic)));
     const entries = entriesForContract(read, contract);
     return [topic, liteApi && topic === spec.topic ? selectLiteApiEntries(entries) : entries];
   }));
@@ -216,7 +216,7 @@ function validateWrittenSlots({ specs, topics, trees, manifest, repo, noun }: { 
   const slots = new Set<string>();
   for (const [, spec] of specs) collectSlots(trees.get(spec.topic)!, false, slots);
   for (const topic of topics) collectSlots(trees.get(topic)!, true, slots);
-  refuseInEdition({ resolver: createSlotResolver(manifest, repo), slotIds: [...slots], command: `add ${noun}` });
+  refuseOutsideSlots({ resolver: createSlotResolver(manifest, repo), slotIds: [...slots], command: `add ${noun}` });
 }
 
 /** What one entry is planned against. */
@@ -277,7 +277,7 @@ export function planKind(context: AddContext): { values: Record<string, string>,
   const specs = [noun, ...(spec.also ?? [])].map((each): [string, AddKindSpec] => [each, params.addKinds[each]]);
   const patterns = [...new Set(specs.flatMap(([, eachSpec]) => eachSpec.patterns))];
   const topics = new Set([...specs.map(([, eachSpec]) => eachSpec.topic), ...topicsOfPatterns(patterns)]);
-  refuseFullAdapterInLite({ edition: repo.edition, topics: [...topics].map(readTopic), command: `add ${noun}`, liteTemplated: LITE_TEMPLATED_TOPICS });
+  refuseFullAdapterInLite({ topics: [...topics].map(readTopic), command: `add ${noun}`, liteTemplated: LITE_TEMPLATED_TOPICS });
   const trees = treesOf({ topics, repo, noun, spec });
   validateWrittenSlots({ ...context, specs, topics, trees });
   const values = Object.assign({}, ...specs.map(([each, eachSpec]) => variablesOf({ spec: eachSpec, noun: each, name, options })), variablesOf({ spec, noun, name, options }));

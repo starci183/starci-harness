@@ -90,7 +90,7 @@ const finderMutations = [
   { code: 'BACKUP_PROOF_MISSING', violate(value: Fixture) { delete value.spec.backup[0].restoreProof; } },
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const { code, violate } of finderMutations) {
     test(`${code}@${edition}: tracked declared release and backup evidence passes the finder`, () => {
       withFixture(edition, (value: Fixture) => {
@@ -454,7 +454,7 @@ for (const edition of ['lite', 'full']) {
 test('R267/R268: finder respects root and profile boundaries; non-Swarm development keeps its contract', () => {
   withFixture('lite', (value: Fixture) => {
     assert.deepEqual(stacksReleaseFindings({ ...value, isRoot: false }), []);
-    assert.deepEqual(stacksReleaseFindings({ ...value, repo: { profile: 'runtime', edition: 'lite' } }), []);
+    assert.deepEqual(stacksReleaseFindings({ ...value, repo: { profile: 'runtime' } }), []);
     value.spec.runtime = 'docker-compose';
     delete value.spec.release;
     delete value.spec.backup;

@@ -60,7 +60,7 @@ const imageWorkflow = (tags = 'ghcr.io/demo/api:${{ github.ref_name }}', job: Re
 });
 const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_RELEASE_TAG_MISMATCH@${edition}: tagged package and image refs agree, including prerelease/build semver`, (t) => {
     const version = '2.0.0-alpha.15+build.7';
     const fixture = tagged(t, `v${version}`, {
@@ -197,7 +197,7 @@ const COMMIT_BUILD = { uses: 'docker/build-push-action@0123456789012345678901234
 const RETAG = { name: 'tag the release', if: '${{ inputs.release && inputs.push && matrix.deployed }}', run: 'docker buildx imagetools create --tag "$REPO:$GITHUB_REF_NAME" "$REPO:sha-$GITHUB_SHA"' };
 const reusableImages = (steps: object[]) => stringify({ name: 'images', on: { workflow_call: { inputs: { push: { type: 'boolean', required: true }, release: { type: 'boolean', required: true } } } }, jobs: { image: { 'runs-on': 'ubuntu-latest', steps } } });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_RELEASE_TAG_MISMATCH@${edition}: a reusable images workflow pushes sha-<sha> from any ref and retags the release name only behind the guard`, (t) => {
     assert.deepEqual(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, COMMIT_BUILD]) }), edition), [], 'the commit tag is immutable and per commit');
     assert.deepEqual(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, RELEASE_GUARD, COMMIT_BUILD, RETAG]) }), edition), []);

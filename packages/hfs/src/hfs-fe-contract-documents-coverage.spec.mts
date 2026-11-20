@@ -26,7 +26,7 @@ function check(t: TestContext, edition: string, document: string) {
   return feContractFindings(context);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`FE_GRAPHQL_CONTRACT (${edition}): a document selecting an undeclared field is refused`, (t) => {
     const findings = check(t, edition, 'query Product($id: ID!) { product(id: $id) { id price } }');
     assert.deepEqual(findings.map(({ code, path: file, operation, service }) => [code, file, operation, service]), [

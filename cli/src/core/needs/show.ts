@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import { projectOf } from "../../harness/work.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { normalizeNeedKey, readNeed } from "../../harness/needs.js"
 import { Refusal } from "../../shared/errors.js"
 import { ownerLine, relayLine, viewOf, waiterLine } from "./view.js"
@@ -9,7 +9,6 @@ import { ownerLine, relayLine, viewOf, waiterLine } from "./view.js"
 export const needsShowVerb = defineVerb({
     path: ["needs", "show"],
     summary: "show one shared need: its state, router and decision, owner and resolver with the commits it landed, why it stands there, every waiter with what it reported, and each relay of those commits onto a waiting branch",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/needs-show@1",

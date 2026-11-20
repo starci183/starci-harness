@@ -276,7 +276,7 @@ test("FE-I18N-1: the next-intl stack is built by @starci/next-i18n, never by a p
   }
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R59 ${edition} builds the stack with @starci/next-i18n and keeps the navigation out of the proxy`, () => {
     const one = fixtureHfs({ ...FE_DECLARATION, apps: [{ name: "web", kind: "next" }] }, { lite: edition === "lite" })
     const many = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })

@@ -40,10 +40,9 @@ test("R263 inbox rule is exported and enabled through the webhook law", () => {
     for (const message of Object.values(webhookInboxKey.meta.messages)) assert.match(message, /^\[BE_WEBHOOK_INBOX_KEY\] /)
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`webhook-inbox-key claims stable delivery ids and returns on replays in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const error = [{ messageId: "key" }]
         ruleTester({ root: TYPED_ROOT, hfs }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
             valid: [
@@ -158,7 +157,7 @@ export class DeliveryService {
 function rowsOf(id: string): readonly object[] { return [{ id }] }${PORT}`
 const received = "const rows = rowsOf(delivery.deliveryId); const receipt = await this.port.receive(tx, delivery.accountId, rows); if (receipt === undefined) return; await this.events.publish({ eventId: receipt.id }, tx)"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`webhook-inbox-key accepts a declared receipt port under the same contract, and nothing it does not declare, in ${edition}`, () => {
         const declared = { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
             { class: "ReceiptPort", method: "receive", repeat: "undefined", reason: "writes the delivery once under its unique key and answers the row, undefined on a repeat" },
@@ -214,7 +213,7 @@ const fresh = "const fresh = await this.port.receiveAll(tx, delivery)"
 const each = "for (const event of fresh) { await this.events.publish({ eventId: event.id }, tx) }"
 const many = (body: string, options: { port?: string } = {}) => portService(transaction(body), { parameter: MANY, ...options })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`webhook-inbox-key accepts a declared many receipt port whose effects only iterate the new events it answers, in ${edition}`, () => {
         const declared = { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
             { class: "ReceiptPort", method: "receiveAll", many: true, reason: "writes each event of the delivery once under its unique key and answers the new ones" },

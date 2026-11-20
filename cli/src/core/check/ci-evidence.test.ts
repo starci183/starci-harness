@@ -5,7 +5,7 @@ import test from "node:test"
 import { Refusal } from "../../shared/errors.js"
 import { appStackVerb } from "../app/stack.js"
 import { requireCiRunGreen } from "./ci.js"
-import { editionOf, jobsNamed, requiredJobsOf } from "./ci-evidence.js"
+import { jobsNamed, requiredJobsOf } from "./ci-evidence.js"
 import type { GithubReader, RequiredJobs, RunJob } from "./ci-evidence.js"
 
 const SHA = "a".repeat(40)
@@ -126,12 +126,11 @@ void test("jobs are paged: a run with more than one page of jobs is read to its 
     await requireCiRunGreen(".", SHA, "77", { read, standard: STANDARD })
 })
 
-void test("the required jobs come from the CI standard of @starci/hfs, per edition", () => {
-    const full = requiredJobsOf("full")
-    assert.deepEqual(full.required, ["plan", "fast", "lint", "test", "coverage", "build", "verdict"])
-    assert.ok(full.optional.includes("sonar"))
-    assert.ok(requiredJobsOf("lite").optional.includes("db-types"))
-    assert.equal(editionOf("."), "full", "a folder with no hfs.json is judged as full")
+void test("the required jobs come from the CI standard of @starci/hfs", () => {
+    const jobs = requiredJobsOf()
+    assert.deepEqual(jobs.required, ["plan", "fast", "lint", "test", "coverage", "build", "verdict"])
+    assert.ok(jobs.optional.includes("sonar"))
+    assert.ok(jobs.optional.includes("db-types"))
 })
 
 void test("stack: --ci-run is refused outside deploy, together with --urgent, without a value, and without --sha when executing", async () => {

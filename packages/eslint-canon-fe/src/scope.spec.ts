@@ -23,7 +23,7 @@ const setup = (t: TestContext, edition: "lite" | "full") => {
   return { context, write }
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} classifies an existing public auth barrel instead of a hypothetical module file`, (t) => {
     const { context, write } = setup(t, edition)
     write("modules/auth/index.ts")

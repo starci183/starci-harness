@@ -108,7 +108,7 @@ function remoteInventory(root: string, overrides: Record<string, unknown> = {}) 
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_BASELINE_SHAPE passing ${edition}: one valid header baseline and an intact archive`, () => {
     const contents = { [retired]: 'select 1;\n', [baseline]: marked };
     const root = fixture(edition, contents);
@@ -520,7 +520,7 @@ test('DB_BASELINE_SHAPE markers cannot be impersonated by SQL literals or commen
 test('R257 participates in the synchronous alpha.15 finder and fast cross-file inventory', () => {
   const contents = { [retired]: 'select 1;', [baseline]: 'select 1;' };
   const root = fixture('lite', contents);
-  const findings = a15Findings({ repoRoot: root, files: [baseline], all: Object.keys(contents), repo: { kind: 'app', edition: 'lite' }, isRoot: true, inScope: (file: string) => file === baseline, git: noHistory });
+  const findings = a15Findings({ repoRoot: root, files: [baseline], all: Object.keys(contents), repo: { kind: 'app' }, isRoot: true, inScope: (file: string) => file === baseline, git: noHistory });
   assert.equal(typeof (findings as unknown as Promise<unknown>).then, 'undefined');
   assert.ok(findings.some((item) => item.code === 'DB_BASELINE_SHAPE'));
 });

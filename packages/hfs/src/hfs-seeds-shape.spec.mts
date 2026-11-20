@@ -195,13 +195,13 @@ test('HFS_SEED_TEST_DATA: test markers in the shared level or a production level
 
 test('HFS_SEED_PII scans the SQL and the JSON and YAML data of the levels, and seed literals skip a document that does not parse', (t) => {
   const files = {
-    'hfs.json': JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite' }),
+    'hfs.json': JSON.stringify({ hfs: 3, kind: 'app' }),
     '.starcistacks/seeds/sql/owners.sql': "insert into owners values ('owner@real.invalid');\n",
     '.starcistacks/dev/seeds/data/people.json': '{\n  "people": [\n    {"mail": "demo@example.test"},\n    {"mail": "someone@real.invalid"}\n  ]\n}\n',
     '.starcistacks/dev/seeds/data/people.yaml': 'mail: other@real.invalid\n',
     '.starcistacks/dev/seeds/files/notes.txt': 'someone@real.invalid',
   };
-  const list = databaseConfigFindings({ repoRoot: tree(t, files), files: Object.keys(files), all: Object.keys(files), repo: { edition: 'lite' }, isRoot: true });
+  const list = databaseConfigFindings({ repoRoot: tree(t, files), files: Object.keys(files), all: Object.keys(files), repo: {}, isRoot: true });
   assert.deepEqual(list.map((item) => `${item.code} ${item.path}:${String(item.line)}`), ['HFS_SEED_PII .starcistacks/seeds/sql/owners.sql:1', 'HFS_SEED_PII .starcistacks/dev/seeds/data/people.json:4', 'HFS_SEED_PII .starcistacks/dev/seeds/data/people.yaml:1']);
   assert.deepEqual(seedLiterals('x.json', '{ not'), []);
 });
@@ -229,7 +229,7 @@ test('addSeedEntries creates a manifest, keeps an id it already holds and writes
   assert.match(fs.readFileSync(path.join(root, '.starcistacks/dev/seeds/seeds.yaml'), 'utf8'), /^schema: starci\/seeds@1\nentries:\n {2}- id: reference[\s\S]*- id: more/u);
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: starci app check places the seed levels in app.starcistacks and reports R375 through the app root`, (t) => {
     const files = { ...VALID, '.starcistacks/dev/environment.json': '{}', '.starcistacks/dev/seeds/old.sql': 'select 1;\n' };
     const root = tree(t, files);

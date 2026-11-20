@@ -15,7 +15,7 @@ const ruleOf = (name: string): Rule => {
 };
 
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: type escape rules reject unsafe expressions and accept checked types`, () => {
     const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },

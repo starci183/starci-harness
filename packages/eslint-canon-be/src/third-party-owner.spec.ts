@@ -38,7 +38,7 @@ test("R279 publishes exactly one rule at error", () => {
     assert.deepEqual(recommended, { "starci-be/third-party-import-owner": "error" })
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R279 ${edition}: declared SDKs cannot be imported outside an integration; pure libraries pass`, () => {
         const fixture = fixtureFor({ edition })
         try {
@@ -165,7 +165,7 @@ const OWN_PACKAGES = {
     "packages/module-loyalty/package.json": JSON.stringify({ name: "@fixture/module-loyalty", version: "0.1.0", private: true }),
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R279 ${edition}: an app-owned workspace package declared in workspaces is not a third-party library`, () => {
         const fixture = projectFixture({
             edition,

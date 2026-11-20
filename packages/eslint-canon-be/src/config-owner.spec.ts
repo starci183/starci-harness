@@ -30,7 +30,7 @@ const GROUP = at("apps/api/src/compose/platform.ts")
 const PRIMARY_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "schema", provider: "postgres" }
 
 // proves: BE_CONFIG_OWNER@lite BE_CONFIG_OWNER@full
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`process aliases keep their environment owner in ${edition}`, () => {
         const hfs = edition === "lite" ? hfsFromDeclaration({
             ...appDeclaration("be", {

@@ -37,16 +37,14 @@ function contractInput(t: TestContext, edition: string, withSnapshot: boolean) {
   return { repoRoot, files: contents.map(([file]) => file), repo: resolver.repo, resolver };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} invalid: a GraphQL app missing its committed snapshot is refused`, t => {
     const input = contractInput(t, edition, false);
-    assert.equal(input.repo.edition, edition);
     assert.deepEqual(contractFindings(input).map(item => item.code), ['HFS_CONTRACT_SNAPSHOT_DRIFT']);
   });
 
   test(`${edition} valid: a GraphQL app with its committed snapshot passes`, t => {
     const input = contractInput(t, edition, true);
-    assert.equal(input.repo.edition, edition);
     assert.deepEqual(contractFindings(input), []);
     assert.equal(contractFindings(input).some(item => item.code === 'HFS_CONTRACT_SNAPSHOT_DRIFT'), false);
   });

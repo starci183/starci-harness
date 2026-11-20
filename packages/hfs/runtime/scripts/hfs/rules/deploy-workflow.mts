@@ -1,4 +1,4 @@
-// R251: product workflow custody, immutable dependencies and release-only triggers, in both editions.
+// R251: product workflow custody, immutable dependencies and release-only triggers,.
 // A release deploys through the reusable stack-deploy.yml: its jobs hold the environment, the age key and the transport; the job of ci.yml that calls it
 // (a deployment caller) holds permissions, concurrency and the environment name it passes. A pull_request run reads and never binds an environment.
 // ci.yml starts on a push of main, the release candidates and the branches the stack declaration gives a branch profile (readBranchProfiles), nothing else.

@@ -39,7 +39,7 @@ function fixture(edition: string, image = 'traefik:v3.6'): Fixture {
 
 const issuesFor = (value: Fixture, code: string) => ingressIssues(value).filter(issue => issue.code === code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACKS_INGRESS_UNDECLARED@${edition}: inventoried, bound and deployed ingress passes`, () => {
     assert.deepEqual(issuesFor(fixture(edition), 'STACKS_INGRESS_UNDECLARED'), []);
   });
@@ -129,7 +129,7 @@ const finderMutations = [
   { code: 'STACKS_SECOND_INGRESS', violate(value: Fixture) { value.model.services.preview = { image: pinned('caddy:2.10.2') }; } },
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const { code, violate } of finderMutations) {
     test(`${code}@${edition}: tracked declared digest-pinned ingress passes the finder`, () => {
       trackedFixture(fixture(edition), context => {
@@ -148,7 +148,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 test('R275 HFS finder reads the tracked model and returns standard findings for both editions', () => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const value = fixture(edition);
     delete value.spec.ingress;
     trackedFixture(value, context => {
@@ -180,7 +180,7 @@ function externalFixture(edition: string) {
   return value;
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACKS_INGRESS_UNDECLARED@${edition}: an external shared ingress passes when the stack renders no ingress of its own`, () => {
     assert.deepEqual(ingressIssues(externalFixture(edition)), []);
   });

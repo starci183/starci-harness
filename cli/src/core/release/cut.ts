@@ -34,7 +34,6 @@ const changelogSection = (text: string, version: string): string | undefined => 
 export const releaseCutVerb = defineVerb({
     path: ["release", "cut"],
     summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone (dry until --execute); it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
-    editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release", "debug"],
     schema: "starci/release-cut@1",

@@ -31,7 +31,7 @@ function judge(t: TestContext, files: Record<string, unknown>) {
   return mcpToolsSnapshotFindings({ repoRoot: root, files: Object.keys(files), repo });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_MCP_TOOLS_SNAPSHOT ${edition}: a canonical tools/list catalog of a declared app passes`, (t) => {
     assert.deepEqual(judge(t, { 'contracts/mcp/shop-mcp@1.tools.json': catalog(), 'contracts/api/schema.graphql': 'type Query { a: Int }' }), []);
   });
@@ -64,7 +64,7 @@ for (const edition of ['lite', 'full']) {
 
 const SERVER = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"\nexport const server = new McpServer({ name: "shop-mcp", version: "1.0.0" })\n';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_MCP_TOOLS_SNAPSHOT_MISSING ${edition}: a back end that serves an MCP server and commits no catalog is a violation, report-only in --env local`, (t) => {
     const findings = judge(t, {
       'src/modules/integrations/mcp/mcp.server.ts': SERVER,

@@ -78,7 +78,7 @@ const grouped = (hits: readonly { readonly slot: ManifestSlot; readonly path: st
 /** The app root a checkout holds (its hfs.json app, not the runtime) and hfs.json's path in the checkout; undefined when it holds none. */
 const appOf = (checkout: string): { readonly root: string; readonly file: string } | undefined => {
     const tree = locateTree(checkout)
-    if (tree.root === undefined || (tree.tree !== "full" && tree.tree !== "lite")) return undefined
+    if (tree.root === undefined || tree.tree !== "app") return undefined
     return { root: tree.root, file: relative(checkout, join(tree.root, "hfs.json")).replaceAll("\\", "/") }
 }
 

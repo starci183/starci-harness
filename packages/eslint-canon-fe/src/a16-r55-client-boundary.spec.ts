@@ -30,7 +30,7 @@ const named = (published: Rules, rule: string): Rule => {
   return found
 };
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`R55 ${edition}: valid and invalid client boundaries and browser surfaces`, (t) => {
     const fixture = projectFixture({ profile: 'fe', edition });
     t.after(fixture.cleanup);

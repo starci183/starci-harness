@@ -25,7 +25,7 @@ const synced = (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a tool config override fails and a plain lint command passes`, async context => {
     const { root, tracked, findings } = synced(context, edition);
     const relative = 'scripts/lint.mjs';
@@ -45,7 +45,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: direct managed findings reject an override and accept the plain tool command`, async (context) => {
     const { root, tracked } = synced(context, edition);
     const relative = 'scripts/coverage-lint.mjs';
@@ -62,7 +62,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a lint rule the project's extension manifest declares is the project's law; the same file undeclared, or anywhere else, is a local rule`, async (context) => {
     const { root, tracked } = synced(context, edition);
     const rule = 'export default { meta: { type: "problem", schema: [] }, create: (context) => ({}) };\n';

@@ -127,7 +127,7 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
   }))
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   const settings = { starci: { hfs: edition === "lite" ? fixtureHfs(LITE_FE_DECLARATION, { lite: true }) : fixtureHfs() } }
   const form = (code: string) => ({ filename: at("apps/web/src/hooks/rhf/useProfileForm.ts"), settings, code })
 

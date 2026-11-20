@@ -29,7 +29,7 @@ const UNIT = at("src/modules/domain/order/order.service.spec.ts")
 const FLOW = at("src/tests/e2e/checkout/project-purchase.e2e-spec.ts")
 const MODEL = at("src/tests/fixtures/model.ts")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const settings = { starci: { hfs } }
 

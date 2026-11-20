@@ -17,7 +17,7 @@ const SERVICE = at("src/modules/domain/order/order.service.ts")
 const SPEC = at("src/modules/domain/order/order.service.spec.ts")
 const LOOKALIKE = at("src/modules/platform/idsworks/ids.service.ts")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const declaration = { ...appDeclaration("be", BE_DECLARATION), edition }
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration(declaration, TYPED_ROOT) })
     test(`${edition} accepts owned and injected ids and rejects ambient id sources outside platform/ids, in specs and the test world too`, () => {

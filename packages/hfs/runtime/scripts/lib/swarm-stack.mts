@@ -1,14 +1,9 @@
 // Shared static Swarm contract for app checks and rendered deployment evidence.
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { composeEntries } from './compose-values.mjs';
-import { repositoryOf } from './stack-services.mjs';
 
 const PINNED_IMAGE = /@sha256:[a-f0-9]{64}$/i;
 const VERSIONED_SECRET = /-v[1-9]\d*$/;
-// R276 (scripts/hfs/rules/stacks-lite-backing.mts) judges declared Redis and refuses full-only backing services in lite.
-const BACKING_IMAGE_SQL_AND_CACHE = 'postgres(?:ql)?|postgresql-repmgr|mysql(?:-server)?|mongo(?:db)?|mongodb-community-server';
-const BACKING_IMAGE_BROKERS_AND_OTHERS = '(?:cp-)?kafka(?:-native)?|keycloak|minio|rabbitmq';
-const BACKING_IMAGE = new RegExp(`^(?:${BACKING_IMAGE_SQL_AND_CACHE}|${BACKING_IMAGE_BROKERS_AND_OTHERS})$`, 'i');
 // reason: compose documents, the rendered Swarm model and the component catalog are YAML parsed from disk; every rule reads the keys it checks.
 type Mapping = Record<string, any>;
 /** One finding of the Swarm contract: where it is and what is wrong. */
@@ -51,13 +46,11 @@ function jobDeclarationIssues(id: string, component: Mapping, components: Mappin
 }
 
 /** Inventory rules are independent of a selected environment or rendered deployment model. */
-export function swarmInventoryIssues({ components, lite = false, swarm }: { components: unknown; lite?: boolean; swarm?: ReadonlySet<string> }): SwarmIssue[] {
+export function swarmInventoryIssues({ components }: { components: unknown; swarm?: ReadonlySet<string> }): SwarmIssue[] {
   const errors: SwarmIssue[] = [], catalog = mapping(components);
   const add: AddIssue = (at, message) => { errors.push({ at, message }); };
   for (const [id, entry] of Object.entries(catalog)) {
     const component = mapping(entry);
-    if (lite && (swarm === undefined || swarm.has(id)) && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)))
-      add(`components.${id}.image`, 'lite runs no backing image; its db component runs the image .starcistacks/images/db/Dockerfile builds, a project that has statics/ or needs object storage runs its own MinIO as the `storage` service of the image .starcistacks/images/storage/Dockerfile builds (PROJECT-STATICS-5), identity is the API');
     jobDeclarationIssues(id, component, catalog, add);
   }
   return errors;
@@ -113,7 +106,7 @@ function secretIssues(model: Mapping, services: Mapping, add: AddIssue): void {
 }
 
 /** Validate the same deployment model in HFS and the deployment evidence gate. */
-export function swarmModelIssues({ model, components, bindings, lite = false }: { model: unknown; components: unknown; bindings: unknown; lite?: boolean }): SwarmIssue[] {
+export function swarmModelIssues({ model, components, bindings }: { model: unknown; components: unknown; bindings: unknown }): SwarmIssue[] {
   const errors: SwarmIssue[] = [], services = mapping(mapping(model)['services']), catalog = mapping(components), bound = mapping(bindings);
   const add: AddIssue = (at, message) => { errors.push({ at, message }); };
   for (const [id, entry] of Object.entries(services)) {
@@ -124,8 +117,6 @@ export function swarmModelIssues({ model, components, bindings, lite = false }: 
       add(`services.${id}.ports`, 'Swarm ports must be an array of published port definitions');
     else if (service.ports?.length && component.role !== 'ingress')
       add(`services.${id}.ports`, 'only a component with role ingress may publish Swarm ports');
-    if (lite && present(service.image) && BACKING_IMAGE.test(repositoryOf(service.image)))
-      add(`services.${id}.image`, 'lite stack runs no backing image; its db service runs the image .starcistacks/images/db/Dockerfile builds and its storage service the image .starcistacks/images/storage/Dockerfile builds');
     jobServiceIssues(id, service, component, services, bound, add);
   }
   for (const id of Object.keys(bound)) {

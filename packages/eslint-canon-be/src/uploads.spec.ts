@@ -10,7 +10,7 @@ import { noBufferedUpload, recommended, rules } from "./uploads.ts"
 const FILE = at("src/features/api/assets/transport/graphql/mint-upload.resolver.ts")
 const ERROR = [{ messageId: "buffered" }]
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`${edition} accepts actual streams and storage metadata and rejects buffered multipart uploads`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         assert.doesNotThrow(() => { ruleTester({ root: TYPED_ROOT, hfs }).run("no-buffered-upload", noBufferedUpload, {

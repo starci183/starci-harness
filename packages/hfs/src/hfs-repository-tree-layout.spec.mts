@@ -41,7 +41,7 @@ const sideRun = (context: TestContext, profile: Side, edition: string, files: Fi
 const rootRun = (context: TestContext, edition: string, files: FileMap) => checkHfsWithoutConfig(path.dirname(archFixture(context, { profile: 'fe', files: declared('fe', edition, files) })));
 const paths = (report: Pick<ArchitectureCheckResult, 'violations'>, code: string) => report.violations.filter((item) => item.ruleId === code).map((item) => item.path).sort(byCodeUnit);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a root entry of a side that no slot names is refused, a clean side is accepted`, (context) => {
     assert.deepEqual(paths(sideRun(context, 'be', edition, { ...ROOT_BE, 'stray.txt': 'x\n' }), 'HFS_ROOT_ENTRY_FORBIDDEN'), ['stray.txt']);
     assert.deepEqual(paths(sideRun(context, 'be', edition, ROOT_BE), 'HFS_ROOT_ENTRY_FORBIDDEN'), []);
@@ -78,7 +78,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: statics/ is an app-root entry (slot app.statics) and is refused inside a side`, (context) => {
     assert.deepEqual(paths(rootRun(context, edition, { ...ROOT_FE, ...APP_FE, '../statics/illustrations/empty/customers.png': 'x' }), 'HFS_ROOT_ENTRY_FORBIDDEN'), []);
     assert.deepEqual(paths(sideRun(context, 'be', edition, { ...ROOT_BE, 'statics/customers.png': 'x' }), 'HFS_ROOT_ENTRY_FORBIDDEN'), ['statics']);

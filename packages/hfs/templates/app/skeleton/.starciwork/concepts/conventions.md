@@ -16,7 +16,7 @@ harness checks enforce the generic part (R431, R432), and this page holds what t
 ## Naming
 
 - Tables are plural snake case (`order_items`); their foreign keys singular (`order_item_id`, `owner_user_id`).
-- A migration that drops, renames, retypes or replaces a constraint is a contract step, after the code stops using the object.
+- A migration is `<ts14>_<kebab>.sql`; one that drops, renames, retypes or replaces a constraint is `<ts14>_contract_<name>.sql`.
 
 ## Rules
 
@@ -35,6 +35,6 @@ A table `invoices` owned by a user: `id uuid`, `owner_user_id uuid references au
 
 ## Where
 
-- `be/src/`: the back end and its migrations.
+- `db/`, `be/src/`: the migrations and the back end.
 
 Related: none yet.

@@ -11,7 +11,6 @@ import type { ImportVerdict, RepoView, RequiredPaths, Resolver, ScopeResolver } 
 
 /** The declaration of an app: its two sides are always resolved. */
 export interface AppRepo extends RepoView {
-  edition: string;
   sides: Record<Side, RepoView>;
 }
 

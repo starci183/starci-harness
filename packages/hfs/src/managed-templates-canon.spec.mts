@@ -61,7 +61,7 @@ const addTable = (root: string) => {
   addKind({ repoRoot: root, noun: 'table', name: 'widgets' });
 };
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`every TypeScript file app sync manages in a ${edition} app is a fixed point of the canon`, { timeout: 600_000 }, async (t) => {
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-managed-canon-'), harness: { version: '1.1.0-alpha.3' }, edition,
       presets: bundledPresets(), lock: lockedOk, initGit: init });
@@ -96,7 +96,7 @@ for (const edition of ['full', 'lite']) {
         for (const message of result.messages) problems.push(`${rel}:${message.line} ${message.ruleId ?? 'parse'} ${message.message}`);
       }
     }
-    assert.ok(managed.length > 0 || edition === 'full', 'a lite app manages TypeScript files');
+    assert.ok(managed.length > 0, 'an app manages TypeScript files');
     assert.deepEqual(managed.map((target) => target.path).filter((file) => !judged.includes(file)), [], 'every managed TypeScript file is judged');
     assert.deepEqual(problems, []);
   });

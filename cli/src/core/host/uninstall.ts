@@ -1,11 +1,10 @@
 import { describeOutcomes, hostUninstall, loadHost, selectServices, targetPlatform } from "../../harness/host.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci host uninstall [ids]`: removes the schedules `host install` registered; a task no service declares is never touched. */
 export const hostUninstallVerb = defineVerb({
     path: ["host", "uninstall"],
     summary: "remove the schedules and launchers of the host services; StarCi tasks ops/host.yaml does not declare are never touched",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-uninstall@1",

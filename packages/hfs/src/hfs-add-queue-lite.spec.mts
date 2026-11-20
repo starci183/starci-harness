@@ -14,7 +14,7 @@ import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { addKind } from '../scaffold/add.mjs';
-import { refuseFullAdapterInLite, LiteAdapterRefusal } from '../scaffold/edition-gate.mjs';
+import { refuseFullAdapterInLite, LiteAdapterRefusal } from '../scaffold/scaffold-gate.mjs';
 import { YamlBlockEdit } from '../scaffold/yaml-block-edit.mjs';
 
 type CodedError = Error & { code?: string };
@@ -28,7 +28,7 @@ function liteApp(t: TestContext) {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-add-queue-lite-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
   const { root } = scaffoldApp({
-    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
+    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init,
     now: () => new Date(SCAFFOLDED),
   });
   return root;
@@ -102,10 +102,9 @@ test('lite add queue refuses a stack with no service of an api or worker app bef
 
 test('the lite edition gate refuses only lite-adapted topics the package carries no lite template for', () => {
   const topics = [{ id: 'queues', doc: { liteAdapter: {} } }, { id: 'jobs', doc: { liteAdapter: {} } }, { id: 'saga', doc: { liteAdapter: {} } }];
-  assert.throws(() => refuseFullAdapterInLite({ edition: 'lite', topics, command: 'add saga', liteTemplated: ['jobs', 'queues'] }),
+  assert.throws(() => refuseFullAdapterInLite({ topics, command: 'add saga', liteTemplated: ['jobs', 'queues'] }),
     (error: CodedError) => error instanceof LiteAdapterRefusal && /full adapter of saga;/.test(error.message));
-  assert.doesNotThrow(() => refuseFullAdapterInLite({ edition: 'lite', topics: topics.slice(0, 2), command: 'add job', liteTemplated: ['jobs', 'queues'] }));
-  assert.doesNotThrow(() => refuseFullAdapterInLite({ edition: 'full', topics, command: 'add saga' }));
+  assert.doesNotThrow(() => refuseFullAdapterInLite({ topics: topics.slice(0, 2), command: 'add job', liteTemplated: ['jobs', 'queues'] }));
 });
 
 test('a stack edit that does not reproduce the expected document refuses before writing', () => {

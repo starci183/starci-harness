@@ -341,7 +341,7 @@ const checkUndeclared = ({ repo, ciUses, normalized, services, declFile, add }: 
       `${files.join(', ')} call ${id}, which the declaration does not state${followUp}`);
   }
 };
-const checkQualityGate = (sonar: ServiceLike | null, normalized: Normalized, declFile: string, add: AddFinding, repo: string): void => { if (!sonar || sonar.mode === 'disabled') { return; } const gateName = loadSonarGate({ cwd: repo }).gate.name; if (sonar.qualityGate !== gateName) { add(normalized.sonar ? 'refuse' : 'suspect', 'STACKS_QUALITY_GATE_DRIFT', `${declFile}#services.sonar.qualityGate`, `services.sonar.qualityGate is ${sonar.qualityGate ?? 'absent'}; every product names the one gate ${gateName} (knowledge/sonar-gate.yaml owns its thresholds)`); } };
+const checkQualityGate = (sonar: ServiceLike | null, normalized: Normalized, declFile: string, add: AddFinding, _repo: string): void => { if (!sonar || sonar.mode === 'disabled') { return; } const gateName = loadSonarGate().gate.name; if (sonar.qualityGate !== gateName) { add(normalized.sonar ? 'refuse' : 'suspect', 'STACKS_QUALITY_GATE_DRIFT', `${declFile}#services.sonar.qualityGate`, `services.sonar.qualityGate is ${sonar.qualityGate ?? 'absent'}; every product names the one gate ${gateName} (knowledge/sonar-gate.yaml owns its thresholds)`); } };
 // Sonar settings the repository carries must agree with the declaration, and every repository names the one quality gate.
 const checkSonarDrift = ({ repo, name, normalized, services, declFile, add }: { repo: string; name: string; normalized: Normalized; services: ParsedDocument | null; declFile: string; add: AddFinding }): void => {
   const sonar = normalized.sonar ?? (services ? null : resolveStackService(repo, 'sonar'));

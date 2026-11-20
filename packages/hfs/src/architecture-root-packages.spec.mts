@@ -72,7 +72,7 @@ test('the slot app.packages names root packages that the workspaces forgot to li
   const { config } = graphErrors(t, 'be', [], packageFiles('modules', { '.': { default: './dist/index.js' } }), ['fe/apps/*']);
   assert.deepEqual((config.rootPackages ?? []).map(item => item.name), ['@fixture/modules', '@fixture/shared', '@fixture/widgets']);
   const manifest = loadSlotManifest();
-  const resolver = createSlotResolver(manifest, resolveRepoDeclaration(manifest, { hfs: 3, kind: 'app', project: 'fixture', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } }));
+  const resolver = createSlotResolver(manifest, resolveRepoDeclaration(manifest, { hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } }));
   for (const file of ['packages/modules/package.json', 'packages/modules/src/index.ts', 'packages/modules/src/template/index.ts', 'packages/widgets/src/index.ts']) assert.equal(resolver.classifyPath(file).slot, 'app.packages', file);
 });
 

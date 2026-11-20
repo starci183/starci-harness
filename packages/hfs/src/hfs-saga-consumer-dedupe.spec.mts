@@ -33,7 +33,7 @@ function check(edition: string, body: string, source = `export class Consumer { 
   }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} BE_SAGA_CONSUMER_DEDUPE passes delivery key forwarded to command`, () => {
     assert.deepEqual(check(edition, 'return this.commandBus.execute(new CancelOrder({ request: { eventId: message.eventId } }));'), []);
     assert.deepEqual(check(edition, 'const eventId = message.eventId; const request = { eventId }; const command = new CancelOrder({ request }); return this.commandBus.execute(command);'), []);

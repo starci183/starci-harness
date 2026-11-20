@@ -29,7 +29,7 @@ const tester = (edition: "full" | "lite") => {
 const entry = (code: string) => ({ filename: MAIN, code })
 const refusal = (code: string) => ({ ...entry(code), errors: [{ messageId: "boundary" }] })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`BE_CORS_ALLOWLIST ${edition}: explicit config or exact literal origins pass; wildcard, open and missing CORS fail`, () => {
       assert.doesNotThrow(() => {
           tester(edition).run("cors-allowlist", corsAllowlist, {

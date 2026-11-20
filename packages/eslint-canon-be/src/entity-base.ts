@@ -14,7 +14,7 @@
  * from the injected clock) makes a table without the shared columns, which extends nothing; a class with no `@Entity` (the bases
  * themselves); and the base file `platform/database/abstract.entity.ts`.
  *
- * Judges both editions: TypeORM entities are the persistence of lite and full alike.
+ * TypeORM entities are the persistence of every app.
  */
 import type { TSESTree } from "@typescript-eslint/utils"
 import type { RuleModule, Recommended, Rules } from "./lib/rule.ts"
@@ -130,5 +130,5 @@ export const entityExtendsBase: RuleModule = {
 
 /** The rules of the entity-base law, by name. */
 export const rules = { "entity-extends-base": entityExtendsBase } satisfies Rules
-/** On at error; both editions. */
+/** On at error. */
 export const recommended: Recommended = { "starci-be/entity-extends-base": "error" }

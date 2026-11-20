@@ -14,7 +14,7 @@ import { runWorkHygiene } from '../sync/hygiene.mjs';
 import { starterDeclaration } from '../scaffold/app.mjs';
 
 /** The lite app declaration the package's own scaffold writes: the package proof carries no examples/ tree. */
-const APP_DECLARATION = `${JSON.stringify(starterDeclaration('fixture', undefined, 'lite'), null, 2)}\n`;
+const APP_DECLARATION = `${JSON.stringify(starterDeclaration('fixture', undefined), null, 2)}\n`;
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 const git = (cwd: string, ...args: string[]): void => {
   const run = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv, windowsHide: true });

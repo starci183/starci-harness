@@ -1,7 +1,7 @@
 import { closeTicket, getTicket, wakeOnClose } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci ticket answer <id>`: the owner answers a question ticket (a Telegram reply to its notice does the same), with the answer
@@ -12,7 +12,6 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 export const ticketAnswerVerb = defineVerb({
     path: ["ticket", "answer"],
     summary: "answer a question ticket (--answer <text> or --accept-default) and say why; releases what waits on it and wakes its Supervisor",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/ticket-close@1",

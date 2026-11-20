@@ -74,10 +74,9 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
   })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`FE_STYLE_TOKEN_ONLY ${edition}: accepts token references and refuses raw brand values`, () => {
     const hfs = fixtureHfs(undefined, { lite: edition === "lite" })
-    assert.equal(hfs.edition, edition)
     const settings = { starci: { hfs } }
     tester.run("no-raw-brand-value", noRawBrandValue, {
       valid: [

@@ -89,7 +89,7 @@ const allowlist = (repoRoot: string, files: Record<string, unknown>, edition: st
   repo: { profile: 'fe', kind: 'app', edition, ...FE, ...extra },
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`Grammar owns DiceBear dependencies, with Avatar seed guidance in every manifest section (${edition})`, t => {
     const sections = {
       dependencies: { '@dicebear/core': '1.0.0' }, devDependencies: { '@dicebear/styles': '1.0.0' },
@@ -214,7 +214,7 @@ const familyApp = (t: TestContext, edition: string, grammar: string, rootExtra: 
 };
 const familyFindings = (findings: CheckFinding[]) => findings.filter(finding => finding.code === 'FE_STACK_FAMILY_LINT_MISSING');
 
-for (const edition of ['lite', 'full']) for (const [grammar, [family, factory]] of Object.entries(FAMILY_LINT)) {
+for (const edition of ['lite'] as const) for (const [grammar, [family, factory]] of Object.entries(FAMILY_LINT)) {
   test(`FE_STACK_FAMILY_LINT_MISSING accepts a ${grammar} app that installs canon-fe 9 with ${family} (${edition})`, t => {
     const { files, root } = familyApp(t, edition, grammar, { '@starci/eslint-canon-fe': '9.0.0', [family]: '0.12.0' });
     assert.deepEqual(allowlist(root, files, edition, { grammar }), []);
@@ -288,6 +288,6 @@ test('FE_STACK_CORE_MISSING rechecks shared root tools when a scoped check selec
   const files = { 'package.json': {}, 'fe/apps/web/package.json': product({ dependencies: dependencies(core.filter(name => name !== 'typescript')) }) };
   const root = tree(t, files);
   const findings = feStackAllowlistFindings({ repoRoot: path.join(root, 'fe'), files: ['apps/web/package.json'],
-    repo: { profile: 'fe', kind: 'app', edition: 'lite', ...FE }, inScope: () => false });
+    repo: { profile: 'fe', kind: 'app', ...FE }, inScope: () => false });
   assert.deepEqual(findings.map(finding => [finding.code, finding.dependency]), [['FE_STACK_CORE_MISSING', 'typescript']]);
 });

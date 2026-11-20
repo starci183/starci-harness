@@ -33,7 +33,7 @@ const LOCALE = `${APP}/[locale]`
 const HOME = "import { HomePage } from '../../features/pages/HomePage';\nexport default function Route() { return <HomePage />; }\n"
 const layoutAt = (up: number, body: string): string => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\n${body}\n`
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R54 ${edition}: valid proxy and invalid retired middleware file`, (t) => {
         const files = {
             "apps/web/src/proxy.ts": "export function proxy(request) { return request }\n",

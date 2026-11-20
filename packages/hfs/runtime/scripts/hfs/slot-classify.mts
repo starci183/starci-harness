@@ -1,5 +1,5 @@
 // slot-classify.mts - what slot of one scope (the app root or one side) owns a path: its status, owner unit, tier, folder kind and role.
-// A scope is {manifest, repo, profile, edition, slots, byId, variants, appKind} built once by slots.mts; every function here reads it.
+// A scope is {manifest, repo, profile, slots, byId, variants, appKind} built once by slots.mts; every function here reads it.
 import { globExpression } from '../lib/glob.mjs';
 import { declaredSlotEnabled } from './declaration-slots.mjs';
 import { bestMatch, fillVars, matchVariants, nearestSlot } from './slot-match.mjs';
@@ -8,7 +8,7 @@ import type { Slot, SlotManifest, SlotPresence, SlotTracking } from './manifest-
 import type { RepoView } from './slots.mjs';
 import { cleanSlotPath } from './slot-path.mjs';
 
-/** One scope (the app root or one side) as slots.mts builds it: the manifest, the declaration view and the slots enabled for the profile and edition. */
+/** One scope (the app root or one side) as slots.mts builds it: the manifest, the declaration view and the slots enabled for the profile. */
 export interface Scope {
   manifest: SlotManifest;
   repo: RepoView;
@@ -79,7 +79,7 @@ export interface OwnerUnit {
 
 /** Whether the repository of the scope holds the slot. */
 export function slotEnabled(scope: Scope, slot: Slot): boolean {
-  // A provider slot is gated by its provider in every edition: litePresence may lift it to required, but it still
+  // A provider slot is gated by its provider: a required presence still
   // exists for this repository only while a connection declares the provider.
   if (slot.provider !== undefined) return declaredSlotEnabled(slot, scope.repo);
   if (slot.presence !== 'opt-in') return true;

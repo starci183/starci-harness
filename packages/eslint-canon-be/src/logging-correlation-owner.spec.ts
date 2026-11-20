@@ -24,7 +24,7 @@ const asyncImports = [
     'export * from "node:async_hooks"',
 ]
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`BE-LOGGING-4 ${edition}: async context belongs only to logging and CLS is refused everywhere`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const tester = canonRuleTester({

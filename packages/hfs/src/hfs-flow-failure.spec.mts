@@ -49,7 +49,7 @@ function fixture(t: TestContext, entries: Record<string, string>, edition: strin
 
 const codesOf = (input: FlowInput) => flowFailureFindings(input).map((finding) => `${finding.code} ${finding.path}`);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${BE_FLOW_FAILURE_SWALLOWED}: ${edition} refuses a flow file that swallows a failure and a source that deletes failed jobs`, (t) => {
     const context = fixture(t, {
       'be/src/features/jobs/digest/steps/send.step.ts': SWALLOWING_STEP,
@@ -93,7 +93,7 @@ for (const edition of ['lite', 'full']) {
 test(`${BE_FLOW_FAILURE_SWALLOWED}: only an app's root scope is judged, within scope, and an unreadable file is skipped`, (t) => {
   const entries = { 'be/src/features/jobs/digest/steps/send.step.ts': SWALLOWING_STEP };
   assert.deepEqual(codesOf(fixture(t, entries, 'lite', { isRoot: false })), []);
-  assert.deepEqual(codesOf(fixture(t, entries, 'lite', { repo: { kind: 'runtime', profile: 'app', edition: 'lite' } })), []);
+  assert.deepEqual(codesOf(fixture(t, entries, 'lite', { repo: { kind: 'runtime', profile: 'app' } })), []);
   assert.deepEqual(codesOf(fixture(t, entries, 'lite', { inScope: () => false })), []);
   assert.deepEqual(codesOf(fixture(t, {}, 'lite', { files: ['be/src/features/jobs/gone/steps/x.step.ts'] })), []);
   const defaulted = fixture(t, entries, 'lite');
@@ -105,7 +105,7 @@ test(`${BE_FLOW_FAILURE_SWALLOWED} is one of the codes the app check reports`, (
   assert.ok(ALL_CHECK_CODES.includes(BE_FLOW_FAILURE_SWALLOWED));
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${BE_FLOW_FAILURE_SWALLOWED}: ${edition} accepts a bounded retention of the broker copy and a declared option, and refuses every removeOnFail that deletes (BE-RESILIENCE-2)`, (t) => {
     const source = (option: string) => `await queue.add(name, data, { jobId, attempts: 5, removeOnComplete: { age: 3600 }, ${option} })\n`;
     const accepted: Record<string, string> = {

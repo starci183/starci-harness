@@ -65,7 +65,7 @@ const EMPTY_CONTEXT = { workspaces: [], files: [] } as unknown as TypeContext;
 
 const sourceFinding: MakeViolation = (_config, _file, _node, ruleId, message, details) => ({ ruleId, message, ...details });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`architecture resolves the explicit catalog family and its actual installed contract (${edition})`, context => {
     for (const family of ['core', 'offset-pop']) {
       const contract = grammarContractFor(family);

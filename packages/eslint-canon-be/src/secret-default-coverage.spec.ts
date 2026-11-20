@@ -9,7 +9,7 @@ const tester = typedTester()
 const filename = at("src/modules/domain/plan/plan.config.ts")
 const source = 'import { EnvSource } from "@modules/platform/config"; declare const env: EnvSource;\n'
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R44 ${edition}: required secret readers pass and defaults are refused`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const settings = { starci: { hfs } }

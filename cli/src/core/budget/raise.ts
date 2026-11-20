@@ -6,7 +6,7 @@ import { raiseNodeTries } from "../../harness/workflow.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 const amount = (name: string, value: string | undefined): number => {
     if (value === undefined) return 0
@@ -37,7 +37,6 @@ const TASK_RAISERS = [...RAISERS, "kernel"] as const
 export const budgetRaiseVerb = defineVerb({
     path: ["budget", "raise"],
     summary: "raise a workflow's minutes or tries ceiling (owner or Supervisor), or with --task one task's tries (owner, Supervisor or its Kernel: the way out of TRIES_EXHAUSTED); who and why are kept",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "supervisor", "kernel"],
     schema: "starci/budget-raise@1",

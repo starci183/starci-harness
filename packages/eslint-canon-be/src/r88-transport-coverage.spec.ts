@@ -22,7 +22,7 @@ const controllerBody = '@Controller("orders") export class C { @Get() list() { r
 const busImport = 'import { CommandBus } from "@nestjs/cqrs"; import { Mutation, Resolver } from "@nestjs/graphql";';
 const thinDoor = '@Resolver() export class R { constructor(private readonly bus: CommandBus) {} @Mutation(() => String) place() { return this.bus.execute(new Place()); } }';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`R88 ${edition} accepts valid doors and rejects capability transport declarations`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
     const tester = ruleTester({ root: TYPED_ROOT, hfs });

@@ -53,7 +53,7 @@ const HOMEMADE: Files = {
   'src/tests/integration/chat/chat.integration-spec.ts': "import { bootWorld } from '../../fixtures/e2e/world';\nit('boots', async () => { await bootWorld(); });\n",
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`BE_TEST_TOPOLOGY (${edition}): infrastructure outside src/tests/world/ and a provider override are refused`, (t) => {
     const hits = run(repoWith(t, HOMEMADE));
     const topology = hits.filter((hit) => hit.code === 'BE_TEST_TOPOLOGY' && hit.path === 'src/tests/fixtures/e2e/world.ts');
@@ -117,7 +117,7 @@ test('lite accepts an e2e flow and a test:e2e script, and the check reports the 
     'src/tests/world/use-test-world.ts': WORLD_ENTRY,
     'package.json': JSON.stringify({ scripts: { 'test:e2e': 'jest --selectProjects e2e' } }),
   });
-  const declaration = { hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
+  const declaration = { hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
   const files = [...walk(root), 'package.json'].filter((file, index, all) => all.indexOf(file) === index && file !== 'tsconfig.json');
   const findings = checkRepo({ repoRoot: root, declaration, files, tree: false }).findings;
   assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_EDITION_FORBIDDEN_PRESENT'), []);

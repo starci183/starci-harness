@@ -39,7 +39,7 @@ import { declarationShapeProblems } from './declaration-shape.mjs';
 import { declaredSidesOf, sideDeclared, type ProjectSide } from './project-sides.mjs';
 import { nivoosPackagesOf, NIVOOS_SIDE, type NivoosPackage } from './nivoos-side.mjs';
 import { desktopOf, type DesktopDeclaration } from './desktop-side.mjs';
-import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } from './edition-slots.mjs';
+import { effectiveSlot, frozenRuleParams } from './slot-presence.mjs';
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
 import type { RuleCatalog } from './rule-catalog.mjs';
@@ -82,7 +82,6 @@ export interface RepoView {
   hfs: number;
   kind: string;
   project: string;
-  edition?: string | undefined;
   side: string | null;
   profile: string;
   apps: readonly AppRef[];
@@ -187,7 +186,7 @@ export interface OpenedHfs extends Resolver {
   manifest: SlotManifest;
   rules: () => RuleCatalog;
 }
-export { litePresenceOf, slotInEdition } from './edition-slots.mjs';
+export { presenceOf } from './slot-presence.mjs';
 export { HfsSlotsError } from './slot-errors.mjs';
 export { loadRuleCatalog };
 export { rules } from './rule-catalog.mjs';
@@ -258,13 +257,12 @@ function runtimeDeclaration(manifest: SlotManifest, declaration: Parsed, file: s
 const connectionView = (c: Parsed): ConnectionView => Object.freeze({ name: c.name, envPrefix: c.envPrefix, owner: c.owner, isolation: c.isolation, ...(c.provider !== undefined ? { provider: c.provider } : {}) });
 
 /** The declaration of one side of an app, frozen: the view a check of that side folder runs under. */
-function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: string, edition: string, providers: readonly string[]): RepoView {
+function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: string, providers: readonly string[]): RepoView {
   const s = declaration.sides[name];
   return Object.freeze({
     hfs: declaration.hfs,
     kind: APP_KIND,
     project: declaration.project,
-    edition,
     side: name,
     profile: name,
     apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }), ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }), ...(a.boot === undefined ? {} : { boot: a.boot }) }))),
@@ -308,24 +306,21 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
   if (declaration.hfs !== manifest.major)
     fail('HFS_MANIFEST_MAJOR_MISMATCH', `hfs.json pins manifest major ${declaration.hfs} but the manifest is ${manifest.version}`, { pinned: declaration.hfs, manifest: manifest.version, manifestMajor: manifest.major, file });
   if (declaration.kind === RUNTIME_KIND) return runtimeDeclaration(manifest, declaration, file, side);
-  const { edition, known, valid } = declarationEdition(manifest, declaration);
-  if (!valid) fail('HFS_EDITION_INVALID', `hfs.json edition is ${JSON.stringify(declaration.edition)}; the editions this manifest knows are ${known.join(', ')} (absent means full)`, { file, edition: declaration.edition });
   const declaredSides = Object.freeze(declaredSidesOf(declaration.sides));
   // A side the project does not declare resolves to an empty view (no app, no slot of its own is checked: check.mts gates it by declaredSides).
   const sideOf = (name: Side): Parsed => declaration.sides[name] ?? { apps: [] };
   const declaredProfiles = PROFILES.filter((name) => declaredSides.includes(name));
-  const bad = [...declaredProfiles.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
+  const bad = [...declaredProfiles.flatMap((name) => sideProblems(manifest, name, declaration.sides[name])), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
   if (bad.length) declarationInvalid(bad, file);
   if (side !== null && !isSide(side)) fail('HFS_DECLARATION_INVALID', `${side} is not a side of an app (be, fe)`, { file, side });
   // A provider declared on any connection enables the provider slots of every profile (a fe side declares none): each view carries the union.
   const providers = Object.freeze([...new Set(PROFILES.flatMap((name) => (sideOf(name).connections ?? []).map((c: Parsed) => c.provider).filter((p: Parsed) => p !== undefined)))]);
-  const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, { ...declaration, sides: { ...declaration.sides, [name]: sideOf(name) } }, name, edition, providers)])) as Record<Side, RepoView>;
+  const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, { ...declaration, sides: { ...declaration.sides, [name]: sideOf(name) } }, name, providers)])) as Record<Side, RepoView>;
   if (side !== null) return sides[side] as RepoView;
   return Object.freeze({
     hfs: declaration.hfs,
     kind: APP_KIND,
     project: declaration.project,
-    edition,
     side: null,
     profile: APP_SCOPE,
     // The root declares no app or connection of its own (each side does); its opt-in slots are the browser journey and the managed
@@ -387,8 +382,7 @@ export function readRepoDeclaration(manifest: SlotManifest, repoRoot: string): R
  */
 function createScopeResolver(manifest: SlotManifest, repo: RepoView): ScopeResolver {
   const profile = repo.profile;
-  const edition = repo.edition ?? 'full';
-  const slots = manifest.slots.filter((s) => s.managedOnly !== true && s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
+  const slots = manifest.slots.filter((s) => s.managedOnly !== true && s.profiles.includes(profile)).map((s) => effectiveSlot(s, profile));
   const scope: Scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s): [string, Slot] => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a): [string, string] => [a.name, a.kind])), declared: new Map([[NIVOOS_SIDE, new Set((repo.nivoosPackages ?? []).map((entry) => entry.name))]]) };
   const classifyPath = (input: string): ClassifiedPath => classifyIn(scope, input);
   /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */
@@ -409,7 +403,7 @@ function createScopeResolver(manifest: SlotManifest, repo: RepoView): ScopeResol
     /** True only for a path a slot owns and requires to be committed. */
     isTracked: (p: string) => trackingOf(p) === 'tracked',
     // The app's own database functions and SQL pass-through files (hfs.json sides.be.dbFunctions, sides.be.sqlPassThrough) join the canon's lists (R334).
-    ruleParams: () => withDeclaredLists(ruleParams(manifest, profile, edition), repo),
+    ruleParams: () => withDeclaredLists(ruleParams(manifest, profile), repo),
     allowedImports: (tier: string) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
   });
 }
@@ -448,11 +442,11 @@ const withDeclaredLists = (params: RuleParams, repo: { dbFunctions?: readonly Db
   });
 };
 
-/** The rule parameters of one profile (be: infraOwners, suffixes, bannedSuffixes and the rest over the shared ruleParams.common fileLines and duplicateBlock; fe: common alone or with its overrides; runtime: ruleParams.runtime of a runtime manifest), as a frozen deep copy. Under `edition` lite the `lite` overrides of ruleParams.<profile> merge over the base (the `lite` key itself is never returned). */
-export function ruleParams(manifest: SlotManifest, profile: string, edition = 'full'): RuleParams {
+/** The rule parameters of one profile (be: infraOwners, suffixes, bannedSuffixes and the rest over the shared ruleParams.common fileLines and duplicateBlock; fe: common alone or with its overrides; runtime: ruleParams.runtime of a runtime manifest), as a frozen deep copy. */
+export function ruleParams(manifest: SlotManifest, profile: string): RuleParams {
   const profiles: readonly string[] = manifestKind(manifest) === RUNTIME_KIND ? [RUNTIME_KIND] : PROFILES;
   if (!profiles.includes(profile)) fail('HFS_MANIFEST_INVALID', `ruleParams has no profile ${profile}`, { profile });
-  return editionRuleParams({ ...manifest.ruleParams.common, ...manifest.ruleParams[profile] }, edition);
+  return frozenRuleParams({ ...manifest.ruleParams.common, ...manifest.ruleParams[profile] });
 }
 
 /**

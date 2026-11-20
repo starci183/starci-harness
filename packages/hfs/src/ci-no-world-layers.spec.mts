@@ -17,7 +17,7 @@ const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, projec
   fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
 } });
 const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }).find((item) => item.path === file)?.content;
-const worldFindings = (doc: unknown, edition: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci', edition }).filter((finding) => finding.item === 'no-world-layers');
+const worldFindings = (doc: unknown, _edition: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci' }).filter((finding) => finding.item === 'no-world-layers');
 const workflowRunning = (run: string) => ({
   name: 'ci',
   on: { push: { branches: ['main'] } },
@@ -48,7 +48,7 @@ const CLEAN_COMMANDS = [
   'npm run lint',
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const command of WORLD_COMMANDS) {
     test(`${edition}: a workflow step running \`${command.replaceAll('\n', ' ; ')}\` is refused (no-world-layers)`, () => {
       const findings = worldFindings(workflowRunning(command), edition);

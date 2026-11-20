@@ -4,7 +4,7 @@ import { mergeNeeds, normalizeNeedKey } from "../../harness/needs.js"
 import { projectOf } from "../../harness/work.js"
 import { Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { closeDecision } from "./tend.js"
 
 /**
@@ -15,7 +15,6 @@ import { closeDecision } from "./tend.js"
 export const needsMergeVerb = defineVerb({
     path: ["needs", "merge"],
     summary: "fold shared need <from> into <into> when two workers named one need differently: its waiters move, <from> ends merged and later reports of it join <into>",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["kernel", "supervisor", "owner", "debug"],
     schema: "starci/needs-merge@1",

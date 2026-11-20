@@ -16,7 +16,7 @@ const files = {
     [orphan]: "export class OrphanConsumer {}\n",
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R46 ${edition}: composed consumers pass and unowned consumers are refused`, (t) => {
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)

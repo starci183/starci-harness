@@ -48,7 +48,7 @@ const drop = (dir: string, relative: string) => fs.rmSync(path.join(dir, ...rela
 const mkdir = (dir: string, relative: string) => fs.mkdirSync(path.join(dir, ...relative.split('/')), { recursive: true });
 const only = (result: { findings: CheckFinding[] }, code: string) => result.findings.filter((f) => f.code === code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} violating: a missing required file is ${SLOT_REQUIRED_MISSING}, per slot and per app of a side with several apps`, () => {
     const be = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, '.nvmrc')) });
     assert.equal(be.ok, false);

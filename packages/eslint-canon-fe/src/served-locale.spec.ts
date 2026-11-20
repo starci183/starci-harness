@@ -189,7 +189,7 @@ export default headers`,
   ],
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   const hfs = edition === "lite" ? fixtureHfs(LITE_FE_DECLARATION, { lite: true }) : fixtureHfs()
   const inEdition = <T extends object>(fixture: T) => ({ ...fixture, settings: { starci: { hfs } } })
   tester.run(`locale-header-belongs-to-the-link (${edition})`, named(rules, "locale-header-belongs-to-the-link"), {

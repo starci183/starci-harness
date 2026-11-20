@@ -26,7 +26,7 @@ const fe = (edition: string) => ({ profile: 'fe', edition });
 const resolver = { classifyPath: () => ({ status: 'owned' }), slot: () => null };
 const jwtFixture = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ role: 'service_role', exp: 4102444800 })).toString('base64url')}.${'C'.repeat(43)}`;
 const fullApp = { hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
-const liteApp = { ...fullApp, edition: 'lite' };
+const liteApp = { ...fullApp };
 
 for (const ignored of [false, true]) {
   test(`R06 warns about an ${ignored ? 'ignored' : 'unignored'} untracked secrets.env at the lite app root without making it an error`, t => {
@@ -71,7 +71,7 @@ test('the untracked custody warning applies only to the lite app root, with no w
   fs.writeFileSync(path.join(root, 'secrets.env'), '');
   assert.deepEqual(untrackedSecretFindings({ ...input, repo: app('full') }), []);
   assert.deepEqual(untrackedSecretFindings({ ...input, repo: fe('lite') }), []);
-  assert.deepEqual(untrackedSecretFindings({ ...input, repo: { profile: 'be', edition: 'lite' } }), []);
+  assert.deepEqual(untrackedSecretFindings({ ...input, repo: { profile: 'be' } }), []);
   assert.deepEqual(untrackedSecretFindings({ ...input, files: ['secrets.env'], repo: app('lite') }), []);
 });
 

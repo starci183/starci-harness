@@ -1,8 +1,6 @@
-// managed-scripts.mts - reads the script names from the managed package-script template for one HFS profile and
-// edition. Templates stay the source of truth; README presentation checks consume only this cached name set.
+// managed-scripts.mts - reads the script names from the managed package-script template for one HFS profile. Templates stay the source of truth; README presentation checks consume only this cached name set.
 import fs from 'node:fs';
 import path from 'node:path';
-import { managedGroupOf } from '../edition-slots.mjs';
 import { loadSlotManifest } from '../slots.mjs';
 
 const TEMPLATE_ROOTS = [
@@ -17,12 +15,12 @@ const SCRIPT_ENTRY_NAME = String.raw`([^"\n]+)`;
 const SCRIPT_ENTRY_END = String.raw`":\s*"`;
 const SCRIPT_ENTRY = new RegExp([SCRIPT_ENTRY_START, SCRIPT_ENTRY_NAME, SCRIPT_ENTRY_END].join(''), 'gmu');
 
-/** The script names of a profile/edition template after its partials are expanded. */
-export function managedScriptNames(profile: string, edition = 'full'): Set<string> {
-  const key = `${profile}:${edition}`;
+/** The script names of a profile template after its partials are expanded. */
+export function managedScriptNames(profile: string): Set<string> {
+  const key = profile;
   if (!managedScriptCache.has(key)) {
     const slot = loadSlotManifest().slots.find((entry: ManifestSlot) => entry.id === `${profile}.package-manifest`);
-    const group = slot && managedGroupOf(slot, edition);
+    const group = slot?.managedBy;
     const templates = group && TEMPLATE_ROOTS.find((dir) => fs.existsSync(path.join(dir, profile, group, 'package.json')));
     if (!templates) throw new Error(`The managed package-scripts template of profile ${profile} cannot be found next to the runtime.`);
     const text = fs.readFileSync(path.join(templates, profile, group, 'package.json'), 'utf8')

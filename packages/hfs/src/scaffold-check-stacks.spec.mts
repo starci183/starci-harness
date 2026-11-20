@@ -32,7 +32,7 @@ function starterFindings(t: TestContext, edition: string): { root: string; codes
   return { root, codes };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a fresh ${edition} starter raises no stack or image finding of its own check`, (t) => {
     const { root, codes } = starterFindings(t, edition);
     assert.deepEqual(codes, []);

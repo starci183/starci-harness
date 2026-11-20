@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { addKind } from '../scaffold/add.mjs';
 import { skeletonOf, starterDeclaration } from '../scaffold/app.mjs';
-import { refuseFullAdapterInLite, LiteAdapterRefusal } from '../scaffold/edition-gate.mjs';
+import { refuseFullAdapterInLite, LiteAdapterRefusal } from '../scaffold/scaffold-gate.mjs';
 import { derivePatternFileSlots } from '../scaffold/pattern-file-slots.mjs';
 import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
@@ -48,7 +48,7 @@ guidance:
 });
 
 test('the lite starter carries the record guard and leaves the sequential primitive to the queue generator that consumes it', () => {
-  const files = skeletonOf('be', { ...starterDeclaration('demo', undefined, 'lite'), edition: 'lite' }, {}) // reason: starterDeclaration types edition as optional where skeletonOf requires it; a lite declaration always carries it;
+  const files = skeletonOf('be', { ...starterDeclaration('demo', undefined) }, {}) // reason: starterDeclaration types edition as optional where skeletonOf requires it; a lite declaration always carries it;
   assert.ok(!files.some(file => file.path === 'be/src/modules/platform/primitives/sequence.policy.ts'));
   assert.ok(!files.some(file => file.path === 'be/src/modules/platform/primitives/sequence.policy.spec.ts'));
   assert.ok(files.some(file => file.path === 'be/src/modules/platform/primitives/record.policy.ts'));
@@ -61,14 +61,14 @@ test('the lite starter carries the record guard and leaves the sequential primit
 test('a lite adapter refuses generation until its topic supplies an edition tree or the package carries its lite templates', () => {
   for (const liteFiles of [undefined, [], 'not a tree']) {
     assert.throws(() => refuseFullAdapterInLite({
-      edition: 'lite', command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {}, liteFiles } }],
+      command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {}, liteFiles } }],
     }), LiteAdapterRefusal);
   }
   assert.doesNotThrow(() => refuseFullAdapterInLite({
-    edition: 'lite', command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {}, liteFiles: [{ path: 'src/queue.ts' }] } }],
+    command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {}, liteFiles: [{ path: 'src/queue.ts' }] } }],
   }));
   assert.doesNotThrow(() => refuseFullAdapterInLite({
-    edition: 'lite', command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {} } }], liteTemplated: ['queues'],
+    command: 'add queue', topics: [{ id: 'queues', doc: { liteAdapter: {} } }], liteTemplated: ['queues'],
   }));
 });
 

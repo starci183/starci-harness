@@ -15,7 +15,7 @@ import { remoteInput } from "../../harness/vps/ssh.js"
 import type { SshSession } from "../../harness/vps/ssh.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { EXECUTE, OWNER, planResult, requireAction } from "./shared.js"
 import type { VpsData } from "./shared.js"
@@ -72,7 +72,6 @@ const generatedSecrets = (store: SealedStore, file: string, kinds: readonly Moni
 export const vpsMonitorVerb = defineVerb({
     path: ["vps", "monitor"],
     summary: "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-monitor@1",

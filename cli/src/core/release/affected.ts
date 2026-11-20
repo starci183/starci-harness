@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { captureNpm } from "../../shared/exec.js"
 import { captureGit, repositoryRoot, resolveSha } from "../../shared/git.js"
 import { NPMJS_FLAGS } from "../deps/local-refs.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 
@@ -269,7 +269,6 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
 export const releaseAffectedVerb = defineVerb({
     path: ["release", "affected"],
     summary: "the CI nodes a diff affects: each package with its build order (sibling requires and file: dependencies first, then relative reads that close no cycle), the harness and app jobs; no base is every node",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/release-affected@1",

@@ -41,7 +41,7 @@ const declaration = (edition: string) => ({
   hfs: 3,
   kind: 'app',
   project: `parity-${edition}`,
-  ...(edition === 'lite' ? { edition: 'lite' } : {}),
+  ...(edition === 'lite' ? {} : {}),
   sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
 });
 
@@ -106,7 +106,7 @@ const APP_MEMBERS = {
   '.starcistacks/dev/secrets/engine.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'WORKER_TURN_TIMEOUT_MS', 'STALE_API_TOKEN', 'LEGACY_SMTP_PASSWORD']),
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`every env code rejects its violating fixture through checkRepo (${edition})`, (t) => {
     const files = {
       ...BASE,
@@ -194,7 +194,7 @@ test('env parity is clean in lite when every required read is sealed or declared
 
 test('env parity reports the same violations through checkRepo under both editions', (t) => {
   const files = { ...BASE, ...APP_MEMBERS };
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const root = tree(t, files);
     const findings = checkRepo({ repoRoot: root, declaration: declaration(edition), manifest, files: Object.keys(files), tree: false }).findings;
     assert.ok(findings.some((finding) => finding.code === ENV_REQUIRED_UNSET), `${edition} judges ENV_REQUIRED_UNSET`);
@@ -401,7 +401,7 @@ const transportFiles = (extra: Record<string, string>) => ({
   ...extra,
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`the SSH group keys in the sealed operator member and vps-ci are not ENV_DUPLICATE (${edition})`, (t) => {
     const files = transportFiles({});
     assert.deepEqual(codes(envFindingsOf(tree(t, files), files, edition), ENV_DUPLICATE), []);
@@ -458,7 +458,7 @@ test('a seeds-<name> member that seed data references is read: an environment le
   assert.deepEqual(codes(findings, ENV_SEALED_UNREAD).map((finding) => finding.path), ['.starcistacks/dev/secrets/seeds-test-owner.enc.yaml'], 'production\'s account member is read there only');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a sealed key the dev stack's own database declaration reads is consumed; the same key listed only in custody is still ENV_SEALED_UNREAD (${edition})`, (t) => {
     const member = '.starcistacks/dev/secrets/db.enc';
     const stacks = (local: string): string => `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    local:\n${local}`;
@@ -481,7 +481,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a key carries no environment in its name: a sealed or declared key with a leading environment token is ENV_KEY_ENVIRONMENT_NAMED, naming the bare key (${edition})`, (t) => {
     const files = {
       '.starcistacks/dev/secrets/db.enc': sealedDotenv(['DB_OWNER_PASSWORD', 'DEV_MAIL_TOKEN', 'DEV_DB_OWNER_PASSWORD', 'DEVICE_TOKEN']),

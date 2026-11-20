@@ -168,7 +168,7 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
 });
 
 test('the lite starter keeps its vector backing in its db service without a Qdrant declaration, client or container', async (t) => {
-  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), presets: bundledPresets(), lock: lockedOk, initGit: init });
   const read = (file: string) => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
   const declaration = JSON.parse(read('hfs.json'));
   const pkg = JSON.parse(read('package.json'));
@@ -188,7 +188,7 @@ test('the lite starter keeps its vector backing in its db service without a Qdra
 });
 
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {
-  for (const edition of ['full', 'lite']) {
+  for (const edition of ['lite'] as const) {
     const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
     const composeFiles = files.filter((file) => /^\.starcistacks\/[^/]+\/infra\/(?:swarm|compose)\/[^/]+\.ya?ml$/u.test(file));
     assert.ok(composeFiles.length > 0, `${edition} has stack sources`);
@@ -220,7 +220,7 @@ test('an existing empty unborn main repository is scaffolded without a second gi
 });
 
 test('the scaffold settles git on PROJECT-BRANCH-1: the app is the first commit of main and dev is checked out at it', (t) => {
-  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), presets: bundledPresets(), lock: lockedOk, initGit: init });
   const identity = { ...process.env, GIT_AUTHOR_NAME: 'scaffold spec', GIT_AUTHOR_EMAIL: 'spec@example.invalid', GIT_COMMITTER_NAME: 'scaffold spec', GIT_COMMITTER_EMAIL: 'spec@example.invalid' };
   const settled = settleScaffoldBranches(root, 'demo', { add, switchBranch, commit: (args, options) => commit(args, { ...options, env: identity }) });
   assert.deepEqual(settled, { committed: true, branch: 'dev', detail: '' });
@@ -232,7 +232,7 @@ test('the scaffold settles git on PROJECT-BRANCH-1: the app is the first commit 
 });
 
 test('a commit git refuses leaves every file staged on unborn main and says why', (t) => {
-  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), presets: bundledPresets(), lock: lockedOk, initGit: init });
   const refused = { status: 128, stdout: '', stderr: 'Author identity unknown\n*** Please tell me who you are.', pid: 0, output: [], signal: null };
   const settled = settleScaffoldBranches(root, 'demo', { add, commit: () => refused, switchBranch: () => assert.fail('no switch without a commit') });
   assert.deepEqual(settled, { committed: false, branch: 'main', detail: 'git commit: Author identity unknown' });

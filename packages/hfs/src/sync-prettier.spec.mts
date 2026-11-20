@@ -79,7 +79,6 @@ test('a sync of a lite starter renders its managed sign-in files prettier-clean'
     name: 'demo',
     into: mkdtemp(t, 'starci-sync-prettier-lite-'),
     harness: { version: '1.1.0-alpha.3' },
-    edition: 'lite',
     presets: bundledPresets(),
     lock: (at: string) => {
       fs.writeFileSync(path.join(at, 'package-lock.json'), '{}\n');

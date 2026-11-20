@@ -9,13 +9,13 @@ import { managedScriptNames } from '../runtime/scripts/hfs/architecture/managed-
 const template = (group: string): string => fs.readFileSync(new URL(`../templates/app/${group}/package.json`, import.meta.url), 'utf8');
 
 test('lite renders test:integration and test:e2e, never test:world or test:browser', () => {
-  const names = managedScriptNames('app', 'lite');
+  const names = managedScriptNames('app');
   for (const name of ['test', 'test:integration', 'test:e2e', 'typecheck:tests']) assert.equal(names.has(name), true, `lite renders ${name}`);
   for (const name of ['test:world', 'test:browser']) assert.equal(names.has(name), false, `lite renders no ${name}`);
 });
 
 test('full keeps its four world scripts', () => {
-  const names = managedScriptNames('app', 'full');
+  const names = managedScriptNames('app');
   for (const name of ['test:integration', 'test:e2e', 'test:contract', 'test:world']) assert.equal(names.has(name), true, `full renders ${name}`);
 });
 

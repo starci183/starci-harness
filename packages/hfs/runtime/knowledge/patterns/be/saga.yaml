@@ -258,8 +258,6 @@ rules:
         write: 'e2e/order/invoice-rejected.e2e-spec.ts cuts the order database while billing.invoice-rejected is delivered, restores it and asserts the order cancelled, the stock back and the saga run compensated at version 3.'
     verification:
       automated:
-        - BE_SAGA_E2E_MISSING
-        - BE_ASYNC_SPEC_MISSING
       manual:
         - Check the injected fault hits the compensation, not only the step before it.
     relatedExamples: [saga]

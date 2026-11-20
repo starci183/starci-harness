@@ -15,7 +15,7 @@ const root = at("apps/api/src/app.module.ts")
 const main = at("apps/api/src/main.ts")
 const sourceLines = (count: number) => Array.from({ length: count }, () => "export {};").join("\n") + "\n"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const tester = canonRuleTester({
         languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },

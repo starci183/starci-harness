@@ -19,10 +19,9 @@ test("R263 scope findings carry their runtime failure code", () => {
     assert.match(intake, /^\[BE_WEBHOOK_SCOPE\] /)
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`webhook-scope confines signed metadata and public delivery routes in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const controller = at("src/features/api/payment/transport/http/payment.controller.ts")
         const module = at("src/features/webhooks/payment/transport/http/payment-http.module.ts")
         const service = at("src/modules/domain/payment/payment.service.ts")

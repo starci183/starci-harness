@@ -6,7 +6,7 @@ import { doctorScript, judgeDoctor } from "../../harness/vps/probe.js"
 import { ownerStore } from "../../harness/vps/sealed.js"
 import { headline } from "../../shared/exec.js"
 import { Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { pinsOf, READERS, scopeOf, SERVER_ID } from "./shared.js"
 import type { VpsData } from "./shared.js"
@@ -28,7 +28,6 @@ const rowLine = (row: FleetRow): string => {
 export const vpsListVerb = defineVerb({
     path: ["vps", "list"],
     summary: "list the managed VPS fleet of ops/vps/servers with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: READERS,
     schema: "starci/vps-list@1",
@@ -47,7 +46,6 @@ export const vpsListVerb = defineVerb({
 export const vpsDoctorVerb = defineVerb({
     path: ["vps", "doctor"],
     summary: "judge one managed server against ops/vps.yaml, read-only: sshd settings, public listening ports, firewall, intrusion guard, Docker version and swarm, pending security updates and reboots",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: READERS,
     schema: "starci/vps-doctor@1",

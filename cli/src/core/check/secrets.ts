@@ -1,7 +1,7 @@
 import { loadPolicy, resolveProfile } from "../../harness/policy.js"
 import { Refusal } from "../../shared/errors.js"
 import { branchBase, changedFiles, refExists, repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import type { SecretReport } from "./secrets-scan.js"
 import { treeFiles } from "./tree-files.js"
@@ -15,7 +15,6 @@ interface SecretsData extends SecretReport {
 export const checkSecretsVerb = defineVerb({
     path: ["check", "secrets"],
     summary: "scan the changed files (every file with --all) for secrets per policy/security.yaml; red with file:line and rule, never the value",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-secrets@1",

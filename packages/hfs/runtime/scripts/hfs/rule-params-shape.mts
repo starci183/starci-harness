@@ -7,15 +7,13 @@ import { paramNamesOk } from './param-names.mjs';
 import { kindParamProblems, scenarioProblem } from './declaration-slots.mjs';
 import { NAME, namedMapValid, PACKAGE_NAME, roleListProblems, SCHEMA_AUTHORITIES, unitRolesProblems } from './manifest-shape.mjs';
 import { byCodeUnit, nonemptyUniqueList } from '../lib/list.mjs';
-import { ruleEditionProblems } from './edition-slots.mjs';
 
 const PROFILES = ['be', 'fe'];
 const BE_OWN = ['infraOwners', 'eventBus', 'specDoubles', 'paramNames', 'suffixes', 'bannedSuffixes', 'contractShape', 'unitRoles', 'logicRoles', 'valueRoles', 'thinRoles', 'patternScenarios', 'kindPatterns', 'addKinds', 'backing'];
-const backingEntryOk = (entry: Parsed) => isPlainObject(entry) && Object.keys(entry).every((key: Parsed) => ['clients', 'images', 'patterns', 'editions'].includes(key))
+const backingEntryOk = (entry: Parsed) => isPlainObject(entry) && Object.keys(entry).every((key: Parsed) => ['clients', 'images', 'patterns'].includes(key))
   && nonemptyUniqueList(entry.clients, (name: Parsed) => PACKAGE_NAME.test(String(name)))
   && Array.isArray(entry.patterns) && entry.patterns.every((name: Parsed) => NAME.test(String(name))) && new Set(entry.patterns).size === entry.patterns.length
-  && nonemptyUniqueList(entry.images, (name: Parsed) => PACKAGE_NAME.test(String(name)))
-  && ruleEditionProblems(entry, 'backing service').length === 0;
+  && nonemptyUniqueList(entry.images, (name: Parsed) => PACKAGE_NAME.test(String(name)));
 const FORM_NAMES = new Set(['call', 'new', 'curried', 'object', 'primitive', 'array']);
 const blockOk = (v: Parsed) => isPlainObject(v) && Number.isInteger(v.lines) && v.lines >= 2 && Number.isInteger(v.tokens) && v.tokens >= 1 && Object.keys(v).length === 2;
 const fileLinesOk = (v: Parsed) => isPlainObject(v) && Number.isInteger(v.soft) && v.soft >= 1 && typeof v.hardGrowth === 'boolean' && Object.keys(v).length === 2;
@@ -25,12 +23,8 @@ const SHARED_PARAMS: Record<string, (v: Parsed) => boolean> = {
   functionLines: (v: Parsed) => Number.isInteger(v) && v >= 1,
   featureFiles: (v: Parsed) => Number.isInteger(v) && v >= 1,
 };
-const SHARED_KEYS = Object.keys(SHARED_PARAMS);
 const sharedParam = (key: Parsed, v: Parsed) => Object.hasOwn(SHARED_PARAMS, key) && (SHARED_PARAMS[key] as (v: Parsed) => boolean)(v);
 const sideOk = (side: Parsed, own: string[], extra: string[] = []) => own.every((k: Parsed) => side[k] !== undefined) && Object.entries(side).every(([k, v]: [string, Parsed]) => own.includes(k) || extra.includes(k) || sharedParam(k, v));
-const liteKeyOk = (lite: Parsed, key: Parsed, keys: Parsed) => key !== 'lite' && keys.includes(key)
-  && (!['functionLines', 'featureFiles'].includes(key) || sharedParam(key, lite[key]));
-const liteOk = (lite: Parsed, keys: Parsed) => lite === undefined || (isPlainObject(lite) && Object.keys(lite).length > 0 && Object.keys(lite).every((k: Parsed) => liteKeyOk(lite, k, keys)));
 const memberMap = (v: Parsed, allowEmpty: Parsed) => isPlainObject(v) && Object.keys(v).length > 0 && Object.values(v).every((list: Parsed) => Array.isArray(list) && (allowEmpty || list.length > 0) && list.every((x: Parsed) => /^[A-Z][A-Za-z0-9]*$/.test(String(x))) && new Set(list).size === list.length);
 const roleList = (v: Parsed) => nonemptyUniqueList(v, (role: Parsed) => NAME.test(String(role)));
 const formsOk = (v: Parsed) => Array.isArray(v) && v.length > 0 && v.every((x: Parsed) => FORM_NAMES.has(x)) && new Set(v).size === v.length;
@@ -106,11 +100,10 @@ export function ruleParamsProblems(m: Parsed): string[] {
   if (!isPlainObject(rp) || Object.keys(rp).some((k: Parsed) => ![...PROFILES, 'common', 'db', 'gallery'].includes(k)) || !isPlainObject(rp.common) || !isPlainObject(rp.be) || (rp.fe !== undefined && !isPlainObject(rp.fe))) return ['ruleParams must be a map with common, be and optionally fe, db and gallery'];
   else {
     // common holds the parameters both sides share; a side may restate one of them (a valid value) as an override, nothing else.
-    // Edition lite: a side's optional `lite` map overrides keys of the same side (never `lite` itself) when the app declares edition lite.
     if (!sideOk(rp.common, []) || !fileLinesOk(rp.common.fileLines) || !blockOk(rp.common.duplicateBlock)) bad.push('ruleParams.common needs fileLines {soft, hardGrowth} and duplicateBlock {lines >= 2, tokens >= 1}; optional functionLines and featureFiles must be positive integers');
-    if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'lite', 'dbFunctions', 'sqlPassThrough']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !sqlPassThroughOk(rp.be.sqlPassThrough) || !liteOk(rp.be.lite, [...BE_OWN, ...SHARED_KEYS, 'schemaAuthority', 'dbFunctions', 'sqlPassThrough'])) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name), sqlPassThrough ([{file, reason}]: a file whose SQL text is not written by the app) and lite (overrides of the same keys)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
+    if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'dbFunctions', 'sqlPassThrough']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !sqlPassThroughOk(rp.be.sqlPassThrough)) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name), sqlPassThrough ([{file, reason}]: a file whose SQL text is not written by the app)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
     bad.push(...beSpecificProblems(rp.be, m));
-    if (rp.fe !== undefined && (!sideOk(rp.fe, [], ['lite']) || !liteOk(rp.fe.lite, SHARED_KEYS))) bad.push('ruleParams.fe may only restate the shared parameters of ruleParams.common, and carry a lite override of them');
+    if (rp.fe !== undefined && !sideOk(rp.fe, [])) bad.push('ruleParams.fe may only restate the shared parameters of ruleParams.common');
     if (!galleryParamsOk(rp.gallery)) bad.push('ruleParams.gallery needs dir, devScript, pages (below dir), ignoredShots (non-empty relative paths), portOffset (a whole number from 2 to 99) and vite (an exact version)');
     if (!dbParamsOk(rp.db)) bad.push('ruleParams.db may contain only extensions (a list of unique non-empty extension names)');
   }

@@ -24,7 +24,7 @@ function judge(t: TestContext, files: Record<string, string>) {
   return localeCatalogFindings({ repoRoot: root, files: Object.keys(files), repo });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`FE_I18N_LOCALE_MISSING@${edition}: a declared locale without its catalog and a catalog of an undeclared locale are violations, report-only in --env local`, (t) => {
     const findings = judge(t, {
       [`${I18N}/routing.ts`]: routing('const LOCALES = ["vi", "en"] as const'),

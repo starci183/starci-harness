@@ -19,7 +19,7 @@ const ruleOf = (name: string): Rule => {
 // proves: FE_PURE_WORLD_HOOK@lite FE_PURE_WORLD_HOOK@full
 // proves: FE_PURE_WORLD_IMPORT@lite FE_PURE_WORLD_IMPORT@full
 // proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R56 R92 ${edition} accepts owned hooks and pure rendering and rejects misplaced hooks and world imports`, t => {
     const hook = "apps/web/src/hooks/data/useData.ts"
     const shared = "apps/web/src/hooks/data/wrong.shared.ts"

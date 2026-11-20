@@ -95,9 +95,9 @@ export function dbOptions(argv: string[], allowed: readonly string[]): DbOptions
 
 export function dbAppRoot(cwd: string, opts: DbOptions): string {
   const root = path.resolve(cwd, opts.cwd ?? '.');
-  let declaration: { kind?: unknown; edition?: string };
+  let declaration: { kind?: unknown };
   try { declaration = JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')); } catch { throw new DbVerbError('run at an app root containing hfs.json'); }
-  if (declaration.kind !== 'app' || !['lite', 'full'].includes(declaration.edition ?? 'full')) throw new DbVerbError('database verbs require a lite or full app');
+  if (declaration.kind !== 'app') throw new DbVerbError('database verbs require an app');
   return root;
 }
 

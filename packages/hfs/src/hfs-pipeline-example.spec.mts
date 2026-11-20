@@ -8,7 +8,7 @@ import { pipelineFindings } from '../runtime/scripts/hfs/rules/pipeline.mjs';
 
 const PREFIX = 'node node_modules/@starci/hfs/runtime/scripts/hfs/example-secrets.mjs --run . -- ';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test('canonical lint stays required through the exact example runner (' + edition + ')', (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-pipeline-example-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

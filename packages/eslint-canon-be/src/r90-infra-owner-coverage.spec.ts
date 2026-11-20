@@ -18,7 +18,7 @@ const httpCall = [
   'export const readProvider = () => http.get("https://provider/orders");',
 ].join('\n');
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`R90 ${edition} accepts owning infrastructure and rejects foreign raw clients`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
     const tester = canonRuleTester({

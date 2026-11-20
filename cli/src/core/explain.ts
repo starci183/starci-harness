@@ -1,6 +1,6 @@
 import { formatTable } from "../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb, spellingOf } from "../shared/verb.js"
-import type { AnyVerb, Edition, Effect, FlagSpec, Role } from "../shared/verb.js"
+import { EVERYONE, defineVerb, spellingOf } from "../shared/verb.js"
+import type { AnyVerb, Effect, FlagSpec, Role } from "../shared/verb.js"
 
 interface FlagEntry {
     readonly name: string
@@ -13,7 +13,6 @@ interface FlagEntry {
 interface VerbEntry {
     readonly command: string
     readonly summary: string
-    readonly editions: readonly Edition[]
     readonly effect: Effect
     readonly roles: readonly Role[]
     readonly schema: string
@@ -41,7 +40,6 @@ const flagSpelling = (flag: FlagEntry): string => {
 const entryOf = (verb: AnyVerb): VerbEntry => ({
     command: `starci ${spellingOf(verb)}`,
     summary: verb.summary,
-    editions: verb.editions,
     effect: verb.effect,
     roles: verb.roles,
     schema: verb.schema,
@@ -64,7 +62,6 @@ const detailOf = (verb: VerbEntry): string[] => [
 export const explainVerb = defineVerb({
     path: ["explain"],
     summary: "list the verbs available here with their flags, effect and json schema; a search term narrows the list and prints each verb's flags",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/explain@1",

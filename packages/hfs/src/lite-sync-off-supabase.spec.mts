@@ -15,7 +15,7 @@ import { PGMQ, renderTargets, retiredFiles } from '../sync/index.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { starterDeclaration } from '../scaffold/app.mjs';
 
-const lite = starterDeclaration('demo', undefined, 'lite');
+const lite = starterDeclaration('demo', undefined);
 // reason: the spec renders from a source with no files, so the source facts are the minimal pair sync reads, not a full AppSourceFacts.
 const targets = renderTargets(lite, bundledPresets(), { source: { files: [], read: () => '' } as unknown as AppSourceFacts });
 const byPath = new Map(targets.map((target): [string, RenderedTarget] => [target.path, target]));
@@ -65,8 +65,8 @@ test('sync retires a leftover supabase/types of a lite app, and only of a lite a
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'supabase', 'types'), { recursive: true });
   fs.writeFileSync(path.join(root, 'supabase', 'types', 'database.types.ts'), 'export type Database = {};\n');
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), ['supabase/types/database.types.ts']);
-  assert.deepEqual(retiredFiles(root, { edition: 'full' }), []);
+  assert.deepEqual(retiredFiles(root), ['supabase/types/database.types.ts']);
+  assert.deepEqual(retiredFiles(root), []);
 });
 
 test('sync retires the db/Dockerfile a lite app kept outside the stacks', (t: TestContext) => {
@@ -75,6 +75,6 @@ test('sync retires the db/Dockerfile a lite app kept outside the stacks', (t: Te
   fs.mkdirSync(path.join(root, 'db', 'migrations'), { recursive: true });
   fs.writeFileSync(path.join(root, 'db', 'Dockerfile'), 'FROM postgres:17\n');
   fs.writeFileSync(path.join(root, 'db', 'migrations', '20261029000000_init.sql'), 'select 1;\n');
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), ['db/Dockerfile']);
-  assert.deepEqual(retiredFiles(root, { edition: 'full' }), []);
+  assert.deepEqual(retiredFiles(root), ['db/Dockerfile']);
+  assert.deepEqual(retiredFiles(root), []);
 });

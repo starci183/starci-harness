@@ -3,7 +3,7 @@ import { isParkedReason } from "../../harness/park.js"
 import { getWorkflow, pausedBy, setWorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { actorOf, COORDINATORS, HOLDING_ACTORS } from "./actor.js"
 import { exitOf, reportMessage, stepWorkflow } from "./engine.js"
 
@@ -16,7 +16,6 @@ import { exitOf, reportMessage, stepWorkflow } from "./engine.js"
 export const workflowResumeVerb = defineVerb({
     path: ["workflow", "resume"],
     summary: "restart a paused workflow's dispatch and take one step (exit 1 when it is blocked)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
     schema: "starci/workflow-step@1",

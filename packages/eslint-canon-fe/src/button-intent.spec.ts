@@ -39,7 +39,7 @@ test("CTA-6 laws are registered universally at error with their finding codes", 
   })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   for (const family of ["core", "offset-pop"]) {
     test(`CTA-6 ${edition} ${family}: valid intents pass and missing intents are rejected`, () => {
   assert.doesNotThrow(() => {

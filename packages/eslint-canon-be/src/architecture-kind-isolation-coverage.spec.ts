@@ -36,7 +36,7 @@ function machineFixture(t: TestContext, edition: "full" | "lite", files: Readonl
   });
 }
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} direct tiers rejects imports across trigger kinds`, t => {
     const root = machineFixture(t, edition, { ...passingFiles, ...violatingFiles });
     const config = loadArchitectureConfig(root);

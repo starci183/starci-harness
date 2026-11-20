@@ -134,7 +134,7 @@ test('an accepted migration new since the previous release is proven against tha
 });
 
 test('the declaration takes rulings of one exact migration, its objects, a reason and the date, and refuses any other shape', () => {
-  const declared = (destructiveRulings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { destructiveRulings }, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const declared = (destructiveRulings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { destructiveRulings }, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   const good = { migration: LANDED, objects: ['public.be_auth_close_session'], reason: 'moved into the package', date: '2026-11-04' };
   assert.deepEqual(declared([good, { ...good, migration: 'db/migrations/20261111000000_doors_contract_drop.sql' }]), []);
   for (const bad of ['all', [{ ...good, migration: 'db/migrations/*.sql' }], [{ ...good, objects: [] }], [{ ...good, reason: ' ' }], [{ ...good, date: 'today' }], [{ ...good, scope: 'all' }], [null]]) {

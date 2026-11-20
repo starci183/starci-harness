@@ -17,7 +17,7 @@ const resolverFor = (edition: string) => createSlotResolver(manifest, resolveRep
   },
 }, { side: 'be' }));
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} invalid back-end spec locations are refused`, () => {
     const files = [
       'apps/core/src/core.composition.spec.ts',
@@ -45,7 +45,6 @@ for (const edition of ['lite', 'full']) {
       'scripts/rotate-logs.mjs',
       'node_modules/library/x.spec.ts',
     ];
-    if (edition === 'full') files.push('src/tests/e2e/orders/flow.e2e-spec.ts');
     assert.deepEqual(specPlacementFindings({ files, resolver: resolverFor(edition) }), []);
   });
 }

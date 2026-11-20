@@ -23,7 +23,7 @@ function check(t: TestContext, edition: string, dependencies: Record<string, str
   return peerIntegrationFindings(input);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_PEER_INTEGRATION_MISSING (${edition}): a missing runtime integration peer is refused`, (t) => {
     const findings = check(t, edition, APOLLO_EXPRESS5);
     assert.deepEqual(findings.map(({ code, path: file, pair, requires }) => [code, file, pair, requires]), [

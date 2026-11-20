@@ -25,7 +25,6 @@ function repo(contents: Record<string, string>, supabase?: unknown) {
     hfs: 3,
     kind: 'app',
     project: 'adversarial',
-    edition: 'lite',
     ...(supabase === undefined ? {} : { supabase }),
     sides: { be: { apps: [] }, fe: { apps: [] } },
   };

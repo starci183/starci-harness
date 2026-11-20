@@ -34,7 +34,7 @@ test('global options use cwd, upgrade refuses a lite app because editions are fi
   let err = '';
   const lite = path.join(base, 'lite');
   fs.mkdirSync(lite);
-  const liteDeclaration = { hfs: 3, kind: 'app', project: 'lite', edition: 'lite', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'landing', kind: 'next' }], reads: ['be/contracts/'] } } };
+  const liteDeclaration = { hfs: 3, kind: 'app', project: 'lite', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'landing', kind: 'next' }], reads: ['be/contracts/'] } } };
   fs.writeFileSync(path.join(lite, 'hfs.json'), JSON.stringify(liteDeclaration));
   for (const argv of [['upgrade', '--cwd', lite], ['upgrade', '--execute', '--cwd', lite]]) {
     err = '';
@@ -42,7 +42,7 @@ test('global options use cwd, upgrade refuses a lite app because editions are fi
     assert.match(err, /^HFS_UPGRADE_EDITION_FIXED: editions are fixed at scaffold: a lite app stays lite/, argv.join(' '));
   }
   // upgrade reads no --edition: the shared parser leaves it to upgrade, which refuses it by its own code (an edition is chosen at scaffold).
-  for (const argv of [['upgrade', '--edition', 'lite', '--cwd', lite], ['upgrade', '--edition', 'full', '--cwd', lite], ['upgrade', '--edition=full', '--execute', '--cwd', lite]]) {
+  for (const argv of [['upgrade', '--cwd', lite], ['upgrade', '--edition', 'full', '--cwd', lite], ['upgrade', '--edition=full', '--execute', '--cwd', lite]]) {
     err = '';
     assert.equal(await main(argv, { stderr: (text) => { err += text; } }), 2, argv.join(' '));
     assert.equal(err, 'HFS_UPGRADE_USAGE: upgrade takes no --edition: editions are fixed at scaffold\n', argv.join(' '));

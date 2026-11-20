@@ -54,7 +54,7 @@ export function renderCanvasTokens(brandPath: string, brandText: string): string
 
 /** FE_BRAND_NOT_ONE over a front end: one brand file for every web app of the side. */
 export function brandOneFindings({ files = [], repo, isRoot = false, inScope = () => true }: { files?: readonly string[]; repo: Repo; isRoot?: boolean; inScope?: (file: string) => boolean }): Finding[] {
-  if (isRoot || repo?.profile !== 'fe' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (isRoot || repo?.profile !== 'fe') return [];
   const tracked = [...new Set(files.map((file) => file.replaceAll('\\', '/')))].sort();
   const apps = [...new Set(tracked.flatMap((file) => (/^(?<app>apps\/[^/]+)\/src\/app\//u.exec(file)?.groups?.['app'] ?? [])))].sort();
   if (apps.length === 0) return [];
@@ -69,7 +69,7 @@ export function brandOneFindings({ files = [], repo, isRoot = false, inScope = (
 
 /** FE_BRAND_CANVAS_LITERAL and FE_BRAND_CANVAS_TOKENS_STALE over the canvas of an app root. */
 export function canvasBrandFindings({ repoRoot, repo, isRoot, all = [], inScope = () => true }: { repoRoot: string; repo: Repo; isRoot: boolean; all?: readonly string[]; inScope?: (file: string) => boolean }): Finding[] {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const tracked = [...new Set(all.map((file) => file.replaceAll('\\', '/')))].sort();
   if (!tracked.some((file) => file.startsWith(`${CANVAS_DIR}/`))) return [];
   const findings: Finding[] = [];

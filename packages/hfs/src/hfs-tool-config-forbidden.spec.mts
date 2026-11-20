@@ -11,7 +11,7 @@ import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
 const CODE = 'HFS_TOOL_CONFIG_LOCAL';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const side of ['be', 'fe']) {
     test(`${edition}: ${side} rejects a forbidden tool config and accepts the factory filename`, (context) => {
       const temporaryRoot = path.resolve(os.tmpdir());

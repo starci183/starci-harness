@@ -59,7 +59,7 @@ const REGISTERED_PROVIDERS = {
     [ORDERS_MODULE]: 'import { Module } from "@nestjs/common"; import { CatalogModule } from "../../../modules/domain/catalog/catalog.module"; import { CreateOrderHandler } from "./application/create.handler"; @Module({imports:[CatalogModule],providers:[CreateOrderHandler]}) export class OrdersModule {}\n',
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R45 register-once ${edition}: each capability is registered once`, (t) => {
         const duplicateApp = "apps/duplicate/src/app.module.ts"
         const f = repo(t, edition, {

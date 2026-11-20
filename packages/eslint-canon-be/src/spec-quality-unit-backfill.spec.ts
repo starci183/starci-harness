@@ -59,7 +59,7 @@ const capability = (name: string, providers: string) => ({
     [`src/modules/domain/${name}/cart.service.spec.ts`]: providerSpec(providers),
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const settings = { starci: { hfs } }
 

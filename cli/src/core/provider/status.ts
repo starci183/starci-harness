@@ -1,7 +1,7 @@
 import { providerViews } from "../../harness/circuit.js"
 import type { ProviderView } from "../../harness/circuit.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 interface ProviderStatusData {
     readonly providers: readonly ProviderView[]
@@ -27,7 +27,6 @@ const quotaCell = (quota: ProviderView["pools"][number]["quota"]): string => {
 export const providerStatusVerb = defineVerb({
     path: ["provider", "status"],
     summary: "each provider's circuit and strikes, its pools' concurrency cap, running workers and quota window, and its latest events",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/provider-status@1",

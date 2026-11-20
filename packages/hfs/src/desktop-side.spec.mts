@@ -31,7 +31,7 @@ const FE = { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] };
 const PUBKEY = `dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyMzQ1Njc4${'A'.repeat(40)}`;
 const DESKTOP = { app: 'web', name: 'NIVO', identifier: 'vn.nivo.desktop', origin: 'https://app.nivo.vn' };
 const FULL = { ...DESKTOP, devOrigin: 'http://localhost:3100', allowedOrigins: ['https://accounts.google.com'], schemes: ['nivo'], targets: ['macos', 'linux'], updater: { pubkey: PUBKEY, endpoint: 'https://github.com/nivo/nivo/releases/latest/download/latest.json' } };
-const declarationOf = (sides: Json) => ({ hfs: manifest.major, kind: 'app', project: 'demo', edition: 'lite', sides });
+const declarationOf = (sides: Json) => ({ hfs: manifest.major, kind: 'app', project: 'demo', sides });
 const declare = (sides: Json) => resolveRepoDeclaration(manifest, declarationOf(sides));
 const declared = (raw: Json): DesktopDeclaration => desktopOf({ fe: FE, desktop: raw }) as DesktopDeclaration;
 

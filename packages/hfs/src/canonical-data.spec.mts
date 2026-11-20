@@ -302,7 +302,7 @@ test('db migrate --execute applies without the inventory; db plan and --url-env 
 
 test('db baseline and db restamp take --execute and --db-url-env; --apply and --url-env are unknown options', async (t) => {
   const root = dbApp(t);
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite' }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ kind: 'app' }));
   for (const verb of ['baseline', 'restamp']) {
     const canonical = await run(['db', verb, '--db-url-env', 'lower_case', '--execute'], { cwd: root });
     assert.notEqual(canonical.code, 0);

@@ -36,7 +36,7 @@ const codeOf = (rel: string): string => {
     return code
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`FE_APP_ISOLATION ${edition}: invalid cross-app imports and valid same-app imports`, (t) => {
         const fixture = projectFixture({ profile: "fe", edition, apps: APPS, files: FILES })
         t.after(fixture.cleanup)

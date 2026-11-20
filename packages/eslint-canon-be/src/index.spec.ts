@@ -15,14 +15,9 @@ import { dirname } from "node:path"
 import test from "node:test"
 import plugin, { lawOwners, recommended, ruleDeclarations, rules } from "./index.ts"
 import { gatheredPluginSpec } from "../fixtures/gathered-plugin.ts"
-import { pluginForEdition } from "./lib/edition.ts"
-import { ruleNamed } from "../fixtures/rule-tester.ts"
 import type { RuleEntry } from "./lib/rule.ts"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-
-/** What a rule's `create` returns when ESLint hands it no context (an inactive rule ignores its context). */
-const createdWithoutContext = (rule: { create: (...args: never[]) => unknown }): unknown => rule.create()
 
 gatheredPluginSpec({ side: "be", dir: HERE, plugin, lawOwners, recommended, ruleDeclarations, rules })
 
@@ -38,16 +33,3 @@ test("be: every level is one a linter understands", () => {
     assert.deepEqual(strange, [], "a level no linter accepts silently disables the rule it belongs to")
 })
 
-test("the generic edition gate disables a full-only catalog enforcer in lite and keeps it active in full", () => {
-    const gated = "rest-door-needs-a-reason"
-    const shared = "default-deny-guards"
-    const catalog = { enforcerJudgedIn: (_kind: string, id: string, edition?: string) => id !== gated || edition === "full" }
-
-    const lite = pluginForEdition({ plugin, hfs: { edition: "lite" }, catalog })
-    assert.deepEqual(createdWithoutContext(ruleNamed(lite.rules, gated)), {})
-    assert.equal(lite.rules[shared], plugin.rules[shared])
-
-    const full = pluginForEdition({ plugin, hfs: { edition: "full" }, catalog })
-    assert.equal(full.rules[gated], plugin.rules[gated])
-    assert.equal(full.rules[shared], plugin.rules[shared])
-})

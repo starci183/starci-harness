@@ -37,7 +37,7 @@ function app(edition: string, files: Record<string, string>): string {
 test('BE_DI_RING sync: a lite app retires the lane-local provider-ring check and drops the scripts that run it', () => {
   assert.ok(Object.hasOwn(HARNESS_CHECK_COPIES, COPY));
   const root = app('lite', { [COPY]: '// a lane-local copy\n', 'package.json': manifest });
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), [COPY]);
+  assert.deepEqual(retiredFiles(root), [COPY]);
   const edit = upgradeEdits(root).edits.find((candidate) => candidate.path === 'package.json');
   assert.ok(edit, 'package.json is edited');
   assert.match(edit.reason, /di-ring:check, di-ring:self/u);
@@ -56,6 +56,6 @@ test('BE_DI_RING sync: nothing changes for an app with no copy, a script that on
   assert.deepEqual(harnessCheckScriptEdits(read('{"scripts":{"x":"node scripts/di-ring-check.mjs.bak"}}')), []);
   assert.deepEqual(harnessCheckScriptEdits(read('not json')), []);
   const full = app('full', { [COPY]: '// a copy\n', 'package.json': manifest });
-  assert.deepEqual(retiredFiles(full, { edition: 'full' }), []);
+  assert.deepEqual(retiredFiles(full), []);
   assert.equal(upgradeEdits(full).edits.some((candidate) => candidate.path === 'package.json'), false);
 });

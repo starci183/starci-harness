@@ -22,7 +22,6 @@ function setup(t: TestContext, edition: string) {
   fs.mkdirSync(path.join(repoRoot, 'node_modules'));
   fs.symlinkSync(prettierRoot, path.join(repoRoot, 'node_modules/prettier'), 'junction');
   const { repo } = openHfs({ repoRoot });
-  assert.equal(repo.edition, edition);
   const file = 'example.ts';
   const absolute = path.join(repoRoot, file);
   const source = 'export const example={value:1}\n';
@@ -30,7 +29,7 @@ function setup(t: TestContext, edition: string) {
   return { repoRoot, repo, file, absolute, source };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE}@${edition} violating: the installed formatter reports an unformatted file`, async (t) => {
     const { repoRoot, repo, file } = setup(t, edition);
     assert.equal((await formatFindings({ repoRoot, files: [file] }))[0]!.code, 'HFS_FORMAT');

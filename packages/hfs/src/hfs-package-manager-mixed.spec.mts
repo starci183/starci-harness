@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { checkHfsWithoutConfig } from '../runtime/scripts/hfs/architecture/hfs.mjs';
 
 const CODE = 'HFS_PACKAGE_MANAGER_MIXED';
@@ -17,11 +16,10 @@ function fixture(t: TestContext, edition: string) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ private: true, packageManager: 'npm@10.8.2' }));
-  assert.equal(openHfs({ repoRoot: root }).repo.edition, edition);
   return root;
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE}@${edition}: the package manager field must name npm`, (t) => {
     const root = fixture(t, edition);
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ packageManager: 'pnpm@9.0.0' }));

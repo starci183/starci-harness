@@ -44,7 +44,7 @@ const appDeclaration = (edition: string) => ({ hfs: 3, kind: 'app', project: 'de
 
 const appDocFindings = (context: DocContext, edition: string) => checkRepo({ repoRoot: context.repoRoot, declaration: appDeclaration(edition), files: context.files, tree: false }).findings.filter((finding) => finding.code.startsWith('HFS_DOC_'));
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_DOC_PATH_MISSING@${edition}: broken code, prose, links and stack README paths fail`, (t) => {
     const context = fixture(t, edition, { ...manifests,
       'README.md': 'Read `.claude/fe/canon/retired.md` and [guide](docs/deleted.md#overview). Plain path be/src/retired.ts.',

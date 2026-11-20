@@ -1,5 +1,5 @@
 // R283: the product's removed vocabulary is declared once in hfs.json lexicon.removed.
-// Source, identifiers, comments and docs obey it in both editions; the declaration itself is not a use.
+// Source, identifiers, comments and docs obey it; the declaration itself is not a use.
 import path from 'node:path';
 import { escapeRegExp } from '../../lib/regex.mjs';
 import { found, readJson, readText } from './read.mjs';
@@ -24,7 +24,7 @@ function boundary(text: string, at: Parsed) {
 
 function removedWords(repoRoot: string, repo: Repo) {
   if (typeof repoRoot !== 'string') return [];
-  // Resolved side declarations contain the edition and slots, so read product metadata from the root declaration.
+  // Resolved side declarations contain the slots, so read product metadata from the root declaration.
   const root = repo.profile === 'be' || repo.profile === 'fe' ? path.dirname(repoRoot) : repoRoot;
   const lexicon = repo.lexicon ?? readJson(root, 'hfs.json')?.lexicon;
   return Array.isArray(lexicon?.removed) ? [...new Set(lexicon.removed.filter((word: string) => typeof word === 'string' && word.trim()).map((word: string) => word.trim()))] : [];
@@ -49,7 +49,7 @@ function wordFindings(file: string, text: string, word: Parsed) {
 
 /** Removed product words in the tracked source and docs of this root/side scope, once per word and line. */
 export function lexiconFindings({ repoRoot, files, repo, inScope = () => true }: { repoRoot: string; files: string[]; repo: Repo; inScope?: (file: string) => boolean }) {
-  if (repo.kind === 'runtime' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (repo.kind === 'runtime') return [];
   const words = removedWords(repoRoot, repo);
   if (!words.length) return [];
   const findings = [];

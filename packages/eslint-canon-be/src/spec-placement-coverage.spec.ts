@@ -7,7 +7,7 @@ import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const SOURCE = "export const value = 1;\n"
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R102 ${edition}: unit specs belong beside services and operational folders hold no specs`, (t) => {
         const fixture = projectFixture({
             edition,

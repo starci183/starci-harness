@@ -13,7 +13,7 @@ function propertiesOf(text: string): Map<string, string> {
   }));
 }
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} rendered Sonar properties leave only the message catalogs out of copy-paste detection`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'sonar-cpd-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },

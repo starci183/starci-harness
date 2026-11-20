@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { checkApplicationStacks } from '../runtime/scripts/hfs/stacks-gate.mjs';
 import { swarmFixture } from './helpers/swarm-stack-fixture.mjs';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   const findings = (fixture: ReturnType<typeof swarmFixture>) => checkApplicationStacks({ repoRoot: fixture.root, environment: 'production', deploymentModelFile: fixture.modelFile, repo: { edition } }).errors;
 
   test(`tests.<kind>.workers ${edition}: absent is sequential and one is accepted`, t => {
@@ -27,7 +27,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`tests.<kind>.workers ${edition}: more than one is allowed (slots are a library feature, not an edition one)`, t => {
     const fixture = swarmFixture(t, edition);
     fixture.manifest.tests = { integration: { workers: 3 }, e2e: { workers: 8 } };

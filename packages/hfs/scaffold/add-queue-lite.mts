@@ -40,7 +40,6 @@ interface FilePatch {
 
 /** The part of the app declaration the lite queue plan reads. */
 interface LiteRepo {
-  readonly edition?: string;
   readonly project: string;
   readonly sides?: { readonly be?: { readonly apps?: ReadonlyArray<{ readonly name: string; readonly kind: string }> } };
 }
@@ -191,7 +190,7 @@ function withClients(pkg: { dependencies?: Record<string, string> }, clients: re
  * A stack that already declares a redis component is the owner's and is left as it is.
  */
 export function planFullQueue({ repoRoot, repo, noun, planned }: { repoRoot: string, repo: LiteRepo, noun: string, planned: ReadonlyArray<{ absolute: string, body: string }> }): { apply(): string[] } | null {
-  if (repo.edition === 'lite' || !['queue', 'job'].includes(noun)) return null;
+  return null;
   requirePlatform(repoRoot, noun, planned);
   const packageFile = path.join(repoRoot, 'package.json');
   const stack = stackFiles(repoRoot, { project: repo.project, consumers: queueServicesOf(repo), sealed: false });
@@ -565,7 +564,7 @@ function stackFiles(repoRoot: string, { project, consumers, sealed }: { project:
  * plan's apply() writes them and returns the app-relative paths it created or changed.
  */
 export function planLiteQueue({ repoRoot, repo, noun, patterns, now }: { repoRoot: string, repo: LiteRepo, noun: string, patterns: readonly string[], now: () => number }): { apply(): string[] } | null {
-  if (repo.edition !== 'lite' || !['queue', 'job'].includes(noun)) return null;
+  if (!['queue', 'job'].includes(noun)) return null;
   const beRoot = path.join(repoRoot, 'be');
   const migrations = migrationFiles({ repoRoot, beRoot, patterns, now });
   const database = skeletonFiles(repoRoot);

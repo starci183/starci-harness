@@ -36,7 +36,7 @@ const declarationOf = (edition: string, project = 'proof') => ({
 });
 /** A small app declaration of the shape the shipped lite examples declare: one api app and one Next app. */
 const shippedLite = () => ({
-  hfs: 3, kind: 'app', project: 'shipped', edition: 'lite',
+  hfs: 3, kind: 'app', project: 'shipped',
   sides: { be: { kinds: ['api'], apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
 });
 
@@ -101,7 +101,7 @@ test('a Next image copies be/contracts only when the back end holds them: a COPY
   assert.deepEqual(contractFindings(t, { rendered: false, held: true }), { copies: false, messages: [] }, 'the side-wide read does not oblige every Next app to copy the contract');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} HFS_DOCKER_BUILD_CONTEXT accepts valid build headers and sources`, (t) => {
     const code = 'HFS_DOCKER_BUILD_CONTEXT';
     assert.deepEqual(judged(t, edition, code), []);

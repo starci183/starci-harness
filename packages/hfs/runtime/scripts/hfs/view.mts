@@ -22,7 +22,6 @@ export interface HfsView {
   repoRoot: string;
   profile: string;
   side: string | null;
-  edition: string;
   grammar?: string;
   apps: RepoView['apps'];
   connections: RepoView['connections'];
@@ -82,7 +81,6 @@ function hfsView(opened: OpenedHfs, repoRoot: string): HfsView {
     repoRoot,
     profile: opened.repo.profile,
     side: opened.repo.side ?? null,
-    edition: opened.repo.edition ?? 'full',
     ...(opened.repo.grammar === undefined ? {} : { grammar: opened.repo.grammar }),
     apps: opened.repo.apps,
     connections: opened.repo.connections,
@@ -214,7 +212,6 @@ function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): H
     repoRoot,
     profile: side,
     side,
-    edition: opened.repo.edition ?? 'full',
     ...(sideRepo.grammar === undefined ? {} : { grammar: sideRepo.grammar }),
     apps: sideRepo.apps,
     connections: sideRepo.connections,

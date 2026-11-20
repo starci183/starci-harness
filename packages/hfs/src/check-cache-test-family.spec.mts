@@ -474,7 +474,7 @@ const SOURCES: Record<string, string> = {
   'be/src/modules/domain/gamma/gamma.service.ts': 'export class GammaService {\n  id(): string {\n    return "gamma";\n  }\n}\n',
   'be/src/modules/domain/gamma/gamma.service.spec.ts': 'import { GammaService } from "./gamma.service";\ntest("id", () => expect(new GammaService().id()).toBe("gamma"));\n',
   'be/src/tests/tsconfig.json': JSON.stringify({ compilerOptions: { module: 'commonjs', target: 'es2022', isolatedModules: true } }),
-  'hfs.json': JSON.stringify({ edition: 'lite' }),
+  'hfs.json': JSON.stringify({}),
 };
 const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [] } };
 

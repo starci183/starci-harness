@@ -1,16 +1,14 @@
 // proves: BE_ASYNC_NO_AWAIT@lite
 // proves: BE_ASYNC_NO_AWAIT@full
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { asyncNeedsAwait } from './async-discipline.ts';
 import { appDeclaration } from '../fixtures/app.ts';
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`Async await valid and invalid cases in ${edition}`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-    assert.equal(hfs.edition, edition);
     const filename = at('src/modules/domain/plan/plan.service.ts');
     ruleTester({ root: TYPED_ROOT, hfs }).run('async-needs-await', asyncNeedsAwait, {
       valid: [

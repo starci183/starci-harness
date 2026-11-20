@@ -111,10 +111,10 @@ function nestedLockFindings(repoRoot: string, targets: readonly RenderedTarget[]
 }
 
 /** R11: the quality gate the be side's stack declaration names is the one gate of the bundled knowledge/sonar-gate.yaml. */
-function sonarGateFindings(repoRoot: string, parseYaml: ParseYaml | undefined, edition: string): ManagedFinding[] {
+function sonarGateFindings(repoRoot: string, parseYaml: ParseYaml | undefined): ManagedFinding[] {
   const declared = readDeclaredSonarGate(repoRoot, { parseYaml });
   if (declared === null) return [];
-  const gate = sonarGateName((parseYaml ?? bundledParseYaml)(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), edition);
+  const gate = sonarGateName((parseYaml ?? bundledParseYaml)(fs.readFileSync(SONAR_GATE_FILE, 'utf8')));
   if (declared.qualityGate === gate) return [];
   return [{ code: 'HFS_SONAR_CONFIG', level: 'error', path: declared.file, message: `${declared.file} services.sonar.qualityGate is ${declared.qualityGate ?? 'absent'}; every product names the one gate ${gate} of knowledge/sonar-gate.yaml and states no threshold of its own` }];
 }
@@ -194,7 +194,7 @@ export async function managedFindings({ repoRoot, tracked, presets, parseYaml, m
   const { targets } = rendered;
   const findings = driftFindings(repoRoot, targets);
   findings.push(...nestedLockFindings(repoRoot, targets));
-  findings.push(...sonarGateFindings(repoRoot, parseYaml, rendered.hfs.edition ?? 'full'));
+  findings.push(...sonarGateFindings(repoRoot, parseYaml));
   findings.push(...ruleFileFindings(repoRoot, tracked));
   findings.push(...toolKeyFindings(repoRoot, tracked));
   findings.push(...flagFindings(repoRoot, tracked, new Set(targets.map(target => target.path))));

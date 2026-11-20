@@ -6,7 +6,7 @@ import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { git, push, ref, repository, ZERO } from './helpers/pre-push-fixture.mjs';
 import { hookShapeFindings } from '../runtime/scripts/hfs/runtime-rules/hook-shape.mjs';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the rendered hook permits clean main and candidate pushes without release evidence`, t => {
     const target = renderTargets({ ...structuredClone(APP), edition }, PRESETS).find(item => item.path === '.husky/pre-push');
     assert.ok(target);

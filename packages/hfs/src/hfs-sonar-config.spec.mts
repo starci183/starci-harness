@@ -15,7 +15,7 @@ const propertiesOf = (text: string) => new Map<string, string[]>(text.split('\n'
 // The harness gate (cli/src/core/check/sonar-properties.ts) reads a `sonar.exclusions` entry as no widening only when it names a
 // build or dependency folder, or when it moves a test pattern `sonar.test.inclusions` also names out of the sources while
 // `sonar.tests` covers every source folder: Sonar refuses a file indexed as both source and test, so the move is required.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the render excludes only tests it analyses as tests and build or dependency folders`, () => {
     const declaration = structuredClone(APP);
     declaration.edition = edition;
@@ -55,7 +55,7 @@ const synced = (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: changing a noncoverage Sonar setting fails and its render passes`, async context => {
     const { root, findings } = synced(context, edition);
     const file = path.join(root, 'sonar-project.properties');
@@ -73,7 +73,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an injected Sonar host URL is invalid and restoring its render passes`, async context => {
     const { root, tracked } = synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };

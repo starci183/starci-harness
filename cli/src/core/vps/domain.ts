@@ -13,7 +13,7 @@ import type { DomainRoute, PlanStep, VpsPlan } from "../../harness/vps/plan.js"
 import { CLOUDFLARE_KEYS, ownerStore, requireKey, SERVER_KEYS } from "../../harness/vps/sealed.js"
 import type { SealedStore } from "../../harness/vps/sealed.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { EXECUTE, OWNER, pinsOf, planResult, requireAction, scopeOf, SERVER_ID } from "./shared.js"
 import type { VpsData, VpsScope } from "./shared.js"
@@ -178,7 +178,6 @@ const listNames = async (scope: VpsScope, store: SealedStore): Promise<NameRow[]
 export const vpsDomainVerb = defineVerb({
     path: ["vps", "domain"],
     summary: "`domain add <id> <sub> --to <service:port|port|ui|ssh>`, `domain list <id>`, `domain remove <id> <sub>`: a name <sub>.<domain of ops/vps.yaml> for a managed server: the UI and SSH through its Cloudflare tunnel, an app service through the tunnel or through Traefik (DNS-only A record, labels, DNS-01 certificate) by the server's ingress mode; add and remove are dry runs until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-domain@1",
@@ -214,7 +213,6 @@ export const vpsDomainVerb = defineVerb({
 export const vpsEdgeVerb = defineVerb({
     path: ["vps", "edge"],
     summary: "`edge up <id>`: deploy Traefik as the swarm stack of ops/vps.yaml `edge` on a managed server: 80 and 443 in host mode, routing to labelled swarm services of the shared network, certificates by ACME DNS-01 through Cloudflare with the sealed token as a swarm secret; a dry run until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-edge@1",
@@ -238,7 +236,6 @@ export const vpsEdgeVerb = defineVerb({
 export const vpsCloudflareVerb = defineVerb({
     path: ["vps", "cloudflare"],
     summary: "`cloudflare set-token --account <id>`: read the owner's Cloudflare API token at a masked prompt, verify it and seal it to the owner key (gitignored, never secret.env, never printed); `cloudflare status`: whether one is sealed and active, and the scopes it needs",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-cloudflare@1",

@@ -19,7 +19,7 @@ const tree = (t: TestContext, files: Record<string, string | number>): string =>
 const judge = (t: TestContext, edition: string | undefined, files: Record<string, string | number>, extra: { manifest?: unknown } = {}) => assetsFindings({ repoRoot: tree(t, files), files: Object.keys(files), repo: { profile: 'be', edition }, ...extra });
 const forCode = (findings: Array<{ code: string }>, code: string) => findings.filter((finding) => finding.code === code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_ASSET_OVERSIZE ${edition}: a binary one byte over the default cap is refused; the exact boundary passes`, (t) => {
     const findings = judge(t, edition, { 'src/assets/fonts/large.ttf': DEFAULT_ASSET_BYTES + 1, 'src/assets/fonts/exact.ttf': DEFAULT_ASSET_BYTES });
     assert.deepEqual(findings.map((finding) => [finding.code, finding.path, finding.bytes, finding.maxBytes]), [

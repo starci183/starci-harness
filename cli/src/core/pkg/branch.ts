@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, git, refExists } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
+import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { APP_KEY, appName, BRANCH_PREFIX, editWorktree, harnessRepository, installPushGuard, topicSlug } from "./edit.js"
 
 interface BranchData {
@@ -18,7 +18,6 @@ interface BranchData {
 export const pkgBranchVerb = defineVerb({
     path: ["pkg", "branch"],
     summary: "cut a package edit branch pkg/<app>-<topic> from harness main into its own harness worktree, where this app's session edits @starci packages; Debug alone merges, pushes and publishes it",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/pkg-branch@1",

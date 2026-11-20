@@ -35,7 +35,7 @@ import { needsInstall, splitChecks } from "../../harness/wave.js"
 import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { evidenceTail, formatTable } from "../../shared/output.js"
 import { redactSecrets } from "../../shared/secrets.js"
-import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
+import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
 /** A dry replay of a contract file in the working tree. */
@@ -752,7 +752,6 @@ const recoverTask = async (cwd: string, taskId: string): Promise<VerbResult<Veri
 export const taskVerifyVerb = defineVerb({
     path: ["task", "verify"],
     summary: "verify a task on a clean checkout of HEAD plus its allowPaths and commit it on green; --contract dry-replays a contract file",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/task-verify@1",

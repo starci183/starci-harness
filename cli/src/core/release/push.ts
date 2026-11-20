@@ -48,7 +48,6 @@ const assertNoSecretsAdded = async (root: string, head: string, previous: string
 export const releasePushVerb = defineVerb({
     path: ["release", "push"],
     summary: "push main right after a green scoped check (dry until --execute): refuses a dirty tree, a non fast-forward or a secret in the pushed range",
-    editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release", "coordinator", "lead", "debug"],
     schema: "starci/release-push@1",

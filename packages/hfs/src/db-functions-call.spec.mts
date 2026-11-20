@@ -44,7 +44,7 @@ test('an app lists its functions schema-qualified: a bare name, pg_catalog and a
 });
 
 /** A lite app declaration whose be side lists `names` as its database functions. */
-const appWith = (names: string[]) => ({ hfs: 3, kind: 'app', project: 'fixture', edition: 'lite',
+const appWith = (names: string[]) => ({ hfs: 3, kind: 'app', project: 'fixture',
   sides: { be: { apps: [{ name: 'core', kind: 'api' }], dbFunctions: entries(...names) }, fe: { apps: [{ name: 'web', kind: 'next' }] } } });
 
 test('an app names a bare function only when it is a pg built-in the canon lists (gen_random_uuid), anything else schema-qualified', () => {

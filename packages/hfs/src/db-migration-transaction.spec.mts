@@ -14,10 +14,10 @@ const FILE = 'db/migrations/20260228235959_create-items.sql';
 async function judge(t: TestContext, sql: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-transaction-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite' }));
+  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app' }));
   fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, FILE), sql);
-  const findings = await checkDatabase({ repoRoot, files: [FILE], edition: 'lite', git: () => ({ ok: false, stdout: '' }) });
+  const findings = await checkDatabase({ repoRoot, files: [FILE], git: () => ({ ok: false, stdout: '' }) });
   return findings.filter((finding) => /transaction control/.test(finding.message));
 }
 

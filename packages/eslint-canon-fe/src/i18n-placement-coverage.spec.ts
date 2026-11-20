@@ -11,7 +11,7 @@ import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/ty
 import { i18nStackInOneModule, localeSegmentIsLocale, navigationFromIntl, noNativeAnchor, noSecondI18nStack } from './next-conventions.ts';
 import { useIntlFormatter } from './formatting.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} locale-owned i18n passes while misplaced locale stacks, navigation and formatting fail`, () => {
     const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },

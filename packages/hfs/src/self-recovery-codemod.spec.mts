@@ -21,8 +21,8 @@ const now = (template: string): string => fs.readFileSync(path.join(TEMPLATES, t
 function liteApp(t: TestContext, extra: Record<string, string> = {}): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-self-recovery-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const files: Record<string, string> = { 'hfs.json': JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite' }), 'db/migrations/20261101000000_jobs.sql': 'select 1;\n', ...extra };
-  for (const placement of selfRecoveryPlacements('lite')) {
+  const files: Record<string, string> = { 'hfs.json': JSON.stringify({ hfs: 3, kind: 'app', project: 'demo' }), 'db/migrations/20261101000000_jobs.sql': 'select 1;\n', ...extra };
+  for (const placement of selfRecoveryPlacements()) {
     if (manifest.added.includes(placement.template)) continue;
     files[placement.app] ??= manifest.templates.includes(placement.template) ? old(placement.template) : now(placement.template);
   }
@@ -40,9 +40,9 @@ test('self-recovery is one of the codemods, and its snapshot holds every templat
   assert.equal(manifest.version, SELF_RECOVERY_SNAPSHOT);
   for (const template of manifest.templates) assert.ok(fs.existsSync(path.join(SNAPSHOT, template)), template);
   for (const template of manifest.added) assert.ok(fs.existsSync(path.join(TEMPLATES, template)) && !fs.existsSync(path.join(SNAPSHOT, template)), template);
-  assert.ok(selfRecoveryPlacements('lite').some((placement) => placement.app === 'be/src/modules/platform/event-bus/event-consumer.service.ts'), 'the lite pgmq consumer is placed');
-  assert.ok(selfRecoveryPlacements('full').some((placement) => placement.app.startsWith('be/src/modules/platform/event-bus/')), 'the full event runner is placed');
-  assert.ok(selfRecoveryPlacements('full').every((placement) => !placement.app.includes('<')), 'no per-instance file');
+  assert.ok(selfRecoveryPlacements().some((placement) => placement.app === 'be/src/modules/platform/event-bus/event-consumer.service.ts'), 'the lite pgmq consumer is placed');
+  assert.ok(selfRecoveryPlacements().some((placement) => placement.app.startsWith('be/src/modules/platform/event-bus/')), 'the full event runner is placed');
+  assert.ok(selfRecoveryPlacements().every((placement) => !placement.app.includes('<')), 'no per-instance file');
 });
 
 test('a dry run rewrites every file of the snapshot to the current template, adds the new ones and the park migration, and writes nothing', async (t) => {

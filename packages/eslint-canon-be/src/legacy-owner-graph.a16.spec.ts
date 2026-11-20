@@ -18,7 +18,7 @@ const good = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, 
 }
 const bad = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, rel: string, message: RegExp): RuleTester.InvalidTestCase => ({ ...good(fixture, files, rel), errors: [{ message, line: 1 }] })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R26 backend tier direction accepts downward edges and rejects upward edges in ${edition}`, (t) => {
         const files = {
             "src/features/api/orders/index.ts": "import { config } from '../../../modules/platform/config';\nexport const orders = config;\n",

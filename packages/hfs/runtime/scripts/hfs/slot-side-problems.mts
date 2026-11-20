@@ -20,9 +20,9 @@ function requiredAppKindProblems(manifest: SlotManifest, side: string, declarati
 }
 
 /** Problems for one side declaration, preserving the manifest's checks and their order. */
-export function sideProblems(manifest: SlotManifest, side: string, declaration: Parsed, edition = 'full'): string[] {
+export function sideProblems(manifest: SlotManifest, side: string, declaration: Parsed): string[] {
   const bad = sideAppKindProblems(manifest, side, declaration.apps);
-  bad.push(...optionalSlotProblems(manifest, side, declaration), ...backingProblems(manifest, side, declaration, edition));
+  bad.push(...optionalSlotProblems(manifest, side, declaration), ...backingProblems(manifest, side, declaration));
   for (const read of declaration.reads ?? []) if (!(manifest.sides[side] as { reads: string[] }).reads.includes(read)) bad.push(`sides.${side}.reads names ${read}; ${side} may read only ${(manifest.sides[side] as { reads: string[] }).reads.join(', ') || 'nothing of the other side'}`);
   bad.push(...requiredAppKindProblems(manifest, side, declaration));
   return bad;

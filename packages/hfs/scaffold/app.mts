@@ -1,9 +1,9 @@
 // starci app scaffold <name> - the first app tree, rendered from its canonical declaration, skeleton and managed targets.
-// The selected edition owns the app root and its be/fe sides under knowledge/hfs/slots.yaml.
+// The app root and its be/fe sides follow knowledge/hfs/slots.yaml.
 //
 // The skeleton files are written once from templates/<app|be|fe>/skeleton ({{project}}, {{app}} and {{appPascal}} filled). Path
 // variables: a `__app__` folder is written once per app of the side, named after it (on the fe side: once per product app, every
-// declared Next app but the marketing landing, which calls no back end: the shared app core of both editions, modules/api, auth,
+// declared Next app but the marketing landing, which calls no back end: the shared app core, modules/api, auth,
 // toast, redux, the providers and the hooks); an fe `apps/<name>/` folder is the skeleton of the declared fe app <name> alone
 // (landing and app differ); `__project__` in a path is the project name (packages/__project__-ui is packages/<name>-ui). The workspace manifests and every tsconfig.json are written from code, never kept as template files (a
 // tsconfig.json under templates/ would be a TypeScript project of this repository); the managed files are the render of `starci app sync` (sync/index.mts), so a fresh app
@@ -22,7 +22,6 @@ import { HARNESS_PACKAGE, canonPins } from '../runtime/scripts/hfs/canon-pins.mj
 import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, settleSource, writeTargets, type Presets } from '../sync/index.mjs';
 import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { ScaffoldError } from './service.mjs';
-import { testWorldFiles } from './test-world.mjs';
 import { FE_APP_SCRIPTS, PACKAGE_MANAGER, ROOT_PACKAGES_WORKSPACE, WORKSPACES, feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 import { PROJECT_SIDES, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
@@ -77,7 +76,6 @@ interface SideDeclaration {
 }
 /** The resolved declaration of an app, as far as the scaffold reads it. */
 interface ResolvedApp {
-  readonly edition: string;
   readonly project: string;
   readonly sides: { readonly be: SideDeclaration; readonly fe: SideDeclaration };
   /** The sides hfs.json declares (PROJECT-1); be and fe when absent. */
@@ -86,7 +84,6 @@ interface ResolvedApp {
 /** The declaration a skeleton is rendered for; the work seeds render with only a project. */
 interface SkeletonApp {
   readonly project: string;
-  readonly edition?: string | undefined;
   readonly sides?: ResolvedApp['sides'];
 }
 type Scope = 'app' | 'be' | 'fe';
@@ -163,7 +160,7 @@ const FE_ROOT_TOOL_PACKAGES = Object.freeze(new Set(['typescript', 'tailwindcss'
 
 /**
  * The `tier: core` packages of the fe stack every scaffold installs, read from fe-stack.yaml (never listed here), split into
- * `app` (the runtime imports of each product fe app workspace) and `root` (the tools at the app root). Both editions alike.
+ * `app` (the runtime imports of each product fe app workspace) and `root` (the tools at the app root).
  */
 export function coreFeStackPackages(stack: FeStack = bundledFeStack()): CoreFeStackPackages {
   const app = new Set<string>();
@@ -204,18 +201,8 @@ export function jsonText(value: unknown): string {
 /** A package.json as Prettier prints it (notably, package workspaces stay one entry per line). */
 export const packageJsonText = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
-/**
- * The apps a new app starts with: on the be side the `core` api app and the `cli` app over one `primary` connection, two Next apps
- * (landing, app) on the fe side, which read the be contracts for their codegen.
- */
+/** The apps a new app starts with: one API over the primary connection and one web app; the schema authority is db/migrations. */
 const STARTER_SIDES = Object.freeze({
-  be: Object.freeze({ apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], kinds: ['api', 'cli'], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database' }] }),
-  // fe: the landing and the product app, over the shared ui and i18n packages (both opt-in slots, enabled here).
-  fe: Object.freeze({ grammar: 'core', apps: [{ name: 'landing', kind: 'next' }, { name: 'app', kind: 'next' }], reads: ['be/contracts/'], optionalSlots: ['fe.package.ui', 'fe.package.i18n'] }),
-});
-
-/** The lite starter is the upgrade-safe subset: one API, one web app and one SQL schema authority (db/migrations). */
-const LITE_STARTER_SIDES = Object.freeze({
   be: Object.freeze({
     apps: [{ name: 'api', kind: 'api' }],
     kinds: ['api'],
@@ -225,31 +212,11 @@ const LITE_STARTER_SIDES = Object.freeze({
 });
 
 /**
- * The dependencies of the starter: what the skeleton imports and the tools the managed scripts and configs run. Every name
- * takes its canon pin (knowledge/hfs/canon-pins.yaml). The root package.json holds the back end's runtime and every tool;
- * each fe app workspace declares the packages its own source imports (HFS_MONO_WORKSPACE_DEP), FE_APP_DEPENDENCIES.
+ * The dependencies of the starter: what the skeleton imports and the tools the managed scripts and configs run, each at its canon
+ * pin (knowledge/hfs/canon-pins.yaml). The api app serves GraphQL (@nestjs/graphql over Apollo); the fe stack's root tools are added
+ * from fe-stack.yaml by packageManifest.
  */
 const STARTER_DEPENDENCIES = Object.freeze({
-  dependencies: {
-    '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
-    '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/common': null, '@starci/nest-kit': null, '@starci/seed': null, 'nest-commander': null, pg: null, graphql: null,
-    'class-transformer': null, 'class-validator': null, 'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
-  },
-  devDependencies: {
-    turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null, '@starci/jest-preset': null,
-    '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/test-world': null, '@starci/tsconfig': null, 'starci-harness': null, '@tailwindcss/postcss': null, '@types/express': null,
-    '@types/jest': null, '@types/node': null, '@types/react': null, '@types/react-dom': null, eslint: null, 'eslint-plugin-react-hooks': null,
-    husky: null, jest: null, 'postcss-value-parser': null, prettier: null, stylelint: null, tailwindcss: null, 'ts-jest': null,
-    'ts-node-dev': null, 'tsc-alias': null, 'tsconfig-paths': null, typescript: null,
-  },
-});
-
-/**
- * Lite keeps the production stack, the canon tools and the back end's unit run (R212); it runs no test world of
- * its own (no @starci/test-world). Both editions serve GraphQL from the api app (@nestjs/graphql over Apollo);
- * the fe stack's root tools are added from fe-stack.yaml by packageManifest.
- */
-const LITE_STARTER_DEPENDENCIES = Object.freeze({
   dependencies: {
     '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
     '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/auth': null, '@starci/common': null, '@starci/mail': null, '@starci/nest-kit': null, '@starci/object-storage': null, '@starci/seed': null,
@@ -267,21 +234,10 @@ const LITE_STARTER_DEPENDENCIES = Object.freeze({
 });
 
 /**
- * The runtime dependencies of every fe app workspace of the starter beyond the fe stack's core packages (fe-stack.yaml, added by
- * feAppManifest for a product app): the two workspace packages at "*", the grammar and its required peers (@heroui/react,
- * @xyflow/react: the grammar contract), next with next-intl, react and react-dom (next's peer). `@<project>/<pkg>` names are
- * filled with the project. The marketing landing takes exactly these.
+ * The runtime dependencies of every fe app workspace beyond the fe stack's core packages (its next-intl stack is @starci/next-i18n's,
+ * a core package of the fe stack). It holds no identity SDK: modules/auth talks only to the app's own back-end auth doors.
  */
 const FE_APP_DEPENDENCIES = Object.freeze({
-  '@<project>/i18n': '*', '@<project>/ui': '*',
-  '@heroui/react': null, '@heroui/styles': null, '@starci/grammar': null, '@xyflow/react': null, 'react-aria-components': null, next: null, 'next-intl': null, react: null, 'react-dom': null,
-});
-
-/**
- * The lite fe workspace: the same base without the shared packages (its next-intl stack is @starci/next-i18n's, a core package of the
- * fe stack). It holds no identity SDK: modules/auth talks only to the app's own back-end auth doors.
- */
-const LITE_FE_APP_DEPENDENCIES = Object.freeze({
   '@heroicons/react': null, '@heroui/react': null, '@heroui/styles': null, '@starci/auth': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null,
   next: null, 'next-intl': null, react: null, 'react-dom': null,
 });
@@ -292,15 +248,8 @@ const LITE_FE_APP_DEPENDENCIES = Object.freeze({
  * product's description of its languages over @starci/next-i18n (the entry, a server module: createAppI18n; ./proxy, the locale
  * negotiation the apps' proxy.ts re-exports; ./routing, client-safe: the description and the default locale a client boundary reads).
  */
-const FE_PACKAGES: Readonly<Record<string, { readonly exports: readonly string[]; readonly dependencies: DependencyEntries }>> = Object.freeze({
-  ui: { exports: ['.'], dependencies: { '@heroui/react': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null, 'next-intl': null, react: null, 'react-dom': null } },
-  i18n: { exports: ['.', './proxy', './routing'], dependencies: { '@starci/next-i18n': null, next: null, 'server-only': null } },
-});
 
-/** The scripts of every fe package workspace: tsc builds it to dist and type-checks it. */
-const PACKAGE_WORKSPACE_SCRIPTS = Object.freeze({ build: 'tsc -p tsconfig.build.json', typecheck: 'tsc --noEmit -p tsconfig.json' });
-
-/** What a new app declares beyond its edition: its sides (PROJECT-1; be and fe by default) and the contract of its be api apps (graphql by default). */
+/** What a new app declares: its sides (PROJECT-1; be and fe by default) and the contract of its be api apps (graphql by default). */
 export interface StarterShape {
   readonly sides?: readonly ProjectSide[];
   readonly contract?: ContractKind;
@@ -310,8 +259,8 @@ export interface StarterShape {
  * The `sides` of a new app: the starter's be and fe that `sides` keeps, then `packages: {}` when declared. A rest be declares `contract: "rest"` on
  * its api apps. With the defaults (be and fe, graphql) it is the starter's sides byte for byte.
  */
-function starterSides(edition: string, { sides = ['be', 'fe'], contract = 'graphql' }: StarterShape): Record<string, unknown> {
-  const starter = structuredClone(edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES);
+function starterSides({ sides = ['be', 'fe'], contract = 'graphql' }: StarterShape): Record<string, unknown> {
+  const starter = structuredClone(STARTER_SIDES);
   // A rest api app commits its OpenAPI document, the opt-in slot be.contract.openapi (R396).
   const be = contract === 'rest' ? { ...starter.be, apps: starter.be.apps.map(entry => (entry.kind === 'api' ? { ...entry, contract } : entry)), optionalSlots: ['be.contract.openapi'] } : starter.be;
   return {
@@ -323,21 +272,20 @@ function starterSides(edition: string, { sides = ['be', 'fe'], contract = 'graph
 }
 
 /** The starter sides of both app sides, as the default declaration holds them. */
-type BothSides = ReturnType<typeof structuredClone<typeof STARTER_SIDES | typeof LITE_STARTER_SIDES>>;
-/** The app hfs.json of a new app: its manifest major, kind, edition (absent for full), project and sides. */
-interface StarterDeclaration<Sides> { hfs: number; kind: string; edition?: string; project: string; sides: Sides }
+type BothSides = ReturnType<typeof structuredClone<typeof STARTER_SIDES>>;
+/** The app hfs.json of a new app: its manifest major, kind, project and sides. */
+interface StarterDeclaration<Sides> { hfs: number; kind: string; project: string; sides: Sides }
 
-/** The app hfs.json of a new app called `name`; full with be and fe remains the byte-for-byte default declaration. */
-export function starterDeclaration(name: string, manifest?: SlotManifest, edition?: string): StarterDeclaration<BothSides>;
+/** The app hfs.json of a new app called `name`; be and fe remain the byte-for-byte default declaration. */
+export function starterDeclaration(name: string, manifest?: SlotManifest): StarterDeclaration<BothSides>;
 /** The app hfs.json of a new app of the sides and contract `shape` names (each side present only when declared). */
-export function starterDeclaration(name: string, manifest: SlotManifest | undefined, edition: string, shape: StarterShape): StarterDeclaration<Record<string, unknown>>;
-export function starterDeclaration(name: string, manifest = loadSlotManifest(), edition = 'full', shape: StarterShape = {}): StarterDeclaration<Record<string, unknown>> {
+export function starterDeclaration(name: string, manifest: SlotManifest | undefined, shape: StarterShape): StarterDeclaration<Record<string, unknown>>;
+export function starterDeclaration(name: string, manifest = loadSlotManifest(), shape: StarterShape = {}): StarterDeclaration<Record<string, unknown>> {
   return {
     hfs: manifest.major,
     kind: 'app',
-    ...(edition === 'full' ? {} : { edition }),
     project: name,
-    sides: starterSides(edition, shape),
+    sides: starterSides(shape),
   };
 }
 
@@ -377,7 +325,7 @@ interface PeerPair {
 /**
  * The runtime peers (R111, knowledge/hfs/peer-integrations.yaml) a root package.json needs and does not declare in its
  * dependencies: the `requires` of every pair whose `when` packages it declares (at the named major, read from the declared
- * exact pin), each at its canon pin. Both editions alike: @nestjs/apollo on @nestjs/platform-express 11 needs
+ * exact pin), each at its canon pin. @nestjs/apollo on @nestjs/platform-express 11 needs
  * @as-integrations/express5.
  */
 export function peerDependencies(pkg: Pick<PackageManifest, 'dependencies' | 'devDependencies'>, pins: Pins, pairs: readonly PeerPair[] = parseYaml(fs.readFileSync(PEERS_FILE, 'utf8')).pairs): Record<string, string> {
@@ -400,13 +348,12 @@ export function peerDependencies(pkg: Pick<PackageManifest, 'dependencies' | 'de
 const ROOT_OVERRIDES = Object.freeze(['@graphql-tools/utils', '@xyflow/react', 'dayjs', 'multer', 'react-aria-components', 'tslib', 'zod', 'zustand']);
 
 /**
- * The root package.json of a new app, the monorepo root: name, workspaces, npm, its edition's dependencies with their runtime
+ * The root package.json of a new app, the monorepo root: name, workspaces, npm, its dependencies with their runtime
  * peers, the fe stack's root tools and the one-version overrides, at canon pins.
  */
-function packageManifest(name: string, pins: Pins, edition: string, grammar: string | undefined, stack: CoreFeStackPackages = coreFeStackPackages(), shape: StarterShape = {}): PackageManifest {
+function packageManifest(name: string, pins: Pins, grammar: string | undefined, stack: CoreFeStackPackages = coreFeStackPackages(), shape: StarterShape = {}): PackageManifest {
   const sides = shape.sides ?? ['be', 'fe'];
-  const starter = edition === 'lite' ? LITE_STARTER_DEPENDENCIES : STARTER_DEPENDENCIES;
-  const dependencies = starterDependencies(starter, sides, shape.contract ?? 'graphql');
+  const dependencies = starterDependencies(STARTER_DEPENDENCIES, sides, shape.contract ?? 'graphql');
   const grammarLint = sides.includes('fe') ? grammarLintFor(grammar) : { package: null };
   const feTools = sides.includes('fe') ? { ...Object.fromEntries(stack.root.map(dependency => [dependency, null])), ...(grammarLint.package ? { [grammarLint.package]: null } : {}) } : {};
   const devDependencies = { ...dependencies.devDependencies, ...feTools };
@@ -424,28 +371,11 @@ const workspaceSection = (entries: DependencyEntries, project: string, pins: Pin
  * The package.json of the fe app workspace `app` of the app `project`: @<project>/<app>, private, the workspace scripts, its own
  * dependencies. A product app (`core`, it carries the shared app core) also takes every core runtime package of the fe stack.
  */
-function feAppManifest(project: string, app: string, pins: Pins, edition: string, { core = true, stack = coreFeStackPackages() }: { core?: boolean, stack?: CoreFeStackPackages } = {}) {
-  const base = edition === 'lite' ? LITE_FE_APP_DEPENDENCIES : FE_APP_DEPENDENCIES;
+function feAppManifest(project: string, app: string, pins: Pins, { core = true, stack = coreFeStackPackages() }: { core?: boolean, stack?: CoreFeStackPackages } = {}) {
+  const base = FE_APP_DEPENDENCIES;
   const dependencies = { ...base, ...(core ? Object.fromEntries(stack.app.filter(name => !Object.hasOwn(base, name)).map(name => [name, null])) : {}) };
   return { name: feAppPackageName(project, app), version: '0.0.0', private: true, scripts: { ...FE_APP_SCRIPTS }, dependencies: workspaceSection(dependencies, project, pins) };
 }
-
-/** The package.json of the fe package workspace `name` (FE_PACKAGES) of the app `project`: @<project>/<name>, private, built to dist. */
-function fePackageManifest(project: string, name: string, pins: Pins) {
-  const { exports, dependencies } = FE_PACKAGES[name]!; // callers pass a key of FE_PACKAGES
-  const built = (subpath: string) => (subpath === '.' ? 'index' : subpath.slice(2));
-  return {
-    name: `@${project}/${name}`, version: '0.0.0', private: true, type: 'module',
-    exports: Object.fromEntries(exports.map(subpath => [subpath, { types: `./dist/${built(subpath)}.d.ts`, default: `./dist/${built(subpath)}.js` }])),
-    types: './dist/index.d.ts',
-    scripts: { ...PACKAGE_WORKSPACE_SCRIPTS },
-    dependencies: workspaceSection(dependencies, project, pins),
-  };
-}
-
-/** The tsconfig.json of an fe package workspace (the Next preset over its src/) and its tsconfig.build.json (emits src/ to dist/ with declarations). */
-const fePackageTsconfig = () => ({ extends: '@starci/tsconfig/next.json', include: ['src/**/*.ts', 'src/**/*.tsx'], exclude: ['node_modules', 'dist'] });
-const fePackageBuildTsconfig = () => ({ extends: './tsconfig.json', compilerOptions: { rootDir: 'src', outDir: 'dist', noEmit: false, incremental: false, declaration: true } });
 
 function listFiles(dir: string, base = dir): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -536,20 +466,16 @@ export const PARTIAL_VARIABLES = new Proxy(Object.create(null), {
 const CLI_APP_DIR = 'apps/cli/';
 const declaresCliApp = (app: SkeletonApp) => app.sides!.be.apps.some(entry => entry.kind === 'cli' && entry.name === 'cli'); // be scopes are rendered for resolved declarations only
 
-const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
-/** The app-owned brand sheet (PROJECT-BRAND-1) is one starter for both editions. */
-const BRAND_STARTER = '.starcistacks/brand/';
 /**
  * The be files a generator writes when it first needs them, never the starter, so a fresh app carries no file and no export that
- * nothing reads (R25). In both editions: the entity bases of platform/database (abstract.entity.ts, BE-PERSISTENCE-3), written by
- * the first table whose entity extends them, since no starter table has both timestamps. In lite also: the cli's runners, the in-order
+ * nothing reads (R25): the entity bases of platform/database (abstract.entity.ts, BE-PERSISTENCE-3), written by
+ * the first table whose entity extends them, since no starter table has both timestamps; and the cli's runners, the in-order
  * relay, and the sql tag of platform/database, which only the table, queue, jobs and webhook capabilities call; a fresh app reads and
  * writes through entities and, for the account doors of its sign-in, the database-function call of database.client.ts (R334).
  */
 export const ENTITY_BASE_FILE = 'src/modules/platform/database/abstract.entity.ts';
-const DEFERRED_GENERATOR_FILES = new Set([ENTITY_BASE_FILE]);
-const LITE_DEFERRED_GENERATOR_FILES = new Set([
-  ...DEFERRED_GENERATOR_FILES,
+const DEFERRED_GENERATOR_FILES = new Set([
+  ENTITY_BASE_FILE,
   'src/modules/platform/database/database.sql.ts',
   'src/modules/platform/database/migration-runner.service.ts',
   'src/modules/platform/database/migration-runner.service.spec.ts',
@@ -559,37 +485,36 @@ const LITE_DEFERRED_GENERATOR_FILES = new Set([
 ]);
 /**
  * The persistence folder of a full platform capability (TypeORM migrations, connection arrays, `sql`-tagged statements and rows):
- * lite's schema authority is db/migrations and its code reads and writes through entities (be.persistence lite overlay, R334), so a
- * lite platform capability takes its persistence/ from the lite overlay alone.
+ * the schema authority is db/migrations and code reads and writes through entities (be.persistence, R334), so a
+ * platform capability takes its persistence/ from the overlay alone.
  */
 const FULL_PLATFORM_PERSISTENCE = /^src\/modules\/platform\/[^/]+\/persistence\//;
-const liteBaseSource = (rel: string): boolean => !rel.startsWith('apps/cli/')
+const baseSource = (rel: string): boolean => !rel.startsWith('apps/cli/')
     && !rel.startsWith('src/features/cli/')
     && !rel.startsWith('src/modules/domain/note/')
     && rel !== 'src/modules/platform/database/connection-source.client.ts'
     && rel !== 'src/modules/platform/database/migrate-connections.client.ts'
     && rel !== 'src/modules/platform/database/seed-connections.client.ts'
-    && !LITE_DEFERRED_GENERATOR_FILES.has(rel)
+    && !DEFERRED_GENERATOR_FILES.has(rel)
     && !FULL_PLATFORM_PERSISTENCE.test(rel)
     && !rel.startsWith('src/tests/');
-/** The be files the lite overlay replaces: a base unit spec of such a file tests the full variant, so lite carries its own. */
-const liteOverlaid = (() => {
+/** The be files the overlay replaces: a base unit spec of such a file tests the base variant, so the overlay carries its own. */
+const overlaid = (() => {
   let set: Set<string> | null = null;
   return () => (set ??= new Set(listFiles(path.join(TEMPLATES_DIR, 'be', 'skeleton-lite'))));
 })();
 /**
- * A base be file lite reuses: a source file of the shared shape, and the unit spec beside a reused source file that the lite overlay
- * does not replace (R212: a lite back end keeps full's unit specs).
+ * A base be file an app takes: a source file of the shared shape, and the unit spec beside a reused source file that the overlay
+ * does not replace (an app keeps the back end's unit specs, R212). The base skeleton also holds the sources the add verbs copy later.
  */
-const liteBaseFile = (scope: Scope, rel: string): boolean => {
-  if (scope === 'app') return LITE_APP_REUSED.has(rel) || rel.startsWith(BRAND_STARTER);
-  // The shared fe app core (apps/__app__/) is one tree for both editions; the lite overlay replaces only modules/auth/client.ts.
+const baseFile = (scope: Scope, rel: string): boolean => {
+  // The shared fe app core (apps/__app__/) is one tree; the overlay replaces only modules/auth/client.ts.
   if (scope === 'fe') return rel.startsWith(`apps/${APP_DIR}/`);
-  if (!rel.endsWith('.spec.ts')) return liteBaseSource(rel);
+  if (!rel.endsWith('.spec.ts')) return baseSource(rel);
   const subject = rel.replace(/\.spec\.ts$/, '.ts');
-  return liteBaseSource(subject) && !liteOverlaid().has(subject);
+  return baseSource(subject) && !overlaid().has(subject);
 };
-const liteOverlayFile = (scope: Scope, rel: string) => scope !== 'be' || !LITE_DEFERRED_GENERATOR_FILES.has(rel);
+const overlayFile = (scope: Scope, rel: string) => scope !== 'be' || !DEFERRED_GENERATOR_FILES.has(rel);
 
 function skeletonOutputPath(relative: string, { scope, app, vars }: SkeletonContext): string {
   const prefix = scope === 'app' ? '' : `${scope}/`;
@@ -614,10 +539,6 @@ function fixedSkeletonFiles(context: SkeletonContext, relative: string, source: 
 
 function variableSkeletonFiles(context: SkeletonContext, relative: string, source: string): GeneratedFile[] {
   const { scope, directory, app, vars, apps } = context;
-  const leaves = `apps/${APP_DIR}/src/components/leaves/`;
-  if (scope === 'fe' && app.edition === 'full' && relative.startsWith(leaves)) {
-    return fixedSkeletonFiles(context, relative.replace(leaves, `packages/${PROJECT_DIR}-ui/src/leaves/`), source);
-  }
   const selectedApps = scope === 'fe' ? coreFeApps(apps) : apps;
   return selectedApps.map(entry => ({
     path: skeletonOutputPath(relative.split(APP_DIR).join(entry.name), context),
@@ -646,9 +567,9 @@ function skeletonDirectory(scope: Scope, directory: string, app: SkeletonApp, va
  * once for the declared fe app <name> (none other), `__project__` in a path replaced by the project name.
  */
 export function skeletonOf(scope: Scope, app: ResolvedApp, vars: SkeletonVars): GeneratedFile[] {
-  const files = app.edition === 'lite'
-    ? [...skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => liteBaseFile(scope, rel)), ...skeletonDirectory(scope, 'skeleton-lite', app, vars, (rel: string) => liteOverlayFile(scope, rel))]
-    : skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => scope !== 'be' || !DEFERRED_GENERATOR_FILES.has(rel));
+  const files = scope === 'app'
+    ? skeletonDirectory(scope, 'skeleton', app, vars)
+    : [...skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => baseFile(scope, rel)), ...skeletonDirectory(scope, 'skeleton-lite', app, vars, (rel: string) => overlayFile(scope, rel))];
   // A rest back end (BE-TRANSPORT-4) overlays its swagger-described health doors, the head apps/<app>/src/openapi.ts and the committed
   // contracts/<app>/openapi.json, the emitted document of the starter's controllers (R396).
   if (scope === 'be' && app.sides.be.apps.some(entry => entry.kind === 'api' && contractOf(entry) === 'rest')) files.push(...skeletonDirectory(scope, 'skeleton-rest', app, vars));
@@ -844,7 +765,7 @@ export function settleScaffoldBranches(root: string, name: string, git: Scaffold
   return { committed: true, branch: 'dev', detail: '' };
 }
 
-export function scaffoldApp({ name, into, presets, harness, edition = 'full', sides = ['be', 'fe'], contract = 'graphql', registryVisibility = 'public', basePort = scaffoldBasePort(name), manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, sides?: readonly ProjectSide[], contract?: ContractKind, registryVisibility?: string, /** The dev environment's base (scaffoldBase); the name's base when absent. */ basePort?: number, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
+export function scaffoldApp({ name, into, presets, harness, sides = ['be', 'fe'], contract = 'graphql', registryVisibility = 'public', basePort = scaffoldBasePort(name), manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, sides?: readonly ProjectSide[], contract?: ContractKind, registryVisibility?: string, /** The dev environment's base (scaffoldBase); the name's base when absent. */ basePort?: number, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
   if (!NAME.test(String(name))) throw new ScaffoldError('HFS_SCAFFOLD_NAME_INVALID', `the app name ${name} must be kebab-case (a project name: ${NAME})`);
   const root = path.resolve(into, name);
   const existing = fs.lstatSync(root, { throwIfNoEntry: false });
@@ -857,11 +778,11 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
   if (!pins[HARNESS_PACKAGE]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${HARNESS_PACKAGE} has no pin: an app pins the CLI that scaffolds it, so run the scaffold through it (starci app scaffold)`);
   const original = existing ?? bornRepository(root, initGit);
   const shape: StarterShape = { sides, contract };
-  const declaration = starterDeclaration(name, manifest, edition, shape);
+  const declaration = starterDeclaration(name, manifest, shape);
   const app = resolveAppDeclaration(manifest, declaration);
-  const pkg = packageManifest(name, pins, app.edition, app.sides.fe.grammar, coreFeStackPackages(), shape);
+  const pkg = packageManifest(name, pins, app.sides.fe.grammar, coreFeStackPackages(), shape);
   const timestamp = now().toISOString().replace(/\D/g, '').slice(0, 14);
-  const vars = { ...scaffoldPorts(basePort), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility, ...stackSidesVars(sides) };
+  const vars = { ...scaffoldPorts(basePort), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')))), timestamp, registryVisibility, ...stackSidesVars(sides) };
   const files: GeneratedFile[] = [
     { path: 'hfs.json', content: jsonText(declaration) },
     { path: 'package.json', content: packageJsonText(pkg) },
@@ -872,16 +793,9 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
       path: `fe/apps/${entry.name}/src/modules/types/ambient/styles.d.ts`,
       content: '/** Declares stylesheets loaded by the Next bundler; non-CSS side-effect imports remain checked. */\ndeclare module "*.css" {}\n',
     })),
-    ...app.sides.fe.apps.map(entry => ({ path: `fe/apps/${entry.name}/package.json`, content: packageJsonText(feAppManifest(name, entry.name, pins, app.edition, { core: coreFeApps([entry]).length === 1 })) })),
+    ...app.sides.fe.apps.map(entry => ({ path: `fe/apps/${entry.name}/package.json`, content: packageJsonText(feAppManifest(name, entry.name, pins, { core: coreFeApps([entry]).length === 1 })) })),
     ...imageFiles(app),
-    ...(app.edition === 'lite' || !sides.includes('fe') ? [] : Object.keys(FE_PACKAGES).flatMap(pkg => [
-      { path: `fe/packages/${name}-${pkg}/package.json`, content: packageJsonText(fePackageManifest(name, pkg, pins)) },
-      { path: `fe/packages/${name}-${pkg}/tsconfig.json`, content: jsonText(fePackageTsconfig()) },
-      { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
-    ])),
-    ...filesForSides((['app', 'be', 'fe'] as const).filter(scope => scope === 'app' || sides.includes(scope)).flatMap(scope => skeletonOf(scope, app, vars)), { project: name, edition: app.edition, sides, contract, feApps: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).fe.apps.map(entry => entry.name), api: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).be.apps.find(entry => entry.kind === 'api')?.name ?? 'api' }),
-    // A full app has a test world (integration, e2e and contract, run on request only: R12); lite has none (R212).
-    ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
+    ...filesForSides((['app', 'be', 'fe'] as const).filter(scope => scope === 'app' || sides.includes(scope)).flatMap(scope => skeletonOf(scope, app, vars)), { project: name, sides, contract, feApps: STARTER_SIDES.fe.apps.map(entry => entry.name), api: STARTER_SIDES.be.apps.find(entry => entry.kind === 'api')?.name ?? 'api' }),
   ];
   const writes = scaffoldWrites(root, original);
   try {

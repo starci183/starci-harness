@@ -72,7 +72,7 @@ const finding = (code: string, sentence: string): RuleTester.TestCaseError => ({
 const at = (f: ReturnType<typeof projectFixture>, rel: string) => ({ filename: f.at(rel), code: EXPORT })
 const fe = (input: Omit<NonNullable<Parameters<typeof projectFixture>[0]>, "profile">) => projectFixture({ profile: "fe", ...input })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition}: a TypeScript file of a front end that no slot owns is HFS_SLOT_UNDECLARED, one a slot owns is not`, (t) => {
         const stray = "apps/web/src/x.ts"
         const f = fe({ edition, files: { [stray]: EXPORT, [OWNED]: EXPORT } })

@@ -3,7 +3,7 @@ import type { Resolution } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
 import { FEEDBACK_TARGET_KINDS } from "../../harness/feedback.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import type { Role } from "../../shared/verb.js"
 import { assertKindRole, closeFeedbackItem, FEEDBACK_KIND } from "./feedback.js"
 
@@ -35,7 +35,6 @@ const resolutionOf = (flags: { readonly "fixed-by"?: string | undefined; readonl
 export const ticketCloseVerb = defineVerb({
     path: ["ticket", "close"],
     summary: "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: EVERYONE,
     schema: "starci/ticket-close@1",

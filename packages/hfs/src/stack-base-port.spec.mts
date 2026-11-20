@@ -154,7 +154,7 @@ const COMPOSE_ENV = (local: string): string => `  dev:\n    status: supported\n 
 function app(t: { after: (fn: () => void) => void }, local: string, project = 'demo'): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-base-port-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project }));
   const dev = path.join(root, '.starcistacks', 'dev');
   fs.mkdirSync(path.join(dev, 'infra', 'compose'), { recursive: true });
   fs.writeFileSync(path.join(dev, 'infra', 'compose', 'compose.yaml'), 'services:\n  db:\n    image: postgres\n');
@@ -162,7 +162,7 @@ function app(t: { after: (fn: () => void) => void }, local: string, project = 'd
   fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n${COMPOSE_ENV(local)}`);
   return root;
 }
-const findings = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true });
+const findings = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true });
 const processesBlock = (ports: string, processes: string[], base = ''): string => `${base}      ports: {cache: 56379, ${ports}}\n      services: [{name: db, wait: healthy}]\n      processes:\n${processes.map((name) => `        - {name: ${name}, argv: [node, ${name}.js], port: ${name}}\n`).join('')}`;
 
 test('R389 a layout that follows the role table raises nothing; one off it is STACKS_BASE_PORT_ROLE, an error naming the port', (t) => {

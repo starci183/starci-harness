@@ -1,11 +1,10 @@
 import { SETTINGS_FILES, listSettings, settingsFileOf } from "../../harness/settings.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** `starci config list [--file <name>]`: every harness setting as a dotted key, its value and the ops/ file that owns it. */
 export const configListVerb = defineVerb({
     path: ["config", "list"],
     summary: "list every harness setting (or one file's) as a dotted key with its value and the ops/ yaml that owns it",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/config-list@1",

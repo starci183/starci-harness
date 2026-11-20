@@ -89,11 +89,6 @@ function contractText(role: string): string {
 export function migrateAccountDoors({ root, write = false, contract = false, now = Date.now }: { root: string; write?: boolean; contract?: boolean; now?: () => number }): AccountDoorsReport {
   const phase = contract ? 'contract' : 'expand';
   const report: AccountDoorsReport = { schema: 'starci/account-doors-report@1', root, write, phase, changes: [], findings: [], next: [] };
-  const declaration = JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')) as { edition?: unknown };
-  if (declaration.edition !== 'lite') {
-    report.findings.push({ file: 'hfs.json', reason: 'the account doors belong to the lite edition; a full app signs in through its identity provider' });
-    return report;
-  }
   const names = migrationsOf(root);
   const parts = partialParts(fs.readFileSync(DOORS_PARTIAL, 'utf8'));
   const defined = new Set(names.flatMap((name) => definedDoors(statementsOf(root, name))));

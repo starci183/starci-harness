@@ -3,7 +3,7 @@ import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { ruleParamsProblems } from './rule-params-shape.mjs';
-import { APP_KIND, EDITIONS, MANIFEST_KINDS, NAME, PRESENCE, RUNTIME_KIND, SEMVER, TESTS, TRACKED, manifestKind, runtimeShapeProblems, slotProblems, tierMapProblems } from './manifest-shape.mjs';
+import { APP_KIND, MANIFEST_KINDS, NAME, PRESENCE, RUNTIME_KIND, SEMVER, TESTS, TRACKED, manifestKind, runtimeShapeProblems, slotProblems, tierMapProblems } from './manifest-shape.mjs';
 
 /** A side of an app: the folder of that name holds it. */
 export type Side = 'be' | 'fe';
@@ -15,7 +15,7 @@ export const SCOPES: string[] = [APP_SCOPE, ...PROFILES];
 
 /** Shape problems of a parsed manifest, in the words of modules/schemas/hfs-slots.schema.yaml. */
 function checkCoreManifestFields(m: Parsed, bad: string[]) {
-  const allowed = new Set(['schema', 'kind', 'version', 'versioning', 'presenceValues', 'trackedValues', 'testValues', 'editions', 'sides', 'appKinds', 'triggerKinds', 'tiers', 'ruleParams', 'crossOwner', 'crossApp', 'slots', 'consumers', 'naming']);
+  const allowed = new Set(['schema', 'kind', 'version', 'versioning', 'presenceValues', 'trackedValues', 'testValues', 'sides', 'appKinds', 'triggerKinds', 'tiers', 'ruleParams', 'crossOwner', 'crossApp', 'slots', 'consumers', 'naming']);
   for (const key of Object.keys(m)) if (!allowed.has(key)) bad.push(`unknown top-level key ${key}`);
   if (!/^starci\/hfs-slots@\d+$/.test(String(m.schema))) bad.push('schema must be starci/hfs-slots@<major>');
   if (!SEMVER.test(String(m.version))) bad.push('version must be MAJOR.MINOR.PATCH');
@@ -23,7 +23,6 @@ function checkCoreManifestFields(m: Parsed, bad: string[]) {
   if (JSON.stringify(m.presenceValues) !== JSON.stringify(PRESENCE)) bad.push(`presenceValues must be ${PRESENCE.join(', ')}`);
   if (JSON.stringify(m.trackedValues) !== JSON.stringify(TRACKED)) bad.push(`trackedValues must be ${TRACKED.join(', ')}`);
   if (JSON.stringify(m.testValues) !== JSON.stringify(TESTS)) bad.push(`testValues must be ${TESTS.join(', ')}`);
-  if (JSON.stringify(m.editions) !== JSON.stringify(EDITIONS)) bad.push(`editions must be ${EDITIONS.join(', ')}`);
 }
 
 function checkSideShapes(m: Parsed, bad: string[]) {

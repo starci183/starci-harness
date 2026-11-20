@@ -24,7 +24,7 @@ const starter = (skeleton: string, compose: string, base = 3000) => {
   const read = (...parts: string[]): string => render(fs.readFileSync(path.join(TEMPLATES, skeleton, '.starcistacks', ...parts), 'utf8'), base);
   return { stacks: parseYaml(read('application-stacks.yaml')), compose: parseYaml(read('dev', 'infra', 'compose', compose)) };
 };
-const STARTERS = [['lite', 'skeleton-lite', 'compose.yaml'], ['full', 'skeleton', 'stack.yaml']] as const;
+const STARTERS = [['lite', 'skeleton', 'compose.yaml']] as const;
 
 test('one MinIO reference: the pin is the published StarCi build of images/sources.json, and the managed storage image starts from it', () => {
   const reference = `ghcr.io/starci183/minio:${String(pins.minio.version)}`;
@@ -66,7 +66,7 @@ for (const [edition, skeleton, compose] of STARTERS) {
 }
 
 test('the lite api reaches the storage service on its derived port: no 9000, which the host Sonar holds', () => {
-  const { stacks } = starter('skeleton-lite', 'compose.yaml', 4300);
+  const { stacks } = starter('skeleton', 'compose.yaml', 4300);
   const api = stacks.environments.dev.local.processes.find((process: { name: string }) => process.name === 'api');
   assert.equal(api.env.STORAGE_ENDPOINT, 'http://127.0.0.1:${port.storage}');
   assert.deepEqual([stacks.environments.dev.local.ports.db, stacks.environments.dev.local.ports.mail, stacks.environments.dev.local.ports.storage], [4390, 4391, 4393]);
@@ -139,7 +139,7 @@ function oldApp(t: { after: (fn: () => void) => void }, stacks = OLD_STACKS, com
   fs.mkdirSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose'), { recursive: true });
   fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), stacks);
   fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose', 'compose.yaml'), compose);
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project: 'demo', sides: { be: {}, fe: {} } }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', sides: { be: {}, fe: {} } }));
   return root;
 }
 

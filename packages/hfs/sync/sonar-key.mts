@@ -51,7 +51,7 @@ export function readDeclaredSonarGate(root: string, { parseYaml }: { parseYaml?:
   return { file: path.relative(root, file).split(path.sep).join('/'), qualityGate: typeof sonar.qualityGate === 'string' ? sonar.qualityGate : null };
 }
 
-/** The quality-gate name for an app edition from the one sonar-gate document. */
-export function sonarGateName(document: Declaration, edition = 'full'): string | null {
-  return (edition === 'lite' ? document?.lite : document)?.gate?.name ?? null;
+/** The quality-gate name of the one sonar-gate document. */
+export function sonarGateName(document: Declaration): string | null {
+  return document?.gate?.name ?? null;
 }

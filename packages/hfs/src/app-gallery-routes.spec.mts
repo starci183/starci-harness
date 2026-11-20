@@ -77,7 +77,7 @@ test('the rule is wired: ROUTE_MISSING ships with the check, both new codes are 
   assert.equal(slots.get('app.gallery-routes')?.tracked, 'tracked');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} scaffold ships a screen for each of its starter routes, so the coverage is green`, (t) => {
     const root = starter(t, edition);
     const routes = feRoutes(root);
@@ -189,7 +189,7 @@ test('the staged guard lists a screen changed without its explain.md and never b
   git(root, 'config', 'user.email', 'a@b.c');
   git(root, 'config', 'user.name', 'n');
   git(root, 'config', 'commit.gpgsign', 'false');
-  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined, 'lite'), null, 2)}\n`);
+  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined), null, 2)}\n`);
   write(root, DETAIL, PAGE_TEXT('AgentProfilePage'));
   write(root, `${FEATURE}/index.tsx`, 'export const AgentProfilePage = () => null\n');
   write(root, PROFILE, explain('/workspaces/[workspaceId]/agents/[agentKey]'));

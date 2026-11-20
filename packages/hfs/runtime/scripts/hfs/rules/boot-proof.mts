@@ -19,7 +19,7 @@ export function withoutBootProof<T>(work: () => T): T {
 
 /** Root scopes delegate to the be side, so each app is compiled once. */
 export function bootProofFindings({ repoRoot, files, all = files, repo, isRoot = Boolean(repo?.sides), inScope = () => true }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; isRoot?: boolean; inScope?: (file: string) => boolean }) {
-  if (suppressed > 0 || repo?.edition !== 'lite' || isRoot || repo?.profile === 'fe' || repo?.kind === 'fe') return [];
+  if (suppressed > 0 || isRoot || repo?.profile === 'fe' || repo?.kind === 'fe') return [];
   // Dependencies not installed (a fresh scaffold, a lint-only checkout): the Nest graph cannot be compiled, so the proof is unavailable here; CI and every installed app judge it.
   const installed = [repoRoot, path.dirname(repoRoot ?? '.')].some((dir) => dir && fs.existsSync(path.join(dir, 'node_modules')));
   return appWiring({ repoRoot, files: all, repo }).findings

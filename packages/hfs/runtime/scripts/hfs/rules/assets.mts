@@ -3,7 +3,6 @@
 // ruleParams.be.assets {bytes (or maxBytes), extensions} supplies a manifest's explicit cap and build-time extension allowlist.
 import fs from 'node:fs';
 import path from 'node:path';
-import { editionRuleParams } from '../edition-slots.mjs';
 import { found } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -23,8 +22,8 @@ const DOCS_MEDIA = /^docs\/.+\.(?:png|svg|webp)$/i;
 const USER_ASSET_DIRECTORY = /^src\/assets\/(?:media|uploads?|music|audio|videos?)(?:\/|$)/i;
 const MODEL_BINARY = /(?:^|\/)(?:[^/]*[-_.])?(?:model|weights|checkpoint)(?:[-_.][^/]*)?\.bin$/i;
 
-function assetPolicy(manifest: Parsed, edition: string) {
-  const config = editionRuleParams(manifest?.ruleParams?.be ?? {}, edition).assets ?? {};
+function assetPolicy(manifest: Parsed) {
+  const config = manifest?.ruleParams?.be?.assets ?? {};
   const cap = config.bytes ?? config.maxBytes;
   const bytes = Number.isSafeInteger(cap) && cap > 0 ? cap : DEFAULT_ASSET_BYTES;
   const extensions = Array.isArray(config.extensions) ? config.extensions : BUILD_EXTENSIONS;
@@ -63,9 +62,8 @@ function fileBytes(repoRoot: string, file: string) {
 
 /** Side-relative tracked paths only: the app root and FE are left to their own rules, avoiding duplicate root/side findings. */
 export function assetsFindings({ repoRoot, files = [], repo, manifest, isRoot = false, inScope = () => true }: { repoRoot: string; files?: string[]; repo: Repo; manifest?: Parsed; isRoot?: boolean; inScope?: (file: string) => boolean }) {
-  const edition = repo?.edition ?? 'full';
-  if (isRoot || repo?.profile !== 'be' || !['lite', 'full'].includes(edition)) return [];
-  const policy = assetPolicy(manifest, edition);
+  if (isRoot || repo?.profile !== 'be') return [];
+  const policy = assetPolicy(manifest);
   const findings = [];
   for (const raw of new Set(files)) {
     if (!inScope(raw)) continue;

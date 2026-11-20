@@ -64,7 +64,7 @@ test('the brand codes ship with the check, the three prompt codes are localOnly,
   for (const file of ['brand.md', 'illustration.md', 'illustration.yaml', 'media.md', 'media.yaml', 'references/**']) assert.ok(slot?.allows?.includes(file), file);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an app with no prompt file and no brand folder has no finding, and neither does a sheet with no prompt file`, (t) => {
     assert.deepEqual(run(app(t, {}), edition), []);
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET() }), edition), []);
@@ -152,7 +152,7 @@ test('the starter the scaffold writes is a valid, version 1 sheet with the defau
 });
 
 // The scaffold writes the starter once and sync leaves it alone: a freshly scaffolded app carries the brand folder, its own check has no finding about it, and an edit of it is no drift.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: starci app scaffold writes .starcistacks/brand/ once, with the project name filled, and sync neither judges nor rewrites an edit of it`, async (t) => {
     const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-brand-scaffold-'));
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));
@@ -180,7 +180,7 @@ const named = (name: string, version = 1): string => `\n  name: ${name}\n  versi
 const MEDIA_PROMPT = (over: Record<string, string> = {}): string => PROMPT({ basePrompt: named('social-image'), prompt: JSON.stringify(`${SOCIAL}\n\na team at a counter`), ...over });
 const SOCIAL_FILE = 'statics/social/launch/hero.prompt.yaml';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a prompt file made from a media base by name, version and text is green, with or without an illustration.yaml`, (t) => {
     assert.deepEqual(run(app(t, { [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition), []);
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT(), [IMAGE]: PROMPT() }), edition), []);

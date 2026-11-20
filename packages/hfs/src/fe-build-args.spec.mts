@@ -26,7 +26,7 @@ const run = ({ root, files }: { root: string; files: string[] }, edition: string
 
 test('the exported code constant names the rule failure', () => assert.equal(FE_PUBLIC_BUILD_ARG_MISSING, FAILURE));
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: ${FAILURE} violation - a required NEXT_PUBLIC name with no ARG default and no buildArgs is refused`, (t) => {
     const found = run(tree(t, {}), edition);
     assert.equal(found.length, 1);

@@ -1,6 +1,6 @@
 import { locateOrca } from "../../harness/orca/client.js"
 import { ensureSupervisor, supervisorTitle } from "../../harness/supervisor.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 
 /**
@@ -10,7 +10,6 @@ import { projectFrom } from "./driver.js"
 export const supervisorEnsureVerb = defineVerb({
     path: ["supervisor", "ensure"],
     summary: "start the project's Supervisor when none is alive by Orca's word, replay a lost launch, else nothing",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/supervisor-ensure@1",

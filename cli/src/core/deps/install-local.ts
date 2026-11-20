@@ -4,7 +4,7 @@ import { dirname, join } from "node:path"
 import { z } from "zod"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
+import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { integrityMismatches } from "./lock-integrity.js"
 import { localReferences, NPMJS_FLAGS } from "./local-refs.js"
 import { lockedHere, lockedPackages, withoutLocked } from "./lockfile.js"
@@ -262,7 +262,6 @@ export const restoreLocal = async (root: string): Promise<{ readonly data: Insta
 export const depsInstallLocalVerb = defineVerb({
     path: ["deps", "install-local"],
     summary: "install the version the local registry's last publish-local gave each named @starci package into the app like npm and record the pins they replace (dry until --execute); --restore puts the npm pins back and reinstalls from npmjs before a commit",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/deps-install-local@1",

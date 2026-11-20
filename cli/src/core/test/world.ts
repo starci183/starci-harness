@@ -6,7 +6,7 @@ import { heavyCommand } from "../../harness/run-checks.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** What `@starci/jest-preset/world-cache` answers for a whole kind before any jest process starts (`preflight`). */
 interface Preflight {
@@ -126,7 +126,6 @@ const worldVerb = (kind: WorldKind) =>
     defineVerb({
         path: ["test", kind],
         summary: `run the ${kind} specs of the app on the world slots application-stacks.yaml declares (tests.${kind}.workers, one when absent), exclusive specs alone, through the result cache: a spec whose inputs are unchanged since its last green run is skipped and reported cached; --full ignores the cache, --spec runs one regardless; on request only, never in CI or a hook`,
-        editions: BOTH_EDITIONS,
         effect: "local-write",
         roles: EVERYONE,
         schema: kind === "integration" ? "starci/test-integration@1" : "starci/test-e2e@1",

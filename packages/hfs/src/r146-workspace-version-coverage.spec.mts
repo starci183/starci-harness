@@ -29,7 +29,7 @@ function workspaceFindings(edition: string, section: string, version: string | n
   }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} passing sibling workspace dependencies use exactly star in every dependency section`, () => {
     for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
       assert.deepEqual(workspaceFindings(edition, section, '*'), []);

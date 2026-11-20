@@ -29,7 +29,7 @@ const FILES = {
     ].join("\n"),
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`sql-returning accepts valid row results and rejects invalid bare RETURNING in ${edition}`, (t) => {
         const fixture = projectFixture({ edition, files: FILES })
         t.after(fixture.cleanup)

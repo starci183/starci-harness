@@ -7,7 +7,7 @@ import { canonRuleTester, ruleNamed } from '../fixtures/rule-tester.ts';
 
 const tester = canonRuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' } });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts valid syntax and rejects every back-end Sonar smell`, () => {
     tester.run('max-params', ruleNamed(rules, 'max-params'), {
       valid: ['function seven(a, b, c, d, e, f, g) { return a }', '@Injectable() class Service { constructor(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) {} }'],

@@ -9,7 +9,7 @@ import { acceptInputs, ensureResultHashes, readResults } from "../../harness/rec
 import { DISPATCHING, graphVersionOfCommand, recordReplan, snapshotOf } from "../../harness/workflow.js"
 import type { WorkflowRow } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { cancelTasks, readSnapshot, reconcile, reportMessage, reportOf, stepWorkflow } from "./engine.js"
 import type { StepAction, WorkflowReport } from "./engine.js"
@@ -151,7 +151,6 @@ export const amendWithRelays = async (context: VerbContext, workflowId: string, 
 export const workflowAmendVerb = defineVerb({
     path: ["workflow", "amend"],
     summary: "replan a workflow from a desired graph (--desired, --based-on) or a change file: reconcile by task key, record graph n+1, cancel what is dropped or redone live, resume; --goal records goal n+1 instead",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor"],
     schema: "starci/workflow-amend@1",

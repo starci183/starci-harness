@@ -18,13 +18,12 @@ const BOOT = 'import { CommandFactory } from "nest-commander"; import { AppModul
 const GROUP = 'import { Command, CommandRunner } from "nest-commander"; @Command({ name: "migrate", subCommands: [] }) export class MigrateCli extends CommandRunner { async run(): Promise<void> {} }';
 const SUB = 'import { SubCommand, CommandRunner } from "nest-commander"; @SubCommand({ name: "run" }) export class RunCli extends CommandRunner { async run(): Promise<void> {} }';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
     const declaration = { ...appDeclaration('be', { ...BE_DECLARATION, apps: [...(BE_DECLARATION.apps ?? []), { name: 'relay-cli', kind: 'client-cli', package: '@acme/relay', bin: 'relay' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
     const tester = ruleTester({ root: TYPED_ROOT, hfs });
 
     test(`${edition} valid CLI bootstrap passes and missing bootstrap or a server is invalid`, () => {
-        assert.equal(hfs.edition, edition);
         tester.run('cli-bootstrap', cliBootstrap, {
             valid: [{ filename: at('apps/cli/src/main.ts'), code: BOOT }],
             invalid: [

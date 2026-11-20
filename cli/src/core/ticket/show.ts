@@ -1,13 +1,12 @@
 import { closeLine, getTicket, isLive, waitersOf } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { FEEDBACK_KIND, showFeedbackItem } from "./feedback.js"
 
 /** `starci ticket show <id> [--kind feedback]`: one ticket (or owner feedback) with its evidence, what was tried, its fix and the tasks and decisions waiting on it; changes nothing. */
 export const ticketShowVerb = defineVerb({
     path: ["ticket", "show"],
     summary: "show one ticket: evidence, what was tried, its proposed default, its state, fix or answer, and the tasks and decisions waiting on it",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/ticket-show@1",

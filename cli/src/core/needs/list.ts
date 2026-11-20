@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import { projectOf } from "../../harness/work.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { needsOf } from "../../harness/needs.js"
 import { formatTable } from "../../shared/output.js"
 import { ownerLine, viewOf, waiterLine } from "./view.js"
@@ -9,7 +9,6 @@ import { ownerLine, viewOf, waiterLine } from "./view.js"
 export const needsListVerb = defineVerb({
     path: ["needs", "list"],
     summary: "list the project's shared needs (open ones; --all also resolved, rejected and merged): key, state, router, owner or resolver, and the tasks waiting on each",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/needs-list@1",

@@ -10,7 +10,6 @@ import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readJson } from './read.mjs';
 import { DEPENDENCY_SECTIONS } from './fe-no-tests.mjs';
-import { editionRuleParams } from '../edition-slots.mjs';
 import { globExpression } from '../../lib/glob.mjs';
 import { grammarLintFor } from '../../lib/grammar-lint.mjs';
 import { numericMatch } from '../../lib/numeric-match.mjs';
@@ -46,13 +45,12 @@ function forbiddingPackage(name: string) {
 }
 
 /**
- * The packages the back end owns (be infraOwners with at least one owner, full's view: a library lite removes is the edition rule's
- * finding, not a front-end one): a root dependency of the back end.
+ * The packages the back end owns (be infraOwners with at least one owner): a root dependency of the back end.
  */
 function backendOwned(manifest: Parsed) {
   const be = manifest?.ruleParams?.be;
   if (!be) return new Set();
-  const owners = editionRuleParams(be, 'full').infraOwners ?? {};
+  const owners = be.infraOwners ?? {};
   return new Set(Object.keys(owners).filter((name) => Array.isArray(owners[name]) && owners[name].length > 0));
 }
 

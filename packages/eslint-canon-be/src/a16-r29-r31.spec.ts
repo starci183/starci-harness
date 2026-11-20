@@ -43,7 +43,7 @@ const violating = (f: ProjectFixture, files: Readonly<Record<string, string>>, r
   ...passing(f, files, rel), errors: [{ message: new RegExp(code), line: 1 }],
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`passing ${edition} feature files occupy their allowed slots`, t => {
     const files = {
       [`${FEATURE}/index.ts`]: VALUE,

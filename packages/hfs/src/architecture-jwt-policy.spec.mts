@@ -46,7 +46,7 @@ const jwtPolicyFindings = (t: TestContext, edition: string, algorithms: string |
   return checkJwtPolicy({ config, context, graph }).violations.filter((finding) => finding.ruleId === 'BE_JWT_ALG_PINNED');
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`R260 BE_JWT_ALG_PINNED accepts the literal asymmetric algorithm allowlist (${edition})`, (t) => {
     assert.deepEqual(jwtPolicyFindings(t, edition, "['ES256', 'RS256', 'EdDSA']"), []);
   });

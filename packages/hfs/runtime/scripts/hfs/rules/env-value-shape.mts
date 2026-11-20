@@ -67,7 +67,7 @@ function shapeViolations(reads: Parsed, map: Parsed) {
   return violations;
 }
 
-/** The findings of R249 over the `*.env.example` files of an app judged at its root scope (both editions). */
+/** The findings of R249 over the `*.env.example` files of an app judged at its root scope. */
 export function envValueShapeFindings({ repoRoot, all = [], isRoot }: { repoRoot: string; all?: string[]; isRoot: boolean }) {
   if (!isRoot) return [];
   const examples = all.filter((file) => file.endsWith('.env.example'));

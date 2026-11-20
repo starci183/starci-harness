@@ -25,7 +25,7 @@ const synced = async (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an edited managed hook fails and restoring its render passes`, async context => {
     const { root, findings } = await synced(context, edition);
     const file = path.join(root, '.husky/pre-push');
@@ -43,7 +43,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an edited managed formatter ignore file is invalid and restoring its render passes`, async context => {
     const { root, tracked } = await synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };

@@ -1,5 +1,5 @@
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "../supervisor/driver.js"
 import { unparkProject } from "./park-engine.js"
 
@@ -12,7 +12,6 @@ import { unparkProject } from "./park-engine.js"
 export const projectUnparkVerb = defineVerb({
     path: ["project", "unpark"],
     summary: "bring a parked project back: start its Supervisor, relaunch each parked workflow's Kernel, resume it and re-dispatch the parked tasks from their patches",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/project-unpark@1",

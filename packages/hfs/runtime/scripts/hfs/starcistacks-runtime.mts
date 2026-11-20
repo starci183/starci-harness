@@ -30,9 +30,7 @@ function applicationStackFiles(repoRoot: string): string[] {
   });
 }
 
-export const appEdition = (repoRoot: string): Parsed => readJson(repoRoot, 'hfs.json')?.edition ?? 'full';
-
-/** An HFS app uses its edition's slot shape; other repository declarations still receive Swarm runtime checks. */
+/** An HFS app uses its slot shape; other repository declarations still receive Swarm runtime checks. */
 export function applicationStackFindings(repoRoot: string): Parsed[] {
   const files = applicationStackFiles(repoRoot), declaration = readJson(repoRoot, 'hfs.json');
   if (declaration?.kind === 'app') {

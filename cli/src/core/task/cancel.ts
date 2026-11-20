@@ -10,7 +10,7 @@ import { claimIntent, clearIntent, getTask, noteIntentDir, recordEvent, setStatu
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** What a cancel did: the task, the status it left, its seats, its preserved work and its Op worktree. */
 export interface CancelData {
@@ -118,7 +118,6 @@ export const cancelTask = async (cwd: string, taskId: string, reason: string | u
 export const taskCancelVerb = defineVerb({
     path: ["task", "cancel"],
     summary: "cancel a task: claim it, stop its seat, preserve and reset its dirty allowPaths, then remove its Op worktree",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "supervisor", "owner"],
     schema: "starci/task-cancel@1",

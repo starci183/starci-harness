@@ -298,7 +298,6 @@ export const onMainOrFollowsIt = async (root: string, head: string): Promise<boo
 export const releasePublishVerb = defineVerb({
     path: ["release", "publish"],
     summary: "plan the npm publication of every package version not yet on the registry; --execute performs it and reads each back",
-    editions: ["lite", "full"],
     effect: "publish",
     roles: ["owner", "release"],
     schema: "starci/release-publish@1",

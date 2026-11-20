@@ -173,13 +173,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 181 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 316 more
-- [hfs/slots.yaml](../hfs/slots.yaml) · 120 KB — The HFS slot manifest: what may exist in an app repository and where.
-  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-desktop-release, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy and 163 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 180 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R113, R12 and 312 more
+- [hfs/slots.yaml](../hfs/slots.yaml) · 108 KB — The HFS slot manifest: what may exist in an app repository and where.
+  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-desktop-release, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy and 162 more
 - [project/README.md](../project/README.md) · 15 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 91 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 50 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 6 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander

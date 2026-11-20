@@ -1,4 +1,4 @@
-// services.mts - the microservice policy of a product that runs more than one service (R163 to R167).
+// services.mts - the microservice policy of a product that runs more than one service (R163 to R166).
 // A product keeps every back-end service as a Nest app at `be/apps/<service>/` of the one repository, sharing the `be/src` libraries and
 // the one package.json; the services it does not own stay pinned images in the stack. Five tree checks:
 //   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's:
@@ -13,16 +13,12 @@
 //   R166 HFS_EVENT_CONTRACT         the async contract is vendored: `be/contracts/<service>/events.json` equals the provider's
 //                                   `apps/<service>/src/events.ts` table (an event may declare `compensates: "<event>"`), every event a
 //                                   consumer's `apps/<app>/src/consumes.ts` names exists in that snapshot at the same version;
-//   R167 BE_ASYNC_SPEC_MISSING      every consumed event (a consumes.ts entry) is named by an e2e spec through `useTestWorld`; the spec of a
-//                                   saga step (an event whose contract says `compensates`) also names the compensated event, so the whole
-//                                   flow is driven, not the undo alone.
-// "Multi-service" = two or more be apps of kind api or worker. A single-service product is judged by R163 and R166-R167 only.
+// "Multi-service" = two or more be apps of kind api or worker. A single-service product is judged by R163 and R166 only.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { deployImageApps } from '../stack-deploy-config.mjs';
 import { loadTypescript } from '../../lib/package-at.mjs';
-import { propertyText } from '../../lib/ts-ast.mjs';
 import { folded, readEventClasses, snapshotText } from '../../lib/event-contract.mjs';
 import { galleryParams } from '../gallery.mjs';
 import { found, readJson, readText } from './read.mjs';
@@ -34,7 +30,6 @@ const SERVICE_PLACEMENT = 'HFS_SERVICE_PLACEMENT';
 const IMAGE_UNPINNED = 'HFS_IMAGE_UNPINNED';
 const SERVICE_STACK_DECLARATION = 'HFS_SERVICE_STACK_DECLARATION';
 const EVENT_CONTRACT = 'HFS_EVENT_CONTRACT';
-const ASYNC_SPEC_MISSING = 'BE_ASYNC_SPEC_MISSING';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVICE_KINDS = new Set(['api', 'worker']);
@@ -52,9 +47,6 @@ const SNAPSHOT = /^be\/contracts\/([^/]+)\/events\.json$/;
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
 const EXACT_TAG = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const EVENT_CLASS_FILE = /^be\/src\/modules\/events\/([^/]+)\/[^/]+\.event\.ts$/;
-const CONSUMER_FILE = /^be\/src\/features\/(?:[^/]+\/)+transport\/message\/[^/]+\.consumer\.ts$/;
-const E2E_SPEC = /^be\/src\/tests\/e2e\/[^/]+\/[^/]+\.e2e-spec\.ts$/;
-const USE_TEST_WORLD = /\buseTestWorld\s*\(/;
 
 /** The be apps of kind api or worker. */
 const servicesOf = (repo: Repo) => (repo.sides?.be?.apps ?? []).filter((app: Parsed) => SERVICE_KINDS.has(app.kind));
@@ -242,49 +234,6 @@ function eventContractFindings({ repoRoot, files }: { repoRoot: string; files: s
   return findings;
 }
 
-// ------------------------------------------------------------------------------------------------ R167 async specs
-
-/** The class an expression names, from `readonly event = <Class>` of a consumer: the identifier, or null. */
-function consumedClassOf(ts: Ts, text: string) {
-  return propertyText(ts, text, { file: 'consumer.ts', key: 'event', declaration: true, kind: 'identifier' });
-}
-
-/** The events the consumers consume: `[{ file, className, service, event }]` from `readonly event = <EventClass>` of every `transport/message/*.consumer.ts`. */
-function consumedEvents({ repoRoot, files, ts }: { repoRoot: string; files: string[]; ts: Ts }) {
-  const { classes } = eventClassesOf({ repoRoot, files, ts });
-  const consumed = [];
-  for (const file of files.filter((candidate: Parsed) => CONSUMER_FILE.test(candidate))) {
-    const className = consumedClassOf(ts, readText(repoRoot, file) ?? '');
-    const event = classes.find((candidate) => candidate.className === className);
-    if (event !== undefined) consumed.push({ file, className, service: event.service, event: event.name, compensates: event.compensates });
-  }
-  return consumed;
-}
-
-/** Findings of R167: every consumed event has an e2e spec through the world; a saga step's spec also names the event it compensates. */
-function asyncSpecFindings({ repoRoot, files }: { repoRoot: string; files: string[] }) {
-  const ts = typescriptFor(repoRoot);
-  if (ts === null) return [];
-  const consumed = consumedEvents({ repoRoot, files, ts });
-  if (consumed.length === 0) return [];
-  const specs = files
-    .filter((file: string) => E2E_SPEC.test(file))
-    .map((file: string) => ({ file, text: readText(repoRoot, file) ?? '' }))
-    .filter(({ text }: { text: string }) => USE_TEST_WORLD.test(text));
-  const findings = [];
-  for (const { file, className, service, event, compensates } of consumed) {
-    const named = specs.filter(({ text }: { text: string }) => text.includes(event));
-    if (named.length === 0) {
-      findings.push(found(ASYNC_SPEC_MISSING, file, `${file}: the consumer of ${service} event "${event}" (${className}) has no e2e spec; add be/src/tests/e2e/<area>/<name>.e2e-spec.ts, which boots the apps with useTestWorld and names it: publish the event, read the persisted effect back and redeliver it.`, { service, event }));
-      continue;
-    }
-    if (typeof compensates === 'string' && !named.some(({ text }: { text: string }) => text.includes(compensates))) {
-      findings.push(found(ASYNC_SPEC_MISSING, named[0]!.file, `${named[0]!.file} is the spec of the saga step "${event}", which undoes "${compensates}", but never names it; the spec drives the whole flow: the step, the failure, then the compensated state.`, { service, event, compensates }));
-    }
-  }
-  return findings;
-}
-
 // ------------------------------------------------------------------------------------------------ entry
 
 /** Every finding of the microservice policy over the app at `repoRoot`; `files` are its tracked app-relative paths. */
@@ -294,6 +243,5 @@ export function serviceFindings({ repoRoot, files, repo }: { repoRoot: string; f
     ...imagePinFindings({ repoRoot, repo }),
     ...serviceStackFindings({ repoRoot, repo }),
     ...eventContractFindings({ repoRoot, files }),
-    ...asyncSpecFindings({ repoRoot, files }),
   ];
 }

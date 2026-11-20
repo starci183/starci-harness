@@ -41,7 +41,7 @@ function judge(t: TestContext, edition: string, invalid: boolean) {
   return report.findings.filter(item => item.code === code);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${code} ${edition}: refuses misplaced files and a non-host local Sonar`, t => {
     const violations = judge(t, edition, true);
     assert.deepEqual(violations.map(item => item.path).sort(), ['.starcistacks/DESIGN.md', '.starcistacks/application-stacks.yaml']);

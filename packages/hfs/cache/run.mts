@@ -1,11 +1,10 @@
 // run.mts - the app pass of `starci app check`: the structure, format, db and wiring families as steps of the check graph (schedule.mts), and the one
-// merge of their findings (edition and the Vietnamese why of every code) into the result the verb prints and the gate judges, so the two verbs never hold
+// merge of their findings (the Vietnamese why of every code) into the result the verb prints and the gate judges, so the two verbs never hold
 // two answers for one tree.
 import type { HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { readWhy, type CheckFinding, type RepositoryResult } from '../runtime/scripts/hfs/check.mjs';
-import { judgedFindings, summarize, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
-import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { summarize, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { withLandedMigrationsKnown } from '../runtime/scripts/hfs/rules/database-landed.mjs';
 import type { Presets } from '../sync/index.mjs';
 import type { Prettier } from '../sync/format.mjs';
@@ -27,7 +26,6 @@ export interface AppRunInput {
   readonly harness?: { version?: string } | undefined;
   readonly presets?: Presets | undefined;
   readonly prettier?: Prettier | undefined;
-  readonly edition?: string | undefined;
   /** Limits the formatter to these app-relative files. */
   readonly only?: readonly string[] | undefined;
   /** The ref the baseline database rules compare with, when the caller names one. */
@@ -71,17 +69,16 @@ export async function runDbStep(input: AppRunInput, parts: AppPassParts): Promis
 
 /** The wiring step: the boot proof. */
 export async function runWiringStep(input: AppRunInput, parts: AppPassParts): Promise<void> {
-  const proved = await runWiringFamily(input.session, { repoRoot: input.repoRoot, edition: input.edition, files: input.tracked, execute: input.execute });
+  const proved = await runWiringFamily(input.session, { repoRoot: input.repoRoot, files: input.tracked, execute: input.execute });
   parts.wiring = { status: proved.wiring.status, apps: proved.wiring.apps, findings: proved.wiring.findings as unknown as CheckFinding[] };
 }
 
 /** Merges what the app pass steps answered into one result, in family order whatever order they ended in. The caller flushes the session. */
-export function mergeAppPass(input: Pick<AppRunInput, 'repoRoot' | 'tracked' | 'edition' | 'base'>, parts: AppPassParts, reports: readonly FamilyReport[]): AppRunResult {
+export function mergeAppPass(input: Pick<AppRunInput, 'repoRoot' | 'tracked' | 'base'>, parts: AppPassParts, reports: readonly FamilyReport[]): AppRunResult {
   const { repoRoot } = input;
   const base: RepositoryResult = parts.pass?.result ?? emptyResult(repoRoot, input.tracked.length);
   const extra: CheckFinding[] = [...(parts.format ?? []), ...(parts.db ?? []), ...(parts.wiring?.findings ?? [])];
-  const edition = input.edition ?? declaredEdition(repoRoot);
-  const judged = extra.length === 0 ? [] : withWhy(judgedFindings(extra, edition, skillRoot), readWhy(skillRoot, [...new Set(extra.map((finding) => finding.code))])) as CheckFinding[];
+  const judged = extra.length === 0 ? [] : withWhy(extra, readWhy(skillRoot, [...new Set(extra.map((finding) => finding.code))])) as CheckFinding[];
   // A family's findings reach the result once: the pass already holds the ones the always-run rules produced. A migration already on the
   // base is immutable, so what only a rewrite of it could clear is reported as a known item (R259, database-landed.mts).
   const findings = withLandedMigrationsKnown([...base.findings, ...judged], { repoRoot, base: input.base });
@@ -89,6 +86,3 @@ export function mergeAppPass(input: Pick<AppRunInput, 'repoRoot' | 'tracked' | '
   return { ...base, findings, counts, ok: counts.error === 0, families: reports, ...(parts.wiring ? { wiring: parts.wiring } : {}) };
 }
 
-function declaredEdition(repoRoot: string): string {
-  try { return readRepoDeclaration(loadSlotManifest(), repoRoot).edition ?? 'full'; } catch { return 'full'; }
-}

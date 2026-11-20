@@ -3,7 +3,7 @@ import { recordMemberOutcomes } from "../../harness/outcomes.js"
 import { loadRouting } from "../../harness/routing.js"
 import { refreshUsage } from "../../harness/usage.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 // A reply saved by Windows PowerShell starts with a byte order mark, which JSON.parse refuses.
 const BOM = String.fromCodePoint(0xfeff)
@@ -17,7 +17,6 @@ const BOM = String.fromCodePoint(0xfeff)
 export const providerSyncVerb = defineVerb({
     path: ["provider", "sync"],
     summary: "read provider usage from Orca's account list now (or a saved reply) into each pool's quota windows, and the ledgers' ended attempts into member outcomes",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor"],
     schema: "starci/provider-sync@1",

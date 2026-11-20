@@ -9,7 +9,7 @@ import { retireWorktrees } from "../../harness/worktree-gc.js"
 import type { GcEntry } from "../../harness/worktree-gc.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { samePath } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 interface ProjectRetireData {
     readonly ledger: string
@@ -96,7 +96,6 @@ const retireOrca = async (binary: OrcaBinary | undefined, repo: string, cwd: str
 export const projectRetireVerb = defineVerb({
     path: ["project", "retire"],
     summary: "retire an abandoned project's ledger from the host registry (no sweep, tick or pool count reads it), remove its harness worktrees and detach it from Orca; --restore reverses the registry",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/project-retire@1",

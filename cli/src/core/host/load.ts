@@ -9,7 +9,7 @@ import { openBusyRecords } from "../../harness/worktree-busy.js"
 import { registeredRepositories } from "../../harness/project-workers.js"
 import { captureTool } from "../../shared/exec.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { inOrder } from "../../harness/sequential.js"
 
 /** One heavy command as `host load` shows it: its slot row and the resident memory of the child it spawned. */
@@ -138,7 +138,6 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
 export const hostLoadVerb = defineVerb({
     path: ["host", "load"],
     summary: "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/host-load@1",

@@ -46,7 +46,7 @@ const withCode = (findings: { code: string; path?: unknown }[], code: string) =>
 const WEBHOOK = 'be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts';
 const WITH_WEBHOOKS = { ...APP, sides: { ...APP.sides, be: { ...APP.sides.be, patterns: ['webhooks'] } } };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: app check refuses a path no slot owns and accepts an owned path`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['be/src/stray/thing.ts']), 'HFS_SLOT_UNDECLARED'), ['be/src/stray/thing.ts']);
     assert.deepEqual(withCode(appFindings(edition, ['be/src/modules/domain/stock/index.ts']), 'HFS_SLOT_UNDECLARED'), []);

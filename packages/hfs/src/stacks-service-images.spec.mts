@@ -22,7 +22,7 @@ interface Fixture {
 /** An app with a dev compose environment and a production swarm environment, each declaring the services of the fixture. */
 function app(t: { after: (fn: () => void) => void }, { compose = 'services:\n  db:\n    image: postgres\n', swarm = 'services:\n  db:\n    image: postgres\n', dockerfile }: Fixture = {}): string {
   const root = mkdtemp(t as never, 'hfs-stacks-images-');
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project: 'demo' }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo' }));
   const stacks = path.join(root, '.starcistacks');
   for (const [environment, file, text] of [['dev', 'infra/compose/compose.yaml', compose], ['production', 'infra/swarm/stack.yaml', swarm]] as const) {
     fs.mkdirSync(path.dirname(path.join(stacks, environment, file)), { recursive: true });
@@ -36,7 +36,7 @@ function app(t: { after: (fn: () => void) => void }, { compose = 'services:\n  d
   return root;
 }
 
-const codes = (root: string): string[] => stacksServiceImageFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true }).map((finding) => finding.code);
+const codes = (root: string): string[] => stacksServiceImageFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true }).map((finding) => finding.code);
 
 test('R374 an upstream service with a named volume, a data bind, a socket and a read-only data file raises nothing', (t) => {
   const compose = `services:\n  db:\n    image: postgres\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n      - \${data}/pg:/backup\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n      - ./config/app.json:/etc/app.json:ro\n`;
@@ -91,7 +91,7 @@ test('R374 the fork list is the harness images/sources.json', () => {
   assert.deepEqual(forkImages(), expected);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`R374 a fresh ${edition} app raises nothing`, (t) => {
     const lock = (root: string): LockResult => { fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n'); return { ok: true }; };
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, `starci-images-${edition}-`), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock, initGit: init });

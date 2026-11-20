@@ -113,7 +113,7 @@ function seedPiiFindings(repoRoot: string, seeds: Parsed) {
   return findings;
 }
 
-/** R259 config/content checks, synchronously judged at the app root for both editions. */
+/** R259 config/content checks, synchronously judged at the app root. */
 export function databaseConfigFindings({ repoRoot, files = [], all = files, repo = {}, manifest, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo?: Repo; manifest?: Parsed; isRoot: boolean; inScope?: (file: string) => boolean }) {
   if (isRoot === false || ['be', 'fe'].some((value) => value === repo.profile)) return [];
   const parameters = dbParameters(manifest);

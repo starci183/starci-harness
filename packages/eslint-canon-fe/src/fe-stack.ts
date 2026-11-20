@@ -2,8 +2,7 @@
  * The rule that holds the front-end stack (`knowledge/hfs/fe-stack.yaml`, failure code `FE_STACK_FORBIDDEN`).
  *
  * ONE LIBRARY PER CONCERN. Every common front-end concern - GraphQL, REST, data hooks, toast, forms, state, realtime, i18n, UI,
- * icons, motion, dates, numbers, storage, charts, markdown, code - has one canonical library, the same for the lite and the full
- * edition. A second library for a concern is a second set of conventions a reader has to know and a
+ * icons, motion, dates, numbers, storage, charts, markdown, code - has one canonical library, the same in every app. A second library for a concern is a second set of conventions a reader has to know and a
  * second dependency a release has to keep current, and it always arrives one import at a time. The catalog names, per concern,
  * the alternatives a front end never imports; this rule refuses exactly those, read from the catalog, so the list lives once.
  *
@@ -31,7 +30,7 @@ export const feStackImport = defineRule({
     schema: [],
     messages: {
       forbidden:
-        "`{{name}}` is a forbidden alternative for the {{concern}} concern of the front-end stack. The stack has one library per concern, the same in every app and both editions: use {{canonical}} ({{pattern}}). {{why}}",
+        "`{{name}}` is a forbidden alternative for the {{concern}} concern of the front-end stack. The stack has one library per concern, the same in every app: use {{canonical}} ({{pattern}}). {{why}}",
     },
   },
   create(context) {

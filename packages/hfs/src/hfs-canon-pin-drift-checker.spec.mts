@@ -11,7 +11,7 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 const CODE = 'HFS_CANON_PIN_DRIFT';
 const pins = parseYaml(fs.readFileSync(path.resolve(import.meta.dirname, '../runtime/knowledge/hfs/canon-pins.yaml'), 'utf8')).pins;
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE}@${edition}: repository check rejects a drifting pin and accepts the exact version`, (t) => {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-pin-checker-'));
     t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));

@@ -33,7 +33,7 @@ function manifestInput(t: TestContext, edition: string, dependencies: object) {
   return { repoRoot, files: ['apps/web/package.json'], repo: { profile: 'fe', edition }, manifest: undefined };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`FE_SERVER_ACTION_FORBIDDEN rejects module and inline directives in ${edition}`, () => {
     const input = actionInput(edition, [
       source('apps/web/src/modules/orders/actions.ts', "'use strict'; 'use server'; export const save = async () => 1;"),

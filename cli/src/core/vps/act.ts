@@ -4,7 +4,7 @@ import { publicKeyOf } from "../../harness/vps/local.js"
 import { bootstrapPlan, swarmInitPlan, uiUpPlan } from "../../harness/vps/plan.js"
 import { ownerStore, requireKey, SERVER_KEYS } from "../../harness/vps/sealed.js"
 import { headline } from "../../shared/exec.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { EXECUTE, OWNER, pinsOf, planResult, requireAction, scopeOf, SERVER_ID } from "./shared.js"
 import type { VpsData } from "./shared.js"
@@ -17,7 +17,6 @@ import type { VpsData } from "./shared.js"
 export const vpsBootstrapVerb = defineVerb({
     path: ["vps", "bootstrap"],
     summary: "bring a managed server to ops/vps.yaml: ops user (key only, sudo), sshd hardening, firewall with only 80/443/ssh open, fail2ban or CSF lfd, automatic security updates, Docker at its pin; a dry run until --execute, idempotent",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-bootstrap@1",
@@ -57,7 +56,6 @@ export const vpsBootstrapVerb = defineVerb({
 export const vpsSwarmVerb = defineVerb({
     path: ["vps", "swarm"],
     summary: "`swarm init <id>`: make a managed server a one-manager Docker swarm advertised on its address, with the shared overlay network of ops/vps.yaml; a dry run until --execute, idempotent",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-swarm@1",
@@ -75,7 +73,6 @@ export const vpsSwarmVerb = defineVerb({
 export const vpsUiVerb = defineVerb({
     path: ["vps", "ui"],
     summary: "`ui up <id>`: deploy the Swarm UI (Portainer CE and its agent, digests pinned in contexts/stack/pins.yaml) on a managed server, published on no port; `vps domain add <id> <sub> --to ui` opens it through the tunnel; a dry run until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-ui@1",

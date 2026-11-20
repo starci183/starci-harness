@@ -27,7 +27,7 @@ const mutations: [string, (text: string) => string][] = [
   ['sonar-project.properties', (text: string) => text.replace('sonar.coverage.exclusions=', 'sonar.coverage.exclusions=be/src/modules/**,')],
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts the rendered coverage scope without HFS_COVERAGE_SCOPE_DRIFT`, async context => {
     const options = synced(context, edition);
     const findings = await managedFindings(options);

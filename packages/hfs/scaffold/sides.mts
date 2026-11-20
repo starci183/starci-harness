@@ -1,6 +1,6 @@
 // sides.mts - the root files of a new app for the sides it declares (PROJECT-1, R399): the stack declaration's `sides` field and the plain-words
 // line above it, and, for a project without a front end, the starter's fe components, images, local processes, probes, origins, Swarm services,
-// locked images and ingress sites taken out of the edition's templates (each YAML edit is comment-preserving and refused unless the text parses
+// locked images and ingress sites taken out of the templates (each YAML edit is comment-preserving and refused unless the text parses
 // to the edited document, yaml-block-edit.mts), with a README that cites only the declared sides.
 import type { ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 export { stackSidesVars } from '../sync/declared-sides.mjs';
@@ -79,28 +79,28 @@ function withoutFeSites(text: string, feApps: readonly string[], hosts: string[]
 }
 
 /** The README of a project that lacks an app side: what it holds, citing only the declared sides' paths and the scripts it has. */
-function sidesReadme({ project, edition, sides, contract, api }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind; api: string }): string {
+function sidesReadme({ project, sides, contract, api }: { project: string; sides: readonly ProjectSide[]; contract: ContractKind; api: string }): string {
   const held = [
     ...(sides.includes('be') ? [`- \`be/\`: the Nest back end, its api app in \`be/apps/${api}\`, serving ${contract === 'rest' ? `REST controllers described by the committed OpenAPI document \`be/contracts/${api}/openapi.json\` (\`npm run contract:emit\` writes it)` : 'GraphQL, whose schema `npm run contract:emit` commits once the app serves an operation'}.`] : []),
     ...(sides.includes('fe') ? ['- `fe/`: the Next front end, its apps under `fe/apps`.'] : []),
     ...(sides.includes('packages') ? [`- \`packages/\`: the root workspace packages, \`packages/${project}-shared\` first, built with \`npm run build:modules\`.`] : []),
-    ...(edition === 'lite' ? ['- `db/`: the SQL migrations, the schema authority of the database.'] : []),
+    '- `db/`: the SQL migrations, the schema authority of the database.',
   ];
   const missing = (['be', 'fe'] as const).filter((side) => !sides.includes(side)).map((side) => SIDE_WORDS[side]);
   const stack = [
     ...(sides.includes('be') ? [`NestJS in \`be/\` serving ${contract === 'rest' ? 'REST with an OpenAPI 3 document (@nestjs/swagger)' : 'GraphQL'}`] : []),
     ...(sides.includes('fe') ? ['Next.js in `fe/`'] : []),
     ...(sides.includes('packages') ? ['TypeScript workspace packages in `packages/`'] : []),
-    ...(edition === 'lite' ? ['PostgreSQL with SQL migrations in `db/`'] : []),
+    'PostgreSQL with SQL migrations in `db/`',
   ];
   return [
     `# ${project}`,
     '',
-    `One StarCi ${edition} app of the sides ${sides.join(', ')}.`,
+    `One StarCi app of the sides ${sides.join(', ')}.`,
     '',
     '## Overview',
     '',
-    `One StarCi ${edition} app with no ${missing.join(' and no ')}: \`hfs.json\` declares its sides (\`sides\`), and \`.starcistacks/application-stacks.yaml\` states the same ones.`,
+    `One StarCi app with no ${missing.join(' and no ')}: \`hfs.json\` declares its sides (\`sides\`), and \`.starcistacks/application-stacks.yaml\` states the same ones.`,
     '',
     '## Stack',
     '',
@@ -135,7 +135,7 @@ interface SidesFile { readonly path: string; readonly content: string }
  * services, locked images and stack entries of the starter's fe apps (`feApps`) removed and the README written for the declared sides; a rest
  * api named so in the stack declaration.
  */
-export function filesForSides<T extends SidesFile>(files: readonly T[], { project, edition, sides, contract, feApps, api = 'api' }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind; feApps: readonly string[]; api?: string }): T[] {
+export function filesForSides<T extends SidesFile>(files: readonly T[], { project, sides, contract, feApps, api = 'api' }: { project: string; sides: readonly ProjectSide[]; contract: ContractKind; feApps: readonly string[]; api?: string }): T[] {
   if (sides.includes('fe') && sides.includes('be') && contract === 'graphql') return [...files];
   const hosts: string[] = [];
   const withFe = sides.includes('fe');
@@ -145,7 +145,7 @@ export function filesForSides<T extends SidesFile>(files: readonly T[], { projec
     if (withFe) return file;
     if (/^\.starcistacks\/[^/]+\/infra\/swarm\/stack\.yaml$/u.test(file.path)) return { ...file, content: withoutFeKeys(file.content, file.path, 'services', feApps) };
     if (/^\.starcistacks\/[^/]+\/infra\/swarm\/releases\/images\.lock\.yaml$/u.test(file.path)) return { ...file, content: withoutFeKeys(file.content, file.path, 'images', feApps) };
-    if (file.path === 'README.md') return { ...file, content: sidesReadme({ project, edition, sides, contract, api }) };
+    if (file.path === 'README.md') return { ...file, content: sidesReadme({ project, sides, contract, api }) };
     // The codegen generates the front end's wire types: without fe the operational scripts folder starts empty (slot app.scripts).
     if (file.path === 'scripts/codegen.mjs') return { ...file, path: 'scripts/.gitkeep', content: '' };
     return file;

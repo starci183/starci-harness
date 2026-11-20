@@ -26,10 +26,9 @@ import { restDoorVariables } from './rest-doors.mjs';
 import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
 import { devServicesUpgrade, STORAGE_IMAGE } from './dev-services.mjs';
 import { storageNeed, staticsFilesOnDisk } from '../runtime/scripts/lib/storage-need.mjs';
-import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
+import { APP_SCOPE, SIDES, declaredAppSides, loadSlotManifest, presenceOf, resolveAppDeclaration, sideDeclared, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
-import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
 import { DESKTOP_SIDE } from '../runtime/scripts/hfs/desktop-side.mjs';
 import { desktopVariables } from './desktop.mjs';
@@ -128,7 +127,7 @@ const factHolds = (fact: string, source: AppSourceFacts | undefined): boolean =>
 // package.json, section = the whole file but the one marked section a database verb owns (db/bootstrap.sql, whose squash section
 // `starci app db baseline --squash` writes). A template that can hold a comment opens with {{header}}; a file whose exact content is
 // specified (JSON, the eslint one-liner) has no header.
-const MODE_OF_GROUP: Readonly<Record<string, string>> = Object.freeze({ 'package-scripts': 'scripts', 'package-scripts-lite': 'scripts', 'db-bootstrap': 'section' });
+const MODE_OF_GROUP: Readonly<Record<string, string>> = Object.freeze({ 'package-scripts': 'scripts', 'db-bootstrap': 'section' });
 const GLOB_CHARACTERS = new Set('*?<>{}[]');
 const literalFile = (file: string): boolean => file.length >= 2 && !file.endsWith('/') && ![...file].some(character => GLOB_CHARACTERS.has(character));
 
@@ -144,37 +143,32 @@ const onSide = (scope: string, file: string): string => (scope === APP_SCOPE ? f
 function managedTemplate(scope: string, group: string, file: string, hasTemplate: (name: string) => boolean): string | undefined {
   const directories = [scope, 'common'];
   const undotted = directories.map(dir => templateName(dir, group, file)).find(name => hasTemplate(name));
-  if (undotted || !['skeleton', 'skeleton-lite'].includes(group)) return undotted;
+  if (undotted || group !== 'skeleton') return undotted;
   return directories.map(dir => `${dir}/${group}/${file}`).find(name => hasTemplate(name));
 }
 
-function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean, needs: (fact: string) => boolean): Target[] {
-  if (!slot.profiles.includes(scope) || !slotInEdition(manifest, slot, edition)) return [];
+function slotTargets(slot: ManifestSlot, scope: string, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean, needs: (fact: string) => boolean): Target[] {
+  if (!slot.profiles.includes(scope)) return [];
   // A slot whose managed files serve a side renders them only for a project that declares it (managedWhenSides, PROJECT-1).
   if ((slot.managedWhenSides ?? []).some(side => !declares(side))) return [];
   // A slot whose managed files serve a condition (managedWhen: storage) renders them only for a project where it holds (storage-need.mts).
   if ((slot.managedWhen ?? []).some(fact => !needs(fact))) return [];
   // An opt-in slot is rendered only for a repository that enables it (app.browser-config with `browser: true`).
   if (slot.presence === 'opt-in' && !enabled(slot)) return [];
-  if (edition === 'lite' && litePresenceOf(slot, scope) === 'forbidden') return [];
-  const group = managedGroupOf(slot, edition);
+  if (presenceOf(slot, scope) === 'forbidden') return [];
+  const group = slot.managedBy;
   if (group === undefined) return [];
-  const effectivePath = edition === 'lite' ? (slot.lite?.path ?? slot.path) : slot.path;
-  return (braceVariants(effectivePath) as string[]).map((file): Target => {
-    const managedKey = edition === 'lite' && slot.liteManagedBy !== undefined ? 'liteManagedBy' : 'managedBy';
-    if (!literalFile(file)) throw new SyncError('HFS_SYNC_MANIFEST_MANAGED', `slot ${slot.id} names ${managedKey} but its path ${effectivePath} is not a list of literal files (${file})`);
+  return (braceVariants(slot.path) as string[]).map((file): Target => {
+    if (!literalFile(file)) throw new SyncError('HFS_SYNC_MANIFEST_MANAGED', `slot ${slot.id} names managedBy but its path ${slot.path} is not a list of literal files (${file})`);
     const template = managedTemplate(scope, group, file, hasTemplate);
     if (!template) throw new SyncError('HFS_SYNC_TEMPLATE_MISSING', `slot ${slot.id} manages ${file} for ${scope}, but templates/{${scope},common}/${group} has no template for it`);
     return { path: file, template, mode: MODE_OF_GROUP[group] ?? 'file', slot: slot.id, group };
   });
 }
 
-function unlistedTargets(scope: string, edition: string): Target[] {
+function unlistedTargets(scope: string): Target[] {
   if (scope !== APP_SCOPE) return [];
-  return UNLISTED_TARGETS.map(target => {
-    if (edition !== 'lite') return { ...target };
-    return { ...target, template: target.path === '.gitignore' ? 'app/gitignore-lite' : 'app/starciwork.gitignore-lite' };
-  });
+  return UNLISTED_TARGETS.map(target => ({ ...target }));
 }
 
 /**
@@ -183,11 +177,11 @@ function unlistedTargets(scope: string, edition: string): Target[] {
  * its scope or under common. `enabled(slot)` decides an opt-in slot (renderTargets passes the declaration's); without it every slot
  * counts, which is what an inventory of the templates needs.
  */
-export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true, needs = (_fact: string): boolean => true }: {
-  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean; needs?: (fact: string) => boolean;
+export function targetsOf(scope: string, { manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true, needs = (_fact: string): boolean => true }: {
+  manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean; needs?: (fact: string) => boolean;
 } = {}): Target[] {
-  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled, declares, needs));
-  return [...listed, ...unlistedTargets(scope, edition)];
+  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, hasTemplate, enabled, declares, needs));
+  return [...listed, ...unlistedTargets(scope)];
 }
 
 const lf = (text: string): string => text.replace(/\r\n/g, '\n');
@@ -467,7 +461,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
       return [line('cli', built(entry)), ...(connections.length ? [line('migrate', `${built(entry)} ${MIGRATE_COMMAND}`)] : [])];
     }),
     ...fe.map(entry => line(`start:${entry.name}`, `npm run start -w ${workspace(entry)}`)),
-    ...(app.edition !== 'lite' && app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
+    ...(app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
     ...(libraryPackageFolders(app, source).length ? [line('build:modules', 'turbo run build --filter=./packages/*')] : []),
     line('docker:build', images.map(image => `npm run docker:build:${image.entry.name}`).join(' && ')),
     ...images.map(image => line(`docker:build:${image.entry.name}`, imageCommand(image))),
@@ -488,7 +482,7 @@ export const STYLE_GLOB = '{apps,packages}/*/src/**/*.css';
 
 /** Required app images (every back-end app but a client cli, which ships as an npm package) plus lite front ends whose optional Dockerfile the source holds. */
 function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): ImageEntry[] {
-  const frontend = app.sides.fe.apps.filter(entry => app.edition !== 'lite' || source?.hasImage?.(dockerfilePath('fe', entry.name)));
+  const frontend = app.sides.fe.apps.filter(entry => source?.hasImage?.(dockerfilePath('fe', entry.name)));
   return [...app.sides.be.apps.filter(entry => entry.kind !== CLIENT_CLI_KIND).map((entry): ImageEntry => ({ side: 'be', entry })), ...frontend.map((entry): ImageEntry => ({ side: 'fe', entry }))];
 }
 
@@ -497,15 +491,15 @@ export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts,
   // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5); so does one whose
   // deploy block names the storage image (`deploy.images.<service>: {app: storage}`), so statics/ ships through the normal release, never a hand-pinned digest.
   const named = declared.some(image => image.app === STORAGE_IMAGE_APP);
-  const storage = app.edition === 'lite' && (source?.storageNeeded === true || named) ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
-  const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }, ...storage] : [];
+  const storage = source?.storageNeeded === true || named ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
+  const db = [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }, ...storage];
   return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }
 
 /** The Dockerfile of the app a deploy image names (be first, then fe, then a lite app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
 function stackDockerfile(app: ResolvedApp, name: string): string {
-  if (app.edition === 'lite' && name === DB_IMAGE_APP) return DB_DOCKERFILE;
-  if (app.edition === 'lite' && name === STORAGE_IMAGE_APP) return STORAGE_DOCKERFILE;
+  if (name === DB_IMAGE_APP) return DB_DOCKERFILE;
+  if (name === STORAGE_IMAGE_APP) return STORAGE_DOCKERFILE;
   const side = (['be', 'fe'] as const).find(which => app.sides[which].apps.some(entry => entry.name === name));
   if (!side) throw new SyncError('HFS_SYNC_STACK_IMAGE', `deploy.images names the app ${name}, which hfs.json does not declare under be or fe`);
   return dockerfilePath(side, name);
@@ -598,7 +592,6 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const stack = source.stack ?? { images: [], passEnv: [] };
   const fe = app.sides.fe;
   const packages = opensPackages(fe);
-  const lite = app.edition === 'lite';
   const withBe = sideDeclared(app, 'be');
   const withFe = sideDeclared(app, 'fe');
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
@@ -641,7 +634,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     pgmqSource: PGMQ.source,
     pgmqSha256: PGMQ.sha256,
     // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
-    backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
+    backingScripts: (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both. A project without fe
     // (PROJECT-1) has no fe build and no wire codegen (scripts/codegen.mjs is rendered with fe only: managedWhenSides), and its typecheck and lint
     // generate nothing first.
@@ -732,10 +725,10 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
   return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => (side === DESKTOP_SIDE ? app.desktop !== undefined : sideDeclared(app, side as ProjectSide)), needs: fact => factHolds(fact, source) });
+    const declaredTargets = targetsOf(scope, { manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => (side === DESKTOP_SIDE ? app.desktop !== undefined : sideDeclared(app, side as ProjectSide)), needs: fact => factHolds(fact, source) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
-      .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
+      .filter(target => !(source?.workPresent === false && target.path === '.starciwork/.gitignore'))
       // The gallery serves on the base port + ruleParams.gallery.portOffset (R395): an app that declares no local.basePort has no port to render, and the rule asks for one.
       .filter(target => target.group !== 'gallery' || galleryPort(source?.stack?.basePort, galleryParams(manifest)) !== null);
     return [...(scope === APP_SCOPE ? packagesLintTargets(app, source) : []), ...targets.map((target): RenderedTarget => {
@@ -893,15 +886,11 @@ const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept)',
   ...HARNESS_CHECK_COPIES,
 });
-/** The edition hfs.json declares, as `read` gives it (null when unreadable). */
-const readEdition = (read: (relative: string) => string | null): unknown => {
-  try { return (JSON.parse(read('hfs.json') ?? 'null') as { edition?: unknown } | null)?.edition ?? null; } catch { return null; }
-};
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
-const retiredReason = (file: string): string => RETIRED_FILES[file] ?? LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
+const retiredReason = (file: string): string => RETIRED_FILES[file] ?? LITE_RETIRED_FILES[file] ?? 'an app generates no Supabase database types';
 
 /** The app-relative retired files, and files of the retired folders of a lite app, that still exist under `root`; sync --execute deletes them, the dry run reports them. */
-export function retiredFiles(root: string, hfs: { edition?: string } | null | undefined): string[] {
+export function retiredFiles(root: string): string[] {
   const found: string[] = [];
   const walk = (rel: string): void => {
     const full = path.join(root, rel);
@@ -911,7 +900,6 @@ export function retiredFiles(root: string, hfs: { edition?: string } | null | un
     else found.push(rel);
   };
   for (const file of Object.keys(RETIRED_FILES)) walk(file);
-  if (hfs?.edition !== 'lite') return found;
   for (const dir of LITE_RETIRED_DIRS) walk(dir);
   for (const file of Object.keys(LITE_RETIRED_FILES)) walk(file);
   return found;
@@ -945,7 +933,7 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
   };
   const services = devServicesUpgrade(root, read);
-  for (const edit of [...services.edits, ...staticsStarterEdits(root, read), ...(readEdition(read) === 'lite' ? harnessCheckScriptEdits(read) : [])]) {
+  for (const edit of [...services.edits, ...staticsStarterEdits(root, read), ...harnessCheckScriptEdits(read)]) {
     const earlier = edits.get(edit.path);
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }
@@ -1008,8 +996,8 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
     if (write) for (const edit of declared) { fs.mkdirSync(path.dirname(path.join(root, edit.path)), { recursive: true }); fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
     else for (const edit of declared) out(`HFS_SYNC_DRIFT ${edit.path}: ${edit.reason}; run "npx --no-install starci app sync --execute"`);
     const notices: string[] = [];
-    const { hfs, targets } = await renderRepo(root, { presets, parseYaml, notices });
-    const retired = retiredFiles(root, hfs);
+    const { targets } = await renderRepo(root, { presets, parseYaml, notices });
+    const retired = retiredFiles(root);
     if (targets.some(target => target.path === 'README.md')) for (const notice of new Set(notices)) out(notice);
     if (write) {
       const { held, unchecked } = guardWrites(root, guardedWrites(root, targets, retired), loadTs);

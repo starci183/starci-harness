@@ -6,7 +6,7 @@ import { list } from '../lib/list.mjs';
 import { renameOver } from '../api/fs/rename-over.mjs';
 import { underWorktrees } from '../lib/worktree-exclude.mjs';
 import { valueAfter } from '../lib/cli-arg.mjs';
-import { isLiteWorkRoot, workPathAllowed } from '../lib/work-edition.mjs';
+import { isAppWorkRoot, workPathAllowed } from '../lib/app-work.mjs';
 export { slash } from '../lib/path-key.mjs';
 
 // reason: YAML parsed from disk; every reader checks the fields it uses
@@ -62,7 +62,7 @@ export function workRootOf(dir: string): string | null {
     // A product worktree lives at <repo>/.starciwork/worktrees/<wf>/<op> (DESIGN §16.7): the `.starciwork` holding the
     // worktrees container is never the Work root of a path inside one of them.
     if (path.basename(at) === '.starciwork' && prev && path.basename(prev) === 'worktrees') return workspaceRoot;
-    if (path.basename(at) === '.starciwork') return isLiteWorkRoot(at) ? at : workspaceRoot ?? at;
+    if (path.basename(at) === '.starciwork') return isAppWorkRoot(at) ? at : workspaceRoot ?? at;
     if (!workspaceRoot && fs.existsSync(path.join(at, 'workspace.yaml'))) workspaceRoot = at;
     if (path.dirname(at) === at) return workspaceRoot;
   }

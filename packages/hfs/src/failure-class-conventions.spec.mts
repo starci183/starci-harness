@@ -27,7 +27,7 @@ function tree(t: TestContext, files: Record<string, string>) {
   return { root, files: Object.keys(files) };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`BE_FAILURE_CLASS_BY_TEXT@${edition} refuses a back-end source that matches a failure code text, as a literal or a pattern`, (t) => {
     const { root, files } = tree(t, {
       'src/modules/platform/retry/transient.ts': 'export const isTransient = (error: { code?: string }) => error.code === "ECONNRESET" || error.code === \'40001\'\n',
@@ -68,7 +68,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`HFS_CONCEPT_CONVENTIONS_MISSING@${edition} accepts the concept the scaffold renders`, (t) => {
-    const skeleton = path.join(TEMPLATES, edition === 'lite' ? 'skeleton-lite' : 'skeleton', '.starciwork', 'concepts');
+    const skeleton = path.join(TEMPLATES, 'skeleton', '.starciwork', 'concepts');
     const { root, files } = tree(t, Object.fromEntries(fs.readdirSync(skeleton).map((name) => [`.starciwork/concepts/${name}`, fs.readFileSync(path.join(skeleton, name), 'utf8')])));
     assert.deepEqual(conceptConventionsFindings({ repoRoot: root, files }), []);
   });

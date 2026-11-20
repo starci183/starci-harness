@@ -43,7 +43,7 @@ function fixture(t: TestContext, edition: string, apps: App[] = MULTIPLE_APPS, m
   return { repoRoot, files: ['hfs.json', NEST_CLI], repo };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts valid single-service and multiple-service Nest monorepos`, (t) => {
     assert.deepEqual(monorepoFindings(fixture(t, edition, SINGLE_APP)), []);
     assert.deepEqual(monorepoFindings(fixture(t, edition)), []);

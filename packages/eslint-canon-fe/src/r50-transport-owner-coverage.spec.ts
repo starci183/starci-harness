@@ -36,7 +36,7 @@ const GRAPH_CLIENT = "apps/web/src/modules/api/graphql/clients/index.ts"
 const GRAPH_HOOK = "apps/web/src/hooks/project/useProject.ts"
 const GRAPH_BAD = "apps/web/src/hooks/project/useUnowned.ts"
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R50 ${edition} accepts owned transport shapes and rejects unowned requests, state or locale`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
     const tester = canonTester(new RuleTester({

@@ -30,7 +30,7 @@ const lockedOk = (root: string): LockResult => {
 };
 
 const lite = (t: Parameters<typeof mkdtemp>[0]) =>
-  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-auth-package-'), harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
+  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-auth-package-'), harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
 test('a lite starter depends on @starci/auth at its pin and on none of the identity libraries, in the root and in the web app', (t) => {
   const root = lite(t);

@@ -13,9 +13,8 @@ const slotSchema = z.object({
     path: z.string(),
     appKind: z.string().optional(),
     presence: presenceSchema,
-    litePresence: z.union([presenceSchema, z.record(z.string(), presenceSchema)]).optional(),
+    sidePresence: z.record(z.string(), presenceSchema).optional(),
     tracked: z.enum(["tracked", "ignored", "external"]),
-    editions: z.array(z.enum(["lite", "full"])).optional(),
     rules: z.array(z.string()).optional(),
 })
 /** One slot of hfs/slots.yaml, as far as the anatomy and the rule pages of a path read it. */
@@ -34,9 +33,7 @@ const frontMatterSchema = z.object({
     files: z.array(z.object({ slot: z.string().optional() })).optional(),
 })
 
-/** The editions and sides the anatomy is rendered for, in this order. */
-const EDITIONS = ["lite", "full"] as const
-export type AnatomyEdition = (typeof EDITIONS)[number]
+/** The sides the anatomy is rendered for, in this order. */
 const SIDES = ["app", "be", "fe"] as const
 export type Side = (typeof SIDES)[number]
 
@@ -143,14 +140,8 @@ const readSources = (knowledge: string): Sources => {
     return { ...readSlotCatalog(knowledge), rules: parsed(rulesFile, readYaml(rulesFile), z.object({ rules: z.array(ruleSchema) })).rules }
 }
 
-/** The presence of a slot in one edition and side, or undefined when the slot does not exist there. */
-export const presenceIn = (slot: Slot, edition: AnatomyEdition, side: Side): Presence | undefined => {
-    if (slot.editions !== undefined && !slot.editions.includes(edition)) return undefined
-    if (edition === "lite" && slot.litePresence !== undefined) {
-        return typeof slot.litePresence === "string" ? slot.litePresence : (slot.litePresence[side] ?? slot.presence)
-    }
-    return slot.presence
-}
+/** The presence of a slot on one side: its `sidePresence` for that side, else its own. */
+export const presenceIn = (slot: Slot, side: Side): Presence => slot.sidePresence?.[side] ?? slot.presence
 
 /** Splits a slot path on `/` outside braces; each directory segment keeps its trailing `/`. */
 const segmentsOf = (path: string): string[] => {
@@ -272,15 +263,15 @@ const renderNode = (node: Node, depth: number, context: { readonly lines: string
     for (const child of node.children.values()) renderNode(child, depth + 1, context)
 }
 
-const renderTree = (edition: AnatomyEdition, side: Side, sources: Sources, dangling: Set<string>, detail: RuleDetail): string[] => {
+const renderTree = (side: Side, sources: Sources, dangling: Set<string>, detail: RuleDetail): string[] => {
     const present = sources.slots.flatMap((slot) => {
-        const presence = slot.profiles.includes(side) ? presenceIn(slot, edition, side) : undefined
+        const presence = slot.profiles.includes(side) ? presenceIn(slot, side) : undefined
         return presence === undefined ? [] : [{ slot, presence }]
     })
     const shown = present.filter((entry) => entry.presence !== "forbidden" && entry.slot.tracked === "tracked")
     const presenceOf = new Map(shown.map((entry) => [entry.slot.id, entry.presence]))
     const where = side === "app" ? "app root" : side + "/"
-    const lines = [`### ${edition} · ${where}`, ""]
+    const lines = [`### ${where}`, ""]
     const root = collapse(buildTree(shown.map((entry) => entry.slot)))
     const line = (slot: Slot): string => renderSlot(slot, presenceOf.get(slot.id) ?? slot.presence, side, sources, dangling, detail)
     for (const child of root.children.values()) renderNode(child, 0, { lines, line })
@@ -299,7 +290,7 @@ export const renderAnatomy = (knowledge: string): AnatomyRender => {
     const sources = readSources(knowledge)
     const dangling = new Set<string>()
     const lines = [BEGIN_MARKER, ""]
-    for (const edition of EDITIONS) for (const side of SIDES) lines.push(...renderTree(edition, side, sources, dangling, "full"))
+    for (const side of SIDES) lines.push(...renderTree(side, sources, dangling, "full"))
     lines.push(END_MARKER)
     return { block: lines.join("\n"), dangling: [...dangling].sort(byCodeUnit) }
 }
@@ -319,41 +310,37 @@ export const slotRuleGaps = (knowledge: string): ReadonlyMap<string, readonly st
     return new Map([...gaps].sort(([left], [right]) => byCodeUnit(left, right)))
 }
 
-/** The editions a slice is cut for. */
-export const SLICE_EDITIONS: readonly string[] = EDITIONS
-
 /** The sides a slice is cut for: a slice holds the app root and that side. */
 export const SLICE_SIDES: readonly string[] = ["be", "fe"]
 
-/** The file of one slice, beside anatomy.md so its links resolve the same: `anatomy-<edition>-<side>.md`. */
-export const sliceFile = (edition: string, side: string): string => `anatomy-${edition}-${side}.md`
+/** The file of one slice, beside anatomy.md so its links resolve the same: `anatomy-<side>.md`. */
+export const sliceFile = (side: string): string => `anatomy-${side}.md`
 
 /** The marker a generated slice carries in place of the anatomy's markers: the whole file is generated. */
 export const SLICE_MARKER = "<!-- generated by `starci contexts anatomy --execute` from hfs/slots.yaml; do not edit -->"
 
 /**
- * One slice of the anatomy: the app root and one side of one edition, the part a task of that side and edition reads instead
+ * One slice of the anatomy: the app root and one side, the part a task of that side reads instead
  * of every tree, its rules named by id alone. The whole file is generated; anatomy.md keeps the why and the full tree.
  */
-export const renderSlice = (knowledge: string, edition: string, side: string): string => {
-    const chosenEdition = EDITIONS.find((item) => item === edition)
+export const renderSlice = (knowledge: string, side: string): string => {
     const chosenSide = SIDES.find((item) => item === side && item !== "app")
-    if (chosenEdition === undefined || chosenSide === undefined) {
-        throw new Refusal("ANATOMY_SLICE_UNKNOWN", `no slice ${edition}/${side}; editions: ${EDITIONS.join(", ")}, sides: ${SLICE_SIDES.join(", ")}`)
+    if (chosenSide === undefined) {
+        throw new Refusal("ANATOMY_SLICE_UNKNOWN", `no slice ${side}; sides: ${SLICE_SIDES.join(", ")}`)
     }
     const sources = readSources(knowledge)
     const dangling = new Set<string>()
     const lines = [
-        `# Project anatomy: ${chosenEdition}, app root and ${chosenSide}/`,
+        `# Project anatomy: app root and ${chosenSide}/`,
         "",
         SLICE_MARKER,
         "",
-        `The slots of a ${chosenEdition} app at its root and under \`${chosenSide}/\`, cut from [anatomy.md](anatomy.md), which says why the tree`,
+        `The slots of an app at its root and under \`${chosenSide}/\`, cut from [anatomy.md](anatomy.md), which says why the tree`,
         "has this shape and how a line reads: path, slot, presence, the topics that teach it, the ids of the rules that judge it. Which",
         "lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`starci contexts search \"<rule id>\"`).",
         "",
-        ...renderTree(chosenEdition, "app", sources, dangling, "ids"),
-        ...renderTree(chosenEdition, chosenSide, sources, dangling, "ids"),
+        ...renderTree("app", sources, dangling, "ids"),
+        ...renderTree(chosenSide, sources, dangling, "ids"),
     ]
     return `${lines.join("\n").trimEnd()}\n`
 }

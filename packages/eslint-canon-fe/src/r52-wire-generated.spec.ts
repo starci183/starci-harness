@@ -8,7 +8,7 @@ import { at, fixtureHfs, LITE_FE_DECLARATION, canonTester } from '../fixtures/ty
 
 // The tree-level FE_WIRE_GENERATED cases (codegen script, generated output, schema stamp) judge @starci/hfs's
 // appFrontendFindings and stay with that package; this file proves the lint rule only.
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts generated or unknown response types and rejects handwritten wire claims`, () => {
     const hfs = fixtureHfs(edition === 'lite' ? LITE_FE_DECLARATION : undefined, { lite: edition === 'lite' });
     const tester = canonTester(new RuleTester({

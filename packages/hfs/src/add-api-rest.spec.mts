@@ -17,7 +17,7 @@ const app = (t: TestContext, contract: 'graphql' | 'rest'): string => {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), `hfs-add-api-${contract}-`));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
   return scaffoldApp({
-    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), sides: ['be'], contract,
+    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), sides: ['be'], contract,
     lock: (dir: string) => { fs.writeFileSync(path.join(dir, 'package-lock.json'), '{}\n'); return { ok: true as const }; }, initGit: init,
   }).root;
 };

@@ -13,7 +13,7 @@ const OUTCOME = at("apps/web/src/modules/api/graphql/types.ts")
 const HOOK = at("apps/web/src/hooks/project/useProject.ts")
 const RESULT = 'export type Result<T> = { success: true; data: T } | { success: false; error: string }'
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R51 ${edition} accepts auth status mapping and rejects missing refused branches`, () => {
     const tester = typedTester({ declaration: edition === "lite" ? LITE_FE_DECLARATION : undefined, lite: edition === "lite" })
     tester.run("client-maps-auth-to-refused", clientMapsAuthToRefused, {

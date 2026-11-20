@@ -7,7 +7,7 @@ import type { AttemptRow, ResultRow, TaskRow } from "../../harness/tasks.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { opWorktreeOf } from "../../harness/land.js"
 import type { OpWorktree } from "../../harness/land.js"
 
@@ -147,7 +147,6 @@ const summaryOf = (task: TaskRow): TaskSummary => ({
 export const taskStatusVerb = defineVerb({
     path: ["task", "status"],
     summary: "one task with its contract, attempts, latest result, Op worktree and check runs, and the kept output of the red checks of its newest verify; without an id, the table of tasks",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/task-status@1",

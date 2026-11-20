@@ -39,7 +39,7 @@ function appFixture(t: TestContext, edition: string, files: Record<string, strin
 const automaticFindings = (root: string) => checkHfsWithoutConfig(root).violations
   .filter(item => item.ruleId === CODE);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} passes unit-only hooks and workflows, the e2e script run by hand`, t => {
     assert.deepEqual(automaticFindings(appFixture(t, edition)), []);
   });

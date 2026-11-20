@@ -10,7 +10,7 @@ import type { TaskRow } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { callerRole, ROLE_ENV } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { chooseLaunch, parseTimeout, routeLines, seatStartVerb, startSeat } from "../seat/start.js"
 import type { SeatStartData } from "../seat/start.js"
@@ -79,7 +79,6 @@ const assertLaunchAllowed = (agent: string | undefined, model: string | undefine
 export const taskSendVerb = defineVerb({
     path: ["task", "send"],
     summary: "queue a fit contract as a task; --launch also starts an Orca worker on it; prints the task id",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "supervisor", "owner", "coordinator", "agent"],
     schema: "starci/task-send@1",

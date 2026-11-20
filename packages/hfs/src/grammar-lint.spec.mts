@@ -68,8 +68,8 @@ test('commented template variables render active JavaScript and absent optional 
 });
 
 test('both editions render the universal canon and the explicitly selected family factory', () => {
-  for (const edition of ['full', 'lite']) {
-    const declaration = starterDeclaration('demo', undefined, edition);
+  {
+    const declaration = starterDeclaration('demo', undefined);
     const config = (renderTargets(declaration, PRESETS).find(target => target.path === 'fe/eslint.config.mjs') as RenderedTarget).content;
     assert.match(config, /from "@starci\/eslint-canon-fe"/);
     assert.match(config, /from "@starci\/eslint-grammar-core"/);

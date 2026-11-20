@@ -15,8 +15,8 @@ const DEFAULT_REGISTRY = path.resolve(HERE, '../../../../../cli/dist/registry.js
 /** The options the program itself takes before any verb (cli/src/main.ts buildProgram), plus commander's --help. */
 interface RegistryFlag { kind: string; summary: string; positional?: boolean; required?: boolean }
 /** One verb of the starci CLI registry (cli/src/registry.ts ALL_VERBS). */
-export interface RegistryVerb { path: readonly [string, (string | undefined)?]; summary: string; flags: Record<string, RegistryFlag>; editions: readonly string[] }
-interface CatalogEntry { summary: string; flags: Array<Record<string, unknown>>; positional: Array<{ name: string; required: boolean; variadic: boolean }>; editions: string[]; json: string }
+export interface RegistryVerb { path: readonly [string, (string | undefined)?]; summary: string; flags: Record<string, RegistryFlag> }
+interface CatalogEntry { summary: string; flags: Array<Record<string, unknown>>; positional: Array<{ name: string; required: boolean; variadic: boolean }>; json: string }
 interface CatalogGroup { verbs: Record<string, CatalogEntry>; self?: CatalogEntry }
 
 const GLOBAL = [
@@ -27,7 +27,7 @@ const GLOBAL = [
 
 const TYPES: Record<string, string> = { boolean: 'boolean', string: 'string', list: 'list' };
 
-/** One registry verb as the catalog entry validate-args.mts reads: its options, its positional slots in order, its editions. */
+/** One registry verb as the catalog entry validate-args.mts reads: its options, its positional slots in order. */
 function entryOf(verb: RegistryVerb): CatalogEntry {
   const specs = Object.entries(verb.flags);
   return {
@@ -36,7 +36,6 @@ function entryOf(verb: RegistryVerb): CatalogEntry {
       .map(([name, spec]) => ({ name, type: TYPES[spec.kind], summary: spec.summary, ...(spec.required === true ? { required: true } : {}) })),
     positional: specs.filter(([, spec]) => spec.positional === true || spec.kind === 'rest')
       .map(([name, spec]) => ({ name, required: spec.required === true, variadic: spec.kind === 'rest' })),
-    editions: [...verb.editions],
     json: 'flag',
   };
 }

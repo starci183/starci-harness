@@ -46,21 +46,17 @@ declare module "*/runtime/scripts/hfs/slots.mjs" {
     export interface CatalogEnforcer {
         readonly kind: string
         readonly id: string
-        readonly editions?: readonly string[]
         readonly planned?: boolean
     }
     /** One catalogued rule (`knowledge/hfs/rules.yaml`). */
     export interface CatalogRule {
         readonly id: string
         readonly code: string
-        readonly editions?: readonly string[]
         readonly enforcers: readonly CatalogEnforcer[]
     }
     /** The loaded rule catalog. */
     export interface RuleCatalog {
         readonly rules: readonly CatalogRule[]
-        /** Whether the enforcer `kind:id` runs under `edition`. */
-        enforcerJudgedIn(kind: string, id: string, edition?: string): boolean
     }
     /** Load the rule catalog under a runtime root. */
     export function loadRuleCatalog(input?: { root?: string }): RuleCatalog
@@ -71,16 +67,6 @@ declare module "*/runtime/scripts/hfs/slots.mjs" {
     }
     /** Open the manifest under `root` with the resolver of `repoRoot` (or of a parsed declaration). */
     export function openHfs(input?: { root?: string; repoRoot?: string; declaration?: object; side?: string | null }): OpenedHfs
-}
-
-declare module "*/runtime/scripts/hfs/edition-slots.mjs" {
-    /** One catalogued rule, by the fields the edition judgement reads. */
-    export interface EditionRule {
-        readonly editions?: readonly string[]
-        readonly enforcers: readonly { readonly kind: string; readonly id: string; readonly editions?: readonly string[] }[]
-    }
-    /** Whether the enforcer `kind:id` of the catalog `rules` runs under `edition`. */
-    export function enforcerJudgedInEdition(rules: readonly EditionRule[], kind: string, id: string, edition?: string): boolean
 }
 
 declare module "*/runtime/scripts/hfs/architecture/jwt-ast.mjs" {

@@ -68,7 +68,7 @@ const tree = (t: TestContext, workflows: Record<string, string>, version = '1.2.
   return root;
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the pipeline renders plan, checks, images, verdict and a deploy call per auto environment, in declared order`, () => {
     const workflows = rendered(edition, TWO);
     const ci: Doc = parseWorkflow(workflows['ci']!);
@@ -187,7 +187,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(releaseProvenanceFindings({ repoRoot: root, files: ['package.json', ...files(workflows)], repo: { kind: 'app', edition }, isRoot: true }), []);
     assert.deepEqual(workflowContextsFindings(ctx), []);
     assert.deepEqual(gitTriggerFindings(ctx), []);
-    assert.deepEqual(ciStandardFindings({ doc: parseWorkflow(workflows['ci']!), file: '.github/workflows/ci.yml', scope: 'app-ci', edition }), []);
+    assert.deepEqual(ciStandardFindings({ doc: parseWorkflow(workflows['ci']!), file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
     for (const name of WORKFLOWS.filter((workflow) => workflows[workflow])) {
       const text = workflows[name]!;
       assert.doesNotMatch(text, /^\s*(?:pull_request_target|workflow_run|schedule)\s*:/mu, name);
@@ -222,7 +222,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ci.jobs.sonar, undefined);
     assert.deepEqual(ci.jobs.verdict.needs, ['plan', 'fast', 'lint', 'test', 'coverage', 'build', 'images']);
     assert.doesNotMatch(String(ci.jobs.verdict.steps[0].run), /expect sonar/u);
-    assert.deepEqual(ciStandardFindings({ doc: ci, file: '.github/workflows/ci.yml', scope: 'app-ci', edition }), []);
+    assert.deepEqual(ciStandardFindings({ doc: ci, file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
   });
 
   test(`${edition}: ci.imageCache registry caches the layers in the registry, deploy.platforms adds QEMU for another architecture`, () => {
@@ -242,12 +242,12 @@ test('lite: sync retires the db-deploy.yml workflow; full keeps its own', (t) =>
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, '.github', 'workflows', 'db-deploy.yml'), 'name: deploy database\n');
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), ['.github/workflows/db-deploy.yml']);
-  assert.deepEqual(retiredFiles(root, { edition: 'full' }), []);
+  assert.deepEqual(retiredFiles(root), ['.github/workflows/db-deploy.yml']);
+  assert.deepEqual(retiredFiles(root), []);
   assert.equal(rendered('lite', TWO)['db-deploy'], undefined);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: no managed workflow runs a world layer and sync retires a tracked e2e.yml (R12)`, (t) => {
     const workflows = rendered(edition, TWO);
     assert.equal(workflows['e2e'], undefined, 'no e2e.yml is rendered');
@@ -257,10 +257,10 @@ for (const edition of ['lite', 'full']) {
     assert.equal(Object.keys((parseWorkflow(workflows['ci']!) as Doc).jobs).some((id) => /e2e|integration|contract/u.test(id)), false, 'ci.yml has no world job');
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-e2e-retired-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-    assert.deepEqual(retiredFiles(root, { edition }), []);
+    assert.deepEqual(retiredFiles(root), []);
     fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
     fs.writeFileSync(path.join(root, '.github', 'workflows', 'e2e.yml'), 'name: e2e\non:\n  workflow_dispatch:\n');
-    assert.deepEqual(retiredFiles(root, { edition }), ['.github/workflows/e2e.yml']);
+    assert.deepEqual(retiredFiles(root), ['.github/workflows/e2e.yml']);
   });
 }
 

@@ -1,13 +1,12 @@
 import { locateOrca } from "../../harness/orca/client.js"
 import { startSupervisor, supervisorTitle } from "../../harness/supervisor.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 
 /** Starts a project's routed Supervisor agent in the project's main checkout and refuses a second live seat of that project. */
 export const supervisorStartVerb = defineVerb({
     path: ["supervisor", "start"],
     summary: "launch the project's [Supervisor] <project> agent in its main checkout (the project of the working directory, or --project)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/supervisor@1",

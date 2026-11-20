@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { basename, dirname, join, resolve } from "node:path"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { captureGitSync } from "../../shared/git.js"
-import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
+import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { cliPackageName, packageVersion } from "../version.js"
 
 /**
@@ -219,7 +219,6 @@ export const dataStandardVerb = defineVerb({
     path: ["data", "standard"],
     summary:
         "init a seed-standard copy repository (the folder, named <name>-seed-standard, or any folder with --name <name>-seed-standard): .gitattributes, an empty plain manifest.json, the commit hook .githooks/pre-commit (core.hooksPath set) and the CI workflow .github/workflows/seed-standard.yml, both running starci app check --staged (R400, R434); --adapter adds raw/README.md and an adapter/ (main.ts, a convert.ts stub, package.json pinning @starci/seed, tsconfig.json) whose output over raw/ the hook and CI compare byte for byte with the committed layout (HFS_DATA_ADAPTER_DRIFT); an existing file is kept unless --force",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/data-standard@1",

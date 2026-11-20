@@ -1,7 +1,6 @@
 // slot-semantic-problems.mts - semantic checks for the HFS slot manifest.
-import { isPlainObject } from '../../engine/plain-object.mjs';
 import { triggerProblems } from './declaration-slots.mjs';
-import { litePresenceOf, slotInEdition } from './edition-slots.mjs';
+import { presenceOf } from './slot-presence.mjs';
 import { manifestKind, RUNTIME_KIND, runtimeSemanticProblems, tierKindProblems } from './manifest-shape.mjs';
 import { APP_SCOPE, isSide, PROFILES } from './slot-manifest-shape.mjs';
 import type { Slot, SlotManifest } from './manifest-shape.mjs';
@@ -51,13 +50,6 @@ function checkSlotProfiles(slot: Slot, manifest: SlotManifest, claimed: Map<stri
   }
 }
 
-function checkLitePath(slot: Slot, pathVars: Set<string>, varsOf: SemanticHelpers['varsOf'], bad: string[], braceVariants: SemanticHelpers['braceVariants'], compileVariant: SemanticHelpers['compileVariant']): void {
-  if (slot.lite?.path === undefined) return;
-  for (const name of varsOf(slot.lite.path)) if (!pathVars.has(name)) bad.push(`slot ${slot.id}: lite.path binds <${name}>, which the path does not`);
-  for (const variant of braceVariants(slot.lite.path)) {
-    try { compileVariant(slot, variant); } catch (error) { bad.push(`slot ${slot.id}: lite.path ${variant} does not compile (${(error as Error).message})`); }
-  }
-}
 
 function checkNamedPathBindings(slot: Slot, pathVars: Set<string>, varsOf: SemanticHelpers['varsOf'], bad: string[]): void {
   for (const name of Object.keys(slot.requiredInstances ?? {})) {
@@ -84,11 +76,10 @@ function checkSlotComposition(slot: Slot, manifest: SlotManifest, bad: string[])
   if (slot.layers !== undefined && slot.tier !== 'none' && !slot.profiles.every((profile) => (manifest.tiers[profile] as SlotManifest['tiers'][string])[slot.tier]?.lowerLayerOnly)) bad.push(`slot ${slot.id}: layers need a lowerLayerOnly tier`);
 }
 
-function checkLiteDeclaration(slot: Slot, manifest: SlotManifest, bad: string[]): void {
-  if (!slotInEdition(manifest, slot, 'lite') && (slot.litePresence !== undefined || slot.lite !== undefined)) bad.push(`slot ${slot.id}: litePresence/lite on a slot lite never sees (editions)`);
-  if (isPlainObject(slot.litePresence) && slot.profiles.includes(APP_SCOPE)) bad.push(`slot ${slot.id}: an app-root slot takes a bare litePresence, not a per-side map`);
+function checkSidePresence(slot: Slot, bad: string[]): void {
+  if (slot.sidePresence !== undefined && slot.profiles.includes(APP_SCOPE)) bad.push(`slot ${slot.id}: an app-root slot has one presence, not a per-side sidePresence`);
   for (const profile of slot.profiles) {
-    if (litePresenceOf(slot, profile) === 'forbidden' && typeof slot.goesTo !== 'string') bad.push(`slot ${slot.id}: forbidden in lite for ${profile}, so it says where the content goes (goesTo)`);
+    if (presenceOf(slot, profile) === 'forbidden' && typeof slot.goesTo !== 'string') bad.push(`slot ${slot.id}: forbidden for ${profile}, so it says where the content goes (goesTo)`);
   }
 }
 
@@ -99,8 +90,7 @@ function checkSlotSemantics(slot: Slot, manifest: SlotManifest, claimed: Claimed
   checkSlotProfiles(slot, manifest, claimed.patterns, bad, helpers.braceVariants);
   if (slot.appKind !== undefined && !pathVars.has('app')) bad.push(`slot ${slot.id}: an app-kind slot binds <app> in its path`);
   if (slot.requiredWhen !== undefined && slot.presence !== 'required') bad.push(`slot ${slot.id}: requiredWhen belongs to a required slot`);
-  checkLiteDeclaration(slot, manifest, bad);
-  checkLitePath(slot, pathVars, helpers.varsOf, bad, helpers.braceVariants, helpers.compileVariant);
+  checkSidePresence(slot, bad);
   checkNamedPathBindings(slot, pathVars, helpers.varsOf, bad);
   checkSlotPatternCompilation(slot, bad, helpers.braceVariants, helpers.compileVariant);
   checkSlotComposition(slot, manifest, bad);

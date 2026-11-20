@@ -4,7 +4,7 @@ import { appUnserved, containerName, dockerServer, fileSha256, fileStamps, loadU
 import type { Prepared, UatReceipt } from "../../harness/uat.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { prepareWorkspace } from "../check/workspace-deps.js"
 import type { StepResult } from "../check/scope.js"
 
@@ -164,7 +164,6 @@ const prepareApp = async (root: string, timeoutMs: number, progress: (line: stri
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
     summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout what a wave gives the checkout it judges, its install and the workspace dependencies its app imports (UAT_APP_SETUP_FAILED when one cannot be given): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["op", "worker", "agent", "kernel", "supervisor", "owner"],
     schema: "starci/uat-run@1",

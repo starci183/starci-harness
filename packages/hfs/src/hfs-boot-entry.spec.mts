@@ -49,7 +49,7 @@ function fixture(t: TestContext, files: Record<string, string>, boot: unknown = 
   fs.mkdirSync(FIXTURES, { recursive: true });
   const dir = fs.mkdtempSync(path.join(FIXTURES, 'boot-entry-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 }));
-  const repo = { kind: 'app', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api', ...(boot === null ? {} : { boot }) }] } } };
+  const repo = { kind: 'app', sides: { be: { apps: [{ name: 'api', kind: 'api', ...(boot === null ? {} : { boot }) }] } } };
   const all: Record<string, unknown> = { 'hfs.json': repo, 'be/tsconfig.json': config, ...Object.fromEntries(Object.entries(files).map(([file, text]) => [`be/${file}`, text])) };
   for (const [file, value] of Object.entries(all)) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
@@ -112,7 +112,7 @@ test('a missing module file is an error and an app that declares no boot entry i
 });
 
 test('hfs.json declares boot on a be app as { module?, export?, factory?, env?, timeoutMs? } and refuses the rest', () => {
-  const declared = (boot: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api', ...(side === 'be' ? { boot } : {}) }] }, fe: { apps: [{ name: 'web', kind: 'next', ...(side === 'fe' ? { boot } : {}) }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.includes('boot'));
+  const declared = (boot: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api', ...(side === 'be' ? { boot } : {}) }] }, fe: { apps: [{ name: 'web', kind: 'next', ...(side === 'fe' ? { boot } : {}) }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.includes('boot'));
   assert.deepEqual(declared({ module: 'apps/api/src/seed.module.ts', export: 'SeedModule', env: { PORT: '3000' } }), []);
   assert.deepEqual(declared({ factory: 'bootRoot' }), []);
   assert.deepEqual(declared({ factory: 'bootRoot', timeoutMs: 60000 }), []);
@@ -127,7 +127,7 @@ test('hfs.json declares boot on a be app as { module?, export?, factory?, env?, 
   assert.equal(declared({}, 'fe').length, 1);
 });
 
-const BE_FILES = { 'be/package.json': JSON.stringify({ name: 'be' }), 'be/src/app.ts': 'export {};\n', 'package-lock.json': '{}', 'hfs.json': JSON.stringify({ edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api', boot: {} }] } } }) };
+const BE_FILES = { 'be/package.json': JSON.stringify({ name: 'be' }), 'be/src/app.ts': 'export {};\n', 'package-lock.json': '{}', 'hfs.json': JSON.stringify({ sides: { be: { apps: [{ name: 'api', kind: 'api', boot: {} }] } } }) };
 const green = (): BootResult => ({ ok: true, status: 'checked', apps: ['api'], findings: [], loaded: [], states: [{ app: 'api', state: 'green' }] });
 const red = (): BootResult => ({ ok: false, status: 'checked', apps: ['api'], loaded: [], states: [{ app: 'api', state: 'red' }], findings: [{ code: BOOT_ENTRY_FAILED, level: 'error', path: 'be/apps/api/src/app.module.ts', reason: 'Nest refused the composition', message: 'does not compose' }] });
 
@@ -157,7 +157,7 @@ test('the boot entry is a verdict of check/build, run by the hfs gate: its error
   assert.equal(changed.runs, 1, 'a back-end change runs it again');
   assert.deepEqual(changed.result.findings, []);
   assert.deepEqual(changed.result.lines, ['  boot entry api: green']);
-  const undeclared = await check(t, first.records, { ...BE_FILES, 'hfs.json': JSON.stringify({ edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } }) }, green);
+  const undeclared = await check(t, first.records, { ...BE_FILES, 'hfs.json': JSON.stringify({ sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } }) }, green);
   assert.equal(undeclared.runs, 0);
   assert.deepEqual(undeclared.result, { findings: [], lines: [] });
   assert.deepEqual(undeclared.records, []);

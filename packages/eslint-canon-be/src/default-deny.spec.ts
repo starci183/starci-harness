@@ -76,7 +76,7 @@ test("R290 BE_PUBLIC_REASON_CLOSED publishes its own rule at error", () => {
     assert.equal(recommended["starci-be/public-reason-closed"], "error")
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R290 BE_PUBLIC_REASON_CLOSED keeps the public vocabulary closed in ${edition}`, () => {
       assert.doesNotThrow(() => {
           const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }] }), edition }

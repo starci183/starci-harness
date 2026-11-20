@@ -6,7 +6,7 @@ import { SEAT_WORKER_LOST, getSeat } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** What one ping asked, what Orca answered, and the seat's liveness after it was recorded. */
 interface SeatPingData {
@@ -33,7 +33,6 @@ const idleNote = (idleSeconds: number | null): string => (idleSeconds === null ?
 export const seatPingVerb = defineVerb({
     path: ["seat", "ping"],
     summary: "ask Orca whether a seat's worker is alive and record it (last pong, quiet time); a worker Orca reports gone is marked worker-lost (exit 1)",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor", "coordinator"],
     schema: "starci/seat-ping@1",

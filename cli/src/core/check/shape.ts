@@ -1,5 +1,5 @@
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { loadShapeManifest } from "./shape-manifest.js"
 import { describeShape, scanShape } from "./shape-scan.js"
 import { treeFiles } from "./tree-files.js"
@@ -8,7 +8,6 @@ import { treeFiles } from "./tree-files.js"
 export const checkShapeVerb = defineVerb({
     path: ["check", "shape"],
     summary: "place every file of the harness tree in its slot of contexts/hfs/harness.yaml; red for an unplaced or forbidden file, a missing required slot, or a stale or expired exception",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-shape@1",

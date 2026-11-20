@@ -1,4 +1,4 @@
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { describeScope, describeStep, lintPackage, resolveScope } from "./scope.js"
 import type { Scope, StepResult } from "./scope.js"
 
@@ -11,7 +11,6 @@ interface LintData {
 export const checkLintVerb = defineVerb({
     path: ["check", "lint"],
     summary: "lint the changed source files, each with the nearest ESLint config up to the repository root (every file of each package with --all)",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-lint@1",

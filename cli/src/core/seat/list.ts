@@ -9,7 +9,7 @@ import { CLOSED_SEAT_STATUSES, listSeats } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** What Orca says of a seat right now: its worker, or why it could not tell (which proves nothing about the worker). */
 type LiveView = WorkerShown | { readonly error: string }
@@ -40,7 +40,6 @@ const livenessCell =(liveness: SeatLiveness): string => (liveness.quietSeconds >
 export const seatListVerb = defineVerb({
     path: ["seat", "list"],
     summary: "list the seats of this project's ledger with each one's liveness from its recorded pings; --live asks Orca for each open seat's worker state",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/seat-list@1",

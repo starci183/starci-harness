@@ -1,4 +1,4 @@
-// R273: an explicitly supplied lcov report proves 100% per measured logic file in either edition.
+// R273: an explicitly supplied lcov report proves 100% per measured logic file.
 // The denominator is the existing slot-derived coverage scope, never the source records present in the report.
 // lcov carries lines, functions and branches; the unit runner also enforces its statement threshold.
 import fs from 'node:fs';
@@ -7,7 +7,7 @@ import type ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { coverageScope, declaredPackageScopes, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
-import { editionRuleParams, effectiveSlot, slotInEdition } from '../edition-slots.mjs';
+import { effectiveSlot } from '../slot-presence.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -92,18 +92,14 @@ function parseLcov(text: string) {
   return { records, problems };
 }
 
-/** Apply the same edition data view as the slot resolver before deriving the coverage scope. */
-function manifestOfEdition(manifest: Parsed, edition: string) {
-  return {
-    ...manifest,
-    slots: manifest.slots.filter((slot: Parsed) => slotInEdition(manifest, slot, edition)).map((slot: Parsed) => effectiveSlot(slot, 'be', edition)),
-    ruleParams: { ...manifest.ruleParams, be: editionRuleParams(manifest.ruleParams.be, edition) },
-  };
+/** Apply the same side view as the slot resolver before deriving the coverage scope. */
+function beManifest(manifest: Parsed) {
+  return { ...manifest, slots: manifest.slots.map((slot: Parsed) => effectiveSlot(slot, 'be')) };
 }
 
 function inventory({ files, all, repo, manifest, repoRoot }: { files: string[]; all: string[]; repo: Repo; manifest: Parsed; repoRoot?: string | undefined }) {
   const prefix = repo.profile === 'app' || repo.sides ? 'be/' : '';
-  const effective = manifestOfEdition(manifest, repo.edition ?? 'full');
+  const effective = beManifest(manifest);
   const scope = coverageScope(effective, repo.providers ?? repo.sides?.be?.providers ?? []);
   const measures = measuredBy(scope);
   const tracked = [...new Set((all ?? files ?? []).map(slash))];

@@ -7,7 +7,7 @@ import { responseCookieAttributes } from "./cookies.ts"
 const FILE = at("src/features/session/transport/http/session.controller.ts")
 const HEAD = 'import type { Response } from "express"\ndeclare const res: Response\n'
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`${edition} accepts protected cookies and rejects unsafe cookie writers`, () => {
         typedTester().run("response-cookie-attributes", responseCookieAttributes, {
             valid: [

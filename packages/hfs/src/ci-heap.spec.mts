@@ -13,7 +13,7 @@ interface Job { steps?: Step[] }
 const standard = parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/ci-standard.yaml', import.meta.url), 'utf8'));
 const nodeOptions = `--max-old-space-size=${standard.heap.minMiB}`;
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} CI gives typecheck, lint and coverage the standard heap on each step`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'heap-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },
@@ -29,7 +29,7 @@ for (const edition of ['full', 'lite']) {
       .filter((step: Step) => standard.heap.steps.some((needle: string) => String(step.run ?? '').includes(needle)));
     assert.ok(heavy.length >= 3, 'typecheck, lint and coverage are checked');
     for (const step of heavy) assert.equal(step.env?.NODE_OPTIONS, nodeOptions, step.name);
-    assert.deepEqual(ciStandardFindings({ doc, file: target.path, scope: 'app-ci', edition }), []);
+    assert.deepEqual(ciStandardFindings({ doc, file: target.path, scope: 'app-ci' }), []);
   });
 }
 

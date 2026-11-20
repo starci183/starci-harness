@@ -23,7 +23,7 @@ export class PlaceOrderHandler {
     }
 }`
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`feature-thin accepts delegation and rejects a business branch in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         ruleTester({ root: TYPED_ROOT, hfs }).run("feature-thin", featureThin, {

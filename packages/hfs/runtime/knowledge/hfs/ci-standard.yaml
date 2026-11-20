@@ -11,15 +11,13 @@ title: The one StarCi CI standard
 # over the runtime's own workflows) checks every item marked `check: ci-standard`; the other items are owned by the rule or render named in `by`.
 # Apps get the standard only through `starci app sync`: the managed CI files are sync targets, and `starci app sync` (the dry run) / the app check refuse drift.
 
-# The jobs of the managed app CI (job ids, in this order), per edition; `sonar` exists when the Sonar service is enabled. `plan` decides what a run does,
+# The jobs of the managed app CI (job ids, in this order); `sonar` exists when the Sonar service is enabled. `plan` decides what a run does,
 # `images` builds the images once per commit beside the checks (a call of the reusable images.yml, so GitHub names its jobs `images / ...`), `verdict` is
 # the one job branch protection requires and the deploy waits for.
 #   required   the jobs a green run has concluded success. The CLI's `stack deploy --ci-run` reads this list from here and asks GitHub for each of them
 #              in the run it is given, so the list names the jobs GitHub reports under their own id; the verdict needs `images`, so it proves them.
 #   pipeline   the jobs the workflow must hold besides those, judged through the verdict
-jobs:
-  full: {required: [plan, fast, lint, test, coverage, build, verdict], pipeline: [images], optional: [sonar]}
-  lite: {required: [plan, fast, lint, test, coverage, build, verdict], pipeline: [images], optional: [db-types, sonar]}
+jobs: {required: [plan, fast, lint, test, coverage, build, verdict], pipeline: [images], optional: [db-types, sonar]}
 
 # One job per environment with deploy.auto follows the verdict: its id starts with this prefix and it calls the reusable stack-deploy.yml.
 deployJobPrefix: deploy-
@@ -64,7 +62,7 @@ items:
     by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
   - id: job-shape
     title: the job shape plan / fast / lint / test / coverage / build / images / verdict / sonar and the deploy jobs
-    requires: "the managed CI holds exactly the jobs of `jobs` for its edition and one `deploy-<env>` job per environment with deploy.auto; the unit run is a step of `test`; the merge, the coverage proof and the Codecov upload are steps of `coverage`, which alone holds the OIDC id-token; the verdict needs every other job and runs always; a deploy job needs the verdict and calls the reusable stack-deploy.yml, and no other job deploys"
+    requires: "the managed CI holds exactly the jobs of `jobs` and one `deploy-<env>` job per environment with deploy.auto; the unit run is a step of `test`; the merge, the coverage proof and the Codecov upload are steps of `coverage`, which alone holds the OIDC id-token; the verdict needs every other job and runs always; a deploy job needs the verdict and calls the reusable stack-deploy.yml, and no other job deploys"
     covers: [app-ci]
     check: ci-standard
   - id: pull-request-ci
@@ -83,8 +81,8 @@ items:
     covers: [app-ci]
     by: [R251 HFS_DEPLOY_WORKFLOW]
   - id: boot-proof
-    title: a lite app's fast job proves its Nest composition
-    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck (and after the root packages are built, packages-built-first), so a provider a domain module needs and an app root does not compose fails the run instead of every boot; a full app's CI has no e2e boot step either: the e2e suite is never part of CI (no-world-layers), and the wiring gate is the boot proof where an app has one"
+    title: an app's fast job proves its Nest composition
+    requires: "the fast job of an app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck (and after the root packages are built, packages-built-first), so a provider a domain module needs and an app root does not compose fails the run instead of every boot; a full app's CI has no e2e boot step either: the e2e suite is never part of CI (no-world-layers), and the wiring gate is the boot proof where an app has one"
     covers: [app-ci]
     check: ci-standard
   - id: packages-built-first

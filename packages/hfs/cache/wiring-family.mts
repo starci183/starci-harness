@@ -36,7 +36,7 @@ function proofReads(session: CheckSession, wiring: WiringResult, side: ReadonlyS
 }
 
 /** The boot proof family. `explicit` is the whole-tree proof of `--wiring`; without it a missing install leaves the compile unjudged, as the content finder does. */
-export async function runWiringFamily(session: CheckSession, { repoRoot, edition, files, run, execute }: { repoRoot: string; edition?: string | undefined; files?: readonly string[] | undefined; run?: ((repoRoot: string) => WiringResult | Promise<WiringResult>) | undefined; execute?: HeavyNodeRun | undefined }): Promise<WiringFamilyResult> {
+export async function runWiringFamily(session: CheckSession, { repoRoot, files, run, execute }: { repoRoot: string; files?: readonly string[] | undefined; run?: ((repoRoot: string) => WiringResult | Promise<WiringResult>) | undefined; execute?: HeavyNodeRun | undefined }): Promise<WiringFamilyResult> {
   const decision = session.decide('wiring');
   const records = new RecordSet(session.records(WIRING_FOLDER));
   const key = sideKey(repoRoot, session.index, 'be');
@@ -44,8 +44,7 @@ export async function runWiringFamily(session: CheckSession, { repoRoot, edition
   const context = sessionReadsContext(session);
   const prove = async (): Promise<WiringResult> => {
     if (run) return run(repoRoot);
-    const declared = readRepoDeclaration(loadSlotManifest(), repoRoot);
-    const repo = { ...declared, edition: edition ?? declared.edition };
+    const repo = readRepoDeclaration(loadSlotManifest(), repoRoot);
     const proof = await appWiringAsync({ repoRoot, repo: repo as never, files: [...(files ?? trackedFiles(repoRoot))], execute });
     const installed = fs.existsSync(path.join(repoRoot, 'node_modules')) || fs.existsSync(path.join(repoRoot, 'be', 'node_modules'));
     const findings = proof.findings.filter((finding) => installed || finding.reason !== 'module or proof could not be compiled');

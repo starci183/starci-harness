@@ -242,7 +242,7 @@ test("the token table is the manifest's, not the rule's", () => {
     assert.equal(fallback.double, "mock")
 })
 
-for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edition} real sibling function subjects are values and collaborators still require kit doubles`, () => {
+for (const edition of ['lite'] as const) test(`spec-infra-double-from-kit: ${edition} real sibling function subjects are values and collaborators still require kit doubles`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const settings = { starci: { hfs } }
     const filename = at("src/modules/domain/order/function-subject.mapper.spec.ts")
@@ -395,7 +395,7 @@ const LOGIC_SPECS = [
     { role: "client", path: "src/modules/integrations/mail/mail.client.spec.ts", stem: "mail.client" },
 ]
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const settings = { starci: { hfs } }
     for (const { role, path, stem } of LOGIC_SPECS) {

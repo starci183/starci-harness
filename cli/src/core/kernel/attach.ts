@@ -1,13 +1,12 @@
 import { attachKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci kernel attach <workflow> --launch <id>`: the Kernel agent's first command; its loop is then `kernel next` / `kernel submit`. */
 export const kernelAttachVerb = defineVerb({
     path: ["kernel", "attach"],
     summary: "adopt the launched Kernel agent's terminal as coordinator of the workflow's child Run and its [Kernel] task",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel"],
     schema: "starci/kernel-attached@1",

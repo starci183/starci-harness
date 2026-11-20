@@ -24,10 +24,9 @@ const FILES = {
     [`${DATABASE}/billing.config.ts`]: "export const billingConfig = () => ({ host: process.env.BILLING_HOST });\n",
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R84 accepts database-owned construction and rejects a domain connection in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const code = 'import { DataSource } from "typeorm"; export const source = new DataSource({})'
         ruleTester({ root: TYPED_ROOT, hfs }).run("one-connection-per-database", oneConnectionPerDatabase, {
             valid: [{ filename: at(`${DATABASE}/database.module.ts`), code }],

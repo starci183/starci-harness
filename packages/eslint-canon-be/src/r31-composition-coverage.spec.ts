@@ -5,7 +5,7 @@ import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
 import { ruleNamed } from '../fixtures/rule-tester.ts';
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} passing composed transport and violating orphan transport in a reached feature`, () => {
     const reached = 'src/features/api/orders/transport/http/orders-http.module.ts';
     const orphan = 'src/features/api/orders/transport/graphql/orders-graphql.module.ts';

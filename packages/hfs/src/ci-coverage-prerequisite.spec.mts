@@ -10,7 +10,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 const report = 'be/coverage/lcov.info';
 const verify = 'npx starci app coverage verify ' + report;
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} coverage job runs only the coverage verify over the merged report, inside its timeout`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'coverage-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },

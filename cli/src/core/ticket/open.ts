@@ -10,7 +10,7 @@ import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { mainCheckout } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import type { Role } from "../../shared/verb.js"
 import { projectFrom } from "../supervisor/driver.js"
 import { assertKindRole, FEEDBACK_KIND, openFeedbackItem } from "./feedback.js"
@@ -87,7 +87,6 @@ const evidenceFileTail = (cwd: string, evidenceFile: string | undefined): string
 export const ticketOpenVerb = defineVerb({
     path: ["ticket", "open"],
     summary: "file what the Supervisor cannot resolve: a defect for Debug or a question for the owner, deduped (a repeat bumps occurrences); --task and --decision wait on it; --kind feedback records the owner's words",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: EVERYONE,
     schema: "starci/ticket@1",

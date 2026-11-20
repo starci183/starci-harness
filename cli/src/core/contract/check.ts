@@ -4,7 +4,7 @@ import { patternsOfPaths, undeclaredPatterns } from "../../harness/hfs-patterns.
 import type { PatternNeed } from "../../harness/hfs-patterns.js"
 import { loadOps } from "../../harness/ops.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 interface ContractCheckData {
     readonly file: string
@@ -29,7 +29,6 @@ interface ContractCheckData {
 export const contractCheckVerb = defineVerb({
     path: ["contract", "check"],
     summary: "judge whether a contract is fit to send: schema, label, presets, concrete allowPaths, its op's base kept, the context budget, a harness-observed behavioural check",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/contract-check@1",

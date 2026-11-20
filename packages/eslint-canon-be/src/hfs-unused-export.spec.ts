@@ -18,7 +18,7 @@ const textAt = (files: Readonly<Record<string, string>>, file: string) => {
 
 const sourceCase = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, file: string) => ({ filename: fixture.at(file), code: textAt(files, file) });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} unit service and logic client specs consume public injection tokens through module aliases`, t => {
     const files = {
       'tsconfig.json': JSON.stringify({ compilerOptions: {

@@ -1,7 +1,7 @@
 import { canonOf, loadPolicy, resolveProfile } from "../../harness/policy.js"
 import type { Policy, RuntimeGate } from "../../harness/policy.js"
 import type { RunOptions } from "../../shared/exec.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { baseCwd, judgeAgainstRuns, judgedAgainstBase, runAtBase } from "./base-findings.js"
 import type { BaseJudgement, BaseRun } from "./base-findings.js"
 import { canonPackage } from "./canon.js"
@@ -145,7 +145,6 @@ const runTier = async (cwd: string, treeRoot: string | undefined, flags: TierFla
 export const checkRunVerb = defineVerb({
     path: ["check", "run"],
     summary: "run the runtime tier of the project's policy profile over the scope of the diff, or of the given paths when the diff changes nothing, building first the workspace dependencies whose entries are missing (the CI tier runs on CI after the push)",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: EVERYONE,
     schema: "starci/check-run@1",

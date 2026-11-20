@@ -326,15 +326,6 @@ rules:
       - BE_SCHEMA_OWNER
     enforcers:
       - {kind: eslint-be, id: schema-owner}
-  - id: R36
-    code: BE_SQL_OUTSIDE_PERSISTENCE
-    law: Raw SQL is `sql`-tagged `SqlText` in the owning capability's `persistence/<name>.sql.ts`, `.query()` takes only `SqlText`, and no QueryBuilder is used.
-    editions: [full]
-    failureCodes:
-      - BE_SQL_OUTSIDE_PERSISTENCE
-    enforcers:
-      - {kind: eslint-be, id: sql-text-only}
-      - {kind: eslint-be, id: no-query-builder}
   - id: R37
     code: BE_ENTITY_IN_CONTRACT
     law: No ORM entity appears in a contract or transport type.
@@ -1099,14 +1090,6 @@ rules:
       - HFS_PEER_INTEGRATION_MISSING
     enforcers:
       - {kind: hfs, id: peer-integrations}
-  - id: R112
-    code: BE_INTEGRATION_SPEC_MISSING
-    law: Every back-end integration has an integration spec that registers its own module through the test world, references its error codes and drives an outage.
-    editions: [full]
-    failureCodes:
-      - BE_INTEGRATION_SPEC_MISSING
-    enforcers:
-      - {kind: hfs, id: integration-specs}
   - id: R113
     code: FE_GRAPHQL_CONTRACT
     law: Every GraphQL operation a front end keeps in a `.graphql` file validates against the back-end contract snapshot that declares its root field.
@@ -1300,14 +1283,6 @@ rules:
       - HFS_EVENT_CONTRACT
     enforcers:
       - {kind: hfs, id: services-event-contract}
-  - id: R167
-    code: BE_ASYNC_SPEC_MISSING
-    law: Every consumed event is named by an e2e spec that publishes it, reads the effect and redelivers it, driving the compensation flow for a saga step.
-    editions: [full]
-    failureCodes:
-      - BE_ASYNC_SPEC_MISSING
-    enforcers:
-      - {kind: hfs, id: services-async-specs}
   - id: R168
     code: BE_SERVICE_ISOLATION
     law: A service app imports no file of a sibling service app; services meet only through the `be/src` libraries and the wire.
@@ -1343,14 +1318,6 @@ rules:
       - BE_SAGA_CONSUMER_DEDUPE
     enforcers:
       - {kind: hfs, id: saga-consumer-dedupe}
-  - id: R173
-    code: BE_SAGA_E2E_MISSING
-    law: Every saga compensation path has an e2e spec that names its event and injects a failure through the test world.
-    editions: [full]
-    failureCodes:
-      - BE_SAGA_E2E_MISSING
-    enforcers:
-      - {kind: hfs, id: saga-e2e}
   - id: R174
     code: BE_CONTEXT_OWNER
     law: Each `hfs.json` connection is a bounded context owned by one api or worker app; an app composes only its own contexts, and the migrate and cli apps compose all.
@@ -1493,11 +1460,10 @@ rules:
     enforcers:
       - {kind: hfs, id: coverage-scope-drift}
   - id: R212
-    code: HFS_EDITION_INVALID
-    law: "`hfs.json` names an edition the manifest knows (full or lite, absent means full), and a lite app keeps the full code structure while running the minimal production topology its edition pattern defines."
+    code: HFS_EDITION_DEPRECATED
+    law: "An app has ONE edition, what the live apps run. (a) The full code structure, slots, patterns and back-end unit specs. (b) No Work features catalog: `.starciwork` is optional and admits only .gitignore, workspace.yaml, brand/** and the product concepts. (c) Chat agents code directly and run the app gates before each commit; no Kernel op is required. (d) The app runs its own stack on Docker Swarm with the backing services it declares: its own PostgreSQL db service, S3-compatible storage, Passport identity, and one minimal instance of each backing service hfs.json sides.be.backing declares (Redis for the queue, Qdrant for vectors); a client library of an undeclared backing service is HFS_BACKING_UNDECLARED and a declared service no dependency consumes is HFS_BACKING_UNUSED. The event bus is pgmq in the db service, the queue BullMQ on the declared Redis fed by the Postgres outbox. (e) The integration and e2e test world (useTestWorld, a browser journey) is allowed and runs only on request (R12). The hfs.json `edition` field is deprecated: any value is accepted and ignored with the warning HFS_EDITION_DEPRECATED, and the field is dropped in a later train."
     failureCodes:
-      - HFS_EDITION_INVALID
-      - HFS_EDITION_FORBIDDEN_PRESENT
+      - HFS_EDITION_DEPRECATED
       - HFS_STARCIWORK_LITE_FORBIDDEN
       - HFS_BACKING_UNDECLARED
       - HFS_BACKING_UNUSED
@@ -1531,7 +1497,6 @@ rules:
   - id: R220
     code: HFS_LITE_SECRET_CUSTODY
     law: A lite app holds no secret material in the tree outside the sealed `.starcistacks/<env>/secrets/<slug>.enc` members.
-    editions: [lite]
     failureCodes:
       - HFS_LITE_SECRET_CUSTODY
     enforcers:
@@ -1665,7 +1630,6 @@ rules:
   - id: R255
     code: DB_APP_ROLE
     law: The declared back-end database role holds only the privileges it needs, none of them on schema `auth` (accounts are reached through the identity account doors), and the tables it owns force row level security unless exempted with a reason.
-    editions: [lite]
     failureCodes:
       - DB_APP_ROLE
       - DB_FORCE_RLS_DEFAULT
@@ -1674,7 +1638,6 @@ rules:
   - id: R256
     code: DB_POLICY_TAUTOLOGY
     law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, read only by policies whose roles are all declared in db.scopeRoles, compared with the owning column of db.scopeColumns; a scope role is granted only to the application role), invoker-secured views and revoked execute on exposed definers."
-    editions: [lite]
     failureCodes:
       - DB_POLICY_TAUTOLOGY
       - DB_VIEW_UNSAFE
@@ -1686,7 +1649,6 @@ rules:
   - id: R257
     code: DB_BASELINE_SHAPE
     law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--execute` is explicit.
-    editions: [lite]
     failureCodes:
       - DB_BASELINE_SHAPE
       - DB_ARCHIVE_MUTATED
@@ -1695,7 +1657,6 @@ rules:
   - id: R258
     code: DB_PGMQ_DECLARED
     law: pgmq is the event bus and carries no job queue; every pgmq queue is an event-bus topic queue named by a literal constant, bound to its topic by a literal binding, and granted only to the application role.
-    editions: [lite]
     failureCodes:
       - DB_PGMQ_DECLARED
     enforcers:
@@ -1703,7 +1664,6 @@ rules:
   - id: R259
     code: DB_EXTENSION_ALLOWED
     law: Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced, also by the previous release's sources. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an entry of hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN.
-    editions: [lite]
     failureCodes:
       - DB_EXTENSION_ALLOWED
       - DB_MIGRATION_DESTRUCTIVE
@@ -1840,7 +1800,6 @@ rules:
   - id: R272
     code: BE_APP_BOOT_PROOF_MISSING
     law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles, in `app check` and in the fast job of the app's CI (`starci app check --gate hfs`, whatever the wiring gate says), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot.
-    editions: [lite]
     failureCodes:
       - BE_APP_BOOT_PROOF_MISSING
     enforcers:
@@ -1863,7 +1822,6 @@ rules:
   - id: R276
     code: STACKS_LITE_SELFHOSTED_DB
     law: Lite runs no self-hosted database or vector store, runs Redis only when declared and then durably, and its sidecars keep their own storage on a declared volume.
-    editions: [lite]
     failureCodes:
       - STACKS_LITE_SELFHOSTED_DB
       - STACKS_SIDECAR_VOLUME_UNDECLARED
@@ -1876,7 +1834,6 @@ rules:
     law: A tracked secret exists only as a sops envelope under `.starcistacks/<env>/secrets/`, in every edition; a business package may also commit `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of its own `packages/<pkg>/.sops.yaml`.
     failureCodes:
       - HFS_SECRET_PLAINTEXT_FILE
-      - HFS_SECRET_OUTSIDE_ENC
       - HFS_PACKAGE_SECRET_NOT_SEALED
       - HFS_PACKAGE_SECRET_RECIPIENT
     enforcers:
@@ -1938,7 +1895,6 @@ rules:
   - id: R284
     code: BE_LITE_PROOF_LANE_MISSING
     law: A lite back end proves every declared pattern through integration specs titled `<pattern>/<scenario>`.
-    editions: [lite]
     failureCodes:
       - BE_LITE_PROOF_LANE_MISSING
     enforcers:
@@ -2244,7 +2200,6 @@ rules:
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
     law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), @starci/auth/contracts and @starci/auth/testing only by those two glues, and the retired @starci/auth-oidc by no app file. bcrypt and every Supabase client are owned nowhere."
-    editions: [lite, full]
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
     enforcers:
@@ -2252,7 +2207,6 @@ rules:
   - id: R329
     code: BE_AUTH_JWT_OWN_JWKS
     law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
-    editions: [lite]
     failureCodes:
       - BE_AUTH_JWT_OWN_JWKS
     enforcers:
@@ -2261,7 +2215,6 @@ rules:
   - id: R330
     code: BE_AUTH_REFRESH_COOKIE
     law: A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body.
-    editions: [lite]
     failureCodes:
       - BE_AUTH_REFRESH_COOKIE
     enforcers:
@@ -2276,7 +2229,6 @@ rules:
   - id: R332
     code: LITE_DB_MIGRATION
     law: A lite app's schema lives only in `db/` (`db/migrations/<ts14>_<kebab>.sql`, its archive, the managed `db/bootstrap.sql`; any other SQL under `db/` is refused); the tree holds no `supabase/` folder and no SQL outside `db/` but the `sql/` entries of its seed levels in `.starcistacks/` (R375).
-    editions: [lite]
     failureCodes:
       - LITE_DB_MIGRATION
     enforcers:
@@ -2284,7 +2236,6 @@ rules:
   - id: R333
     code: BE_ENTITY_SCHEMA_DRIFT
     law: Every TypeORM entity column of a lite app's entity list matches the schema its `db/migrations` build; `starci app db drift` applies `db/bootstrap.sql` and every migration to an empty database and compares each column; an app that declares sides.be.engineOwned also has the partitions, views, CHECKs and indexes of the engine-owned objects compared with the engine's entity manifest, both ways.
-    editions: [lite]
     failureCodes:
       - BE_ENTITY_SCHEMA_DRIFT
     enforcers:
@@ -2292,7 +2243,6 @@ rules:
   - id: R334
     code: BE_PERSISTENCE_NO_RAW_SQL
     law: "Lite TypeScript holds no SQL text, outside the test world. A table is read and written through its TypeORM entity on an EntityManager (domain code the injected one; specs, builders, fixtures and the test world the world's `world.db.<connection>`): find, save, update, delete, upsert, a pessimistic `lock` option, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository. Every table a migration creates has an entity. Anything else is a database function, called through `callDbFunction` of `platform/database/database.client.ts`, which names only a function that `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason: a function of a migration, schema-qualified (`public.job_claim`); an extension function, schema-qualified; a pg built-in of the canon's list, bare (`pg_notify`, called in pg_catalog). `database.client.ts` alone composes SQL text (the call statement and LISTEN), from parts its validator checked; `advisoryXactLock` and `notify` are `callDbFunction` calls of built-ins there. The only other `.query(` outside the world is the pass-through of a file that `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough` lists with a reason, whose text is not the app's own (the tracked seed, a customer data-source read, an outside session's setup), with a plain string first argument, never a template or a `+`. The test world `src/tests/world` may hold raw SQL, as `sql`-tagged text with numbered `$n` parameters (and `<name>.sql.ts` files), only for what neither an entity nor a listed function expresses: a privilege or row-level-security probe, catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe; in the world too plain CRUD on an application table goes through its entity, an application function through `callDbFunction`, and seeded rows come from builders (R98). No `sql` template, `*.sql.ts`, `sql`/`ident` import or other `.query(` exists anywhere else."
-    editions: [lite]
     failureCodes:
       - BE_PERSISTENCE_NO_RAW_SQL
     enforcers:
@@ -2307,7 +2257,6 @@ rules:
   - id: R336
     code: BE_EVENT_BUS_LITE_SHAPE
     law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data."
-    editions: [lite]
     failureCodes:
       - BE_EVENT_BUS_LITE_SHAPE
     enforcers:
@@ -2839,7 +2788,6 @@ rules:
   - id: R401
     code: BE_DI_RING
     law: No Nest provider of a lite back-end app reaches itself through its constructor, property, factory or `useExisting` injections (a `forwardRef` edge aside, which R85 refuses); the boot proof scans the real AppModule before it compiles and names every ring of two or more providers, since Nest refuses a ring of two and hangs at boot on a longer one.
-    editions: [lite]
     failureCodes:
       - BE_DI_RING
     enforcers:

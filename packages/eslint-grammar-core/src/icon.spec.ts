@@ -143,7 +143,7 @@ test("ICON-1: the call site passes the glyph and never a size class", () => {
 })
 
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`R286: FE_ICON_INLINE_SVG requires an exported brand-mark leaf (${edition})`, () => {
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
     const brandLeaf = at(`${R}/leaves/AgentMark/index.tsx`)
@@ -158,7 +158,7 @@ for (const edition of ["lite", "full"]) {
         entry(brandLeaf, `/** @brand-mark */\nexport default () => ${svg}`),
         entry(OTHER_LEAF, 'export const Link = () => <Icon props={{ name: "next" }} />'),
         entry(at("scripts/preview.tsx"), `const Preview = () => ${svg}`),
-        ...(edition === "full" ? [entry(at("packages/app-ui/src/leaves/AgentMark/index.tsx"), declared)] : []),
+        ...((edition as string) === "full" ? [entry(at("packages/app-ui/src/leaves/AgentMark/index.tsx"), declared)] : []),
       ],
       invalid: [
         refused(brandLeaf, `export const AgentMark = () => ${svg}`),
@@ -173,7 +173,7 @@ for (const edition of ["lite", "full"]) {
         refused(brandLeaf, `export const AgentMark = () => { /** @brand-mark */ return ${svg} }`),
         refused(brandLeaf, `${declared}\nexport const OtherIcon = () => ${svg}`),
         refused(brandLeaf, `/** @brand-mark */\nexport const AgentMark = () => { const OtherIcon = () => ${svg}; return <OtherIcon /> }`),
-        ...(edition === "full" ? [refused(at("packages/app-ui/src/composites/AgentMark/index.tsx"), declared)] : []),
+        ...((edition as string) === "full" ? [refused(at("packages/app-ui/src/composites/AgentMark/index.tsx"), declared)] : []),
       ],
     })
   })

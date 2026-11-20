@@ -86,10 +86,9 @@ test("every rule this law declares is exported under its published name", () => 
     assert.match(logic, /^\[HFS_FEATURE_LOGIC_ROLE\] /)
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`feature-logic-role: non-door feature roles cannot hide logic in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const support = (role: string) => at(`src/features/api/checkout/application/support/price.${role}.ts`)
         const data = `export interface PriceInput { readonly id: string }
 export type PriceResult = Readonly<{ id: string }>
@@ -487,7 +486,7 @@ test("feature-thin: a feature file of a thin role maps parameters and makes one 
   })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`feature-thin resolves a mapper's declaration through public facades in ${edition}`, (t) => {
       assert.doesNotThrow(() => {
           const root = mkdtempSync(join(tmpdir(), "starci-feature-thin-facade-"))

@@ -5,7 +5,7 @@ export interface CatalogPositional { name: string; required?: boolean; variadic?
 /** The catalog entry validateArgs judges a command line against, with the group and verb names a dispatcher adds. */
 export interface CatalogVerb {
   verb?: string; group?: string; flags?: CatalogFlag[]; positional?: CatalogPositional[]; internalFlags?: Array<{ name: string; pointer: string }>;
-  editions?: string[]; json?: string; operationPolicy?: Record<string, { action?: unknown; credentials?: unknown } | undefined>;
+  json?: string; operationPolicy?: Record<string, { action?: unknown; credentials?: unknown } | undefined>;
 }
 /** validateArgs' answer: the typed values or the refusal (code 2). */
 export type ValidatedArgs =
@@ -115,11 +115,8 @@ const checkPositionals = (verb: CatalogVerb, positionals: string[], passthrough:
   }
 };
 
-/** Edition availability, --cwd emptiness and --json support. */
+/** --cwd emptiness and --json support. */
 const checkGlobals = (verb: CatalogVerb, global: Values): void => {
-  if (global.edition !== undefined && Array.isArray(verb.editions) && !verb.editions.some((edition) => edition === global.edition)) {
-    throw new Error(`${verb.group ?? 'this command'} ${verb.verb ?? ''}`.trim() + ` is not available in the ${global.edition} edition (editions: ${verb.editions.join(', ')})`);
-  }
   if (global.cwd === '') throw new Error('--cwd needs a value');
   if (global.json === true && verb.json === 'none') {
     throw new Error(`${verb.group ?? 'this command'} ${verb.verb ?? ''}`.trim() + ' has no machine output');

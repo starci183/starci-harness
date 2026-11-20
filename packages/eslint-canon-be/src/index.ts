@@ -18,7 +18,6 @@
  */
 import { extEslintConfigs } from "@starci/hfs/runtime/scripts/lib/project-ext.mjs"
 import { buildBeConfig, buildBePackagesConfig } from "./lib/config.ts"
-import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as authPassportRecommended, rules as authPassportRules } from "./auth-passport.ts"
 import { recommended as noRawSqlRecommended, rules as noRawSqlRules } from "./no-raw-sql.ts"
@@ -216,7 +215,7 @@ export default plugin
  * @returns The flat config.
  */
 export const starciBeConfig = async ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => [
-    ...(await buildBeConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended })),
+    ...(await buildBeConfig({ hfs, plugin, recommended })),
     ...withExtRules(hfs, "be"),
 ]
 
@@ -242,7 +241,7 @@ const packageRecommended: Recommended = Object.fromEntries(Object.entries(recomm
  * @returns The flat config.
  */
 export const starciBePackagesConfig = async ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => [
-    ...(await buildBePackagesConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended: packageRecommended })),
+    ...(await buildBePackagesConfig({ hfs, plugin, recommended: packageRecommended })),
     ...withExtRules(hfs, "packages"),
 ]
 

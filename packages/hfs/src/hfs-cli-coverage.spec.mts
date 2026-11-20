@@ -48,11 +48,10 @@ function input(edition: string, apps: AppRef[], files: string[], connections: Co
             fe: { apps: [{ name: 'web', kind: 'next' }] },
         },
     });
-    assert.equal(repo.edition, edition);
     return { repo, files, resolver: createSlotResolver(manifest, repo) };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
     test(`${edition} valid CLI app and image pass for tracked commands`, () => {
         assert.deepEqual(cliFindings(input(edition, [API, CLI], [COMMAND, IMAGE])), []);
         assert.deepEqual(cliFindings(input(edition, [API], [])), []);
@@ -73,8 +72,7 @@ for (const edition of ['lite', 'full']) {
 
     test(`${edition} connection-only requirements follow the actual edition slot`, () => {
         const findings = cliFindings(input(edition, [API], [], PRIMARY));
-        const expected = edition === 'full' ? ['BE_CLI_REQUIRED'] : [];
-        assert.deepEqual(findings.map((finding) => finding.code), expected);
+        assert.deepEqual(findings.map((finding) => finding.code), []);
     });
     test(`${edition} a client cli beside the ops cli passes with its package, its build config and its own feature root`, (t) => {
         const repoRoot = clientRoot(t);

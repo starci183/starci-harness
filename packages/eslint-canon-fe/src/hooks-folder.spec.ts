@@ -15,7 +15,7 @@ const HOOK = at("apps/web/src/hooks/project/useProject.ts")
 const SHARED = at("apps/web/src/hooks/project/project.shared.ts")
 const react = (code: string): string => `import { useState } from "react"\n${code}`
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R56: canonical theme hooks preserve import identity (${edition})`, () => {
   assert.doesNotThrow(() => {
     const filename = at("apps/web/src/hooks/theme/useGrammarTheme.ts")
@@ -152,7 +152,7 @@ test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per
   })
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R56: zero-hook, default-export and fake use* files are refused (${edition})`, () => {
   assert.doesNotThrow(() => {
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }

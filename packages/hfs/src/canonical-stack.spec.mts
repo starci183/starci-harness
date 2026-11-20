@@ -17,7 +17,7 @@ function app(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-canonical-stack-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (name: string, value: string) => { const file = path.join(root, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value); };
-  write('hfs.json', JSON.stringify({ kind: 'app', project: 'fixture', edition: 'lite' }));
+  write('hfs.json', JSON.stringify({ kind: 'app', project: 'fixture' }));
   write('.starcistacks/staging/stack.yml', 'services: {}\n');
   write('.starcistacks/application-stacks.yaml', JSON.stringify({ environments: { staging: { runtime: 'docker-swarm', composeFiles: ['stack.yml'], deploy: { stack: 'fixture' } } } }));
   return root;

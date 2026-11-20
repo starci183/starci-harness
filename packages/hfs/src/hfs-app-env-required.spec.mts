@@ -29,7 +29,7 @@ function tree(t: TestContext, files: Record<string, string>) {
   return root;
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`BE_APP_ENV_REQUIRED reports every missing declared app boundary in ${edition}`, (t) => {
     const repoRoot = tree(t, { [MAIN]: 'export const main = true;' });
     const findings = appEnvRequiredFindings({ repoRoot, files: [MAIN], repo: { ...BE, edition } });
@@ -60,13 +60,13 @@ test('BE_APP_ENV_REQUIRED refuses an untracked or missing-on-disk boundary', (t)
 test('BE_APP_ENV_REQUIRED ignores the front end and app-root scope', (t) => {
   const repoRoot = tree(t, {});
   for (const profile of ['app', 'fe']) {
-    assert.deepEqual(appEnvRequiredFindings({ repoRoot, files: [], repo: { ...BE, profile, edition: 'lite' } }), []);
+    assert.deepEqual(appEnvRequiredFindings({ repoRoot, files: [], repo: { ...BE, profile } }), []);
   }
 });
 
 test('BE_APP_ENV_REQUIRED is wired through the app check with side-relative paths', (t) => {
   const repoRoot = tree(t, {});
-  const declaration = { hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
+  const declaration = { hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
   const result = checkRepo({ repoRoot, declaration, files: ['be/apps/api/src/main.ts'], tree: false });
   assert.deepEqual(result.findings.filter((finding) => finding.code === 'BE_APP_ENV_REQUIRED').map((finding) => finding.path), ['be/apps/api/src/api.env.ts']);
 });

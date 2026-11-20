@@ -1,13 +1,12 @@
 import { locateOrca } from "../../harness/orca/client.js"
 import { stopSupervisor, supervisorTitle } from "../../harness/supervisor.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 
 /** `starci supervisor stop`: closes a project's Supervisor tab and retires its record; --abandon retires a launch with no receipt. */
 export const supervisorStopVerb = defineVerb({
     path: ["supervisor", "stop"],
     summary: "close the project's [Supervisor] tab, its agent with it, and retire its record (--abandon: a reserved launch Orca gave no receipt for)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/supervisor-stop@1",

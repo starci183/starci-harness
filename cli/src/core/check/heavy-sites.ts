@@ -1,7 +1,7 @@
 import { globSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { runtimeRoot } from "../../harness/ledger.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** A call that spawns a process through the CLI's runner (shared/exec.ts). */
 const SPAWN = /\b(?:captureNpm|runNpm|captureCommand|captureTool|runTool|captureToolSync)\(/
@@ -47,7 +47,6 @@ export const heavyBypasses = (source: string): Bypass[] =>
 export const checkHeavySitesVerb = defineVerb({
     path: ["check", "heavy-sites"],
     summary: "audit the CLI's source: every spawn of a heavy command (an npm install or build, a command check, tsc, eslint, a test runner, a container) goes through the host heavy-command governor; red names each site that bypasses it",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-heavy-sites@1",

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
 import { ruleIdsIn } from "../../harness/contract.js"
-import { SLICE_EDITIONS, SLICE_SIDES, sliceFile } from "./anatomy-render.js"
+import { SLICE_SIDES, sliceFile } from "./anatomy-render.js"
 import { SECTIONED_DOCS } from "./sectioned-docs.js"
 
 /** The index's place under contexts/: beside the project map, linking every other file of the tree. */
@@ -92,7 +92,7 @@ const entryOf = (contexts: string, path: string): string[] => {
  * The generated files of contexts/ that repeat another file, relative to contexts/: this index, the anatomy slices (which
  * repeat anatomy.md) and the section indexes (each repeating its SECTIONED_DOCS source). Neither the index nor the search corpus lists them.
  */
-export const repeatingFiles = (): Set<string> => new Set([INDEX_FILE, ...SECTIONED_DOCS.map((doc) => doc.index), ...SLICE_EDITIONS.flatMap((edition) => SLICE_SIDES.map((side) => `project/${sliceFile(edition, side)}`))])
+export const repeatingFiles = (): Set<string> => new Set([INDEX_FILE, ...SECTIONED_DOCS.map((doc) => doc.index), ...SLICE_SIDES.map((side) => `project/${sliceFile(side)}`)])
 
 /**
  * The contexts index: every file of the tree with its size, a one-line summary, its sections and the rule or record ids it

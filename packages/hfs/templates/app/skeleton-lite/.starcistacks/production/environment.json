@@ -1,6 +1,0 @@
-{
-  "environment": "production",
-  "provider": "postgres",
-  "project": "{{project}}",
-  "runtime": "docker-swarm"
-}

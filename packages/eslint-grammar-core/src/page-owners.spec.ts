@@ -86,7 +86,7 @@ const verify = (app: ProjectFixture, page: string, code: string) => verifyAt(app
 /** The message ids of the findings. */
 const ids = (findings: readonly Linter.LintMessage[]): (string | undefined)[] => findings.map((finding) => finding.messageId)
 
-for (const edition of ["full", "lite"] as const) {
+for (const edition of ['lite'] as const) {
   for (const family of ["core", "offset-pop"])
     test(`${edition}/${family}: canonical native body layout keeps one connected Page and no sibling or nested Page`, (t) => {
       const app = fixture(t, edition, family)

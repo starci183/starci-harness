@@ -37,7 +37,7 @@ export function importedBrand(globalsFile: string, css: string): string | null {
 
 /** FE_GLOBALS_NOT_ONE and FE_GLOBALS_IMPORTS_MISSING over the web apps of a front end. */
 export function globalsOneFindings({ files = [], repo, repoRoot, isRoot = false, inScope = () => true }: { files?: readonly string[]; repo: Repo; repoRoot: string; isRoot?: boolean; inScope?: (file: string) => boolean }): Finding[] {
-  if (isRoot || repo?.profile !== 'fe' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (isRoot || repo?.profile !== 'fe') return [];
   const tracked = [...new Set(files.map((file) => file.replaceAll('\\', '/')))].sort();
   const apps = new Set(tracked.flatMap((file) => (/^(?<app>apps\/[^/]+)\/src\/app\//u.exec(file)?.groups?.['app'] ?? [])));
   const findings: Finding[] = [];

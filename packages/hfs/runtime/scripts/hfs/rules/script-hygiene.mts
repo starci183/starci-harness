@@ -155,9 +155,9 @@ function sourceText(repoRoot: string, file: string) {
   return readText(repoRoot, file);
 }
 
-/** Both editions share this custody boundary; the app root scans `all` once, including its sides. */
+/** The custody boundary of an app; the app root scans `all` once, including its sides. */
 export function scriptHygieneFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; isRoot: boolean; inScope?: (file: string) => boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const findings = [];
   homeFolder = homeFolderOf(readJson(repoRoot, 'hfs.json')?.project);
   for (const file of new Set(all)) {

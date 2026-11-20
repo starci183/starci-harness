@@ -79,7 +79,7 @@ const NOT_OWNED = [
 
 const VERB_FILES = ['render', 'provision', 'converge', 'verify', 'prune', 'rollback', 'release', 'backup', 'prepare', 'doctor', 'jobs', 'public'];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE}: ${edition} rejects the violating fixture app and names the replacing verb`, () => {
     const record = violatingRecord();
     const findings = stackToolingFindings(tree(edition, record.files));
@@ -186,7 +186,7 @@ test(`${CODE}: a scoped check judges only the files in scope but reads the whole
 
 test(`${CODE}: the app check wires the finder and ships the catalog explanation`, () => {
   const record = violatingRecord();
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const context = tree(edition, record.files);
     const wired = a15Findings({ ...context, all: context.files }).filter((finding) => finding.code === CODE);
     assert.equal(wired.length, record.expect.length);

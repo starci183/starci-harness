@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { captureGitSync } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
+import { defineVerb, WRITERS } from "../../shared/verb.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { appRootOf } from "../../harness/memory-plan.js"
 
@@ -159,7 +159,6 @@ const FLAGS = {
 export const appPushVerb = defineVerb({
     path: ["app", "push"],
     summary: "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a check red for any other reason",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: WRITERS,
     schema: "starci/app-push@1",

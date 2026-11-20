@@ -1,6 +1,5 @@
 // proves: BE_TEST_ROW_BY_BUILDER@lite
 // proves: BE_TEST_ROW_BY_BUILDER@full
-import assert from "node:assert/strict"
 import test from "node:test"
 import { specNoRawInsert, specNoRepeatedRowLiteral } from "./builders.ts"
 import { appDeclaration } from "../fixtures/app.ts"
@@ -134,10 +133,9 @@ orderOf(first); orderOf(second)`,
     },
 ]
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R99 proves the immutable kit factory behind direct overrides in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         ruleTester({ root: TYPED_ROOT, hfs }).run("spec-no-repeated-row-literal", specNoRepeatedRowLiteral, {
             valid: genuineBuilderOverrides,
             invalid: unprovenBuilderOverrides,
@@ -146,7 +144,6 @@ for (const edition of ["lite", "full"]) {
 
     test(`R99 accepts builder calls and reads and rejects direct database writes in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         ruleTester({ root: TYPED_ROOT, hfs }).run("spec-no-raw-insert", specNoRawInsert, {
             valid: [
                 { filename: INTEGRATION, code: `${DB_IMPORT}declare const db: EntityManager\ndeclare const orderBuilder: (manager: EntityManager) => { build(): Promise<object> }\nasync function arrange() { await orderBuilder(db).build(); await db.query("SELECT * FROM orders") }` },
@@ -163,7 +160,6 @@ for (const edition of ["lite", "full"]) {
 
     test(`R99 accepts builder-derived rows and rejects repeated entity literals in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         ruleTester({ root: TYPED_ROOT, hfs }).run("spec-no-repeated-row-literal", specNoRepeatedRowLiteral, {
             valid: [
                 { filename: INTEGRATION, code: `${ENTITY}declare const orderRow: () => Order\nconst first: Order = { ...orderRow(), status: "new" }\nconst second: Order = { ...orderRow(), status: "paid" }\nexport { first, second }` },

@@ -14,7 +14,7 @@ import { fileResult, getTask, latestAttempt, markIntent, openAttempt, recordEven
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { mainCheckout, repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { parseNeeds, reportNeeds } from "../../harness/needs.js"
 import type { NeedReport } from "../../harness/needs.js"
 import { projectOf } from "../../harness/work.js"
@@ -178,7 +178,6 @@ const reportOf = (context: { readonly cwd: string }, flags: { readonly status: s
 export const taskResultVerb = defineVerb({
     path: ["task", "result"],
     summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths; a failed or blocked output showing TEST_WORLD_NOT_DECLARED or a custody refusal is reported for the harness's own verify with custody instead, spending no try; a result whose attempt's walk met no app (every page 5xx, UAT_APP_UNSERVED) fails as the harness's own failure and is dispatched again at the same try",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["worker", "op", "agent", "kernel", "supervisor"],
     schema: "starci/task-result@1",

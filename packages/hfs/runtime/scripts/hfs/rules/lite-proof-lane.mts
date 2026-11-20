@@ -1,5 +1,5 @@
 // lite-proof-lane.mts - R284: declared patterns in lite prove their scenarios in integration specs.
-// Full keeps its existing e2e/integration proof checks. R155 owns BE_PATTERN_SPEC_MISSING in both editions.
+// Full keeps its existing e2e/integration proof checks. R155 owns BE_PATTERN_SPEC_MISSING.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSlotManifest, ruleParams } from '../slots.mjs';
@@ -66,10 +66,10 @@ function integrationProof(ts: Ts | null,repoRoot: string, files: string[]) {
 
 /** Findings of R284 and R155 at the app root; side passes must not duplicate them. */
 export function liteProofLaneFindings({ repoRoot, files, all = files, repo, manifest }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; manifest?: Parsed }) {
-  if (repo.edition !== 'lite' || !repo.sides?.be) return [];
+  if (!repo.sides?.be) return [];
   const patterns = [...new Set<string>(repo.sides.be.patterns ?? [])].filter((pattern) => PATTERNS.has(pattern));
   if (patterns.length === 0) return [];
-  const scenarios = ruleParams(manifest ?? loadSlotManifest(), 'be', 'lite').patternScenarios ?? {};
+  const scenarios = ruleParams(manifest ?? loadSlotManifest(), 'be').patternScenarios ?? {};
   const ts = loadTypescript(repoRoot, HERE);
   const { specs, proven } = integrationProof(ts, repoRoot, all);
   const findings = [];

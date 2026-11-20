@@ -11,7 +11,7 @@ import { tickNotices } from "../../harness/telegram-bridge.js"
 import { ticketHostEscalations } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { startDetached } from "../../shared/exec.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { supervisorTick } from "./driver.js"
 
@@ -127,7 +127,6 @@ const tickLoop = async (context: VerbContext, dryRun: boolean, ticksFlag: string
 export const supervisorTickVerb = defineVerb({
     path: ["supervisor", "tick"],
     summary: "one host-driver pass (dry until --execute): close finished and orphaned harness terminals, ensure every project's Supervisor, sweep each one's Kernels and their Ops, nudge or relaunch stalled agents (for a scheduled task); --loop repeats it in a foreground terminal",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "supervisor"],
     schema: "starci/supervisor-tick@1",

@@ -1,11 +1,10 @@
-// R276: lite runs exactly its own PostgreSQL (the db component, the image its managed .starcistacks/images/db/Dockerfile builds) with pgvector, admits only the backing services available to its edition,
+// R276: an app runs exactly its own PostgreSQL (the db component, the image its managed .starcistacks/images/db/Dockerfile builds) with pgvector, admits only the backing services hfs.json declares,
 // and runs a declared Redis as one service with AOF fsynced at least every second on a named volume and no eviction
 // (R212); sidecar SQLite persists on declared named volumes.
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { composeEntries } from '../../lib/compose-values.mjs';
 import { repositoryOf } from '../../lib/stack-services.mjs';
 import { loadSlotManifest } from '../slots.mjs';
-import { judgedInEdition } from '../edition-slots.mjs';
 import { readJson } from './read.mjs';
 import { stacksDeploymentFindings } from './stacks-runtime.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -46,13 +45,10 @@ function imageIssues(components: Parsed, services: Parsed, { catalog, declared }
       const service = serviceOfImage(catalog, entry.image);
       if (DATABASE_IMAGE.test(repositoryOf(entry.image)))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: 'lite runs one database, the db component of the image .starcistacks/images/db/Dockerfile builds (the official postgres image plus pgvector); no other Postgres or Mongo image' });
-      else if (service !== null && !judgedInEdition(catalog[service], 'lite'))
-        errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: `lite must not run ${service}; vector search uses pgvector in the db service` });
+          message: 'an app runs one database, the db component of the image .starcistacks/images/db/Dockerfile builds (the official postgres image plus pgvector); no other Postgres or Mongo image' });
       else if (service !== null && !declared.has(service))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: `lite runs ${service} only when hfs.json sides.be.backing declares it for the capability that needs it` });
+          message: `an app runs ${service} only when hfs.json sides.be.backing declares it for the capability that needs it` });
     }
   }
   return errors;
@@ -85,10 +81,10 @@ function redisPersistenceIssues(services: Parsed, volumes: Parsed, { catalog, de
   if (!declared.has('redis')) return [];
   const redis = Object.entries<Parsed>(services).filter(([, service]) => serviceOfImage(catalog, service?.image) === 'redis');
   if (redis.length !== 1) return [{ code: 'STACKS_LITE_REDIS_PERSISTENCE', at: 'services',
-    message: `hfs.json sides.be.backing declares redis, so the lite stack runs exactly one Redis service; it runs ${redis.length}` }];
+    message: `hfs.json sides.be.backing declares redis, so the stack runs exactly one Redis service; it runs ${redis.length}` }];
   return redis.filter(([, service]) => !persisted(service, volumes))
     .map(([id]) => ({ code: 'STACKS_LITE_REDIS_PERSISTENCE', at: `services.${id}`,
-      message: `the lite Redis runs redis-server --appendonly yes with appendfsync everysec (the default) or always, a writable named volume mounted at ${REDIS_DATA_DIR} and maxmemory-policy noeviction (the default), so queue jobs survive a restart and are never evicted` }));
+      message: `the Redis runs redis-server --appendonly yes with appendfsync everysec (the default) or always, a writable named volume mounted at ${REDIS_DATA_DIR} and maxmemory-policy noeviction (the default), so queue jobs survive a restart and are never evicted` }));
 }
 
 function unsupportedAdapter(service: Parsed) {
@@ -115,7 +111,7 @@ function renderedAdapterIssues(components: Parsed, services: Parsed) {
     if (component.role !== 'sidecar' && component.database === undefined) continue;
     if (!unsupportedAdapter(service)) continue;
     errors.push({ code: 'STACKS_SIDECAR_DB_UNSUPPORTED', at: `services.${id}.environment`,
-      message: 'rendered sidecar database adapter configuration must use SQLite; Postgres, Redis and Mongo dependencies are forbidden in lite' });
+      message: 'rendered sidecar database adapter configuration must use SQLite; Postgres, Redis and Mongo dependencies are forbidden' });
   }
   return errors;
 }
@@ -150,7 +146,7 @@ function sidecarIssues({ components, services, bindings, volumes }: { components
     const database = mapping(component.database);
     if (database.provider !== 'sqlite') {
       errors.push({ code: 'STACKS_SIDECAR_DB_UNSUPPORTED', at: `components.${id}.database.provider`,
-        message: 'a lite sidecar that needs a database must use SQLite on a declared persistent volume' });
+        message: 'a sidecar that needs a database must use SQLite on a declared persistent volume' });
       continue;
     }
     errors.push(...sqliteVolumeIssue({ id, component, database, services, bindings, volumes }));
@@ -158,9 +154,9 @@ function sidecarIssues({ components, services, bindings, volumes }: { components
   return errors;
 }
 
-/** The lite backing contract; full keeps its existing backing choices. */
-export function liteBackingIssues({ doc, environment, spec = doc?.environments?.[environment], model, repo, repoRoot, edition = repo?.edition }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed; repo: Repo; repoRoot?: string; edition?: string }) {
-  if (edition !== 'lite' || spec?.runtime !== 'docker-swarm') return [];
+/** The backing contract of a docker-swarm environment. */
+export function liteBackingIssues({ doc, environment, spec = doc?.environments?.[environment], model, repo, repoRoot }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed; repo: Repo; repoRoot?: string }) {
+  if (spec?.runtime !== 'docker-swarm') return [];
   const components = mapping(doc?.components), services = mapping(model?.services), volumes = mapping(model?.volumes);
   const backing = { catalog: mapping(loadSlotManifest().ruleParams?.be?.backing), declared: declaredBacking(repo, repoRoot) };
   return [
@@ -173,6 +169,5 @@ export function liteBackingIssues({ doc, environment, spec = doc?.environments?.
 
 /** HFS finder over tracked rendered models; unavailable evidence is reported by R267. */
 export function stacksLiteBackingFindings(context: Parsed) {
-  if (context.repo?.edition !== 'lite') return [];
   return stacksDeploymentFindings(context, liteBackingIssues);
 }

@@ -7,7 +7,7 @@ import { runWave, WAVE_RUNNING, waveBusy } from "../../harness/wave.js"
 import type { WaveReport } from "../../harness/wave.js"
 import { asRefusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { finalVerifyDue, readSnapshot, reconcile, runFinalVerify } from "./engine.js"
 
@@ -88,7 +88,6 @@ const finalVerifyResult = async (context: VerbContext, root: string, workflow: s
 export const workflowWaveVerb = defineVerb({
     path: ["workflow", "wave"],
     summary: "run the workflow's due wave verify now, one per workflow at a time: record its scope decision, run the heavy checks the landed tasks left once over their union, fail the tasks whose files are red (exit 1 when red); --wait waits for a wave another process runs",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor", "agent"],
     schema: "starci/workflow-wave@1",

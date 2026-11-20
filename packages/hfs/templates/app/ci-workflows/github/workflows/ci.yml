@@ -100,6 +100,11 @@ jobs:
         run: {{auditCommand}}
       - name: format
         run: {{ciFormatRun}}
+{{ciPackagesBuild}}
+      - name: boot proof
+        run: {{ciWiringRun}}
+        env:
+          NODE_OPTIONS: {{nodeOptions}}
       - name: typecheck
         run: {{ciTypecheckRun}}
         env:
@@ -182,6 +187,10 @@ jobs:
         run: {{ciBuildBeRun}}
 {{ciBuildSteps}}
 {{> app/ci-workflows/build-cache-save.yml}}
+      - name: database migration checks
+        run: {{ciDatabaseLint}}
+        env:
+          NODE_OPTIONS: {{nodeOptions}}
 
 {{sonarJob}}
   images:

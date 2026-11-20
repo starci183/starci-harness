@@ -60,7 +60,7 @@ const packageFiles = (profile: "be" | "fe") => ({
     "packages/ui/src/private/index.ts": "export const Private = 1\n",
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R30 ${edition} accepts valid owner entries and rejects invalid public-surface syntax`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const tester = ruleTester({ root: TYPED_ROOT, hfs })

@@ -22,7 +22,7 @@ const BLOCK = at("apps/web/src/components/blocks/sales/HandoffBlock/component.ts
 const INDEX = at("apps/web/src/components/blocks/sales/HandoffBlock/index.tsx")
 const STYLES = at("apps/web/src/components/leaves/Badge/classNames.ts")
 const LEAF = at("apps/web/src/components/leaves/Badge/index.tsx")
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R92 ${edition} accepts canon component surfaces and rejects forbidden props, styling and data reads`, () => {
     const tester = typedTester({ lite: edition === "lite" })
     tester.run("no-inline-parameter-type", ruleOf(props, "no-inline-parameter-type"), {

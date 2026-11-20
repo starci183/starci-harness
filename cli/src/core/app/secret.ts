@@ -1,6 +1,6 @@
 import { lookupSecret, secretHome } from "../../harness/secret-env.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { argValue, FORWARDED, leadingOperands, runHfs, withoutArg } from "./hfs.js"
 
 /** The one flag the CLI takes out of `app secret set` and resolves itself, so @starci/hfs never sees it. */
@@ -30,7 +30,6 @@ const hostValue = (hostKey: string): string => {
 export const appSecretVerb = defineVerb({
     path: ["app", "secret"],
     summary: "initialize, seal, edit, materialize, verify, migrate, split and audit app secrets: one <member>.enc.yaml per provider or owner group, set prompts masked and seals several keys in one write, recipients manages .sops.yaml, server-key makes the deploy server's identity on the server and seals the environment to it",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "supervisor"],
     schema: "starci/app-secret@1",

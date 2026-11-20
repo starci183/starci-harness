@@ -27,7 +27,7 @@ function eventFixture(t: TestContext, edition: string, events: Record<string, un
   return { repoRoot, files: Object.keys(sources), repo: { edition, sides: { be: { patterns: ['event-bus'] } } } };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts an event class with the same contract name and version`, (t) => {
     const fixture = eventFixture(t, edition, { 'order.placed': { version: 1 } });
     assert.deepEqual(eventClassContractFindings(fixture), []);

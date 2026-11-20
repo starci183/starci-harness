@@ -11,10 +11,9 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { editionFindings } from '../runtime/scripts/hfs/rules/edition.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { ruleParamsProblems } from '../runtime/scripts/hfs/rule-params-shape.mjs';
-import type { Resolver } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 
 // reason: the edition rule only reads `slots()` of the resolver; a full Resolver is not needed to prove it.
-const NO_SLOTS = { slots: () => [] } as unknown as Resolver;
+
 const CODES = ['HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_DECLARATION_INVALID'];
 
 interface BackingFinding { code: string; file: string; name?: string; service?: string; level: string }
@@ -65,8 +64,8 @@ test('HFS_BACKING_UNUSED (lite): a standalone back end reads its own package.jso
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const judgeBe = (dependencies: Record<string, string>, withDeclaration = true) => {
     fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies }));
-    const repo = { profile: 'be', edition: 'lite', apps: [{ name: 'api', kind: 'api' }], backing: ['redis'] };
-    return editionFindings({ repoRoot, files: ['package.json'], repo, resolver: NO_SLOTS, manifest: loadSlotManifest(), withDeclaration })
+    const repo = { profile: 'be', apps: [{ name: 'api', kind: 'api' }], backing: ['redis'] };
+    return editionFindings({ repoRoot, files: ['package.json'], repo, manifest: loadSlotManifest(), withDeclaration })
       .map(({ code, service }) => ({ code, service }));
   };
   assert.deepEqual(judgeBe({}), [{ code: 'HFS_BACKING_UNUSED', service: 'redis' }]);
@@ -114,8 +113,8 @@ test('HFS_BACKING_UNDECLARED (lite): a raw side declaration cannot admit a Qdran
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies: { '@qdrant/js-client-rest': '1.12.0' } }));
   const findings = editionFindings({
-    repoRoot, files: ['package.json'], repo: { profile: 'be', edition: 'lite', backing: ['qdrant'] },
-    resolver: NO_SLOTS, manifest: loadSlotManifest(),
+    repoRoot, files: ['package.json'], repo: { profile: 'be', backing: ['qdrant'] },
+    manifest: loadSlotManifest(),
   });
   assert.deepEqual(findings.map(({ code, path: file, service }) => ({ code, file, service })), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'hfs.json', service: 'qdrant' },

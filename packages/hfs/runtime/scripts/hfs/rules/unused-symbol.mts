@@ -333,8 +333,7 @@ export function unusedSymbolFindings(input: UnusedSymbolInput) {
 }
 
 function computeUnusedSymbols({ repoRoot, files, repo = {}, isRoot = false, inScope = () => true, ts: supplied }: { repoRoot: string; files: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; ts: Parsed }) {
-  const edition = repo.edition ?? 'full';
-  if (isRoot || repo.kind === 'runtime' || !['lite', 'full'].includes(edition)) return [];
+  if (isRoot || repo.kind === 'runtime') return [];
   const ts = compilerAt(repoRoot, supplied);
   if (!ts) return [];
   const sources = sourceFiles(ts, repoRoot, files);

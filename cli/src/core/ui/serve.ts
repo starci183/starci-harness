@@ -1,6 +1,6 @@
 import { startDetached } from "../../shared/exec.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { startUi } from "./server.js"
 
 /** The port `starci ui` binds when none is given. */
@@ -20,7 +20,6 @@ const opener = (url: string): string[] => {
 export const uiVerb = defineVerb({
     path: ["ui"],
     summary: "serve the desktop app's local API on 127.0.0.1 (default port 4317) with a printed bearer token: overview, workflows, tasks, the owner's inbox, config and a live event stream; writes run their verbs as the owner",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "debug"],
     schema: "starci/ui@1",

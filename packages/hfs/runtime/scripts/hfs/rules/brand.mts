@@ -111,7 +111,7 @@ function promptProblems(record: Record<string, unknown>, base: BasePrompt): { st
 
 /** Findings of R437 at the app root. */
 export function brandFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Parsed; isRoot: boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const local = { local: true };
   const findings = [];
   const sheet = readText(repoRoot, BRAND_ILLUSTRATION_FILE);

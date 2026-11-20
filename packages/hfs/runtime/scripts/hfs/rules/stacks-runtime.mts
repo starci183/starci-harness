@@ -1,4 +1,4 @@
-// R10 runtime consistency: app-owned scheduling, managed lite backing and Swarm deployment safety.
+// R10 runtime consistency: app-owned scheduling, managed backing and Swarm deployment safety.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -90,17 +90,17 @@ function swarmDeploymentFiles(repoRoot: string, files: string[]) {
   });
 }
 
-function liteEnvironmentFindings({ doc, environments, deployments }: { doc: Parsed; environments: Parsed; deployments: Parsed }) {
+function deliveryEnvironmentFindings({ doc, environments, deployments }: { doc: Parsed; environments: Parsed; deployments: Parsed }) {
   const findings = [];
   const delivery = deployments.length || Object.values<Parsed>(environments).some(spec => Array.isArray(spec?.composeFiles) && spec.composeFiles.length);
   if (delivery && (doc.backing?.db?.provider !== 'postgres' || doc.backing?.db?.component !== 'db'))
-    findings.push(found(CODE, DECLARATION, `${DECLARATION}: lite Swarm delivery must declare backing.db with provider: postgres and component: db (its db service)`));
+    findings.push(found(CODE, DECLARATION, `${DECLARATION}: a Swarm delivery declares backing.db with provider: postgres and component: db (its db service)`));
   for (const [environment, spec] of Object.entries<Parsed>(environments)) {
     if (!Array.isArray(spec?.composeFiles) || !spec.composeFiles.length) continue;
     // The dev kind (PROJECT-STACKS-3): docker-compose sources under infra/compose/ with the local block `starci app stack up` runs; judged by R372.
     if (spec.runtime === 'docker-compose' && spec.local !== undefined && spec.composeFiles.every((file: string) => typeof file === 'string' && file.startsWith('infra/compose/'))) continue;
     if (spec.runtime !== 'docker-swarm' || spec.composeFiles.some((file: string) => typeof file !== 'string' || !file.startsWith('infra/swarm/')))
-      findings.push(found(CODE, DECLARATION, `${DECLARATION}: environments.${environment} lite delivery must use runtime: docker-swarm and infra/swarm sources`));
+      findings.push(found(CODE, DECLARATION, `${DECLARATION}: environments.${environment} delivery uses runtime: docker-swarm and infra/swarm sources`));
   }
   return findings;
 }
@@ -113,35 +113,32 @@ function undeclaredSwarmFindings(deployments: Parsed, environments: Parsed, sour
   });
 }
 
-/** The component ids a docker-swarm environment binds: the only ones the lite refusal of backing images judges (a dev compose environment runs its own MinIO, Redis and agent runtime). */
-const swarmBoundComponents = (environments: Parsed): Set<string> => new Set(Object.values<Parsed>(environments).filter((spec) => spec?.runtime === 'docker-swarm').flatMap((spec) => Object.keys(mapping(spec.components))));
-
-/** Declared Swarm sources are checked for both editions; lite additionally refuses local managed backing images. */
-export function stacksRuntimeFindings({ repoRoot, files, doc, edition = 'full' }: { repoRoot: string; files: string[]; doc: Parsed; edition?: string }) {
-  const findings = [], lite = edition === 'lite', components = mapping(doc?.components), environments = mapping(doc?.environments);
+/** Declared Swarm sources: a docker-swarm delivery declares its db backing, each model is judged, and no deployment goes undeclared. */
+export function stacksRuntimeFindings({ repoRoot, files, doc }: { repoRoot: string; files: string[]; doc: Parsed }) {
+  const findings = [], components = mapping(doc?.components), environments = mapping(doc?.environments);
   const deployments = swarmDeploymentFiles(repoRoot, files), sources = new Set();
-  findings.push(...swarmInventoryIssues({ components, lite, swarm: swarmBoundComponents(environments) }).map((issue: Parsed) => issueFinding(DECLARATION, issue)));
-  if (lite) findings.push(...liteEnvironmentFindings({ doc, environments, deployments }));
+  findings.push(...swarmInventoryIssues({ components }).map((issue: Parsed) => issueFinding(DECLARATION, issue)));
+  findings.push(...deliveryEnvironmentFindings({ doc, environments, deployments }));
   for (const [environment, entry] of Object.entries<Parsed>(environments)) {
     const spec = mapping(entry);
     if (spec.runtime !== 'docker-swarm') continue;
     const loaded = loadSwarmModel({ repoRoot, environment, spec, files, findings });
     for (const file of loaded.sources) sources.add(file);
-    const rendered = renderedDeployment({ repoRoot, environment, spec, files, edition });
+    const rendered = renderedDeployment({ repoRoot, environment, spec, files });
     if (spec.renderedModel !== undefined && !rendered.unavailable) sources.add(rendered.file);
     const file = `.starcistacks/${environment}/${spec.composeFiles?.[0] ?? 'infra/swarm/stack.yaml'}`;
-    findings.push(...swarmModelIssues({ model: loaded.model, components, bindings: spec.components, lite }).map((issue: Parsed) => issueFinding(file, issue)));
+    findings.push(...swarmModelIssues({ model: loaded.model, components, bindings: spec.components }).map((issue: Parsed) => issueFinding(file, issue)));
   }
   findings.push(...undeclaredSwarmFindings(deployments, environments, sources));
   return findings;
 }
 
-function renderedDeployment({ repoRoot, environment, spec, files, edition }: { repoRoot: string; environment: Parsed; spec: Parsed; files: string[]; edition: string }) {
+function renderedDeployment({ repoRoot, environment, spec, files }: { repoRoot: string; environment: Parsed; spec: Parsed; files: string[] }) {
   const relative = spec.renderedModel ?? spec.composeFiles?.[0] ?? 'infra/swarm/stack.yaml';
   const prefix = `.starcistacks/${environment}/`, file = `${prefix}${relative}`;
   const envDir = path.resolve(repoRoot, prefix);
   const target = safeStackFile(repoRoot, envDir, relative);
-  const modelDirectory = edition === 'lite' ? 'infra/swarm/' : 'infra/';
+  const modelDirectory = 'infra/swarm/';
   const allowed = typeof relative === 'string' && relative.startsWith(modelDirectory) && /\.(?:ya?ml|json)$/i.test(relative);
   const parsed: { doc?: Parsed } = allowed && target && files.includes(file) ? readDeclaration(target) : {};
   const model = mapping(parsed.doc);
@@ -162,7 +159,7 @@ export function stacksDeploymentContexts(context: Parsed = {}) {
   if (!doc) return empty;
   const deployments = Object.entries<Parsed>(mapping(doc.environments))
     .filter(([, spec]) => spec?.runtime === 'docker-swarm')
-    .map(([environment, spec]) => renderedDeployment({ repoRoot: context.repoRoot, environment, spec, files, edition: context.repo?.edition }));
+    .map(([environment, spec]) => renderedDeployment({ repoRoot: context.repoRoot, environment, spec, files }));
   return { doc, deployments, files };
 }
 

@@ -6,7 +6,7 @@ import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { judgeAnatomy } from "./anatomy-gate.js"
 import type { Gap, GateVerdict, PlannedRule } from "./anatomy-gate.js"
-import { BEGIN_PREFIX, END_MARKER, SLICE_EDITIONS, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
+import { BEGIN_PREFIX, END_MARKER, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
 import { INDEX_FILE, renderIndex } from "./index-render.js"
 import { SECTIONED_DOCS } from "./sectioned-docs.js"
 import { renderSections } from "./sections-render.js"
@@ -58,10 +58,10 @@ const firstDifference = (actual: string, expected: string): number | null => {
     return (index < 0 ? left.length : index) + 1
 }
 
-/** The whole-file outputs of the generator besides anatomy.md: one slice per edition and side, the contexts index, and the section index of each SECTIONED_DOCS source the tree holds. */
+/** The whole-file outputs of the generator besides anatomy.md: one slice per side, the contexts index, and the section index of each SECTIONED_DOCS source the tree holds. */
 const wholeFiles = (knowledge: string): { readonly file: string; readonly text: string }[] => {
     return [
-        ...SLICE_EDITIONS.flatMap((edition) => SLICE_SIDES.map((side) => ({ file: join(knowledge, "project", sliceFile(edition, side)), text: renderSlice(knowledge, edition, side) }))),
+        ...SLICE_SIDES.map((side) => ({ file: join(knowledge, "project", sliceFile(side)), text: renderSlice(knowledge, side) })),
         { file: join(knowledge, INDEX_FILE), text: renderIndex(knowledge) },
         ...SECTIONED_DOCS.flatMap((doc) => {
             const text = renderSections(knowledge, doc)
@@ -100,24 +100,23 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
 
 /**
  * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
- * pattern front matter, its slices (`anatomy-<edition>-<side>.md`, the app root and one side, which op files read instead of
+ * pattern front matter, its slices (`anatomy-<side>.md`, the app root and one side, which op files read instead of
  * the whole anatomy), the contexts index (`project/index.md`, every file of the tree, which a Kernel opens instead of the
  * whole tree) and the section indexes of SECTIONED_DOCS (index-render.ts: each large document a seat loads by its index). Its
  * dry run (the default) exits 1 when any of them differs from the generator, or when a slot names a rule code no rule carries
- * or a rule names no enforcer (anatomy-gate.ts), and lists the rules judged only by planned enforcers; `--execute` rewrites them; `--slice` prints one slice. Runtime only (no edition): an app tree never sees it.
+ * or a rule names no enforcer (anatomy-gate.ts), and lists the rules judged only by planned enforcers; `--execute` rewrites them; `--slice` prints one slice. Runtime only.
  */
 export const contextsAnatomyVerb = defineVerb({
     path: ["contexts", "anatomy"],
-    summary: "judge the project anatomy (slot tree per edition and side) rendered from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes against the files (drift exits 1); --execute regenerates them, --slice prints one slice",
-    editions: [],
+    runtimeOnly: true,
+    summary: "judge the project anatomy (slot tree per side) rendered from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes against the files (drift exits 1); --execute regenerates them, --slice prints one slice",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/contexts-anatomy@1",
     flags: {
         execute: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code or a rule leaves a gap)" },
-        slice: { kind: "boolean", summary: "print the slice of one edition and side (the app root plus that side), as a task reads it" },
+        slice: { kind: "boolean", summary: "print the slice of one side (the app root plus that side), as a task reads it" },
         side: { kind: "string", summary: "the side of --slice: be or fe" },
-        edition: { kind: "string", summary: "the edition of --slice: lite or full" },
     },
     run: (_context, flags) => {
         const knowledge = knowledgeDir()
@@ -125,9 +124,9 @@ export const contextsAnatomyVerb = defineVerb({
         if (!existsSync(join(knowledge, "hfs", "slots.yaml"))) throw new Refusal("CONTEXTS_NOT_FOUND", `no hfs/slots.yaml under ${knowledge}`)
         if (flags.slice) {
             if (flags.execute) throw new Refusal("FLAGS_EXCLUSIVE", "--slice prints one slice; --execute writes every slice")
-            if (flags.side === undefined || flags.edition === undefined) throw new UsageError("--slice needs --side <be|fe> and --edition <lite|full>")
-            const text = renderSlice(knowledge, flags.edition, flags.side)
-            return Promise.resolve({ data: { file: join(knowledge, "project", sliceFile(flags.edition, flags.side)), mode: "print", verdict: "printed", dangling: [], firstDifference: null, files: [], gaps: [], planned: [] } satisfies AnatomyData, message: text })
+            if (flags.side === undefined) throw new UsageError("--slice needs --side <be|fe>")
+            const text = renderSlice(knowledge, flags.side)
+            return Promise.resolve({ data: { file: join(knowledge, "project", sliceFile(flags.side)), mode: "print", verdict: "printed", dangling: [], firstDifference: null, files: [], gaps: [], planned: [] } satisfies AnatomyData, message: text })
         }
         const { block, dangling } = renderAnatomy(knowledge)
         const gate = judgeAnatomy(knowledge)

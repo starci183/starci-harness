@@ -37,7 +37,7 @@ const hookFiles = {
 };
 const otherLanguage = 'h\u1ea1n cu\u1ed1i \u0111\u00e3 qua';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} R94 accepts named files inside their owning hook folder`, t => {
     const root = architectureFixture(t, edition, hookFiles);
     assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE'), []);

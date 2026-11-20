@@ -81,7 +81,7 @@ const fixture = (t: TestContext, edition: "full" | "lite") => {
   return app
 }
 
-for (const edition of ["full", "lite"] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} imported canonical header chains pass and raw, unknown or unrelated owners are red`, (t) => {
     const app = fixture(t, edition)
     assert.deepEqual(verify(app, caller()), [])

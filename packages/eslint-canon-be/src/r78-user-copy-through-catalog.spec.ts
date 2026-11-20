@@ -1,6 +1,5 @@
 // proves: BE_USER_COPY_LITERAL@lite
 // proves: BE_USER_COPY_LITERAL@full
-import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"
@@ -17,10 +16,9 @@ const HEAD = [
 ].join("\n")
 const code = (body: string) => HEAD + "\n" + body
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R78 valid catalog lookups and invalid literal user copy in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         ruleTester({ root: TYPED_ROOT, hfs }).run("user-copy-through-catalog", userCopyThroughCatalog, {
             valid: [
                 { filename: SERVICE, code: code("throw new PlanNotFoundError(messages.get('plan.notFound'))") },

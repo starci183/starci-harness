@@ -382,7 +382,7 @@ test('CI: a push to dev runs the reduced CI (sonar and codecov report, lint thro
   assert.deepEqual([none['pushProfileBranches'], none['planBranchProfiles']], ['', '']);
   const refused = ciWorkflowCommands({ files: [], read: read(declaration('branches:\n  main:\n    gates:\n      lint: report\n')) });
   assert.deepEqual([refused['pushProfileBranches'], refused['planBranchProfiles']], ['', ''], 'a refused profile renders nothing');
-  for (const edition of ['full', 'lite']) {
+  for (const edition of ['lite'] as const) {
     const source = { files: [], read: read(declaration(DEV)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const ci: Doc = parseWorkflow(text);

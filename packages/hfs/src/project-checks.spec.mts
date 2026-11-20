@@ -17,7 +17,7 @@ import { PROJECT_EXT_INVALID, loadProjectExt } from '../runtime/scripts/lib/proj
 import { looseCheckNotices } from '../sync/harness-checks.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
-const DECLARATION = { hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
+const DECLARATION = { hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
 
 /** An app root holding `files` (app-relative path -> text). */
 function appWith(t: TestContext, files: Record<string, string>): string {

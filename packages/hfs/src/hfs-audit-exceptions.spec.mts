@@ -228,7 +228,7 @@ function audit(step: string, edition: string): string[] {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_AUDIT_STEP_MISSING accepts the rendered starci app audit step and rejects one that swallows it (${edition})`, () => {
     for (const command of ['npx --no-install starci app audit --omit-dev --level=high', 'starci app audit --omit-dev --level=high', 'npx starci app audit --omit-dev']) assert.deepEqual(audit(`      - run: ${command}`, edition), [], command);
     for (const command of [

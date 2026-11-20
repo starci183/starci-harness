@@ -56,7 +56,7 @@ function appTree(t: TestContext, edition: string): string {
 
 const sourceForm = (repoRoot: string, file: string) => checkRepo({ repoRoot, files: [file], tree: false, phase: 'source' }).findings.filter((finding) => finding.code === CODE);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE} ${edition}: the app check rejects a role suffix outside the closed vocabulary`, (t) => {
     const repoRoot = appTree(t, edition);
     assert.equal(sourceForm(repoRoot, suffixBad)[0]?.code, CODE);

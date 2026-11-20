@@ -2,7 +2,7 @@ import { basename } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, currentBranch, mainCheckout, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { APP_KEY, BRANCH_PREFIX, changedPackages, listHandoffs, recordHandoff } from "./edit.js"
 import type { Handoff } from "./edit.js"
 
@@ -15,7 +15,6 @@ interface HandoffData {
 export const pkgHandoffVerb = defineVerb({
     path: ["pkg", "handoff"],
     summary: "record this package edit branch (pkg/*) and its committed head for Debug to merge, push and publish; --urgent when an app's deploy waits on it; --list prints the queue",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: EVERYONE,
     schema: "starci/pkg-handoff@1",

@@ -9,7 +9,7 @@ import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 const base = new URL("../fixtures/hfs-templates/fe/skeleton/apps/__app__/src/", import.meta.url)
 const session = fs.readFileSync(new URL("hooks/auth/useSession.ts", base), "utf8")
 const redux = fs.readFileSync(new URL("redux/hooks.ts", base), "utf8")
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R56 ${edition} accepts canonical typed Redux hooks and rejects non-hooks`, t => {
     const filename = "apps/web/src/hooks/auth/useSession.ts"
     const files = {
@@ -39,7 +39,7 @@ for (const edition of ["lite", "full"] as const) {
 
 // A composite hook that stands on the app's own hooks (a wrapper of hooks/swr, a hook of a
 // sibling domain) or on a listed library hook (next-intl...) is a hook; a file that exports a non-hook still fails.
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R56 ${edition} accepts composite hooks over own hooks and library hooks, and still refuses non-hooks`, t => {
     const filename = "apps/web/src/hooks/admin/useAdminSession.ts"
     const files = {

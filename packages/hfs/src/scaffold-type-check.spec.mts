@@ -160,5 +160,5 @@ async function checkEdition(t: TestContext, edition: string): Promise<void> {
 }
 
 describe('a fresh app type-checks and builds on every side', { concurrency: 2 }, () => {
-  for (const edition of ['lite', 'full']) test(`${edition}`, { timeout: 1_200_000 }, (t) => checkEdition(t, edition));
+  for (const edition of ['lite'] as const) test(`${edition}`, { timeout: 1_200_000 }, (t) => checkEdition(t, edition));
 });

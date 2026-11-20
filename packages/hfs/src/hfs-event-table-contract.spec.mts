@@ -32,7 +32,7 @@ function check(edition: string, override: Record<string, string | null> = {}) {
   }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} HFS_EVENT_CONTRACT passes matching literal tables and snapshot`, () => {
     assert.deepEqual(check(edition), []);
   });

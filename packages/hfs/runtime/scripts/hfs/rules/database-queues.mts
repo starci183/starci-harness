@@ -187,7 +187,6 @@ function migrationFacts(state: Parsed, files: string[]) {
 function queueState({ repoRoot, files = [], all = files, repo = {} }: { repoRoot: string; files?: string[]; all?: string[]; repo?: Repo }) {
   const paths = [...new Set(all)];
   const declaration = readJson(repoRoot, 'hfs.json') ?? repo;
-  if (repo.edition !== 'lite' && declaration.edition !== 'lite' && !paths.some((file) => file.startsWith('db/'))) return null;
   const state = { repoRoot, appRole: declaration.db?.appRole ?? 'app_be', findings: [], constants: new Map(), topics: new Map(), created: new Map(), activeCron: new Map(), grants: [], queueAcls: new Map() };
   queueSourceFacts(state, paths, inspectCalls);
   migrationFacts(state, paths);

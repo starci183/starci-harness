@@ -9,11 +9,8 @@ import { appSource, imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs"
 import { ScaffoldError, pascalOf } from "./service.mjs";
 import { PARTIAL_VARIABLES, coreFeApps, jsonText, packageJsonText } from "./app.mjs";
 
-/** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks): the base tree, then the edition overlay. */
-const CORE_DIRS = Object.freeze({
-  full: ["skeleton/apps/__app__"],
-  lite: ["skeleton/apps/__app__", "skeleton-lite/apps/__app__"],
-});
+/** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks): the base tree, then the overlay. */
+const CORE_DIRS = Object.freeze(["skeleton/apps/__app__", "skeleton-lite/apps/__app__"]);
 
 /** A file the add verb writes: its app-relative path and its text. */
 interface PlannedFile {
@@ -29,7 +26,6 @@ interface FeApp {
 
 /** The part of the app's declaration the verb reads. */
 interface AppRepo {
-  readonly edition?: string | undefined;
   readonly project: string;
 }
 
@@ -58,12 +54,12 @@ function planAppTemplates(repo: AppRepo, name: string): PlannedFile[] {
   const source = path.join(
     TEMPLATES_DIR,
     "fe",
-    repo.edition === "lite" ? "skeleton-lite/apps/web" : "skeleton/apps/app",
+    "skeleton-lite/apps/web",
   );
   if (!fs.existsSync(source))
     throw new ScaffoldError(
       "HFS_ADD_TEMPLATE_MISSING",
-      `the ${repo.edition} Next app skeleton is not carried by this package`,
+      "the Next app skeleton is not carried by this package",
     );
   const values = {
     project: repo.project,
@@ -79,7 +75,7 @@ function planAppTemplates(repo: AppRepo, name: string): PlannedFile[] {
     );
   // The app skeleton, then the shared core, then the edition overlay: a later tree replaces an earlier file of the same path.
   const byPath = new Map<string, PlannedFile>();
-  for (const dir of [source, ...CORE_DIRS[repo.edition === "lite" ? "lite" : "full"].map((core) => path.join(TEMPLATES_DIR, "fe", ...core.split("/")))]) {
+  for (const dir of [source, ...CORE_DIRS.map((core) => path.join(TEMPLATES_DIR, "fe", ...core.split("/")))]) {
     if (!fs.existsSync(dir)) continue;
     for (const relative of listFiles(dir)) byPath.set(relative, { relative: `${targetBase}/${relative}`, body: readTemplate(dir, relative) });
   }
@@ -97,7 +93,7 @@ function planWorkspaceManifests(root: string, repo: AppRepo, feApps: readonly Fe
   if (!firstPackage || !fs.existsSync(firstPackage))
     throw new ScaffoldError(
       "HFS_ADD_APP_PACKAGE_SOURCE",
-      "add app needs the package.json of an existing declared Next app as the edition-matched dependency source",
+      "add app needs the package.json of an existing declared Next app as the dependency source",
     );
   const workspacePackage = JSON.parse(fs.readFileSync(firstPackage, "utf8"));
   workspacePackage.name = `@${repo.project}/${name}`;
@@ -181,11 +177,6 @@ export function addApp({ root, name }: { root: string, name: string }): { create
   const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
   declaration.sides.fe.apps.push({ name, kind: "next" });
   const image = imageFiles(resolveAppDeclaration(manifest, declaration), appSource(root)).find((file: { path: string }) => file.path === `${targetBase}/Dockerfile`);
-  if (!image && repo.edition !== "lite")
-    throw new ScaffoldError(
-      "HFS_ADD_TEMPLATE_MISSING",
-      `the Dockerfile of front-end app ${name} did not render`,
-    );
   if (image) planned.push({ relative: image.path, body: image.content });
 
   const clashes = planned

@@ -7,7 +7,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
-import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
 const FILE = 'db/migrations/20260101120000_lookup.sql';
 
@@ -24,13 +23,12 @@ async function judge(t: TestContext, edition: string, sql: string) {
       fe: { apps: [{ name: 'web', kind: 'next' }] },
     },
   }));
-  assert.equal(readRepoDeclaration(loadSlotManifest(), repoRoot).edition, edition);
   fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, FILE), sql);
   return checkDatabase({ repoRoot, files: [FILE], git: () => ({ ok: false, stdout: '' }) });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_DEFINER_SAFE@${edition} rejects a definer with an unpinned search path`, async (t) => {
     const sql = 'create function private.lookup(subject uuid) returns boolean language sql security definer as $$ select subject is not null $$;';
     const findings = await judge(t, edition, sql);

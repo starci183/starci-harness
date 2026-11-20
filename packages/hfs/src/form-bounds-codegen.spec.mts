@@ -34,7 +34,7 @@ function codegenApp(t: TestContext) {
   put('node_modules/starci-harness/package.json', JSON.stringify({ type: 'module', exports: { './input-bounds': './input-bounds.mjs' } }));
   const helper = new URL('../emit/form-bounds.mjs', import.meta.url).href;
   put('node_modules/starci-harness/input-bounds.mjs', `export { inputBoundsPlugin as plugin, openApiBoundsSource, emptyInputBoundsSource, assertCompatibleInputBounds } from ${JSON.stringify(helper)};\n`);
-  const template = fs.readFileSync(new URL('../templates/app/skeleton/scripts/codegen.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+  const template = fs.readFileSync(new URL('../templates/app/codegen/scripts/codegen.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
   put('scripts/codegen.mjs', render(template, { appBinary: 'starci app' }));
   const exec = () => spawnSync(process.execPath, ['scripts/codegen.mjs'], { cwd: root, encoding: 'utf8' });
   const run = () => {

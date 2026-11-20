@@ -89,7 +89,7 @@ test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code
   assert.ok(found.every((finding) => finding.code === 'HFS_BYPASS_MARKER'));
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard refuse an inline disable in a front end`, (t) => {
     const root = stagedRepo(t, { 'fe/src/bad.ts': `export const bad = 1;\n${form('eslint-disable line')}` });
     assert.equal(bypassMarkerFindings({ repoRoot: root, files: ['fe/src/bad.ts'] })[0]!.code, 'HFS_BYPASS_MARKER');

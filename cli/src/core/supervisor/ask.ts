@@ -2,7 +2,7 @@ import { askSupervisor } from "../../harness/owner-ask.js"
 import { supervisorTitle } from "../../harness/supervisor.js"
 import { Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 
 /**
@@ -14,7 +14,6 @@ import { projectFrom } from "./driver.js"
 export const supervisorAskVerb = defineVerb({
     path: ["supervisor", "ask"],
     summary: "hand the owner's request to the project's Supervisor: recorded in its mailbox, its Run mailed awake; supervisor next returns it as owner-request",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "debug"],
     schema: "starci/owner-request@1",

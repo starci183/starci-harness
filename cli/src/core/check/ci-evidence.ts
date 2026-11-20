@@ -6,7 +6,6 @@ import { parse } from "yaml"
 import { Refusal, asRefusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
 import { git } from "../../shared/git.js"
-import type { Edition } from "../../shared/verb.js"
 
 /**
  * The CI evidence of a deploy (contexts/project/cicd.md, WP3): `starci app stack deploy --ci-run <run>` asks GitHub itself whether the
@@ -18,7 +17,7 @@ import type { Edition } from "../../shared/verb.js"
 /** Reads one GitHub REST path (relative to the API root) and returns its parsed json; a seam so the judgement runs on recorded answers. */
 export type GithubReader = (path: string) => Promise<unknown>
 
-/** The CI standard's jobs of one edition: the ones a green run must have passed, and the ones that may exist and must not be red. */
+/** The CI standard's jobs: the ones a green run must have passed, and the ones that may exist and must not be red. */
 export interface RequiredJobs {
     readonly required: readonly string[]
     readonly optional: readonly string[]
@@ -63,16 +62,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const text = (value: unknown): string => (typeof value === "string" ? value : "")
 const names = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [])
 
-/** The edition of the app at `root` (its hfs.json); an app that does not say is judged as full. */
-export const editionOf = (root: string): Edition => {
-    try {
-        const parsed: unknown = JSON.parse(readFileSync(join(root, "hfs.json"), "utf8"))
-        return isRecord(parsed) && parsed.edition === "lite" ? "lite" : "full"
-    } catch {
-        return "full"
-    }
-}
-
 /** The jobs of the managed CI an app may idle, each with the gates that must ALL be declared off: the renderer's own table, so the CLI never drifts from it. */
 export { IDLE_JOBS }
 
@@ -99,8 +88,8 @@ const declarationAt = async (root: string, sha: string): Promise<unknown> => {
     }
 }
 
-/** The jobs the CI standard of the installed @starci/hfs requires for `edition`; refused when the standard cannot be read or names none. */
-export const requiredJobsOf = (edition: Edition, declaration?: unknown): RequiredJobs => {
+/** The jobs the CI standard of the installed @starci/hfs requires, less the ones `declaration` idles; refused when the standard cannot be read or names none. */
+export const requiredJobsOf = (declaration?: unknown): RequiredJobs => {
     let file: string
     try {
         file = createRequire(import.meta.url).resolve(CI_STANDARD)
@@ -108,17 +97,16 @@ export const requiredJobsOf = (edition: Edition, declaration?: unknown): Require
         throw new Refusal("HFS_NOT_INSTALLED", `${CI_STANDARD} does not resolve from the CLI; reinstall starci-harness`)
     }
     const parsed: unknown = parse(readFileSync(file, "utf8"))
-    const jobs = isRecord(parsed) && isRecord(parsed.jobs) ? parsed.jobs : {}
-    const entry = jobs[edition]
-    const required = isRecord(entry) ? names(entry.required) : []
-    if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", `the CI standard of @starci/hfs names no required job for the ${edition} edition; it cannot be judged`)
+    const entry = isRecord(parsed) && isRecord(parsed.jobs) ? parsed.jobs : {}
+    const required = names(entry.required)
+    if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", "the CI standard of @starci/hfs names no required job; it cannot be judged")
     const idle = new Set(idleJobsOfDeclaration(declaration, IDLE_JOBS))
     // A job the app idles is not required, but when the run has it, it may not be red (judgeJobs treats an optional job that ran red as a problem; skipped is fine).
-    return { required: required.filter((job) => !idle.has(job)), optional: [...(isRecord(entry) ? names(entry.optional) : []), ...required.filter((job) => idle.has(job))] }
+    return { required: required.filter((job) => !idle.has(job)), optional: [...names(entry.optional), ...required.filter((job) => idle.has(job))] }
 }
 
 /** The jobs required for the app at `root` deploying `sha`: the standard's, less the jobs the declaration of that commit idles (gates it declares off with a reason). */
-export const requiredJobsAt = async (root: string, sha: string): Promise<RequiredJobs> => requiredJobsOf(editionOf(root), await declarationAt(root, sha))
+export const requiredJobsAt = async (root: string, sha: string): Promise<RequiredJobs> => requiredJobsOf(await declarationAt(root, sha))
 
 /** A message with anything shaped like a GitHub token removed: nothing this check prints may carry one. */
 const scrubbed = (message: string): string => message.replaceAll(/\b(?:gh[pousr]_|github_pat_)\w{8,}/gu, "[token]")

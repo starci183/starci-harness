@@ -19,12 +19,11 @@ function pinCheck(t: TestContext, edition: string, section: string, version: str
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
   const { repo } = openHfs({ repoRoot });
-  assert.equal(repo.edition, edition);
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, [section]: { typescript: version } }));
   return pinFindings({ repoRoot, files: ['package.json'], profile: repo.profile, pins });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const section of ['dependencies', 'devDependencies']) {
     test(`${CODE}@${edition}: ${section} with a drifting range is a violation`, (t) => {
       const [drift, ...rest] = pinCheck(t, edition, section, `^${pins.typescript.version}`);

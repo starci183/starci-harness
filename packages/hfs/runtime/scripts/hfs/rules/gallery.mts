@@ -230,7 +230,7 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
 
 /** Findings of R395 at the app root. */
 export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope = () => true, manifest }: { repoRoot: string; repo: Repo; isRoot: boolean; all?: string[]; inScope?: (file: string) => boolean; manifest?: Parsed }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const params = galleryParams(manifest);
   const at = (file: string) => posix.join(params.dir, file);
   const manifestFile = at('package.json');

@@ -1,7 +1,7 @@
 import { existsSync, globSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { presenceIn, readSlotCatalog, topicsOfSlot } from "../core/contexts/anatomy-render.js"
-import type { AnatomyEdition, Slot, SlotCatalog } from "../core/contexts/anatomy-render.js"
+import type { Slot, SlotCatalog } from "../core/contexts/anatomy-render.js"
 import { isRuleId } from "./contract.js"
 
 /**
@@ -123,13 +123,8 @@ const meet = (path: readonly string[], variant: Variant, i: number, j: number, b
     return meet(path, variant, i + 1, j + 1, bound)
 }
 
-/** True when the slot exists in the edition on the side: not outside its editions, not forbidden, and tracked. */
-const exists = (slot: Slot, side: string, edition: string | undefined): boolean => {
-    if (slot.tracked !== "tracked") return false
-    if (edition !== "lite" && edition !== "full") return slot.presence !== "forbidden"
-    const presence = presenceIn(slot, edition satisfies AnatomyEdition, side as "app" | "be" | "fe")
-    return presence !== undefined && presence !== "forbidden"
-}
+/** True when the slot exists on the side: not forbidden there, and tracked. */
+const exists = (slot: Slot, side: string): boolean => slot.tracked === "tracked" && presenceIn(slot, side as "app" | "be" | "fe") !== "forbidden"
 
 /** Where a path meets the variants of one slot: inside it (with the specificity) or above it. */
 const hitsOfSlot = (slot: Slot, rest: readonly string[], kinds: readonly string[]): { readonly inside: { readonly slot: Slot; readonly score: number }[]; readonly below: Slot[] } => {
@@ -147,12 +142,12 @@ const hitsOfSlot = (slot: Slot, rest: readonly string[], kinds: readonly string[
 }
 
 /** The slots a path lies inside (with their specificity) and the slots that lie below it. */
-const slotHits = (catalog: SlotCatalog, where: { readonly side: string; readonly edition: string | undefined; readonly rest: readonly string[]; readonly kinds: readonly string[] }): { readonly inside: { readonly slot: Slot; readonly score: number }[]; readonly below: Slot[] } => {
-    const { side, edition, rest, kinds } = where
+const slotHits = (catalog: SlotCatalog, where: { readonly side: string; readonly rest: readonly string[]; readonly kinds: readonly string[] }): { readonly inside: { readonly slot: Slot; readonly score: number }[]; readonly below: Slot[] } => {
+    const { side, rest, kinds } = where
     const inside: { readonly slot: Slot; readonly score: number }[] = []
     const below: Slot[] = []
     for (const slot of catalog.slots) {
-        if (!slot.profiles.includes(side as "app" | "be" | "fe") || !exists(slot, side, edition)) continue
+        if (!slot.profiles.includes(side as "app" | "be" | "fe") || !exists(slot, side)) continue
         const hits = hitsOfSlot(slot, rest, kinds)
         inside.push(...hits.inside)
         below.push(...hits.below)
@@ -166,13 +161,13 @@ const slotHits = (catalog: SlotCatalog, where: { readonly side: string; readonly
  * kind cli) is kept only when the app's folder names that kind or names no kind of the side, since the app's hfs.json is
  * not read here.
  */
-const slotsOfPath = (path: string, catalog: SlotCatalog, edition: string | undefined): { readonly side: string; readonly slots: Slot[] } => {
+const slotsOfPath = (path: string, catalog: SlotCatalog): { readonly side: string; readonly slots: Slot[] } => {
     const parts = path.split("/").filter((part) => part !== "" && part !== ".")
     const first = parts[0] ?? ""
     const side = SIDES.has(first) ? first : "app"
     const rest = side === "app" ? parts : parts.slice(1)
     const kinds = catalog.appKinds[side] ?? []
-    const { inside, below } = slotHits(catalog, { side, edition, rest, kinds })
+    const { inside, below } = slotHits(catalog, { side, rest, kinds })
     const best = Math.max(...inside.map((hit) => hit.score))
     const slots = [...inside.filter((hit) => hit.score === best).map((hit) => hit.slot), ...below]
     return { side, slots: [...new Set(slots)] }
@@ -193,12 +188,12 @@ const catalogOf = (harnessRoot: string): SlotCatalog | undefined => {
  * The rule pages of `allowPaths` (harness-relative, `contexts/code/be/cli.md`): every page of the side whose front matter
  * declares a slot a path governs. A page whose `slots` is empty holds cross-cutting rules and is never pulled by a path.
  */
-export const rulePagesOf = (harnessRoot: string, allowPaths: readonly string[], edition?: string): string[] => {
+export const rulePagesOf = (harnessRoot: string, allowPaths: readonly string[]): string[] => {
     const catalog = catalogOf(harnessRoot)
     if (catalog === undefined) return []
     const pages = new Set<string>()
     for (const path of allowPaths) {
-        const { side, slots } = slotsOfPath(path, catalog, edition)
+        const { side, slots } = slotsOfPath(path, catalog)
         for (const slot of slots) for (const topic of topicsOfSlot(slot, side, catalog)) pages.add(posix.join(CODE_PAGES, topic))
     }
     return [...pages].sort((left, right) => Number(left > right) - Number(left < right))

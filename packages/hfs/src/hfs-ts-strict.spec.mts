@@ -26,7 +26,7 @@ const synced = (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const relative of ['be/tsconfig.json', 'fe/tsconfig.json']) {
     test(`${edition}: lowering strict in ${relative} fails and the preset render passes`, async context => {
       const { root, findings } = synced(context, edition);
@@ -48,7 +48,7 @@ for (const edition of ['lite', 'full']) {
   }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: ts-strict rejects a lowered compiler flag`, () => {
     const expected = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'] });
     const actual = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'], compilerOptions: { strict: false } });

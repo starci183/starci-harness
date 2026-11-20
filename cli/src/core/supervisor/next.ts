@@ -1,4 +1,4 @@
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { parseWait } from "../kernel/next.js"
 import { projectFrom, supervisorNext } from "./driver.js"
 import type { SupervisorNext } from "./driver.js"
@@ -24,7 +24,6 @@ const linesOf = (data: SupervisorNext): string[] => {
 export const supervisorNextVerb = defineVerb({
     path: ["supervisor", "next"],
     summary: "sweep the project's Kernels and [Worker] seats, then return its next escalation, handoff, shared-need or kernel-undecided decision with a digest, else a worker's report or end (once), else its oldest owner-request, else one awaiting the owner or Debug (once); idle after --wait",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],
     schema: "starci/supervisor-next@1",

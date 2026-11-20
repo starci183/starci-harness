@@ -134,7 +134,7 @@ function appFindings(context: Parsed, app: Parsed, environments: Parsed, ts: Ts)
   return [found(FE_PUBLIC_BUILD_ARG_MISSING, file, `${FE_PUBLIC_BUILD_ARG_MISSING}: ${file} requires public build values without ARG defaults or deploy image buildArgs (${detail}).`, { missing })];
 }
 
-/** Judge front-end Dockerfiles at the app root in both editions; only names are read, and sealed members are never opened. */
+/** Judge front-end Dockerfiles at the app root; only names are read, and sealed members are never opened. */
 export function feBuildArgsFindings({ repoRoot, files = [], all = files, repo, isRoot = true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; isRoot?: boolean }) {
   if (!repoRoot || !isRoot || !repo?.sides?.fe) return [];
   const ts = loadTypescript(repoRoot, HERE);

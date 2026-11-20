@@ -17,7 +17,7 @@
 // `vps-ci`, never reach an app container and may both hold the SSH_GROUP keys, nothing else); ENV_PUBLIC_SEALED a NEXT_PUBLIC_* key in
 // custody; ENV_EXAMPLE_DRIFT a `*.env.example` key nothing reads; ENV_KEY_ENVIRONMENT_NAMED a sealed or declared key whose name starts with an
 // environment token (DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_, TEST_): the environment is the folder, never the name. The rule judges the app root (`isRoot`): the whole
-// tree `all` is its input, both editions.
+// tree `all` is its input.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
@@ -473,7 +473,7 @@ function addExampleFindings(repoRoot: string, all: string[], reads: Parsed, find
   }
 }
 
-/** The findings of R248 over the tracked paths `all` of an app judged at its root scope (both editions). */
+/** The findings of R248 over the tracked paths `all` of an app judged at its root scope. */
 export function envParityFindings({ repoRoot, all = [], isRoot }: { repoRoot: string; all?: string[]; isRoot: boolean }) {
   if (!isRoot) return [];
   const reads = collectEnvReads(repoRoot, all);

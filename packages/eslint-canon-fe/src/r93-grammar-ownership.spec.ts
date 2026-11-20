@@ -62,7 +62,7 @@ function grammarFindings(root: string) {
   }));
 }
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} invalid package contracts remain app-check findings and never TSX lint reports`, t => {
     const app = fixture(t, edition, true);
     const findings = grammarFindings(app.root);

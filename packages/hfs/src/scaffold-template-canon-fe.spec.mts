@@ -34,7 +34,7 @@ const shippedCanon = (config: Linter.Config[]): Linter.Config[] => config.map((b
   ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => !TYPE_GRAPH_RULES.has(id))),
 }));
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`every fe file the ${edition} scaffold writes passes the starci-fe canon`, { timeout: 300_000 }, async (t) => {
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition,
       presets: bundledPresets(), lock: lockedOk, initGit: init });

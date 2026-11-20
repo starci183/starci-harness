@@ -10,7 +10,7 @@ import { serviceIsolation } from "./service-isolation.ts"
 const builder = at("src/tests/fixtures/builders/order.builder.ts")
 const service = at("apps/order/src/app.module.ts")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", {
         apps: [{ name: "order", kind: "api" }, { name: "billing", kind: "worker" }],
     }), edition }, TYPED_ROOT)

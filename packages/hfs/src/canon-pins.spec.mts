@@ -64,7 +64,7 @@ test('contexts/stack/pins.yaml names every @starci package at its bundled pin an
   for (const [name, pin] of Object.entries(bundledPins()).filter(([, row]) => row.group === 'starci')) assert.deepEqual([stack[name]?.version, stack[name]?.range], [pin.version, pin.range], name);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_CANON_PIN_DRIFT@${edition}: starci-harness is judged against the CLI that runs the check, never a bundled pin`, (t) => {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-harness-pin-'));
     t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));

@@ -4,13 +4,12 @@ import { getWorkflow, graphOf, graphVersions, snapshotOf } from "../../harness/w
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** `starci plan show <workflow> [--version n]`: a graph as recorded: tasks, edges, contract and node hashes, and (current graph) their states. */
 export const planShowVerb = defineVerb({
     path: ["plan", "show"],
     summary: "a workflow's graph: tasks, dependencies, contract and node hashes, each task's state and ledger task, and the graph versions",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/plan-show@1",

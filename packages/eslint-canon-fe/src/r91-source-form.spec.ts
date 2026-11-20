@@ -33,10 +33,9 @@ const BRANCH = at("apps/web/src/components/branches/ModalBranch/index.tsx")
 const PAGE = at("apps/web/src/features/pages/HomePage/index.tsx")
 const ROUTE = at("apps/web/src/app/[locale]/page.tsx")
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R91 accepts valid source and rejects invalid authoring in ${edition}`, () => {
     const hfs = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })
-    assert.equal(hfs.edition, edition)
     const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
       settings: { starci: { hfs } },
