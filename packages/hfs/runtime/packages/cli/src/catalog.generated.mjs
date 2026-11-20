@@ -3282,6 +3282,39 @@ export const CATALOG = {
             }
           ],
           "json": "flag"
+        },
+        "remove": {
+          "summary": "remove a lane worktree safely, the only sanctioned way: refuse a main or unregistered checkout or tracked changes, hold a removal lock the install paths respect, unlink every junction and symlink as a link (never its target), check none remains, then git worktree remove and prune; the branch is kept (dry until --execute)",
+          "flags": [
+            {
+              "name": "keep-branch",
+              "type": "boolean",
+              "summary": "keep the lane's branch (the default and the only mode: the branch is never deleted)"
+            },
+            {
+              "name": "discard",
+              "type": "boolean",
+              "summary": "remove although tracked changes stand, throwing them away"
+            },
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane named in the removal lock (default: STARCI_LANE, else the worktree's lane/<lane> branch)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "remove the worktree (default: a dry run that prints the plan and changes nothing)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "worktree",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
         }
       }
     },
