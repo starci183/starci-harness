@@ -39,6 +39,8 @@ export interface DatabaseDecl {
   target: DatabaseTarget;
   /** The stack service of a `stack` database. */
   service: string;
+  /** `db adopt`: the legacy history tables of the tool that built the database (a TypeORM `migrations` table), left as they are by the compare. */
+  adopt: { legacyHistory: string[] };
   /** The sealed custody value the first start gives the app role (hfs.json `db.appRole`, default app_be) as its password, or null when none is declared. */
   appPassword: SealedRef | null;
 }
@@ -79,6 +81,7 @@ const listOf = (item: Check): Check => (value) => Array.isArray(value) && value.
 const dirOk: Check = (value) => typeof value === 'string' && value.split('/').every((part) => SEGMENT.test(part) && part !== '..');
 const pairOk: Check = (value) => plain(value) && Object.keys(value as Block).length === 2 && matches(STAMP)((value as Block).from) && matches(STAMP)((value as Block).to);
 const SERVICE = /^[a-z][a-z0-9_-]*$/u;
+const LEGACY_TABLE = /^[a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?$/u;
 const POST_FIELDS = ['schema', 'functionPrefixes', 'functionNames', 'functions', 'minAgeHours'];
 const POST_CHECKS: Record<string, Check> = {
   schema: matches(IDENT), functionPrefixes: listOf(matches(IDENT)), functionNames: listOf(matches(IDENT)),
@@ -98,10 +101,11 @@ const CHECKS: Record<string, [Check, string]> = {
   postCutover: [postOk, `must use only ${POST_FIELDS.join(', ')} with valid values`],
   target: [(value) => value === 'stack' || value === 'external', 'must be stack (a service of the environment stack) or external'],
   service: [matches(SERVICE), `must match ${SERVICE} (the stack service that runs the database)`],
+  adopt: [(value) => plain(value) && Object.keys(value as Block).every((key) => key === 'legacyHistory') && ((value as Block)['legacyHistory'] === undefined || listOf(matches(LEGACY_TABLE))((value as Block)['legacyHistory'])), 'must be { legacyHistory: [<table> or <schema.table>] }: the legacy history tables of the tool that built the database'],
   appPassword: [sealedOk, 'must be { member, key }: the sealed member of the environment (lower-case) and the UPPER_CASE key whose value the app role gets'],
 };
 
-const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null, target: 'stack', service: 'db', appPassword: null });
+const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null, target: 'stack', service: 'db', adopt: { legacyHistory: [] }, appPassword: null });
 
 /** Judges the `database:` block. Returns { config } or { problems }; every field is optional (`standard` needs `baseline`). */
 function normalizeDatabase(block: unknown): { config: DatabaseDecl; problems?: undefined } | { config?: undefined; problems: string[] } {
@@ -114,7 +118,7 @@ function normalizeDatabase(block: unknown): { config: DatabaseDecl; problems?: u
   }
   if (fields.standard !== undefined && fields.baseline === undefined) problems.push('database.standard: needs database.baseline');
   if (problems.length > 0) return { problems };
-  return { config: { ...DEFAULTS, ...fields } };
+  return { config: { ...DEFAULTS, ...fields, adopt: { legacyHistory: [...((fields['adopt'] as Block | undefined)?.['legacyHistory'] ?? [])] } } };
 }
 
 /** The normalised `database:` block of the app at `root` (all defaults when absent); an invalid block is a refusal. */

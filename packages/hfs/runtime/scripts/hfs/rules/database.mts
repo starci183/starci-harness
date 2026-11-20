@@ -3,7 +3,7 @@
 import { found, readJson, readText } from './read.mjs';
 import { baselineResetOf } from './database-reset.mjs';
 import { contractReleaseFindings, defaultGit, migrationShapeFindings } from './database-migrations.mjs';
-import { migrationSetPolicyFindings, sqlAnalysis } from './database-sql.mjs';
+import { attachDoStatements, migrationSetPolicyFindings, sqlAnalysis } from './database-sql.mjs';
 import { migrationSetDefinerFindings } from './database-plpgsql.mjs';
 import { databaseAccessFindings } from './database-access.mjs';
 import { migrationSetKeyFindings } from './database-keys.mjs';
@@ -29,6 +29,7 @@ export {
   DB_STORAGE_POLICY,
   LITE_DB_MIGRATION,
 } from './database-constants.mjs';
+import { DB_RLS_REQUIRED as RLS_REQUIRED_CODE } from './database-constants.mjs';
 import type { Finding, Parsed } from './rule-types.mjs';
 
 /** The schemas the app's tables live in; no schema is exposed to a browser, which reaches data only through the back end. */
@@ -50,6 +51,30 @@ export function liteDbPathFindings(files: string[]) {
     else if (!isActiveMigration(file) && !file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`) && file !== BOOTSTRAP_FILE) findings.push(found(LITE_DB_MIGRATION, file, `${file} is SQL under ${DB_DIR}/ that is no migration, archive or bootstrap; seed data is an entry of a seed level, .starcistacks/seeds/sql/ or .starcistacks/<env>/seeds/sql/ (starci app codemod seeds-layout moves it)`, {}));
   }
   return findings;
+}
+
+/** The schema and name a DROP TABLE statement names, one per dropped table. */
+const droppedTableNames = (statement: Parsed): string[] => (statement.type === 'DropStmt' && statement.node?.removeType === 'OBJECT_TABLE'
+  ? (statement.node.objects ?? []).map((object: Parsed) => (object?.List?.items ?? []).map((item: Parsed) => item?.String?.sval).filter((name: unknown): name is string => typeof name === 'string')).filter((parts: string[]) => parts.length > 0)
+    .map((parts: string[]) => (parts.length > 1 ? `${parts.at(-2)}.${parts.at(-1)}` : `${statement.defaultSchema ?? 'public'}.${parts[0]}`))
+  : []);
+
+/**
+ * DB_RLS_REQUIRED over the ordered set. A table created without `enable row level security` (or, for a declared definer-owned table, `force row level security`) in its own migration is
+ * judged by what the later migrations do: a baseline in the shape a database has today carries no RLS (adopt would see policies the live database lacks) and a later migration adds it, so the
+ * table that ends with RLS enabled (and forced, where declared), or is dropped, is no finding. A table that ends without it keeps its finding.
+ */
+function cumulativeRlsFindings(findings: Finding[], analyses: Parsed[]): Finding[] {
+  return findings.filter((finding) => {
+    const missing = (finding as { missing?: string }).missing;
+    const table = (finding as { table?: string }).table;
+    if (finding.code !== RLS_REQUIRED_CODE || (missing !== 'enable' && missing !== 'force') || table === undefined) return true;
+    const at = analyses.findIndex((analysis) => analysis.file === finding.path);
+    if (at < 0) return true;
+    const [schema, name] = table.split('.') as [string, string];
+    return !analyses.slice(at + 1).some(({ facts }) => (missing === 'enable' ? facts?.enables : facts?.forces)?.some((event: Parsed) => event.schema === schema && event.name === name)
+      || (facts?.statements ?? []).some((statement: Parsed) => droppedTableNames(statement).includes(table)));
+  });
 }
 
 async function migrationAnalyses({ repoRoot, migrations, exposed, forceRls, findings }: { repoRoot: string; migrations: Parsed; exposed: Parsed; forceRls: Parsed; findings: Finding[] }) {
@@ -83,6 +108,9 @@ export async function checkDatabase({ repoRoot, files, base, git, db }: { repoRo
   findings.push(...await contractReleaseFindings({ repoRoot, migrations, git: git ?? defaultGit }));
 
   const analyses = await migrationAnalyses({ repoRoot, migrations, exposed: APP_SCHEMAS, forceRls, findings });
+  for (const analysis of analyses) await attachDoStatements(analysis.facts);
+  const rls = cumulativeRlsFindings(findings.splice(0), analyses);
+  findings.push(...rls);
   findings.push(
     ...migrationSetPolicyFindings(analyses),
     ...migrationSetDefinerFindings(analyses, APP_SCHEMAS),

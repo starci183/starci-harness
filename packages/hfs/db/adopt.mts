@@ -23,6 +23,7 @@ import { buildImage, dumpEntries, entryKey, exec, firstDifference, replay, start
 import type { DumpEntry } from '../runtime/scripts/hfs/db-squash.mjs';
 import { DbVerbError } from '../runtime/scripts/hfs/db-errors.mjs';
 import { DB_DOCKERFILE } from './image.mjs';
+import { SEED_RECEIPTS } from '../stack/seeds.mjs';
 
 /** The schemas a lite app's bootstrap and the history own: left out of both dumps, so the compared schema is the baseline's. */
 const PLATFORM_SCHEMAS = ['auth', 'storage', 'extensions', 'supabase_migrations'];
@@ -30,6 +31,34 @@ const DUMP_FLAGS = ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((
 const DIFF_LIMIT = 40;
 const RELATIONS_SQL = `select count(*)::int as count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
   where c.relkind in ('r', 'p') and n.nspname !~ '^pg_' and n.nspname <> 'information_schema' and n.nspname <> all (array[${PLATFORM_SCHEMAS.map((schema) => `'${schema}'`).join(', ')}])`;
+
+/**
+ * The tables the harness owns in an app database, never part of the schema an adopted database is compared with: the seed receipts (stack/seeds.mts SEED_RECEIPTS, the one name) and the
+ * migration history (supabase_migrations, a schema the compare leaves out already).
+ */
+const HARNESS_TABLES: readonly string[] = [SEED_RECEIPTS];
+
+/** The entries of a dump that belong to the tables `tables` (`public.x` or `x`): the table, its constraints and defaults, its indexes, the sequences it owns and their ownership. */
+export function belongingTo(entries: readonly DumpEntry[], tables: readonly string[]): Set<DumpEntry> {
+  const wanted = tables.map((table) => (table.includes('.') ? table : `public.${table}`));
+  const bare = new Set(wanted.map((table) => table.split('.')[1] as string));
+  const inSchema = (entry: DumpEntry, name: string): boolean => wanted.includes(`${entry.schema}.${name}`);
+  const owned = new Set<string>();
+  for (const entry of entries) {
+    const match = entry.type === 'SEQUENCE OWNED BY' ? /OWNED BY ([\w".]+)\.[\w"]+;?\s*$/u.exec(entry.body) : null;
+    const table = match?.[1]?.replaceAll('"', '').split('.').at(-1);
+    if (table !== undefined && bare.has(table) && wanted.some((name) => name.endsWith(`.${table}`))) owned.add(`${entry.schema}.${entry.name}`);
+  }
+  const mentions = (entry: DumpEntry): boolean => [...bare].some((table) => new RegExp(`(?:ON|ONLY|TABLE) (?:${entry.schema}\\.)?"?${table}"?(?:[\\s(;]|$)`, 'u').test(entry.body));
+  const picked = new Set<DumpEntry>();
+  for (const entry of entries) {
+    const head = entry.name.split(' ')[0] as string;
+    if ((entry.type === 'TABLE' && inSchema(entry, entry.name)) || (entry.name.includes(' ') && bare.has(head) && wanted.includes(`${entry.schema}.${head}`) && !/^(?:TABLE|SEQUENCE|VIEW) /u.test(entry.name))
+      || (entry.type === 'INDEX' && mentions(entry)) || ((entry.type === 'SEQUENCE' || entry.type === 'SEQUENCE OWNED BY') && owned.has(`${entry.schema}.${entry.name}`))
+      || (['ACL', 'COMMENT'].includes(entry.type) && /^TABLE /u.test(entry.name) && inSchema(entry, entry.name.slice(6)))) picked.add(entry);
+  }
+  return picked;
+}
 
 /** The refusals of the verb are DbVerbErrors from the shared squash helpers; they surface as the verb's own refusal code. */
 const asRefusal = (error: unknown): never => { throw error instanceof DbVerbError ? refusal('DB_ADOPT_SCRATCH', error.message) : error; };
@@ -50,17 +79,29 @@ export function schemaDiff(live: readonly DumpEntry[], baseline: readonly DumpEn
 const privilegeSql = (entries: readonly DumpEntry[]): string[] => entries.filter((entry) => entry.type === 'ACL' || entry.type === 'DEFAULT ACL').map((entry) => entry.body.replace(/^--.*$/gmu, '').trim()).filter(Boolean);
 
 /** The live schema, the baseline's replay on a scratch database, and the privileges the replay holds. */
-function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array<[string, string]>, image: string | undefined): { live: DumpEntry[]; baseline: DumpEntry[]; privileges: string[]; how: string } {
-  const live = dumpEntries(pgTool(ctx, target, 'pg_dump', [...DUMP_FLAGS, '--dbname', target.url], { withhold: true }).stdout).entries;
+function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array<[string, string]>, image: string | undefined, leftOut: ReadonlyArray<{ label: string; tables: readonly string[] }>): { live: DumpEntry[]; baseline: DumpEntry[]; privileges: string[]; how: string; left: string[] } {
+  const liveAll = dumpEntries(pgTool(ctx, target, 'pg_dump', [...DUMP_FLAGS, '--dbname', target.url], { withhold: true }).stdout).entries;
+  const left: string[] = [];
+  const without = (entries: DumpEntry[], report: boolean): DumpEntry[] => {
+    let kept = entries;
+    for (const group of leftOut) {
+      if (group.tables.length === 0) continue;
+      const out = belongingTo(kept, group.tables);
+      if (report && out.size > 0) left.push(`${group.label}: ${group.tables.join(', ')} (${out.size} object(s))`);
+      kept = kept.filter((entry) => !out.has(entry));
+    }
+    return kept;
+  };
+  const live = without(liveAll, true);
   let ref: string;
   try { ref = image ?? buildImage(root); } catch (error) { return asRefusal(error); }
   let scratch: ReturnType<typeof startScratch>;
   try { scratch = startScratch(ref); } catch (error) { return asRefusal(error); }
   try {
     const database = replay(scratch, files);
-    const baseline = dumpEntries(exec(database, 'pg_dump', [...DUMP_FLAGS, '-d', database.url])).entries;
+    const baseline = without(dumpEntries(exec(database, 'pg_dump', [...DUMP_FLAGS, '-d', database.url])).entries, false);
     const withAcl = dumpEntries(exec(database, 'pg_dump', ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((schema) => ['-N', schema]), '-d', database.url])).entries;
-    return { live, baseline, privileges: privilegeSql(withAcl), how: image === undefined ? `a scratch container of the image ${DB_DOCKERFILE} builds` : `a scratch container of ${image}` };
+    return { live, baseline, privileges: privilegeSql(withAcl), left, how: image === undefined ? `a scratch container of the image ${DB_DOCKERFILE} builds` : `a scratch container of ${image}` };
   } catch (error) { return asRefusal(error); } finally { scratch.stop(); }
 }
 
@@ -86,7 +127,7 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
     ...(hasBootstrap ? [[BOOTSTRAP_FILE, fs.readFileSync(bootstrap, 'utf8')] as [string, string]] : []),
     [`${decl.migrationsDir}/${baselineFile}`, fs.readFileSync(path.join(ctx.cwd, decl.migrationsDir, baselineFile), 'utf8')],
   ];
-  const { live, baseline, privileges, how } = compared(ctx, target, ctx.cwd, files, options.image);
+  const { live, baseline, privileges, how, left } = compared(ctx, target, ctx.cwd, files, options.image, [{ label: 'left as is, harness-owned', tables: HARNESS_TABLES }, { label: 'left as is, legacy history', tables: decl.adopt.legacyHistory }]);
   const diff = schemaDiff(live, baseline);
   if (diff.length > 0) {
     const shown = diff.slice(0, DIFF_LIMIT);
@@ -95,6 +136,7 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
   const lines = [
     `target         ${target.how}`,
     `proof          schema of the database (${live.length} object(s), platform schemas ${PLATFORM_SCHEMAS.join(', ')} left out) equals bootstrap + baseline replayed on ${how}`,
+    ...left.map((line) => `leave          ${line}`),
     `bootstrap      ${hasBootstrap ? `${BOOTSTRAP_FILE} runs (idempotent)` : 'none in this app'}`,
     `privileges     ${privileges.length} grant statement(s) of the baseline replay`,
     `history        ${HISTORY_TABLE} is created and the baseline ${stamp} (${baselineFile.slice(15, -'.sql'.length)}) recorded applied; the baseline is not run`,

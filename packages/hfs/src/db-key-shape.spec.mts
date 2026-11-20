@@ -113,3 +113,26 @@ test('the skeleton baseline, with its sync-managed identity module, passes the k
   const sql = template.split('\n').filter((line) => !line.trimStart().startsWith('{{>')).join('\n');
   assert.deepEqual((await keyFindings(t, 'lite', sql)).map(({ code, table, column }) => [code, table, column]), []);
 });
+
+test('the key shape is the one the whole ordered set leaves: an old-shape baseline that a later migration reshapes is no finding, and without it is one', async (t) => {
+  const BASELINE = 'db/migrations/20260101000000_baseline.sql';
+  const CONVERGE = 'db/migrations/20260102000000_converge-key-shape.sql';
+  const OLD_SHAPE = `create table public.user_roles (user_id text not null, role text not null, constraint user_roles_pkey primary key (user_id, role));\n${RLS('user_roles')}`;
+  const REPLACED = `alter table public.user_roles add column id uuid not null default gen_random_uuid();
+alter table public.user_roles drop constraint user_roles_pkey;
+alter table public.user_roles add constraint user_roles_id_pkey primary key (id);
+alter table public.user_roles add constraint user_roles_natural_key unique (user_id, role);\n`;
+  const judged = async (files: Record<string, string>) => {
+    const repoRoot = appAt(t, 'lite', '');
+    fs.rmSync(path.join(repoRoot, FILE));
+    for (const [name, sql] of Object.entries(files)) fs.writeFileSync(path.join(repoRoot, name), sql);
+    return (await checkDatabase({ repoRoot, files: Object.keys(files), git: () => ({ ok: false, stdout: '' }) })).filter((finding) => KEY_CODES.has(finding.code));
+  };
+  assert.deepEqual((await judged({ [BASELINE]: OLD_SHAPE, [CONVERGE]: REPLACED })).map((finding) => finding.code), [], 'the later migration gives the table `id uuid` as its key');
+  const alone = await judged({ [BASELINE]: OLD_SHAPE });
+  assert.deepEqual(alone.map((finding) => finding.code), ['DB_PRIMARY_KEY_SHAPE']);
+  assert.match(String(alone[0]?.message), /primary key is \(user_id, role\)/u);
+  const half = await judged({ [BASELINE]: OLD_SHAPE, [CONVERGE]: REPLACED.split('\n').slice(0, 2).join('\n') + '\n' });
+  assert.match(String(half[0]?.message), /it declares no primary key after every migration, last changed by db\/migrations\/20260102000000_converge-key-shape.sql:2/u, 'a key that stays wrong cites the last migration that changed it');
+  assert.deepEqual((await judged({ [BASELINE]: OLD_SHAPE, [CONVERGE]: 'drop table public.user_roles;\n' })).map((finding) => finding.code), [], 'a table the set drops is judged no more');
+});
