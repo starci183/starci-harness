@@ -31,6 +31,8 @@ export interface DesignPage {
   matchedAt?: string;
   board: string;
   shots?: Partial<Record<(typeof DESIGN_WIDTHS)[number], string>>;
+  /** Approved (or drafted) but not buildable yet, e.g. it waits on data or an API: the gates that couple a code change to this screen skip it, and the reason is listed (PROJECT-GALLERY-6 item 9). */
+  pending?: { reason: string };
 }
 export interface DesignManifest {
   areas: string[];
@@ -40,7 +42,8 @@ export interface DesignManifest {
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
-const PAGE_KEYS = new Set(['status', 'approvedAt', 'matchedAt', 'board', 'shots']);
+const PAGE_KEYS = new Set(['status', 'approvedAt', 'matchedAt', 'board', 'shots', 'pending']);
+export const PENDING_UNBUILT = 'HFS_APP_GALLERY_DESIGN_PENDING';
 
 /**
  * The release of the critique rule (PROJECT-GALLERY-7 item 3, HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING): a `matches` page whose `matchedAt` is at or after this instant must carry the
@@ -73,6 +76,12 @@ function pageProblems(id: string, value: unknown, areas: ReadonlySet<string>): s
   if (matchedAt !== undefined && (status !== 'matches' || typeof matchedAt !== 'string' || !ISO.test(matchedAt) || Number.isNaN(Date.parse(matchedAt)))) problems.push(`the page "${id}" carries "matchedAt" ${JSON.stringify(matchedAt)}: only a matches page has it, as an ISO timestamp with its zone, set by the reviewer when the final critique is done`);
   if (!approved && approvedAt !== undefined) problems.push(`the page "${id}" is ${String(status)} and carries "approvedAt": only the owner's approval sets it, a redraw drops it`);
   if (typeof page['board'] !== 'string' || !/^https:\/\/\S+$/u.test(page['board'])) problems.push(`the page "${id}" has no "board" (the https link of the published board)`);
+  const pending = page['pending'];
+  if (pending !== undefined) {
+    if (!plain(pending) || Object.keys(pending).some((key) => key !== 'reason')) problems.push(`the page "${id}" has a "pending" that is not exactly { "reason": "<why it cannot be built yet>" }`);
+    else if (typeof pending['reason'] !== 'string' || pending['reason'].trim() === '') problems.push(`the page "${id}" is pending with no reason: say what it waits on (data, an API), because a pending screen is skipped by the change gates`);
+    if (status === 'built' || status === 'matches') problems.push(`the page "${id}" is ${String(status)} and still pending: a built page is not pending, drop "pending"`);
+  }
   const shots = page['shots'];
   if (shots !== undefined) {
     if (!plain(shots)) problems.push(`the page "${id}" has a "shots" that is not an object`);
@@ -102,6 +111,13 @@ export function parseDesign(text: string): { manifest: DesignManifest | null; pr
   const pages = doc['pages'] as Record<string, unknown>;
   for (const [id, page] of Object.entries(pages)) problems.push(...pageProblems(id, page, listed));
   return problems.length > 0 ? { manifest: null, problems } : { manifest: { areas: areas as string[], pages: pages as Record<string, DesignPage> }, problems: [] };
+}
+
+/** The pending screens of the design manifest of `repoRoot`, id to reason; empty when there is no canvas or its manifest is not valid (the manifest finding reports that). */
+export function pendingScreens(repoRoot: string): Map<string, string> {
+  const text = readText(repoRoot, DESIGN_FILE);
+  const manifest = text === null ? null : parseDesign(text).manifest;
+  return new Map(Object.entries(manifest?.pages ?? {}).flatMap(([id, page]) => (page.pending === undefined ? [] : [[id, page.pending.reason.trim()] as const])));
 }
 
 /** The sha256 of a file, or null when it is absent. */
@@ -152,6 +168,14 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
       const actual = sha256(path.join(repoRoot, ...shot.split('/')));
       if (actual === null) findings.push(found('HFS_APP_GALLERY_DESIGN_SHOT_MISSING', shot, `the work tree holds shots of the ${page.status} page ${id} but not ${shot}: shoot it at ${width} ${rule}`, local));
       else if (page.shots?.[width] !== undefined && page.shots[width] !== actual) findings.push(found('HFS_APP_GALLERY_DESIGN_SHOT_STALE', shot, `${shot} is not the shot ${file} records for the ${page.status} page ${id} (sha256 ${actual.slice(0, 12)}, recorded ${page.shots[width]?.slice(0, 12)}): the screen was shot again after the record; compare it with the approved frame, then record its sha (built, or matches after the review) ${rule}`, local));
+    }
+  }
+  const pending = Object.entries(manifest.pages).filter(([, page]) => page.pending !== undefined);
+  if (pending.length > 0) {
+    findings.push(found(PENDING_UNBUILT, file, `${pending.length} screen${pending.length === 1 ? '' : 's'} pending, skipped by the change gates (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, UI_AUDIT_*): ${pending.map(([id, page]) => `${id} (${page.pending?.reason.trim() ?? ''})`).join('; ')} ${rule}`, { level: 'info' }));
+    for (const [id] of pending) {
+      const shot = byId.get(id);
+      if (shot !== undefined && shot.shots > 0) findings.push(found(PENDING_UNBUILT, `${params.pages}/${id}`, `the pending screen ${id} has a shot in the work tree, so it is coded: drop "pending" from its entry in ${file} and let the change gates judge it ${rule}`, { level: 'info' }));
     }
   }
   const areas = new Set(manifest.areas);

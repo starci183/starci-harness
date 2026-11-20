@@ -20,6 +20,8 @@ export interface BoardSection {
     readonly route: string
     /** True while the route is not coded yet. */
     readonly planned: boolean
+    /** Why the screen cannot be built yet (it waits on data or an API); null when it is not pending. */
+    readonly pending: string | null
     /** The named states, `default` first. */
     readonly states: readonly string[]
     /** The "cần API" operations the section needs. */
@@ -62,6 +64,7 @@ export function readBoard(doc: unknown, hasModule: (id: string) => boolean): Boa
             title: typeof value.title === "string" && value.title.trim() !== "" ? value.title.trim() : id,
             route: typeof value.route === "string" ? value.route.trim() : "",
             planned: value.planned === true,
+            pending: isRecord(value.pending) && typeof value.pending.reason === "string" && value.pending.reason.trim() !== "" ? value.pending.reason.trim() : null,
             states: states.length === 0 ? [DEFAULT_STATE] : states,
             needsApi: texts(value.needsApi),
             hasModule: hasModule(id),

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: a screen (or board section) whose `design.json` entry has `pending: { reason }` shows as `Pending: <reason>` (`Chờ: <reason>`) in the tree, the header chip and the explanation panel, and on the board, instead of being hidden (`Screen.pending`, `statusPending`).
+
 ## 0.1.13 - 2026-11-20
 
 - Added: the design board (PROJECT-GALLERY-9). `gallery/board/board.yaml` and one module per section (`gallery/board/<area>/<screen>.tsx`, Grammar components only) render as the view "Board" (`#/board`): every section with its route, its screen.yaml, its states and its "cần API" marks, each state at 1440 and 390 in its own frame (`/__board/frame.html`), so the responsive rules see the real width. The app's tokens (`tokens` of the record) load after the Grammar's stylesheet. The board renders in the dev server; `vite build` leaves it out.

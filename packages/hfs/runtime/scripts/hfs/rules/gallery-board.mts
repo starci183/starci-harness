@@ -3,7 +3,7 @@
 // An app without the record has no board and is outside this rule. The findings:
 //   HFS_APP_GALLERY_BOARD_INVALID          the record is not YAML or not its shape, or a section has no module (an error);
 //   HFS_APP_GALLERY_BOARD_ROUTE_MISSING    a `page.tsx` route of the front end, not excluded in gallery/routes.json, has no section whose `route` matches it;
-//   HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED a section's `route` is no route of the front end and the section is not marked `planned`, or it is marked `planned` while the route is coded.
+//   HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED a section's `route` is no route of the front end and the section is not marked `planned`, or it is marked `planned` while the route is coded; a section with a `pending` reason (it waits on data or an API, a state of a coded route) is exempt from both.
 // The last two are localOnly: a warning in `--env local`, an error in `--env prod`, as the coverage of PROJECT-GALLERY-4.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +23,8 @@ export interface BoardSection {
   title: string;
   route: string;
   planned: boolean;
+  /** Why the screen cannot be built yet (it waits on data or an API), the same record as `pending` of design.json; null when it is not pending. */
+  pending: string | null;
   states: string[];
   needsApi: string[];
 }
@@ -37,7 +39,7 @@ export interface Board {
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const BOARD_KEYS = new Set(['schema', 'revision', 'approvedAt', 'tokens', 'sections']);
-const SECTION_KEYS = new Set(['id', 'title', 'route', 'planned', 'states', 'needsApi']);
+const SECTION_KEYS = new Set(['id', 'title', 'route', 'planned', 'pending', 'states', 'needsApi']);
 /** The state every section draws first: the screen at rest. */
 export const DEFAULT_STATE = 'default';
 
@@ -58,6 +60,8 @@ function sectionOf(value: unknown, index: number, boardDir: string, exists: (rel
   const route = typeof entry['route'] === 'string' ? entry['route'].trim() : '';
   if (!route.startsWith('/')) problems.push(`${at} (${id}) has no route starting with "/": the route the section becomes`);
   if (entry['planned'] !== undefined && typeof entry['planned'] !== 'boolean') problems.push(`${at} (${id}).planned is not true or false`);
+  const pending = entry['pending'];
+  if (pending !== undefined && (!plain(pending) || Object.keys(pending).some((key) => key !== 'reason') || typeof (pending as Record<string, unknown>)['reason'] !== 'string' || ((pending as Record<string, unknown>)['reason'] as string).trim() === '')) problems.push(`${at} (${id}).pending is not { reason: <non-empty text: what it waits on> }`);
   const states = entry['states'] ?? [DEFAULT_STATE];
   if (!texts(states) || states.some((state) => !KEBAB.test(state))) problems.push(`${at} (${id}).states is not a list of kebab-case state names`);
   else if (states[0] !== DEFAULT_STATE || new Set(states).size !== states.length) problems.push(`${at} (${id}).states must start with "${DEFAULT_STATE}" and name each state once`);
@@ -66,7 +70,7 @@ function sectionOf(value: unknown, index: number, boardDir: string, exists: (rel
   const module = `${boardDir}/${id}.tsx`;
   if (problems.length === 0 && !exists(module)) problems.push(`${at} (${id}) has no module ${module}: each section is drawn by its own file, composed only of Grammar components`);
   if (problems.length > 0) return { section: null, problems };
-  return { section: { id, title: (entry['title'] as string).trim(), route, planned: entry['planned'] === true, states: states as string[], needsApi: needsApi as string[] }, problems };
+  return { section: { id, title: (entry['title'] as string).trim(), route, planned: entry['planned'] === true, pending: pending === undefined ? null : ((pending as Record<string, unknown>)['reason'] as string).trim(), states: states as string[], needsApi: needsApi as string[] }, problems };
 }
 
 /** The board of `text` (the record's YAML), or the problems that make it no board. */
@@ -125,9 +129,9 @@ export function boardFindings(repoRoot: string, params: GalleryParams) {
     if (drawn.has(route.key) || excluded.has(route.key)) continue;
     findings.push(found('HFS_APP_GALLERY_BOARD_ROUTE_MISSING', route.file, `the route ${route.route} of ${route.app} has no section on the board ${file}: add a section whose \`route\` is ${route.route} with its module ${boardDir}/<area>/<screen>.tsx, or exclude the route in ${params.dir}/routes.json with a reason; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
   }
-  const unmapped = board.sections.filter((section) => !section.planned && !coded.has(routeKey(section.route)));
+  const unmapped = board.sections.filter((section) => !section.planned && section.pending === null && !coded.has(routeKey(section.route)));
   if (unmapped.length > 0) findings.push(found('HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', file, `${file} draws ${named(unmapped.map((section) => `${section.id} (${section.route})`))}, whose route the front end does not have: correct the route, or mark the section \`planned: true\` until it is coded; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
-  const built = board.sections.filter((section) => section.planned && coded.has(routeKey(section.route)));
+  const built = board.sections.filter((section) => section.planned && section.pending === null && coded.has(routeKey(section.route)));
   if (built.length > 0) findings.push(found('HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', file, `${file} marks ${named(built.map((section) => `${section.id} (${section.route})`))} planned, but the route is coded: drop \`planned\`; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
   return findings;
 }

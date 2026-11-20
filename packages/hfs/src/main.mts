@@ -130,7 +130,7 @@ import { changedSince, DESIGN_CHANGE_UNAPPROVED, EXPLAIN_STALE, galleryDesignCha
 import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
-import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
+import { committedLintCounts, landingBase, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { TYPES_PACKAGE_BUILD_FAILED } from '../cache/built-packages.mjs';
 import { TYPES_CODEGEN_FAILED } from '../cache/codegen.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
@@ -668,7 +668,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   if (session !== undefined && selected.has('uiaudit')) {
     bodies.set('uiaudit', async () => {
-      const uiBase = ratchetBase(repoRoot, io.env, profile.branch).base;
+      const uiBase = landingBase(repoRoot, io.env, profile.branch).base;
       const audited = runUiAuditFamily(session, { repoRoot, changed: changedSince(repoRoot, uiBase), base: uiBase });
       found.set('uiaudit', withWhy(audited.findings as Dynamic[], readWhy(skillRoot, [...new Set(audited.findings.map((finding) => String(finding.code)))])));
       said.set('uiaudit', audited.lines);
@@ -738,11 +738,15 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
   // A screen's source changed without its explain.md (PROJECT-GALLERY-5): judged over the commits since the base, the index and the work tree of a whole run; report-only in `--env local`, an error in `--env prod`.
   if (whole && session !== undefined && selected.has('hfs')) {
-    const galleryBase = ratchetBase(repoRoot, io.env, profile.branch).base;
-    const stale = galleryStaleFindings({ repoRoot, changed: changedSince(repoRoot, galleryBase) });
+    const landing = landingBase(repoRoot, io.env, profile.branch);
+    const galleryBase = landing.base;
+    const galleryChanged = changedSince(repoRoot, galleryBase);
+    // the base is stated, so a lane and the lander (whose gate is a merge of the lane into origin/dev) can be compared: both judge the diff from the merge-base with origin/dev
+    lines.push(`  gallery coupling: judged ${galleryChanged.length} file(s) changed since ${galleryBase === null ? 'no base (a root commit)' : galleryBase.slice(0, 10)}, ${landing.source}`);
+    const stale = galleryStaleFindings({ repoRoot, changed: galleryChanged });
     if (stale.length > 0) extra.push(...withWhy(stale as Dynamic[], readWhy(skillRoot, [EXPLAIN_STALE])));
     // A screen's source changed without an approved canvas page (PROJECT-GALLERY-7): the same judged set, a canvas-managed screen only.
-    const unapproved = galleryDesignChangeFindings({ repoRoot, changed: changedSince(repoRoot, galleryBase), base: galleryBase });
+    const unapproved = galleryDesignChangeFindings({ repoRoot, changed: galleryChanged, base: galleryBase });
     if (unapproved.length > 0) extra.push(...withWhy(unapproved as Dynamic[], readWhy(skillRoot, [DESIGN_CHANGE_UNAPPROVED])));
   }
   // `--env local` also judges the LIVE dev environment (PROJECT-STACKS-11): the migration files its database has not applied and the queues that keep dead-lettering. Never cached; not asked of `--env prod`.

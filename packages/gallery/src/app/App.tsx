@@ -134,7 +134,7 @@ export function App(): ReactElement {
                             {narrow ? (
                                 <div className="sg-reason">
                                     <Badge isDot tone={TONE[screen.status]}>
-                                        {statusLabel(labels, screen.status, screen.designStatus)}
+                                        {statusLabel(labels, screen.status, screen.designStatus, screen.pending)}
                                     </Badge>
                                 </div>
                             ) : null}

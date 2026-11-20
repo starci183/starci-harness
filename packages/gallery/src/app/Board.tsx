@@ -97,6 +97,7 @@ function BoardSectionView({ section, model, labels, heights, onOpen }: BoardSect
         <Section title={section.title} meta={`${section.route} · gallery/pages/${section.id}/screen.yaml`} headingLevel={3}>
             <div className="sg-chips">
                 {section.planned ? <Badge tone="muted">{labels.boardPlanned}</Badge> : null}
+                {section.pending === null ? null : <Badge tone="muted">{fill(labels.statusPending, { reason: section.pending })}</Badge>}
                 {section.needsApi.map((op) => <Badge key={op} tone="warning">{fill(labels.boardNeedsApi, { op })}</Badge>)}
                 {section.hasModule ? null : <Badge tone="danger">{fill(labels.boardNoModule, { file: `gallery/board/${section.id}.tsx` })}</Badge>}
                 {screen === undefined ? null : (

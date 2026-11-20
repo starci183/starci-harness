@@ -1,3 +1,4 @@
+import { fill } from "../labels.ts"
 import type { Labels } from "../labels.ts"
 import type { Status } from "../model.ts"
 
@@ -6,8 +7,10 @@ export type Tone = "success" | "warning" | "danger" | "accent" | "neutral" | "mu
 /** The dot of a status: matches green, built but differs amber, stale red, not built grey; a screen with no design has no dot colour of its own (muted). */
 export const TONE: Readonly<Record<Status, Tone>> = { matches: "success", differs: "warning", stale: "danger", notBuilt: "neutral", drawn: "neutral", unrecorded: "accent", codedOnly: "accent", none: "muted" }
 
-export const statusLabel = (labels: Labels, status: Status, designStatus: string | null = null): string =>
-    status === "notBuilt" && designStatus === "drafted"
+export const statusLabel = (labels: Labels, status: Status, designStatus: string | null = null, pending: string | null = null): string =>
+    pending !== null
+        ? fill(labels.statusPending, { reason: pending })
+        : status === "notBuilt" && designStatus === "drafted"
         ? labels.statusDrafted
         : status === "notBuilt" && designStatus === "approved"
           ? labels.statusApproved

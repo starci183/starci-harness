@@ -56,6 +56,8 @@ export interface Screen {
     /** The designed status word of design.json, when the screen has an entry. */
     readonly designStatus: string | null
     readonly board: string | null
+    /** Why design.json marks the screen pending (approved, not buildable yet: it waits on data or an API); null when it is not. */
+    readonly pending: string | null
     readonly shots: readonly Width[]
     readonly frame: RawFrame | null
     readonly explain: Explain | null
@@ -159,6 +161,7 @@ export function buildModel(raw: RawGallery): Model {
             status: statusOf(entry, rawScreen?.shotsMatchRecord, (rawScreen?.shots.length ?? 0) > 0, (frame?.widths.length ?? 0) > 0),
             designStatus: plain(entry) && typeof entry.status === "string" ? entry.status : null,
             board: plain(entry) && typeof entry.board === "string" ? entry.board : null,
+            pending: plain(entry) && plain(entry.pending) && typeof entry.pending.reason === "string" && entry.pending.reason.trim() !== "" ? entry.pending.reason.trim() : null,
             shots: rawScreen?.shots ?? [],
             frame,
             explain,

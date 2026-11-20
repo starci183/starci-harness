@@ -10,6 +10,7 @@ import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, isSourceOf, routeKey, type FeRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
+import { pendingScreens } from '../runtime/scripts/hfs/rules/gallery-design.mjs';
 import { found, readText } from '../runtime/scripts/hfs/rules/read.mjs';
 import { judgeAudit, SCREEN_FILE, screenSource, shotsOnDisk } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { makeReport } from './report.mjs';
@@ -19,7 +20,7 @@ import type { CheckSession, FamilyReport } from './types.mjs';
 export interface UiAuditResult { readonly findings: CheckFinding[]; readonly lines: string[]; readonly report: FamilyReport }
 
 /** The screens `changed` (app-root relative files since the base) touches, judged against their audits. `base` null (no base) judges nothing. */
-export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string; changed: readonly string[]; base: string | null }): { findings: CheckFinding[]; touched: string[]; grandfathered: number; capped?: string[] } {
+export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string; changed: readonly string[]; base: string | null }): { findings: CheckFinding[]; touched: string[]; grandfathered: number; pending?: string[]; capped?: string[] } {
   const findings: CheckFinding[] = [];
   const touched: string[] = [];
   if (base === null || changed.length === 0) return { findings, touched, grandfathered: 0 };
@@ -29,6 +30,8 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
   const changedSet = new Set(changed.map((file) => file.replaceAll('\\', '/')));
   const routes = new Map<string, FeRoute>(feRoutes(repoRoot).map((route) => [route.key, route]));
   let grandfathered = 0;
+  const pendingOf = pendingScreens(repoRoot);
+  const skipped: string[] = [];
   const reachOf = screenReacher(repoRoot);
   const capped = new Set<string>();
   // a changed file the route reaches: only code and catalogs can change what a screen renders, so a diff of none of them walks nothing
@@ -41,6 +44,8 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
   };
   for (const { area, screen } of screens) {
     const id = `${area}/${screen}`;
+    // a screen design.json marks pending (approved, not buildable yet) has no audit to require: it is listed, never read
+    if (pendingOf.has(id)) { skipped.push(id); continue; }
     const folder = `${params.pages}/${id}`;
     const yamlFile = `${folder}/${SCREEN_FILE}`;
     const source = screenSource(folder, (rel) => readText(repoRoot, rel));
@@ -55,7 +60,7 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
     const facts = { id, value: source?.kind === 'yaml' ? source.value : null, disk: shotsOnDisk(repoRoot, folder), unrecorded: (sourceChanged || textChanged) && !yamlChanged };
     for (const finding of judgeAudit(facts)) findings.push(found(finding.code, yamlFile, finding.message, { local: true }) as CheckFinding);
   }
-  return { findings, touched, grandfathered, capped: [...capped] };
+  return { findings, touched, grandfathered, pending: skipped, capped: [...capped] };
 }
 
 /** The UI audit step: judge the touched screens, report as a family. */
@@ -66,7 +71,7 @@ export function runUiAuditFamily(session: CheckSession, { repoRoot, changed, bas
     current: judged.findings.map((finding) => ({ path: String(finding.path), line: 0, column: 0, rule: String(finding.code), message: String(finding.message) })),
   });
   session.report(report);
-  const lines = [`  ui audit: ${judged.touched.length} touched screen(s) judged${judged.touched.length === 0 ? '' : ` (${judged.touched.join(', ')})`}, ${judged.grandfathered} unchanged screen(s) grandfathered${base === null ? ' (no base to diff against)' : ''}${(judged.capped ?? []).length === 0 ? '' : `; the import walk of ${(judged.capped ?? []).join(', ')} stopped at its cap`}`];
+  const lines = [`  ui audit: ${judged.touched.length} touched screen(s) judged${judged.touched.length === 0 ? '' : ` (${judged.touched.join(', ')})`}, ${judged.grandfathered} unchanged screen(s) grandfathered${(judged.pending ?? []).length === 0 ? '' : `, ${(judged.pending ?? []).length} pending screen(s) skipped (${(judged.pending ?? []).join(', ')})`}${base === null ? ' (no base to diff against)' : ''}${(judged.capped ?? []).length === 0 ? '' : `; the import walk of ${(judged.capped ?? []).join(', ')} stopped at its cap`}`];
   return { findings: judged.findings, lines, report };
 }
 

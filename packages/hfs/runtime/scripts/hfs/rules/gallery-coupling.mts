@@ -9,7 +9,7 @@ import { galleryParams } from '../gallery.mjs';
 import { screenSource } from '../screen-yaml.mjs';
 import { feRoutes, isSourceOf, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { galleryScreens } from './gallery.mjs';
-import { DESIGN_FILE, isApproved, parseDesign } from './gallery-design.mjs';
+import { DESIGN_FILE, isApproved, parseDesign, pendingScreens } from './gallery-design.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed } from './rule-types.mjs';
 
@@ -71,7 +71,7 @@ function designAtBase(repoRoot: string, base: string): string | null {
  * HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED (PROJECT-GALLERY-7): a change to a screen's source (the same screen to source map as the stale-explanation finding) whose design.json page
  * is missing, only `drafted`, or approved before the change. Only a canvas-managed screen is judged: its area is in `areas` or one of its pages is in `pages`, so an app with no
  * canvas is never flagged. `base` is the judged range's base (`HEAD` for the staged guard); a source file's change time is the newest commit of `base..HEAD` that touched it, and
- * `now` for a change not yet committed (the index and the work tree). A change passes when the page is approved and either `approvedAt` is not earlier than that time or the
+ * `now` for a change not yet committed (the index and the work tree). A screen the manifest marks `pending` (not buildable yet, with its reason) is skipped. A change passes when the page is approved and either `approvedAt` is not earlier than that time or the
  * page's entry in design.json differs from the base's (the same change records the approval, or the lane's build with its shots). `local`, as the stale-explanation finding.
  */
 export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest, now = Date.now() }: { repoRoot: string; changed: readonly string[]; base: string | null; manifest?: Parsed; now?: number }) {
@@ -88,6 +88,7 @@ export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest,
     const route = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta['route'] ?? '';
     if (route !== '' && managed.has(area)) idsOf.set(routeKey(route), [...(idsOf.get(routeKey(route)) ?? []), `${area}/${screen}`]);
   }
+  const pending = pendingScreens(repoRoot);
   const uncommitted = new Set(changedSince(repoRoot, 'HEAD'));
   const baseText = designAtBase(repoRoot, base);
   const baseDesign = baseText === null ? null : parseDesign(baseText).manifest;
@@ -100,6 +101,7 @@ export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest,
     const changedAt = Math.max(...edited.map((file) => (uncommitted.has(file) ? now : (newestCommitTime(repoRoot, base, file) ?? now))));
     const problems: string[] = [];
     for (const id of ids) {
+      if (pending.has(id)) continue;
       const page = design.pages[id];
       if (page === undefined) problems.push(`${id} has no design entry`);
       else if (!isApproved(page.status)) problems.push(`${id} is only ${page.status}`);
