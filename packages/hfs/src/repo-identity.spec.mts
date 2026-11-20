@@ -31,6 +31,17 @@ test('the origin remote names a clone, not the folder it is cloned into', (t) =>
   }
 });
 
+test('a clone of a local repository takes the name that repository\'s own origin gives, one hop; an origin that is no repository names it by its last segment', (t) => {
+  const base = mkdtemp(t, 'starci-repo-identity-');
+  const product = repository(base, 'working-copy', 'https://github.com/acme/starci-next.git');
+  const clone = repository(base, 'repro-clone', product);
+  assert.equal(repositoryName(clone), 'starci-next', 'the clone reports the product, not the folder it was cloned from');
+  const plain = repository(base, 'plain-source');
+  assert.equal(repositoryName(repository(base, 'clone-of-plain', plain)), 'plain-source', 'a source with no origin of its own: its own last segment, as before');
+  const second = repository(base, 'second-hop', product);
+  assert.equal(repositoryName(repository(base, 'third', second)), 'working-copy', 'one hop only: the origin of the source is a path, and its last segment names it');
+});
+
 test('a worktree of a clone carries the origin name too', (t) => {
   const base = mkdtemp(t, 'starci-repo-identity-');
   const main = repository(base, 'checkout-folder', 'https://github.com/acme/example-app.git');
