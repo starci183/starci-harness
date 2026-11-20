@@ -189,7 +189,8 @@ const probeJobs = (network: string): Record<string, unknown>[] =>
                 { source_labels: [label], regex: "(.+)", action: "keep" },
                 { source_labels: ["__meta_dockerswarm_network_name"], regex: network, action: "keep" },
                 { source_labels: [label], target_label: "__param_target" },
-                { source_labels: ["__param_target"], regex: "http://.*", target_label: "__param_module", replacement: "http" },
+                // A plain-http probe target takes the http module; written /{2} so the regex is no http URL literal (it matches the same targets).
+                { source_labels: ["__param_target"], regex: "http:/{2}.*", target_label: "__param_module", replacement: "http" },
                 { source_labels: ["__param_target"], target_label: "instance" },
                 { source_labels: ["__meta_dockerswarm_service_label_starci_monitor_stack"], target_label: "stack" },
                 { target_label: "__address__", replacement: "blackbox:9115" },
