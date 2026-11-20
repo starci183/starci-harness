@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (train 183; the integration lane sets the version)
+
+- Added (`starci app stack`, forwarded to @starci/hfs): `stack standby` / `stack resume` (`--renamed-from`, `--timeout`), `stack volume copy` / `stack volume verify` (`--from`, `--to`, `--verify`) and `stack deploy --adopt`, the verbs that move a Swarm stack to new runtime names without an empty instance on the public hosts (contexts/project/stacks.md PROJECT-STACKS-18). An executed production `deploy --adopt` waits for green CI like any production deploy. They need the @starci/hfs that ships them; the CLI pin follows in the train.
+- Changed (contexts): PROJECT-STACKS-18 in contexts/project/stacks.md, the order of a rename window and the three verbs; cli/README.md lists them.
+
 ## 1.1.0-alpha.182 - 2026-11-20
 
 - Changed: one app edition (R212, owner ruling 2026-11-20). Verbs carry no `editions`: an app tree sees every verb but the runtime-only ones (`runtimeOnly`, `contexts anatomy`); `starci doctor` and the tree report `app`; `starci app info` runs in any app (refusal APP_REQUIRED); the anatomy renders one tree per side and its slices are contexts/project/anatomy-be.md and anatomy-fe.md (`contexts anatomy --slice --side <be|fe>`, no `--edition`); `check ci` reads the one job list of the CI standard.
