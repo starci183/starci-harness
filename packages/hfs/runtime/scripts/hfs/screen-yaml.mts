@@ -162,6 +162,8 @@ export interface AuditFacts {
   disk: Readonly<Record<string, string>>;
   /** Source or screen text changed since the base while screen.yaml did not. */
   unrecorded: boolean;
+  /** The changed files that reach the screen (its own source first, then what its route imports): the first one and the count name the cause of a stale audit. */
+  changed?: readonly string[];
 }
 
 export interface AuditFinding { code: string; message: string }
@@ -173,6 +175,9 @@ export const AUDIT_CODES = Object.freeze({
 const norm = (agent: unknown): string => String(agent ?? '').trim().toLowerCase();
 
 /** The UI audit verdict of one touched screen (PROJECT-GALLERY-8): every finding with its code. Empty when the audit stands. */
+/** The changed file that causes a stale audit, with how many more reach the screen. */
+const causeOf = (changed: readonly string[] | undefined): string => (changed === undefined || changed.length === 0 ? '' : ` (changed: ${changed[0] as string}${changed.length > 1 ? ` and ${String(changed.length - 1)} more` : ''})`);
+
 export function judgeAudit(facts: AuditFacts): AuditFinding[] {
   const { id, value } = facts;
   const folder = `the screen ${id}`;
@@ -187,7 +192,7 @@ export function judgeAudit(facts: AuditFacts): AuditFinding[] {
     if (recorded === null) findings.push({ code: AUDIT_CODES.stale, message: `${folder} records no sha256 for its ${width} shot: shoot it and run \`starci audit run ${id}\` to record it (PROJECT-GALLERY-8)` });
     else if (facts.disk[width] !== undefined && facts.disk[width] !== recorded) findings.push({ code: AUDIT_CODES.stale, message: `${folder}: ${width}.png is not the shot the audit saw (sha256 ${facts.disk[width]?.slice(0, 12)}, recorded ${recorded.slice(0, 12)}): run \`starci audit run ${id}\` for a new round on the new shot (PROJECT-GALLERY-8)` });
   }
-  if (facts.unrecorded) findings.push({ code: AUDIT_CODES.stale, message: `${folder}: its code or text changed since the base and screen.yaml did not, so the audit is of an older screen: run \`starci audit run ${id}\` (PROJECT-GALLERY-8)` });
+  if (facts.unrecorded) findings.push({ code: AUDIT_CODES.stale, message: `${folder}: its code or text changed since the base and screen.yaml did not, so the audit is of an older screen${causeOf(facts.changed)}: run \`starci audit run ${id}\` (PROJECT-GALLERY-8)` });
   if (norm(audit.builder.agent) === norm(audit.auditor.agent)) findings.push({ code: AUDIT_CODES.self, message: `${folder}: the auditor (${audit.auditor.agent}) is the builder: another agent audits (PROJECT-GALLERY-8)` });
   if (audit.rounds.length < MIN_ROUNDS) findings.push({ code: AUDIT_CODES.few, message: `${folder} has ${audit.rounds.length} audit round${audit.rounds.length === 1 ? '' : 's'}, at least ${MIN_ROUNDS}: round 1 finds, the fixes land, round 2 checks (PROJECT-GALLERY-8)` });
   const last = audit.rounds.at(-1);

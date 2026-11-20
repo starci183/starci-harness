@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (train 185)
+
+- Changed (UI audit reach, `cache/screen-reach.mts`): a pure re-export barrel is transparent. An import of it reaches only the modules exporting the names it takes (named, `export *` when a name is not listed, namespace and default imports take all of it), and the barrel itself is no reached file, so a change behind a barrel no longer marks every importer.
+- Added (slot manifest): the optional slot field `renders: false`, data in `knowledge/hfs/slots.yaml`, for the slots whose modules cannot change what a screen renders: `fe.hooks.swr`, `fe.hooks.socketio`, `fe.modules.api`, `fe.transport.*`, `fe.modules.config`, `fe.modules.auth`, `fe.package.api*`. The UI audit reach walks through their files but counts no change to them. Identified by the slot of the file, never by path.
+- Changed (`UI_AUDIT_STALE`): the message names the first changed file that reaches the screen and the count of the others.
+
 ## 6.16.0 - 2026-11-20
 
 - Added (R450, PROJECT-STACKS-20): an environment pending its cutover. `environments.<env>.cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` in .starcistacks/application-stacks.yaml (schema, `runtime/scripts/lib/stack-cutover.mts`) makes `app check` (both envs) report, for that environment alone, the findings of the codes failure-codes.yaml marks `cutoverTolerant` (`true`: STACKS_SEALED_MEMBER_MISSING, STACKS_LITE_SELFHOSTED_DB, STACKS_LITE_REDIS_PERSISTENCE, STACK_STORAGE_MISSING, STACKS_IMAGE_ENV_DIVERGES; `kept`: ENV_SEALED_UNREAD of a member or key `keep` names), listed `CUTOVER PENDING (<env>), REPORT ONLY` and in a section of their own beside the gates off by declaration (`runtime/scripts/hfs/check-cutover.mts`); every other finding still blocks. An unsound block is HFS_CUTOVER_DECLARATION_INVALID and a past `until` HFS_CUTOVER_EXPIRED, both blocking and judged outside the cache on every run that selects hfs; neither tolerates anything.

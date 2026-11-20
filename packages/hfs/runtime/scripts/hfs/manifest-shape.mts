@@ -71,6 +71,8 @@ export interface Slot {
   importedBy?: string[];
   rewrittenBy?: string;
   managedOnly?: boolean;
+  /** false: the slot holds modules that cannot change what a screen renders (data fetching, transport, a client of a service); the UI audit reach does not count a change to them. */
+  renders?: boolean;
   logic?: string[];
   generatedBy?: string;
 }
@@ -279,7 +281,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'declaredBy', 'exceptDeclaredBy', 'lintProfile', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'sidePresence', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides', 'managedWhen'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'declaredBy', 'exceptDeclaredBy', 'lintProfile', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'sidePresence', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'renders', 'managedWhenSides', 'managedWhen'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
 /** A runtime slot has no app kind, side composition, layer or managed template; it may name the generator of a generated copy. */
@@ -376,6 +378,7 @@ function slotListProblems(slot: Parsed, at: string): string[] {
   if (slot.roles !== undefined && !rolesValid(slot.roles)) bad.push(`${at}: roles must map a role name to a file name`);
   if (slot.composedBy !== undefined && !composedByValid(slot.composedBy)) bad.push(`${at}: composedBy must be a non-empty list of unique app kinds`);
   if (slot.budget !== undefined && !budgetValid(slot.budget)) bad.push(`${at}: budget must map names to positive integers`);
+  if (slot.renders !== undefined && slot.renders !== false) bad.push(`${at}: renders is false (a slot that renders is the default and says nothing)`);
   if (slot.managedOnly !== undefined && (slot.managedOnly !== true || slot.managedBy === undefined)) bad.push(`${at}: managedOnly is true and needs managedBy: the slot only lists files sync renders, and the slot owning the path judges them`);
   if (slot.managedBy !== undefined && !NAME.test(String(slot.managedBy))) bad.push(`${at}: managedBy must be a template id`);
   if (slot.managedWhenSides !== undefined && !(Array.isArray(slot.managedWhenSides) && slot.managedWhenSides.length > 0 && slot.managedWhenSides.every((side: Parsed) => ['be', 'fe', 'packages', 'desktop'].includes(side)))) bad.push(`${at}: managedWhenSides must be a non-empty list of be, fe, packages, desktop`);

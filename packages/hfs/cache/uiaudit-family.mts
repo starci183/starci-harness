@@ -11,12 +11,22 @@ import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, isSourceOf, routeKey, type FeRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { found, readText } from '../runtime/scripts/hfs/rules/read.mjs';
+import { createSlotResolver, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { judgeAudit, SCREEN_FILE, screenSource, shotsOnDisk } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { makeReport } from './report.mjs';
 import { screenReacher } from './screen-reach.mjs';
 import type { CheckSession, FamilyReport } from './types.mjs';
 
 export interface UiAuditResult { readonly findings: CheckFinding[]; readonly lines: string[]; readonly report: FamilyReport }
+
+/** Whether a file (app-root relative) can change what a screen renders: false when the slot that owns it is `renders: false` in the manifest; an app whose declaration cannot be read counts every file. */
+function rendersOf(repoRoot: string): (file: string) => boolean {
+  try {
+    const manifest = loadSlotManifest();
+    const resolver = createSlotResolver(manifest, readRepoDeclaration(manifest, repoRoot));
+    return (file) => (resolver.slotOf(file) as { renders?: boolean } | null | undefined)?.renders !== false;
+  } catch { return () => true; }
+}
 
 /** The screens `changed` (app-root relative files since the base) touches, judged against their audits. `base` null (no base) judges nothing. */
 export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string; changed: readonly string[]; base: string | null }): { findings: CheckFinding[]; touched: string[]; grandfathered: number; capped?: string[] } {
@@ -33,11 +43,13 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
   const capped = new Set<string>();
   // a changed file the route reaches: only code and catalogs can change what a screen renders, so a diff of none of them walks nothing
   const reachable = [...changedSet].filter((file) => /\.(?:[cm]?[jt]sx?|json)$/u.test(file) && !file.startsWith(`${params.dir}/`));
-  const reaches = (feRoute: FeRoute): boolean => {
-    if (reachable.length === 0) return false;
+  // a file of a slot the manifest marks `renders: false` (data-fetching hooks, transport, a client of a service, the app configuration) cannot change what a screen renders: the walk passes through it, a change to it marks nothing
+  const renders = rendersOf(repoRoot);
+  const reaches = (feRoute: FeRoute): string[] => {
+    if (reachable.length === 0) return [];
     const reach = reachOf(feRoute);
     if (reach.capped) capped.add(feRoute.route);
-    return reachable.some((file) => reach.files.has(file));
+    return reachable.filter((file) => reach.files.has(file) && renders(file));
   };
   for (const { area, screen } of screens) {
     const id = `${area}/${screen}`;
@@ -46,13 +58,16 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
     const source = screenSource(folder, (rel) => readText(repoRoot, rel));
     const route = source?.explanation.meta['route'] ?? '';
     const feRoute = route === '' ? undefined : routes.get(routeKey(route));
-    const sourceChanged = feRoute !== undefined && ([...changedSet].some((file) => isSourceOf(feRoute, file)) || reaches(feRoute));
+    const own = feRoute === undefined ? [] : [...changedSet].filter((file) => isSourceOf(feRoute, file));
+    const reached = feRoute === undefined ? [] : reaches(feRoute).filter((file) => !own.includes(file));
+    const causes = [...own, ...reached];
+    const sourceChanged = causes.length > 0;
     const yamlChanged = changedSet.has(yamlFile);
     const audited = source?.kind === 'yaml' && source.value !== null && source.value['audit'] !== null && source.value['audit'] !== undefined;
     if (!sourceChanged && !(yamlChanged && audited)) { grandfathered += 1; continue; }
     touched.push(id);
     const textChanged = [...changedSet].some((file) => file.startsWith(`${folder}/`) && file !== yamlFile);
-    const facts = { id, value: source?.kind === 'yaml' ? source.value : null, disk: shotsOnDisk(repoRoot, folder), unrecorded: (sourceChanged || textChanged) && !yamlChanged };
+    const facts = { id, value: source?.kind === 'yaml' ? source.value : null, disk: shotsOnDisk(repoRoot, folder), unrecorded: (sourceChanged || textChanged) && !yamlChanged, changed: causes };
     for (const finding of judgeAudit(facts)) findings.push(found(finding.code, yamlFile, finding.message, { local: true }) as CheckFinding);
   }
   return { findings, touched, grandfathered, capped: [...capped] };

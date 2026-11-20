@@ -79,6 +79,9 @@ versioning:
 #               scripts/lib/storage-need.mts); a file already present is judged either way. Absent: always.
 #   managedOnly true: the slot only lists files sync renders (needs managedBy); the path is judged by the slot that owns it, so the rendered
 #               file keeps the rules and the tier of its folder (a sign-in service is a domain service)
+#   renders     false: the slot holds modules that cannot change what a screen renders (data-fetching hooks, transport, a client of a service, the
+#               app configuration). The UI audit reach (cache/screen-reach.mts) does not count a change to a file such a slot owns; the walk still
+#               passes through the file. Absent: the slot renders.
 #   rules       rule codes from knowledge/hfs/rules.yaml.
 #   provider    the hfs.json connections[].provider that enables this opt-in slot (postgres); never an app kind.
 #   since       the manifest version that introduced the slot.
@@ -2585,6 +2588,7 @@ slots:
     budget: {file: 200, barrel: 400, dataHooks: 6, useState: 6}   # barrel: index.ts containing only export ... from statements
     rules: [FE_HOOKS_ARE_HOOKS, FE_DATA_FRESHNESS]
   - id: fe.hooks.swr
+    renders: false
     profiles: [fe]
     # The data hooks (fe-stack data, FE-DATA-SWR): one useSWR / useSWRMutation / useSWRSubscription wrapper per modules/api operation, keyed
     # QUERY_<X>_SWR_KEY / MUTATE_<X>_SWR_KEY / SUBSCRIBE_<X>_SWR_KEY plus the identity of the request; SwrSideEffects.tsx runs the app-wide hooks once.
@@ -2636,6 +2640,7 @@ slots:
     since: 3.0.0
     rules: [FE_HOOKS_ARE_HOOKS]
   - id: fe.hooks.socketio
+    renders: false
     profiles: [fe]
     # Realtime (fe-stack realtime, FE-REALTIME): one socket.io-client singleton per namespace in sockets.ts and one side-effect
     # component that wires the listeners to redux and SWR.
@@ -2713,6 +2718,7 @@ slots:
     budget: {file: 400}
     rules: [FE_ENV_OWNER, FE_TRANSPORT_OWNER]
   - id: fe.modules.api
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "apps/<app>/src/modules/api/"
@@ -2737,6 +2743,7 @@ slots:
     tests: none
     rules: [FE_TRANSPORT_OWNER, FE_HTTP_STATUS_COLLAPSE, FE_WIRE_GENERATED]
   - id: fe.transport.generated
+    renders: false
     since: 3.2.0
     profiles: [fe]
     path: "apps/<app>/src/modules/api/graphql/__generated__/"
@@ -2749,6 +2756,7 @@ slots:
     exemplifiedBy:
       - packages/eslint/fe/r52-wire-generated.spec.mjs
   - id: fe.transport.client
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "apps/<app>/src/modules/api/graphql/clients/"
@@ -2759,6 +2767,7 @@ slots:
     why: the auth and no-auth Apollo clients and their link chain (retry, error, timeout, token refresh, attach access token, http) of the one app that calls the back end; when several apps do, the shared client is fe.package.api.client
     rules: [FE_TRANSPORT_OWNER]
   - id: fe.transport.stream
+    renders: false
     since: 3.7.0
     profiles: [fe]
     path: "apps/<app>/src/modules/api/sse/clients/"
@@ -2772,6 +2781,7 @@ slots:
     exemplifiedBy:
       - packages/eslint/fe/r50-transport-owner-coverage.spec.mjs
   - id: fe.transport.outcome
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "apps/<app>/src/modules/api/graphql/types.ts"
@@ -2783,6 +2793,7 @@ slots:
     why: the one GraphQLResponse union ({success, message, error, data}) of the one app that calls the back end; when several apps do, the shared union is fe.package.api.outcome
     rules: [FE_HTTP_STATUS_COLLAPSE]
   - id: fe.modules.config
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "apps/<app>/src/modules/config/"
@@ -2853,6 +2864,7 @@ slots:
     rules: [FE_TYPE_ESCAPE, HFS_TS_STRICT]
 
   - id: fe.modules.auth
+    renders: false
     profiles: [fe]
     # The identity-provider client (fe-stack auth, FE-AUTH): the session, the access token the Apollo link attaches and the
     # sign-in/sign-out calls. It talks only to the app's own back-end auth doors and holds no credential: the refresh token lives in
@@ -2911,6 +2923,7 @@ slots:
     why: built to dist with explicit named exports; only frames, composites, branches and leaves; no unused export; no colour literal
     rules: [FE_PACKAGE_SHAPE, HFS_UNUSED_EXPORT, FE_STYLE_TOKEN_ONLY]
   - id: fe.package.api
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "packages/<family>-api/"
@@ -2923,6 +2936,7 @@ slots:
     why: the one transport client and the one Outcome union shared by every app of the repository; no app keeps its own
     rules: [FE_TRANSPORT_OWNER, FE_PACKAGE_SHAPE, HFS_UNUSED_EXPORT]
   - id: fe.package.api.client
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "packages/<family>-api/src/graphql/clients/"
@@ -2933,6 +2947,7 @@ slots:
     why: the repository's one pair of Apollo clients and their link chain
     rules: [FE_TRANSPORT_OWNER]
   - id: fe.package.api.outcome
+    renders: false
     since: 3.1.0
     profiles: [fe]
     path: "packages/<family>-api/src/graphql/types.ts"
