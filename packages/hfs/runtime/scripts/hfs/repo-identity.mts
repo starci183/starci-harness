@@ -49,9 +49,22 @@ function askGit(root: string, env: NodeJS.ProcessEnv): RepoIdentity {
   return { inWorkTree, repositoryRoot, home };
 }
 
+// A URL, an scp-style address or a local path, POSIX or Windows (a clone of a folder): the last segment names it.
+const lastSegment = (remote: string): string | undefined => remote.split(/[/\\:]/u).pop();
+
+/** The origin of the local repository `remote` points at (one hop), when `remote` is an existing local repository with an origin of its own; else null. */
+function followedOrigin(root: string, remote: string, env: NodeJS.ProcessEnv): string | null {
+  if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(remote) || /^[^/\\]+@[^/\\]+:/u.test(remote)) return null;
+  const there = path.resolve(root, remote);
+  try {
+    if (!fs.statSync(there).isDirectory()) return null;
+    return trimTrailingSlashes(git(gitRemote, there, ['get-url', 'origin'], env)).replace(GIT_SUFFIX, '') || null;
+  } catch { return null; }
+}
+
 /**
  * The product repository name: the origin remote's repository name (one name for every clone and worktree, whatever
- * folder holds it), else the main checkout's folder name (so a worktree and its main checkout agree), else package.json
+ * folder holds it; an origin that is a local repository with an origin of its own is followed one hop), else the main checkout's folder name (so a worktree and its main checkout agree), else package.json
  * name outside Git, else the folder name. A folder inside a larger repository (a nested product, an example) is named by
  * its own folder.
  */
@@ -60,8 +73,8 @@ export function repositoryName(root: string, { env = process.env }: { env?: Node
   if (repositoryRoot) {
     try {
       const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'], env)).replace(GIT_SUFFIX, '');
-      // A URL, an scp-style address or a local path, POSIX or Windows (a clone of a folder): the last segment names it.
-      const name = remote.split(/[/\\:]/u).pop();
+      // A clone of a local repository names itself by what that repository's own origin names (one hop): a repro clone of a working copy reports the product, not the folder it was cloned from.
+      const name = lastSegment(followedOrigin(root, remote, env) ?? remote);
       if (name) return name;
     } catch { /* No origin remote. */ }
   }

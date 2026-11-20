@@ -209,3 +209,38 @@ test('the staged guard lists a screen changed without its explain.md and never b
   write(root, PROFILE, `${explain('/workspaces/[workspaceId]/agents/[agentKey]')}\n`);
   assert.deepEqual(galleryStaleFindings({ repoRoot: root, changed: changedSince(root, base) }), [], 'the work tree counts: the explain.md edited since the base settles it');
 });
+
+// ---- routes keyed by app: two apps serving "/" (a landing and the product) stay apart
+const HOME_WEB = 'fe/apps/web/src/features/pages/HomePage';
+const HOME_LANDING = 'fe/apps/landing/src/features/pages/LandingPage';
+function twoAppsServingRoot(t: TestContext, webApp?: string): string {
+  const root = starter(t, 'lite');
+  write(root, 'fe/apps/web/src/app/[locale]/page.tsx', PAGE_TEXT('HomePage'));
+  write(root, `${HOME_WEB}/index.tsx`, 'export const HomePage = () => null\n');
+  write(root, 'fe/apps/landing/src/app/[locale]/page.tsx', PAGE_TEXT('LandingPage'));
+  write(root, `${HOME_LANDING}/index.tsx`, 'export const LandingPage = () => null\n');
+  write(root, 'gallery/pages/learn/home/explain.md', explain('/', 'learn').replace('area: learn', `area: learn${webApp === undefined ? '' : `\napp: ${webApp}`}`));
+  write(root, 'gallery/pages/site/landing/explain.md', explain('/', 'site').replace('area: site', 'area: site\napp: landing'));
+  return root;
+}
+
+test('two apps serving "/" are two routes: a change in one app\'s page marks only that app\'s screen, and a screen naming no app is ambiguous', (t) => {
+  const root = twoAppsServingRoot(t, 'web');
+  assert.deepEqual([...new Set(feRoutes(root).filter((route) => route.route === '/').map((route) => route.key))].sort(), ['landing:/', 'web:/']);
+  const landing = galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`] });
+  assert.deepEqual(codes(landing), ['HFS_APP_GALLERY_EXPLAIN_STALE']);
+  assert.match(landing[0]?.message ?? '', /gallery\/pages\/site\/landing\/explain\.md/u, "the landing's screen is the one asked to change");
+  assert.doesNotMatch(landing[0]?.message ?? '', /learn\/home/u, "the product's screen, whose code is untouched, is not");
+  const web = galleryStaleFindings({ repoRoot: root, changed: [`${HOME_WEB}/index.tsx`] });
+  assert.match(web[0]?.message ?? '', /gallery\/pages\/learn\/home\/explain\.md/u);
+  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`, 'gallery/pages/site/landing/explain.md'] })), [], 'the landing screen changed with its code');
+  assert.deepEqual(findings(root).filter((finding) => finding.code === 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS' && /learn\/home|site\/landing/u.test(finding.message)), [], 'a screen that names its app is never ambiguous');
+  const ambiguous = twoAppsServingRoot(t);
+  const [first] = findings(ambiguous).filter((finding) => finding.code === 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS' && /learn\/home/u.test(finding.message));
+  assert.match(first?.message ?? '', /gallery\/pages\/learn\/home\/explain\.md|learn\/home/u);
+  assert.match(first?.message ?? '', /landing and web|web and landing/u);
+  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: ambiguous, changed: [`${HOME_LANDING}/index.tsx`] })), ['HFS_APP_GALLERY_EXPLAIN_STALE'], 'the app is never guessed: the landing change asks the landing screen only');
+  write(root, 'gallery/routes.json', JSON.stringify({ exclude: [{ route: '/', app: 'landing', reason: 'the landing is drawn elsewhere' }] }));
+  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`] })), [], 'an exclusion with an app excludes that app\'s route only');
+  assert.match(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_WEB}/index.tsx`] })[0]?.message ?? '', /learn\/home/u);
+});

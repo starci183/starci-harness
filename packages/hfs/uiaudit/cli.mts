@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
-import { feRoutes, routeKey } from '../runtime/scripts/hfs/gallery-routes.mjs';
+import { feRoutes, resolveScreenRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { cropShots } from '../runtime/scripts/hfs/shot-crops.mjs';
 import { auditBrief, docProblems, LENSES, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
@@ -129,7 +129,8 @@ export function galleryMain(argv: string[], { cwd, stdout, stderr }: Io): number
     if (markdown === null) continue;
     if (fs.existsSync(target)) { stderr(`skipped ${id}: it holds screen.yaml and explain.md both; delete the explain.md by hand\n`); skipped += 1; continue; }
     const value = screenOfExplain({ id, markdown, disk: shotsOnDisk(cwd, folder) });
-    const route = routes.find((candidate) => value['route'] !== '' && candidate.key === routeKey(String(value['route'])));
+    const key = resolveScreenRoute(routes, { route: String(value['route'] ?? ''), ...(typeof value['app'] === 'string' ? { app: value['app'] } : {}) }).key;
+    const route = routes.find((candidate) => key !== null && candidate.key === key);
     if (route !== undefined) value['code'] = route.sources.map((source) => source.replace(/^fe\/apps\/[^/]+\/src\//u, ''));
     const problems = docProblems(value, id);
     if (problems.length > 0) { stderr(`skipped ${id}: ${problems.slice(0, 3).join('; ')}: fix the explain.md front matter (title, route, area) and run again\n`); skipped += 1; continue; }

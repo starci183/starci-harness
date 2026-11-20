@@ -7,7 +7,7 @@
 import { runGit } from '../../api/git/lib.mjs';
 import { galleryParams } from '../gallery.mjs';
 import { screenSource } from '../screen-yaml.mjs';
-import { feRoutes, isSourceOf, routeExclusions, routeKey } from '../gallery-routes.mjs';
+import { excludedKeys, feRoutes, isSourceOf, resolveScreenRoute, routeExclusions } from '../gallery-routes.mjs';
 import { galleryScreens } from './gallery.mjs';
 import { DESIGN_FILE, isApproved, parseDesign, pendingScreens } from './gallery-design.mjs';
 import { found, readJson, readText } from './read.mjs';
@@ -25,16 +25,18 @@ export function galleryStaleFindings({ repoRoot, changed, manifest }: { repoRoot
   const params = galleryParams(manifest);
   const touched = new Set(changed.map((file) => file.replaceAll('\\', '/')));
   const exclusions = routeExclusions(readText(repoRoot, `${params.dir}/routes.json`));
-  const excluded = new Set(exclusions.exclusions.map((entry) => routeKey(entry.route)));
+  const routes = feRoutes(repoRoot);
+  const excluded = excludedKeys(exclusions.exclusions, routes);
   const explainsOf = new Map<string, string[]>();
   for (const { area, screen } of galleryScreens(repoRoot, params).screens) {
     const folder = `${params.pages}/${area}/${screen}`;
     const source = screenSource(folder, (rel) => readText(repoRoot, rel));
-    const route = source?.explanation.meta['route'] ?? '';
-    if (source !== null && route !== '') explainsOf.set(routeKey(route), [...(explainsOf.get(routeKey(route)) ?? []), source.file]);
+    // a screen is keyed by its app: its own `app`, else the app whose route tree serves the route; two apps and no `app` is the ambiguity finding of the gallery rule, never a guess here
+    const key = source === null ? null : resolveScreenRoute(routes, source.explanation.meta).key;
+    if (source !== null && key !== null) explainsOf.set(key, [...(explainsOf.get(key) ?? []), source.file]);
   }
   const findings = [];
-  for (const route of feRoutes(repoRoot)) {
+  for (const route of routes) {
     const explains = explainsOf.get(route.key);
     if (explains === undefined || excluded.has(route.key)) continue;
     const edited = [...touched].filter((file) => isSourceOf(route, file));
@@ -82,18 +84,19 @@ export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest,
   const params = galleryParams(manifest);
   const managed = new Set([...design.areas, ...Object.keys(design.pages).map((id) => id.split('/')[0] ?? '')]);
   const touched = new Set(changed.map((file) => file.replaceAll('\\', '/')));
-  const excluded = new Set(routeExclusions(readText(repoRoot, `${params.dir}/routes.json`)).exclusions.map((entry) => routeKey(entry.route)));
+  const routes = feRoutes(repoRoot);
+  const excluded = excludedKeys(routeExclusions(readText(repoRoot, `${params.dir}/routes.json`)).exclusions, routes);
   const idsOf = new Map<string, string[]>();
   for (const { area, screen } of galleryScreens(repoRoot, params).screens) {
-    const route = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta['route'] ?? '';
-    if (route !== '' && managed.has(area)) idsOf.set(routeKey(route), [...(idsOf.get(routeKey(route)) ?? []), `${area}/${screen}`]);
+    const key = resolveScreenRoute(routes, screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta ?? {}).key;
+    if (key !== null && managed.has(area)) idsOf.set(key, [...(idsOf.get(key) ?? []), `${area}/${screen}`]);
   }
   const pending = pendingScreens(repoRoot);
   const uncommitted = new Set(changedSince(repoRoot, 'HEAD'));
   const baseText = designAtBase(repoRoot, base);
   const baseDesign = baseText === null ? null : parseDesign(baseText).manifest;
   const findings = [];
-  for (const route of feRoutes(repoRoot)) {
+  for (const route of routes) {
     const ids = idsOf.get(route.key);
     if (ids === undefined || excluded.has(route.key)) continue;
     const edited = [...touched].filter((file) => isSourceOf(route, file));

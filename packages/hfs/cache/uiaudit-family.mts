@@ -8,7 +8,7 @@
 // The codes (all `local` findings: report-only in `--env local`, errors in `--env prod`): UI_AUDIT_MISSING, _INVALID, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER, _CONSIDERED_EMPTY.
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
-import { feRoutes, isSourceOf, routeKey, type FeRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
+import { feRoutes, isSourceOf, resolveScreenRoute, type FeRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { pendingScreens } from '../runtime/scripts/hfs/rules/gallery-design.mjs';
 import { found, readText } from '../runtime/scripts/hfs/rules/read.mjs';
@@ -107,8 +107,8 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
     const folder = `${params.pages}/${id}`;
     const yamlFile = `${folder}/${SCREEN_FILE}`;
     const source = screenSource(folder, (rel) => readText(repoRoot, rel));
-    const route = source?.explanation.meta['route'] ?? '';
-    const feRoute = route === '' ? undefined : routes.get(routeKey(route));
+    const resolved = resolveScreenRoute([...routes.values()], source?.explanation.meta ?? {});
+    const feRoute = resolved.key === null ? undefined : routes.get(resolved.key);
     const own = feRoute === undefined ? [] : [...changedSet].filter((file) => isSourceOf(feRoute, file));
     const reached = feRoute === undefined ? [] : reaches(feRoute).filter((file) => !own.includes(file));
     const causes = [...own, ...reached];

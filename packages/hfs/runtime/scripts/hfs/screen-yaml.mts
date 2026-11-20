@@ -132,7 +132,8 @@ export function docProblems(value: unknown, id: string): string[] {
   if (!Array.isArray(considered)) problems.push('considered is not a list');
   else considered.forEach((entry, index) => { if (!plain(entry) || !text(entry['option']) || typeof entry['chosen'] !== 'boolean' || typeof entry['why'] !== 'string') problems.push(`considered[${index}] needs option, chosen (true or false) and why`); });
   if (!('audit' in value)) problems.push('audit is missing: null for a screen not audited yet (grandfathered)');
-  const known = new Set(['schema', 'screen', 'title', 'route', 'area', 'summary', 'code', 'shots', 'sections', 'considered', 'audit']);
+  if ('app' in value && !text(value['app'])) problems.push('app is not a front-end app name (the app that serves the route; omit it when one app does)');
+  const known = new Set(['schema', 'screen', 'title', 'route', 'app', 'area', 'summary', 'code', 'shots', 'sections', 'considered', 'audit']);
   const unknown = Object.keys(value).filter((key) => !known.has(key));
   if (unknown.length > 0) problems.push(`has the unknown key${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}`);
   return problems;
@@ -222,7 +223,7 @@ export function explanationOfScreen(value: Record<string, unknown>): Explanation
     return { name: String(section['title'] ?? section['id'] ?? ''), fields, problems };
   });
   const meta: Record<string, string> = {};
-  for (const key of ['title', 'route', 'area'] as const) if (typeof value[key] === 'string') meta[key] = value[key];
+  for (const key of ['title', 'route', 'area', 'app'] as const) if (typeof value[key] === 'string') meta[key] = value[key];
   const considered = Array.isArray(value['considered']) ? value['considered'] : [];
   return { meta, intro: typeof value['summary'] === 'string' ? value['summary'] : '', regions, hasOptions: considered.length > 0 };
 }
@@ -295,7 +296,7 @@ export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws 
     ...laws.map((law) => `- ${law}`),
     '',
     '## The screen as its builder described it',
-    stringifyYaml({ title: value['title'], route: value['route'], summary: value['summary'], code: value['code'], sections: value['sections'], considered: value['considered'] }).trimEnd(),
+    stringifyYaml({ title: value['title'], route: value['route'], ...('app' in value ? { app: value['app'] } : {}), summary: value['summary'], code: value['code'], sections: value['sections'], considered: value['considered'] }).trimEnd(),
     '',
     audit === null ? 'No audit yet: this run wrote the skeleton.' : `Builder: ${audit.builder.agent || '(not named)'}; rounds so far: ${audit.rounds.length}.`,
   ].join('\n');
@@ -340,7 +341,7 @@ export function screenOfExplain({ id, markdown, disk }: { id: string; markdown: 
   });
   const shots = Object.fromEntries(SHOT_WIDTHS.map((width) => [width, { file: `${width}.png`, sha256: disk[width] ?? null }]));
   return {
-    schema: SCREEN_SCHEMA, screen: id, title: explanation.meta['title'] || id, route: explanation.meta['route'] || '', area: explanation.meta['area'] || area,
+    schema: SCREEN_SCHEMA, screen: id, title: explanation.meta['title'] || id, route: explanation.meta['route'] || '', ...(explanation.meta['app'] ? { app: explanation.meta['app'] } : {}), area: explanation.meta['area'] || area,
     summary: explanation.intro.replace(/\s+/gu, ' ').trim() || explanation.meta['title'] || id, code: [], shots, sections,
     considered: optionLines(markdown).map((line) => ({ option: line, chosen: false, why: 'chuyển từ explain.md, chưa tách phương án và lý do' })), audit: null,
   };
