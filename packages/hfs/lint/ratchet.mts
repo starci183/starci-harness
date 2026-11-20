@@ -61,6 +61,8 @@ export function landingBase(repoRoot: string, env: NodeJS.ProcessEnv, branch: st
       if (ref === undefined || ref === '') continue;
       const merged = git(repoRoot, ['merge-base', 'HEAD', ref])?.trim();
       if (merged && merged !== head) return { base: merged, source: `the merge-base of HEAD with ${ref}` };
+      // a lane with no commit of its own yet sits on the ref's tip: its diff is the work tree alone, never the ref's history since an older one
+      if (merged && merged === head) return { base: head, source: `HEAD, which ${ref} already holds (only uncommitted changes are judged)` };
     }
   }
   return ratchetBase(repoRoot, env, branch);

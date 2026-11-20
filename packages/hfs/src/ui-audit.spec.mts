@@ -22,6 +22,7 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -94,6 +95,35 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(audited.root, audited.base), ['UI_AUDIT_STALE']);
     write(audited.root, `${FOLDER}/screen.yaml`, screen({ summary: 'Danh sách khách hàng, bản mới' }));
     assert.deepEqual(codes(audited.root, audited.base), []);
+  });
+
+  test(`a catalog over the rule read budget (1 MiB) counts only for the screens that read a changed key`, (t) => {
+    const CATALOG = 'fe/apps/web/src/modules/i18n/messages/vi.json';
+    const catalog = (title: string, other: string): string => {
+      const pad = Object.fromEntries(Array.from({ length: 11000 }, (_, i) => [`k${String(i)}`, 'x'.repeat(100)]));
+      return `${JSON.stringify({ customers: { customersTitle: title }, approvals: { otherNote: other }, pad }, null, 2)}\n`;
+    };
+    const { root } = app(t, edition, screen());
+    // the reach resolves imports with the app's own TypeScript: the fixture borrows this package's, linked (and unlinked before the folder goes)
+    const linked = path.join(root, 'node_modules', 'typescript');
+    fs.mkdirSync(path.dirname(linked), { recursive: true });
+    fs.symlinkSync(path.dirname(createRequire(import.meta.url).resolve('typescript/package.json')), linked, 'junction');
+    try {
+      write(root, '.gitignore', 'node_modules/\n');
+      write(root, CATALOG, catalog('Khách hàng', 'Ghi chú'));
+      write(root, FEATURE, 'import vi from "../../../modules/i18n/messages/vi.json"\nconst KEY = "customers.customersTitle"\nexport const CustomersPage = () => KEY.split(".").reduce((at: any, part) => at[part], vi)\n');
+      write(root, 'fe/apps/web/tsconfig.json', `${JSON.stringify({ compilerOptions: { resolveJsonModule: true, module: 'esnext', moduleResolution: 'bundler', jsx: 'preserve', baseUrl: '.', paths: { '@/*': ['./src/*'] } } })}\n`);
+      git(root, 'add', '-A');
+      git(root, 'commit', '-q', '-m', 'catalog');
+      const base = git(root, 'rev-parse', 'HEAD').trim();
+      assert.ok(fs.statSync(path.join(root, CATALOG)).size > 1024 * 1024);
+      write(root, CATALOG, catalog('Khách hàng', 'Ghi chú mới'));
+      assert.deepEqual(codes(root, base), [], 'a key the screen does not read');
+      write(root, CATALOG, catalog('Mọi khách hàng', 'Ghi chú mới'));
+      assert.deepEqual(codes(root, base), ['UI_AUDIT_STALE'], 'a key the screen reads');
+    } finally {
+      fs.unlinkSync(linked);
+    }
   });
 
   test(`shot hashes on disk must match the audited ones; a fresh checkout without PNGs is not judged`, (t) => {

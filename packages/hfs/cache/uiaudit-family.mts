@@ -6,6 +6,8 @@
 //     app's own TypeScript resolving under the front-end app's tsconfig, bounded and memoised), or
 //   - its screen.yaml changed and already holds an audit (the audit is being edited, so it is judged).
 // The codes (all `local` findings: report-only in `--env local`, errors in `--env prod`): UI_AUDIT_MISSING, _INVALID, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER, _CONSIDERED_EMPTY.
+import fs from 'node:fs';
+import path from 'node:path';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, isSourceOf, resolveScreenRoute, type FeRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
@@ -22,6 +24,14 @@ import { catalogDiff, readsChanged, usageOf, type CatalogDiff, type Usage } from
 import type { CheckSession, FamilyReport } from './types.mjs';
 
 export interface UiAuditResult { readonly findings: CheckFinding[]; readonly lines: string[]; readonly report: FamilyReport }
+
+/**
+ * The head text of a source or catalog the reach compares with its base, whatever its size: the rule read budget (`readText`, 1 MiB) is for rules
+ * that judge a file, and a catalog over it read as absent made every key of it changed, so one edited line marked every screen that reads the catalog.
+ */
+const headText = (repoRoot: string, rel: string): string | null => {
+  try { return fs.readFileSync(path.join(repoRoot, rel), 'utf8'); } catch { return null; }
+};
 
 /** Whether a file (app-root relative) can change what a screen renders: false when the slot that owns it is `renders: false` in the manifest; an app whose declaration cannot be read counts every file. */
 function slotsOf(repoRoot: string): (file: string) => { renders: boolean; slot: string | null } {
@@ -62,7 +72,7 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
     if (known === undefined) {
       const before = git(repoRoot, ['show', `${base as string}:${file}`]);
       // a base text that cannot be read for a base that resolves is a file the base did not have; with no resolvable base nothing can be compared, so the file counts whole
-      known = baseResolves ? changedSymbols(ts, file, before.ok ? before.stdout : null, readText(repoRoot, file)) : { all: true, names: new Set<string>() };
+      known = baseResolves ? changedSymbols(ts, file, before.ok ? before.stdout : null, headText(repoRoot, file)) : { all: true, names: new Set<string>() };
       diffs.set(file, known);
     }
     return known;
@@ -73,14 +83,14 @@ export function uiAuditFindings({ repoRoot, changed, base }: { repoRoot: string;
     let diff = catalogDiffs.get(catalog);
     if (diff === undefined) {
       const before = git(repoRoot, ['show', `${base as string}:${catalog}`]);
-      diff = baseResolves ? catalogDiff(before.ok ? before.stdout : null, readText(repoRoot, catalog)) : { all: true, keys: new Set<string>() };
+      diff = baseResolves ? catalogDiff(before.ok ? before.stdout : null, headText(repoRoot, catalog)) : { all: true, keys: new Set<string>() };
       catalogDiffs.set(catalog, diff);
     }
     if (diff.all) return true;
     for (const file of reached) {
       if (!/\.[cm]?tsx?$/u.test(file)) continue;
       let usage = usages.get(file);
-      if (usage === undefined) { usage = usageOf(ts, file, readText(repoRoot, file) ?? ''); usages.set(file, usage); }
+      if (usage === undefined) { usage = usageOf(ts, file, headText(repoRoot, file) ?? ''); usages.set(file, usage); }
       if (readsChanged(usage, diff)) return true;
     }
     return false;
