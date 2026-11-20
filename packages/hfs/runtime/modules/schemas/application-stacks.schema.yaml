@@ -733,6 +733,74 @@ $defs:
             minItems: 1
             uniqueItems: true
             items: {type: string, minLength: 1}
+      monitoring:
+        description: >-
+          Optional, docker-swarm only: this environment opts in to the shared monitoring stack of its server (contexts/project/monitoring.md).
+          Absent, the stack renders exactly as without it. Present, `starci app stack render` puts the scrape labels on each service of
+          `metrics` and of a scraped exporter, adds the exporter sidecars, puts the probe labels on the ingress, sets the trace and profile
+          endpoints, joins those services to the external monitoring `network`, and with `logs` (default true) labels every service of the
+          stack so the server's log collector keeps its logs.
+        type: object
+        additionalProperties: false
+        properties:
+          network:
+            description: "The external attachable overlay network the shared Prometheus scrapes on (default starci-monitor, ops/vps.yaml monitor.network)."
+            type: string
+            pattern: '^[a-z][a-z0-9_-]*$'
+          logs:
+            description: "Whether the server's collector keeps the logs of every service of this stack (default true)."
+            type: boolean
+          metrics:
+            description: "One entry per stack service that serves Prometheus metrics: the port it listens on inside the stack and the path (default /metrics)."
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [service, port]
+              properties:
+                service: {type: string, minLength: 1}
+                port: {type: integer, minimum: 1, maximum: 65535}
+                path: {type: string, pattern: '^/[^\s]*$'}
+          probes:
+            description: "The URLs the server's blackbox component probes (uptime, TLS, certificate expiry), at most 10: false for none; absent, https://<host>/ of every ingress host of this environment."
+            anyOf:
+              - {type: boolean, const: false}
+              - {type: array, items: {type: string, pattern: '^https?://\S+$'}}
+          exporters:
+            description: >-
+              One entry per backing service to measure. postgres and redis run an exporter sidecar beside the service (postgres reads the
+              sealed password of a read-only monitoring role, `password: {member, key}`; service defaults to the backing postgres component);
+              minio, qdrant, kafka-connect (the JMX exporter agent in its image) and ingress (Caddy's or Traefik's own metrics) are scraped on the
+              service itself, at their default port and path unless given.
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: {enum: [postgres, redis, minio, qdrant, kafka-connect, ingress]}
+                service: {type: string, minLength: 1}
+                port: {type: integer, minimum: 1, maximum: 65535}
+                path: {type: string, pattern: '^/[^\s]*$'}
+                database: {type: string, minLength: 1}
+                user: {type: string, minLength: 1}
+                password:
+                  type: object
+                  additionalProperties: false
+                  required: [member, key]
+                  properties:
+                    member: {type: string, minLength: 1}
+                    key: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+          traces:
+            description: "The services that send OpenTelemetry traces to the server's Alloy (Tempo on): true for every metrics service, or a list; the render sets OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_SERVICE_NAME."
+            anyOf:
+              - {type: boolean}
+              - {type: array, items: {type: string, minLength: 1}}
+          profiles:
+            description: "The services that push profiles to the server's Pyroscope: true for every metrics service, or a list; the render sets PYROSCOPE_SERVER_ADDRESS and PYROSCOPE_APPLICATION_NAME."
+            anyOf:
+              - {type: boolean}
+              - {type: array, items: {type: string, minLength: 1}}
       dns:
         description: Owner-run DNS prerequisites, one declaration per ingress host.
         type: array

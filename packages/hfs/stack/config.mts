@@ -7,6 +7,9 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { refusal } from './errors.mjs';
 import type { TargetBinding } from './target-binding.mjs';
+import { monitoringOf, sidecarGrants } from './monitoring.mjs';
+import type { MonitoringOptIn } from './monitoring.mjs';
+export type { MonitoringOptIn } from './monitoring.mjs';
 
 /** The sealed SSH roles of `deploy.remote.sealed`: the member that holds each. */
 export type SealedRemote = SealedRoles;
@@ -91,7 +94,6 @@ export interface DeployBlock {
 export interface EdgeRoute { host: string; service: string; port: number; paths: string[]; pathPrefixes: string[]; priority: number | null }
 /** The shared edge-traefik declaration (`environments.<env>.ingress` with `kind: shared-edge`) the render turns into router labels. */
 export interface SharedEdge { network: string; certResolver: string; entrypoint: string; routes: EdgeRoute[] }
-
 /** The deploy configuration of one environment, with absolute paths. */
 export interface DeployConfig extends DeployBlock {
   env: string;
@@ -106,6 +108,8 @@ export interface DeployConfig extends DeployBlock {
   nativeTarget?: Readonly<TargetBinding> | undefined;
   /** The shared edge ingress declaration, or null for an own or external ingress. */
   edge?: SharedEdge | null | undefined;
+  /** The monitoring opt-in, or null when the environment declares none (the render is then exactly what it was without it). */
+  monitoring?: MonitoringOptIn | null | undefined;
 }
 
 export const STACKS_DIR = '.starcistacks';
@@ -181,5 +185,7 @@ export function loadDeployConfig({ repoRoot, env }: { repoRoot: string; env: str
     const first = problems.slice(0, 6).map((item: { at: string; message: string }) => `${item.at}: ${item.message}`).join('; ');
     throw refusal(DEPLOY_CONFIG_CODE, `${problems.length} problem${problems.length === 1 ? '' : 's'} in environments.${env}.deploy: ${first}`);
   }
-  return { env, project, repoRoot, envDir, stackFile, secretsDir, members, services, edge: edgeOf(environment.ingress, services, env), ...config };
+  const monitoring = monitoringOf(environment, { services, members, backing: declaration?.backing, env });
+  const grants = sidecarGrants(monitoring);
+  return { env, project, repoRoot, envDir, stackFile, secretsDir, members, services, edge: edgeOf(environment.ingress, services, env), monitoring, ...config, ...(grants.length === 0 ? {} : { secrets: { ...config.secrets, grants: [...config.secrets.grants, ...grants] } }) };
 }

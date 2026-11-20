@@ -36,3 +36,5 @@ Every item is pending. Swarm initialization, provider URIs, DNS changes and key 
 | Restore proof | Perform a restore into isolated infrastructure, verify the restored database and ingress state, and attach a dated receipt with artifact digests to `.starcistacks/production/infra/swarm/recovery/restore-proof.md`. Its initial record is pending; no restore has been run by scaffolding. |
 
 No host scheduler is installed. Scheduled application work belongs to the back-end scheduler or an explicitly declared replicated job.
+
+Monitoring is opt-in: uncomment `environments.production.monitoring` in `.starcistacks/application-stacks.yaml` to be scraped, probed and have logs kept by the server's shared monitoring stack (`starci vps monitor up`, contexts/project/monitoring.md in the harness). Without it the stack renders unchanged.
