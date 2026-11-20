@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
@@ -18,6 +18,43 @@ export const CACHE_DIR = ".starcistacks/cache/"
 export const LANDER = "batch-lander"
 /** The gate runs a batch takes at most: the batch, then the batch without the lanes the first run's findings named. Never more: no bisect. */
 export const GATE_ROUNDS = 2
+
+/** How long a live lander may go without touching its lock before `lane status` calls it stuck: ten idle polls. */
+export const LANDER_HEARTBEAT_MS = 5 * 60_000
+
+/** What `lane status` knows about the lander: who holds the lock, whether that pid runs, and how long since its last loop. */
+export type LanderLiveness =
+    | { readonly state: "none" }
+    | { readonly state: "alive" | "dead" | "stuck"; readonly held: string; readonly pid: number; readonly idleMs: number }
+
+/**
+ * Read the lander lock: "dead" when its pid no longer runs (the next `lane land` reclaims it), "stuck" when the pid runs but has not
+ * touched the lock for LANDER_HEARTBEAT_MS (a batch may still be gating: read _batch-land.log before acting), else "alive".
+ */
+export const landerLiveness = (file: string, now = Date.now(), alive: (pid: number) => boolean = pidAlive): LanderLiveness => {
+    let held: string
+    let touched: number
+    try {
+        held = readFileSync(file, "utf8").trim()
+        touched = statSync(file).mtimeMs
+    } catch {
+        return { state: "none" }
+    }
+    const pid = Number(/pid=(\d+)/.exec(held)?.[1] ?? "0")
+    const idleMs = Math.max(0, now - touched)
+    const state = pid <= 0 || !alive(pid) ? "dead" : idleMs > LANDER_HEARTBEAT_MS ? "stuck" : "alive"
+    return { state, held, pid, idleMs }
+}
+
+/** The lander's heartbeat: touch its lock at each loop so `lane status` can tell a live idle lander from a hung one. */
+export const touchLander = (file: string): void => {
+    try {
+        const at = new Date()
+        utimesSync(file, at, at)
+    } catch {
+        // the lock is gone: the finally of `lane land` or a reclaim removed it; nothing to touch
+    }
+}
 
 /** The states a lane's status file holds. */
 export type LaneState = "queued" | "landed" | "conflict" | "rejected" | "parked" | "withdrawn"
