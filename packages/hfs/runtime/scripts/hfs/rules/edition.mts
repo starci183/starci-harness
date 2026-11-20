@@ -6,6 +6,11 @@
 //     HFS_BACKING_UNDECLARED, and a declared service no dependency of the app consumes is HFS_BACKING_UNUSED. A declared service is also
 //     consumed by an integration module of the back end named after it (`src/modules/integrations/<service>/`, imported by another file of the
 //     back end), the client an app writes over the service's own protocol (qdrant over fetch).
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadTypescript } from '../../lib/package-at.mjs';
+import { readTypeScriptProject, resolveTypeScriptModule } from '../typescript-programs.mjs';
 import { found, readJson, readText } from './read.mjs';
 import { DEPENDENCY_SECTIONS } from './fe-no-tests.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -14,6 +19,7 @@ export const HFS_EDITION_DEPRECATED = 'HFS_EDITION_DEPRECATED';
 export const HFS_BACKING_UNDECLARED = 'HFS_BACKING_UNDECLARED';
 export const HFS_BACKING_UNUSED = 'HFS_BACKING_UNUSED';
 
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_JSON = /(?:^|\/)package\.json$/;
 
 const isPlainObject = (value: Parsed) => typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -27,21 +33,39 @@ const serviceOfClient = (catalog: Parsed, name: string) => Object.keys(catalog).
 /** The dependency names of a package.json, every section. */
 const dependencyNames = (pkg: Parsed) => DEPENDENCY_SECTIONS.flatMap((section) => (isPlainObject(pkg?.[section]) ? Object.keys(pkg[section]) : []));
 
-const escapeRegExp = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+const IMPORTING_SOURCE = /\.tsx?$/u;
+const NOT_PRODUCTION = /(?:\.spec\.|\.test\.|(?:^|\/)src\/tests\/)/u;
+const MAX_BARREL_DEPTH = 4;
 
-/** The TypeScript files of an integration module named `service` (`src/modules/integrations/<service>/`), whatever side folder precedes it. */
-const integrationFiles = (files: readonly string[], service: string): string[] => {
-  const folder = new RegExp(String.raw`(?:^|/)src/modules/integrations/${escapeRegExp(service)}/`, 'u');
-  return files.filter((file) => file.endsWith('.ts') && !file.includes('node_modules/') && folder.test(file));
-};
-
-/** True when a back end file outside the integration module imports it (`integrations/<service>`, aliased or relative). */
-function integrationImported(repoRoot: string, files: readonly string[], service: string): boolean {
-  const module = integrationFiles(files, service);
-  if (module.length === 0) return false;
-  const inside = new Set(module);
-  const imports = new RegExp(String.raw`(?:from|import)\s*\(?\s*['"][^'"]*integrations/${escapeRegExp(service)}(?:/[^'"]*)?['"]`, 'u');
-  return files.some((file) => /\.tsx?$/u.test(file) && !file.includes('node_modules/') && !inside.has(file) && imports.test(readText(repoRoot, file) ?? ''));
+/**
+ * Whether a back-end source outside the integration module `src/modules/integrations/<service>/` imports it, resolved the way the compiler
+ * resolves it: each import or re-export specifier of every production source goes through the be tsconfig's module resolution (its `paths`
+ * aliases, relative paths, index barrels), and counts when it lands in the module's folder, directly or through a barrel that re-exports
+ * from it. The module must exist (a file under that folder). A host without TypeScript cannot prove it and reports no consumer.
+ */
+function integrationImported({ repoRoot, files, service, beFolder }: { repoRoot: string; files: readonly string[]; service: string; beFolder: string }): boolean {
+  const base = beFolder === '' ? '' : `${beFolder}/`;
+  const folder = `${base}src/modules/integrations/${service}/`;
+  if (!files.some((file) => file.startsWith(folder) && IMPORTING_SOURCE.test(file))) return false;
+  const ts = loadTypescript(repoRoot, HERE);
+  if (!ts) return false;
+  const absolute = (file: string): string => path.join(repoRoot, file);
+  const config = absolute(`${base}tsconfig.json`);
+  const options = fs.existsSync(config) ? (readTypeScriptProject(ts, config).parsed?.options ?? {}) : {};
+  const inside = (resolved: string | undefined): boolean => resolved !== undefined && path.relative(absolute(folder), resolved).split(path.sep)[0] !== '..' && !path.isAbsolute(path.relative(absolute(folder), resolved));
+  const specifiers = (file: string): string[] => ts.preProcessFile(readText(repoRoot, file) ?? '', true, false).importedFiles.map((item) => item.fileName);
+  const lands = (specifier: string, from: string, depth: number, seen: Set<string>): boolean => {
+    const resolved = resolveTypeScriptModule(ts, specifier, absolute(from), options);
+    if (resolved === undefined) return false;
+    if (inside(resolved)) return true;
+    // A barrel outside the module (an index that re-exports) leads on to what it re-exports.
+    const next = path.relative(repoRoot, resolved).split(path.sep).join('/');
+    if (depth >= MAX_BARREL_DEPTH || seen.has(next) || next.startsWith('..') || next.includes('node_modules/') || !/(?:^|\/)index\.tsx?$/u.test(next)) return false;
+    seen.add(next);
+    return specifiers(next).some((inner) => lands(inner, next, depth + 1, seen));
+  };
+  return files.some((file) => file.startsWith(`${base}src/`) && IMPORTING_SOURCE.test(file) && !file.startsWith(folder) && !NOT_PRODUCTION.test(file)
+    && specifiers(file).some((specifier) => lands(specifier, file, 0, new Set())));
 }
 
 /** The warning of a declaration that still names the deprecated `edition` field. */
@@ -68,7 +92,7 @@ function dependencyFindings(rel: string, pkg: Parsed, { catalog, declared }: { c
  * The backing findings of the be declaration: a declared pattern whose service is undeclared, and (at the app root or a
  * standalone back end, whose package.json carries the back end's dependencies) a declared service no dependency consumes.
  */
-function backingFindings({ repoRoot, beView, catalog, files }: { repoRoot: string; beView: Parsed; catalog: Parsed; files: readonly string[] }) {
+function backingFindings({ repoRoot, beView, catalog, files, beFolder }: { repoRoot: string; beView: Parsed; catalog: Parsed; files: readonly string[]; beFolder: string }) {
   const declared = new Set<string>(beView.backing ?? []);
   const findings = [];
   for (const [service, entry] of Object.entries<Parsed>(catalog)) {
@@ -78,7 +102,7 @@ function backingFindings({ repoRoot, beView, catalog, files }: { repoRoot: strin
   const dependencies = new Set(dependencyNames(readJson(repoRoot, 'package.json')));
   for (const service of declared) {
     const clients = catalog[service]?.clients ?? [];
-    if (!clients.some((name: string) => dependencies.has(name)) && !integrationImported(repoRoot, files, service)) findings.push(found(HFS_BACKING_UNUSED, 'hfs.json', `hfs.json sides.be.backing declares ${service}, but no dependency consumes it (${clients.join(', ')}) and no imported module src/modules/integrations/${service}/ does: remove the declaration, or add the capability that needs it`, { service }));
+    if (!clients.some((name: string) => dependencies.has(name)) && !integrationImported({ repoRoot, files, service, beFolder })) findings.push(found(HFS_BACKING_UNUSED, 'hfs.json', `hfs.json sides.be.backing declares ${service}, but no dependency consumes it (${clients.join(', ')}) and no imported module src/modules/integrations/${service}/ does: remove the declaration, or add the capability that needs it`, { service }));
   }
   return findings;
 }
@@ -88,14 +112,14 @@ function backingFindings({ repoRoot, beView, catalog, files }: { repoRoot: strin
  * side (its patterns and backing): the root scope looks at sides.be, a standalone be-side check at its own view.
  * `withDeclaration: false` (a side scope of a whole-app check) skips them: the root scope already reported them on hfs.json.
  */
-export function editionFindings({ repoRoot, files, repo, manifest, withDeclaration = true }: { repoRoot: string; files: string[]; repo: Repo; manifest: Parsed; withDeclaration?: Parsed }) {
+export function editionFindings({ repoRoot, files, all = files, repo, manifest, withDeclaration = true }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; manifest: Parsed; withDeclaration?: Parsed }) {
   let beView = null;
   if (withDeclaration && repo.profile === 'app') beView = repo.sides?.be;
   else if (withDeclaration && repo.profile === 'be') beView = repo;
   const catalog = backingCatalog(manifest);
   const findings = [
     ...(withDeclaration && repo.profile === 'app' ? deprecationFindings(repoRoot) : []),
-    ...(beView ? backingFindings({ repoRoot, beView, catalog, files }) : []),
+    ...(beView ? backingFindings({ repoRoot, beView, catalog, files: all, beFolder: repo.profile === 'app' ? 'be' : '' }) : []),
   ];
   const declared = new Set((repo.profile === 'app' ? repo.sides?.be?.backing : repo.backing) ?? []);
   for (const file of files) {

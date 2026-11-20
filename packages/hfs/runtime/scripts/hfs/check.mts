@@ -281,7 +281,7 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
   const findings: CheckFinding[] = [
     ...pinFindings({ repoRoot, files, profile: repo.profile, pins, only: scoped }),
     ...fileFindings,
-    ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest, withDeclaration }),
+    ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), all, repo, manifest, withDeclaration }),
     ...feStackFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest }),
     ...repoLocalCheckFindings({ repoRoot, files }),
     ...lintSuppressionFindings({ repoRoot, files }),
