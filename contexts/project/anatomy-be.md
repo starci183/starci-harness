@@ -43,6 +43,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395
   - `flows.json` — **app.gallery-flows** optional · R395
   - `routes.json` — **app.gallery-routes** optional · R395
+  - `board/{board.yaml,**/*.tsx}` — **app.gallery-board** optional · R395
 - `scripts/`
   - `codegen.mjs` — **app.scripts** optional · R385, R102, R103
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06, R385, R102, R103

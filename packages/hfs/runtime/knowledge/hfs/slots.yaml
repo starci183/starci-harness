@@ -808,6 +808,17 @@ slots:
     tier: none
     tests: none
     rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING]
+  - id: app.gallery-board
+    since: 6.14.1
+    profiles: [app]
+    # The design board of the app (contexts/project/gallery.md PROJECT-GALLERY-9): board.yaml records every screen with its states, route and "cần API" marks;
+    # one module per section, composed only of Grammar components, which the gallery renders at 1440 and 390. Written by the design op, never rendered by sync.
+    path: "gallery/board/{board.yaml,**/*.tsx}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_APP_GALLERY_BOARD_INVALID, HFS_APP_GALLERY_BOARD_ROUTE_MISSING, HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED]
   - id: app.github-meta
     since: 3.1.0
     profiles: [app]

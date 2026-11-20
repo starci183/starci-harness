@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (UI Audit gate, PROJECT-GALLERY-8 item 3): a screen is touched when a file its route's `page.tsx` reaches through value imports changed, not only its page, its feature folder or its screen.yaml, so a change to a shared composite, a hook, a module, a workspace package or an imported catalog reaches every screen that renders it (`cache/screen-reach.mts`: the app's own TypeScript under the front-end app's tsconfig, type-only imports left out, at most 6000 files per walk, edges memoised by path and mtime). The gate's line names a route whose walk hit the cap.
+- Added (R395, PROJECT-GALLERY-9): the design board of an app, `gallery/board/board.yaml` (slot app.gallery-board, `rules/gallery-board.mts`). An app that keeps the record is judged on HFS_APP_GALLERY_BOARD_INVALID (the record's shape, a section without its module `gallery/board/<area>/<screen>.tsx`), HFS_APP_GALLERY_BOARD_ROUTE_MISSING (a coded `page.tsx` route with no section, unless excluded in gallery/routes.json) and HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED (a section whose route is not coded and not marked `planned`, or marked `planned` while coded); the last two are localOnly. An app without the record is outside the rule.
+
 ## 6.14.0 - 2026-11-20
 
 - Changed (R212, owner ruling 2026-11-20): an app has ONE edition, what the live apps run (all of them declared `edition: "lite"`): the full code structure, slots, patterns and back-end unit specs; no Work features catalog; chat agents code directly; its own Docker Swarm stack with the backing services it declares; the integration and e2e test world on request only. The lite overlays of knowledge/hfs/slots.yaml (`lite:`, `litePresence`, `liteManagedBy`, `ruleParams.be.lite`) are folded into the base data and the `editions` keys, `editionWhy`, `codeEditions` and the evidence `edition(s)` fields leave the slot manifest and the rule catalog (their schemas refuse them now). A both-sides slot whose presence differs by side names it in `sidePresence` (`repo.app-image`: `{fe: optional}`).
