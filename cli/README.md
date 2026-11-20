@@ -66,7 +66,7 @@ src/
 - **One name, one object.** A verb name appears twice only where the object differs, which its help says once: `release push`
   (the harness repository) and `app release push` (an app); `check lint` and `app check --gate lint` (`check *` judges the
   harness repository and its packages, `app check` a product app); `stack backup` (volumes) and `db dump` (the database);
-  `stack prune` (Swarm objects) and `stack retire` (old compose projects); the stop verbs at five granularities (`task
+  `stack prune` (Swarm objects) and `stack retire` (old compose projects); `stack standby` (a Swarm stack quiet, routes off, resumed by `stack resume`) and `stack down` (a dev environment); `stack volume copy` (one volume into another, for a rename: PROJECT-STACKS-18) and `stack backup` (encrypted archives); the stop verbs at five granularities (`task
   cancel`, `seat stop`, `supervisor reject`, `workflow stop`, `project park`); `secret migrate`, `recipients` and `server-key`
   (three recipient jobs); `doctor`, `host status` and `supervisor status` (three liveness views).
 - **Which verbs a tree sees.** `locateTree` reads the nearest `hfs.json`. A lite or full app sees the verbs of its

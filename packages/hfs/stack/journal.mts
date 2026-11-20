@@ -20,10 +20,15 @@ import type { ObservedService } from './status.mjs';
 
 /** What started the attempt: a CI run, a manual dispatch or the owner's urgent deploy. */
 export type Trigger = LockTrigger;
-/** What the attempt does. */
-export type AttemptKind = 'deploy' | 'rollback' | 'accept';
-/** How an attempt ended; `running` is the document of an attempt that has not finished (or was cancelled). */
-export type Outcome = 'running' | 'accepted' | 'pending' | 'rolled-back' | 'rollback-failed' | 'failed' | 'refused' | 'already-current';
+/** What the attempt does: a release (deploy, rollback, accept), a quiet period of the whole stack (standby, resume: standby.mts) or a volume copy (volume.mts). */
+export type AttemptKind = 'deploy' | 'rollback' | 'accept' | 'standby' | 'resume' | 'volume-copy';
+/** How an attempt ended; `running` is the document of an attempt that has not finished (or was cancelled); `done` ends a standby or a resume. */
+export type Outcome = 'running' | 'accepted' | 'pending' | 'rolled-back' | 'rollback-failed' | 'failed' | 'refused' | 'already-current' | 'done';
+
+/** One service as a standby found it: what resume gives back (standby.mts). */
+export interface StandbyService { name: string; mode: 'replicated' | 'global'; replicas: number; role: 'writer' | 'store'; labels: Record<string, string> }
+/** The record a standby keeps in its attempt document: the services as they ran, in stop order. */
+export interface StandbyRecord { at: string; services: StandbyService[] }
 
 /** One phase of an attempt. */
 export interface PhaseRecord { phase: string; startedAt: string; endedAt: string | null; verdict: 'running' | 'ok' | 'failed' }
@@ -56,6 +61,12 @@ export interface AttemptDocument {
   contract: string[];
   /** `docker service inspect` snapshots by moment: `converge`, `rollback`, `accept`. */
   observed: Record<string, ObservedService[]>;
+  /** An adopted first release (`deploy --adopt`, PROJECT-STACKS-18): the old stack, its last release and the volume map. Absent on any other attempt. */
+  adopted?: Record<string, unknown> | undefined;
+  /** A standby: the services as they ran before it, which `stack resume` restores. Absent on any other attempt. */
+  standby?: StandbyRecord | undefined;
+  /** A volume copy: each pair with the files, bytes and digests of both sides. Absent on any other attempt. */
+  volumes?: Record<string, unknown>[] | undefined;
   outcome: Outcome;
   error: { code: string; message: string } | null;
 }
@@ -77,7 +88,10 @@ export interface AttemptMeta {
 }
 
 /** The facts an attempt learns while it runs. */
-export interface Note { releaseId?: string | null; previous?: string | null; backup?: Record<string, unknown> | null; migrations?: string[]; contract?: string[]; urgent?: { role: string; reason: string; tag?: string | undefined } }
+export interface Note {
+  releaseId?: string | null; previous?: string | null; backup?: Record<string, unknown> | null; migrations?: string[]; contract?: string[]; urgent?: { role: string; reason: string; tag?: string | undefined };
+  adopted?: Record<string, unknown>; standby?: StandbyRecord; volumes?: Record<string, unknown>[];
+}
 
 /** The open record of one attempt. */
 export interface Recorder {
@@ -147,6 +161,9 @@ export async function openAttempt(ctx: StackContext, config: DeployConfig, store
       if (found.backup !== undefined) document.backup = found.backup;
       if (found.migrations !== undefined) document.migrations = found.migrations;
       if (found.contract !== undefined) document.contract = found.contract;
+      if (found.adopted !== undefined) document.adopted = found.adopted;
+      if (found.standby !== undefined) document.standby = found.standby;
+      if (found.volumes !== undefined) document.volumes = found.volumes;
       if (found.urgent) document.urgent = { role: clean(found.urgent.role, 40), reason: found.urgent.reason.slice(0, REASON_MAX), tag: found.urgent.tag ?? null };
     },
     async phase<T>(name: string, action: () => T | Promise<T>, passed: (value: T) => boolean = () => true): Promise<T> {
@@ -211,6 +228,7 @@ interface OutcomeData { steps?: { step: string }[]; rolledBack?: boolean; pendin
 export function outcomeOf(result: ActionResult, kind: AttemptKind): Outcome {
   const data = (result.data ?? {}) as OutcomeData;
   if (data.alreadyCurrent) return 'already-current';
+  if (kind === 'standby' || kind === 'resume' || kind === 'volume-copy') return result.ok ? 'done' : 'failed';
   if (result.ok) return data.pendingAccept ? 'pending' : 'accepted';
   if (kind !== 'deploy') return 'failed';
   const changed = (data.steps ?? []).some((entry) => entry.step === 'deploy' || entry.step === 'deploy-hold');

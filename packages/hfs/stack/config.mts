@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import { isSealedName, memberOfName } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, type RenamedFrom, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+export type { RenamedFrom } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { refusal } from './errors.mjs';
 import type { TargetBinding } from './target-binding.mjs';
 import { monitoringOf, sidecarGrants } from './monitoring.mjs';
@@ -88,6 +89,8 @@ export interface DeployBlock {
   notify: NotifyBlock | null;
   ingress: IngressConfig | null;
   registry: RegistryBlock;
+  /** deploy.renamedFrom (PROJECT-STACKS-18): the old stack, its releases base and the volume map new -> old; absent unless declared. */
+  renamedFrom?: RenamedFrom | undefined;
 }
 
 /** One public host of a shared edge: the stack service that serves it and the port that service listens on, optionally only for some paths (exact `paths`, `pathPrefixes`) and with an explicit router `priority`. */

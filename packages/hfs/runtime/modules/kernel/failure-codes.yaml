@@ -6713,6 +6713,276 @@ STACK_FIRST_START_APP_ROLE:
   owner: owner
   kind: verb-refusal
 
+STACK_ADOPT_UNDECLARED:
+  title: "deploy --adopt without a declared renamedFrom"
+  title_vi: "deploy --adopt khi chưa khai báo renamedFrom"
+  meaning_vi: "Lệnh triển khai được gọi với --adopt nhưng khối deploy của môi trường không khai báo renamedFrom, nên không biết dữ liệu được nhận từ stack nào."
+  causes_vi:
+    - "Thiếu khối deploy.renamedFrom (stack cũ, releasesBase, bảng volume mới sang cũ) trong application-stacks.yaml."
+  nextStep_vi: "Khai báo environments.<env>.deploy.renamedFrom theo PROJECT-STACKS-18 rồi chạy lại; nếu đây không phải lần đổi tên stack thì bỏ --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_ALREADY_ACCEPTED:
+  title: "The stack already has an accepted release, so it cannot adopt"
+  title_vi: "Stack đã có bản phát hành được chấp nhận nên không nhận dữ liệu được nữa"
+  meaning_vi: "Chỉ bản phát hành đầu tiên của stack mới được nhận dữ liệu của stack cũ; stack này đã có con trỏ current."
+  causes_vi:
+    - "Lần --adopt trước đã thành công, hoặc stack mới đã được triển khai bằng first start."
+  nextStep_vi: "Triển khai lại không kèm --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_VOLUME_MISSING:
+  title: "A new volume of renamedFrom does not exist"
+  title_vi: "Một volume mới trong renamedFrom chưa tồn tại"
+  meaning_vi: "Trước khi nhận dữ liệu, mọi volume mới trong bảng renamedFrom.volumes phải có trên manager và đã được chép dữ liệu."
+  causes_vi:
+    - "Chưa chạy stack prepare --execute để tạo volume mới."
+    - "Chưa chạy stack volume copy."
+  nextStep_vi: "Chạy starci app stack prepare --env <env> --execute, rồi starci app stack volume copy --env <env> --execute, rồi triển khai lại với --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_VOLUME_EMPTY:
+  title: "A new volume of renamedFrom is empty"
+  title_vi: "Một volume mới trong renamedFrom còn trống"
+  meaning_vi: "Volume mới tồn tại nhưng không chứa gì, tức dữ liệu của stack cũ chưa được chép sang."
+  causes_vi:
+    - "Bỏ qua bước stack volume copy."
+  nextStep_vi: "Chạy starci app stack volume copy --env <env> --execute rồi triển khai lại với --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_SOURCE_RUNNING:
+  title: "The old stack still runs while the new one adopts its data"
+  title_vi: "Stack cũ vẫn chạy khi stack mới nhận dữ liệu"
+  meaning_vi: "Stack cũ còn task đang chạy, nên nó vẫn có thể ghi dữ liệu hoặc giữ route trên cùng host với stack mới."
+  causes_vi:
+    - "Chưa chạy stack standby --renamed-from cho stack cũ."
+  nextStep_vi: "Chạy starci app stack standby --env <env> --renamed-from --execute, chép volume, rồi triển khai lại với --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_SOURCE_UNREADABLE:
+  title: "The old stack's release store cannot be read"
+  title_vi: "Không đọc được kho bản phát hành của stack cũ"
+  meaning_vi: "Lệnh triển khai cần đọc releasesBase của stack cũ để biết bản phát hành cuối và bản ghi standby của nó, nhưng lệnh từ xa thất bại."
+  causes_vi:
+    - "renamedFrom.releasesBase sai đường dẫn."
+    - "Người dùng triển khai không có quyền đọc thư mục đó."
+  nextStep_vi: "Kiểm tra renamedFrom.releasesBase và quyền thư mục trên manager (stack prepare --env <env> in ra cả hai phía), rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_SOURCE_NO_RELEASE:
+  title: "The old stack has no accepted release to roll back to"
+  title_vi: "Stack cũ không có bản phát hành được chấp nhận để quay lại"
+  meaning_vi: "Bản phát hành cuối của stack cũ là đích quay lại của bản phát hành nhận dữ liệu; kho của stack cũ không có con trỏ current."
+  causes_vi:
+    - "renamedFrom.releasesBase trỏ sai chỗ."
+    - "Stack cũ chưa từng được triển khai bằng starci app stack deploy."
+  nextStep_vi: "Sửa renamedFrom.releasesBase cho đúng kho của stack cũ; nếu stack cũ không có bản phát hành nào thì chủ sở hữu quyết định cách chuyển khác."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_SOURCE_NOT_STANDBY:
+  title: "The old stack's journal holds no standby"
+  title_vi: "Nhật ký của stack cũ không có bản ghi standby"
+  meaning_vi: "Việc quay lại sau khi nhận dữ liệu khôi phục stack cũ từ bản ghi standby của nó; nhật ký không có standby nào sau lần resume cuối."
+  causes_vi:
+    - "Stack cũ được dừng bằng tay thay vì bằng stack standby."
+    - "Stack cũ đã được resume sau standby."
+  nextStep_vi: "Chạy starci app stack standby --env <env> --renamed-from --execute rồi triển khai lại với --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_NO_DATABASE:
+  title: "The adopted database did not accept connections"
+  title_vi: "Cơ sở dữ liệu được nhận không nhận kết nối"
+  meaning_vi: "Sau lần triển khai giữ chỉ còn cơ sở dữ liệu chạy trên volume đã chép, không container nào của dịch vụ cơ sở dữ liệu nhận kết nối trong thời gian chờ; stack mới được đưa về standby và stack cũ được resume."
+  causes_vi:
+    - "Dữ liệu chép sang hỏng hoặc sai chủ sở hữu, nên Postgres không khởi động."
+    - "Image cơ sở dữ liệu khác phiên bản với dữ liệu của stack cũ."
+  nextStep_vi: "Xem log dịch vụ cơ sở dữ liệu của stack mới, so sánh bằng stack volume verify, sửa nguyên nhân rồi chép lại vào volume trống."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_NO_HISTORY:
+  title: "The adopted database carries no migration history"
+  title_vi: "Cơ sở dữ liệu được nhận không có lịch sử migration"
+  meaning_vi: "Volume cơ sở dữ liệu mới không mang lịch sử migration, tức đó không phải dữ liệu đã chép của stack cũ; stack mới được đưa về standby và stack cũ được resume."
+  causes_vi:
+    - "Chép nhầm volume, hoặc volume mới được khởi tạo bởi một first start."
+  nextStep_vi: "Làm rỗng volume mới, chép lại đúng volume cơ sở dữ liệu cũ bằng stack volume copy, rồi triển khai lại với --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ROLLBACK_ADOPTED_DATA:
+  title: "Rolling back an adopted release needs the owner's yes on the data"
+  title_vi: "Quay lại bản phát hành nhận dữ liệu cần chủ sở hữu đồng ý về dữ liệu"
+  meaning_vi: "Quay lại đưa stack mới về standby và resume stack cũ trên volume cũ của nó; mọi thứ đã ghi trên stack mới ở lại volume mới và stack cũ không thấy."
+  causes_vi:
+    - "Lệnh stack rollback được gọi cho bản phát hành nhận dữ liệu mà chưa có --data-acknowledged."
+  nextStep_vi: "Khi chủ sở hữu đồng ý mất phần ghi mới (hoặc đã chép ngược theo runbook), chạy lại với --data-acknowledged."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_PAIRS_UNDECLARED:
+  title: "stack volume has no pair to work on"
+  title_vi: "stack volume không có cặp volume để xử lý"
+  meaning_vi: "Lệnh không có --from và --to, và môi trường không khai báo renamedFrom.volumes."
+  causes_vi:
+    - "Quên --from/--to, hoặc chưa khai báo deploy.renamedFrom."
+  nextStep_vi: "Truyền --from <volume> --to <volume>, hoặc khai báo deploy.renamedFrom.volumes."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_NO_IMAGE:
+  title: "stack volume has no pinned helper image"
+  title_vi: "stack volume không có image trợ giúp được ghim"
+  meaning_vi: "Việc chép và đo volume chạy trong image sao lưu đã ghim digest của môi trường; môi trường không khai báo deploy.backup."
+  causes_vi:
+    - "Thiếu khối deploy.backup với image ghim digest."
+  nextStep_vi: "Khai báo deploy.backup (image ghim bằng digest, volumes) rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_MISSING:
+  title: "A volume of the copy does not exist"
+  title_vi: "Một volume của lần chép không tồn tại"
+  meaning_vi: "Volume nguồn hoặc volume đích không có trên manager, nên không chép gì."
+  causes_vi:
+    - "Tên volume sai."
+    - "Volume đích chưa được stack prepare --execute tạo."
+  nextStep_vi: "Kiểm tra tên trong renamedFrom.volumes hoặc --from/--to; tạo volume đích bằng starci app stack prepare --env <env> --execute."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_IN_USE:
+  title: "A volume of the copy is mounted by a running task"
+  title_vi: "Một volume của lần chép đang được task đang chạy gắn vào"
+  meaning_vi: "Một container đang chạy, hoặc một dịch vụ còn task để chạy, gắn volume nguồn hoặc đích; chép nóng không đảm bảo nhất quán nên lệnh từ chối. Dịch vụ ở standby (0 replica) không tính."
+  causes_vi:
+    - "Stack cũ hoặc stack mới chưa được đưa về standby."
+  nextStep_vi: "Chạy starci app stack standby --env <env> [--renamed-from] --execute cho stack đang gắn volume, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_UNDECLARED:
+  title: "The copy target is not a volume this environment declares"
+  title_vi: "Volume đích không phải volume mà môi trường khai báo"
+  meaning_vi: "Lệnh chỉ chép vào volume của chính môi trường (deploy.volumes hoặc deploy.backup.volumes), để không ghi đè volume của stack khác."
+  causes_vi:
+    - "--to trỏ tới volume của stack khác hoặc gõ sai tên."
+  nextStep_vi: "Dùng volume mà môi trường khai báo làm --to."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_TARGET_NOT_EMPTY:
+  title: "The copy target is not empty"
+  title_vi: "Volume đích không trống"
+  meaning_vi: "Lệnh chỉ chép vào volume trống, để bản chép không trộn với dữ liệu sẵn có."
+  causes_vi:
+    - "Một first start hoặc một lần chép trước đã ghi vào volume đích."
+  nextStep_vi: "Khi chắc chắn không cần dữ liệu trong volume đích, xóa nó và tạo lại trống bằng starci app stack prepare --env <env> --execute, rồi chép lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_MEASURE:
+  title: "A volume could not be measured"
+  title_vi: "Không đo được volume"
+  meaning_vi: "Container trợ giúp không in được số tệp, số byte và hai digest của volume."
+  causes_vi:
+    - "Image sao lưu không có sh, find, stat, sha256sum hoặc awk."
+    - "Docker trên manager không chạy được container trợ giúp."
+  nextStep_vi: "Kiểm tra image deploy.backup.image (một image có BusyBox hoặc GNU coreutils) và Docker trên manager, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_COPY_FAILED:
+  title: "The volume copy failed"
+  title_vi: "Chép volume thất bại"
+  meaning_vi: "Lệnh cp -a trong container trợ giúp lỗi; volume nguồn được gắn chỉ đọc nên không bị đổi, volume đích có thể đã có một phần."
+  causes_vi:
+    - "Đầy đĩa trên manager."
+    - "Lỗi của Docker hoặc của image trợ giúp."
+  nextStep_vi: "Sửa nguyên nhân, làm rỗng volume đích (xóa và tạo lại bằng stack prepare --execute), rồi chép lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_MISMATCH:
+  title: "The two volumes do not hold the same tree"
+  title_vi: "Hai volume không chứa cùng một cây dữ liệu"
+  meaning_vi: "Số tệp, số byte, digest nội dung hoặc digest siêu dữ liệu (đường dẫn, chủ sở hữu, quyền, kích thước, đích của liên kết) của nguồn và đích khác nhau."
+  causes_vi:
+    - "Bản chép chưa xong hoặc bị lỗi."
+    - "Có tiến trình ghi vào một trong hai volume."
+  nextStep_vi: "Không dùng volume đích; làm rỗng nó, đảm bảo không gì gắn hai volume, rồi chép lại và kiểm bằng stack volume verify."
+  owner: owner
+  kind: verb-refusal
+
+STACK_VOLUME_SOURCE_CHANGED:
+  title: "The source volume changed while it was copied"
+  title_vi: "Volume nguồn thay đổi trong lúc chép"
+  meaning_vi: "Với --verify, số đo của nguồn trước khi chép khác số đo sau khi chép, tức có gì đó ghi vào nguồn trong lúc chép."
+  causes_vi:
+    - "Một container ngoài stack, hoặc một tiến trình trên host, ghi vào volume nguồn."
+  nextStep_vi: "Tìm và dừng thứ đang ghi vào volume nguồn, làm rỗng volume đích rồi chép lại với --verify."
+  owner: owner
+  kind: verb-refusal
+
+STACK_STANDBY_RENAMED_UNDECLARED:
+  title: "--renamed-from without a declared renamedFrom"
+  title_vi: "--renamed-from khi chưa khai báo renamedFrom"
+  meaning_vi: "standby hoặc resume với --renamed-from tác động lên stack cũ trong deploy.renamedFrom, nhưng môi trường không khai báo khối đó."
+  causes_vi:
+    - "Thiếu deploy.renamedFrom, hoặc đã gỡ nó sau khi hết thời gian giữ."
+  nextStep_vi: "Khai báo deploy.renamedFrom, hoặc bỏ --renamed-from để tác động lên stack của chính môi trường."
+  owner: owner
+  kind: verb-refusal
+
+STACK_STANDBY_DOCKER:
+  title: "The services of the stack could not be read"
+  title_vi: "Không đọc được các dịch vụ của stack"
+  meaning_vi: "docker service ls hoặc docker service inspect trên manager thất bại, nên standby hoặc resume không biết trạng thái dịch vụ."
+  causes_vi:
+    - "Không kết nối được Docker của manager."
+  nextStep_vi: "Kiểm tra kết nối bằng starci app stack prepare --env <env> rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_STANDBY_NO_SERVICES:
+  title: "The stack has no service to stand by"
+  title_vi: "Stack không có dịch vụ nào để standby"
+  meaning_vi: "Trên swarm không có dịch vụ nào thuộc stack đó."
+  causes_vi:
+    - "Stack chưa được triển khai hoặc đã bị gỡ."
+    - "Sai môi trường hoặc thiếu --renamed-from."
+  nextStep_vi: "Kiểm tra --env và --renamed-from; không có gì để dừng."
+  owner: owner
+  kind: verb-refusal
+
+STACK_STANDBY_ALREADY:
+  title: "The stack is already in standby"
+  title_vi: "Stack đã ở trạng thái standby"
+  meaning_vi: "Mọi dịch vụ của stack đều đã dừng; một standby mới sẽ ghi lại số replica bằng 0 nên lệnh từ chối và giữ bản ghi standby trước."
+  causes_vi:
+    - "Đã chạy standby trước đó."
+  nextStep_vi: "Không cần làm gì; starci app stack resume --env <env> [--renamed-from] --execute khôi phục từ bản ghi standby có sẵn."
+  owner: owner
+  kind: verb-refusal
+
+STACK_RESUME_NO_STANDBY:
+  title: "The journal holds no standby to resume from"
+  title_vi: "Nhật ký không có bản ghi standby để resume"
+  meaning_vi: "resume đọc bản ghi standby mới nhất của nhật ký triển khai; sau lần resume cuối không có standby nào."
+  causes_vi:
+    - "Stack đã được resume, hoặc được dừng bằng tay chứ không bằng stack standby."
+  nextStep_vi: "Nếu stack đang dừng mà không có bản ghi, triển khai lại bản phát hành hiện tại bằng stack rollback --release <id> hoặc stack deploy."
+  owner: owner
+  kind: verb-refusal
+
 STACK_TOOLING_REIMPLEMENTED:
   title: "An app re-implements deploy tooling the canon ships"
   title_vi: "Ứng dụng tự cài lại công cụ triển khai mà canon đã cung cấp"

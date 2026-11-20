@@ -919,3 +919,66 @@ Prometheus or Grafana: the server's one shared monitoring stack (`starci vps mon
 `ops/vps/monitor/components.yaml`) scrapes and keeps what the block names. An environment without the block renders byte for byte as before.
 The block's fields, the labels and sidecars the render adds, the doors and secrets, and why Consul is not part of it are in
 [monitoring.md](monitoring.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).
+
+## PROJECT-STACKS-18 Moving a stack to new runtime names: standby, copy, adopt
+
+A Swarm stack whose runtime names change (the stack, its volumes, its releases base and so its secrets, overlay and router names) moves in one
+maintenance window, and no empty instance answers on the public hosts at any point. The environment declares where it came from, once, in its
+`deploy` block:
+
+```yaml
+deploy:
+  stack: shop-production
+  volumes: [shop-production-db-data, shop-production-storage-data, shop-production-redis-data]
+  renamedFrom:
+    stack: shop-old-production
+    releasesBase: /srv/shop-old-production    # default /srv/<stack>
+    volumes:                                   # new volume: the old volume its data is copied from
+      shop-production-db-data: shop-old-production-db-data
+      shop-production-storage-data: shop-old-production-storage-data
+```
+
+`renamedFrom.stack` is never the environment's own stack; every new volume is one of `deploy.volumes` and every old one is named once
+(`STACKS_DEPLOY_CONFIG_INVALID`; the schema is `HFS_STACKS_SHAPE`). A rebuildable store (a cache) is left out of the map and starts empty. An environment
+without `renamedFrom` renders, deploys and journals byte for byte as before. `stack prepare` (and its dry run, the doctor of a Swarm environment) checks both
+sides: each old volume exists, each new one exists or is created, the old stack's services and how many still run, and the old releases base names its
+last accepted release.
+
+Three verbs carry the move, each a dry run until `--execute` and each executed run one recorded attempt under the deploy lock of the stack it acts on:
+
+- `stack standby --env <env> [--renamed-from] [--timeout <s>] [--execute]` stops the writers (services without a named volume) and waits until none
+  runs, then the stores (services that mount one), then sets `traefik.enable=false` on every service that carries the label (the shared edge renders it,
+  an external ingress writes it by hand; an own ingress stops with its stack). It records every service's mode, replicas, role and router label in the
+  attempt document first. A global service is held by a placement constraint no node carries. `--renamed-from` acts on `renamedFrom.stack`, its
+  releases base, lock and journal. Refused when nothing runs (`STACK_STANDBY_ALREADY`). `stack resume` reads the newest standby record back and starts
+  the stores, waits until every task runs (a task with a healthcheck is running only once healthy), then the writers, then restores the routes
+  (`STACK_RESUME_NO_STANDBY` without a record).
+- `stack volume copy --env <env> [--from <v> --to <v>] [--verify] [--execute]` copies each old volume (mounted read-only) into its empty new one with
+  `cp -a`, in a throwaway container of the environment's pinned backup image (`deploy.backup.image`, no network), and measures both sides: files, bytes,
+  a content digest and a metadata digest (path, type, owner, mode, size, link target). Any difference is `STACK_VOLUME_MISMATCH`; `--verify` also
+  measures the source before the copy (`STACK_VOLUME_SOURCE_CHANGED`). Without `--from`/`--to` the pairs are `renamedFrom.volumes`. It is refused
+  while a running container or a service with tasks to run mounts either volume (`STACK_VOLUME_IN_USE`; a service in standby does not count), into a
+  volume the environment does not declare (`STACK_VOLUME_UNDECLARED`) and into one that is not empty (`STACK_VOLUME_TARGET_NOT_EMPTY`).
+  `stack volume verify` measures and compares alone and changes nothing.
+- `stack deploy --adopt` (the image form, never `--urgent`) is the first release of the new stack. Before anything changes it proves that the new stack
+  has no accepted release, every new volume exists and is filled, the old stack runs nothing and its journal holds that standby, and the old releases
+  base names a last accepted release (`STACK_ADOPT_*`). It writes `adoptedFrom` (old stack, its last release, its standby attempt, the volume map) into
+  the release record and the attempt journal, deploys the database alone on the copied volume (the hold deploy of a first start), proves it carries a
+  migration history (`STACK_ADOPT_NO_HISTORY`), runs the plain database path there (migrate preview, a verified backup when something is pending, the
+  expand migrations), then the real deploy, converge, seed, verify, accept and the contract migrations of any deploy.
+
+The rollback target of the adopted release is the old stack's last release, never its stored bytes under the new name: a failed adopted deploy puts the
+new stack in standby and resumes the old one from its standby record, and `stack rollback --env <env> --data-acknowledged --execute` does the same later
+(`STACK_ROLLBACK_ADOPTED_DATA` without the acknowledgement, since writes made on the new stack stay on its volumes).
+
+The order of one window: `stack prepare --env <env> --execute` beforehand (new volumes and releases base), then `stack backup` of the old declaration,
+`stack standby --env <env> --renamed-from --execute`, `stack volume copy --env <env> --verify --execute`, `stack deploy --env <env> --adopt --image ...
+--sha ... --execute`, `stack verify --env <env>`. The old stack, its volumes, secrets and release store stay untouched through the hold period;
+`renamedFrom` is removed from the declaration when they are retired.
+
+Why: a new stack name has no accepted release, so a plain deploy takes the first start, which refuses a populated database, and the only way around it
+exposed a freshly seeded empty instance on the public hosts until the data was swapped in. Standby, copy and adopt keep the old stack the one
+rollback target and never let two stacks route the same hosts.
+
+Enforced by: the refusals above (stack/standby.mts, stack/volume.mts, stack/adopt.mts), `STACKS_DEPLOY_CONFIG_INVALID` and `HFS_STACKS_SHAPE` for the
+declaration; the rest is held by review.
