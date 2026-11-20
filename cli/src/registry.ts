@@ -104,6 +104,7 @@ import { hostLoadVerb } from "./core/host/load.js"
 import { hostUpVerb } from "./core/host/up.js"
 import { hostDownVerb } from "./core/host/down.js"
 import { hostInstallVerb } from "./core/host/install.js"
+import { hostDoctorVerb } from "./core/host/doctor.js"
 import { hostUninstallVerb } from "./core/host/uninstall.js"
 import { vpsDoctorVerb, vpsListVerb } from "./core/vps/read.js"
 import { vpsBootstrapVerb, vpsSwarmVerb, vpsUiVerb } from "./core/vps/act.js"
@@ -254,6 +255,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     hostUpVerb,
     hostDownVerb,
     hostInstallVerb,
+    hostDoctorVerb,
     hostUninstallVerb,
     vpsListVerb,
     vpsDoctorVerb,

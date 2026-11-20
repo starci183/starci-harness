@@ -33,6 +33,20 @@ const checkSchema = z
     })
     .refine((check) => (check.argv === undefined) !== (check.http === undefined), "a check names exactly one of argv and http")
 
+const NAME = /^[a-z][a-z0-9-]*$/
+
+/**
+ * The compose network a stack service is a member of, for `host doctor`: the network's name beside the project (`<project>-<name>`, the
+ * `name:` of the network in its compose file), the aliases the service answers to on it (its compose service name is always one more),
+ * its fixed address, and what a throwaway container on the network must get from it: a probe is one GET, up on its status.
+ */
+const networkSchema = z.strictObject({
+    name: z.string().regex(NAME),
+    aliases: z.array(z.string().regex(NAME)).default([]),
+    ip: z.string().regex(/^(?:\d{1,3}\.){3}\d{1,3}$/).optional(),
+    probes: z.array(z.strictObject({ url: z.url(), status: z.number().int().min(100).max(599) })).default([]),
+})
+
 const serviceSchema = z.strictObject({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     summary: z.string().min(1),
@@ -41,6 +55,7 @@ const serviceSchema = z.strictObject({
     platform: z.enum(["win32", "linux", "darwin", "any"]),
     // The compose project this service is a container of (ops/host/stack/): `host up --stack <name>` brings the whole stack up.
     stack: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(),
+    network: networkSchema.optional(),
     check: checkSchema.optional(),
     start: z
         .strictObject({
@@ -93,11 +108,20 @@ const requiresProblems = (services: readonly ServiceEntry[]): string[] => {
     return problems
 }
 
+/** What `host doctor` runs and waits for: the pinned image of its throwaway probe container, and how long each repair rung settles. */
+const doctorSchema = z.strictObject({
+    probeImage: z.string().regex(/@sha256:[0-9a-f]{64}$/, "the probe image is pinned by digest"),
+    probeTimeoutSeconds: z.number().int().positive(),
+    settleSeconds: z.number().int().positive(),
+    healthySeconds: z.number().int().positive(),
+})
+
 const hostSchema = z
     .strictObject({
         schema: z.literal("starci/host@1"),
         waitSeconds: z.number().int().positive(),
         checkTimeoutSeconds: z.number().int().positive(),
+        doctor: doctorSchema,
         services: z.array(serviceSchema).min(1),
     })
     .superRefine((host, issues) => {
@@ -112,6 +136,12 @@ export type HostService = HostConfig["services"][number]
 
 /** A platform a service or an install targets. */
 export type HostPlatform = HostService["platform"]
+
+/** The compose network a service is a member of. */
+export type HostNetwork = z.infer<typeof networkSchema>
+
+/** What `host doctor` needs of ops/host.yaml. */
+export type HostDoctor = z.infer<typeof doctorSchema>
 
 /** A service's schedule, when it registers one. */
 export type HostSchedule = z.infer<typeof scheduleSchema>

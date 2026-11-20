@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added (`starci host doctor [--stack starci] [--fix] [--execute]`): reads each compose network a stack service declares (`network` in ops/host.yaml) from inside: Docker, the network, each member container (exists, runs, healthy, attached) and, from a throwaway container on the network (`doctor.probeImage`, pinned by digest), whether each name resolves and each declared probe is answered. `--fix` repairs the least disruptive way first, each rung followed by a fresh read: start, reconnect to the network (with the container's aliases and address), restart, recreate the network last (no volume touched); Docker itself down is started first. A dry run (no `--execute`) prints the plan and the alert text and changes nothing. The owner gets one Telegram message per incident (opened, repaired or not; one more when a not-repaired incident closes), deduplicated in the shared state base and retried while unsent.
+- Added (ops): the `host-doctor` service of ops/host.yaml, a schedule `StarCi Host Doctor` every two minutes running `host doctor --stack starci --fix --execute` (`host install host-doctor --execute`).
+- Fixed (ops/host/stack): the embeddings gate and tunnel share the dedicated network `<project>-edge` (subnet 10.77.84.0/29, the gate at 10.77.84.2 with the alias `embeddings-gate`, the tunnel at 10.77.84.3) and the tunnel's ingress calls the gate by address, so Docker's embedded DNS stopping on `starci_default` (2026-11-21, twice: 502 on embed.starci.org) no longer cuts the path; both containers gain a healthcheck (the gate's Caddy health port; the tunnel's `cloudflared tunnel ready`, the image having no shell or curl) and keep `restart: unless-stopped`. Applying it to a live host recreates the two containers.
+- Changed (contexts): "Self-healing" in contexts/harness/host.md.
+
 ## 1.1.0-alpha.185 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
