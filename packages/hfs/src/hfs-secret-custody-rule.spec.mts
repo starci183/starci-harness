@@ -41,7 +41,7 @@ for (const ignored of [false, true]) {
     assert.equal(findings[0]!.code, 'HFS_PLAINTEXT_SECRET');
     assert.equal(findings[0]!.level, 'warning');
     assert.match(findings[0]!.message!, /starci app secret set/);
-    assert.equal(result.counts.warning, 1);
+    assert.equal(result.counts.warning, baseline.counts.warning + 1, 'the custody warning is the one warning the file adds');
     assert.equal(result.counts.error, baseline.counts.error, 'the generic untracked-entry gate must not turn the custody warning into an error');
     const fast = checkRepo({ repoRoot: root, declaration: liteApp, tree: false, only: [] });
     assert.equal(fast.findings.filter(item => item.code === 'HFS_PLAINTEXT_SECRET' && item.level === 'warning').length, 1, 'a fast check also reports local secret custody');
@@ -58,9 +58,9 @@ test('R06 keeps a tracked secrets.env an error by path even when its content is 
     assert.equal(finding?.path, 'secrets.env');
     assert.equal(finding?.level, 'error');
     assert.equal(finding?.slot, 'app.plaintext-env');
-    assert.equal(result.counts.warning, 0);
+    assert.deepEqual(result.findings.filter(item => item.level === 'warning' && item.code !== 'HFS_MASTER_PLAN_MISSING'), [], 'no warning beside the app-level Master Plan one (R449)');
     const fast = checkRepo({ repoRoot: root, declaration, tree: false, only: [] });
-    assert.deepEqual(fast.findings.filter(item => item.level === 'warning'), []);
+    assert.deepEqual(fast.findings.filter(item => item.level === 'warning' && item.code !== 'HFS_MASTER_PLAN_MISSING'), []);
   }
 });
 
