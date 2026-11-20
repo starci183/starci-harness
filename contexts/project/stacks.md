@@ -99,6 +99,9 @@ image, so any digest-pinned supported reverse proxy serves.
   skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. An environment whose
   web and api hosts differ gives the api `AUTH_COOKIE_DOMAIN` (the bare common parent domain, such as `example.com`) in
   its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
+  The refresh cookie is named `refresh_token` unless the api sets the optional `AUTH_COOKIE_NAME` (an RFC 6265 token, at most 64
+  characters; any other value stops the boot). Apps that share a parent cookie domain (two dev hosts under one domain) must each set a
+  distinct `AUTH_COOKIE_NAME`: with one name, one app's sign-in overwrites the other's and its refresh cookie reaches the other api.
 - An app routed by a shared ingress outside its own stack declares that ingress as external with its hosts; its own
   stack then renders no ingress and publishes no port, and its DNS and TLS stay declared (R275).
 - **Hosts are declared once.** An environment's public hosts live in `.starcistacks/application-stacks.yaml`, never in the stack file.

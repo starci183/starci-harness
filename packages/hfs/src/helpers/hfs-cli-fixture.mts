@@ -12,7 +12,7 @@ import { parseYaml } from '../../runtime/engine/yaml.mjs';
 
 interface FeConcern { tier: string; packages: string[] }
 const jestPreset: { sonarExclusions(): string } = createRequire(import.meta.url)('../../../jest-preset/dist/index.js');
-interface AppEntry { name: string; kind: string }
+interface AppEntry { name: string; kind: string; signIn?: boolean }
 interface SideDeclaration { apps: AppEntry[]; [field: string]: unknown }
 /** An hfs.json app declaration; a spec may add fields (edition, kinds) beside the sides. */
 export interface AppDeclaration {
@@ -42,7 +42,7 @@ export const appOf = ({ be = { apps: [{ name: 'core', kind: 'api' }] }, fe = { a
 /** The clean app of most specs: one api app, one Next app. */
 export const APP = appOf();
 /** An app whose fe side holds two Next apps. */
-export const TWO_FE_APPS = appOf({ fe: { apps: [{ name: 'web', kind: 'next' }, { name: 'admin', kind: 'next' }] } });
+export const TWO_FE_APPS = appOf({ fe: { apps: [{ name: 'web', kind: 'next', signIn: true }, { name: 'admin', kind: 'next' }] } });
 
 /** The repository's `prettier` for a spec that is not about formatting: it judges every file formatted. */
 export const FORMATTED =Object.freeze({ getFileInfo: async () => ({ ignored: false, inferredParser: 'babel' }), resolveConfig: async () => null, check: async () => true });

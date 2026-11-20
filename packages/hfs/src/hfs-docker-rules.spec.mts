@@ -18,7 +18,7 @@ import { cleanupDockerRuleFixtures, dockerRuleFixtureFiles, dockerRulesRepoOf, D
 test.after(cleanupDockerRuleFixtures);
 const MIXED = appOf({
   be: { apps: [{ name: 'core', kind: 'api' }, { name: 'jobs', kind: 'worker' }, { name: 'cli', kind: 'cli' }] },
-  fe: { apps: [{ name: 'landing', kind: 'next' }, { name: 'app', kind: 'next' }] },
+  fe: { apps: [{ name: 'landing', kind: 'next' }, { name: 'app', kind: 'next', signIn: true }] },
 });
 type Declaration = Parameters<typeof dockerRulesRepoOf>[0];
 type Mutate = (dir: string) => void;

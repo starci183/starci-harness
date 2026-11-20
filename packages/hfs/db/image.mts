@@ -34,3 +34,9 @@ export const MC = Object.freeze({
   sha256: '29db22500374169a43951c7cef09daf19e7291ea5ba00ac10f321371b0a35b32',
   buildImage: 'golang:1.24.8-alpine3.22@sha256:3d78beb141d98f42337f1252ecf2a5f20374109929a4c3f6817f9e4179cc0ae5',
 });
+
+/**
+ * The Docker Official postgres image by digest (contexts/stack/pins.yaml images postgres): the base of the managed db image, and the image
+ * whose own psql and pg_dump the db verbs run (`docker run --rm`) on a host that has no PostgreSQL client tools.
+ */
+export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';

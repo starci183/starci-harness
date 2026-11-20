@@ -73,7 +73,9 @@
 //   starci app ci secret set <NAME> [--from-custody] [--env E | --dependabot] [--repo owner/name] [--execute]  stdin or the explicit service custody binding; dry until --execute.
 //   starci app ci var set <NAME> [--env E] [--value v] [--execute] | var sync [--execute] | verify [--json] | local [--execute]
 //                                            declared GitHub CI custody; verify compares names, scopes and public values; local prints the CI plan, --execute runs it.
-//   starci app db new <name> | baseline | restamp --map <restamp.yaml> | migrate | post-cutover | dump | drift   [--db-url-env <NAME>]
+//   starci app db new <name> | baseline | restamp --map <restamp.yaml> | migrate | adopt [--image <ref>] | post-cutover | dump | drift   [--db-url-env <NAME>]
+//                                            adopt takes over a database another tool built: it refuses unless the live schema equals bootstrap + baseline, then runs the bootstrap, creates the history table and
+//                                            records the baseline applied (dry run by default, --execute applies); the psql and pg_dump of every db verb run from the pinned postgres image when the host has none.
 //                                            baseline and restamp preview and mutate only with --execute; migrate without --execute prints the plan and compares
 //                                            the database with the repo (exit 0 agree, 1 drift, 2 refused).
 //   starci app add <api|webhook|realtime|saga|job|reactor|queue|projection> <name> [--event <event> --from <service> --service <Class>=<module>] [--owner <service> --failed <event> --done <event>] [--connection <name>] [--cwd <dir>]
@@ -163,6 +165,7 @@ import { SPEC as DB_DUMP_FLAGS, dbDumpMain } from '../db/dump.mjs';
 import { DATA_USAGE, dataMain } from '../data/cli.mjs';
 import { SPEC as DB_NEW_FLAGS, dbNewMain } from '../db/new.mjs';
 import { SPEC as DB_DRIFT_FLAGS, dbDriftMain } from '../db/drift.mjs';
+import { SPEC as DB_ADOPT_FLAGS, dbAdoptMain } from '../db/adopt.mjs';
 import { BASELINE_OPTIONS, DB_BOOLEAN_OPTIONS } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { RESTAMP_OPTIONS } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { SECRET_VERBS, secretUsage } from '../runtime/scripts/hfs/secret.mjs';
@@ -228,7 +231,7 @@ type UsageForm = ParsedVerb['forms'][number];
 export class UsageError extends Error {}
 
 export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'uiaudit', 'gallery', 'codemod']);
-const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
+const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain], ['adopt', dbAdoptMain]]);
 
 /**
  * The verbs parsed here, each with the only flags it takes ({ boolean, value, list }); a flag of another verb is refused, never ignored.
@@ -282,7 +285,7 @@ const specUsage = ({ boolean = [], value = [], list = [] }: FlagTable, placehold
 ];
 /** A dbOptions list (bare names) as a spec; --cwd is the global flag. */
 const dbSpec = (names: readonly string[]): FlagTable => ({ boolean: names.filter((name) => DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`), value: names.filter((name) => name !== 'cwd' && !DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`) });
-const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)],['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS]];
+const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)],['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS], ['adopt', '', DB_ADOPT_FLAGS]];
 
 /** The usage of each verb, from the tables its parser refuses every other flag with (codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
 const VERB_USAGE: Record<string, string[]> = {
@@ -500,7 +503,7 @@ async function installedStackMain(cwd: string): Promise<(argv: string[], io: { c
 function databaseMain(argv: string[], io: VerbIo): Promise<number> | number {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
-  if (!dispatch) throw new UsageError('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
+  if (!dispatch) throw new UsageError('starci app db takes new, baseline, restamp, migrate, adopt, post-cutover, dump or drift');
   requireSides(io.cwd ?? process.cwd(), ['be'], `starci app db ${String(verb)}`);
   return dispatch(rest, io);
 }

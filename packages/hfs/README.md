@@ -113,6 +113,26 @@ and 2 is no verdict: a host without Docker or without the app's packages gets `D
 green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
 build job.
 
+`starci app db adopt [--db-url-env <NAME>] [--image <ref>] [--execute]` takes over a database another tool built (TypeORM's `synchronize`, a hosted
+dashboard) as the database the SQL migrations describe, where `db migrate` would find an empty history and replay `db/bootstrap.sql` and the
+baseline over existing tables (`db/adopt.mts`). The app declares its baseline as `database.baseline` in `.starcistacks/application-stacks.yaml`. The
+verb refuses unless the history table holds no row (`DB_ADOPT_HISTORY_NOT_EMPTY`; a recorded baseline is "nothing to do") and the database holds
+tables (`DB_ADOPT_EMPTY`: an empty database takes `db migrate`). It dumps the live schema (`pg_dump --schema-only --no-owner --no-acl`, the
+platform schemas `auth`, `storage`, `extensions` and `supabase_migrations` left out) and the same dump of a scratch database that received
+`db/bootstrap.sql` and the baseline (a throwaway container of the app's managed db image, or `--image`), compares them as entries (type, schema,
+name, body) and REFUSES with `DB_ADOPT_SCHEMA_DIFFERS` and a list of every difference (`-` only in the database, `+` only in the baseline, `~`
+changed). When they are equal, `--execute` runs in ONE transaction: `db/bootstrap.sql` (idempotent), the history table, the privileges the
+baseline replay holds, and the baseline recorded applied. The baseline never runs on that database. A dry run (no `--execute`) proves the
+schema and writes nothing; a database off the loopback needs `STARCI_DB_ARMED=1` for `--execute`. The sequence for an existing database:
+`starci app db adopt --db-url-env DATABASE_URL` (read the proof), `starci app db adopt --db-url-env DATABASE_URL --execute`, then
+`starci app db migrate --db-url-env DATABASE_URL --execute` for the forward migrations after the baseline.
+
+The `psql` and `pg_dump` of every `starci app db` verb run from the host when it has them. A host without them (a Windows machine) runs them from
+the pinned postgres image (`DB_BASE_IMAGE`, contexts/stack/pins.yaml) through `docker run --rm` (`db/client-image.mts`): the connection URL is
+passed in, the password only in the environment of the docker process (never an argument, a file or a log line), a `-f` file is mounted read-only, and a
+database on the host's own loopback is reached as `host.docker.internal` (or on the host network on Linux). That works for a staging or production
+database the host can reach, where a `docker exec` into its container cannot; `STARCI_DB_CONTAINER` keeps running the tools inside that container.
+
 `starci app db baseline --squash --db-url-env <NAME> --stamp <ts14> [--drop-extension a,b] [--drop-pgmq-queue q1,job_*] [--seed-tables t1,t2]
 [--image <ref>] [--execute]` retires the whole active chain into one baseline read from a database it is applied to, for a cutover whose
 production starts on an empty database (`runtime/scripts/hfs/db-squash.mts`). The source must record exactly the active chain in its

@@ -3,8 +3,10 @@
 //     what the live apps run); the field is dropped in a later train, so the finding asks for its removal and never blocks;
 //   - a backing service that is not declared or not used: a client library of a service of ruleParams.be.backing (bullmq for
 //     redis) or a declared pattern that needs one (queue) while hfs.json sides.be.backing does not declare it is
-//     HFS_BACKING_UNDECLARED, and a declared service no dependency of the app consumes is HFS_BACKING_UNUSED.
-import { found, readJson } from './read.mjs';
+//     HFS_BACKING_UNDECLARED, and a declared service no dependency of the app consumes is HFS_BACKING_UNUSED. A declared service is also
+//     consumed by an integration module of the back end named after it (`src/modules/integrations/<service>/`, imported by another file of the
+//     back end), the client an app writes over the service's own protocol (qdrant over fetch).
+import { found, readJson, readText } from './read.mjs';
 import { DEPENDENCY_SECTIONS } from './fe-no-tests.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -24,6 +26,23 @@ const serviceOfClient = (catalog: Parsed, name: string) => Object.keys(catalog).
 
 /** The dependency names of a package.json, every section. */
 const dependencyNames = (pkg: Parsed) => DEPENDENCY_SECTIONS.flatMap((section) => (isPlainObject(pkg?.[section]) ? Object.keys(pkg[section]) : []));
+
+const escapeRegExp = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+
+/** The TypeScript files of an integration module named `service` (`src/modules/integrations/<service>/`), whatever side folder precedes it. */
+const integrationFiles = (files: readonly string[], service: string): string[] => {
+  const folder = new RegExp(String.raw`(?:^|/)src/modules/integrations/${escapeRegExp(service)}/`, 'u');
+  return files.filter((file) => file.endsWith('.ts') && !file.includes('node_modules/') && folder.test(file));
+};
+
+/** True when a back end file outside the integration module imports it (`integrations/<service>`, aliased or relative). */
+function integrationImported(repoRoot: string, files: readonly string[], service: string): boolean {
+  const module = integrationFiles(files, service);
+  if (module.length === 0) return false;
+  const inside = new Set(module);
+  const imports = new RegExp(String.raw`(?:from|import)\s*\(?\s*['"][^'"]*integrations/${escapeRegExp(service)}(?:/[^'"]*)?['"]`, 'u');
+  return files.some((file) => /\.tsx?$/u.test(file) && !file.includes('node_modules/') && !inside.has(file) && imports.test(readText(repoRoot, file) ?? ''));
+}
 
 /** The warning of a declaration that still names the deprecated `edition` field. */
 function deprecationFindings(repoRoot: string) {
@@ -49,7 +68,7 @@ function dependencyFindings(rel: string, pkg: Parsed, { catalog, declared }: { c
  * The backing findings of the be declaration: a declared pattern whose service is undeclared, and (at the app root or a
  * standalone back end, whose package.json carries the back end's dependencies) a declared service no dependency consumes.
  */
-function backingFindings({ repoRoot, beView, catalog }: { repoRoot: string; beView: Parsed; catalog: Parsed }) {
+function backingFindings({ repoRoot, beView, catalog, files }: { repoRoot: string; beView: Parsed; catalog: Parsed; files: readonly string[] }) {
   const declared = new Set<string>(beView.backing ?? []);
   const findings = [];
   for (const [service, entry] of Object.entries<Parsed>(catalog)) {
@@ -59,7 +78,7 @@ function backingFindings({ repoRoot, beView, catalog }: { repoRoot: string; beVi
   const dependencies = new Set(dependencyNames(readJson(repoRoot, 'package.json')));
   for (const service of declared) {
     const clients = catalog[service]?.clients ?? [];
-    if (!clients.some((name: string) => dependencies.has(name))) findings.push(found(HFS_BACKING_UNUSED, 'hfs.json', `hfs.json sides.be.backing declares ${service}, but no dependency consumes it (${clients.join(', ')}): remove the declaration, or add the capability that needs it`, { service }));
+    if (!clients.some((name: string) => dependencies.has(name)) && !integrationImported(repoRoot, files, service)) findings.push(found(HFS_BACKING_UNUSED, 'hfs.json', `hfs.json sides.be.backing declares ${service}, but no dependency consumes it (${clients.join(', ')}) and no imported module src/modules/integrations/${service}/ does: remove the declaration, or add the capability that needs it`, { service }));
   }
   return findings;
 }
@@ -76,7 +95,7 @@ export function editionFindings({ repoRoot, files, repo, manifest, withDeclarati
   const catalog = backingCatalog(manifest);
   const findings = [
     ...(withDeclaration && repo.profile === 'app' ? deprecationFindings(repoRoot) : []),
-    ...(beView ? backingFindings({ repoRoot, beView, catalog }) : []),
+    ...(beView ? backingFindings({ repoRoot, beView, catalog, files }) : []),
   ];
   const declared = new Set((repo.profile === 'app' ? repo.sides?.be?.backing : repo.backing) ?? []);
   for (const file of files) {

@@ -68,7 +68,7 @@ slot or rule is the authority, not this page.
   terraform tree. Owner: slot `app.starcistacks`; R10, R276, R372. The dev environment is `docker-compose` with a `local`
   block, brought up by `starci app stack up --env dev --execute` (PROJECT-STACKS-6): the db container, the declared Redis and the other declared
   dependencies run from its compose file, the api and web natively. The `db:create`, `db:start` and `db:stop` scripts are not the way to start it.
-- The verbs are `app db new|plan|migrate|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.
+- The verbs are `app db new|plan|migrate|adopt|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.
   Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets

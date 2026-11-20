@@ -4,6 +4,8 @@ import { ConfigError, ConfigErrorCode } from "./errors/config.error"
 const FILE_SUFFIX = "_FILE"
 const DURATION_UNITS: Readonly<Record<string, number>> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 }
 const DURATION_PATTERN = /^(\d+)(ms|s|m|h)?$/
+/** An RFC 6265 cookie name: a token of letters, digits and the punctuation marks the RFC allows, at most 64 characters. */
+const COOKIE_NAME_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/
 const BARE_DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/
 
 /** A secret value (password, token, connection string with credentials): never logged, serialized as a mask. */
@@ -62,6 +64,15 @@ export class EnvSource {
         const value = this.optional(key)?.toLowerCase()
         if (value === undefined) return undefined
         if (!BARE_DOMAIN_PATTERN.test(value))
+            throw new ConfigError({ code: ConfigErrorCode.KeyInvalid, params: { key } })
+        return value
+    }
+
+    /** The declared value of an optional cookie name (an RFC 6265 token of at most 64 characters), or undefined. Any other value is a boot failure. */
+    optionalCookieName(key: string): string | undefined {
+        const value = this.optional(key)
+        if (value === undefined) return undefined
+        if (!COOKIE_NAME_PATTERN.test(value))
             throw new ConfigError({ code: ConfigErrorCode.KeyInvalid, params: { key } })
         return value
     }

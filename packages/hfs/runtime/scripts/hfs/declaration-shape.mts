@@ -46,7 +46,7 @@ function dbBlockProblems(block: Parsed): string[] {
 }
 
 /** The keys of one app entry: its folder name and kind, and for a client cli the npm package it is published as and the command it installs. */
-const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot'];
+const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot', 'signIn'];
 
 /** Shape problems of one app's `boot` (R448): the back-end module file the check composes, the export that is its root (or the factory that returns it) and the stub env it runs with. */
 function bootShapeProblems(boot: Parsed, at: string, side: Parsed): string[] {
@@ -70,12 +70,14 @@ function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed)
   apps.forEach((app, index) => {
     if (!isPlainObject(app) || !NAME.test(String(app.name)) || !NAME.test(String(app.kind)) || Object.keys(app).some((key: Parsed) => !APP_KEYS.includes(key))) bad.push(`${at}.apps[${index}] must be {name, kind} (an api app of be may add contract; a client cli adds package and bin)`);
     else if (app.contract !== undefined && (side !== 'be' || app.kind !== 'api' || !CONTRACT_KINDS.includes(app.contract))) bad.push(`${at}.apps[${index}].contract is declared by an api app of be only, as ${CONTRACT_KINDS.join(' or ')} (absent: ${DEFAULT_CONTRACT})`);
+    else if (app.signIn !== undefined && (side !== 'fe' || app.kind !== 'next' || app.signIn !== true)) bad.push(`${at}.apps[${index}].signIn is declared true by a next app of fe only (the app that serves sign-in)`);
     else if (app.package !== undefined && !(typeof app.package === 'string' && app.package.length <= 214 && PACKAGE_NAME.test(app.package))) bad.push(`${at}.apps[${index}].package must be an npm package name`);
     else if (app.bin !== undefined && !(typeof app.bin === 'string' && NAME.test(app.bin))) bad.push(`${at}.apps[${index}].bin must be a command name`);
     else if (app.boot !== undefined && bootShapeProblems(app.boot, `${at}.apps[${index}]`, side).length > 0) bad.push(...bootShapeProblems(app.boot, `${at}.apps[${index}]`, side));
     else if (names.has(app.name)) bad.push(`app ${app.name} is declared twice (${names.get(app.name)} and ${side})`);
     else names.set(app.name, side);
   });
+  if (side === 'fe' && apps.filter((app: Parsed) => isPlainObject(app) && app.signIn === true).length > 1) bad.push(`${at}.apps mark more than one app signIn: the sign-in app is one`);
   const kinds = new Set(apps.filter((app: Parsed) => isPlainObject(app) && app.kind === 'api').map((app: Parsed) => app.contract ?? DEFAULT_CONTRACT));
   if (side === 'be' && kinds.size > 1) bad.push(`${at}.apps declare api apps of both contracts (${[...kinds].sort().join(', ')}): the api apps of one back end serve one contract kind, since their features are shared`);
   return bad;

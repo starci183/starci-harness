@@ -111,5 +111,5 @@ test('the email doors have copy in both languages and stay off the AuthClient in
   assert.doesNotMatch(contracts, /signup|forgot|resend/iu);
   const slot = manifest.slots.find((entry: { id: string }) => entry.id === 'fe.modules.auth.client');
   assert.ok(slot);
-  assert.equal(slot.path, 'apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}');
+  assert.equal(slot.path, 'apps/__app__/src/modules/auth/{client.ts,email-doors.ts,index.ts}');
 });
