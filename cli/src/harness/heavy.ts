@@ -12,6 +12,7 @@ import type { RunOptions } from "../shared/exec.js"
 import { managedCpuTimes } from "./host-holders.js"
 import { governorStorePath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
+import { assertNotRemoving } from "./remove-lock.js"
 import { locateOps } from "./ops.js"
 import { trimEndChars } from "../shared/trim.js"
 
@@ -819,8 +820,11 @@ export const withOomNote = <R extends { readonly exitCode: number | null; readon
  * and its ancestors' rows never count against it, so it never waits on them. `options.workers` caps a test run's workers when its caller names a cap. A CI
  * runner keeps no queue: its one job is sized from that runner's own free RAM.
  */
-export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>
-    governed(liveHost(), kind, label, cwd, options, work)
+export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
+    // An install or an npm command writes node_modules and its links: never in a worktree `lane remove` is unlinking (harness/remove-lock.ts).
+    if (kind === "install" || kind === "build") assertNotRemoving(cwd)
+    return governed(liveHost(), kind, label, cwd, options, work)
+}
 
 /** `withHeavySlot` on the given rules and free-RAM reading. */
 export const governed = async <T>(host: Governed, kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {

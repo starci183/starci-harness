@@ -8,6 +8,7 @@ import type { RunOptions, ToolRun } from "../shared/exec.js"
 import { evidenceTail } from "../shared/output.js"
 import { withHeavySlot } from "./heavy.js"
 import { installCachePath } from "./ledger.js"
+import { assertNotRemoving } from "./remove-lock.js"
 import { inOrder } from "./sequential.js"
 
 /** What one install of a checkout did: npm's run on a miss (null on a hit), and the line saying where node_modules came from. */
@@ -164,6 +165,7 @@ const fromCache = (dir: string, entry: string): void => {
  * result for the next checkout. A cache entry that cannot be read falls back to `npm ci`.
  */
 export const cachedInstall = async (dir: string, options: RunOptions): Promise<CachedInstall> => {
+    assertNotRemoving(dir)
     const key = installKey(dir)
     const entry = installCachePath(key)
     // A checkout that already holds a node_modules (a tracked one) can take nothing from the cache: npm ci runs over it.
@@ -295,6 +297,7 @@ ${evidenceTail(cached.run.stdout, cached.run.stderr)}`
  * has no lockfile or already holds a node_modules.
  */
 export const linkCachedInstall = (dir: string): boolean => {
+    assertNotRemoving(dir)
     if (!existsSync(lockfileOf(dir)) || existsSync(join(dir, "node_modules"))) return false
     const entry = installCachePath(installKey(dir))
     if (!existsSync(join(entry, LINKS_FILE))) return false

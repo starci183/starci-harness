@@ -4,6 +4,8 @@
 
 - Changed: the CLI requires @starci/hfs@6.14.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
 
+- Added (`starci lane remove <worktree> [--discard] [--execute]`): the only sanctioned removal of a lane worktree. After the 2026-11-20 incident (a `git worktree remove --force` followed npm junctions and emptied another lane's node_modules and 2533 tracked files), it refuses a main or unregistered checkout and tracked changes, holds a per-worktree removal lock (`_remove-<hash>.lock` in the slot root; `slot run npm`, heavy install and build commands and the install cache refuse `WORKTREE_REMOVING` in a locked worktree), lists every junction and symlink at any depth with lstat without entering one, unlinks each as a link (never its target), refuses if one remains, then runs `git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left; the branch is kept. A dry run is the default.
+
 ## 1.1.0-alpha.182 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.14.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
