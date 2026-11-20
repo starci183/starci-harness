@@ -139,7 +139,12 @@ starci app stack deploy --env <env> --image <svc>=<ref>@sha256:<digest> ... --sh
 
 `--ci-run` replaces the `requireCi` lookup inside a run that is still in progress: the CLI reads that run's jobs through
 the API with the job's token and accepts only when every job the CI standard requires concluded `success` for this sha
-(or the reused run named by `plan` is green), so editing the workflow to skip a check gains nothing. The verb then runs
+(or the reused run named by `plan` is green), so editing the workflow to skip a check gains nothing. A job the app's own declaration idles is not required: the commit's
+`.starcistacks/application-stacks.yaml` `gates` block, with `{run: off, reason}` for every gate of the job (`lint`, `test`, `coverage` with
+`codecov`), is the same table the renderer idles the job by, so an app that declares those gates off is deployable from its own CI run. An
+idled job that is in the run may not be red. A gate declared on stays required (missing or red blocks), and the floor stays
+required whatever the declaration says: `plan`, `fast`, `build`, `verdict` (the harness's own gates hfs, secrets and db are never
+switchable). The verb then runs
 its phases, each one a recorded step:
 
 | phase | does | on failure |
