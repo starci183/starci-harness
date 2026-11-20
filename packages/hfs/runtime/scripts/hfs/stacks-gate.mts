@@ -7,7 +7,7 @@ import { validateAgainstSchema } from '../lib/json-schema.mjs';
 import { PROVISION_OPERATION_SCHEMA_REF, provisionOperationSchema } from '../lib/provision-operation-schema.mjs';
 import {slash} from '../lib/path-key.mjs';
 import { envelopeOf } from './secret-document.mjs';
-import { creationRulesOf, expectedRecipients, firstRuleFor, memberProbe, recipientPolicy, serverRecipientOf } from '../lib/sops-recipients.mjs';
+import { creationRulesOf, expectedRecipients, firstRuleFor, memberProbe, policyAppOf, recipientPolicy, serverRecipientOf } from '../lib/sops-recipients.mjs';
 import { isInside, walkFiles } from '../lib/walk.mjs';
 import { RESERVED_STACK_FOLDERS } from './rules/stacks.mjs';
 import { composeIncludePaths, swarmInventoryIssues, swarmModelIssues } from '../lib/swarm-stack.mjs';
@@ -312,7 +312,7 @@ const awaitingRecipients=(root: string,environment: string,spec: Parsed): boolea
   let text: string|null=null;
   try{text=fs.readFileSync(path.join(root,'.sops.yaml'),'utf8');}catch{text=null;}
   if(firstRuleFor(creationRulesOf(text)??[],memberProbe(environment))>=0)return false;
-  return expectedRecipients(recipientPolicy(),environment,serverRecipientOf({environments:{[environment]:spec}},environment)).unresolved.length>0;
+  return expectedRecipients(recipientPolicy(),environment,serverRecipientOf({environments:{[environment]:spec}},environment),policyAppOf(root)).unresolved.length>0;
 };
 const checkSecrets=({spec,environment,envDir,root,add}: {spec: Parsed; environment: unknown; envDir: string; root: string; add: Add}): void=>{
   const declaredSecrets=Array.isArray(spec.secrets)?spec.secrets:[],secretNames=new Set<string>();

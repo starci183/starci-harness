@@ -22,11 +22,18 @@ harness: age173qfq7f776syam9tpkyfej0h2jjt6rc4ha7r38ez40n5mn0lwyaqp9ejt7
 servers:
   sv-hk-1:
     server: age1dypvrqkgumsr0e37d5ejenzs6gnczfqwwtegusat35t5sy7ne57sfn3kd8
-    backup: null
-    # Flip to true once every environment on this server is resealed to server + backup (the reseal runbook).
+    backup: age1dxx0qpp3xsanw7y39pmzny6yyvp2ml6ym67pk82zlzvee3jpq9gsp2ny4t
+    # Flip to true once every environment on this server is resealed to server + backup (+ the app's ci) (the reseal runbook).
     enforce: false
+# One entry per app (its hfs.json `project`) that deploys from CI: `ci` is the public half of that project's OWN CI age key (owner 2026-11-21: one key
+# per project). Its private half lives only in that repository's Actions secret SOPS_AGE_KEY; it is never shared by two apps, and it is never the
+# harness, a server or a backup key (the policy refuses either). An app without an entry deploys from the owner machine or the server.
+apps:
+  nivoos-lite:
+    ci: age138u6dmh8z6ptgtd5ukk8arfcnx9r7ec780nlpr5s5yl2z3m6vunqncm6mu
 # The recipient set each environment's rule and members hold, exactly: `harness`, `server` (the server whose key the environment records as
-# deploy.remote.serverRecipient) and `backup` (that server's backup). An environment not named here takes `otherwise`.
+# deploy.remote.serverRecipient), `backup` (that server's backup) and `ci` (the judged app's own CI key, when apps declares one; nothing otherwise).
+# An environment not named here takes `otherwise`.
 environments:
   dev: [harness]
-otherwise: [server, backup]
+otherwise: [server, backup, ci]

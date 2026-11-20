@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { envelopeOf } from '../secret-document.mjs';
-import { SSH_GROUP, sshTransportMembers, declaredServiceKeys, type StacksDocument } from '../secret-standard.mjs';
+import { SSH_GROUP, CI_TRANSPORT_KEYS, sshTransportMembers, declaredServiceKeys, type StacksDocument } from '../secret-standard.mjs';
 import { repositoryName, identityQueryEnvironment } from '../repo-identity.mjs';
 import { serviceCredentialNames } from '../ci-declaration.mjs';
 import { memberOfName } from '../../lib/sealed-member.mjs';
@@ -388,6 +388,8 @@ function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declare
   }
   // An SSH_GROUP key in a transport member is read by the deploy transport itself, never by an app: no EnvSource reader exists for it.
   if (SSH_GROUP.includes(key) && transport(String(member).split("/")[1] as string).has(memberOfName(String(member).split("/").pop() as string))) return null;
+  // A CI_TRANSPORT_KEYS key in the CI member vps-ci is read by `stack connect` in CI, never by an app.
+  if (CI_TRANSPORT_KEYS.includes(key) && memberOfName(String(member).split('/').pop() as string) === 'vps-ci') return null;
   if (!reads.has(key) && !declared.has(key) && !serviceConsumer(member, key)) {
     return found(ENV_SEALED_UNREAD, member, `${member} seals ${key}, which no EnvSource reader and no declared consumer uses; unseal it or declare who consumes it`, { key });
   }

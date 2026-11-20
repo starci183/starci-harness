@@ -61,6 +61,19 @@ interface EnvironmentInfo {
 }
 /** The deployment branch policies of a GitHub Environment. */
 interface BranchPolicies { branch_policies?: { name?: string; type?: string }[] }
+/** One repository ruleset, as the list (`repos/<repo>/rulesets`) and the detail (`repos/<repo>/rulesets/<id>`) answer it. */
+interface Ruleset {
+  id?: number;
+  target?: string;
+  enforcement?: string;
+  conditions?: { ref_name?: { include?: string[]; exclude?: string[] } } | null;
+  rules?: { type?: string }[];
+}
+
+/** The deployment ref of a release Environment: the release tags `v*` that stack-deploy.yml alone deploys. */
+const RELEASE_TAGS = 'v*';
+/** What an active tag ruleset must forbid on the release tags, so that only its bypass actors (admins) make, move or delete one. */
+const TAG_RULES = ['creation', 'update', 'deletion'];
 /** The repository secrets listing. */
 interface SecretsListing { secrets?: { name?: string }[] }
 
@@ -272,25 +285,52 @@ async function rotateKey(ctx: StackContext, config: DeployConfig, { execute }: S
 }
 
 /**
- * The GitHub Environment that holds the backup, refused unless it exists in the app's origin repository and is protected: required
- * reviewers, or deployment branches limited to main. Names what is missing.
+ * True when an active tag ruleset of `repo` covers every release tag (`refs/tags/v*`, or `~ALL`, with no exclusion) and forbids creating,
+ * updating and deleting it, so a release tag (the only ref a release Environment deploys) is made or moved only by the ruleset's bypass
+ * actors. A ruleset list or detail that cannot be read counts as none.
+ */
+export function releaseTagsRuleset(gh: GithubPort, repo: string): boolean {
+  let listed: Ruleset[];
+  try { listed = (gh.json(['api', `repos/${repo}/rulesets?targets=tag&per_page=100`]) as Ruleset[] | null) ?? []; } catch { return false; }
+  for (const entry of listed) {
+    if (entry?.target !== 'tag' || entry.enforcement !== 'active' || typeof entry.id !== 'number') continue;
+    let detail: Ruleset | null;
+    try { detail = gh.json(['api', `repos/${repo}/rulesets/${entry.id}`]) as Ruleset | null; } catch { continue; }
+    const include = detail?.conditions?.ref_name?.include ?? [];
+    const exclude = detail?.conditions?.ref_name?.exclude ?? [];
+    const covers = (include.includes(`refs/tags/${RELEASE_TAGS}`) || include.includes('~ALL')) && exclude.length === 0;
+    const types = new Set((detail?.rules ?? []).map((rule) => rule?.type));
+    if (detail?.enforcement === 'active' && covers && TAG_RULES.every((type) => types.has(type))) return true;
+  }
+  return false;
+}
+
+/**
+ * The GitHub Environment that holds the backup, refused unless it exists in the app's origin repository and is protected. Protected is one of:
+ * required reviewers; deployment branches limited to main; or deployment refs limited to the release tags `v*` (tag policies only) while an
+ * active tag ruleset forbids making, moving or deleting a release tag (releaseTagsRuleset). Names what is missing.
  */
 export function protectedEnvironment(gh: GithubPort, env: string): string {
   let repo: string;
   try { repo = gh.repository(); } catch { throw refusal('STACK_SERVER_KEY_GITHUB', 'the app\'s origin repository cannot be read with gh (gh repo view); authenticate gh in the app checkout'); }
   let environment: EnvironmentInfo | null;
   try { environment = gh.json(['api', `repos/${repo}/environments/${env}`]); } catch {
-    throw refusal('STACK_SERVER_KEY_GITHUB_ENVIRONMENT', `the GitHub Environment ${env} of ${repo} does not exist or cannot be read; create it with required reviewers or deployment branches limited to main`);
+    throw refusal('STACK_SERVER_KEY_GITHUB_ENVIRONMENT', `the GitHub Environment ${env} of ${repo} does not exist or cannot be read; create it with required reviewers, deployment branches limited to main, or deployment refs limited to the release tags ${RELEASE_TAGS} under an active tag ruleset`);
   }
   const reviewers = (environment?.protection_rules ?? []).some((rule) => rule?.type === 'required_reviewers' && (rule.reviewers ?? []).length > 0);
   let mainOnly = false;
+  let tagsOnly = false;
   if (environment?.deployment_branch_policy?.custom_branch_policies === true) {
     const policies = (gh.json(['api', `repos/${repo}/environments/${env}/deployment-branch-policies`]) as BranchPolicies | null)?.branch_policies ?? [];
     mainOnly = policies.length > 0 && policies.every((policy) => policy?.name === 'main' && (policy.type ?? 'branch') === 'branch');
+    tagsOnly = policies.length > 0 && policies.every((policy) => policy?.name === RELEASE_TAGS && policy.type === 'tag');
   }
-  if (!reviewers && !mainOnly)
-    throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} has no protection rule: it has no required reviewers and its deployment branches are not limited to main; add either before it holds the server identity`);
-  return repo;
+  if (reviewers || mainOnly) return repo;
+  if (tagsOnly) {
+    if (releaseTagsRuleset(gh, repo)) return repo;
+    throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} deploys only the release tags ${RELEASE_TAGS}, but no active tag ruleset covers refs/tags/${RELEASE_TAGS} and forbids ${TAG_RULES.join(', ')}; add that ruleset before it holds the server identity`);
+  }
+  throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} has no protection rule: it has no required reviewers, its deployment branches are not limited to main and its deployment refs are not limited to the release tags ${RELEASE_TAGS}; add one before it holds the server identity`);
 }
 
 /**

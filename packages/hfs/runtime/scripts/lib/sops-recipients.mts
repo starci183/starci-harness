@@ -1,9 +1,12 @@
 // sops-recipients.mts - the recipient policy of every app's sealed members (owner, 2026-11-21, model B; contexts/project/stacks.md PROJECT-STACKS-5):
 // which public age recipients each environment's `.sops.yaml` rule and members hold, exactly. The policy is data, knowledge/hfs/sops-recipients.yaml
 // (the shipped copy of the harness repository's ops/vps/recipients.yaml): `harness` (the public half of the harness SOPS_AGE_KEY), the managed
-// servers with their server and backup recipients, and per environment the tokens of its set (`harness`, `server`, `backup`; `otherwise` for an
-// environment it does not name). Public halves only: nothing here reads, derives or needs a private key.
+// servers with their server and backup recipients, the apps with their own CI recipient (owner 2026-11-21: one CI key per project, its private half
+// only in that repository's Actions secret), and per environment the tokens of its set (`harness`, `server`, `backup`, `ci`; `otherwise` for an
+// environment it does not name). `ci` is the judged app's own CI recipient when the policy declares one, and nothing when it does not (an app without
+// a CI key deploys from the owner machine or the server). Public halves only: nothing here reads, derives or needs a private key.
 import fs from 'node:fs';
+import path from 'node:path';
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { parseYaml } from '../../engine/yaml.mjs';
 
@@ -14,11 +17,14 @@ export const RECIPIENT_POLICY_OWNER = 'ops/vps/recipients.yaml of the harness re
 
 const RECIPIENT = /^age1[a-z0-9]+$/u;
 /** The tokens an environment's set is written in. */
-export const RECIPIENT_TOKENS = ['harness', 'server', 'backup'] as const;
+export const RECIPIENT_TOKENS = ['harness', 'server', 'backup', 'ci'] as const;
 export type RecipientToken = (typeof RECIPIENT_TOKENS)[number];
 
 /** One managed server: its own recipient and its backup recipient (null until minted). */
 export interface ServerRecipients { server: string | null; backup: string | null; enforce: boolean | null }
+
+/** One app's own recipients: its CI key (the public half; null when the app has none). */
+export interface AppRecipients { ci: string | null }
 
 /** The recipient policy. */
 export interface RecipientPolicy {
@@ -26,6 +32,8 @@ export interface RecipientPolicy {
   /** Whether R451 blocks (error) or only warns; a server's own `enforce` overrides it for its environments. */
   enforce: boolean;
   servers: Record<string, ServerRecipients>;
+  /** Per app (its hfs.json `project`): its own CI recipient. */
+  apps: Record<string, AppRecipients>;
   environments: Record<string, RecipientToken[]>;
   otherwise: RecipientToken[];
 }
@@ -48,10 +56,28 @@ export function recipientPolicyOf(doc: unknown): RecipientPolicy {
     const server = plain(entry) ? entry as Record<string, unknown> : {};
     servers[id] = { server: recipientOrNull(server.server), backup: recipientOrNull(server.backup), enforce: typeof server.enforce === 'boolean' ? server.enforce : null };
   }
+  const apps: Record<string, AppRecipients> = {};
+  for (const [id, entry] of Object.entries(plain(record.apps) ? record.apps as Record<string, unknown> : {})) {
+    const app = plain(entry) ? entry as Record<string, unknown> : {};
+    if (app.ci !== undefined && app.ci !== null && recipientOrNull(app.ci) === null) throw new Error(`the recipient policy apps.${id}.ci must be one public age recipient (age1...)`);
+    apps[id] = { ci: recipientOrNull(app.ci) };
+  }
+  // A CI key is one project's alone: never shared by two apps, never the harness key, a server key or a backup.
+  const owners = new Map<string, string>([[harness, 'the harness key']]);
+  for (const [id, entry] of Object.entries(servers)) {
+    if (entry.server) owners.set(entry.server, `the server key of ${id}`);
+    if (entry.backup) owners.set(entry.backup, `the backup key of ${id}`);
+  }
+  for (const [id, entry] of Object.entries(apps)) {
+    if (entry.ci === null) continue;
+    const held = owners.get(entry.ci);
+    if (held !== undefined) throw new Error(`the recipient policy apps.${id}.ci is also ${held}: each project has a CI key of its own`);
+    owners.set(entry.ci, `the CI key of ${id}`);
+  }
   const environments: Record<string, RecipientToken[]> = {};
   for (const [env, list] of Object.entries(plain(record.environments) ? record.environments as Record<string, unknown> : {})) environments[env] = tokens(list, `environments.${env}`);
   if (record.enforce !== undefined && typeof record.enforce !== 'boolean') throw new Error('the recipient policy enforce must be true or false');
-  return { harness, enforce: record.enforce === true, servers, environments, otherwise: tokens(record.otherwise, 'otherwise') };
+  return { harness, enforce: record.enforce === true, servers, apps, environments, otherwise: tokens(record.otherwise, 'otherwise') };
 }
 
 let cached: RecipientPolicy | undefined;
@@ -71,13 +97,14 @@ export const isHarnessEnvironment = (policy: RecipientPolicy, env: string): bool
 };
 
 /** What one recipient is to the policy: the harness key, a declared server's own or backup key, or an identity only this app knows. */
-export type RecipientKind = { kind: 'harness' } | { kind: 'server' | 'backup'; server: string } | { kind: 'app-only' };
+export type RecipientKind = { kind: 'harness' } | { kind: 'server' | 'backup'; server: string } | { kind: 'ci'; app: string } | { kind: 'app-only' };
 export function recipientKind(policy: RecipientPolicy, recipient: string): RecipientKind {
   if (recipient === policy.harness) return { kind: 'harness' };
   for (const [id, entry] of Object.entries(policy.servers)) {
     if (entry.server === recipient) return { kind: 'server', server: id };
     if (entry.backup === recipient) return { kind: 'backup', server: id };
   }
+  for (const [id, entry] of Object.entries(policy.apps)) if (entry.ci === recipient) return { kind: 'ci', app: id };
   return { kind: 'app-only' };
 }
 
@@ -104,8 +131,8 @@ export function serverRecipientOf(stackDoc: unknown, env: string): string | null
   return plain(remote) ? recipientOrNull((remote as Record<string, unknown>).serverRecipient) : null;
 }
 
-/** The exact set `env` must hold under `policy`, given the server recipient it records. */
-export function expectedRecipients(policy: RecipientPolicy, env: string, recorded: string | null): ExpectedRecipients {
+/** The exact set `env` of `app` (its hfs.json project; null when unknown) must hold under `policy`, given the server recipient it records. */
+export function expectedRecipients(policy: RecipientPolicy, env: string, recorded: string | null, app: string | null = null): ExpectedRecipients {
   const set = tokensOf(policy, env);
   const recipients: string[] = [];
   const unresolved: string[] = [];
@@ -113,6 +140,7 @@ export function expectedRecipients(policy: RecipientPolicy, env: string, recorde
   const server = known?.kind === 'server' ? known.server : null;
   for (const token of set) {
     if (token === 'harness') { recipients.push(policy.harness); continue; }
+    if (token === 'ci') { const ci = app === null ? null : policy.apps[app]?.ci ?? null; if (ci !== null) recipients.push(ci); continue; }
     if (recorded === null) { unresolved.push(`${env} records no deploy server (environments.${env}.deploy.remote.serverRecipient): make the server key with \`starci app secret server-key --env ${env} --execute\``); break; }
     if (server === null) { unresolved.push(`the server recipient ${recorded} that ${env} records is no server of ${RECIPIENT_POLICY_OWNER}: declare the server there (public half only)`); break; }
     const entry = policy.servers[server] as ServerRecipients;
@@ -159,3 +187,12 @@ export const UNDECLARED_PROBE_ENV = 'an-undeclared-environment';
 export const recipientSet = (values: readonly string[]): string[] => [...new Set(values)].sort();
 /** Whether two recipient lists hold the same set. */
 export const sameRecipients = (left: readonly string[], right: readonly string[]): boolean => recipientSet(left).join(',') === recipientSet(right).join(',');
+
+/** The app a repository is to the policy: its hfs.json `project`, or null. */
+export function policyAppOf(repoRoot: string): string | null {
+  try {
+    const doc = JSON.parse(fs.readFileSync(path.join(repoRoot, 'hfs.json'), 'utf8')) as unknown;
+    const project = plain(doc) ? (doc as Record<string, unknown>).project : null;
+    return typeof project === 'string' && /^[a-z0-9][a-z0-9-]*$/u.test(project) ? project : null;
+  } catch { return null; }
+}

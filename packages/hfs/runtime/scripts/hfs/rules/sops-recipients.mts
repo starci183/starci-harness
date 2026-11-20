@@ -3,7 +3,7 @@
 // the rule reads `.sops.yaml` and the cleartext `sops.age` recipients of each member, never a value and never a key.
 //   HFS_SOPS_RECIPIENTS            the rule sops uses for an environment's members does not name exactly the environment's set: dev holds the harness
 //                                  recipient alone; staging and production hold the key of the VPS they deploy to plus that server's backup, and never
-//                                  the harness key. A recipient that is no declared key is an app-only identity.
+//                                  the harness key, plus the app's own CI key when the policy declares one (apps.<project>.ci). A recipient that is no declared key is an app-only identity.
 //   HFS_SOPS_RECIPIENT_UNDECLARED  an environment's set cannot be resolved: it records no deploy server, its server is not declared, or the server's
 //                                  backup recipient is not minted yet.
 //   HFS_SOPS_CATCH_ALL             a rule reaches the members of an environment the app does not declare (a catch-all), so a new environment would be
@@ -16,7 +16,7 @@ import { parseYaml } from '../../../engine/yaml.mjs';
 import { envelopeOf } from '../secret-document.mjs';
 import {
   RECIPIENT_POLICY_OWNER, UNDECLARED_PROBE_ENV, creationRulesOf, expectedRecipients, firstRuleFor, isHarnessEnvironment, memberProbe,
-  enforcedFor, recipientKind, recipientPolicy, ruleRecipients, serverRecipientOf,
+  enforcedFor, policyAppOf, recipientKind, recipientPolicy, ruleRecipients, serverRecipientOf,
   type CreationRule, type ExpectedRecipients, type RecipientPolicy,
 } from '../../lib/sops-recipients.mjs';
 import { found, readText } from './read.mjs';
@@ -39,6 +39,7 @@ function strangers(policy: RecipientPolicy, expected: ExpectedRecipients, actual
     const kind = recipientKind(policy, recipient);
     if (kind.kind === 'harness') return `${short(recipient)} is the harness key, which must never open ${expected.env}`;
     if (kind.kind === 'app-only') return `${short(recipient)} is an app-only identity (no key of ${RECIPIENT_POLICY_OWNER})`;
+    if (kind.kind === 'ci') return `${short(recipient)} is the CI key of ${kind.app}, which only ${kind.app}'s own members hold (one CI key per project)`;
     if (harnessEnv) return `${short(recipient)} is the ${kind.kind} key of server ${kind.server}, which a dev environment never holds`;
     return `${short(recipient)} is the ${kind.kind} key of server ${kind.server}, not of ${expected.server ?? 'the server this environment deploys to'}`;
   });
@@ -65,8 +66,10 @@ function environmentsOf(stackDoc: unknown, members: readonly string[]): string[]
 }
 
 /** R451 over a parsed `.sops.yaml`, a parsed stack declaration and the tracked members with their text. Pure. */
-export function sopsRecipientFindings({ rules, stackDoc, members, policy }: {
+export function sopsRecipientFindings({ rules, stackDoc, members, policy, app = null }: {
   rules: readonly CreationRule[];
+  /** The judged app (its hfs.json project): its own CI recipient joins each deployed environment's set when the policy declares one. */
+  app?: string | null;
   stackDoc: unknown;
   members: ReadonlyArray<{ file: string; text: string | null }>;
   policy: RecipientPolicy;
@@ -75,7 +78,7 @@ export function sopsRecipientFindings({ rules, stackDoc, members, policy }: {
   // The severity of a finding about the environments deploying to `server` (null: dev, a catch-all, no known server).
   const judged = (finding: Finding, server: string | null): Finding => (enforcedFor(policy, server) ? { ...finding, local: true } : { ...finding, level: 'warning' });
   const environments = environmentsOf(stackDoc, members.map((member) => member.file));
-  const expectedByEnv = new Map(environments.map((env) => [env, expectedRecipients(policy, env, serverRecipientOf(stackDoc, env))]));
+  const expectedByEnv = new Map(environments.map((env) => [env, expectedRecipients(policy, env, serverRecipientOf(stackDoc, env), app)]));
   for (const env of environments) {
     const expected = expectedByEnv.get(env) as ExpectedRecipients;
     if (expected.unresolved.length) findings.push(judged(found(SOPS_RECIPIENT_UNDECLARED, STACK_FILE, `${env} cannot be sealed to its recipient set (${expected.tokens.join(' + ')}): ${expected.unresolved.join('; ')} (R451, PROJECT-STACKS-5)`, { env }), expected.server));
@@ -120,5 +123,5 @@ export function appSopsRecipientFindings({ repoRoot, repo, isRoot, all = [] }: {
   const rules = creationRulesOf(sops) ?? [];
   let stackDoc: unknown = null;
   try { stackDoc = parseYaml(readText(repoRoot, STACK_FILE) ?? ''); } catch { stackDoc = null; }
-  return sopsRecipientFindings({ rules, stackDoc, members: members.map((file) => ({ file, text: readText(repoRoot, file) })), policy: recipientPolicy() });
+  return sopsRecipientFindings({ rules, stackDoc, members: members.map((file) => ({ file, text: readText(repoRoot, file) })), policy: recipientPolicy(), app: policyAppOf(repoRoot) });
 }

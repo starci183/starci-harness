@@ -271,7 +271,7 @@ function ciHome(ctx: StackContext): string {
   return path.join(ctx.env.HOME, '.ssh');
 }
 
-interface CiInputs { key: string; known: string; host: string; user: string }
+interface CiInputs { key: string; known: string; host: string; user: string; port: number | undefined }
 
 /** The sealed member that holds the CI transport of an environment: VPS_SSH_KEY (the CI-only deploy key), VPS_KNOWN_HOSTS, VPS_HOST and VPS_USER. */
 export { CI_MEMBER };
@@ -285,7 +285,7 @@ function ciValues(ctx: StackContext, config: DeployConfig): { values: Record<str
   const present = typeof config.secretsDir === 'string' && fs.existsSync(memberFile(config.secretsDir, CI_MEMBER));
   if (!present) return { values: ctx.env, sealed: false };
   const map = openSealedMember(ctx, config, CI_MEMBER);
-  return { values: Object.fromEntries([...CI_VARIABLES, 'VPS_GATE'].map((name) => [name, typeof map[name] === 'string' ? map[name] : undefined])), sealed: true };
+  return { values: Object.fromEntries([...CI_VARIABLES, 'VPS_GATE', 'VPS_PORT'].map((name) => [name, typeof map[name] === 'string' ? map[name] : undefined])), sealed: true };
 }
 
 function ciInputs(ctx: StackContext, values: Record<string, string | undefined>, sealed: boolean): CiInputs {
@@ -298,11 +298,13 @@ function ciInputs(ctx: StackContext, values: Record<string, string | undefined>,
   const key = lfOnly(values.VPS_SSH_KEY);
   if (!key.includes('PRIVATE KEY')) throw refusal('STACK_CONNECT_INVALID', 'VPS_SSH_KEY is not a PEM private key');
   if (!ctx.env.GITHUB_ENV) throw refusal('STACK_CONNECT_NO_GITHUB_ENV', 'GITHUB_ENV is not set');
-  return { key: withNewline(key), known: withNewline(lfOnly(values.VPS_KNOWN_HOSTS)), host, user };
+  // The member's optional VPS_PORT (a server whose sshd is not on 22): the same check as the owner transport's sealed port.
+  const port = sealedPort(values.VPS_PORT, sealed ? CI_MEMBER : 'VPS_PORT');
+  return { key: withNewline(key), known: withNewline(lfOnly(values.VPS_KNOWN_HOSTS)), host, user, port };
 }
 
 const sshBlock = (alias: string, inputs: CiInputs): string => [
-  '', `Host ${alias}`, `  HostName ${inputs.host}`, `  User ${inputs.user}`, '  IdentityFile ~/.ssh/deploy_key',
+  '', `Host ${alias}`, `  HostName ${inputs.host}`, ...(inputs.port !== undefined && inputs.port !== 22 ? [`  Port ${String(inputs.port)}`] : []), `  User ${inputs.user}`, '  IdentityFile ~/.ssh/deploy_key',
   '  StrictHostKeyChecking yes', '  BatchMode yes', '  ConnectTimeout 20', '  ServerAliveInterval 30',
   '  ControlMaster auto', '  ControlPath ~/.ssh/cm-%C', '  ControlPersist 60', '',
 ].join('\n');

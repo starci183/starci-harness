@@ -98,3 +98,17 @@ test('connect tells the deploy to use the gate only for a vps-ci member that say
   assert.equal((await connectCi(plain.ctx, plain.config, { execute: true })).data?.['gated'], false);
   assert.doesNotMatch(fs.readFileSync(plain.githubEnv, 'utf8'), /STARCI_SSH_GATE/u);
 });
+
+test('connect writes the Port of a vps-ci member whose server listens off 22, and refuses a port that is not one', async (t) => {
+  const offPort = scene(t, { member: { ...SEALED, VPS_PORT: '9999' } });
+  await connectCi(offPort.ctx, offPort.config, { execute: true });
+  const block = fs.readFileSync(path.join(offPort.home, '.ssh', 'config'), 'utf8');
+  assert.match(block, /HostName manager\.example\n {2}Port 9999\n {2}User deploy/u);
+  for (const member of [SEALED, { ...SEALED, VPS_PORT: '22' }]) {
+    const standard = scene(t, { member });
+    await connectCi(standard.ctx, standard.config, { execute: true });
+    assert.doesNotMatch(fs.readFileSync(path.join(standard.home, '.ssh', 'config'), 'utf8'), /Port /u, 'port 22 needs no line');
+  }
+  const bad = scene(t, { member: { ...SEALED, VPS_PORT: '99999' } });
+  await assert.rejects(() => connectCi(bad.ctx, bad.config, { execute: true }), (error: Error & { code?: string }) => error.code === 'STACK_REMOTE_OPS' && /vps-ci holds VPS_PORT "99999"/u.test(error.message));
+});

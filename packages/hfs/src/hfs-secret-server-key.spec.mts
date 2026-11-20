@@ -251,7 +251,7 @@ test("audit holds production to the server key plus the owner key (RECIPIENT_DRI
  * A gh port double: the origin repository, the Environment `environment` answers, and the names of the repository's own Actions
  * secrets (`repoSecrets`, or null when they cannot be read). Every gh api call is recorded; none reaches GitHub.
  */
-const fakeGithub = (environment: unknown, policies: unknown[] = [], repoSecrets: string[] | null = []) => {
+const fakeGithub = (environment: unknown, policies: unknown[] = [], repoSecrets: string[] | null = [], rulesets: Record<string, unknown>[] = []) => {
   const runs: string[][] = [];
   const reads: string[][] = [];
   return {
@@ -265,6 +265,9 @@ const fakeGithub = (environment: unknown, policies: unknown[] = [], repoSecrets:
           return { total_count: repoSecrets.length, secrets: repoSecrets.map((name: string) => ({ name, created_at: "2026-10-29T00:00:00Z" })) };
         }
         if ((args[1] as string).endsWith("/deployment-branch-policies")) return { branch_policies: policies };
+        if ((args[1] as string).startsWith("repos/owner/app/rulesets?")) return rulesets.map(({ id, target, enforcement }) => ({ id, target, enforcement }));
+        const detail = /^repos\/owner\/app\/rulesets\/(\d+)$/u.exec(args[1] as string);
+        if (detail) return rulesets.find((ruleset) => String(ruleset.id) === detail[1]) ?? null;
         if (environment === null) throw new Error("404");
         return environment;
       },
@@ -309,7 +312,7 @@ test("server-key --backup github refuses an Environment without protection, and 
   const io = { pipe: async (...ends: unknown[]) => { piped.push(ends); return { source: 0, sink: 0, stderr: "" }; } };
   const open = await serverKey(fixture, ["production", "--backup", "github", "--execute"], { server, io, deps: { github: fakeGithub({ protection_rules: [], deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } }).port } });
   assert.equal(open.code, 2);
-  assert.match(open.err, /STACK_SERVER_KEY_UNPROTECTED: .*no required reviewers and its deployment branches are not limited to main/u);
+  assert.match(open.err, /STACK_SERVER_KEY_UNPROTECTED: .*no required reviewers, its deployment branches are not limited to main and its deployment refs are not limited to the release tags v\*/u);
   const wide = await serverKey(fixture, ["production", "--backup", "github", "--execute"], { server, io, deps: { github: fakeGithub({ protection_rules: [{ type: "branch_policy" }], deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } }, [{ name: "main" }, { name: "release/*" }]).port } });
   assert.equal(wide.code, 2);
   const absent = await serverKey(fixture, ["production", "--backup", "github", "--execute"], { server, io, deps: { github: fakeGithub(null).port } });
@@ -319,6 +322,28 @@ test("server-key --backup github refuses an Environment without protection, and 
   const mainOnly = await serverKey(fixture, ["production", "--backup", "github"], { server, io, deps: { github: fakeGithub({ protection_rules: [{ type: "branch_policy" }], deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } }, [{ name: "main", type: "branch" }]).port } });
   assert.equal(mainOnly.code, 0, mainOnly.err);
   assert.match(mainOnly.out, /dry run: would stream/u);
+});
+
+test("server-key --backup github takes a release-tag Environment only under an active ruleset that locks refs/tags/v*", async (t) => {
+  const fixture = await productionApp(t);
+  const server = fakeServer();
+  const environment = { protection_rules: [{ type: "branch_policy" }], deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } };
+  const tags = [{ name: "v*", type: "tag" }];
+  const locked = { id: 7, target: "tag", enforcement: "active", conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } }, rules: [{ type: "creation" }, { type: "update" }, { type: "deletion" }] };
+  const run = (rulesets: Record<string, unknown>[], policies: unknown[] = tags) => serverKey(fixture, ["production", "--backup", "github"], { server, deps: { github: fakeGithub(environment, policies, [], rulesets).port } });
+  const accepted = await run([locked]);
+  assert.equal(accepted.code, 0, accepted.err);
+  assert.match(accepted.out, /dry run: would stream/u);
+  const none = await run([]);
+  assert.equal(none.code, 2);
+  assert.match(none.err, /STACK_SERVER_KEY_UNPROTECTED: .*deploys only the release tags v\*, but no active tag ruleset covers refs\/tags\/v\*/u);
+  assert.equal((await run([{ ...locked, enforcement: "evaluate" }])).code, 2, "an evaluate-only ruleset enforces nothing");
+  assert.equal((await run([{ ...locked, rules: [{ type: "deletion" }] }])).code, 2, "a tag that can still be moved is not locked");
+  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["refs/tags/v1*"], exclude: [] } } }])).code, 2, "a narrower pattern leaves release tags open");
+  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["~ALL"], exclude: ["refs/tags/v0*"] } } }])).code, 2, "an exclusion leaves release tags open");
+  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["~ALL"], exclude: [] } } }])).code, 0, "~ALL covers the release tags");
+  assert.equal((await run([locked], [...tags, { name: "main", type: "branch" }])).code, 2, "a tag policy mixed with a branch is neither main-only nor tags-only");
+  assert.deepEqual(server.state.calls, [], "dry runs and refusals reach no server");
 });
 
 test("server-key --restore github dispatches the managed restore workflow with the recorded server recipient", async (t) => {
