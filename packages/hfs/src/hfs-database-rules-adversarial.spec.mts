@@ -212,10 +212,19 @@ for (const [name, sql, codes] of sqlCases) {
   test(`adversarial SQL: ${name}`, () => expectCodes({ contents: { [MIGRATION]: sql }, codes }));
 }
 
-test('adversarial SQL: RLS enabled only in a later migration still fails the create migration', () => {
+// DB_RLS_REQUIRED judges the ordered set of migrations (hfs 6.17.0): a later migration that enables RLS covers the create; a table that ends without it fails.
+test('adversarial SQL: RLS enabled only in a later migration covers the create migration', () => {
   const contents = {
     [`${MIGRATIONS}/20260101120000_create-items.sql`]: 'create table public.items (id bigint);',
     [`${MIGRATIONS}/20260101120100_enable-items.sql`]: 'alter table public.items enable row level security;',
+  };
+  return expectCodes({ contents, codes: [] });
+});
+
+test('adversarial SQL: a table no migration enables RLS on still fails, beside one that is covered', () => {
+  const contents = {
+    [`${MIGRATIONS}/20260101120000_create-items.sql`]: 'create table public.items (id bigint); alter table public.items enable row level security;',
+    [`${MIGRATIONS}/20260101120100_other.sql`]: 'create table public.others (id bigint);',
   };
   return expectCodes({ contents, codes: ['DB_RLS_REQUIRED'] });
 });
