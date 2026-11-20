@@ -102,14 +102,23 @@ export const pidAlive = (pid: number): boolean => {
 const killTree = (child: ChildProcess): void => {
     const pid = child.pid
     if (pid === undefined) return
+    if (!killPidTree(pid)) child.kill("SIGKILL")
+}
+
+/**
+ * Kills a process this CLI started and its whole tree: taskkill /T on Windows, the process group elsewhere (the child must lead it,
+ * spawned detached). Only ever a pid this process started; false when the group kill failed.
+ */
+export const killPidTree = (pid: number): boolean => {
     if (process.platform === "win32") {
         spawnSync(join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "taskkill.exe"), ["/pid", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" })
-        return
+        return true
     }
     try {
         process.kill(-pid, "SIGKILL")
+        return true
     } catch {
-        child.kill("SIGKILL")
+        return false
     }
 }
 

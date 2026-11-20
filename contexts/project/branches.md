@@ -37,7 +37,8 @@ rule; every other page links to it.
 
 1. A lane never pushes `dev` and never holds the dev lock. It merges `origin/dev` into its branch, runs its own
    `starci app check --env prod` until it is green except `HFS_CHECK_CACHE_UNWARMED`, commits the cache as the run left it, pushes
-   its branch and registers that sha with `starci lane ready`. A registration replaces the lane's earlier one.
+   its branch and registers that sha with `starci lane ready`; `starci lane gate --push --ready` runs those steps under the
+   machine-wide slots ([authority/lanes.md](../authority/lanes.md)). A registration replaces the lane's earlier one.
 2. One lander per lanes folder (`starci lane land`, the folder from `--dir` or `STARCI_LANES_DIR`) takes every ready lane at
    once and, in its own worktree reset to `origin/dev`, merges them one by one. A lane whose merge conflicts is left out and told
    whom it met: a batch-mate (it stays ready for the next batch) or `origin/dev` (it merges, re-gates and registers again). A

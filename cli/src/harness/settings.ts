@@ -13,6 +13,7 @@ import { loadLiveness } from "./liveness.js"
 import { loadOps, locateOps } from "./ops.js"
 import { ROUTES_SCHEMA, loadRoutes } from "./routes.js"
 import { loadRouting } from "./routing.js"
+import { loadSlotRules } from "./slots.js"
 import { loadStallRules } from "./stall.js"
 import { loadTelegram } from "./telegram.js"
 import { loadUat } from "./uat.js"
@@ -32,6 +33,7 @@ const SETTINGS: Readonly<Record<string, (dir: string) => unknown>> = {
     uat: (dir) => loadUat(dir),
     telegram: (dir) => loadTelegram(dir),
     vps: (dir) => loadVpsPolicy(dir),
+    slots: (dir) => loadSlotRules(dir),
 }
 
 /** The names of the settings files, `<name>.yaml` in ops/. */

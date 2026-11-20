@@ -99,6 +99,7 @@ Before you send a brief, a plan or an answer, check it:
 | [authority/wave.md](authority/wave.md) | tier 2: one scoped round on a merged tree, the scope decision first, reuse and repair |
 | [authority/ci.md](authority/ci.md) | tier 3: CI's full suite, the npm publish of new versions, a red CI |
 | [authority/packages.md](authority/packages.md) | package edits by apps, and Grammar edits as content only |
+| [authority/lanes.md](authority/lanes.md) | a lane of many on one host: its name, the machine-wide slots and their evidence-only reclaim, the shared stack, gate and land, shots, processes; the verbs a lane brief names |
 
 ## The boundary model: four owners, one app
 
