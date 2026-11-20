@@ -112,6 +112,9 @@ function declaredKeys(spec: EnvironmentSpec | undefined, member: string, keys: s
 
 /** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mts): the deploy transport reads exactly these. */
 export const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "VPS_PORT", "privateKey", "knownHosts"]);
+/** The keys only the CI member `vps-ci` holds, read by `starci app stack connect` in CI (stack/remote.mts connectCi), never by an app: the CI-only
+ * deploy key, its pinned host keys, and whether the key is forced through starci-ssh-gate. */
+export const CI_TRANSPORT_KEYS: readonly string[] = Object.freeze(["VPS_SSH_KEY", "VPS_KNOWN_HOSTS", "VPS_GATE"]);
 
 /**
  * The two transport members of an environment: the operator's member(s) `deploy.remote.sealed` names and

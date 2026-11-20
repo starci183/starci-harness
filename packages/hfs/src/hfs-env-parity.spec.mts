@@ -432,6 +432,14 @@ for (const edition of ['lite'] as const) {
     assert.ok(codes(envFindingsOf(tree(t, third), third, edition), ENV_SEALED_UNREAD).some((finding) => /VPS_PORT/u.test(String(finding.message))));
   });
 
+  test(`the CI transport keys (VPS_SSH_KEY, VPS_KNOWN_HOSTS, VPS_GATE) in vps-ci are read by stack connect, not ENV_SEALED_UNREAD; anywhere else they are (${edition})`, (t) => {
+    const files = transportFiles({ '.starcistacks/production/secrets/vps-ci.enc': sealedDotenv([...TRANSPORT, 'VPS_PORT', 'VPS_SSH_KEY', 'VPS_KNOWN_HOSTS', 'VPS_GATE']) });
+    assert.deepEqual(codes(envFindingsOf(tree(t, files), files, edition), ENV_SEALED_UNREAD).map((finding) => String(finding.message)).filter((message) => /VPS_SSH_KEY|VPS_KNOWN_HOSTS|VPS_GATE/u.test(message)), []);
+    const elsewhere = transportFiles({ '.starcistacks/production/secrets/zzz.enc': sealedDotenv(['VPS_SSH_KEY', 'VPS_GATE']) });
+    const unread = codes(envFindingsOf(tree(t, elsewhere), elsewhere, edition), ENV_SEALED_UNREAD).map((finding) => String(finding.message));
+    assert.ok(unread.some((message) => /zzz\.enc seals VPS_SSH_KEY/u.test(message)) && unread.some((message) => /zzz\.enc seals VPS_GATE/u.test(message)), unread.join(' | '));
+  });
+
   test(`the exemption belongs to the member deploy.remote.sealed names, in its own environment (${edition})`, (t) => {
     const otherName = transportFiles({ '.starcistacks/application-stacks.yaml': STACKS_VPS.replace('sealed: vps', 'sealed: ops') });
     assert.equal(codes(envFindingsOf(tree(t, otherName), otherName, edition), ENV_DUPLICATE).length, 2);
