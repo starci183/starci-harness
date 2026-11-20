@@ -71,7 +71,10 @@ export async function runProjectChecks({ repoRoot, run, env, session }: { repoRo
     }
     const keyed = session === undefined ? undefined : keyOfCheck(session, repoRoot, check);
     const recordId = `${PROJECT_CHECK_STEP}/${check.id}`;
-    const held = keyed === undefined || !keyed.complete ? undefined : book?.held(recordId, keyed.key);
+    // A check that names refs is keyed on what this checkout fetched, not on what its commit carries: its verdict is machine-local (CheckSession.localRecords).
+    const local = (check.refs ?? []).length > 0;
+    if (local) book?.dropCommitted(recordId);
+    const held = keyed === undefined || !keyed.complete ? undefined : book?.held(recordId, keyed.key, local);
     if (held !== undefined) {
       if (!held.red) lines.push(`  project check ${check.id} (${check.run}): green (reused, nothing it reads changed)`);
       else {
@@ -86,7 +89,7 @@ export async function runProjectChecks({ repoRoot, run, env, session }: { repoRo
     const green = result.status === 0 && result.error === undefined;
     const settled = result.error === undefined && result.status !== null && result.status >= 0 && result.status < 128;
     const message = `project check ${check.id} (${check.run}) failed (${exit}); it guards: ${check.why}${output === '' ? '' : `\n${output}`}`;
-    if (keyed?.complete === true && settled) book?.put(recordId, keyed.key, { red: !green, message });
+    if (keyed?.complete === true && settled) book?.put(recordId, keyed.key, { red: !green, message }, local);
     if (green) {
       lines.push(`  project check ${check.id} (${check.run}): green (exit 0)${output === '' ? '' : `: ${output.split('\n').at(-1) ?? ''}`}`);
       continue;

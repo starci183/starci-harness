@@ -196,11 +196,11 @@ test('a build verdict is reused while its key holds and judged again when it mov
     ran.push(name);
     return { status: outcomes[name]?.status ?? 0, stdout: outcomes[name]?.stdout ?? '', stderr: '' };
   };
-  const pass = async (files: Record<string, string>, stored: readonly CacheRecord[]) => {
+  const pass = async (files: Record<string, string>, stored: readonly CacheRecord[], storedLocal: readonly CacheRecord[] = []) => {
     ran.length = 0;
-    const session = { ...createFakeSession({ files, records: { [BUILD_FOLDER]: stored } }), root };
+    const session = { ...createFakeSession({ files, records: { [BUILD_FOLDER]: stored }, local: { [BUILD_FOLDER]: storedLocal } }), root };
     const result = await runParityFamilies(session, { repoRoot: root, families: new Set(['build']), env, run, steps: parityStepsOf(WORKFLOW) });
-    return { ...result, records: [...(session.replaced.get(BUILD_FOLDER) ?? [])] };
+    return { ...result, records: [...(session.replaced.get(BUILD_FOLDER) ?? [])], local: [...(session.replacedLocal.get(BUILD_FOLDER) ?? [])] };
   };
   outcomes['build fe web'] = { status: 1, stdout: `Error occurred prerendering page "/" at ${root}` };
   outcomes['database migration checks'] = { status: 2, stdout: 'DB_DRIFT_NEEDS_DATABASE: needs a database' };
@@ -219,10 +219,11 @@ test('a build verdict is reused while its key holds and judged again when it mov
   assert.deepEqual(ran, ['typecheck', 'build fe web', 'database migration checks'], 'a front-end change rebuilds the typecheck and the front end, not the back end');
   outcomes['database migration checks'] = { status: 0, stdout: '' };
   const withDatabase = await pass(APP_FILES, first.records);
-  assert.ok(withDatabase.records.some((record) => record.path === 'build/database migration checks'), 'a host with a database records the drift verdict');
-  await pass(APP_FILES, withDatabase.records);
+  assert.ok(withDatabase.local.some((record) => record.path === 'build/database migration checks'), 'a host with a database records the drift verdict');
+  assert.ok(!withDatabase.records.some((record) => record.path === 'build/database migration checks'), 'machine-local: it is keyed on the merge-base with origin/main, so it is never a committed record');
+  await pass(APP_FILES, withDatabase.records, withDatabase.local);
   assert.deepEqual(ran, [], 'and the next run reuses it');
-  const fresh = { ...createFakeSession({ files: APP_FILES, records: { [BUILD_FOLDER]: withDatabase.records }, mode: 'full' }), root };
+  const fresh = { ...createFakeSession({ files: APP_FILES, records: { [BUILD_FOLDER]: withDatabase.records }, local: { [BUILD_FOLDER]: withDatabase.local }, mode: 'full' }), root };
   ran.length = 0;
   await runParityFamilies(fresh, { repoRoot: root, families: new Set(['build']), env, run, steps: parityStepsOf(WORKFLOW) });
   assert.equal(ran.length, 4, '--fresh judges every step again');

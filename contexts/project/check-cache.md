@@ -318,7 +318,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths | `check/hfs/` |
 | slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below | `check/hfs/` (their findings, for new / known / fixed) |
 | Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths | `check/format/` |
-| database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base | `check/db/` |
+| database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base | machine-local (`local-records/check/db.jsonl` in the tool cache): the merge-base with `origin/main` moves with what a checkout fetched |
 | contract emit | scoped | the be side key is unchanged | any be change | `check/hfs/` |
 | boot proof of a back end | scoped, with reads | the be side key and the reads its proof workers reported (their module cache) are unchanged | any be change; a package the boot loaded; an app file outside be it loaded; a proof whose workers reported no list keys on every install and tracked file; a timeout is never stored | `check/wiring/` |
 | architecture machine (check surface), per side | scoped | the side key is unchanged | any change in the side: the whole side | `check/hfs/` |
@@ -328,10 +328,10 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | integration, e2e and contract specs | always | never | every run that runs them (on request only, by hand, on a local machine; `app check`, CI and the release gate run none: R12): they reach services, data and time a key cannot hold | none |
 | `tsc` per workspace program (`--gate types`) | scoped, with reads | the program's key (its folders and the folders of the built workspace packages it depends on, below) and the reads `tsc --listFiles` reported (the TypeScript lib files, the `@types` and every package whose declarations it loaded, the app files outside its folders) are unchanged | any change the program reads: that program | `check/types/`; its `.tsbuildinfo` in the tool cache |
 | CI build steps (typecheck, `build be`, each `build fe`) | per step | the step's command and environment, the Node major, every tracked file of the folders it builds (every tracked file for the typecheck) and of the app root but the lockfile, and the lockfile installs its manifests resolve are unchanged | any of them; a step killed or timed out stores nothing | `check/build/` (the verdict, green or red with its finding; never an artifact) |
-| database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |
+| database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | machine-local (`local-records/check/build.jsonl`): its key holds the merge-base with `origin/main` |
 | production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
-| project checks (`checks`: the files of `ext/checks/` that ext/manifest.json `checks` declares, R402) | always | never | every run that selects hfs: a check reads what it reads (the tree, generated files, the network), which no key holds | none |
-| nivoos package checks (`checks`: `nivoos package check` of each package hfs.json `sides.nivoos.packages` declares, R436) | always | never | every run that selects hfs, in the same step: the package's sources and the SDK are what it reads | none |
+| project checks (`checks`: the files of `ext/checks/` that ext/manifest.json `checks` declares, R402) | always, or scoped when it declares `reads` | never; a check that declares `reads` while those paths, its file and its `refs` commits are unchanged | every run that selects hfs: a check reads what it reads (the tree, generated files, the network), which no key holds | none; one that declares `reads` in `check/build/`, and machine-local (`local-records/check/build.jsonl`) when it also names `refs` |
+| nivoos package checks (`checks`: `nivoos package check` of each package hfs.json `sides.nivoos.packages` declares, R436) | scoped | the tracked files of the package and the workspace packages it and the CLI depend on, their built `dist`, the CLI, and the seed `origin/dev` holds for the package are unchanged | any of them; a run where `origin/dev` cannot be named stores nothing | machine-local (`local-records/check/build.jsonl`): the key holds `origin/dev` and untracked build output |
 | boot entries (`checks`: the root hfs.json `sides.be.apps[].boot` declares, composed without listening, R448) | scoped | the be side key (tracked and untracked program inputs), the tracked files of `packages/` and `hfs.json`, the declared entries, the lockfile, the Node major and the harness are unchanged | any of them; a timeout reached no verdict and is never stored | `check/build/` (step `boot-entry`) |
 | proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run | none |
 | Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate as the server holds it now (its conditions, else its name when the token cannot read them; a gate neither is readable for is never kept) are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
@@ -339,7 +339,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 A side key is the sha256 of everything the side's whole-program steps read: the hash of each tracked path of the side
 (`absent` for one deleted in the work tree), its staged entries (the machine reads the index), and the untracked files
 its TypeScript program reads (what its tsconfig includes or an import resolves to that git does not track, generated
-code included). The key hands back the hash it took of each input (`SideKey.hashes`), and the record is stored only if every
+code included; never a build artifact, [Untracked program inputs](#untracked-program-inputs)). The key hands back the hash it took of each input (`SideKey.hashes`), and the record is stored only if every
 input still has that hash when the step ends: an untracked input has no hash in the content index, so it is compared with
 the one the key took, and a stable generated file keeps the record (the front end of an app with generated GraphQL
 code reuses its machine). The machine and the type-aware rules read the whole program, so a scoped step re-runs the whole side:
@@ -348,6 +348,32 @@ The `types` family keys each workspace's program like a side: an unchanged key r
 changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a
 result (it holds versions and signatures, not findings), so it stays in the untracked tool cache of slot
 `app.tool-cache` and is never committed.
+
+### Untracked program inputs
+
+A program reads one untracked kind of file: the generated code the app's declared code generation writes (`npm run codegen`, into folders named
+`__generated__`), which every checkout of one commit has alike. Everything else git ignores that a tsconfig's include globs reach is a *build
+artifact* (`packages/hfs/runtime/scripts/hfs/program-artifacts.mts`): what a framework's build or dev server writes into the work tree, such as Next's
+`next-env.d.ts` with its imports of `.next/types/**`, a `dist/`, a `.tsbuildinfo`. A clean checkout, CI and the lander have none, so a key or a
+program that read them would depend on build history, not on the commit. They are no input of a side key or a program key, and no root of the programs
+the harness builds: `readTypeScriptProject` (the architecture machine and every program built from a tsconfig) drops them from the root names, and the
+`types` family runs `tsc` through `packages/hfs/cache/tsc-launch.mts` when a program's globs reach one, TypeScript's own command line over a directory
+listing without them, the tsconfig read where it lies. Every checkout therefore type-checks the program a clean checkout has. The rule is git's: a file
+git ignores that lies under no `__generated__` folder; a tracked file is never an artifact. An app that relies on a framework's generated global types
+(Next's `PageProps`/`LayoutProps` route types, typed routes) declares what it needs in a tracked declaration file instead.
+
+### Machine-local records
+
+Two checkouts of one commit write byte-identical committed records, whatever each built or fetched: the push gate (`HFS_CHECK_CACHE_UNWARMED`)
+compares the committed cache with what a run on the pushed tree writes, and a record keyed on anything else never converges. A verdict whose key
+holds a moving remote ref or untracked build output is therefore *machine-local*: the database rules and the database migration step (keyed on the
+merge-base with `origin/main`), the nivoos package checks (`origin/dev` and the built tools) and a project check that names `refs`. A run keeps
+them in the untracked tool cache of slot `app.tool-cache` (`local-records/<folder>.jsonl`, headed by the digest of the family's fingerprint parts,
+read only under the same digest) through `CheckSession.localRecords` / `replaceLocal`, reuses them there exactly as before, and never writes them
+into `.starcistacks/cache/`; a run whose committed folder still holds one an older harness wrote drops it there. They are no part of the
+`written`/`removed` set the push gate judges, and CI, which keeps no tool cache, judges them every run. The guard is
+`packages/hfs/src/check-cache-determinism.spec.mts`: a checkout of the cache-warm commit with a framework build's artifacts and other
+`origin/dev` and `origin/main` refs writes nothing into the committed cache.
 
 Before any program runs, the `types` step runs the app's code generation when the root `package.json` declares a `codegen` script (the command the dev and build scripts and the CI build
 steps already run: `npm run codegen`), because the code it generates sits in untracked `__generated__` folders a fresh tree does not have. It is skipped while its stamp (the tracked
@@ -647,7 +673,7 @@ or unreadable cache verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOC
 - `--quiet` mutes progress and keeps the diagnosis on stdout for `check`; other verbs still mute stdout.
 - The managed CI keeps its triggers (push to main, release candidates, tags) and adds the nightly `cache-verify.yml`; a push to main is
   trusted against its first parent, a candidate or tag run against its merge-base with main. The `format` step runs `app check --gate format`.
-- Side keys take the untracked program inputs from the side's tsconfig `include` (generated code), not from import resolution of files outside it.
+- Side keys take the untracked program inputs from the side's tsconfig `include` (generated code, never a build artifact git ignores), not from import resolution of files outside it.
 
 ## Read with
 

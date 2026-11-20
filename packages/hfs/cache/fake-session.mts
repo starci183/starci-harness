@@ -14,6 +14,8 @@ export interface FakeSessionOptions {
   readonly files?: Readonly<Record<string, string>>;
   /** The trusted records, by folder. */
   readonly records?: Readonly<Record<string, readonly CacheRecord[]>>;
+  /** The machine-local records (CheckSession.localRecords), by folder. */
+  readonly local?: Readonly<Record<string, readonly CacheRecord[]>>;
   /** The run mode every family is told; `full` carries `fullReason`. */
   readonly mode?: RunMode;
   readonly fullReason?: string;
@@ -26,6 +28,8 @@ export interface FakeSession extends CheckSession {
   readonly events: ProgressEvent[];
   readonly reports: FamilyReport[];
   readonly replaced: Map<string, readonly CacheRecord[]>;
+  /** The machine-local records each folder was given (replaceLocal). */
+  readonly replacedLocal: Map<string, readonly CacheRecord[]>;
   /** Edits the fake tree between a run's read and its write (the "edit during the run" case). */
   setFile(path: string, text: string | undefined): void;
   flushed: number;
@@ -53,6 +57,8 @@ export function createFakeSession(options: FakeSessionOptions = {}): FakeSession
   const events: ProgressEvent[] = [];
   const reports: FamilyReport[] = [];
   const replaced = new Map<string, readonly CacheRecord[]>();
+  const local = new Map<string, readonly CacheRecord[]>(Object.entries(options.local ?? {}));
+  const replacedLocal = new Map<string, readonly CacheRecord[]>();
   const decision: FamilyDecision = { mode: options.mode ?? 'diff', reason: options.fullReason ?? (options.mode === 'full' ? 'full run' : 'diff against the cache') };
   const progress: ProgressSink = {
     step(family, name, total): StepProgress {
@@ -69,10 +75,13 @@ export function createFakeSession(options: FakeSessionOptions = {}): FakeSession
     events,
     reports,
     replaced,
+    replacedLocal,
     flushed: 0,
     decide: () => decision,
     records: (folder) => replaced.get(folder) ?? stored.get(folder) ?? [],
     replace: (folder, records) => void replaced.set(folder, records),
+    localRecords: (folder) => replacedLocal.get(folder) ?? local.get(folder) ?? [],
+    replaceLocal: (folder, records) => void replacedLocal.set(folder, records),
     unchanged: (paths, captured) => paths.every((file) => (captured?.[file] === undefined ? index.hashOf(file) === initial.get(file) : (index.hashOf(file) ?? 'absent') === captured[file])),
     report: (report) => void reports.push(report),
     progress,

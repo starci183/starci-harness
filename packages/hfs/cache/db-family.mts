@@ -1,12 +1,14 @@
 // db-family.mts - `app check --db`: the database rules of `db/` (DB_*). Scoped: reused when every input's hash and the inputs AT the merge-base the
 // baseline rules compare with are unchanged; any input change, or a base whose inputs differ, judges the rules again. The base is keyed by
 // what the rules read there (the blob of each input path), never by its sha, so a merge or a commit that leaves the inputs alone (a cache
-// commit, a merge of unrelated work) rewrites no record (a record that depended on its own commit was rewritten by every push).
+// commit, a merge of unrelated work) rewrites no record (a record that depended on its own commit was rewritten by every push). The base is the merge-base with
+// origin/main, which moves with what a checkout fetched, and the findings say what is on it (R213), so the record is machine-local (the untracked tool cache,
+// CheckSession.localRecords): two checkouts of one commit commit the same cache, and the committed folder holds no db record.
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 import { mergeBase } from '../runtime/scripts/api/git/merge-base.mjs';
 import { runGit } from '../runtime/scripts/api/git/lib.mjs';
 import { hashText } from './hash.mjs';
-import { RecordSet, keyOfPaths, scopedStep } from './records.mjs';
+import { RecordSet, keyOfPaths, localRecordsOf, replaceLocalRecords, scopedStep } from './records.mjs';
 import { makeReport } from './report.mjs';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import type { CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
@@ -38,8 +40,10 @@ export const compact = (finding: CheckFinding): Finding => ({ path: posix(findin
 
 export async function runDbFamily(session: CheckSession, { repoRoot, tracked, base }: { repoRoot: string; tracked: readonly string[]; base?: string | undefined }): Promise<{ findings: CheckFinding[]; report: FamilyReport }> {
   const decision = session.decide('db');
-  const records = new RecordSet(session.records(DB_FOLDER));
-  const previous = records.findings('db-rules');
+  const records = new RecordSet(localRecordsOf(session, DB_FOLDER));
+  // An older harness committed the record: it is dropped from the committed folder (and read once as the findings known before).
+  const committed = session.records(DB_FOLDER);
+  const previous = records.hasStep('db-rules') ? records.findings('db-rules') : new RecordSet(committed).findings('db-rules');
   // hfs.json carries the edition and the db block (its db.destructiveRulings entries included), which the rules read.
   const inputs = session.index.paths.filter(isDbInput);
   const key = keyOfPaths(session.index, inputs, { 'base-inputs': baseInputs(repoRoot, base ?? dbMergeBase(repoRoot)) });
@@ -51,7 +55,8 @@ export async function runDbFamily(session: CheckSession, { repoRoot, tracked, ba
   });
   step.tick(inputs.length, reused ? inputs.length : 0, reused ? 0 : inputs.length);
   step.end();
-  session.replace(DB_FOLDER, records.toArray());
+  replaceLocalRecords(session, DB_FOLDER, records.toArray());
+  if (committed.length > 0) session.replace(DB_FOLDER, []);
   const findings = value as unknown as CheckFinding[];
   const report = makeReport({ family: 'db', mode: decision.mode, reason: decision.reason, checked: reused ? 0 : inputs.length, reused: reused ? inputs.length : 0, previous, current: findings.map(compact) });
   session.report(report);

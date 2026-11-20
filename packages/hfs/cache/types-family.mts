@@ -9,6 +9,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import type * as TypeScript from 'typescript';
+import { buildArtifacts } from '../runtime/scripts/hfs/program-artifacts.mjs';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { CACHE_DIR } from './types.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
@@ -229,17 +232,45 @@ export function splitListedFiles(output: string): { output: string; files: strin
   return { output: rest.join('\n'), files };
 }
 
+/** The launcher that runs tsc with the build artifacts hidden (tsc-launch.mts). */
+const TSC_LAUNCH = fileURLToPath(new URL('./tsc-launch.mjs', import.meta.url));
+
+/**
+ * The build artifacts the program of `tsconfig` (absolute) would take as roots under `typescriptModule` (runtime/scripts/hfs/program-artifacts.mts): files its include globs reach
+ * that git ignores and that are no generated code. None when the tsconfig cannot be read (tsc then reports it itself).
+ */
+export function programArtifacts(typescriptModule: string, tsconfig: string): string[] {
+  try {
+    const ts = createRequire(import.meta.url)(typescriptModule) as typeof TypeScript;
+    const read = ts.readConfigFile(tsconfig, ts.sys.readFile);
+    if (read.error !== undefined) return [];
+    const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, path.dirname(tsconfig), undefined, tsconfig);
+    return [...buildArtifacts(path.dirname(tsconfig), parsed.fileNames)].sort();
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The real `tsc` of an app: the program's own TypeScript (resolved from its folder, so the version the lockfile pins), `--noEmit` with an incremental build info in the
- * tool cache and `--listFiles`, run from the app root so paths in the diagnostics are app-relative.
+ * tool cache and `--listFiles`, run from the app root so paths in the diagnostics are app-relative. A program whose include globs reach build artifacts (a framework's
+ * generated environment declaration and build-folder types, which a clean checkout lacks) runs through tsc-launch.mts with them hidden, so every checkout of one commit
+ * type-checks the same program and records the same result.
  */
 export function createTscRunner({ appRoot, typescriptFrom, execute }: { appRoot: string; typescriptFrom?: string; execute?: HeavyNodeRun | undefined }): TypesFamilyOptions['run'] {
   return async (program, buildInfo) => {
     const folder = path.resolve(appRoot, path.posix.dirname(program.tsconfig));
-    const tsc = path.join(path.dirname(createRequire(typescriptFrom ?? path.join(folder, 'package.json')).resolve('typescript/package.json')), 'bin', 'tsc');
+    const require = createRequire(typescriptFrom ?? path.join(folder, 'package.json'));
+    const tsc = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
     fs.mkdirSync(path.dirname(buildInfo), { recursive: true });
+    const typescriptModule = require.resolve('typescript');
+    const hidden = programArtifacts(typescriptModule, path.resolve(appRoot, program.tsconfig));
+    const hiddenFile = `${buildInfo}.hidden.json`;
+    if (hidden.length > 0) fs.writeFileSync(hiddenFile, `${JSON.stringify(hidden)}
+`);
+    const launch = hidden.length > 0 ? [TSC_LAUNCH, typescriptModule, hiddenFile] : [tsc];
     const result = completedNode(await runHeavyNode(execute, {
-      kind: 'tsc', label: `app check types tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false', '--listFiles'],
+      kind: 'tsc', label: `app check types tsc ${program.name}`, args: [...launch, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false', '--listFiles'],
       cwd: appRoot, maxBuffer: 256 * 1024 * 1024,
     }), 'tsc');
     return { status: result.status ?? 1, ...splitListedFiles(`${result.stdout}${result.stderr}`) };

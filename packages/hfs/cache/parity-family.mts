@@ -27,7 +27,7 @@ import { combineHashes } from './hash.mjs';
 import { compilerOptionsOf, resolveReferences } from './import-graph.mjs';
 import { canonicalJson } from './jsonl.mjs';
 import { lockClosure, lockClosureOf, readsContext } from './package-closure.mjs';
-import { RecordSet } from './records.mjs';
+import { RecordSet, localRecordsOf, replaceLocalRecords } from './records.mjs';
 import { toolCacheDir } from './run-log.mjs';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import type { HeavyAdmission } from '../runtime/scripts/api/node/run-node.mjs';
@@ -243,6 +243,8 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
     const progress = session.progress.step(family, family === 'audit' ? 'dependency audit' : 'CI build steps', mine.length);
     const decision = family === 'build' ? session.decide('build') : undefined;
     const records = new RecordSet(family === 'build' ? session.records(BUILD_FOLDER) : []);
+    // The database step is keyed on the db inputs at the merge-base with origin/main, which moves with what a checkout fetched: its verdict is machine-local.
+    const local = new RecordSet(family === 'build' ? localRecordsOf(session, BUILD_FOLDER) : []);
     const kept = new Set<string>();
     let failed = 0;
     let reused = 0;
@@ -250,7 +252,9 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
       const where = `${step.job}/${step.name}`;
       const key = family === 'build' ? (step.name === DATABASE_STEP ? databaseStepKey(session, step) : buildStepKey(session, step)) : undefined;
       kept.add(where);
-      const held = key !== undefined && decision?.mode === 'diff' ? records.matching(where, BUILD_STEP, key.key) : undefined;
+      const book = step.name === DATABASE_STEP ? local : records;
+      if (step.name === DATABASE_STEP) records.delete(where, BUILD_STEP);
+      const held = key !== undefined && decision?.mode === 'diff' ? book.matching(where, BUILD_STEP, key.key) : undefined;
       if (held !== undefined) {
         reused += 1;
         failed += held.findings.length > 0 ? 1 : 0;
@@ -274,7 +278,7 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
       }
       if (key !== undefined && settled(result) && session.unchanged(key.inputs)) {
         const recorded: CacheRecord = { path: where, step: BUILD_STEP, hash: key.key, findings: red ? [{ path: CI_WORKFLOW, line: 0, column: 0, rule: 'CI_PARITY_STEP_FAILED', message: `${verdict} (exit ${String(result.status)})` }] : [], data: { verdict: red ? 'red' : 'green' } as JsonValue };
-        records.put(recorded);
+        book.put(recorded);
       }
       progress.tick(index + 1, reused, index + 1 - reused);
     }
@@ -282,6 +286,8 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
     if (family === 'build') {
       // A step the workflow no longer holds drops its verdict; a step without a database this run keeps the verdict a run with one recorded.
       records.retain(BUILD_STEP, kept);
+      local.retain(BUILD_STEP, kept);
+      replaceLocalRecords(session, BUILD_FOLDER, local.toArray());
       // The folder also holds the verdicts of the project and nivoos package checks (check-verdicts.mts): their steps are kept as they were.
       session.replace(BUILD_FOLDER, records.toArray());
     }

@@ -5,7 +5,9 @@
 // (cache/project-checks.mts), wherever the hfs gate runs. The check includes the version guard (a cell, graph or agent whose content changed under the same version as the seed on origin/dev is refused,
 // the instance's CELLS_VERSION_IMMUTABLE), so it must be what `build:modules` would say. Its verdict is scoped and cached per package (cache/check-verdicts.mts): keyed on the tracked files of the package, of every
 // workspace package it and the CLI depend on (the SDK) and the built output of those (dist, untracked), the CLI's version when it is installed from the registry, and the seed the published ref holds for the package
-// (`origin/dev:packages/<name>/<out>`). An unchanged key reuses the verdict; a run where the ref cannot be named (not fetched) runs the check and stores nothing.
+// (`origin/dev:packages/<name>/<out>`). An unchanged key reuses the verdict; a run where the ref cannot be named (not fetched) runs the check and stores nothing. The ref moves with
+// each fetch and the built output with each build, so the verdict is machine-local (the untracked tool cache, CheckSession.localRecords), never a committed record: two checkouts of one
+// commit commit the same cache whatever each fetched or built.
 // The CLI is the package's own dev dependency (`@starci/nivoos-cli`, or the package `nivoos`): resolved from packages/<name>/node_modules, then the app root's, by the `bin` its manifest names. When it is not
 // installed the finding says how to add it, and nothing is run.
 import fs from 'node:fs';
@@ -215,7 +217,9 @@ export async function runNivoosPackageChecks({ repoRoot, run, env, session }: { 
     }
     const keyed = session === undefined ? undefined : nivoosPackageKey(session, repoRoot, entry, cli);
     const recordId = `${NIVOOS_PACKAGE_STEP}/${entry.name}`;
-    const held = keyed?.complete === true ? book?.held(recordId, keyed.key) : undefined;
+    // The key holds the published ref and the built tools: what this checkout fetched and built, not what its commit carries, so the verdict is machine-local.
+    book?.dropCommitted(recordId);
+    const held = keyed?.complete === true ? book?.held(recordId, keyed.key, true) : undefined;
     if (held !== undefined) {
       if (!held.red) lines.push(`  nivoos package check ${entry.name}: green (reused, nothing it reads changed)`);
       else {
@@ -229,7 +233,7 @@ export async function runNivoosPackageChecks({ repoRoot, run, env, session }: { 
     const exit = result.error === undefined ? `exit ${String(result.status)}` : result.error.message;
     const settled = result.error === undefined && result.status !== null && result.status >= 0 && result.status < 128;
     const message = `nivoos package check ${entry.name} failed (${exit}): the package does not type-check or build, its committed ${entry.out}/ differs from a fresh build (\`npm run build\` in ${folder}, then commit the seed), or a cell, graph or agent changed content under a version the published seed already holds (raise the version)${output === '' ? '' : `\n${output}`}`;
-    if (keyed?.complete === true && settled) book?.put(recordId, keyed.key, { red: !(result.status === 0 && result.error === undefined), message });
+    if (keyed?.complete === true && settled) book?.put(recordId, keyed.key, { red: !(result.status === 0 && result.error === undefined), message }, true);
     if (result.status === 0 && result.error === undefined) {
       lines.push(`  nivoos package check ${entry.name}: green (exit 0)${output === '' ? '' : `: ${output.split('\n').at(-1) ?? ''}`}`);
       continue;

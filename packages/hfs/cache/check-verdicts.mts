@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { git } from './git.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
-import { RecordSet } from './records.mjs';
+import { RecordSet, localRecordsOf, replaceLocalRecords } from './records.mjs';
 import type { CacheRecord, CheckSession, JsonValue } from './types.mjs';
 
 /** The version of the @starci/hfs that runs: a verdict of another harness is no answer. */
@@ -43,9 +43,14 @@ export function verdictKey(session: CheckSession, reads: readonly string[], extr
 /** The verdict a check recorded: green, or red with the message its finding carries. */
 export interface Verdict { readonly red: boolean; readonly message: string }
 
-/** The verdicts of one step (`project-check`, `nivoos-package`) of the folder, read at the start of a run and written back whole, every other step's record kept. */
+/**
+ * The verdicts of one step (`project-check`, `nivoos-package`) of the folder, read at the start of a run and written back whole, every other step's record kept. A verdict
+ * whose key holds what the checkout fetched (a remote ref) or built rather than what its commit carries is put `local`: it is kept in the machine-local records
+ * (CheckSession.localRecords), never in the committed folder, so two checkouts of one commit commit the same bytes (check-cache.md "Machine-local records").
+ */
 export class VerdictBook {
   private readonly records: RecordSet;
+  private readonly local: RecordSet;
   private readonly live = new Set<string>();
   private readonly session: CheckSession;
   private readonly step: string;
@@ -56,28 +61,38 @@ export class VerdictBook {
     this.step = step;
     this.reuse = reuse;
     this.records = new RecordSet(session.records(VERDICT_FOLDER));
+    this.local = new RecordSet(localRecordsOf(session, VERDICT_FOLDER));
   }
 
   /** The verdict recorded for `id` under exactly this key, when the run may read the cache. */
-  held(id: string, key: VerdictKey): Verdict | undefined {
+  held(id: string, key: VerdictKey, local = false): Verdict | undefined {
     this.live.add(id);
-    const record = this.reuse ? this.records.matching(id, this.step, key.key) : undefined;
+    const record = this.reuse ? (local ? this.local : this.records).matching(id, this.step, key.key) : undefined;
     const data = record?.data as { red?: unknown; message?: unknown } | undefined;
     return record === undefined || data === undefined ? undefined : { red: data.red === true, message: typeof data.message === 'string' ? data.message : '' };
   }
 
   /** Records the verdict of a check that ran to its own exit, when nothing it read changed while it ran. */
-  put(id: string, key: VerdictKey, verdict: Verdict): void {
+  put(id: string, key: VerdictKey, verdict: Verdict, local = false): void {
     this.live.add(id);
+    // A verdict lives in one place: a local one leaves the committed folder (an older harness committed it there), and the other way round.
+    (local ? this.records : this.local).delete(id, this.step);
     if (!this.session.unchanged(key.inputs, key.captured)) return;
     const record: CacheRecord = { path: id, step: this.step, hash: key.key, findings: [], data: { red: verdict.red, message: verdict.message } as JsonValue };
-    this.records.put(record);
+    (local ? this.local : this.records).put(record);
+  }
+
+  /** Forgets the committed verdict of `id` (one that is now kept locally, or not kept at all). */
+  dropCommitted(id: string): void {
+    this.records.delete(id, this.step);
   }
 
   /** Writes the folder back: the verdicts of this step for the checks that exist now, every other step's records as they were. */
   finish(): void {
     this.records.retain(this.step, this.live);
+    this.local.retain(this.step, this.live);
     this.session.replace(VERDICT_FOLDER, this.records.toArray());
+    replaceLocalRecords(this.session, VERDICT_FOLDER, this.local.toArray());
   }
 }
 

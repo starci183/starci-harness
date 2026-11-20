@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import type * as TypeScript from 'typescript';
 import { byCodeUnit } from '../lib/list.mjs';
+import { withoutBuildArtifacts } from './program-artifacts.mjs';
 
 // One TypeScript program per (compiler, root names, compiler options, project references) inside a program run, and
 // one value per (kind, compiler, input) for what callers derive from those programs (the architecture context).
@@ -91,7 +92,10 @@ export function readTypeScriptProject(ts: TsApi, configFile: string, readFile: (
   const read = ts.readConfigFile(configFile, readFile);
   if (read.error) return { read: read as typeof read & { error: TypeScript.Diagnostic }, parsed: null };
   const host = readFile === ts.sys.readFile ? ts.sys : { ...ts.sys, readFile };
-  return { read: read as typeof read & { error?: undefined }, parsed: ts.parseJsonConfigFileContent(read.config, host, path.dirname(configFile), undefined, configFile) };
+  const parsed = ts.parseJsonConfigFileContent(read.config, host, path.dirname(configFile), undefined, configFile);
+  // A build artifact the include globs reach (git ignores it, it is no generated code) is no root of the program: every checkout of one commit builds the same one.
+  const fileNames = withoutBuildArtifacts(path.dirname(configFile), parsed.fileNames);
+  return { read: read as typeof read & { error?: undefined }, parsed: fileNames.length === parsed.fileNames.length ? parsed : { ...parsed, fileNames } };
 }
 
 /** Resolve a project reference with the compiler's API, including older compiler fallback. */

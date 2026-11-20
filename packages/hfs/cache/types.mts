@@ -130,5 +130,14 @@ export interface CheckSession {
   journal?(folder: string, kind: 'rec' | 'raw', context?: string, part?: number): JournalSink | undefined;
   /** The `raw` lines of earlier runs of `folder` journaled under `context` and this run's fingerprint, torn lines dropped; none when journals are off. */
   journaled?(folder: string, context: string): readonly unknown[];
+  /**
+   * The machine-local records of a folder: verdicts whose key holds what a checkout fetched or built rather than what its commit carries (a remote ref such as
+   * `origin/dev` or the merge-base with `origin/main`, untracked build output). They live in the untracked tool cache, never in the committed cache, so two
+   * checkouts of one commit write byte-identical committed records whatever each fetched or built (check-cache.md "Machine-local records"). None when this run
+   * writes no cache (CI, a bypass, a local package) or the family's fingerprint parts moved on since they were written.
+   */
+  localRecords?(folder: string): readonly CacheRecord[];
+  /** Replaces the machine-local records of a folder; written on `flush` into the tool cache, never into the committed cache. */
+  replaceLocal?(folder: string, records: readonly CacheRecord[]): void;
   flush(): FlushResult;
 }

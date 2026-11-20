@@ -28,6 +28,16 @@ export class RecordSet {
     this.records.set(keyOf(record.path, record.step), record);
   }
 
+  /** Drops the record of (path, step), if any. */
+  delete(path: string, step: string): void {
+    this.records.delete(keyOf(path, step));
+  }
+
+  /** Whether the set holds a record of `step`. */
+  hasStep(step: string): boolean {
+    return [...this.records.values()].some((record) => record.step === step);
+  }
+
   /** Drops every record of `step` whose path is not in `keep`: a deleted path drops every record it owns. */
   retain(step: string, keep: ReadonlySet<string>): void {
     for (const [key, record] of this.records) if (record.step === step && !keep.has(record.path)) this.records.delete(key);
@@ -108,3 +118,9 @@ export function portableData(value: JsonValue, root: string): JsonValue {
 export function hostData(value: JsonValue, root: string, sep: string): JsonValue {
   return mapStrings(value, (text) => (text === APP_ROOT_TOKEN || text.startsWith(`${APP_ROOT_TOKEN}/`) ? `${root}${text.slice(APP_ROOT_TOKEN.length).split('/').join(sep)}` : text));
 }
+
+/** The machine-local records of a folder (CheckSession.localRecords), none for a session that keeps none. */
+export const localRecordsOf = (session: CheckSession, folder: string): readonly CacheRecord[] => session.localRecords?.(folder) ?? [];
+
+/** Replaces the machine-local records of a folder (CheckSession.replaceLocal); a session that keeps none drops them. */
+export const replaceLocalRecords = (session: CheckSession, folder: string, records: readonly CacheRecord[]): void => session.replaceLocal?.(folder, records);

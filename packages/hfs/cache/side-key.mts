@@ -1,12 +1,15 @@
 // side-key.mts - the key of a side for the steps that read its whole program (the architecture machine, the contract emit, the boot proof,
 // the type-aware lint rules, tsc). It is the sha256 of the hash of each tracked path of the side (`absent` for one deleted in the work tree),
 // its staged entries (the machine reads the index), and the untracked files its TypeScript program reads: what its tsconfig includes that git
-// does not track, generated code included. One edit anywhere in the side changes the key, so a scoped step re-runs the whole side.
+// does not track, generated code included. One edit anywhere in the side changes the key, so a scoped step re-runs the whole side. A build artifact the
+// tsconfig's globs reach (git ignores it and it is no generated code: a framework's environment declaration, its build folder's types, a dist) is no input:
+// a clean checkout has none, and the programs the key stands for do not read it (runtime/scripts/hfs/program-artifacts.mts).
 import fs from 'node:fs';
 import path from 'node:path';
 import { combineHashes, hashFile, hashText } from './hash.mjs';
 import { git } from './git.mjs';
 import { loadTypescript } from '../runtime/scripts/lib/package-at.mjs';
+import { buildArtifacts } from '../runtime/scripts/hfs/program-artifacts.mjs';
 import type { ContentIndex } from './types.mjs';
 
 export interface SideKey {
@@ -17,7 +20,7 @@ export interface SideKey {
   readonly hashes: Readonly<Record<string, string>>;
 }
 
-/** The untracked files the side's TypeScript program includes (generated code), side-relative paths prefixed with `side/`. */
+/** The untracked files the side's TypeScript program includes (generated code, never a build artifact), app-relative posix paths. */
 export function untrackedProgramInputs(root: string, side: string, tracked: ReadonlySet<string>): string[] {
   const ts = loadTypescript(root);
   const tsconfig = path.join(root, side, 'tsconfig.json');
@@ -32,7 +35,8 @@ export function untrackedProgramInputs(root: string, side: string, tracked: Read
       if (rel.startsWith('..') || rel.includes('/node_modules/') || tracked.has(rel)) continue;
       found.push(rel);
     }
-    return found.sort();
+    const artifacts = buildArtifacts(root, found);
+    return found.filter((file) => !artifacts.has(file)).sort();
   } catch {
     return [];
   }

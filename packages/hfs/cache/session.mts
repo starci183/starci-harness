@@ -207,6 +207,28 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
     }
   };
 
+  // ---- the machine-local records (CheckSession.localRecords): host runs only, in the untracked tool cache, each folder's file headed by the digest of its family's parts
+  const localBase = path.join(toolCacheDir(root, env), 'local-records');
+  const localFile = (folder: string): string => path.join(localBase, ...folder.split('/')) + '.jsonl';
+  const localHeader = (family: FamilyId): string => JSON.stringify({ local: 1, fp: digestOf(family) });
+  const localRead = new Map<string, readonly CacheRecord[]>();
+  const localReplaced = new Map<string, readonly CacheRecord[]>();
+  const readLocal = (folder: string): readonly CacheRecord[] => {
+    const known = localRead.get(folder);
+    if (known !== undefined) return known;
+    const family = familyOfFolder(folder);
+    let records: readonly CacheRecord[] = [];
+    if (writes && family !== null && !isFresh(family)) {
+      try {
+        const text = fs.readFileSync(localFile(folder), 'utf8');
+        const newline = text.indexOf('\n');
+        if (newline > 0 && text.slice(0, newline).trim() === localHeader(family)) records = parseRecords(text.slice(newline + 1)).records;
+      } catch { /* none kept yet */ }
+    }
+    localRead.set(folder, records);
+    return records;
+  };
+
   const session: DiskSession = {
     root,
     index,
@@ -241,6 +263,12 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
         sinks.set(key, sink);
       }
       return sink;
+    },
+    localRecords(folder: string): readonly CacheRecord[] {
+      return localReplaced.get(folder) ?? readLocal(folder);
+    },
+    replaceLocal(folder, records): void {
+      localReplaced.set(folder, records);
     },
     journaled(folder, context): readonly unknown[] {
       const family = familyOfFolder(folder);
@@ -307,6 +335,16 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
         if (replaced.size > 0 || stalePrint) writeIfChanged(path.join(base, FINGERPRINT_FILE), serializeFingerprint(fingerprint.parts), written);
       } catch (error) {
         warnings.push(`the cache could not be written: ${String((error as Error).message ?? error).split('\n')[0]}`);
+      }
+      // The machine-local records go to the tool cache: never part of written/removed, so never part of the committed cache or its push gate.
+      for (const [folder, records] of localReplaced) {
+        const family = familyOfFolder(folder);
+        if (family === null) continue;
+        try {
+          writeAtomic(localFile(folder), `${localHeader(family)}\n${serializeRecords(settledRecords(records))}`);
+        } catch (error) {
+          warnings.push(`the machine-local records of ${folder} could not be written: ${String((error as Error).message ?? error).split('\n')[0]}`);
+        }
       }
       if (journalsOn) {
         // What a folder this run did not finish keeps is what the next run resumes from, unless its parts moved on since.
