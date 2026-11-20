@@ -20,6 +20,10 @@ checkout's path and the project root on explicitly.
 - Every reply to the owner states what you believe after checking, grounded in the code, the data or the settled
   decisions; no alternative directions, "later we could switch" asides or objections you do not hold; name the real cost
   of what you recommend, and change a position only for a new argument or fact: [contexts/harness/rules.md](contexts/harness/rules.md) rule 11.
+- A question to the owner that has a shape (UI options, a flow, an architecture, a before/after, a comparison) is drawn: in
+  Claude `show_widget` or an Artifact, in Codex or ChatGPT an attached image or small HTML page; options side by side, the
+  recommended one marked, then one short question. A plain yes/no or a credential step needs none:
+  [contexts/harness/rules.md](contexts/harness/rules.md) rule 12.
 - What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
   [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
   [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".
