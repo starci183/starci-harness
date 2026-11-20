@@ -176,7 +176,7 @@ const norm = (agent: unknown): string => String(agent ?? '').trim().toLowerCase(
 
 /** The UI audit verdict of one touched screen (PROJECT-GALLERY-8): every finding with its code. Empty when the audit stands. */
 /** The changed file that causes a stale audit, with how many more reach the screen. */
-const causeOf = (changed: readonly string[] | undefined): string => (changed === undefined || changed.length === 0 ? '' : ` (changed: ${changed[0] as string}${changed.length > 1 ? ` and ${String(changed.length - 1)} more` : ''})`);
+export const causeOf = (changed: readonly string[] | undefined): string => (changed === undefined || changed.length === 0 ? '' : ` (changed: ${changed[0] as string}${changed.length > 1 ? ` and ${String(changed.length - 1)} more` : ''})`);
 
 export function judgeAudit(facts: AuditFacts): AuditFinding[] {
   const { id, value } = facts;

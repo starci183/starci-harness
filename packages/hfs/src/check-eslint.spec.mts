@@ -207,7 +207,7 @@ test('a counting-cohort warning is reported and counted per rule and never enter
   const checked = await invoke(['check', '--gate', 'lint', '--side', 'be'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
   assert.equal(checked.exit, 0, 'warnings never enter the verdict, however many there are');
   assert.equal(checked.report.gate.pass, true);
-  assert.deepEqual(checked.report.counts, { error: 0, warning: 25, info: 0 });
+  assert.deepEqual(checked.report.counts, { error: 0, warning: 25, info: 0, blocking: 0, reportOnly: 0, byCode: { 'starci-fe/no-spacing-utility': { level: 'warning', count: 25 } } });
   assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 25 });
   assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 25);
   assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning' && finding.level === 'warning').length, 25, 'a counting-cohort finding is a warning, never an error');

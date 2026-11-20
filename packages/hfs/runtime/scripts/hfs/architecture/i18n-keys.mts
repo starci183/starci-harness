@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CallExpression, Expression, Node, PropertyAssignment, StringLiteralLike, TemplateExpression, TypeChecker } from 'typescript';
+import type { CallExpression, Expression, Node, PropertyAssignment, SourceFile, StringLiteralLike, TemplateExpression, TypeChecker } from 'typescript';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
 import type { ArchitectureViolation, GraphFile, HfsGraph } from './hfs-graph.mjs';
 import type { MachineContext } from './machine-ast.mjs';
@@ -32,7 +32,7 @@ const READERS = new Set(['rich', 'raw', 'markup']);
 const APP_SOURCE = /^apps\/([^/]+)\/src\//u;
 
 /** One segment of a key pattern: literal text, `*` for a pure wildcard, or a regular expression for a partial interpolation. */
-type PatternSegment = string | RegExp;
+export type PatternSegment = string | RegExp;
 
 /** A locale catalog file of an app. */
 interface Catalog {
@@ -58,7 +58,7 @@ interface ReadContext {
   report: ReportAt;
 }
 
-const leavesOf = (value: unknown, prefix = ''): string[] => (value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length
+export const leavesOf = (value: unknown, prefix = ''): string[] => (value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length
   ? Object.entries(value).flatMap(([key, child]) => leavesOf(child, prefix ? `${prefix}.${key}` : key))
   : [prefix]);
 
@@ -70,7 +70,7 @@ const readCatalog = (root: string, rel: string): Set<string> | null => {
 const held = (leaves: Set<string>, full: string): boolean => leaves.has(full) || [...leaves].some(leaf => leaf.startsWith(`${full}.`));
 
 // A pattern that is only wildcards (`${a}`, `${a}.${b}`) names nothing: it would read every key, so it reads none.
-const tailMatches = (pattern: PatternSegment[], leafSegments: string[]): boolean => pattern.some(segment => segment !== '*' && segment !== '') && pattern.length <= leafSegments.length
+export const tailMatches = (pattern: PatternSegment[], leafSegments: string[]): boolean => pattern.some(segment => segment !== '*' && segment !== '') && pattern.length <= leafSegments.length
   && pattern.every((segment, index) => {
     const leaf = leafSegments[leafSegments.length - pattern.length + index];
     return segment instanceof RegExp ? segment.test(leaf as string) : segment === '*' || segment === leaf;
@@ -102,20 +102,23 @@ function templatePatternOf(node: TemplateExpression): PatternSegment[] {
   return pattern;
 }
 
-function patternsOf(ts: TypeScriptApi, files: GraphFile[]): PatternSegment[][] {
+/** The key patterns one source holds: each string literal and each template, as the dotted segments a catalog leaf can end with. */
+export function patternsOfSource(ts: TypeScriptApi, sourceFile: SourceFile): PatternSegment[][] {
   const patterns: PatternSegment[][] = [];
-  for (const file of files) {
-    const visit = (node: Node): void => {
-      if (ts.isStringLiteralLike(node)) patterns.push(node.text.split('.'));
-      else if (ts.isTemplateExpression(node)) patterns.push(templatePatternOf(node));
-      ts.forEachChild(node, visit);
-    };
-    visit(file.sourceFile);
-  }
+  const visit = (node: Node): void => {
+    if (ts.isStringLiteralLike(node)) patterns.push(node.text.split('.'));
+    else if (ts.isTemplateExpression(node)) patterns.push(templatePatternOf(node));
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
   return patterns;
 }
 
-function translationFactories(ts: TypeScriptApi, file: GraphFile): Set<string> {
+function patternsOf(ts: TypeScriptApi, files: GraphFile[]): PatternSegment[][] {
+  return files.flatMap((file) => patternsOfSource(ts, file.sourceFile));
+}
+
+function translationFactories(ts: TypeScriptApi, file: Pick<GraphFile, 'sourceFile'>): Set<string> {
   const factories = new Set<string>();
   for (const statement of file.sourceFile.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !MODULES.has(statement.moduleSpecifier.text)) continue;
@@ -128,7 +131,7 @@ function translationFactories(ts: TypeScriptApi, file: GraphFile): Set<string> {
   return factories;
 }
 
-function namespaceForCall(ts: TypeScriptApi, file: GraphFile, init: Expression, factories: Set<string>): string | null {
+function namespaceForCall(ts: TypeScriptApi, file: Pick<GraphFile, 'sourceFile'>, init: Expression, factories: Set<string>): string | null {
   let expression: Expression = init;
   if (ts.isAwaitExpression(expression)) expression = expression.expression;
   if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !factories.has(expression.expression.text)) return null;
@@ -141,7 +144,7 @@ function namespaceForCall(ts: TypeScriptApi, file: GraphFile, init: Expression, 
   return ts.isStringLiteralLike(property.initializer) ? property.initializer.text : null;
 }
 
-function translatorNamespaces(ts: TypeScriptApi, file: GraphFile, factories: Set<string>): Map<Node, string> {
+function translatorNamespaces(ts: TypeScriptApi, file: Pick<GraphFile, 'sourceFile'>, factories: Set<string>): Map<Node, string> {
   const namespaces = new Map<Node, string>();
   const collect = (node: Node): void => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
@@ -158,6 +161,45 @@ function keysOf(ts: TypeScriptApi, argument: Expression): StringLiteralLike[] {
   if (ts.isConditionalExpression(argument)) return [...keysOf(ts, argument.whenTrue), ...keysOf(ts, argument.whenFalse)];
   if (ts.isParenthesizedExpression(argument) || ts.isAsExpression(argument) || ts.isSatisfiesExpression(argument)) return keysOf(ts, argument.expression);
   return ts.isStringLiteralLike(argument) ? [argument] : [];
+}
+
+/** True when a key argument is spelled out in the source: a literal, or a conditional of literals (the cases `keysOf` reads). */
+function staticKey(ts: TypeScriptApi, argument: Expression): boolean {
+  if (ts.isConditionalExpression(argument)) return staticKey(ts, argument.whenTrue) && staticKey(ts, argument.whenFalse);
+  if (ts.isParenthesizedExpression(argument) || ts.isAsExpression(argument) || ts.isSatisfiesExpression(argument)) return staticKey(ts, argument.expression);
+  return ts.isStringLiteralLike(argument);
+}
+
+/**
+ * What one source reads of the catalogs, by the same rules as above: its key patterns (every string literal and template, the loose test the dead-key check uses) and the namespaces
+ * of the translators (`useTranslations("ns")`) it calls with a key that is not spelled out (a template or a variable): a change anywhere in such a namespace can change what the source
+ * renders. A namespace `''` is the whole catalog.
+ */
+export function i18nUsageOf(ts: TypeScriptApi, sourceFile: SourceFile): { patterns: PatternSegment[][]; dynamic: string[]; exact: string[]; translated: boolean } {
+  const patterns = patternsOfSource(ts, sourceFile);
+  const file = { sourceFile };
+  const translators = new Map<string, string>();
+  for (const [node, namespace] of translatorNamespaces(ts, file, translationFactories(ts, file))) {
+    const declared = node as { name?: Node };
+    if (declared.name !== undefined && ts.isIdentifier(declared.name)) translators.set(declared.name.text, namespace);
+  }
+  const dynamic = new Set<string>();
+  const exact = new Set<string>();
+  const read = (node: Node): void => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const owner = ts.isIdentifier(callee) ? callee : ts.isPropertyAccessExpression(callee) && READERS.has(callee.name.text) && ts.isIdentifier(callee.expression) ? callee.expression : null;
+      const [first] = node.arguments;
+      const namespace = owner === null ? undefined : translators.get(owner.text);
+      if (namespace !== undefined && first !== undefined) {
+        if (!staticKey(ts, first)) dynamic.add(namespace);
+        for (const literal of keysOf(ts, first)) exact.add(namespace === '' ? literal.text : `${namespace}.${literal.text}`);
+      }
+    }
+    ts.forEachChild(node, read);
+  };
+  read(sourceFile);
+  return { patterns, dynamic: [...dynamic], exact: [...exact], translated: translators.size > 0 };
 }
 
 function reportCallKeys(reads: ReadContext, node: CallExpression): void {

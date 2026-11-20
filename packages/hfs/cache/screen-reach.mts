@@ -22,7 +22,7 @@ const posix = (file: string): string => file.replace(/\\/g, '/');
 const SOURCE = /\.(?:[cm]?[jt]sx?|json)$/u;
 
 /** The app's TypeScript (resolved from the front-end app, then the app root), or null when none is installed. */
-function typescriptOf(repoRoot: string, appDir: string): Ts | null {
+export function typescriptOf(repoRoot: string, appDir: string): Ts | null {
   for (const from of [path.join(repoRoot, ...appDir.split('/'), 'package.json'), path.join(repoRoot, 'package.json')]) {
     try { return createRequire(from)('typescript') as Ts; } catch { /* the next place */ }
   }
@@ -124,8 +124,11 @@ function nodeOf(ts: Ts, compiler: { options: TypeScript.CompilerOptions; cache: 
   return node;
 }
 
-/** What a screen's route reaches: app-root relative posix files, and whether the walk stopped at MAX_REACH or had no TypeScript to resolve with. */
-export interface ScreenReach { files: Set<string>; capped: boolean; unresolved: boolean }
+/**
+ * What a screen's route reaches: app-root relative posix files, whether the walk stopped at MAX_REACH or had no TypeScript to resolve with, and for each reached file the
+ * names the walk takes from it (the union over every importer; null: all of it, as a side-effect, default, namespace or require import takes it).
+ */
+export interface ScreenReach { files: Set<string>; capped: boolean; unresolved: boolean; demand: Map<string, string[] | null> }
 
 /** A reach finder over one repository: `reachOf(route)` walks the route's page once and memoises the result per route file. */
 export function screenReacher(repoRoot: string): (route: FeRoute) => ScreenReach {
@@ -136,7 +139,7 @@ export function screenReacher(repoRoot: string): (route: FeRoute) => ScreenReach
     const appDir = route.file.split('/').slice(0, 3).join('/');
     const ts = typescriptOf(repoRoot, appDir);
     if (ts === null) {
-      const none = { files: new Set<string>(), capped: false, unresolved: true };
+      const none = { files: new Set<string>(), capped: false, unresolved: true, demand: new Map<string, string[] | null>() };
       done.set(route.file, none);
       return none;
     }
@@ -151,12 +154,15 @@ export function screenReacher(repoRoot: string): (route: FeRoute) => ScreenReach
     const seen = new Set<string>([start]);
     const queue = [start];
     const demanded = new Set<string>();
+    const demand = new Map<string, string[] | null>();
     const resolver = compiler;
     let capped = false;
     // An import of a pure re-export barrel reaches only the modules that export the names it takes (the barrel itself renders nothing); any other file is reached whole.
     const take = (file: string, names: string[] | null): void => {
       const node = nodeOf(ts, resolver, repoRoot, file);
       if (node.barrel === null) {
+        const known = demand.get(file);
+        demand.set(file, known === undefined ? names : known === null || names === null ? null : [...new Set([...known, ...names])]);
         if (!seen.has(file)) { seen.add(file); queue.push(file); }
         return;
       }
@@ -174,7 +180,7 @@ export function screenReacher(repoRoot: string): (route: FeRoute) => ScreenReach
       if (seen.size > MAX_REACH) { capped = true; break; }
       for (const next of nodeOf(ts, resolver, repoRoot, queue.pop() as string).imports) take(next.file, next.names);
     }
-    const result = { files: new Set([...seen].map((file) => posix(path.relative(repoRoot, file)))), capped, unresolved: false };
+    const result = { files: new Set([...seen].map((file) => posix(path.relative(repoRoot, file)))), capped, unresolved: false, demand: new Map([...demand].map(([file, names]) => [posix(path.relative(repoRoot, file)), names])) };
     done.set(route.file, result);
     return result;
   };

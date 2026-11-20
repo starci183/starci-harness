@@ -101,7 +101,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
 import { explainPath, readWhy, trackedFiles, untrackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
-import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
+import { judgedCounts, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { LegacyStateHeld, adoptLegacyState, skillRoot } from '../runtime/engine/runtime-root.mjs';
 import type { StateAdoption } from '../runtime/engine/runtime-root.mjs';
 import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
@@ -408,7 +408,9 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   const groupOf = (f: Dynamic): string => (typeof f.cutover === 'string' ? `${String(f.code)} ${f.cutover}` : String(f.code));
   for (const f of result.findings) byCode.set(groupOf(f), [...(byCode.get(groupOf(f)) ?? []), f]);
   for (const [group, list] of byCode) printFindingGroup(group.split(' ')[0] as string, list, out);
-  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.cutover ? ` (${counts.cutover} of them reported for an environment pending cutover)` : ''}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}${counts.local ? ` (${counts.local} of them local, report only until the restore)` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  const blocking = counts.blocking ?? counts.error;
+  const reportParts = [counts.cutover ? `${counts.cutover} for an environment pending cutover` : '', counts.reported ? `${counts.reported} outside the verdict on branch ${result.branchProfile?.profile}` : '', counts.local ? `${counts.local} local, until the restore` : ''].filter(Boolean);
+  out(`\n${blocking} blocking error finding${blocking === 1 ? '' : 's'}${counts.reportOnly ? `, ${counts.reportOnly} more reported, not blocking${reportParts.length > 0 ? ` (${reportParts.join('; ')})` : ''}` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
   const off = (result.branchProfile?.gatesOff ?? []) as { gate: string; reason: string }[];
   if (off.length > 0) out(`gates off by declaration, not judged and not counted as passed: ${off.map((entry) => `${entry.gate} (declared: ${entry.reason})`).join('; ')}\n`);
   for (const line of cutoverLines((result.cutover ?? []) as CutoverReport[])) out(`${line}\n`);
@@ -800,7 +802,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const judged = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
   const verdict = judged.pass ? { ...judged, line: localVerdictLine(localListed) } : judged;
   const toolErrors = [...(linted?.errors ?? []), ...style.errors, ...ratchetErrors];
-  const counts = { ...checked.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
+  // The counts are of the findings as judged: `error` every error finding, `blocking` the ones in the verdict, `reportOnly` the ones a pending cutover, the local registry or a report profile keeps out of it; `byCode` splits each code the same way.
+  const tally = judgedCounts(findings as Parameters<typeof judgedCounts>[0]);
+  const counts = { ...checked.counts, error: tally.error, warning: tally.warning, blocking: tally.blocking, reportOnly: tally.reportOnly, byCode: tally.byCode };
   const reported = findings.filter(finding => finding.report === true && finding.level === 'error' && finding.cutover === undefined && !localListed.includes(finding)).length;
   if (reported > 0) Object.assign(counts, { reported });
   const cutoverReported = findings.filter(finding => finding.cutover !== undefined).length;
