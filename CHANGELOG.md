@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased (train 184)
+## 1.1.0-alpha.185 - 2026-11-20
 
+- Added (`starci app stack`, forwarded to @starci/hfs 6.16.0): `stack db-upgrade --env <env> [--image <db@sha256>] [--old-image <ref>] [--execute]`, the declared Postgres major upgrade by dump and restore into a new volume (contexts/project/stacks.md PROJECT-STACKS-19), and `stack deploy --adopt` of an upgraded volume.
+- Added (`starci app db adopt`, forwarded to @starci/hfs 6.16.0): a database another tool built takes the baseline into its migration history once its schema is proved equal to the replayed baseline.
 - Changed (contexts): PROJECT-STACKS-20 in contexts/project/stacks.md and R450, an environment pending its cutover (@starci/hfs 6.16.0): its not-yet-cut-over findings are reported, not blocking, and every deploy to it is refused (STACK_CUTOVER_PENDING) until the cutover runbook removes the declaration.
 - Added (`starci lane remove <worktree> [--discard] [--execute]`): the only sanctioned removal of a lane worktree. It refuses a main or unregistered checkout and tracked changes, holds a per-worktree removal lock (`_remove-<hash>.lock` in the slot root; `slot run npm`, heavy install and build commands and the install cache refuse `WORKTREE_REMOVING` in a locked worktree), lists every junction and symlink at any depth with lstat without entering one, unlinks each as a link (never its target), refuses if one remains, then runs `git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left; the branch is kept. A dry run is the default.
+- Changed (contexts): rule 12 of contexts/harness/rules.md, a question to the owner that has a shape is drawn; AGENTS.md, the starci skill and the Supervisor brief carry it.
 
 ## 1.1.0-alpha.184 - 2026-11-20
 

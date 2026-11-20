@@ -201,7 +201,6 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_MANAGED_FILE_DRIFT` | error | a managed file that exists but differs from its render (the `managedBy` slots: hooks, workflows, sonar, the back-end `be.tool-config` files, `app.format-config`, the `scripts` block of `app.package-manifest`, compared as parsed JSON) |
 | `HFS_RULE_OFF_WITHOUT_REPLACEMENT` | error | `eslint.config.mjs`, or a front end's `stylelint.config.mjs`, differs from its managed factory render, so a rule could be off, warned or redefined in it |
 | `HFS_TOOL_CONFIG_LOCAL` | error | a repository holds a tool config outside the managed set (`.eslintrc*`, `.eslintignore`, a second `eslint.config.*` or `stylelint.config.*`, another prettier or lint-staged config, or a jest config in a back end that is not the one root file), a file that defines an ESLint rule or a stylelint plugin, a tool configuration key in a `package.json` (`eslintConfig`, `stylelint`, `prettier`, `lint-staged`, `jest`), or a script that runs eslint, stylelint or prettier with a flag that swaps the configuration |
-| `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render (no host URL; the ESLint report and HFS import paths), or the stack declaration names another quality gate than the one of `knowledge/sonar-gate.yaml` |
 | `HFS_TS_STRICT` | error | the root `tsconfig.json` sets, lowers or adds anything but `extends` the preset (`be.json`, `next.json`), the template's `exclude` and (back end) the three `paths`; the finding names the flag |
 | `HFS_EMPTY_DIR` | error | a directory with no file below it (git tracks none), outside `.git`, `node_modules` and `ignored` slots; the topmost one is reported |
 | `HFS_GHOST_TREE` | error | an empty directory beside a sibling whose name is within two edits of its own (`business` / `bussiness`) |
@@ -281,7 +280,7 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `AUDIT_EXCEPTION_UNUSED` | error | an exception that matches no finding at or above the level: remove it |
 | `AUDIT_EXCEPTION_ACTIVE` | report only | an exception that exempted a finding, printed on every run with advisory, package, via, reason, approvedBy, expires and days left |
 | `AUDIT_REPORT_UNREADABLE` | error | `npm audit --json` printed no report (registry unreachable, npm error) |
-| `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mts`) |
+| `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the ESLint report and HFS import paths, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mts`); or the stack declaration names another quality gate than the one of `knowledge/sonar-gate.yaml` |
 | `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mts`, run in batches by the format family) |
 | `HFS_FORMAT_TOOL_MISSING` | refusal (exit 2) | prettier is not installed in the repository; the format check is never skipped |
 

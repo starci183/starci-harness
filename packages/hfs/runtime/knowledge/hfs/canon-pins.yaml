@@ -60,16 +60,16 @@ pins:
     source: packages/next-i18n/package.json
     why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
-    version: 3.28.1
-    range: '~3.28.1'
+    version: 3.28.2
+    range: '~3.28.2'
     group: starci
     install: registry
     side: be
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.21.2
-    range: '~9.21.2'
+    version: 9.21.3
+    range: '~9.21.3'
     group: starci
     install: registry
     side: fe
@@ -168,14 +168,14 @@ pins:
     source: packages/seed/package.json
     why: 'the data standard of a project: the StoreAdapter and DriverAdapter ports, one export written to several copies, the copy contract and the line protocol, with the store and driver contract suites (./testing) and the git driver (./git, with renderStandard and runStandardAdapter, the adapter of a standard that keeps raw/: R434); the starter back end implements StoreAdapter for its database in integrations/seed, the one importer of the package (R426, R90), and imports only its types.'
   '@starci/gallery':
-    version: 0.1.13
+    version: 0.1.14
     group: starci
     install: registry
     side: fe
     source: packages/gallery/package.json
     why: 'the screenshot gallery of an app as one Vite config over the Grammar (PROJECT-GALLERY-1): the managed gallery/ is a vite.config.js that calls defineGallery from @starci/gallery/vite, a devDependency of gallery/ only (outside the workspaces); it reads gallery/pages, flows.json and the design canvas and draws each screen with its approved frame, shot, status dot, states and explanation.'
   '@starci/hfs':
-    version: 6.15.0
+    version: 6.16.0
     group: starci
     install: registry
     side: both

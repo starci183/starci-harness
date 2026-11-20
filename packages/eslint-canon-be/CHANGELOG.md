@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.28.2 - 2026-11-20
+
+- Changed: cut with @starci/hfs 6.16.0; requires @starci/hfs ~6.16.0 (no rule change).
+
 ## 3.28.1 - 2026-11-20
 
 - Changed: cut with @starci/hfs 6.15.0; requires @starci/hfs ~6.15.0. The specs follow the template and rule-file renames of hfs 6.15.0 (no rule change).

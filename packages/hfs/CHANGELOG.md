@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 6.16.0 - 2026-11-20
 
 - Added (R450, PROJECT-STACKS-20): an environment pending its cutover. `environments.<env>.cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` in .starcistacks/application-stacks.yaml (schema, `runtime/scripts/lib/stack-cutover.mts`) makes `app check` (both envs) report, for that environment alone, the findings of the codes failure-codes.yaml marks `cutoverTolerant` (`true`: STACKS_SEALED_MEMBER_MISSING, STACKS_LITE_SELFHOSTED_DB, STACKS_LITE_REDIS_PERSISTENCE, STACK_STORAGE_MISSING, STACKS_IMAGE_ENV_DIVERGES; `kept`: ENV_SEALED_UNREAD of a member or key `keep` names), listed `CUTOVER PENDING (<env>), REPORT ONLY` and in a section of their own beside the gates off by declaration (`runtime/scripts/hfs/check-cutover.mts`); every other finding still blocks. An unsound block is HFS_CUTOVER_DECLARATION_INVALID and a past `until` HFS_CUTOVER_EXPIRED, both blocking and judged outside the cache on every run that selects hfs; neither tolerates anything.
 - Added (`stack/cutover.mts`): while an environment carries a cutover block, `stack deploy` in every form (image, --ci-run, --urgent, --adopt, and so the managed stack-deploy.yml) and `stack prepare --execute` refuse it with STACK_CUTOVER_PENDING before any action module loads.
@@ -19,6 +19,7 @@
 - Fixed (`HFS_MANAGED_FILE_DRIFT` on package.json): sync no longer renders the root script `migrate` (`cli migrate run`, the TypeORM migrate path of the ops cli); the one edition migrates with SQL through the `db:*` scripts, so an app that removed `migrate` keeps it removed.
 - Fixed (`HFS_BACKING_UNUSED` against the stacks rule that demands `qdrant` in `sides.be.backing`): a declared backing service is also consumed by a back-end integration module named after it (`src/modules/integrations/<service>/`, imported by another file), the client an app writes over the service's own protocol. An app with a real npm client is judged as before.
 - Added (R259 `DB_MIGRATION_DESTRUCTIVE`): a table dropped by a contract migration and created anew, under the same name, by a later migration marked `-- replaces: <table>` is a replacement, not a destroyed object. The rule verifies the marked migration creates the table and sorts after the drop (else a finding on it), judges code references against the new definition and still refuses a read of a column the old table had and the new one lacks, and reports the lost rows of the old table as an info line. `db.destructiveRulings` is unchanged: it accepts an unreferenced object outside a contract migration and cannot cover a referenced table.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.16.0; @starci/eslint-canon-be 3.28.2, @starci/eslint-canon-fe 9.21.3, the Grammar family 0.52.0 (ranges `~3.28.2`, `~9.21.3`, `~0.52.0`) and @starci/gallery 0.1.14.
 
 ## 6.15.0 - 2026-11-20
 
