@@ -1,7 +1,7 @@
 import { join, resolve } from "node:path"
 import { mainCheckout } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
-import { holdLander, landPaths, lanesDir, releaseLockFile } from "../../harness/land-queue.js"
+import { holdLander, landPaths, lanesDir, releaseLockFile, touchLander } from "../../harness/land-queue.js"
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
@@ -39,6 +39,12 @@ export const laneLandVerb = defineVerb({
             migrations: flags.migrations ?? "db/migrations/",
         }
         if (!dryRun) holdLander(dir)
+        // The heartbeat: the lock's mtime moves every poll, through long gates too (the batch steps are async), so `lane status` tells a
+        // live lander from a hung or killed one.
+        const heartbeat = dryRun ? undefined : setInterval(() => {
+            touchLander(landPaths(dir).lander)
+        }, POLL_MS)
+        heartbeat?.unref()
         const batches: BatchRecord[] = []
         try {
             for (;;) {
@@ -48,6 +54,7 @@ export const laneLandVerb = defineVerb({
                 await new Promise((settle) => setTimeout(settle, record === undefined ? POLL_MS : 1000))
             }
         } finally {
+            clearInterval(heartbeat)
             if (!dryRun) releaseLockFile(landPaths(dir).lander, process.pid)
         }
         const message = batches.length === 0 ? "no lane is ready" : batches.map((batch) => `batch ${batch.batch}: ${batch.outcome}`).join("\n")
