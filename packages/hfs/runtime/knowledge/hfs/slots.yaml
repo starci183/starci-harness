@@ -807,7 +807,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING]
+    rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING, HFS_APP_GALLERY_ROUTE_AMBIGUOUS]
   - id: app.gallery-board
     since: 6.15.0
     profiles: [app]

@@ -109,6 +109,8 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 
 ## PROJECT-GALLERY-4 Every route of the front end has a screen
 
+0. **A route is keyed by its app.** Two front-end apps can serve the same path (a landing and the product both serve `/`), so every match of a screen to a route, a source, an exclusion, a board section or the UI-audit reach uses `<app>:<route key>`. A screen's app is, in order, the optional `app` of its `screen.yaml` (or its `explain.md` front matter), then the app whose route tree serves its route, then the single front-end app. Two apps serving the route and no `app` is `HFS_APP_GALLERY_ROUTE_AMBIGUOUS` (a warning in `--env local`, an error in `--env prod`): the harness never picks one. An entry of `gallery/routes.json` may carry `app` to exclude one app's route; without it, every app's route of that path is excluded. A board section takes `app` the same way. A project with one front-end app judges as before.
+
 1. **The rule.** Every user-facing route of the app's front end has at least one screen folder in `gallery/pages/` whose `explain.md`
    front matter `route` matches it. A route is a Next app router `page.tsx` under `fe/apps/<app>/src/app` (the slot `fe.route`, the
    same shape in every app). Its pattern is its folder path without the `[locale]` prefix and the `(group)` folders:
@@ -312,7 +314,7 @@ same order until it adopts a board.
 
 The owner's decision of 2026-11-19: a screen is described by one structured file, and a screen the diff touches is audited by an agent other than its builder.
 
-1. **`screen.yaml` replaces `explain.md` and `audit.json`.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`,
+1. **`screen.yaml` replaces `explain.md` and `audit.json`.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`, `app` (optional: the front-end app, needed only when two apps serve the route),
    `area`, `summary` (one to three sentences), `code` (the source paths the screen is built from, relative to the front-end app's `src/`), `shots` (`"1440"` and `"390"`, each `{ file, sha256 }`,
    `sha256` null before the first shot; a state shot `<state>-<width>`, such as `empty-1440`, is a further key and a further PNG), `sections` (top to bottom as the user reads:
    `id` in kebab case, `title`, `why` required; `shows`, `actions`, `states` mapping a state to its text or null, `needsApi` listing the "cần API" items, and the optional `law` and `grammar` lines a

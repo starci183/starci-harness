@@ -26,7 +26,7 @@ import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { declaredBasePort, galleryParams, galleryPort } from '../gallery.mjs';
 import type { GalleryParams } from '../gallery.mjs';
 import { flowList, linkTargets, missingFrontMatter, SHOT_FILES } from '../gallery-explain.mjs';
-import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
+import { excludedKeys, feRoutes, resolveScreenRoute, routeExclusions, staleExclusions, type FeRoute } from '../gallery-routes.mjs';
 import { boardFindings } from './gallery-board.mjs';
 import { designFindings } from './gallery-design.mjs';
 import { parseScreen, screenSource, SCREEN_FILE } from '../screen-yaml.mjs';
@@ -130,14 +130,21 @@ function jsonOf(repoRoot: string, file: string): { kind: 'absent' } | { kind: 'i
 /** The ids in `ids` that name no screen, as one message fragment. */
 const dangling = (ids: readonly string[], known: ReadonlySet<string>): string[] => [...new Set(ids.filter((id) => !known.has(id)))];
 
-/** The comparison keys of the routes the explain.md files of the screens declare (`route` of the front matter). */
-export function declaredRouteKeys(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[]): Set<string> {
+/** The comparison keys (`<app>:<path>`) of the routes the screens declare (`route` and optional `app` of screen.yaml), and the screens whose route two apps both serve with no `app` (`ambiguous`: screen file and the apps). */
+export function declaredRouteKeys(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[], routes: readonly FeRoute[] = feRoutes(repoRoot)): Set<string> {
+  return screenRouteKeys(repoRoot, params, screens, routes).keys;
+}
+
+export function screenRouteKeys(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[], routes: readonly FeRoute[]): { keys: Set<string>; ambiguous: Array<{ id: string; file: string; apps: string[]; route: string }> } {
   const keys = new Set<string>();
+  const ambiguous: Array<{ id: string; file: string; apps: string[]; route: string }> = [];
   for (const { area, screen } of screens) {
-    const route = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta['route'] ?? '';
-    if (route !== '') keys.add(routeKey(route));
+    const source = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel));
+    const resolved = resolveScreenRoute(routes, source?.explanation.meta ?? {});
+    if (resolved.key !== null) keys.add(resolved.key);
+    if (resolved.ambiguous.length > 0 && source !== null) ambiguous.push({ id: `${area}/${screen}`, file: source.file, apps: resolved.ambiguous, route: source.explanation.meta['route'] ?? '' });
   }
-  return keys;
+  return { keys, ambiguous };
 }
 
 /**
@@ -152,11 +159,11 @@ function routeFindings(repoRoot: string, params: GalleryParams, screens: readonl
   const file = `${params.dir}/routes.json`;
   const { exclusions, problem } = routeExclusions(readText(repoRoot, file));
   if (problem !== null) findings.push(found('HFS_APP_GALLERY_LINKS', file, `${file} ${problem} (PROJECT-GALLERY-4)`));
-  const real = new Set(routes.map((route) => route.key));
-  const stale = exclusions.filter((entry) => !real.has(routeKey(entry.route)));
+  const stale = staleExclusions(exclusions, routes);
   if (stale.length > 0) findings.push(found('HFS_APP_GALLERY_LINKS', file, `${file} excludes ${named(stale.map((entry) => entry.route))}, which ${stale.length === 1 ? 'is' : 'are'} no route of the front end: drop the entr${stale.length === 1 ? 'y' : 'ies'} (PROJECT-GALLERY-4)`));
-  const excluded = new Set(exclusions.map((entry) => routeKey(entry.route)));
-  const covered = declaredRouteKeys(repoRoot, params, screens);
+  const excluded = excludedKeys(exclusions, routes);
+  const { keys: covered, ambiguous } = screenRouteKeys(repoRoot, params, screens, routes);
+  for (const entry of ambiguous) findings.push(found('HFS_APP_GALLERY_ROUTE_AMBIGUOUS', entry.file, `the screen ${entry.id} shows ${entry.route}, which the apps ${entry.apps.join(' and ')} both serve: set \`app\` in its screen.yaml to the one it shows (PROJECT-GALLERY-4)`, { local: true }));
   for (const route of routes) {
     if (covered.has(route.key) || excluded.has(route.key)) continue;
     findings.push(found('HFS_APP_GALLERY_ROUTE_MISSING', route.file, `the route ${route.route} of ${route.app} has no screen in ${params.pages}/: add ${params.pages}/<area>/<screen>/explain.md whose front matter \`route\` is ${route.route}, or declare the route in ${file} with a reason (a developer-only route); a warning in --env local, an error in --env prod (PROJECT-GALLERY-4)`, { local: true }));

@@ -3523,6 +3523,19 @@ HFS_APP_GALLERY_ROUTE_MISSING:
   kind: check-finding
   localOnly: true
 
+HFS_APP_GALLERY_ROUTE_AMBIGUOUS:
+  title: "A screen's route is served by two apps and the screen names none"
+  title_vi: "Route của màn hình do hai app cùng phục vụ mà màn hình không nêu app"
+  meaning_vi: "Hai app front end (fe/apps/<a> và fe/apps/<b>) đều có page.tsx cho cùng một route (ví dụ `/`), và screen.yaml của màn hình (hoặc một section của board) trỏ vào route đó mà không có trường `app`; harness không đoán app nào."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-4): route được khoá theo app (`<app>:<route>`); màn hình của một route do nhiều app phục vụ phải nêu app."
+    - "Landing và app chính cùng phục vụ `/`: thiếu `app` làm mã của app này bị tính là đổi màn hình của app kia."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Thêm `app: <tên app>` vào screen.yaml của màn hình (hoặc vào section của board) cho đúng app mà màn hình vẽ."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED:
   title: "A change to a screen's source follows an approved canvas page"
   title_vi: "Mã màn hình đổi nhưng trang canvas chưa được duyệt trước khi code"

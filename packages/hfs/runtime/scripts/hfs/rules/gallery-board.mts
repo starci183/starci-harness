@@ -10,7 +10,7 @@ import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import type { GalleryParams } from '../gallery.mjs';
-import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
+import { excludedKeys, feRoutes, resolveScreenRoute, routeExclusions } from '../gallery-routes.mjs';
 import { found, readText } from './read.mjs';
 
 /** The board folder inside the gallery folder, and its record. */
@@ -22,6 +22,8 @@ export interface BoardSection {
   id: string;
   title: string;
   route: string;
+  /** The front-end app that serves the route, when two apps serve it. */
+  app?: string;
   planned: boolean;
   states: string[];
   needsApi: string[];
@@ -37,7 +39,7 @@ export interface Board {
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const BOARD_KEYS = new Set(['schema', 'revision', 'approvedAt', 'tokens', 'sections']);
-const SECTION_KEYS = new Set(['id', 'title', 'route', 'planned', 'states', 'needsApi']);
+const SECTION_KEYS = new Set(['id', 'title', 'route', 'app', 'planned', 'states', 'needsApi']);
 /** The state every section draws first: the screen at rest. */
 export const DEFAULT_STATE = 'default';
 
@@ -66,7 +68,7 @@ function sectionOf(value: unknown, index: number, boardDir: string, exists: (rel
   const module = `${boardDir}/${id}.tsx`;
   if (problems.length === 0 && !exists(module)) problems.push(`${at} (${id}) has no module ${module}: each section is drawn by its own file, composed only of Grammar components`);
   if (problems.length > 0) return { section: null, problems };
-  return { section: { id, title: (entry['title'] as string).trim(), route, planned: entry['planned'] === true, states: states as string[], needsApi: needsApi as string[] }, problems };
+  return { section: { id, title: (entry['title'] as string).trim(), route, ...(typeof entry['app'] === 'string' && entry['app'].trim() !== '' ? { app: entry['app'].trim() } : {}), planned: entry['planned'] === true, states: states as string[], needsApi: needsApi as string[] }, problems };
 }
 
 /** The board of `text` (the record's YAML), or the problems that make it no board. */
@@ -117,17 +119,25 @@ export function boardFindings(repoRoot: string, params: GalleryParams) {
   if (board === null) return [found('HFS_APP_GALLERY_BOARD_INVALID', file, `${file} ${problems.slice(0, 6).join('; ')}${problems.length > 6 ? `; and ${problems.length - 6} more` : ''} (PROJECT-GALLERY-9)`)];
   const routes = feRoutes(repoRoot);
   const { exclusions } = routeExclusions(readText(repoRoot, `${params.dir}/routes.json`));
-  const excluded = new Set(exclusions.map((entry) => routeKey(entry.route)));
+  const excluded = excludedKeys(exclusions, routes);
   const coded = new Set(routes.map((route) => route.key));
-  const drawn = new Set(board.sections.map((section) => routeKey(section.route)));
+  // a section is keyed by its app like a route: its own `app`, else the app that serves its route, else the single app
+  const resolved = new Map(board.sections.map((section) => [section.id, resolveScreenRoute(routes, { route: section.route, ...(section.app === undefined ? {} : { app: section.app }) })] as const));
+  const keyOf = (section: BoardSection): string | null => resolved.get(section.id)?.key ?? null;
+  const drawn = new Set([...resolved.values()].flatMap((entry) => (entry.key === null ? [] : [entry.key])));
   const findings = [];
+  for (const section of board.sections) {
+    const apps = resolved.get(section.id)?.ambiguous ?? [];
+    if (apps.length > 0) findings.push(found('HFS_APP_GALLERY_ROUTE_AMBIGUOUS', file, `${file} section ${section.id} draws ${section.route}, which the apps ${apps.join(' and ')} both serve: set its \`app\` to the one it shows (PROJECT-GALLERY-4)`, { local: true }));
+  }
   for (const route of routes) {
     if (drawn.has(route.key) || excluded.has(route.key)) continue;
     findings.push(found('HFS_APP_GALLERY_BOARD_ROUTE_MISSING', route.file, `the route ${route.route} of ${route.app} has no section on the board ${file}: add a section whose \`route\` is ${route.route} with its module ${boardDir}/<area>/<screen>.tsx, or exclude the route in ${params.dir}/routes.json with a reason; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
   }
-  const unmapped = board.sections.filter((section) => !section.planned && !coded.has(routeKey(section.route)));
+  const ambiguousIds = new Set(board.sections.filter((section) => (resolved.get(section.id)?.ambiguous ?? []).length > 0).map((section) => section.id));
+  const unmapped = board.sections.filter((section) => !section.planned && !ambiguousIds.has(section.id) && !coded.has(keyOf(section) ?? ''));
   if (unmapped.length > 0) findings.push(found('HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', file, `${file} draws ${named(unmapped.map((section) => `${section.id} (${section.route})`))}, whose route the front end does not have: correct the route, or mark the section \`planned: true\` until it is coded; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
-  const built = board.sections.filter((section) => section.planned && coded.has(routeKey(section.route)));
+  const built = board.sections.filter((section) => section.planned && coded.has(keyOf(section) ?? ''));
   if (built.length > 0) findings.push(found('HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', file, `${file} marks ${named(built.map((section) => `${section.id} (${section.route})`))} planned, but the route is coded: drop \`planned\`; a warning in --env local, an error in --env prod (PROJECT-GALLERY-9)`, { local: true }));
   return findings;
 }
