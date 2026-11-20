@@ -1688,6 +1688,7 @@ slots:
       - HFS_APP_GALLERY_DESIGN_SHOT_STALE
       - HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
       - HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING
+      - HFS_APP_GALLERY_DESIGN_PENDING
   - id: app.starcistacks.security
     profiles:
       - app

@@ -66,7 +66,7 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                 <Heading level={2}>{cap(screen.title)}</Heading>
                 <div className="sg-chips">
                     <Badge isDot tone={TONE[screen.status]}>
-                        {statusLabel(labels, screen.status, screen.designStatus)}
+                        {statusLabel(labels, screen.status, screen.designStatus, screen.pending)}
                     </Badge>
                     <Text size="xs" tone="muted" mono>
                         {screen.id}

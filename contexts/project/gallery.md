@@ -136,8 +136,12 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    the page imports (a thin page imports exactly one feature; a component a feature takes from `components/` is not followed). A
    route with several screen folders is current when any of their `explain.md` files is touched.
 2. **What is judged.** `starci app check` (a whole run) judges the files the commits since the base, the index and the work tree
-   change: the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/<branch>`, else `HEAD^` (the base the lint
-   ratchet uses). The pre-commit guard (`starci app check --staged`) lists the same finding for the staged files and never blocks
+   change. On a branch other than `main` and `dev` the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/dev`, else with
+   `origin/main`, so a lane's own check judges the whole diff the batch lander's gate judges (the lane merged into `origin/dev`); on `main`, on `dev`
+   or when none of those refs is behind `HEAD` it is the lint ratchet's base (`origin/<branch>`, else `HEAD^`). The same base serves
+   `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7) and the UI Audit (PROJECT-GALLERY-8), and the run prints it
+   (`gallery coupling: judged N file(s) changed since <sha>, <why>`). A lane's own `origin/<lane>` is never the base: once the lane is pushed it
+   equals `HEAD` and the base would fall to `HEAD^`, the last commit alone. The pre-commit guard (`starci app check --staged`) lists the same finding for the staged files and never blocks
    the commit.
 3. **Severity.** A warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4. An excluded route and a route
    with no screen have nothing to keep current (the second is `HFS_APP_GALLERY_ROUTE_MISSING`).
@@ -197,7 +201,7 @@ the gate judges.
    ```
    `areas` lists the areas whose screens are designed before code; every page id is in one of them. `board` is the https link of the published
    board. `approvedAt` (a full ISO timestamp with its zone, never a bare date) is set from `approved` on and absent before. `shots` holds the lowercase sha256 of the 1440 and 390 PNGs
-   from `built` on and is absent before. `matchedAt` is set with `matches` and is absent before. No other key.
+   from `built` on and is absent before. `matchedAt` is set with `matches` and is absent before. `pending` is optional (item 9). No other key.
 5. **The lifecycle, and who sets each status.**
    - `drafted`: the lead, when the screen is drawn on the board. A redraw of an approved screen returns it to `drafted` and drops `approvedAt` and
      `shots`.
@@ -221,6 +225,17 @@ the gate judges.
    no `gallery/pages` folder needed: its frames at 1440 and 390 and its note (what the board shows on claude.ai; whoever does not open the board there reads
    it here) with the chip of its status (`Bản vẽ, chờ duyệt`, `Đã duyệt, chưa code`). The gallery only reads: approval is the owner's word recorded in
    `design.json` by the lead (item 5), and no button of the gallery writes it.
+9. **A screen approved but not buildable yet is `pending`.** A screen that waits on data or an API often lives on a query state of a route the code really
+   changes (`/premium?step=qr`, `/premium/result?state=expired`): it renders the page's own code, so matching on the route alone flags it for a change
+   it cannot yet be built for, and its `approvedAt` predates that change. Its entry carries `"pending": { "reason": "<what it waits on>" }`:
+   ```json
+   "premium/qr-payment": { "status": "approved", "approvedAt": "2026-11-11T09:00:00+07:00", "board": "https://claude.ai/artifact/…", "pending": { "reason": "waits on the QR payment API" } }
+   ```
+   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below) and by the UI Audit (PROJECT-GALLERY-8 item 4), the gallery shows it as
+   `Chờ: <reason>` (`pending: <reason>` in English) instead of hiding it, and its folder in `gallery/pages` is no longer needed to keep the note (the reason is the
+   note). It is not a silent bypass: `reason` is required and non-empty, and only `drafted` or `approved` may carry it (a `built` page is judged like any
+   other); every run lists each pending screen with its reason, and a pending screen whose shots exist in the work tree is nudged to drop `pending`
+   (`HFS_APP_GALLERY_DESIGN_PENDING`, level info, never failing). A board section (PROJECT-GALLERY-9) carries the same `pending: { reason }`.
 
 **Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, `gallery-routes.mts` and `gallery-design.mts`, values from `ruleParams.gallery`):
 
@@ -253,6 +268,7 @@ the gate judges.
 - `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` (`rules/gallery-design.mts`; not `localOnly`): a `matches` page whose `explain.md` has no non-empty section
   `## Phương án đã cân nhắc`. An error when the page's `matchedAt` is at or after `2026-11-18T00:00:00+07:00` (the release of this rule); for an older
   `matches` page, or one with no `matchedAt`, it is level `info` ("not final yet"): listed, never failing, so the owner fixes those gradually.
+- `HFS_APP_GALLERY_DESIGN_PENDING` (level info, never failing): lists every `pending` screen with its reason, and nudges a pending screen that has a shot in the work tree to drop the mark (item 9). A pending with no reason, a malformed one, or one on a `built` or `matches` page is `HFS_APP_GALLERY_DESIGN_MANIFEST`.
 - `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (`localOnly`): a `drafted` or `approved` page still records `shots` (a record older than the approval), or
   a 1440 or 390 shot in the work tree is not the sha the manifest records.
 
@@ -389,7 +405,8 @@ shots come from the code. It replaces drawing screen by screen.
    width. The board renders in the gallery's dev server (`starci app stack up`, the gallery port). **Known gap**: `vite build` of the gallery
    leaves the board out, so a static export of the gallery holds no board.
 4. **Coverage.** Every coded route has a section, and every section has a coded route or is marked `planned`; a coded route excluded in
-   `gallery/routes.json` needs none.
+   `gallery/routes.json` needs none. A section for a state of a coded route that waits on data or an API (`/premium?step=qr`) carries `pending: { reason: <what it waits on> }`
+   (the same record as PROJECT-GALLERY-6 item 9; the reason is required and non-empty) and is then neither unmapped nor "planned while coded"; the gallery shows it as `pending: <reason>`.
 5. **Review copy for the owner.** The repository board is the source. A Claude Artifact of it is a review copy for the owner's comments only:
    open `#/board`, take its 1440 and 390 frames at full size and publish them with the revision number; a comment returns as a new revision,
    never as an edit of the copy.

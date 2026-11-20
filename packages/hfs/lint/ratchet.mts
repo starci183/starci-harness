@@ -48,6 +48,24 @@ export function ratchetBase(repoRoot: string, env: NodeJS.ProcessEnv, branch: st
   return parent === null ? { base: null, source: 'a root commit: every file is new' } : { base: parent, source: 'HEAD^' };
 }
 
+/**
+ * The base of the gate that judges what a lane brings (the gallery coupling and the UI audit): the merge-base of HEAD with STARCI_BASE_REF, else with origin/dev, else origin/main, so a lane's own
+ * check judges the same diff the batch lander's gate does (a detached merge of the lane into origin/dev, whose base is origin/dev). On `main` or `dev` themselves, or when none of those refs is
+ * behind HEAD, it is the range ratchet's base. The origin/<branch> of the lane is deliberately skipped: once the lane is pushed it equals HEAD, and the base would fall to HEAD^, the last commit alone.
+ */
+export function landingBase(repoRoot: string, env: NodeJS.ProcessEnv, branch: string | null): { base: string | null; source: string } {
+  if (branch !== 'main' && branch !== 'dev') {
+    const head = sha(repoRoot, 'HEAD');
+    const named = env.STARCI_BASE_REF?.trim();
+    for (const ref of [named, 'origin/dev', 'origin/main']) {
+      if (ref === undefined || ref === '') continue;
+      const merged = git(repoRoot, ['merge-base', 'HEAD', ref])?.trim();
+      if (merged && merged !== head) return { base: merged, source: `the merge-base of HEAD with ${ref}` };
+    }
+  }
+  return ratchetBase(repoRoot, env, branch);
+}
+
 /** The text of `file` at `rev` (`:` the index), or null when it does not exist there. */
 const textAt = (repoRoot: string, rev: string, file: string): string | null => git(repoRoot, ['show', `${rev}:${file}`]);
 

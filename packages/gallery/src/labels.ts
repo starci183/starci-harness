@@ -32,6 +32,8 @@ export interface Labels {
     readonly statusDiffers: string
     readonly statusStale: string
     readonly statusNotBuilt: string
+    /** The chip of a pending screen; `{reason}` is the reason design.json records. */
+    readonly statusPending: string
     readonly statusUnrecorded: string
     readonly statusCodedOnly: string
     readonly unrecordedHint: string
@@ -160,6 +162,7 @@ export const LABELS = Object.freeze({
         statusDiffers: "Built, differs",
         statusStale: "Stale shot",
         statusNotBuilt: "Drawn, not coded",
+        statusPending: "Pending: {reason}",
         statusUnrecorded: "Coded, not recorded",
         statusCodedOnly: "Coded, no design drawn",
         unrecordedHint: "Drawn and coded, but design.json has no entry for this page: record it (PROJECT-GALLERY-6, PROJECT-GALLERY-7).",
@@ -286,6 +289,7 @@ export const LABELS = Object.freeze({
         statusDiffers: "Đã code, còn lệch",
         statusStale: "Ảnh đã cũ",
         statusNotBuilt: "Có bản vẽ, chưa code",
+        statusPending: "Chờ: {reason}",
         statusUnrecorded: "Đã code, chưa ghi duyệt",
         statusCodedOnly: "Đã code, chưa có bản vẽ",
         unrecordedHint: "Đã có bản vẽ và đã code, nhưng design.json chưa có mục cho trang này: hãy ghi lại (PROJECT-GALLERY-6, PROJECT-GALLERY-7).",

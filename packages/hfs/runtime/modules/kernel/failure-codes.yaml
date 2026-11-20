@@ -3547,6 +3547,17 @@ HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_APP_GALLERY_DESIGN_PENDING:
+  title: "A pending screen is skipped by the change gates, listed with its reason"
+  title_vi: "Màn hình đánh dấu pending (đã duyệt nhưng chưa dựng được) được liệt kê kèm lý do, và nhắc bỏ dấu khi đã có ảnh thật"
+  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json có `pending: { reason }`: đã duyệt nhưng chưa dựng được vì chờ dữ liệu hoặc API, nằm trên một trạng thái query của route mà code đã đổi. Cổng đổi giao diện (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) và UI Audit bỏ qua nó. Mức info, không bao giờ chặn: mỗi lần chạy liệt kê mọi màn hình pending với lý do, và nhắc bỏ `pending` khi màn hình đã có ảnh thật trong cây làm việc."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6 mục 9): pending không phải đường tắt im lặng; nó phải có lý do khác rỗng, và chỉ dùng cho màn hình chưa dựng được."
+    - "Màn hình đã được dựng và chụp nhưng design.json vẫn còn pending: cổng đổi giao diện đang bỏ qua một màn hình thật."
+  nextStep_vi: "Khi màn hình đã dựng, bỏ `pending` khỏi mục của nó trong design.json (cùng commit ghi built); nếu chưa dựng được, giữ lý do và nói rõ nó chờ gì."
+  owner: op-retry
+  kind: check-finding
+
 HFS_APP_GALLERY_BOARD_INVALID:
   title: "The design board record has its shape and every section its module"
   title_vi: "Sổ của board thiết kế (gallery/board/board.yaml) sai dạng hoặc một mục thiếu tệp vẽ"

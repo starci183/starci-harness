@@ -184,3 +184,11 @@ test("screen.yaml is the description of a screen: sections, options and audit ar
     assert.equal(model.screens["agents/legacy"].title, "Cũ")
     assert.equal(model.screens["agents/legacy"].auditFlag, null)
 })
+
+test("a screen design.json marks pending shows with its reason instead of being hidden, and its label says so", () => {
+    const raw = { screens: {}, frames: {}, design: { areas: ["premium"], pages: { "premium/qr-payment": { status: "approved", approvedAt: "2026-11-11T09:00:00+07:00", pending: { reason: "waits on the QR payment API" } }, "premium/plans": { status: "approved" } } } }
+    const model = buildModel(raw)
+    assert.equal(model.screens["premium/qr-payment"]?.pending, "waits on the QR payment API")
+    assert.equal(model.screens["premium/plans"]?.pending, null)
+    assert.equal(model.counts.notCoded, 2, "a pending screen is not coded, and it is counted")
+})
