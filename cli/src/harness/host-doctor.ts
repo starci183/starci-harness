@@ -88,12 +88,27 @@ export const doctorGroups = (config: HostConfig, stack: string): Group[] => {
 /** One docker call: its exit code and output; a docker that cannot start answers as a failed call, so the caller reads it as Docker being down. */
 export type Docker = (args: readonly string[], timeoutMs?: number) => Promise<ToolRun>
 
+/** The docker subcommands the doctor runs: inspection and container or network control, none of which builds an image or starts a workload. */
+const LIGHT_DOCKER = new Set(["ps", "inspect", "info", "network", "restart", "stop", "rm"])
+
+/**
+ * The argv of one light docker call, so the doctor needs no heavy-command slot (a self-heal probe must not wait for a starved host's slot).
+ * The one `run` it takes is the probe: a throwaway `--rm` container with a shell entrypoint, bounded by the probe timeout. A build, a compose
+ * call or any other run is refused, so the doctor never spawns a heavy command outside the governor (`starci check heavy-sites`).
+ */
+export const lightDockerArgs = (args: readonly string[]): readonly string[] => {
+    const verb = args[0] ?? ""
+    const probe = verb === "run" && args.includes("--rm") && args[args.indexOf("--entrypoint") + 1] === "sh"
+    if (!LIGHT_DOCKER.has(verb) && !probe) throw new Error(`host doctor runs only light docker calls (${[...LIGHT_DOCKER].join(", ")}, the --rm probe), not docker ${verb}`)
+    return args
+}
+
 /** The real docker, run without a shell from the session-free environment. */
 export const realDocker =
     (cwd: string): Docker =>
     async (args, timeoutMs = 60_000) => {
         try {
-            return await captureTool("docker", args, cwd, { timeoutMs, baseEnv: serviceEnv() })
+            return await captureTool("docker", lightDockerArgs(args), cwd, { timeoutMs, baseEnv: serviceEnv() })
         } catch (error: unknown) {
             if (error instanceof ToolNotStarted) return { exitCode: 1, stdout: "", stderr: error.message, timedOut: false }
             throw error
