@@ -3,8 +3,8 @@
 # `starci-runner` (/etc/sudoers.d/90-starci-runner); it checks its arguments again itself, since a sudo rule is not a parser.
 #   starci-deploy-run <app> <env> <tag>
 # Steps, one deploy at a time on the whole server (flock /run/starci-runner.lock, shared by every app on the box):
-#   1. fetch the app's repository with its READ-ONLY deploy key (/etc/starci-runner/<app>/repo_key) into /var/lib/starci-runner/<app>/src and
-#      check out the ANNOTATED tag; the tag must equal v<package.json version>;
+#   1. fetch the release tag over HTTPS (REPO_URL) with the CI job's own token from stdin into /var/lib/starci-runner/<app>/src and check out
+#      the ANNOTATED tag; the tag must equal v<package.json version> (the server holds no repository key: deploy keys may be off for the org);
 #   2. npm ci --ignore-scripts with the pinned Node (/opt/starci-node/bin);
 #   3. read the image digests of the tag's commit from the registry with the credentials on stdin (two lines, user and token: the CI job's
 #      own short-lived GITHUB_TOKEN with packages: read, which dies with the job), or, when stdin is empty, /etc/starci-runner/<app>/registry_token:
@@ -32,14 +32,14 @@ REPO_URL='' IMAGE_PREFIX='' SERVICES_staging='' SERVICES_production='' IMAGE_WAI
 case "$IMAGE_PREFIX" in ghcr.io/*) ;; *) die "IMAGE_PREFIX must be a ghcr.io prefix" ;; esac
 eval "services=\${SERVICES_$env}"
 [ -n "$services" ] || die "no SERVICES_$env in $conf"
-key=/etc/starci-runner/$app/repo_key
+case "$REPO_URL" in https://github.com/*.git) ;; *) die "REPO_URL must be https://github.com/<owner>/<repo>.git" ;; esac
 token=/etc/starci-runner/$app/registry_token
-[ -r "$key" ] || die "missing $key"
-# registry credentials: stdin first (the CI job's token), else the server's file; held in memory only
+# the CI job's credentials on stdin (user, token: its own GITHUB_TOKEN with contents: read and packages: read, dead when the job ends), else the
+# server's fallback file; held in memory and in the environment of this root process only, never in an argument (/proc/<pid>/cmdline is world-readable)
 reg_user='' reg_token=''
 if [ ! -t 0 ]; then IFS= read -r reg_user || true; IFS= read -r reg_token || true; fi
 if [ -z "$reg_token" ] && [ -r "$token" ]; then reg_user=$(sed -n 1p "$token"); reg_token=$(sed -n 2p "$token"); fi
-[ -n "$reg_user" ] && [ -n "$reg_token" ] || die "no registry credentials (stdin or $token)"
+[ -n "$reg_user" ] && [ -n "$reg_token" ] || die "no credentials (stdin or $token)"
 
 work=/var/lib/starci-runner/$app
 log=/var/log/starci-runner/$app.log
@@ -54,10 +54,14 @@ exec > >(tee -a "$log") 2>&1
   export PATH="$NODE_HOME/bin:/usr/local/bin:/usr/bin:/bin"
   export HOME="$work/home" XDG_DATA_HOME="$work/data" npm_config_cache="$work/npm-cache"
   mkdir -p "$HOME/.ssh" "$XDG_DATA_HOME"
-  export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/starci-runner/github_known_hosts"
   src=$work/src
-  if [ ! -d "$src/.git" ]; then git clone --quiet --no-checkout "$REPO_URL" "$src"; fi
-  git -C "$src" fetch --quiet --force --prune origin "refs/tags/$tag:refs/tags/$tag"
+  # the token rides in an HTTP header set through git's environment config (never a URL, never an argument, never written to .git/config)
+  basic=$(printf 'x-access-token:%s' "$reg_token" | base64 -w0)
+  if [ ! -d "$src/.git" ]; then git init --quiet "$src"; git -C "$src" remote add origin "$REPO_URL"; fi
+  GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
+    GIT_CONFIG_KEY_1=credential.helper GIT_CONFIG_VALUE_1='' \
+    git -C "$src" fetch --quiet --force --no-tags origin "+refs/tags/$tag:refs/tags/$tag"
+  unset basic
   [ "$(git -C "$src" cat-file -t "refs/tags/$tag")" = tag ] || die "$tag is not an annotated tag"
   git -C "$src" -c advice.detachedHead=false checkout --quiet --force "refs/tags/$tag^{commit}"
   git -C "$src" clean -qfdx -e node_modules

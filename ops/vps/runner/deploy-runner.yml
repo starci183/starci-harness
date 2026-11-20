@@ -1,9 +1,9 @@
 # deploy-runner.yml - the CI deploy of an app on the GitHub Free plan through the server-side runner (owner 2026-11-21). Copy it to the app's
 # .github/workflows/ and set APP below. A green release tag v* deploys staging, smoke-checks it, then deploys production and smoke-checks it.
 # GitHub never holds an age key or an opened value: the job only asks the server, over a forced-command SSH key, to `deploy <app> <env> <tag>`;
-# the server fetches the tag with its own read-only repository key, opens the sealed members with its own age key and deploys
+# the server fetches the tag with the job's own token (sent on stdin, never stored), opens the sealed members with its own age key and deploys
 # (ops/vps/runner/starci-deploy-gate and starci-deploy-run of the harness). The job holds:
-# The registry is read with the job's own GITHUB_TOKEN (packages: read), sent on the SSH stdin; the server keeps no registry token.
+# The tag fetch and the registry read use the job's own GITHUB_TOKEN (contents: read, packages: read), sent on the SSH stdin; the server keeps no token.
 #   secrets  RUNNER_SSH_KEY     the private half of the CI deploy key (the server's authorized_keys forces it through starci-deploy-gate)
 #            RUNNER_KNOWN_HOSTS the server's pinned host keys, one known_hosts line per key: [host]:port <type> <key>
 #            RUNNER_HOST        the server's address
@@ -87,7 +87,7 @@ jobs:
       - name: deploy staging
         env:
           TOKEN: ${{ github.token }}
-        # the job's own token (packages: read, this repository, dies with the job) on stdin: the server pulls the images with it
+        # the job's own token (contents + packages: read, this repository, dies with the job) on stdin: the server fetches the tag and pulls the images with it
         run: printf '%s\n%s\n' "$GITHUB_ACTOR" "$TOKEN" | ssh -T runner "deploy ${APP} staging ${GITHUB_REF_NAME}"
       - name: smoke staging
         shell: bash

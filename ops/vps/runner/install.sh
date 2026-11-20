@@ -1,11 +1,11 @@
 #!/bin/bash
 # install.sh - installs the CI deploy runner on a managed server, as root (sudo -n bash -s -- <action> ... < install.sh). Idempotent; every action
-# prints what it changed; `uninstall` is the undo of all of them. No secret is ever an argument: the private repo key and the registry token come on stdin.
+# prints what it changed; `uninstall` is the undo of all of them. No secret is ever an argument: what a step needs comes on stdin.
 #   base                         pinned Node and sops, the account starci-runner (no password, key only), the gate and the runner in /usr/local/sbin,
 #                                the sudo rule, /etc/starci-runner with GitHub's pinned host keys, the log folder
-#   app <app>                    lists <app> and installs /etc/starci-runner/<app>.conf from stdin (REPO_URL, IMAGE_PREFIX, SERVICES_staging, SERVICES_production)
-#   repo-key <app>               stdin: the READ-ONLY GitHub deploy key (private half) of the app's repository -> /etc/starci-runner/<app>/repo_key
-#   registry-token <app>         stdin: two lines, the registry user and a read:packages token -> /etc/starci-runner/<app>/registry_token
+#   app <app>                    lists <app> and installs /etc/starci-runner/<app>.conf from stdin (REPO_URL=https://github.com/<owner>/<repo>.git,
+#                                IMAGE_PREFIX, SERVICES_staging, SERVICES_production)
+#   registry-token <app>         optional fallback for a run by hand: stdin two lines, user and token -> /etc/starci-runner/<app>/registry_token
 #   ci-key <app>                 stdin: the PUBLIC half of the CI deploy key; one forced-command line per app in ~starci-runner/.ssh/authorized_keys
 #   status                       what is installed (no secret)
 #   uninstall                    removes everything above (the pinned Node and sops stay unless --all)
@@ -63,14 +63,10 @@ case "$action" in
   app)
     app_ok "${1:-}"; app=$1
     install -d -m 700 -o root -g root "$ETC/$app"
-    t=$(mktemp); cat > "$t"; grep -q '^REPO_URL=' "$t" && grep -q '^IMAGE_PREFIX=ghcr.io/' "$t" || { rm -f "$t"; echo "install.sh: the config needs REPO_URL and IMAGE_PREFIX=ghcr.io/..." >&2; exit 2; }
+    t=$(mktemp); cat > "$t"; grep -q '^REPO_URL=https://github.com/' "$t" && grep -q '^IMAGE_PREFIX=ghcr.io/' "$t" || { rm -f "$t"; echo "install.sh: the config needs REPO_URL and IMAGE_PREFIX=ghcr.io/..." >&2; exit 2; }
     install -m 600 -o root -g root "$t" "$ETC/$app.conf"; rm -f "$t"
     grep -qx -- "$app" "$ETC/apps" || echo "$app" >> "$ETC/apps"
     echo "listed $app; wrote $ETC/$app.conf" ;;
-  repo-key)
-    app_ok "${1:-}"; app=$1; install -d -m 700 -o root -g root "$ETC/$app"
-    t=$(mktemp); cat > "$t"; ssh-keygen -y -f "$t" > /dev/null 2>&1 || { rm -f "$t"; echo "install.sh: stdin is not a private ssh key" >&2; exit 2; }
-    install -m 600 -o root -g root "$t" "$ETC/$app/repo_key"; rm -f "$t"; echo "wrote $ETC/$app/repo_key (public: $(ssh-keygen -y -f "$ETC/$app/repo_key" | cut -d' ' -f1-2 | cut -c1-40)...)" ;;
   registry-token)
     app_ok "${1:-}"; app=$1; install -d -m 700 -o root -g root "$ETC/$app"
     t=$(mktemp); cat > "$t"; [ "$(wc -l < "$t")" -ge 2 ] || { rm -f "$t"; echo "install.sh: stdin needs two lines: user, token" >&2; exit 2; }

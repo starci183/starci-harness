@@ -4,7 +4,7 @@ This runner deploys an app from CI without GitHub ever holding an age key or an 
 
 ```
 push v* ──► deploy-runner.yml ──ssh (forced command)──► starci-deploy-gate ──sudo (one rule)──► starci-deploy-run (root)
-                                  "deploy <app> <env> <tag>"     checks the request              fetch tag (read-only repo key)
+                                  "deploy <app> <env> <tag>"     checks the request              fetch tag (the job's token)
                                                                   logs it                         npm ci (pinned Node)
                                                                                                   image digests (the job's GITHUB_TOKEN on stdin)
                                                                                                   starci app stack deploy --execute
@@ -24,10 +24,9 @@ push v* ──► deploy-runner.yml ──ssh (forced command)──► starci-d
 L='<root-capable ssh login>'
 ssh $L 'cat > /tmp/starci-runner-install.sh' < install.sh                   # the script once; each step below feeds its own stdin
 ssh $L 'sudo -n bash /tmp/starci-runner-install.sh base'                    # (STARCI_RUNNER_LOCAL=<dir> installs the gate and runner from a local copy)
-ssh $L 'sudo -n bash /tmp/starci-runner-install.sh app <app>' < <app>.conf  # REPO_URL, IMAGE_PREFIX, SERVICES_staging, SERVICES_production
-gh repo deploy-key add <pub> --repo <owner/app> --title <server>-runner     # READ-ONLY (never --allow-write); its private half:
-... | ssh $L 'sudo -n bash /tmp/starci-runner-install.sh repo-key <app>'     # on stdin, from memory
-# registry: none needed; the CI job sends its own GITHUB_TOKEN (packages: read) on stdin. registry-token <app> is the optional fallback file.
+ssh $L 'sudo -n bash /tmp/starci-runner-install.sh app <app>' < <app>.conf  # REPO_URL=https://github.com/<owner>/<repo>.git, IMAGE_PREFIX, SERVICES_staging, SERVICES_production
+# repository and registry: nothing on the server; the CI job sends its own GITHUB_TOKEN (contents: read, packages: read) on stdin, and the
+# runner uses it for one fetch and one registry login (registry-token <app> is an optional fallback file for a run by hand)
 ... | ssh $L 'sudo -n bash /tmp/starci-runner-install.sh ci-key <app>'       # the CI key's PUBLIC half; its private half goes to gh secret set RUNNER_SSH_KEY
 ```
 
