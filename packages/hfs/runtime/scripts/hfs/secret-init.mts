@@ -9,7 +9,7 @@ import type { Capture, SopsInvocation } from "../api/sops/lib.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
 import { runProgram } from "../api/process/run-program.mjs";
 import { claimFile } from "../api/fs/claim-file.mjs";
-import { expectedRecipients, firstRuleFor, memberProbe, recipientPolicy, serverRecipientOf, type CreationRule, type RecipientPolicy } from "../lib/sops-recipients.mjs";
+import { expectedRecipients, firstRuleFor, memberProbe, policyAppOf, recipientPolicy, serverRecipientOf, type CreationRule, type RecipientPolicy } from "../lib/sops-recipients.mjs";
 import { declaredSealedMembers, materializeDeclaredPlaceholders } from "./sealed-members.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import {
@@ -99,7 +99,7 @@ export function policyCreationRules(repoRoot: string, rules: readonly SopsRule[]
   const result: PolicyRules = { rules: next, written: [], kept: [], skipped: [] };
   for (const environment of environments) {
     if (firstRuleFor(next as CreationRule[], memberProbe(environment)) >= 0) { result.kept.push(environment); continue; }
-    const expected = expectedRecipients(policy, environment, serverRecipientOf(stackDoc, environment));
+    const expected = expectedRecipients(policy, environment, serverRecipientOf(stackDoc, environment), policyAppOf(repoRoot));
     if (expected.unresolved.length) { result.skipped.push(`${environment}: ${expected.unresolved.join("; ")}`); continue; }
     const appWide = next.findIndex((rule) => !rule?.path_regex || INITIALIZATION_PATH_RULES.includes(rule.path_regex));
     next.splice(appWide < 0 ? next.length : appWide, 0, { path_regex: environmentRule(environment), age: expected.recipients.join(",") });

@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { RECIPIENT_POLICY_FILE, recipientPolicy, recipientPolicyOf, type RecipientPolicy } from '../runtime/scripts/lib/sops-recipients.mjs';
+import { RECIPIENT_POLICY_FILE, expectedRecipients, recipientPolicy, recipientPolicyOf, type RecipientPolicy } from '../runtime/scripts/lib/sops-recipients.mjs';
 import { sopsRecipientFindings } from '../runtime/scripts/hfs/rules/sops-recipients.mjs';
 import { policyCreationRules } from '../runtime/scripts/hfs/secret-init.mjs';
 import { identityMismatch } from '../runtime/scripts/hfs/secret-identity-guard.mjs';
@@ -31,6 +31,7 @@ const stack = (deployed: Record<string, string | null>) => ({
   environments: { dev: {}, ...Object.fromEntries(Object.entries(deployed).map(([env, recorded]) => [env, recorded === null ? { deploy: {} } : { deploy: { remote: { serverRecipient: recorded } } }])) },
 });
 const member = (env: string, recipients: string[]) => ({ file: `.starcistacks/${env}/secrets/db.enc.yaml`, text: `POSTGRES_PASSWORD: ENC[AES256_GCM,data:x]\nsops:\n  age:\n${recipients.map((r) => `    - recipient: ${r}\n      enc: |\n        x\n`).join('')}` });
+const policyCreationRulesFor = (p: RecipientPolicy, app: string): string => expectedRecipients(p, 'production', SERVER, app).recipients.join(',');
 const codes = (findings: { code: string }[]): string[] => findings.map((finding) => finding.code).sort();
 
 test('the shipped policy is the harness repository\'s ops/vps/recipients.yaml, and dev is the harness recipient alone', () => {
@@ -39,7 +40,8 @@ test('the shipped policy is the harness repository\'s ops/vps/recipients.yaml, a
   const shipped = recipientPolicy();
   assert.match(shipped.harness, /^age173qf/u);
   assert.deepEqual(shipped.environments.dev, ['harness']);
-  assert.deepEqual(shipped.otherwise, ['server', 'backup']);
+  assert.deepEqual(shipped.otherwise, ['server', 'backup', 'ci']);
+  assert.match(shipped.apps['nivoos-lite']?.ci ?? '', /^age138u6/u, 'NIVO deploys from CI with its own key');
   assert.equal(shipped.enforce, false, 'R451 warns until the owner-approved migration completes');
   assert.ok(Object.values(shipped.servers).every((server) => server.enforce !== true), 'no server blocks yet');
 });
@@ -61,6 +63,31 @@ test('an app on the policy passes: dev the harness key, a deployed environment i
     stackDoc: stack({ production: SERVER }), members: [member('dev', [HARNESS]), member('production', [BACKUP, SERVER])], policy: policy(),
   });
   assert.deepEqual(findings, []);
+});
+
+test('one CI key per project: an app\'s own CI recipient joins its deployed sets, another app\'s is refused, and a shared or reused key breaks the policy', () => {
+  const CI_A = 'age1ciappaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const CI_B = 'age1ciappbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  const doc = (apps: Record<string, unknown>) => ({ schema: 'starci/sops-recipients@1', harness: HARNESS, enforce: true, servers: { 'sv-1': { server: SERVER, backup: BACKUP } }, apps, environments: { dev: ['harness'] }, otherwise: ['server', 'backup', 'ci'] });
+  const p = recipientPolicyOf(doc({ 'app-a': { ci: CI_A }, 'app-b': { ci: CI_B } }));
+  const judge = (app: string | null, sealed: string[]) => sopsRecipientFindings({
+    rules: [{ path_regex: ENV_RULE('dev'), age: HARNESS }, { path_regex: ENV_RULE('production'), age: sealed.join(',') }],
+    stackDoc: stack({ production: SERVER }), members: [member('dev', [HARNESS]), member('production', sealed)], policy: p, app,
+  });
+  assert.deepEqual(judge('app-a', [SERVER, BACKUP, CI_A]), [], 'server + backup + its own CI key is exactly the set');
+  const without = judge('app-a', [SERVER, BACKUP]);
+  assert.deepEqual(codes(without), ['HFS_SOPS_MEMBER_RECIPIENTS', 'HFS_SOPS_RECIPIENTS']);
+  assert.match(without[0]!.message, /lacks age1ciappaaa… \(ci\)/u);
+  const other = judge('app-a', [SERVER, BACKUP, CI_A, CI_B]);
+  assert.ok(other.some((finding) => /is the CI key of app-b, which only app-b's own members hold/u.test(finding.message)), 'another project\'s CI key is refused');
+  assert.deepEqual(judge('app-c', [SERVER, BACKUP]), [], 'an app with no CI key keeps server + backup');
+  assert.ok(judge('app-c', [SERVER, BACKUP, CI_A]).length > 0, 'an app may not borrow a CI key');
+  assert.throws(() => recipientPolicyOf(doc({ 'app-a': { ci: CI_A }, 'app-b': { ci: CI_A } })), /apps\.app-b\.ci is also the CI key of app-a: each project has a CI key of its own/u);
+  assert.throws(() => recipientPolicyOf(doc({ 'app-a': { ci: SERVER } })), /apps\.app-a\.ci is also the server key of sv-1/u);
+  assert.throws(() => recipientPolicyOf(doc({ 'app-a': { ci: BACKUP } })), /is also the backup key of sv-1/u);
+  assert.throws(() => recipientPolicyOf(doc({ 'app-a': { ci: HARNESS } })), /is also the harness key/u);
+  assert.throws(() => recipientPolicyOf(doc({ 'app-a': { ci: 'not-a-key' } })), /apps\.app-a\.ci must be one public age recipient/u);
+  assert.deepEqual(policyCreationRulesFor(p, 'app-a'), `${SERVER},${BACKUP},${CI_A}`, 'secret init seals a new rule to the same set');
 });
 
 test('the NIVO shape: an app-only owner key on every environment and the catch-all are found, and the missing backup is named', () => {
