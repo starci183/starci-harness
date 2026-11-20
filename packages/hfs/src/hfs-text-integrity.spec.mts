@@ -26,7 +26,7 @@ function tree(t: TestContext, files: Files) {
 const run = (root: string, files: Files, edition: string) => textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { profile: 'be', edition } });
 const CATALOG = 'src/modules/platform/idempotency/messages/idempotency.messages.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_TEXT_CORRUPT ${edition}: a vi string whose diacritics became question marks is refused`, (t) => {
     const files = { [CATALOG]: bundle('Kh?a thao t?c ?? ???c d?ng cho n?i dung kh?c.'), 'src/b.messages.ts': bundle('Kh\u00F3a, ph?m vi kh\u00F4ng h?p l?.') };
     const findings = run(tree(t, files), files, edition);

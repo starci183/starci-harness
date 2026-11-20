@@ -92,7 +92,7 @@ test('parseDesign: the shape, the page ids, the statuses, approvedAt from approv
   assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, note: 1 }), /unknown key "note"/u);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an unreadable or misshapen manifest is HFS_APP_GALLERY_DESIGN_MANIFEST, an error even in --env local`, (t) => {
     const broken = design(run(app(t, [], '{ "areas": '), edition));
     assert.deepEqual(codes(broken), ['HFS_APP_GALLERY_DESIGN_MANIFEST']);
@@ -159,7 +159,7 @@ test('the design canvas folder is a slot of its own: its files are owned, no sta
   const { openHfs } = await import('../runtime/scripts/hfs/slots.mjs');
   const { stacksFindings, RESERVED_STACK_FOLDERS } = await import('../runtime/scripts/hfs/rules/stacks.mjs');
   assert.ok(RESERVED_STACK_FOLDERS.has('canvas'));
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-canvas-slot-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition, project: 'canvas-slot', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
@@ -171,7 +171,7 @@ test('the design canvas folder is a slot of its own: its files are owned, no sta
 });
 
 // The critique record (PROJECT-GALLERY-7 item 3): a matches page needs "## Phương án đã cân nhắc" in its explain.md.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a matches page without the options section is an error from the release on, and info (not final yet) before it`, (t) => {
     const page = (extra: Record<string, unknown>) => ({ areas: ['customers'], pages: { 'customers/list': { status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, ...extra } } });
     const critique = (root: string) => run(root, edition).filter((finding) => finding.code === 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING');

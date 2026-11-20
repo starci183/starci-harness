@@ -65,7 +65,7 @@ test('the lockfile closure of manifests follows dependencies transitively and le
   assert.deepEqual(lockClosure(root, ['package.json', 'be/package.json']).length, 4);
 });
 
-const BE_FILES = { 'be/package.json': JSON.stringify({ name: 'be', dependencies: { '@nestjs/core': '11' } }), 'be/src/app.ts': 'export {};\n', 'hfs.json': '{"edition":"lite"}' };
+const BE_FILES = { 'be/package.json': JSON.stringify({ name: 'be', dependencies: { '@nestjs/core': '11' } }), 'be/src/app.ts': 'export {};\n', 'hfs.json': '{}' };
 
 async function wiring(root: string, files: Record<string, string>, stored: readonly CacheRecord[], result: () => WiringResult): Promise<{ proofs: number; records: CacheRecord[] }> {
   const session = { ...createFakeSession({ files, records: { [WIRING_FOLDER]: stored } }), root };
@@ -122,7 +122,7 @@ jobs:
 const APP_FILES: Record<string, string> = {
   'package.json': JSON.stringify({ name: 'demo', workspaces: ['be', 'fe/apps/*'], devDependencies: { turbo: '2' } }),
   'turbo.json': '{}\n',
-  'hfs.json': '{"edition":"lite"}',
+  'hfs.json': '{}',
   'be/package.json': JSON.stringify({ name: 'be', dependencies: { '@nestjs/core': '11', typeorm: '0.3' } }),
   'be/tsconfig.json': '{"compilerOptions":{"module":"commonjs"}}',
   'be/src/modules/platform/database/entities.ts': "import { Order } from '../../billing/persistence/entities/order.entity';\nexport const ENTITIES = [Order];\n",

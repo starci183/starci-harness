@@ -43,7 +43,7 @@ function fixture(edition: string, overrides: Record<string, string | null> = {})
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-saga-coverage-'));
   made.push(repoRoot);
   const sources = { ...BASE_FILES, ...overrides };
-  if (edition === 'full') sources[E2E] = "const world = useTestWorld({ apps: ['order'] }); it('compensates billing.invoice-rejected', () => world.infra.postgresql.connection('order').cut());";
+  if ((edition as string) === 'full') sources[E2E] = "const world = useTestWorld({ apps: ['order'] }); it('compensates billing.invoice-rejected', () => world.infra.postgresql.connection('order').cut());";
   const files: string[] = [];
   for (const [file, source] of Object.entries(sources)) {
     if (source === null) continue;
@@ -59,7 +59,7 @@ test.after(() => {
   for (const repoRoot of made) fs.rmSync(repoRoot, { recursive: true, force: true });
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} rejects a compensation without its step or a complete orchestrator, and takes a step with no compensation`, () => {
     assert.deepEqual(sagaFindings(fixture(edition, { [COMPENSATION]: null }))
       .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION'), []);

@@ -40,7 +40,6 @@ interface TableConnection {
 
 /** The part of the app declaration the table verb reads. */
 interface TableRepo {
-  readonly edition?: string | undefined;
   readonly sides?: {
     readonly be?: { readonly apps: readonly DeclaredApp[]; readonly connections?: readonly TableConnection[] };
     readonly fe?: { readonly apps?: readonly DeclaredApp[] };
@@ -266,7 +265,7 @@ function tableComposition({ root, repo, owner, feature, fe, ownerRelative }: { r
   ]]);
   const lines = fs.readFileSync(at(root, ownerRelative), 'utf8').replace(/\r\n/g, '\n').split('\n');
   const patches: ComposePatch[] = groups.map(([area, entries]) => {
-    const argument = area === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken' : '';
+    const argument = area === 'domain' ? 'verifyAccessToken' : '';
     addModuleImport(lines, { importLine: `import { ${area}Modules } from "./compose/${area}"`, entry: `...${area}Modules(${argument})`, relative: ownerRelative, noun: 'table' });
     return planComposeGroup({ repoRoot: root, repo, app: owner.name, area, noun: 'table', entries });
   });
@@ -545,16 +544,16 @@ const deferredDatabaseFile = (skeleton: string, relative: string) => (text: stri
  */
 const ownerByProperty = (text: string): string => text.replace("owned.owner_id = :ownerId", "owned.ownerId = :ownerId");
 
-function tableRegistrations({ root, repo, fe, edit }: { root: string, repo: TableRepo, fe: boolean, edit: Edit }): void {
+function tableRegistrations({ root, fe, edit }: { root: string, repo: TableRepo, fe: boolean, edit: Edit }): void {
   const errorFile = "be/src/modules/platform/database/errors/database.error.ts";
-  if (repo.edition === "lite" && fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
+  if (fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
   // requireOwnedEntity lives in the sql helpers the lite starter leaves out; the first table writes them.
-  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, (text) => deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts")(ownerByProperty(text)));
+  edit(DATABASE_SQL_FILE, (text) => deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts")(ownerByProperty(text)));
   // The table's entity extends UuidAbstractEntity, which no starter carries in either edition; the first table writes it.
   edit(`be/${ENTITY_BASE_FILE}`, deferredDatabaseFile("skeleton", ENTITY_BASE_FILE));
     const registrations = [
       "entity-base",
-      ...(repo.edition === "lite" ? ["table"] : []),
+      "table",
       ...(fe ? ["api", "graphql"] : []),
     ];
     for (const generator of registrations) for (const relative of registrationFiles(generator)) edit(relative, (text) => text);
@@ -592,7 +591,7 @@ function withPrimaryEntities(text: string, { feature, nameCamel }: { feature: st
 
 function wireTable({ root, repo, feature, values, ownerRelative, composition, fe, apps, edit }: { root: string, repo: TableRepo, feature: string, values: TableValues, ownerRelative: string, composition: readonly ComposePatch[], fe: boolean, apps: readonly DeclaredApp[], edit: Edit }): void {
     const kindsHome = kindsHomeOf(root, ownerRelative);
-    if (repo.edition === "lite") edit(PRIMARY_ENTITIES_FILE, (text) => withPrimaryEntities(text, { feature, nameCamel: values.nameCamel }));
+    edit(PRIMARY_ENTITIES_FILE, (text) => withPrimaryEntities(text, { feature, nameCamel: values.nameCamel }));
     for (const patch of composition) edit(patch.relative, () => patch.text);
     edit(kindsHome, (text) => wireKinds(text, kindsHome, { kinds: `${snakeOf(feature).toUpperCase()}_ERROR_KINDS`, specifier: `@modules/domain/${feature}` }));
   tableRegistrations({ root, repo, fe, edit });

@@ -72,7 +72,7 @@ function groupsOf(tracked: ReadonlySet<string>): Map<string, Set<string>> {
 
 /** FE_STATE_PAGE_NOT_SHARED and FE_STATE_PAGE_GROUP_MISSING over the route tree of a front end's web apps. */
 export function statePageFindings({ files = [], repo, repoRoot, isRoot = false, inScope = () => true }: { files?: readonly string[]; repo: Repo; repoRoot: string; isRoot?: boolean; inScope?: (file: string) => boolean }): Finding[] {
-  if (isRoot || repo?.profile !== 'fe' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (isRoot || repo?.profile !== 'fe') return [];
   const tracked = new Set(files.map((file) => file.replaceAll('\\', '/')));
   const uiFiles = [...tracked].filter((file) => /^packages\/[^/]+-ui\/src\/.+\.tsx$/u.test(file));
   const findings: Finding[] = [];

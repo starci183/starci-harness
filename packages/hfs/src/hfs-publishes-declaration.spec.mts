@@ -5,7 +5,7 @@ import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-sha
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
 const manifest = loadSlotManifest();
-const declaration = (extra: Record<string, unknown>) => ({ hfs: manifest.major, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api', contract: 'rest' }], kinds: ['api'] } }, ...extra });
+const declaration = (extra: Record<string, unknown>) => ({ hfs: manifest.major, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api', contract: 'rest' }], kinds: ['api'] } }, ...extra });
 
 test('publishes is a non-empty unique list of package folders, and an app without it is unchanged', () => {
   assert.deepEqual(declarationShapeProblems(declaration({}), ['be', 'fe']), []);

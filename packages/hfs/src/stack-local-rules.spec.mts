@@ -17,7 +17,7 @@ const GOOD_RUNBOOK = '# dev\n\nRun `starci app stack up --env dev --execute`.\n'
 function app(t: { after: (fn: () => void) => void }, { environment = `  dev:\n    status: supported\n    runtime: docker-compose\n    composeFiles: [infra/compose/compose.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n${LOCAL}`, runbook = GOOD_RUNBOOK }: { environment?: string; runbook?: string } = {}): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stacks-local-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project: 'demo' }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo' }));
   const dev = path.join(root, '.starcistacks', 'dev');
   fs.mkdirSync(path.join(dev, 'infra', 'compose'), { recursive: true });
   fs.writeFileSync(path.join(dev, 'infra', 'compose', 'compose.yaml'), 'services:\n  db:\n    image: postgres\n');
@@ -26,7 +26,7 @@ function app(t: { after: (fn: () => void) => void }, { environment = `  dev:\n  
   return root;
 }
 
-const run = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true });
+const run = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true });
 const codes = (root: string): string[] => run(root).map((finding) => finding.code);
 
 test('R372 a coherent dev environment with a runbook that names the verb raises nothing', (t) => {
@@ -75,7 +75,7 @@ test('a lite app may run its dev environment on docker-compose and a backing ima
         production: { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], components: swarmBinds ? { db: {}, 'demo-minio': {} } : { db: {} } },
       },
     });
-    const messages = (swarmBinds: boolean): string[] => stacksRuntimeFindings({ repoRoot: root, files: [], doc: doc(swarmBinds), edition: 'lite' }).map((finding: { message: string }) => finding.message);
+    const messages = (swarmBinds: boolean): string[] => stacksRuntimeFindings({ repoRoot: root, files: [], doc: doc(swarmBinds) }).map((finding: { message: string }) => finding.message);
     assert.ok(!messages(false).some((text) => /lite runs no backing image/u.test(text)), 'a backing image only the dev environment binds is allowed');
     assert.ok(!messages(false).some((text) => /environments\.dev lite delivery/u.test(text)), 'a docker-compose dev environment with a local block is lite delivery');
     assert.ok(messages(true).some((text) => /lite runs no backing image/u.test(text)), 'a backing image a Swarm environment binds is still refused');

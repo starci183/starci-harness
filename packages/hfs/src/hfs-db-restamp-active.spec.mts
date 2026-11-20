@@ -63,7 +63,7 @@ function snapshot(root: string) {
     .map((file) => [file.replaceAll('\\', '/'), fs.readFileSync(path.join(root, file))]));
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`app db restamp ${edition}: legacy archives stay untouched while only mapped active migrations preview and apply`, () => {
     const active = { [start]: 'select 10;\n', [follow]: 'select 20;\n', [unchanged]: 'select 30;\n' };
     const root = fixture(edition, active, `"${first}": "${next}"\n"${second}": "${last}"\n`);

@@ -10,7 +10,7 @@ const isFeature = (slot: Parsed) => slot?.owner === true && slot.tier === 'featu
 
 /** Count the complete tracked tree, even when a per-file check is scoped to only part of a feature. */
 export function featureFileFindings({ files, all = files, repo, resolver, isRoot = repo.profile === 'app' }: { files: string[]; all?: string[]; repo: Repo; resolver: Resolver; isRoot?: boolean }) {
-  // The app check invokes this again for each side, with that side's paths and edition-aware parameters.
+  // The app check invokes this again for each side, with that side's paths and parameters.
   if (isRoot || !['be', 'fe'].some((value) => value === repo.profile)) return [];
   const max = resolver.ruleParams().featureFiles ?? 250;
   const counts = new Map();

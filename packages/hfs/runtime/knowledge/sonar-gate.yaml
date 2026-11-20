@@ -13,7 +13,9 @@ purpose: |
   vulnerability, every hotspot reviewed, no duplicated-lines excess, no cognitive-complexity issue). The one Sonar
   mechanism of the HFS canon is packages/hfs/README.md section "Sonar".
 gate:
-  name: starci-quality
+  # The server gate object every app selects (application-stacks.yaml services.sonar.qualityGate); the name is kept from the
+  # lite edition the live apps ran, so their gates stay the same object.
+  name: starci-quality-lite
   # A project with no new-code baseline judges the whole project as new code; a fixed
   # window keeps "new code" the recent work on main, so the server gate is passable on a healthy main.
   newCodePeriod: {type: NUMBER_OF_DAYS, value: 30}
@@ -81,48 +83,6 @@ overall:
   cognitiveComplexity:
     rule: typescript:S3776
     via: overall.issues
-# Lite is the same quality policy, coverage included: a lite back end keeps full's unit run and its 100 per file on the measured
-# logic files (R212). Readers select this block from hfs.json edition; the gate keeps its own
-# name so a lite project's server gate stays a separate object, and every threshold below equals full's.
-lite:
-  gate:
-    name: starci-quality-lite
-    newCodePeriod: {type: NUMBER_OF_DAYS, value: 30}
-  newCode:
-    coverage:
-      metric: new_coverage
-      minPercent: 100
-    ignoreBelowChangedLines: 0
-    duplication:
-      metric: new_duplicated_lines_density
-      maxPercent: 3
-    issues:
-      blockingSeverities: [BLOCKER, CRITICAL, MAJOR, MINOR, INFO]
-      metrics: {BLOCKER: new_blocker_violations, CRITICAL: new_critical_violations, MAJOR: new_major_violations, MINOR: new_minor_violations, INFO: new_info_violations}
-      max: 0
-    hotspots:
-      metric: new_security_hotspots_reviewed
-      minReviewedPercent: 100
-      unreviewedMax: 0
-  overall:
-    issues:
-      metric: violations
-      max: 0
-      engines: [starci-hfs, eslint, stylelint]
-      types: {bugs: BUG, code_smells: CODE_SMELL, vulnerabilities: VULNERABILITY}
-    hotspots:
-      metric: security_hotspots_reviewed
-      minReviewedPercent: 100
-    coverage:
-      metric: coverage
-      minPercent: 100
-      perFile: true
-    duplication:
-      metric: duplicated_lines_density
-      maxPercent: 3
-    cognitiveComplexity:
-      rule: typescript:S3776
-      via: overall.issues
 # The Sonar enforcers of the rule catalog (knowledge/hfs/rules.yaml): the failure code each condition above is the gate of.
 enforces:
   - {rule: R20, code: HFS_SIZE_GROWTH, enforcer: cognitive-complexity, condition: cognitiveComplexity}

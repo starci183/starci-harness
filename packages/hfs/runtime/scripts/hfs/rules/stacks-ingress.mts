@@ -106,7 +106,7 @@ export function ingressIssues({ doc, environment, spec = doc?.environments?.[env
   ];
 }
 
-/** HFS finder over the tracked rendered Swarm environments of either edition. */
+/** HFS finder over the tracked rendered Swarm environments. */
 export function stacksIngressFindings(context: Parsed) {
   return stacksDeploymentFindings(context, ingressIssues);
 }

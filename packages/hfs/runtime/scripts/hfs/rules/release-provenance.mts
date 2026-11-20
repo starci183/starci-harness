@@ -1,6 +1,6 @@
 // R271: a product release keeps its v<semver> tag, root package version, image tags and database deployment ref together. The pushed images are named by the
 // commit (sha-<sha>); the release name v<version> is a retag of that digest under a release guard. A migration runs in the stack deploy after the release tag.
-// Ordinary untagged development trees have no release version to compare. Workflow checks still run there in both editions.
+// Ordinary untagged development trees have no release version to compare. Workflow checks still run there.
 // YAML is parsed, so comments and unrelated jobs cannot supply a guard. Shell guards are deliberately a small, explicit form;
 // opaque helper scripts and computed image metadata cannot prove provenance in this static check.
 import fs from 'node:fs';
@@ -220,10 +220,10 @@ function imageFindings(file: string, workflow: Parsed, version: string) {
 
 function productRoot(repo: Repo, isRoot: boolean) {
   return isRoot !== false && !['be', 'fe', 'runtime'].some((value) => value === repo.profile)
-    && (!repo.kind || repo.kind === 'app') && ['lite', 'full'].includes(repo.edition ?? 'full');
+    && (!repo.kind || repo.kind === 'app');
 }
 
-/** Synchronous product-root provenance findings; root and workflows are judged in lite and full, never a side or runtime. */
+/** Synchronous product-root provenance findings; root and workflows are judged, never a side or runtime. */
 export function releaseProvenanceFindings({ repoRoot, files = [], repo = {}, isRoot, inScope = () => true, env = process.env }: { repoRoot?: string; files?: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; env?: NodeJS.ProcessEnv } = {}) {
   if (!productRoot(repo, isRoot!)) return [];
   const version = readJson(repoRoot!, 'package.json')?.version;

@@ -86,7 +86,7 @@ test('a sealed member VPS_PORT reaches the docker transport with the key and kno
 
 test('only a bound stack tool boundary removes AGE aliases while preserving lazy custody and explicit tool options', async t => {
   const f = files(t);
-  f.write('hfs.json', JSON.stringify({ kind: 'app', project: 'fixture', edition: 'lite' }));
+  f.write('hfs.json', JSON.stringify({ kind: 'app', project: 'fixture' }));
   f.write('.starcistacks/staging/stack.yml', 'services: {}\n');
   f.write('.starcistacks/application-stacks.yaml', JSON.stringify({ environments: { staging: {
     runtime: 'docker-swarm', composeFiles: ['stack.yml'], deploy: { stack: 'fixture',

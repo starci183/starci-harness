@@ -26,7 +26,7 @@ const synced = (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a changed managed ignore block fails and its render passes`, async context => {
     const { root, findings } = synced(context, edition);
     const file = path.join(root, '.gitignore');
@@ -46,7 +46,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a missing managed ignore block is invalid and restoring its render passes`, async context => {
     const { root, tracked } = synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };
@@ -61,7 +61,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // The AGENTS.md `next dev` writes into an app under fe/apps is ignored; a root AGENTS.md, and one anywhere else, stays tracked.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the managed ignore block ignores fe/apps/*/AGENTS.md and no other AGENTS.md`, context => {
     const { root } = synced(context, edition);
     const rendered = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
@@ -85,7 +85,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // The design canvas (PROJECT-GALLERY-6) is tracked under .starcistacks/canvas/; the rest of .starcistacks stays denied.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the managed ignore block keeps .starcistacks/canvas tracked`, context => {
     const { root } = synced(context, edition);
     execFileSync('git', ['init', '--quiet'], { cwd: root });
@@ -105,7 +105,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // The brand sheet (PROJECT-BRAND-1) and its reference images are tracked under .starcistacks/brand/.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the managed ignore block keeps .starcistacks/brand tracked, references included`, context => {
     const { root } = synced(context, edition);
     execFileSync('git', ['init', '--quiet'], { cwd: root });

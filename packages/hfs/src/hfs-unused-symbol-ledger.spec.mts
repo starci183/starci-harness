@@ -43,7 +43,7 @@ const SIDES = {
 const run = (t: TestContext, side: 'fe' | 'be', extra: Record<string, string>, edition: string) => unusedSymbolFindings({ ...fixture(t, { ...SIDES[side].files, ...extra }), repo: { profile: side, edition } });
 const names = (findings: ReturnType<typeof run>) => [...new Set(findings.map(finding => finding.name as string))].sort();
 
-for (const side of ['fe', 'be'] as const) for (const edition of ['lite', 'full']) {
+for (const side of ['fe', 'be'] as const) for (const edition of ['lite'] as const) {
   const { entries, covered, open } = SIDES[side];
   test(`HFS_UNUSED_SYMBOL ${side} ${edition}: without a ledger every unread key is a violation (no file, no finding of its own)`, t => {
     const found = names(run(t, side, {}, edition));

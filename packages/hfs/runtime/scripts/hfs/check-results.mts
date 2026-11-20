@@ -1,5 +1,4 @@
 // Common result shaping for the slot check and its optional proof reports.
-import { loadRuleCatalog } from './slots.mjs';
 import { HfsSlotsError } from './slot-errors.mjs';
 
 /** Attach the localized catalog explanation to every finding. */
@@ -33,8 +32,3 @@ export function summarize(findings: Finding[]): Summary {
   };
 }
 
-/** Keep findings judged in this edition; uncatalogued refusal codes always remain. */
-export function judgedFindings(findings: Finding[], edition: string, root: string): Finding[] {
-  const catalog = loadRuleCatalog({ root });
-  return findings.filter((finding) => catalog.judgedIn(finding.code, edition));
-}

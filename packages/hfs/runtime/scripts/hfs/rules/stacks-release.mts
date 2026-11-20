@@ -84,7 +84,7 @@ function backupIssues(context: Parsed) {
   return issues;
 }
 
-/** Release and recovery declarations are mandatory for Swarm in either edition. */
+/** Release and recovery declarations are mandatory for Swarm. */
 export function releaseBackupIssues({ doc = {}, environment, spec = {}, model = {}, repoRoot, files = [] }: { doc?: Parsed; environment: Parsed; spec?: Parsed; model?: Parsed; repoRoot: string; files?: string[] }) {
   if (spec.runtime !== 'docker-swarm') return [];
   const context = { doc, environment, spec, model, repoRoot, files };
@@ -392,7 +392,7 @@ function findingOf(checked: Parsed) {
   return found(checked.code, file, `${file}: ${checked.at}: ${checked.message}`);
 }
 
-/** Both editions receive real findings when a declared Swarm model cannot be judged. */
+/** Real findings come when a declared Swarm model cannot be judged. */
 export function stacksReleaseFindings(context: Parsed) {
   if (context.isRoot === false || (context.repo?.profile && context.repo.profile !== 'app')) return [];
   const { doc, deployments, files } = stacksDeploymentContexts(context);

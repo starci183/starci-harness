@@ -20,7 +20,7 @@ function runtimeInput(fixture: SwarmFixture, edition: string) {
   return { repoRoot: fixture.root, files: [...fixture.files], doc: fixture.manifest, edition };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${code} ${edition}: accepts pinned Swarm runtime through the app and stack gates`, t => {
     const fixture = swarmFixture(t, edition);
     assert.deepEqual(stacksRuntimeFindings(runtimeInput(fixture, edition)), []);
@@ -164,7 +164,7 @@ test('STACK-DEV full Compose: a dependency may declare a Docker build instead of
   }
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACK-DEV ${edition}: a host runtime cannot replace the Docker dependency runtime`, t => {
     const fixture = developmentFixture(t, edition, 'native');
     const errors = checkApplicationStacks({ repoRoot: fixture.root, environment: 'dev',
@@ -184,7 +184,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${code} ${edition}: the shared seed level, the service image folders and the check cache are reserved folders, never environments; another folder still is one`, t => {
     const fixture = swarmFixture(t, edition);
     fixture.put('.starcistacks/seeds/seeds.yaml', 'schema: starci/seeds@1\nentries: []\n');

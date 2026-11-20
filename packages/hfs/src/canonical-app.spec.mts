@@ -165,7 +165,7 @@ test('world dispatches up, down and status to the installed test-world cli, and 
   assert.deepEqual(calls.map((call) => call.argv), [['up', '--k3d'], ['down', '--k3d'], ['status', '--k3d']]);
   assert.ok(calls.every((call) => call.cwd === path.join(base, 'app')));
   assert.match((await run(['world', 'logs'], { cwd: base, stackMain })).err, /starci app: starci app world takes up, down, status/);
-  fs.writeFileSync(path.join(base, 'app', 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'lite', edition: 'lite' }));
+  fs.writeFileSync(path.join(base, 'app', 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'lite' }));
   const lite = await run(['world', 'up', '--cwd', 'app'], { cwd: base, stackMain });
   assert.equal(lite.code, 2);
   assert.match(lite.err, /manage the local test world of the full edition/);

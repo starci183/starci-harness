@@ -40,7 +40,7 @@ it('matches the provider fixture', () => {
 });
 `;
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} backend rejects unsupported test suffixes`, t => {
     const root = fixture(t, edition, 'be', {
       'src/modules/domain/cart/schema.int-spec.ts': 'export {};',
@@ -95,7 +95,7 @@ for (const edition of ['lite', 'full']) {
 const policy = 'be/src/modules/domain/order/order.policy.ts';
 const policyText = 'export const allowed = (amount) => amount > 0;';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} staged specs reject a new measured logic file staged without its sibling spec`, () => {
     const found = stagedSpecFindings(loadSlotManifest(), [policy], new Set([policy]), { ts, staged: () => policyText });
     assert.deepEqual(found.map((hit: { code: string }) => hit.code), ['BE_UNIT_SPEC_NOT_STAGED']);

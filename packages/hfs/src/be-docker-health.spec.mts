@@ -42,7 +42,7 @@ const dockerCodes = (root: string, edition: string, health: string, withRoute = 
     put(root, "be/src/features/api/system-health/transport/http/live.controller.ts", liveController)
     return dockerFindings({ repoRoot: root, files: [path.relative(root, file).replaceAll("\\", "/")], repo: declaration(edition) }).filter((entry) => entry.code === "HFS_DOCKER_HEALTHCHECK_FAKE")
 }
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`HFS_DOCKER_HEALTHCHECK_FAKE@${edition}: the API check reaches its registered local live route`, () => {
         const root = fixture()
         assert.deepEqual(dockerCodes(root, edition, 'node -e "fetch(\'http://127.0.0.1:\'+process.env.PORT+\'/health/live\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'), [])

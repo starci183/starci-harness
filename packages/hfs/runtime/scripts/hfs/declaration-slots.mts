@@ -4,7 +4,6 @@
 // slots.mts asks this file to judge a side's lists and to say whether a slot is enabled for a repository.
 import type { Parsed, Slot } from './manifest-shape.mjs';
 import type { RepoView } from './slots.mjs';
-import { judgedInEdition } from './edition-slots.mjs';
 
 /** The problems of a side's `optionalSlots` and `patterns` against the manifest. */
 export function optionalSlotProblems(manifest: Parsed, side: Parsed, s: Parsed): string[] {
@@ -27,12 +26,11 @@ export function optionalSlotProblems(manifest: Parsed, side: Parsed, s: Parsed):
   return bad;
 }
 
-/** The problems of a side's `backing` list: every name is admitted by ruleParams.be.backing in this edition. */
-export function backingProblems(manifest: Parsed, side: string, s: Parsed, edition = 'full'): string[] {
-  const services = Object.entries(manifest.ruleParams?.be?.backing ?? {})
-    .filter(([, entry]: [string, Parsed]) => judgedInEdition(entry, edition)).map(([name]) => name);
+/** The problems of a side's `backing` list: every name is a service of ruleParams.be.backing. */
+export function backingProblems(manifest: Parsed, side: string, s: Parsed): string[] {
+  const services = Object.keys(manifest.ruleParams?.be?.backing ?? {});
   return (s.backing ?? []).filter((name: Parsed) => !services.includes(name))
-    .map((name: Parsed) => `sides.${side}.backing names ${name}, which is not admitted in edition ${edition} by ruleParams.be.backing (${services.join(', ')})`);
+    .map((name: Parsed) => `sides.${side}.backing names ${name}, which ruleParams.be.backing does not admit (${services.join(', ')})`);
 }
 
 /** The problems of the shape of a side's `patterns` list (a unique list of pattern names). */

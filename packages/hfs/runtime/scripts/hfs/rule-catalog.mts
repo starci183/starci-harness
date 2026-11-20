@@ -8,7 +8,6 @@ import { jsonClone } from '../lib/json-clone.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { SEMVER } from './manifest-shape.mjs';
-import { enforcerJudgedInEdition, judgedInEdition, ruleEditionProblems } from './edition-slots.mjs';
 import { fail } from './slot-errors.mjs';
 
 const HFS_RULES_FILE = 'knowledge/hfs/rules.yaml';
@@ -24,11 +23,11 @@ const FILE_ENFORCERS = new Set(['machine', 'hfs', 'work-validate', 'sonar', 'run
  * scaffold e2e are its tests), and no example app is a product they judge. A rule is runtime-judged when every enforcer it has is of these kinds.
  */
 export const RUNTIME_ONLY_ENFORCERS = Object.freeze(['work-validate', 'runtime']);
-const RULE_KEYS = new Set(['id', 'code', 'law', 'scope', 'kinds', 'gates', 'failureCodes', 'editions', 'codeEditions', 'enforcers', 'docs', 'exemplifiedBy', 'proves', 'witness', 'editionWhy', 'templateNa']);
-const ENFORCER_KEYS = new Set(['kind', 'id', 'status', 'at', 'editions', 'editionWhy']);
-const EVIDENCE_KEYS = new Set(['path', 'edition', 'editions']);
+const RULE_KEYS = new Set(['id', 'code', 'law', 'scope', 'kinds', 'gates', 'failureCodes', 'enforcers', 'docs', 'exemplifiedBy', 'proves', 'witness', 'templateNa']);
+const ENFORCER_KEYS = new Set(['kind', 'id', 'status', 'at']);
+const EVIDENCE_KEYS = new Set(['path']);
 const PROOF_KEYS = new Set([...EVIDENCE_KEYS, 'codes', 'fixtures']);
-const WITNESS_KEYS = new Set(['edition', 'base', 'mutate', 'expect']);
+const WITNESS_KEYS = new Set(['base', 'mutate', 'expect']);
 const MUTATION_KEYS = new Set(['op', 'path', 'content']);
 
 function textProblem(value: Parsed, label: Parsed, bad: string[]) {
@@ -61,12 +60,6 @@ function optionalText(item: Parsed, key: Parsed, label: Parsed, bad: string[]) {
   if (item[key] !== undefined) textProblem(item[key], `${label}.${key}`, bad);
 }
 
-function evidenceEditionProblems(item: Parsed, label: Parsed, bad: string[]): void {
-  if (item.edition !== undefined && !['full', 'lite'].includes(item.edition)) bad.push(`${label}.edition must be full or lite`);
-  bad.push(...ruleEditionProblems(item, label));
-  if (item.edition !== undefined && item.editions !== undefined) bad.push(`${label} names edition or editions, not both`);
-}
-
 function codeListProblems(codes: Parsed, label: Parsed, bad: string[]): void {
   if (!nonEmptyList(codes, label, bad)) return;
   for (const code of codes) if (typeof code !== 'string' || !FINDING_CODE.test(code)) bad.push(`${label} must contain UPPER_SNAKE finding codes`);
@@ -75,7 +68,6 @@ function codeListProblems(codes: Parsed, label: Parsed, bad: string[]): void {
 function evidenceMapProblems(item: Parsed, key: Parsed, label: Parsed, bad: string[]): void {
   unknownKeys(item, key === 'docs' ? EVIDENCE_KEYS : PROOF_KEYS, label, bad);
   relativePathProblem(item.path, `${label}.path`, bad, key === 'docs');
-  evidenceEditionProblems(item, label, bad);
   if (item.codes !== undefined) codeListProblems(item.codes, `${label}.codes`, bad);
   if (item.fixtures !== undefined && nonEmptyList(item.fixtures, `${label}.fixtures`, bad)) item.fixtures.forEach((value: Parsed) => textProblem(value, `${label}.fixtures`, bad));
 }
@@ -103,7 +95,6 @@ function witnessEntryProblems(item: Parsed, label: Parsed, bad: string[]): void 
   if (!isPlainObject(item)) { bad.push(`${label} must be a map`); return; }
   if (Object.hasOwn(item, 'path')) { evidenceMapProblems(item, 'proves', label, bad); return; }
   unknownKeys(item, WITNESS_KEYS, label, bad);
-  if (!['full', 'lite'].includes(item.edition)) bad.push(`${label}.edition must be full or lite`);
   relativePathProblem(item.base, `${label}.base`, bad);
   codeListProblems(item.expect, `${label}.expect`, bad);
   if (nonEmptyList(item.mutate, `${label}.mutate`, bad)) item.mutate.forEach((mutation: Parsed, index: number) => mutationProblems(mutation, `${label}.mutate[${index}]`, bad));
@@ -178,19 +169,6 @@ function checkRuleFailureCodes(rule: Parsed, label: Parsed, codeOwner: Parsed, b
   }
 }
 
-function checkCodeEditions(rule: Parsed, label: Parsed, bad: string[]) {
-  const value = rule.codeEditions;
-  if (value === undefined) return;
-  if (!isPlainObject(value) || !Object.keys(value).length) { bad.push(`${label}.codeEditions must be a non-empty map`); return; }
-  const editions = Array.isArray(rule.editions) ? rule.editions : ['full', 'lite'];
-  for (const [code, selected] of Object.entries(value)) {
-    const at = `${label}.codeEditions.${code}`;
-    if (!Array.isArray(rule.failureCodes) || !rule.failureCodes.includes(code)) bad.push(`${at} must name a code owned by this rule`);
-    enumListProblems({ editions: selected }, at, 'editions', ['full', 'lite'], bad);
-    if (Array.isArray(selected) && selected.some((edition) => !editions.includes(edition))) bad.push(`${at} must be a subset of the rule's editions`);
-  }
-}
-
 function checkEnforcerIdentity(enforcer: Parsed, label: Parsed, seen: Parsed, bad: string[]) {
   if (!ENFORCER_FAMILIES.includes(enforcer.kind)) bad.push(`${label}.kind must be one of ${ENFORCER_FAMILIES.join(', ')}`);
   if (!ENFORCER_ID.test(String(enforcer.id))) bad.push(`${label}.id must be kebab-case`);
@@ -212,8 +190,6 @@ function checkEnforcer(enforcer: Parsed, index: Parsed, ruleLabel: Parsed, seen:
   for (const key of Object.keys(enforcer)) {
     if (!ENFORCER_KEYS.has(key)) bad.push(`${label} has unknown key ${key}`);
   }
-  bad.push(...ruleEditionProblems(enforcer, label));
-  optionalText(enforcer, 'editionWhy', label, bad);
   checkEnforcerIdentity(enforcer, label, seen, bad);
   if (enforcer.status !== undefined && enforcer.status !== 'planned') bad.push(`${label}.status is either absent or planned`);
   checkEnforcerLocation(enforcer, label, bad);
@@ -235,16 +211,13 @@ function checkRule(rule: Parsed, index: Parsed, catalog: Parsed, codeOwner: Pars
   }
   checkRuleIdentity(rule, index, catalog, at, label, bad);
   checkRuleText(rule, label, bad);
-  optionalText(rule, 'editionWhy', label, bad);
   optionalText(rule, 'templateNa', label, bad);
   for (const key of ['docs', 'exemplifiedBy', 'proves']) evidenceProblems(rule, key, label, bad);
   witnessProblems(rule, label, bad);
   enumListProblems(rule, label, 'kinds', RULE_KINDS, bad);
-  bad.push(...ruleEditionProblems(rule, label));
   const gates = enumListProblems(rule, label, 'gates', RULE_GATES, bad);
   checkRuleGates(rule, label, gates, bad);
   checkRuleFailureCodes(rule, label, codeOwner, bad);
-  checkCodeEditions(rule, label, bad);
   checkRuleEnforcers(rule, label, bad);
   if (Array.isArray(rule.gates)) {
     const hasSonar = rule.enforcers.some((enforcer: Parsed) => isPlainObject(enforcer) && enforcer.kind === 'sonar');
@@ -271,8 +244,6 @@ export interface CatalogEnforcer {
   id: string;
   status?: string;
   at?: string;
-  editions?: string[];
-  editionWhy?: string;
   planned: boolean;
 }
 
@@ -285,15 +256,12 @@ export interface CatalogRule {
   kinds: string[];
   gates: string[];
   failureCodes: string[];
-  editions?: string[];
-  codeEditions?: Record<string, string[]>;
   enforcers: CatalogEnforcer[];
   // reason: evidence entries (docs, proofs, witnesses) are parsed YAML read by other tools; validated by this file
   docs?: Parsed;
   exemplifiedBy?: Parsed;
   proves?: Parsed;
   witness?: Parsed;
-  editionWhy?: string;
   templateNa?: string;
 }
 
@@ -316,8 +284,6 @@ export interface RuleCatalog {
   rules: readonly CatalogRule[];
   rule: (id: string) => CatalogRule | null;
   byCode: (code: string) => CatalogRule | null;
-  judgedIn: (code: string, edition?: string) => boolean;
-  enforcerJudgedIn: (kind: string, id: string, edition?: string) => boolean;
   forGate: (gate: string) => CatalogRule[];
   lintCode: (ruleId?: string | null) => string | undefined;
   forEnforcer: (kind: string, id: string) => CatalogRule[];
@@ -350,12 +316,6 @@ export function loadRuleCatalog({ root = skillRoot, file = path.join(root, HFS_R
     rule: (id: string) => byId.get(id) ?? null,
     /** The rule that owns this failure code (its own or a sub-check code), or null. */
     byCode: (code: string) => byCode.get(code) ?? null,
-    /** Whether a finding code is judged under `edition`: codeEditions narrows its owner's editions; uncatalogued codes remain judged. */
-    judgedIn: (code: string, edition = 'full') => {
-      const owner = byCode.get(code);
-      return judgedInEdition(owner, edition) && (!owner?.codeEditions?.[code] || owner.codeEditions[code].includes(edition));
-    },
-    enforcerJudgedIn: (kind: string, id: string, edition = 'full') => enforcerJudgedInEdition(list, kind, id, edition),
     /** The rules that run at a gate. */
     forGate: (gate: string) => list.filter((rule: Parsed) => rule.gates.includes(gate)),
     /** The catalogued why code of a lint finding's rule id (`starci-be/<id>`, `starci-fe/<id>`), or undefined. */

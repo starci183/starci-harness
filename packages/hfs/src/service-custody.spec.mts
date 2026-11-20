@@ -187,7 +187,7 @@ test('exact tooling custody is declared without a runtime grant; same-named app 
   assert.equal(serviceCredentialValue(root, binding, { decrypt: () => ({ PROJECT_ANALYSIS_TOKEN: VALUE }) }) === VALUE, true);
   fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, '.github/workflows/ci.yml'), 'env:\n  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}\n');
-  const run = () => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' }, isRoot: true });
+  const run = () => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app' }, isRoot: true });
   assert.deepEqual(run(), []);
   fs.writeFileSync(path.join(root, '.starcistacks/dev/secrets/runtime.enc.yaml'), envelope(['SONAR_TOKEN']));
   assert.ok(run().some((finding) => finding.code === 'CI_SECRET_SEALED'));
@@ -200,7 +200,7 @@ test('an unsealed service credential is the open owner step its service declares
   fs.rmSync(path.join(root, MEMBER));
   fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, '.github/workflows/ci.yml'), 'env:\n  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}\n');
-  const run = () => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' }, isRoot: true }).map((finding) => finding.code);
+  const run = () => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app' }, isRoot: true }).map((finding) => finding.code);
   Object.assign(doc.services.sonar, { ownerAction: { needed: 'seal the analysis token', reason: 'a fresh app fabricates no credential' } }); write();
   assert.deepEqual(run(), []);
   Object.assign(doc.services.sonar, { ownerAction: 'none' }); write();

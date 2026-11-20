@@ -36,7 +36,7 @@ const PINS: CanonPins = {
   '@starci/eslint-canon-fe': { version: '9.14.3', group: 'starci', side: 'fe' },
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_CANON_PIN_DRIFT@${edition}: R15 accepts a Grammar pin inside its range and refuses one outside it, while a canon stays exact`, (t) => {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-pin-range-'));
     t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));

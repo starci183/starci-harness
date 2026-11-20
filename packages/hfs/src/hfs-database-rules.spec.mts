@@ -161,7 +161,7 @@ test('DB_MIGRATION_SHAPE: a new equal stamp and duplicate active stamps are refu
 });
 
 test('DB_MIGRATION_SHAPE: an app nested in a larger repository reads the base content from its own root, so an untouched migration is not a finding and an edit is', async () => {
-  const hfs = JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [] }, fe: { apps: [] } } });
+  const hfs = JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [] }, fe: { apps: [] } } });
   const outer = committedRepo({ ...migration('20260101120000_old.sql', 'select 0;\n'), 'examples/demo/hfs.json': hfs, [`examples/demo/${MIGRATIONS}/20260101120000_old.sql`]: 'select 1;\n' });
   const app = path.join(outer, 'examples', 'demo');
   const file = `${MIGRATIONS}/20260101120000_old.sql`;
@@ -401,7 +401,7 @@ test('DB_DEFINER_SAFE: a definer in an exposed schema needs revoke execute from 
 });
 
 // proves: DB_DEFINER_REVOKE@lite DB_DEFINER_REVOKE@full DB_DEFINER_SAFE@lite DB_DEFINER_SAFE@full
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_DEFINER_REVOKE ${edition}: exposed definers close authenticated access and accept explicit ALL revocation`, async () => {
     const create = "create function public.f(value int) returns int language sql security definer set search_path = '' as $$ select value $$;";
     const missing = await definerOf(`${create}\nrevoke execute on function public.f(int) from public, anon;`, edition);

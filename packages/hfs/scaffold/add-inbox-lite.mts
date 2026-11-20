@@ -205,20 +205,20 @@ const eventPatternPatch = (root: string): Patch => {
 /** Writes the lite provider inbox. Processing belongs to a separately added reactor or job, after the record commits. */
 export function addLiteWebhookInbox({
   root,
-  repo,
+  
   noun,
   provider,
   values,
   now = Date.now,
 }: {
   root: string;
-  repo: { edition?: string };
+  repo?: unknown;
   noun: string;
   provider: string;
   values: InboxValues;
   now?: () => number;
 }): string[] {
-  if (repo.edition !== "lite" || noun !== "webhook") return [];
+  if (noun !== "webhook") return [];
   validateProcessingOwner({ root, service: values.service!, serviceModule: values.serviceModule!, provider }); // a webhook always carries its processing service
   const Provider = pascalOf(provider);
   const table = `${snakeOf(provider)}_inbox`;

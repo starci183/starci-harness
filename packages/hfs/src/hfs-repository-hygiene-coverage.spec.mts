@@ -22,7 +22,7 @@ function repository(t: TestContext, edition: string, entries: Record<string, str
   return { repoRoot, files: Object.keys(entries), repo: { edition } };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} invalid repository-local checks and lint plugins are refused`, (t) => {
     const context = repository(t, edition, {
       'scripts/check-schema.mjs': 'export {};\n',

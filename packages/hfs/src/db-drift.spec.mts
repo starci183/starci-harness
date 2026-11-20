@@ -201,7 +201,7 @@ test('a CHECK or an index of a partition is compared with the manifest both ways
 /** A temporary app root with an hfs.json declaring the engine-owned objects and, when given, its manifest. */
 function engineApp(manifest: unknown): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-drift-engine-'));
-  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'engine', edition: 'lite', sides: { be: { apps: [], engineOwned: ENGINE }, fe: { apps: [] } } }));
+  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'engine', sides: { be: { apps: [], engineOwned: ENGINE }, fe: { apps: [] } } }));
   if (manifest !== undefined) {
     fs.mkdirSync(path.join(dir, '.starciwork'), { recursive: true });
     fs.writeFileSync(path.join(dir, ENGINE.manifest), typeof manifest === 'string' ? manifest : JSON.stringify(manifest));

@@ -55,7 +55,7 @@ function fixture(t: TestContext, edition: string, report: string | undefined, fi
   return { repoRoot: dir, repo, manifest, files, coverageFrom: 'coverage/lcov.info' };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_COVERAGE_BELOW ${edition}: refuses each metric below 100% per measured file`, (t) => {
     for (const partial of [{ line: 0 }, { fn: 0 }, { branch: '-' }] as const) {
       const report = coverageBelowReport(fixture(t, edition, record(LOGIC, partial)));
@@ -189,7 +189,7 @@ test('HFS_COVERAGE_BELOW: summary-only reports require each record to prove 100%
 test('HFS_COVERAGE_BELOW: edition and manifest coverage changes alter the denominator', (t) => {
   const context = fixture(t, 'full', record(LOGIC), [LOGIC, POLICY]);
   const changed = { ...manifest, slots: manifest.slots.map((slot) => slot.id === 'be.domain' ? { ...slot, editions: ['full'] } : slot) };
-  const lite = coverageBelowReport({ ...context, manifest: changed, repo: { ...context.repo, edition: 'lite' }, lcov: record(POLICY) });
+  const lite = coverageBelowReport({ ...context, manifest: changed, repo: { ...context.repo }, lcov: record(POLICY) });
   assert.equal(lite.ok, true);
   assert.deepEqual(lite.measured, [POLICY]);
   assert.ok(lite.unmeasured.includes(LOGIC));

@@ -59,7 +59,7 @@ async function ciRun(root: string, tracked: string[]) {
   return ci.verdicts();
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_CHECK_CACHE_FORGED@${edition} violating: a record that matches the tree with its findings deleted by hand is an error finding`, async (t) => {
     const root = app();
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -105,7 +105,7 @@ for (const edition of ['lite', 'full']) {
 test('the check cache folder is a slot of its own: no stacks shape finding, no environment, no tree finding', async (t) => {
   const { openHfs } = await import('../runtime/scripts/hfs/slots.mjs');
   const { stacksFindings } = await import('../runtime/scripts/hfs/rules/stacks.mjs');
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cache-slot-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const declaration = { hfs: 3, kind: 'app', edition, project: 'cache-slot', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };

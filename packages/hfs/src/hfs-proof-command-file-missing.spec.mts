@@ -32,7 +32,7 @@ const judge = ({ repoRoot, declaration }: { repoRoot: string; declaration: unkno
     .filter((finding) => finding.code === CODE);
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE} ${edition}: a proof command that runs a missing script is refused, one finding per kind and path`, (t) => {
     const missing = judge(app(t, edition, { measurement: `node ${TARGET}`, unit: 'node --test scripts/gone.spec.mjs' }));
     assert.deepEqual(missing.map(({ code, level, path: file, kind, missing: absent }) => ({ code, level, file, kind, absent })), [

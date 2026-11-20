@@ -52,9 +52,9 @@ const compliant = (edition: string): Workflow => ({
 });
 const messagesOf = (findings: { item: string; message: string }[]) => findings.filter((finding) => finding.item === 'job-shape').map((finding) => finding.message).join('\n');
 const items = (findings: { item: string }[]) => findings.map((finding) => finding.item);
-const judge = (doc: Workflow, edition: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci', edition });
+const judge = (doc: Workflow, _edition?: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci' });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a conforming managed ci.yml is clean`, () => {
     assert.deepEqual(judge(compliant(edition), edition), []);
   });

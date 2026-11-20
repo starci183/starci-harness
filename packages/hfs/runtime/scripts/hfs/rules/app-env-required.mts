@@ -7,7 +7,7 @@ const REQUIRED_CODE = 'BE_APP_ENV_REQUIRED';
 
 /** Missing files cannot be visited by ESLint, so the content check owns their presence. */
 export function appEnvRequiredFindings({ repoRoot, files, all = files, repo, inScope = () => true }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; inScope?: (file: string) => boolean }) {
-  if (repo.profile !== 'be' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (repo.profile !== 'be') return [];
   const tracked = new Set(all);
   const findings = [];
   for (const app of repo.apps ?? []) {

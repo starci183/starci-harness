@@ -38,7 +38,7 @@ function judged(t: TestContext, edition: string, component: string) {
   return { pair: findings(report, PAIR).length, owner: findings(report, OWNER).length };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   const accepted: [string, string][] = [
     ['a conditional prop passthrough', 'export const FrameBase = (props: FrameBaseProps): ReactNode => (props.active ? props.candidate : null);'],
     ['a bare children passthrough', 'export const FrameBase = (props: FrameBaseProps): ReactNode => props.children;'],

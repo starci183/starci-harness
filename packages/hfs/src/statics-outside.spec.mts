@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isStaticAssetOutside, staticsOutsideFindings } from '../runtime/scripts/hfs/rules/statics-outside.mjs';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: HFS_STATIC_ASSET_OUTSIDE_STATICS is a media file under fe public or under src of either side`, () => {
     const all = ['fe/apps/web/public/hero.png', 'fe/apps/web/src/components/logo.svg', 'be/src/modules/mail/banner.jpg', 'statics/art/hero.png', 'fe/apps/web/public/robots.txt'];
     assert.deepEqual(staticsOutsideFindings({ repo: { kind: 'app', edition }, isRoot: true, all }).map((finding) => finding.path), ['fe/apps/web/public/hero.png', 'fe/apps/web/src/components/logo.svg', 'be/src/modules/mail/banner.jpg']);

@@ -55,7 +55,7 @@ test('the scaffold refuses an empty side set and a rest contract without be', (t
   refused(['fe', 'packages'], 'rest');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a default ${edition} starter declares be and fe, states them in its stack, and raises no side finding`, (t) => {
     const { root, codes } = starter(t, edition);
     assert.deepEqual(Object.keys(json(root, 'hfs.json').sides ?? {}), ['be', 'fe']);

@@ -223,7 +223,7 @@ test("R06 pre-commit scanner refuses widened names from the index", (t) => {
   assert.ok(!JSON.stringify(staged).includes(value));
 });
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`HFS_AGE_KEY_CUSTODY (${edition}): tracked identity files are refused`, (t) => {
     const { root } = app(t);
     const files = [".claude/secret.env", "sops/keys.txt", "deploy/master.agekey"];
@@ -347,7 +347,7 @@ const sealedPackageYaml = (keys: string[], recipients: string[] = [PKG_RECIPIENT
 const packageSops = (recipients: string = PKG_RECIPIENT) =>
   `creation_rules:\n  - path_regex: secrets/.*\.sops.yaml$\n    age: ${recipients}\n`;
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`sealed package secrets (${edition}): a valid sops file matching the package recipients passes`, (t) => {
     const { root } = app(t);
     const second = `age1${"y".repeat(58)}`;
@@ -409,7 +409,7 @@ test("HFS_SECRET_OUTSIDE_ENC (lite): an off-home .enc is already HFS_LITE_SECRET
   );
 });
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`sealed custody (${edition}): nested envelopes are refused and direct members pass`, (t) => {
     const { root } = app(t);
     const nested = ".starcistacks/dev/secrets/nested/app.enc";

@@ -37,7 +37,7 @@ function judged(t: TestContext, edition: string, component: string) {
   return runArch(root);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a component calling a workspace package source through a path alias is analysed without error`, (t) => {
     const report = judged(t, edition, [
       'import { messageLabel } from "@fixture/ui-kit";',
@@ -55,7 +55,7 @@ const ALIASED = {
   '../packages/ui-kit/src/aliased.ts': "const implementation = (text: string): string => text.trim();\nexport const usePackageThing = implementation;\n",
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a component calling a workspace package's aliased variable through a path alias is analysed without error`, (t) => {
     const declaration = { ...appDeclaration('fe', { apps: DEFAULT_APPS.fe }), edition };
     const root = archFixture(t, { profile: 'fe', files: {

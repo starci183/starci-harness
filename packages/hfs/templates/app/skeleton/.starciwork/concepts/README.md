@@ -7,5 +7,5 @@ the current truth. History, decisions, progress and status do not live here.
 
 | Concept | Read when you touch (folders) | One line |
 | --- | --- | --- |
-| [conventions](conventions.md) | `be/src/` | How the app names and shapes tables, keys, errors and proof: read before any change. |
+| [conventions](conventions.md) | `db/`, `be/src/` | How the app names and shapes tables, keys, errors and proof: read before any change. |
 | [example](example.md) | `be/src/` | An example topic: replace it with the app's own. |

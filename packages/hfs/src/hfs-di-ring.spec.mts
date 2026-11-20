@@ -35,7 +35,7 @@ function app(t: TestContext, entries: Record<string, string>) {
   fs.mkdirSync(FIXTURES, { recursive: true });
   const dir = fs.mkdtempSync(path.join(FIXTURES, 'di-ring-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 }));
-  const repo = { kind: 'app', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
+  const repo = { kind: 'app', sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } };
   const files: Record<string, string> = { 'hfs.json': JSON.stringify(repo), 'be/tsconfig.json': JSON.stringify(config) };
   for (const [file, text] of Object.entries(entries)) files[`be/${file}`] = text;
   for (const [file, text] of Object.entries(files)) {
@@ -181,7 +181,6 @@ test('BE_DI_RING lite: the content finder of app check reports the ring, and ful
   const context = app(t, seven('BankFeedTriggerService'));
   const beRoot = path.join(context.repoRoot, 'be');
   const files = context.files.filter((file) => file.startsWith('be/')).map((file) => file.slice('be/'.length));
-  const lite = { kind: 'be', edition: 'lite', apps: [{ name: 'api', kind: 'api' }] };
+  const lite = { kind: 'be', apps: [{ name: 'api', kind: 'api' }] };
   assert.deepEqual(bootProofFindings({ repoRoot: beRoot, files, repo: lite as never, isRoot: false }).map((finding: { code: string }) => finding.code), [DI_RING_CODE]);
-  assert.equal(appWiring({ ...context, repo: { ...context.repo, edition: 'full' } }).status, 'skipped');
 });

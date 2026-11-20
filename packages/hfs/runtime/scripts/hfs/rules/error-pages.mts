@@ -66,7 +66,7 @@ export function drawsPageEmptyState(sources: readonly string[]): boolean {
 
 /** FE_ERROR_PAGE_NOT_EMPTY_STATE over the boundary files of a front end's web apps. */
 export function errorPageFindings({ files = [], repo, repoRoot, isRoot = false, inScope = () => true }: { files?: readonly string[]; repo: Repo; repoRoot: string; isRoot?: boolean; inScope?: (file: string) => boolean }): Finding[] {
-  if (isRoot || repo?.profile !== 'fe' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (isRoot || repo?.profile !== 'fe') return [];
   const tracked = new Set(files.map((file) => file.replaceAll('\\', '/')));
   const uiFiles = [...tracked].filter((file) => /^packages\/[^/]+-ui\/src\/.+\.tsx$/u.test(file));
   const findings: Finding[] = [];

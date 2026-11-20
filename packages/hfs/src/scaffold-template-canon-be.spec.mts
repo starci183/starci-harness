@@ -121,7 +121,7 @@ const addTable = (root: string) => {
   addKind({ repoRoot: root, noun: 'table', name: 'widgets' });
 };
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`the ${edition} skeleton's platform capabilities pass the starci-be canon`, { timeout: 300_000 }, async (t) => {
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-be-'), harness: { version: '1.1.0-alpha.3' }, edition,
       presets: bundledPresets(), lock: lockedOk, initGit: init });

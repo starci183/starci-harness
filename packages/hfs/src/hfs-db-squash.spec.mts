@@ -68,7 +68,7 @@ const psql = (container: string, database: string, sql: string) => {
 function app(t: TestContext, chain: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-squash-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  for (const [file, text] of Object.entries({ 'hfs.json': JSON.stringify({ kind: 'app', edition: 'lite' }), 'db/bootstrap.sql': BOOTSTRAP, [MIGRATION]: chain })) {
+  for (const [file, text] of Object.entries({ 'hfs.json': JSON.stringify({ kind: 'app' }), 'db/bootstrap.sql': BOOTSTRAP, [MIGRATION]: chain })) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), text);
   }

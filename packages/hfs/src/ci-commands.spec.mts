@@ -22,7 +22,7 @@ const lockedOk = (root: string): LockResult => {
 
 /** A fresh lite app, with one root workspace package (packages/ui-kit) when `packages` is true. */
 function app(t: TestContext, packages: boolean): string {
-  const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-ci-commands-'), harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-ci-commands-'), harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init });
   if (!packages) return root;
   fs.mkdirSync(path.join(root, 'packages', 'ui-kit', 'src'), { recursive: true });
   fs.writeFileSync(path.join(root, 'packages', 'ui-kit', 'package.json'), '{"name":"@demo/ui-kit","version":"0.0.0","private":true}\n');
@@ -70,7 +70,7 @@ test('a lite app with root packages builds them before its boot proof, on every 
   assert.match(ci, /- name: build the lint inputs\n {8}run: npm run build:modules --silent && npm run codegen --silent/);
   const sonar = stepNames(doc, 'sonar');
   assert.ok(sonar.indexOf('build the workspace packages') >= 0 && sonar.indexOf('build the workspace packages') < sonar.findIndex((name) => name.startsWith('SonarSource/sonarqube-scan-action@')), sonar.join(' | '));
-  assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci', edition: 'lite', rootPackages: true }), []);
+  assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci', rootPackages: true }), []);
   const nightly = stepNames(parseWorkflow(verify), 'verify');
   assert.ok(nightly.indexOf('build the workspace packages') >= 0 && nightly.indexOf('build the workspace packages') < nightly.indexOf('verify the committed cache'), nightly.join(' | '));
 });
@@ -81,5 +81,5 @@ test('a lite app without root packages renders no package build and no build:mod
   assert.doesNotMatch(ci, /build:modules|build the workspace packages/);
   assert.doesNotMatch(verify, /build:modules|build the workspace packages/);
   assert.match(ci, /^ {8}side: \[be, fe\]$/m);
-  assert.deepEqual(ciStandardFindings({ doc: parseWorkflow(ci), file: '.github/workflows/ci.yml', scope: 'app-ci', edition: 'lite' }), []);
+  assert.deepEqual(ciStandardFindings({ doc: parseWorkflow(ci), file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
 });

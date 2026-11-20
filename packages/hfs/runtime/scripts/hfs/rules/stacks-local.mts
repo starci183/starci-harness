@@ -74,12 +74,12 @@ function runbookFindings({ repoRoot, environment, spec }: { repoRoot: string; en
 
 /** Findings of the dev environments of the app root. */
 export function stacksLocalFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Repo; isRoot: boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const { doc } = findStackDeclaration(repoRoot);
   if (!doc) return [];
   const project = String(readJson(repoRoot, 'hfs.json')?.project ?? 'app');
   const judged = Object.entries(mapping(mapping(doc).environments)).filter(([environment, spec]) => ENV_NAME.test(environment) && plain(spec) && (spec as Parsed).runtime === 'docker-compose');
   const findings = judged.flatMap(([environment, spec]) => [...localFindings({ repoRoot, project, environment, spec }), ...runbookFindings({ repoRoot, environment, spec })]);
-  if (repo.edition === 'lite' && judged.length === 0) findings.push(found('STACKS_DEV_UNDECLARED', DECLARATION, 'a lite app declares its dev environment: an environment with runtime docker-compose and a local block, run by `starci app stack up --env dev` (PROJECT-STACKS-3, PROJECT-STACKS-6)'));
+  if (judged.length === 0) findings.push(found('STACKS_DEV_UNDECLARED', DECLARATION, 'an app declares its dev environment: an environment with runtime docker-compose and a local block, run by `starci app stack up --env dev` (PROJECT-STACKS-3, PROJECT-STACKS-6)'));
   return findings;
 }

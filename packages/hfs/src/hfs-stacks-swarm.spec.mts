@@ -64,7 +64,7 @@ const cases = [
   { code: 'STACKS_REALTIME_SCALED', violate(value: SwarmFixture) { addRealtime(value); runRealtime(value, 2, 'memory'); } },
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const { code, violate } of cases) {
     test(`${code}@${edition}: declared safe Swarm service passes`, t => {
       const value = fixture(t, edition);
@@ -326,7 +326,7 @@ test('STACKS_REALTIME_SCALED@full: an API that composes no realtime feature or i
 test('STACKS_REALTIME_SCALED@lite: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'lite'));
 test('STACKS_REALTIME_SCALED@full: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'full'));
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACKS_REALTIME_SCALED@${edition}: the finder reports a scaled memory hub and accepts a shared one`, t => {
     const value = fixture(t, edition);
     addRealtime(value);
@@ -424,7 +424,7 @@ test('STACKS_REALTIME_SCALED@lite: the tracked finder passes a shared hub and fa
 });
 
 test('R266 tracked finder uses renderedModel and returns standard findings for both editions', t => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const value = fixture(t, edition), renderedFile = '.starcistacks/production/infra/swarm/rendered.json';
     value.manifest.environments.production.renderedModel = 'infra/swarm/rendered.json';
     value.write();
@@ -458,7 +458,7 @@ test('R266 tracked finder uses all files and runs at the app root only', t => {
 });
 
 test('R266 Caddy routes require a tracked config or matching docker-proxy labels', t => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const value = fixture(t, edition), ingress = value.model.services.ingress;
     ingress.image = pinned('caddy:2.10.2');
     value.manifest.components.ingress.image = ingress.image;
@@ -499,7 +499,7 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACKS_HOST_UNROUTED@${edition}: an external shared ingress routes the declared hosts itself, but DNS, TLS and ports stay judged`, t => {
     const value = fixture(t, edition);
     const spec = value.manifest.environments.production;
@@ -524,7 +524,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // A shared edge-traefik (ingress.kind: shared-edge): hosts are declared once, in ingress.routes; the stack file names none, its deploy renders the labels.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`STACKS_HOST_UNROUTED@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     delete value.manifest.components.ingress;

@@ -57,7 +57,7 @@ function jsonFindings(file: string, text: string) {
 
 /** Corrupted Vietnamese copy in the message catalogs of this root/side scope. */
 export function textIntegrityFindings({ repoRoot, files, repo, inScope = () => true }: { repoRoot: string; files: string[]; repo: Repo; inScope?: (file: string) => boolean }) {
-  if (repo.kind === 'runtime' || !['lite', 'full'].includes(repo.edition ?? 'full')) return [];
+  if (repo.kind === 'runtime') return [];
   const findings = [];
   for (const file of files) {
     const ts = file.endsWith(CATALOG_TS_SUFFIX);

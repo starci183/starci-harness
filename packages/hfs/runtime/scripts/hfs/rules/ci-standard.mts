@@ -1,6 +1,6 @@
 // ci-standard.mts - R301 CI_STANDARD: the one StarCi CI standard (knowledge/hfs/ci-standard.yaml: .claude defines ONE standard CI
 // ruleset, its own CI and the examples follow it, and apps inherit it). This file checks the items the standard marks `check: ci-standard`:
-//   job-shape              the managed ci.yml holds exactly the edition's jobs; the unit run is in `test`, the proof and the Codecov upload in `coverage` (the one OIDC job)
+//   job-shape              the managed ci.yml holds exactly the standard's jobs; the unit run is in `test`, the proof and the Codecov upload in `coverage` (the one OIDC job)
 //   full-history-base-ref  every actions/checkout fetches the full history; a job that lints writes STARCI_BASE_REF before it lints
 //   heap-per-step          every heavy step (heap.steps) declares NODE_OPTIONS --max-old-space-size >= heap.minMiB on the step
 //   sonar-lint-per-side    a lint with --out names --side
@@ -57,8 +57,8 @@ const runOf = (step: Parsed) => (typeof step.run === 'string' ? step.run : '');
 /** The items of the standard this file checks for `scope`: their ids. */
 const checkedItems = (standard: Parsed, scope: Parsed) => new Set(standard.items.filter((item: Parsed) => item.check === 'ci-standard' && item.covers.includes(scope)).map((item: Parsed) => item.id));
 
-function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed, off: GatesOff) {
-  const shape = standard.jobs[edition] ?? standard.jobs.full;
+function jobShape(doc: Parsed, standard: Parsed, say: Parsed, off: GatesOff) {
+  const shape = standard.jobs;
   const ids = jobsOf(doc).map(([id]) => id);
   const out = [];
   const prefix = String(standard.deployJobPrefix ?? 'deploy-');
@@ -183,8 +183,8 @@ function noWorldLayers(doc: Parsed, say: Parsed) {
 
 const BOOT_PROOF = /\bapp check\b[^\n]*--gate[ =]wiring\b/;
 
-function bootProof(doc: Parsed, edition: string, say: Parsed, off: GatesOff) {
-  if (edition !== 'lite' || off.wiring !== undefined) return [];
+function bootProof(doc: Parsed, say: Parsed, off: GatesOff) {
+  if (off.wiring !== undefined) return [];
   const steps = record(doc.jobs?.fast) ? stepsOf(doc.jobs.fast) : [];
   const proof = steps.findIndex((step: Parsed) => BOOT_PROOF.test(runOf(step)));
   const typecheck = steps.findIndex((step: Parsed) => /\bnpm run typecheck\b/.test(runOf(step)));
@@ -277,14 +277,14 @@ function shaPinned(doc: Parsed, say: Parsed) {
   return out;
 }
 
-/** The R301 findings of one workflow document: scope `app-ci` (with the app's edition) or `runtime`. Pure over the document and the standard. */
-export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages, appSides = ['be', 'fe'], off = {} }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[]; off?: GatesOff }) {
+/** The R301 findings of one workflow document: scope `app-ci` or `runtime`. Pure over the document and the standard. */
+export function ciStandardFindings({ doc, file, scope, standard = ciStandard(), rootPackages, appSides = ['be', 'fe'], off = {} }: { doc: Parsed; file: string; scope: Parsed; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[]; off?: GatesOff }) {
   if (!record(doc)) return [];
   const items = checkedItems(standard, scope);
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
   const checks = {
-    'job-shape': () => jobShape(doc, edition, standard, say, off),
-    'boot-proof': () => bootProof(doc, edition, say, off),
+    'job-shape': () => jobShape(doc, standard, say, off),
+    'boot-proof': () => bootProof(doc, say, off),
     'full-history-base-ref': () => fullHistory(doc, say),
     'heap-per-step': () => heapPerStep(doc, standard, say),
     'sonar-lint-per-side': () => sonarLintPerSide(doc, say),
@@ -313,9 +313,8 @@ function declaresBuildModules(repoRoot: string | undefined): boolean {
 
 /** R301 over an app: its managed .github/workflows/ci.yml (the app check, and the runtime check over every example app). */
 export function ciStandardAppFindings(ctx: Parsed) {
-  const edition = ctx.repo?.edition === 'lite' ? 'lite' : 'full';
   const rootPackages = declaresBuildModules(ctx.repoRoot);
   const off = declaredGatesOff(ctx.repoRoot);
   return appWorkflowFindings({ ...ctx, inScope: (file: string) => file === APP_CI && (ctx.inScope ?? (() => true))(file) },
-    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)), off }), { dedupe: true });
+    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)), off }), { dedupe: true });
 }

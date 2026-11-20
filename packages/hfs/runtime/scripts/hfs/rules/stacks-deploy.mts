@@ -68,9 +68,9 @@ function judged([environment, spec]: Parsed) {
   return ENV_NAME.test(environment) && plain(spec) && spec.runtime === 'docker-swarm' && spec.deploy !== undefined;
 }
 
-/** Findings of every declared deploy block of the app root, in both editions. */
+/** Findings of every declared deploy block of the app root,. */
 export function stacksDeployFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Repo; isRoot: boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const { doc } = findStackDeclaration(repoRoot);
   const project = String(readJson(repoRoot, 'hfs.json')?.project ?? 'app');
   return Object.entries(mapping(mapping(doc).environments)).filter(judged)

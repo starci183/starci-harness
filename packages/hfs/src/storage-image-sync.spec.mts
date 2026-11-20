@@ -15,9 +15,9 @@ const DOCKERFILE = '.starcistacks/images/storage/Dockerfile';
 const IGNORE = '.starcistacks/images/storage/Dockerfile.dockerignore';
 // reason: the spec renders from a source with only the facts sync reads for this slot.
 const source = (storageNeeded?: boolean): AppSourceFacts => ({ files: [], read: () => '', ...(storageNeeded === undefined ? {} : { storageNeeded }) }) as unknown as AppSourceFacts;
-const rendered = (edition: 'lite' | 'full', storageNeeded?: boolean): Map<string, string> => new Map(renderTargets(starterDeclaration('demo', undefined, edition), bundledPresets(), { source: source(storageNeeded) }).map((target) => [target.path, String(target.content)]));
+const rendered = (_edition: 'lite' | 'full', storageNeeded?: boolean): Map<string, string> => new Map(renderTargets(starterDeclaration('demo', undefined), bundledPresets(), { source: source(storageNeeded) }).map((target) => [target.path, String(target.content)]));
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the storage image is rendered from the pinned MinIO and a source-built mc, with a dockerignore that admits statics/ only`, () => {
     const files = rendered(edition, true);
     const dockerfile = files.get(DOCKERFILE) as string;
@@ -43,7 +43,7 @@ for (const edition of ['lite', 'full'] as const) {
 }
 
 test('a lite app that needs storage builds the image in the managed images workflow; one that does not, does not', () => {
-  const lite = starterDeclaration('demo', undefined, 'lite');
+  const lite = starterDeclaration('demo', undefined);
   const apps = (needed: boolean): string[] => imageApps(validateHfs(lite), { storageNeeded: needed }).map((image) => image.name);
   assert.deepEqual(apps(true).slice(-2), ['db', 'storage']);
   assert.deepEqual(apps(false).slice(-1), ['db']);
@@ -54,7 +54,7 @@ test('a lite app that needs storage builds the image in the managed images workf
 test('sync adds the starter statics/.gitkeep to an app that needs storage and has no folder, and nothing when the folder exists', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'storage-sync-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project: 'demo', sides: { be: {}, fe: {} } }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', sides: { be: {}, fe: {} } }));
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { '@starci/object-storage': '1.0.0' } }));
   assert.deepEqual(upgradeEdits(root).edits.filter((edit) => edit.path.startsWith('statics/')).map((edit) => edit.path), ['statics/.gitkeep']);
   fs.mkdirSync(path.join(root, 'statics'));

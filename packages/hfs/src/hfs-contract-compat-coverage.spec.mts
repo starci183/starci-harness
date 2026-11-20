@@ -32,7 +32,7 @@ function repository(t: TestContext, edition: string, current: unknown) {
   return { repoRoot, files: Object.keys(members) };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} BE_CONTRACT_BREAKING rejects removing a published payload field`, (t) => {
     const current = contract({
       'order.placed': { ...publishedEvent, payload: { orderId: 'string', note: 'string?' } },

@@ -30,7 +30,7 @@ const run = (t: TestContext, edition: string, text: string, repo: { kind: string
   return workflowContextsFindings({ repoRoot: root, files: [FILE], repo, isRoot: true });
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a valid workflow reading runner data only in step env is clean`, (t) => {
     assert.deepEqual(run(t, edition, doc('${{ github.sha }}', RUNNER_PATH)), []);
   });

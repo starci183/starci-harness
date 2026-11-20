@@ -29,7 +29,7 @@ const PRODUCT_PATTERNS: readonly Pattern[] = Object.freeze([
   ['_resources', 'grammar-captures', REST],
   ['_derived', /^(index\.yaml|frontier\.md|critique\.yaml|critique\.md)$/],
 ].map((pattern) => Object.freeze(pattern)));
-// The concept records of a product (the catalog and one record per concept), the same in both editions.
+// The concept records of a product (the catalog and one record per concept), the same.
 const CONCEPT_PATTERNS: readonly Pattern[] = PRODUCT_PATTERNS.filter((pattern) => pattern[0] === 'concepts');
 
 // Agent output that is refused even where a pattern above would admit it: draw rounds, stray report copies,

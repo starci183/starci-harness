@@ -17,7 +17,7 @@ function fixture(t: TestContext, edition: string) {
   return { repoRoot, repo: { edition, apps: [{ name: 'web', kind: 'next' }], sides: { fe: { apps: [{ name: 'web', kind: 'next' }], reads: [] } } } };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} placement rejects an absent locale proxy`, (t) => {
     const result = frontendFindings({ ...fixture(t, edition), files: ['apps/web/src/modules/i18n/messages/vi.json'] });
     assert.deepEqual(result.filter((finding) => finding.code === 'FE_I18N_PLACEMENT').map((finding) => finding.path), ['apps/web/src/proxy.ts']);
@@ -55,7 +55,7 @@ function groupedFixture(t: TestContext, edition: string, texts: Record<string, s
 const CATCH_ALL = 'import { notFound } from "next/navigation"\nconst Page = (): never => notFound()\nexport default Page\n';
 const NOT_FOUND = 'export { metadata as generateMetadata } from "@/x"\nexport default () => null\n';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} the loading boundary in a route group needs the notFound catch-all and the metadata of not-found`, (t) => {
     const ok = groupedFixture(t, edition, { [`${BASE}app/[locale]/[...rest]/page.tsx`]: CATCH_ALL, [`${BASE}app/[locale]/not-found.tsx`]: NOT_FOUND });
     assert.deepEqual(frontendFindings({ ...ok, files: GROUPED }).filter((finding) => finding.level === 'info' || finding.code === 'FE_ERROR_BOUNDARY_MISSING'), []);

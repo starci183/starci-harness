@@ -33,7 +33,7 @@ function fixture(t: TestContext, content: Record<string, string>, edition: strin
 }
 const codes = (ctx: ReturnType<typeof fixture>) => supplyChainFindings(ctx).map((finding) => finding.code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_DEPENDABOT_MISSING rejects absent or incomplete updates (${edition})`, (t) => {
     for (const content of [undefined, '', 'version: 2\nupdates: []', dependabot.replace('package-ecosystem: docker', 'package-ecosystem: pip')]) {
       const files = { ...clean };
@@ -124,7 +124,7 @@ for (const edition of ['lite', 'full']) {
 
 test('R269 honors path scope and skips runtime/side/unknown editions', (t) => {
   assert.deepEqual(codes(fixture(t, {}, 'lite', { inScope: (file: string) => file === '.github/workflows/ci.yml' })), ['HFS_AUDIT_STEP_MISSING']);
-  for (const extra of [{ repo: { kind: 'runtime', edition: 'lite' } }, { isRoot: false }, { repo: { kind: 'app', edition: 'unknown' } }]) assert.deepEqual(codes(fixture(t, {}, 'full', extra)), []);
+  for (const extra of [{ repo: { kind: 'runtime' } }, { isRoot: false }, { repo: { kind: 'app', edition: 'unknown' } }]) assert.deepEqual(codes(fixture(t, {}, 'full', extra)), []);
 });
 
 test('R269 uses the tracked inventory; files on disk alone cannot satisfy gates', (t) => {
@@ -132,7 +132,7 @@ test('R269 uses the tracked inventory; files on disk alone cannot satisfy gates'
   assert.equal(supplyChainFindings(ctx).length, 3);
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_SBOM_MISSING and HFS_AUDIT_STEP_MISSING accept jobs the plan or the caller decides, never a job that is switched off (${edition})`, (t) => {
     const decided = (condition: string, steps: string) => `on:\n  workflow_call:\npermissions:\n  contents: read\njobs:\n  check:\n    if: ${condition}\n    runs-on: ubuntu-latest\n    steps:\n${steps}\n`;
     const build = `      - uses: docker/build-push-action@${sha}\n        with:\n          sbom: true\n          provenance: mode=max`;

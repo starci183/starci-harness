@@ -43,7 +43,7 @@ function fixture(contents: Record<string, string>, reset: unknown = RESET): stri
   const declared = reset === NONE ? {} : { baselineReset: reset };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-baseline-reset-'));
   made.push(dir);
-  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'reset', edition: 'lite', db: declared, sides: { be: { apps: [] }, fe: { apps: [] } } }));
+  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'reset', db: declared, sides: { be: { apps: [] }, fe: { apps: [] } } }));
   for (const [file, text] of Object.entries(contents)) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), text);
@@ -56,7 +56,7 @@ const codes = async (contents: Record<string, string>, base: Record<string, stri
   const files = Object.keys(contents);
   const findings = [
     ...await checkDatabase({ repoRoot: dir, files, git: history(base) }),
-    ...databaseBaselineFindings({ repoRoot: dir, files, all: files, repo: { kind: 'app', edition: 'lite' }, isRoot: true, inScope: () => true, git: history(base) }),
+    ...databaseBaselineFindings({ repoRoot: dir, files, all: files, repo: { kind: 'app' }, isRoot: true, inScope: () => true, git: history(base) }),
   ];
   return findings.filter((finding) => ['DB_MIGRATION_SHAPE', 'DB_BASELINE_SHAPE', 'DB_ARCHIVE_MUTATED'].includes(finding.code)).map((finding) => `${finding.code} ${finding.path}`).sort();
 };
@@ -94,7 +94,7 @@ test('once the baseline is on the base branch the declaration is spent: deleting
 });
 
 test('the declaration takes db.baselineReset as one baseline file, a ruling id, a date and a reason, and refuses any other shape', () => {
-  const problems = (baselineReset: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { baselineReset }, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const problems = (baselineReset: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { baselineReset }, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(problems(RESET), []);
   for (const bad of [{ ...RESET, baseline: 'db/migrations/baseline.sql' }, { ...RESET, baseline: 'db/migrations/archive/20260101000000_x.sql' }, { ...RESET, ruling: 'has space' }, { ...RESET, date: '5/11/2026' }, { ...RESET, reason: ' ' }, { ...RESET, extra: 1 }, { baseline: RESET.baseline }, 'x']) {
     assert.equal(problems(bad).length, 1, JSON.stringify(bad));

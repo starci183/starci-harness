@@ -56,7 +56,7 @@
 //                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mts; <dir> is
 //                                            relative to be/): the spec is built
 //                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
-//                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (R212).
+//                                            one placeholder it per public method. Never overwrites a file.
 //   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mts); never overwrites
 //   starci app add inbox [--cwd <dir>]                  the delivery inbox of a FULL app that has its webhooks already (platform/inbox and platform/idempotency, their
 //                                            migrations and catalogs in each compose/platform.ts, InboxModule in the webhooks group; scaffold/add-inbox-full.mts): the same
@@ -65,7 +65,7 @@
 //                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
 //   starci app desktop init | doctor | build [--target <os>] [--debug] [--bundles <list>] | dev | keygen --out <file>   the desktop app of a project that declares sides.desktop (desktop/cli.mts,
 //                                            contexts/project/desktop.md): a Tauri shell around the deployed web app; init declares and renders it, build runs on a machine with Rust, CI builds every system.
-//   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the full edition's local test world (the installed @starci/test-world cli)
+//   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the local test world (the installed @starci/test-world cli), on request
 //   starci app stack <action> --env <env> [--execute]
 //                                            the Swarm deploy tooling of stack/ (dry run unless --execute; never prints a secret value; see docs/application-stacks.md).
 //   starci app secret init | set --env <env> <slug> <KEY> [--generate <bytes>] | get --env <env> <slug> [KEY] --to-file [--reveal]
@@ -112,13 +112,13 @@ import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-verdict.mjs';
 import { activeProfile, familyModes, offLine, profileLabel, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { PROFILE_GATES } from '../runtime/scripts/lib/stack-declaration.mjs';
-import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import {  HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
 import { runWorkHygiene } from '../sync/hygiene.mjs';
 import { STYLE_GLOB, SyncError, bundledPresets } from '../sync/index.mjs';
 import { emitContractsAsync } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
-import { EditionRefusal } from '../scaffold/edition-gate.mjs';
+import { ScaffoldRefusal } from '../scaffold/scaffold-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { DESKTOP_USAGE, DesktopRefusal, desktopMain } from '../desktop/cli.mjs';
 import { scaffoldApp, scaffoldBase, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
@@ -157,7 +157,6 @@ import { CACHE_DIR, FAMILIES, type FamilyId, type FamilyReport } from '../cache/
 import { SECRET_CODES as SECRET_CODE_LIST } from '../cache/hfs-family.mjs';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } from '../report/sonar.mjs';
 import { stylelintFindings } from '../report/stylelint-findings.mjs';
-import { checkEdition } from '../upgrade/check.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
 import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
 import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
@@ -202,7 +201,7 @@ const booleanFlag = (opts: Opts, flag: string): boolean | undefined => { const g
 const listFlag = (opts: Opts, flag: string): string[] | undefined => { const given = opts[flag]; return Array.isArray(given) ? given : undefined; };
 /** The app IO every verb receives: the working directory, writers, environment and the injectable seams. */
 interface AppIo {
-  cwd: string; harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined; edition?: string | undefined;
+  cwd: string; harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined;
   stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: ((root: string) => LockResult) | undefined;
   /** The git settle of a new app (settleScaffoldBranches); a spec hands a double. */
   settleBranches?: ((root: string, name: string) => ScaffoldBranches) | undefined;
@@ -224,7 +223,7 @@ interface AppIo {
 type MainOptions = { [K in keyof AppIo]?: AppIo[K] | undefined };
 /** A verb parsed here: its runner, the only flags it takes and the usage forms. */
 interface ParsedVerb extends FlagTable {
-  run: (opts: Opts, io: AppIo) => number | Promise<number>; edition?: boolean; forms: { operands?: string; flags?: string[]; only?: FlagTable; edition?: boolean }[];
+  run: (opts: Opts, io: AppIo) => number | Promise<number>; forms: { operands?: string; flags?: string[]; only?: FlagTable }[];
 }
 type UsageForm = ParsedVerb['forms'][number];
 
@@ -236,8 +235,7 @@ const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) 
 
 /**
  * The verbs parsed here, each with the only flags it takes ({ boolean, value, list }); a flag of another verb is refused, never ignored.
- * `forms` are its usage lines: the operands and, where a form takes fewer flags than the verb, its own. `edition` marks a verb that reads the
- * global --edition (editionOption).
+ * `forms` are its usage lines: the operands and, where a form takes fewer flags than the verb, its own.
  */
 /** The flags of the add nouns that generate a file tree from a pattern (service, spec and image take none of them, and --inject is only theirs). */
 const ADD_FLAGS: FlagTable = { value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs', '--isolation', '--env-prefix'], boolean: ['--fe', '--form'] };
@@ -246,7 +244,7 @@ const GATE_FLAGS = ['--gate'] as const;
 /** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
 const CHECK_GATES = [...FAMILIES, 'codecov'] as const;
 const PARSED: Record<string, ParsedVerb> = {
-  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract', '--base-port'], edition: true, forms: [{ operands: '<name>' }] },
+  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract', '--base-port'], forms: [{ operands: '<name>' }] },
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
@@ -257,19 +255,19 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'inbox', flags: [] },
     ],
   },
-  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env'] } }, { only: { boolean: ['--staged'] } }, { only: { boolean: ['--ratchet'] } }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS } }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
 const flagsOf = (spec: FlagTable): readonly string[] => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])];
 const ADD_FLAGS_ALL = flagsOf(ADD_FLAGS);
-/** Every flag some parsed verb takes, and the global --edition: naming one on a verb that does not take it says so. */
-const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edition']);
+/** Every flag some parsed verb takes: naming one on a verb that does not take it says so. */
+const PARSED_FLAGS = new Set(Object.values(PARSED).flatMap(flagsOf));
 
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -293,11 +291,11 @@ const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', D
 /** The usage of each verb, from the tables its parser refuses every other flag with (codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
-    specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
+    specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags }))))])),
   codemod: CODEMODS.map((name: string) => `starci app codemod ${name} [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]`),
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
-  world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]'],
+  world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]'],
   desktop: [...DESKTOP_USAGE],
   stack: [
     ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
@@ -491,27 +489,6 @@ function globalOptions(argv: readonly string[], baseCwd: string): { argv: string
   return options;
 }
 
-/**
- * Takes --edition out of the arguments of a verb that reads it: scaffold chooses the edition, check judges only the declared one and
- * world refuses a lite app. Any other verb receives --edition as its own argument and refuses it (upgrade with
- * HFS_UPGRADE_USAGE: editions are fixed at scaffold).
- */
-function editionOption(verb: string, argv: string[]): { edition: string | undefined; argv: string[] } {
-  if (PARSED[verb]?.edition !== true && verb !== 'world') return { edition: undefined, argv };
-  let edition: string | undefined;
-  const rest: string[] = [];
-  const args = argv.values();
-  for (const arg of args) {
-    if (arg !== '--edition' && !arg.startsWith('--edition=')) {
-      rest.push(arg);
-      continue;
-    }
-    edition = flagValue('--edition', arg, args);
-    if (!['full', 'lite'].includes(edition)) throw new UsageError('--edition accepts full or lite');
-  }
-  return { edition, argv: rest };
-}
-
 async function installedStackMain(cwd: string): Promise<(argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown> {
   const require = createRequire(path.join(cwd, 'package.json'));
   let entry: string;
@@ -603,7 +580,7 @@ const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
  * have ended. The session's fingerprint was taken when it opened and its flush runs once, after every step.
  */
 async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false, env = 'local' }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean; env?: CheckEnv }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
-  const { cwd: repoRoot, harness, edition, presets, prettier } = io;
+  const { cwd: repoRoot, harness, presets, prettier } = io;
   const started = Date.now();
   // The branch profile (branch-profile.mts): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
   const profile = activeProfile(repoRoot, io.env);
@@ -614,7 +591,6 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const since = profiled ? newCodeSince(repoRoot) : undefined;
   const branchName = profile.branch ?? profile.profile ?? 'this branch';
   if (fix) await fixLint({ repoRoot, side, run: linterOf(io, io.runHeavyNode) });
-  await checkEdition({ repoRoot, edition, normal: () => undefined });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
   // The check judges the index, what a commit carries (and CI judges); a file git neither tracks nor ignores is counted and named as unjudged,
   // never read: a verdict that read the work tree would differ from the one of the commit. The run's own cache output is no such file.
@@ -631,7 +607,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   let seamResult: Dynamic;
   let tests: Awaited<ReturnType<typeof runTestForApp>> | undefined;
   const bodies = new Map<StepId, StepBody>();
-  const appInput = (session_: DiskSession, execute: HeavyNodeRun | undefined): AppRunInput => ({ repoRoot, tracked, session: session_, selected, harness, presets, prettier, edition: undefined, execute });
+  const appInput = (session_: DiskSession, execute: HeavyNodeRun | undefined): AppRunInput => ({ repoRoot, tracked, session: session_, selected, harness, presets, prettier, execute });
   if (io.checkApp !== undefined) {
     const seam = io.checkApp;
     bodies.set('hfs', async () => { seamResult = await seam({ repoRoot, harness, presets, prettier, io, selected, full, use, session: undefined }); });
@@ -656,7 +632,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   let proved: Dynamic;
   /** The app pass merged with the coverage proof on top, once its steps have ended. */
   const proof = (): Dynamic => {
-    proved ??= withCheckProofs(seamResult ?? mergeAppPass({ repoRoot, tracked, edition: undefined }, parts, session?.reports ?? []), { repoRoot, edition, wiring: false, coverageFrom: modes.coverage === 'off' ? undefined : coverageFrom });
+    proved ??= withCheckProofs(seamResult ?? mergeAppPass({ repoRoot, tracked }, parts, session?.reports ?? []), { repoRoot, wiring: false, coverageFrom: modes.coverage === 'off' ? undefined : coverageFrom });
     return proved;
   };
   if (selected.has('lint')) {
@@ -879,17 +855,17 @@ async function stagedRatchet(io: AppIo): Promise<number> {
 }
 
 async function checkMain(opts: Opts, io: AppIo): Promise<number> {
-  const { cwd: repoRoot, edition, stdout: out } = io;
+  const { cwd: repoRoot, stdout: out } = io;
   if (opts.positional.length) throw new UsageError('starci app check takes no path');
   if (opts.staged === true) {
-    const given = [...STAGED_REFUSES.filter((flag) => opts[flag.slice(2)] !== undefined), ...(edition === undefined ? [] : ['--edition'])];
+    const given = STAGED_REFUSES.filter((flag) => opts[flag.slice(2)] !== undefined);
     if (given.length) throw new UsageError(`starci app check --staged is the pre-commit guard alone and takes no ${given.join(', ')}`);
     return runWorkHygiene({ cwd: repoRoot, out: (text) => out(`${text}\n`) });
   }
   if (opts.profile === true || opts.ratchet === true) {
     const other = Object.keys(opts).filter((key) => key !== 'positional' && key !== 'profile' && key !== 'ratchet' && !(opts.profile === true && (key === 'gate' || key === 'json')));
     if (opts.profile === true && opts.ratchet === true) throw new UsageError('--profile and --ratchet are two verbs of their own; give one');
-    if (other.length > 0 || edition !== undefined) throw new UsageError(`starci app check --${opts.profile === true ? 'profile takes only --gate <gate> and --json' : 'ratchet (the pre-commit lint ratchet) takes no other flag'}; got ${[...other.map((key) => `--${key}`), ...(edition === undefined ? [] : ['--edition'])].join(', ')}`);
+    if (other.length > 0) throw new UsageError(`starci app check --${opts.profile === true ? 'profile takes only --gate <gate> and --json' : 'ratchet (the pre-commit lint ratchet) takes no other flag'}; got ${[...other.map((key) => `--${key}`)].join(', ')}`);
     return opts.profile === true ? printProfile(opts, io) : stagedRatchet(io);
   }
   const coverageFrom = valueFlag(opts, 'coverage-from');
@@ -1020,7 +996,7 @@ export function scaffoldSides(without: string | undefined): ProjectSide[] {
   return sides;
 }
 
-async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, settleBranches, stdout: out, env, peers }: AppIo): Promise<number> {
+async function scaffoldMain(opts: Opts, { cwd, harness, presets, lock, settleBranches, stdout: out, env, peers }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
@@ -1032,7 +1008,7 @@ async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', preset
   const root = path.resolve(cwd, name);
   const found = peers ? peers() : machinePeers({ env }, { repoRoot: root, appProject: name, env: 'dev' });
   const base = scaffoldBase({ name, root, explicit: valueFlag(opts, 'base-port'), found });
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, basePort: base.port, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, presets: presets ?? scaffoldPresets(), sides, basePort: base.port, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files)\n`);
   out(`${base.line}\n`);
   const branches = (settleBranches ?? settleScaffoldBranches)(created, name);
@@ -1055,11 +1031,6 @@ function upgradeAppMain(argv: string[], { cwd, stdout }: AppIo): Promise<number>
   return upgradeMain(['--repo', cwd, ...argv], { stdout });
 }
 
-/** The edition `hfs.json` declares, or undefined when it cannot be read (the test-world verbs then decide on their own). */
-function declaredEdition(cwd: string): string | undefined {
-  try { return JSON.parse(fs.readFileSync(path.join(cwd, HFS_DECLARATION_FILE), 'utf8')).edition; } catch { return undefined; }
-}
-
 /** `starci app stack`: the deploy actions (prepare, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm tooling of stack/cli.mjs. */
 async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
   // build-args hands the front end's public build configuration to an fe image.
@@ -1067,14 +1038,13 @@ async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env
   return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
 }
 
-/** The actions of `starci app world`: the full edition's test-world infrastructure, run by the app's installed @starci/test-world cli. */
+/** The actions of `starci app world`: the test-world infrastructure, run by the app's installed @starci/test-world cli on request. */
 const WORLD_ACTIONS = ['up', 'down', 'status'];
 
 /** `starci app world <up|down|status>`: the local test world. */
-async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
+async function worldAppMain(argv: string[], { cwd, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
   if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new UsageError(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
   requireSides(cwd, ['be'], `starci app world ${argv[0] as string}`);
-  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
@@ -1096,7 +1066,7 @@ function adoptionNotice({ from, to, kept }: StateAdoption): string {
 
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
-  if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
+  if (error instanceof ScaffoldRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
   if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal || error instanceof DesktopRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
@@ -1119,10 +1089,9 @@ export async function main(argv: string[], {
     const out = global.quiet && verb !== 'check' ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
-    const { edition, argv: rest } = editionOption(verb as string, given);
     const adopted = adoptLegacyState(env, stateRoot);
     if (adopted) stderr(adoptionNotice(adopted));
-    return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, heavyRoom, runLinter, checkApp });
+    return await dispatchMain(verb as string, given, { cwd: global.cwd, harness, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, heavyRoom, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
     if (isHostHeld(error)) return 75;

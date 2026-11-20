@@ -52,7 +52,7 @@ const judged = (t: TestContext, edition: string, index: string) => {
   return { pair: findings(report, PAIR).length, owner: findings(report, OWNER).length };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   const accepted: [string, string][] = [
     ['the attribute form', connected(BY_PROPS, '<FrameBase props={{ title: String(orders) }} children={props.children} />')],
     ['the nested props.children', connected(BY_PROPS, '<FrameBase props={{ title: String(orders) }}>{props.children}</FrameBase>')],

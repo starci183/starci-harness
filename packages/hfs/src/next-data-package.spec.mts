@@ -23,7 +23,7 @@ const lockedOk = (root: string): LockResult => {
 const starter = (t: Parameters<typeof mkdtemp>[0], edition: 'lite' | 'full') =>
   scaffoldApp({ name: 'demo', into: mkdtemp(t, 'hfs-next-data-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} starter's web app depends on @starci/next-data at its pin and keys its SWR config by the viewer through it`, (t) => {
     const root = starter(t, edition);
     const pin = canonPins()['@starci/next-data'];

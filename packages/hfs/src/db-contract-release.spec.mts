@@ -43,12 +43,12 @@ function gitOf(history: History) {
 async function judge(t: TestContext, head: Record<string, string>, history: History) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-contract-release-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite' }));
+  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app' }));
   for (const [file, text] of Object.entries(head)) {
     fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
     fs.writeFileSync(path.join(repoRoot, file), text);
   }
-  const findings = await checkDatabase({ repoRoot, files: Object.keys(head), edition: 'lite', git: gitOf(history) });
+  const findings = await checkDatabase({ repoRoot, files: Object.keys(head), git: gitOf(history) });
   return findings.filter((finding) => finding.code === 'DB_MIGRATION_DESTRUCTIVE');
 }
 
@@ -86,10 +86,10 @@ test('a repository without a contract migration is not read at all', async (t) =
   let asked = false;
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-contract-release-none-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite' }));
+  fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app' }));
   fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, EARLIER), 'create table public.orders (id bigint primary key);\n');
-  await checkDatabase({ repoRoot, files: [EARLIER], edition: 'lite', git: (args: string[]) => { if (args[0] === 'previous-release') asked = true; return { ok: false, stdout: '' }; } });
+  await checkDatabase({ repoRoot, files: [EARLIER], git: (args: string[]) => { if (args[0] === 'previous-release') asked = true; return { ok: false, stdout: '' }; } });
   assert.equal(asked, false);
 });
 

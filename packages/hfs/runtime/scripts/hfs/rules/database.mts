@@ -1,4 +1,4 @@
-// The database rules of a lite app's db/ tree (design 4.2, L02-L09). SQL migrations are parsed with libpg-query through
+// The database rules of an app's db/ tree (design 4.2, L02-L09). SQL migrations are parsed with libpg-query through
 // database-sql.mts; Git history and generated-type checks are split into bounded sibling modules.
 import { found, readJson, readText } from './read.mjs';
 import { baselineResetOf } from './database-reset.mjs';
@@ -68,18 +68,16 @@ async function migrationAnalyses({ repoRoot, migrations, exposed, forceRls, find
 }
 
 /**
- * Judge the db/ tree of one lite app. Git is injected for deterministic specs; this function starts no
- * database and no Docker process. A full app keeps its TypeORM migrations under be/ and is judged here only for a stray db/ tree.
+ * Judge the db/ tree of one app. Git is injected for deterministic specs; this function starts no
+ * database and no Docker process.
  */
-export async function checkDatabase({ repoRoot, files, base, git, edition, db }: { repoRoot: string; files: string[]; base?: Parsed; git?: Parsed; edition?: string; db?: Parsed }) {
+export async function checkDatabase({ repoRoot, files, base, git, db }: { repoRoot: string; files: string[]; base?: Parsed; git?: Parsed; db?: Parsed }) {
   const findings: Finding[] = [];
   const declaration = readJson(repoRoot, 'hfs.json');
-  const lite = (edition ?? declaration?.edition) === 'lite';
   const migrations = files.filter(isActiveMigration).sort(byCodeUnit);
-  if (!lite && !migrations.length) return findings;
   const declared = db === undefined ? declaration?.db : db;
   const archived = files.filter((file: string) => file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`));
-  if (lite) findings.push(...liteDbPathFindings(files));
+  findings.push(...liteDbPathFindings(files));
   const forceRls = new Set((declared?.forceRls ?? []).map((name: string) => (name.includes('.') ? name : `public.${name}`)));
   findings.push(...await migrationShapeFindings({ repoRoot, migrations, archived, git: git ?? defaultGit, base, reset: baselineResetOf(declared) }));
   findings.push(...await contractReleaseFindings({ repoRoot, migrations, git: git ?? defaultGit }));

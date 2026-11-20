@@ -46,7 +46,7 @@ export type WorkerRun = (command: string, args: string[], options: object) => Wo
 /** The public fixture contract: what buildWiringProof(AppModule) returns. */
 export interface WiringProof { options?: unknown; overrides?: { token: unknown; value: unknown }[]; request?: unknown }
 /** The repository descriptor (hfs.json) fields this check reads. */
-export interface WiringRepo { edition?: string | undefined; profile?: string | undefined; kind?: string | undefined; sides?: { be?: { apps?: readonly { name: string }[] | undefined } | undefined }; apps?: readonly { name: string }[] | undefined }
+export interface WiringRepo { profile?: string | undefined; kind?: string | undefined; sides?: { be?: { apps?: readonly { name: string }[] | undefined } | undefined }; apps?: readonly { name: string }[] | undefined }
 /** The shape of an appWiring run. */
 export interface WiringResult {
   ok: boolean; status: string; findings: WiringFinding[]; apps: string[];
@@ -58,7 +58,7 @@ export interface WiringResult {
 export type WiringFinding = { code: string; level: 'error' | 'warning'; path: string; message: string; reason: string };
 
 const refusal = (file: string, reason: string): WiringFinding => ({ code: BOOT_PROOF_CODE, level: 'error', path: file,
-  message: `${file}: lite boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --gate wiring`, reason });
+  message: `${file}: boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --gate wiring`, reason });
 
 // A ring's text crosses the worker boundary, so each field is held to the shape the worker writes: names of classes, symbols and
 // modules, a relative source path and an edge of the fixed vocabulary of di-ring.mts. Anything else is dropped, never forwarded.
@@ -86,7 +86,7 @@ const ringFinding = (moduleFile: string, app: string, prefix: string, ring: Prov
 };
 
 const timedOut = (file: string, budget: number): WiringFinding => ({ code: BOOT_PROOF_TIMEOUT, level: 'warning', path: file, reason: 'proof worker timed out',
-  message: `${file}: the lite boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --gate wiring when the host is quieter` });
+  message: `${file}: the boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --gate wiring when the host is quieter` });
 
 /** The worker's budget in ms, from its spawn: the CLI's STARCI_BOOT_PROOF_TIMEOUT_MS, else four compile deadlines (at least a minute). */
 export function workerBudget(timeout: number, env: NodeJS.ProcessEnv = process.env): number {
@@ -302,7 +302,7 @@ function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, tim
 export interface AppWiringInput { repoRoot: string; repo?: WiringRepo; files?: string[]; fixtures?: Record<string, string>; timeout?: number; run?: WorkerRun }
 
 function* wiringProgram({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), files, fixtures = {}, timeout = DEFAULT_TIMEOUT }: AppWiringInput): Generator<WorkerCommand, WiringResult, WorkerResult> {
-  if (repo?.edition !== 'lite' || repo?.profile === 'fe' || repo?.kind === 'fe') return { ok: true, status: 'skipped', findings: [], apps: [], loaded: [] };
+  if (!repo || repo.kind === 'runtime' || repo.profile === 'fe' || repo.kind === 'fe') return { ok: true, status: 'skipped', findings: [], apps: [], loaded: [] };
   const appRoot = Boolean(repo.sides);
   const beRoot = appRoot ? path.join(repoRoot, 'be') : repoRoot;
   const prefix = appRoot ? 'be/' : '';

@@ -250,7 +250,7 @@ grant select on public.countries to anon;
 ${storagePolicy("bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text")}
 `;
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const [code, cases] of ruleCases) {
     for (const [name, sql, violates, options] of cases) {
       test(`${code}@${edition}: ${name}`, () => expectCode(edition, code, sql, violates, options));
@@ -267,7 +267,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 // The catalog's proof discovery reads literal test blocks: one violating and one passing block name each R255 code.
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_APP_ROLE@${edition}: a superuser application role is refused and a least-privilege one passes`, async () => {
     await expectCode(edition, 'DB_APP_ROLE', 'create role app_be login noinherit nobypassrls superuser;', true);
     await expectCode(edition, 'DB_APP_ROLE', 'create role app_be login noinherit nobypassrls nosuperuser;', false);
@@ -300,14 +300,14 @@ for (const _edition of ['lite', 'full']) {
 
 test('the declaration takes db.scopeSettings as dotted custom settings and refuses request claims, bare names and other shapes', () => {
   const sides = { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } };
-  const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
-  const withRoles = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings, scopeRoles }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const withRoles = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { scopeSettings, scopeRoles }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(withRoles(['app.workspace_id']), []);
   assert.equal(declared(['app.workspace_id']).length, 1, 'settings without scope roles');
-  const roles = (list: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeRoles: list }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const roles = (list: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { scopeRoles: list }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(roles(scopeRoles), []);
   for (const bad of [[], ['app_engine'], [{ role: 'app_engine' }], [{ role: 'App', reason: 'x' }], [{ role: 'a', reason: ' ' }], [{ role: 'a', reason: 'x', more: 1 }]]) assert.equal(roles(bad).length, 1, JSON.stringify(bad));
-  const columns = (scopeColumns: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeColumns }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  const columns = (scopeColumns: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', db: { scopeColumns }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(columns(['workspace_id']), []);
   for (const bad of [[], ['Workspace'], 'workspace_id', ['a.b']]) assert.equal(columns(bad).length, 1, JSON.stringify(bad));
   for (const bad of [['workspace_id'], ['request.jwt.claims'], ['App.Workspace'], 'app.workspace_id', [''], [1]]) {
@@ -315,7 +315,7 @@ test('the declaration takes db.scopeSettings as dotted custom settings and refus
   }
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   const policy = `${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')} create policy items_engine_select on public.items for select to app_engine using (workspace_id = public.engine_workspace());`;
   const cases: [name: string, sql: string, violates: boolean][] = [
     ['a scope role created NOLOGIN NOINHERIT NOBYPASSRLS', `${engineRole} ${policy}`, false],
@@ -340,7 +340,7 @@ for (const edition of ['lite', 'full']) {
 
 test('the be side takes sides.be.engineOwned as one capability, its tables, the table whose partitions it owns, a view prefix and a manifest, and refuses any other shape', () => {
   const engine = { capability: 'entity-engine', tables: ['records', 'record_links'], partitionsOf: 'records', views: 'v_*', manifest: '.starciwork/entities.manifest.json' };
-  const problems = (engineOwned: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+  const problems = (engineOwned: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { engineOwned } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { engineOwned } : {}) } } }, ['be', 'fe']).filter((problem) => problem.includes('engineOwned'));
   assert.deepEqual(problems(engine), []);
   assert.equal(problems(engine, 'fe').length, 1);
@@ -350,7 +350,7 @@ test('the be side takes sides.be.engineOwned as one capability, its tables, the 
 
 test('the be side takes sides.be.ddlRenderers as unique root-package paths with a reason, a * only in the file name', () => {
   const renderer = { path: 'packages/sdk/src/entity/render*.ts', reason: 'renders the DDL that a cli command writes as new migrations' };
-  const problems = (ddlRenderers: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+  const problems = (ddlRenderers: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { ddlRenderers } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { ddlRenderers } : {}) } } }, ['be', 'fe']).filter((problem) => problem.includes('ddlRenderers'));
   assert.deepEqual(problems([renderer]), []);
   assert.equal(problems([renderer], 'fe').length, 1);
@@ -359,7 +359,7 @@ test('the be side takes sides.be.ddlRenderers as unique root-package paths with 
 });
 
 test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason} or {class, method, many: true, reason}, each class and method once, and no other side does (R263)', () => {
-  const problems = (receiptPorts: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+  const problems = (receiptPorts: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { receiptPorts } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { receiptPorts } : {}) } } }, ['be', 'fe'])
     .filter((problem: string) => problem.includes('receiptPorts'));
   const port = { class: 'ReceiptPort', method: 'receive', repeat: 'undefined', reason: 'writes the delivery once under its unique key; undefined on a repeat' };

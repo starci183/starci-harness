@@ -30,7 +30,7 @@ const entries = (root: string, count: number) => Array.from({ length: count }, (
 const beRoot = 'src/features/api/orders';
 const feRoot = 'apps/web/src/features/pages/Orders';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_FEATURE_FILE_BUDGET: ${edition} rejects 251 files in a BE or FE feature`, () => {
     for (const [profile, root] of [['be', beRoot], ['fe', feRoot]] as const) {
       const findings = featureFileFindings(context(profile, edition, entries(root, 251)));
@@ -109,7 +109,7 @@ test('HFS_FEATURE_FILE_BUDGET: app root delegates to its side invocations and an
 
 test('HFS_FEATURE_FILE_BUDGET: the published runtime carries the finder and its failure explanation', async () => {
   const bundled = await import('../runtime/scripts/hfs/check.mjs');
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const files = entries(beRoot, 251).map((file) => `be/${file}`);
     const result = bundled.checkRepo({ repoRoot: appRoot, declaration: declaration(edition), files, tree: false });
     const findings = result.findings.filter((finding) => finding.code === 'HFS_FEATURE_FILE_BUDGET');

@@ -135,9 +135,9 @@ export function baselineSourceFindings({ repoRoot, files = [], all = files, git 
   return findings;
 }
 
-/** R257 content finder, synchronous in both editions; all paths judge cross-file cutovers even under --fast. */
-export function databaseBaselineFindings({ repoRoot, files = [], all, repo, isRoot, inScope, base, git = baselineGit }: { repoRoot: string; files?: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope: (file: string) => boolean; base?: Parsed; git?: Parsed }) {
-  if (isRoot === false || (repo?.edition && !['lite', 'full'].some((value) => value === repo.edition))) return [];
+/** R257 content finder, synchronous; all paths judge cross-file cutovers even under --fast. */
+export function databaseBaselineFindings({ repoRoot, files = [], all, isRoot, inScope, base, git = baselineGit }: { repoRoot: string; files?: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope: (file: string) => boolean; base?: Parsed; git?: Parsed }) {
+  if (isRoot === false) return [];
   const inventory = Array.isArray(all) ? all : files;
   const active = inventory.filter((file) => ACTIVE.test(file));
   const archived = inventory.filter((file) => file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`));

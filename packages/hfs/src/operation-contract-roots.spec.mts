@@ -63,7 +63,7 @@ function fixture(t: TestContext, edition: string, { entry = DIRECT, kind = 'api'
     .violations.filter(finding => finding.ruleId === 'HFS_UNUSED_FILE').map(finding => finding.path);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`operation contract root ${edition}: the emitter consumes its declared API entry and follows aliases and reexports`, t => {
     const alias = DIRECT.replace('export const OPERATIONS = register(', 'const declare = register; export const OPERATIONS = declare(');
     for (const entry of [DIRECT, alias, `export { OPERATIONS } from '../../../${PLATFORM}';`]) {

@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_STARCIWORK_LITE_FORBIDDEN (${edition}): judge tracked and local Work leftovers`, (t) => {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-work-boundary-'));
     t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));

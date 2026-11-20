@@ -37,7 +37,7 @@ export function run(messages: any, queue: any) { queue.send(ORDERS_QUEUE, State.
 export function greet(messages: any) { return messages.get('orders.created'); }`,
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: dead enum, queue, error and catalog declarations are refused even when imported or mapped`, t => {
     const findings = unusedSymbolFindings({ ...fixture(t, DECLARATIONS), repo: { profile: 'be', edition } });
     assert.ok(findings.every(finding => finding.code === 'HFS_UNUSED_SYMBOL' && finding.level === 'error'));
@@ -225,7 +225,7 @@ function namespaceFindings(t: TestContext, consumer: string, entry = 'export con
   return checkDeadExports(input).violations.filter((finding) => finding.ruleId === 'HFS_UNUSED_EXPORT').map((finding) => finding.name as string).sort((a, b) => a.localeCompare(b));
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_EXPORT ${edition}: a namespace import counts precise property, bracket and destructured reads`, t => {
     for (const consumer of [
       'import * as values from "./modules/domain/values"; values.Keep();',
@@ -257,7 +257,7 @@ test('HFS_UNUSED_EXPORT: JSDoc type references consume their export while docume
 
 const namesOf = (context: ReturnType<typeof fixture>, edition: string, profile = 'fe') => unusedSymbolFindings({ ...context, repo: { profile, edition } }).map(finding => finding.name);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: a catalog key read through an imported object, as const or nested, is live and its dead sibling is not`, t => {
     const contents = {
       'apps/api/src/m.messages.ts': 'export const COPY = { badEngine: "x", retired: "y" }; export const NESTED = { group: { deep: "a", dead: "b" } } as const;',
@@ -328,7 +328,7 @@ const t = useTranslations("footer"); export const keys = COLS.map(c => c.links.m
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: a key builder returning a template and inline templates with unknown holes read the keys they can spell, in their own namespace only`, t => {
     const contents = {
       'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ connections: { catalog_airtable_blurb: 'A', filterGmail: 'G', retired: 'Retired' }, other: { catalog_a_b: 'Other' } }),
@@ -373,7 +373,7 @@ const say = useSmtpSay(); export const options = PRESETS.map(p => ({ label: say(
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: useCallback and useMemo are transparent when a hook or wrapper forwards to a bound translator`, t => {
     const contents = {
       'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ hiring: { applyWebsite: 'Apply', retired: 'Retired' }, memo: { shown: 'Shown', retired: 'Retired' }, local: { saved: 'Saved', retired: 'Retired' } }),
@@ -390,7 +390,7 @@ const local = useTranslations("local"); const text = useCallback((key: string) =
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: a typed text callback parameter binds the namespace of the translator it is called with, else reads loosely`, t => {
     const contents = {
       'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ admin: { memberDisabled: 'Disabled', retired: 'Retired' }, other: { memberDisabled: 'Other', orphanLabel: 'Orphan', dead: 'Dead' } }),
@@ -441,7 +441,7 @@ export const Messenger = () => { const { composer } = useMessenger();
 const label: PlainLabel = (key) => key.toUpperCase(); export const plain = [label("retired"), "unrelated", label("dead")];`,
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: a translator helper's member type reads its namespaces wherever a value of that type is handed on through props`, t => {
     // office.* read through text / props.text / view.text are live; a literal handed to a callback of another type, or a bare literal, reads nothing.
     assert.deepEqual(namesOf(fixture(t, { ...TRANSLATOR_HELPER }), edition), ['governance.dead', 'office.retired', 'other.composerLabel', 'other.dead', 'other.unrelated']);
@@ -455,7 +455,7 @@ export const useOfficeWords = (): OfficeWords => useMemo<OfficeWords>(() => ({ t
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_UNUSED_SYMBOL ${edition}: an imported key table indexed by a dynamic key reads every value it holds in the translator's namespace`, t => {
     const contents = {
       'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ roles: { roleOwner: 'Owner', roleAdmin: 'Admin', retired: 'Retired' }, other: { roleOwner: 'Other' } }),

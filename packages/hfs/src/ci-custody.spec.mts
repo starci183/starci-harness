@@ -32,7 +32,7 @@ const run = (root: string, edition: string) => ciCustodyFindings({ repoRoot: roo
 const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code);
 const cleanCi = { secrets: [{ name: 'DEPLOY_TOKEN', scope: 'repository' }], vars: [] };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a conforming tree with a separate CI secret and sealed app key is clean of custody findings`, (t) => {
     const root = tree(t, { doc: declaration(cleanCi), workflows: { 'ci.yml': workflow('secrets.DEPLOY_TOKEN') } });
     assert.deepEqual(run(root, edition), []);
@@ -85,7 +85,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: ${DRIFT_FAILURE} valid - STARCI_DEPLOY_PAUSED, the brake the managed deploy reads, needs no declaration, and every other variable still does`, (t) => {
     const doc = declaration({ secrets: [], vars: [] });
     assert.deepEqual(run(tree(t, { doc, workflows: { 'stack-deploy.yml': workflow('vars.STARCI_DEPLOY_PAUSED') } }), edition), []);

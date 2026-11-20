@@ -8,7 +8,7 @@
 //      doubles are judged by R48 (`unit-spec-providers`).
 //   3. BE_SPEC_WORLD_MISSING (R47): every `*.integration-spec.ts` and `*.e2e-spec.ts` imports `useTestWorld` from the repository's own
 //      `src/tests/world/use-test-world` (the specifier resolved through the side's tsconfig, never a name match) and calls it.
-// Both editions: lite carries integration specs (`{ modules }`) and e2e specs (`{ apps }`) through the same world entry.
+// An app carries integration specs (`{ modules }`) and e2e specs (`{ apps }`) through the same world entry.
 import path from 'node:path';
 import { found, readText } from './read.mjs';
 import { judgeOf, typescriptFor } from './integration-specs.mjs';

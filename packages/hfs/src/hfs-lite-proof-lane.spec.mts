@@ -7,7 +7,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { liteProofLaneFindings } from '../runtime/scripts/hfs/rules/lite-proof-lane.mjs';
-import { integrationSpecFindings } from '../runtime/scripts/hfs/rules/integration-specs.mjs';
 import { loadRuleCatalog, loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
 const SCENARIOS: Record<string, string[]> = {
@@ -60,7 +59,7 @@ test('BE_LITE_PROOF_LANE_MISSING: every declared lite pattern without integratio
 test('BE_LITE_PROOF_LANE_MISSING: integration specs proving every declared pattern scenario pass in lite and full', (t) => {
   for (const pattern of Object.keys(SCENARIOS)) {
     const fixture = tree(t, { [SPEC]: spec(ids([pattern])) });
-    for (const edition of ['lite', 'full']) assert.deepEqual(find(fixture, edition, [pattern]), [], `${edition}: ${pattern}`);
+    for (const edition of ['lite'] as const) assert.deepEqual(find(fixture, edition, [pattern]), [], `${edition}: ${pattern}`);
   }
 });
 
@@ -128,7 +127,7 @@ test('BE_PATTERN_SPEC_MISSING: the edition manifest supplies scenario ids, inclu
   const scenarios = ['saga/configured-saga-proof', 'projection/configured-projection-proof'];
   const passing = tree(t, { [SPEC]: spec(scenarios) });
   const missing = tree(t, { [SPEC]: spec(ids(['saga', 'projection'])) });
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const repo = declaration(edition, ['saga', 'projection']);
     assert.deepEqual(liteProofLaneFindings({ ...passing, repo, manifest }), []);
     const findings = liteProofLaneFindings({ ...missing, repo, manifest });
@@ -143,12 +142,12 @@ test('BE_LITE_PROOF_LANE_MISSING: no patterns, non-pattern capabilities, side pa
     assert.deepEqual(find(fixture, edition, []), []);
     assert.deepEqual(find(fixture, edition, ['cqrs']), []);
   }
-  assert.deepEqual(liteProofLaneFindings({ ...fixture, repo: { edition: 'lite', profile: 'be', patterns: ['queue'] } }), []);
+  assert.deepEqual(liteProofLaneFindings({ ...fixture, repo: { profile: 'be', patterns: ['queue'] } }), []);
   assert.deepEqual(find(fixture, undefined, ['queue']), []);
 });
 
 test('BE_PATTERN_SPEC_MISSING: starci app check wires the lite lane and preserves full scenario enforcement', (t) => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const repo = declaration(edition, ['projection']);
     const empty = tree(t, { 'hfs.json': JSON.stringify(repo) });
     const missing = proofFindings(checkRepo({ ...empty, declaration: repo, tree: false }));
@@ -167,16 +166,8 @@ test('R284 owns BE_LITE_PROOF_LANE_MISSING once and R155 retains BE_PATTERN_SPEC
   assert.equal(lane?.code, 'BE_LITE_PROOF_LANE_MISSING');
   assert.deepEqual(lane?.failureCodes, ['BE_LITE_PROOF_LANE_MISSING']);
   assert.deepEqual(catalog.rules.filter((rule) => rule.failureCodes.includes('BE_PATTERN_SPEC_MISSING')).map((rule) => rule.id), ['R155']);
-  assert.equal(catalog.rules.find((rule) => rule.id === 'R155')?.editions, undefined);
   assert.deepEqual(catalog.rules.find((rule) => rule.id === 'R155')?.enforcers, [
-    { kind: 'hfs', id: 'pattern-spec-missing', at: 'scripts/hfs/rules/event-bus.mjs', editions: ['full'], planned: false },
-    { kind: 'hfs', id: 'lite-proof-lane', at: 'scripts/hfs/rules/lite-proof-lane.mjs', editions: ['lite'], planned: false },
+    { kind: 'hfs', id: 'lite-proof-lane', at: 'scripts/hfs/rules/lite-proof-lane.mjs', planned: false },
   ]);
 });
 
-test('BE_INTEGRATION_SPEC_MISSING: direct callers keep the full integration-world proof requirement and lite uses its own lane', (t) => {
-  const fixture = tree(t, { 'be/src/modules/integrations/payment/payment.config.ts': 'export const payment = {};\n' });
-  assert.deepEqual(integrationSpecFindings({ ...fixture, repo: declaration('lite', []) }), []);
-  assert.deepEqual(integrationSpecFindings({ ...fixture, repo: declaration('full', []) }).map((finding) => finding.code), ['BE_INTEGRATION_SPEC_MISSING']);
-  assert.deepEqual(integrationSpecFindings({ ...fixture, files: [], repo: declaration('full', []) }), []);
-});

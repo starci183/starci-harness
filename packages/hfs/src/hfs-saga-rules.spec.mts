@@ -139,7 +139,7 @@ test('BE_SAGA_E2E_MISSING (full): an e2e spec through the world that names the c
 });
 
 test('lite uses its integration proof lane while saga structure, state, contracts and consumer dedupe stay enforced', () => {
-  const declaration = { ...WITH_SAGA, edition: 'lite' };
+  const declaration = { ...WITH_SAGA };
   const findings = run(declaration, sagaRepo({ [SPEC]: null }));
   assert.deepEqual(only(findings, 'BE_SAGA_E2E_MISSING'), []);
   for (const code of ['BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE']) assert.deepEqual(only(findings, code), [], code);
@@ -158,6 +158,6 @@ test('lite uses its integration proof lane while saga structure, state, contract
 test('the saga finder gates only its full-edition compensation proof when called directly', () => {
   const repoRoot = repoOf(WITH_SAGA, sagaRepo({ [SPEC]: null }));
   const files = [STEP, COMPENSATION, ORCHESTRATOR, STATE, CONSUMER, ...Object.keys(CONTRACTS)];
-  assert.deepEqual(sagaFindings({ repoRoot, files, repo: { edition: 'lite' } }), []);
+  assert.deepEqual(sagaFindings({ repoRoot, files, repo: {} }), []);
   assert.equal(only(sagaFindings({ repoRoot, files, repo: { edition: 'full' } }), 'BE_SAGA_E2E_MISSING').length, 1);
 });

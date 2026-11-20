@@ -61,7 +61,7 @@ test('a sound extension lends its rules: the machine rule judges the tracked fil
   assert.deepEqual(projectExtFindings({ repoRoot: root, files: tracked, reserved: reservedCodes(), read: read(root) }), [
     { code: 'ACME_SHAPE_INCOMPLETE', level: 'error', path: 'packages/ui/src/card.ts', line: 1, message: 'packages/ui/src/card.ts has no schema (ACME-SHAPE-1, ext/docs/ACME-SHAPE-1.md)' },
   ]);
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const found = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf(edition), isRoot: true });
     assert.deepEqual(found.map((finding) => [finding.code, finding.path, finding.level]), [['ACME_SHAPE_INCOMPLETE', 'packages/ui/src/card.ts', 'error']]);
     assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf(edition), isRoot: false }), []);

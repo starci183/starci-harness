@@ -32,7 +32,7 @@ const RUNTIME = fileURLToPath(new URL('../runtime', import.meta.url));
 const manifest = loadSlotManifest();
 const BE = { apps: [{ name: 'api', kind: 'api', contract: 'rest' }], kinds: ['api'] };
 const NIVOOS = { packages: [{ name: 'biz' }] };
-const declarationOf = (sides: Json) => ({ hfs: manifest.major, kind: 'app', project: 'demo', edition: 'lite', sides });
+const declarationOf = (sides: Json) => ({ hfs: manifest.major, kind: 'app', project: 'demo', sides });
 const declare = (sides: Json) => resolveRepoDeclaration(manifest, declarationOf(sides));
 
 test('the declaration: sides.nivoos holds a non-empty unique list of packages with an optional entry and out, and implies the packages side', () => {

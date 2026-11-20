@@ -40,14 +40,14 @@ const commit = (root: string, message: string, when: string): void => {
 };
 
 /** An app with one screen `<area>/list` (route /customers); the first commit holds it with `manifest` (null: no canvas) and the base is that commit. */
-function app(t: TestContext, edition: string, manifest: string | null, area = 'customers'): { root: string; base: string } {
+function app(t: TestContext, _edition: string, manifest: string | null, area = 'customers'): { root: string; base: string } {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-gallery-design-change-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'a@b.c');
   git(root, 'config', 'user.name', 'n');
   git(root, 'config', 'commit.gpgsign', 'false');
-  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined, edition), null, 2)}\n`);
+  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined), null, 2)}\n`);
   write(root, DETAIL, 'import { CustomersPage } from "@/features/pages/CustomersPage"\nexport default CustomersPage\n');
   write(root, `${FEATURE}/index.tsx`, 'export const CustomersPage = () => null\n');
   write(root, `gallery/pages/${area}/list/explain.md`, explain(area));
@@ -61,7 +61,7 @@ const editSource = (root: string, body: string, when?: string): void => {
 };
 const judge = (root: string, base: string, now = Date.parse('2026-11-18T00:00:00Z')) => galleryDesignChangeFindings({ repoRoot: root, changed: changedSince(root, base), base, now });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a screen of an area the canvas does not manage is not flagged; neither is an app with no canvas`, (t) => {
     const unmanaged = app(t, edition, design(['orders'], { 'orders/list': page('drafted') }));
     editSource(unmanaged.root, '1', '2026-11-12T10:00:00+07:00');

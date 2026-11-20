@@ -19,7 +19,6 @@ export interface PresentationInput {
   runtime: boolean;
   tree: PresentationTree;
   profile: string;
-  edition: string;
   nonNpmEntries: ReadonlySet<string>;
 }
 
@@ -113,7 +112,7 @@ function checkReadmeHeadings(state: PresentationState, lines: string[]): Heading
 function checkReadmeDevelopment(state: PresentationState, lines: string[], headings: Heading[]): void {
   if (state.runtime || !headings.some(item => item.name === 'Development')) return;
   const development = readmeSectionBody(lines, headings, 'Development');
-  const scripts = DEVELOPMENT_SCRIPTS.filter(name => managedScriptNames(state.profile, state.edition).has(name));
+  const scripts = DEVELOPMENT_SCRIPTS.filter(name => managedScriptNames(state.profile).has(name));
   const commands = [/npm (?:ci|install)/u, ...scripts.map(scriptCommand)];
   if (commands.some(command => !command.test(development))) {
     addFinding(state, 'HFS_README_DEVELOPMENT_INCOMPLETE', 'README.md', 'Development must show npm install and the managed script commands: '
@@ -175,8 +174,8 @@ function presentationResult(state: PresentationState) {
   return { violations: state.violations, coverage: { status: 'checked', source: state.tree.source } };
 }
 
-export function checkRepoPresentationImpl({ root, runtime, tree, profile, edition, nonNpmEntries }: PresentationInput) {
-  const state: PresentationState = { root, runtime, tree, profile, edition, nonNpmEntries, violations: [] };
+export function checkRepoPresentationImpl({ root, runtime, tree, profile, nonNpmEntries }: PresentationInput) {
+  const state: PresentationState = { root, runtime, tree, profile, nonNpmEntries, violations: [] };
   checkRootPresentation(state);
   if (!tree.hasFile('README.md')) return presentationResult(state);
   let readme: string;

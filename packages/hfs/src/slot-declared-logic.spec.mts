@@ -45,7 +45,7 @@ test('the coverage scope measures every declared logic file at 100 per file: jes
 
 test('R273 counts a declared logic file in the lite scope, where the passport slot exists', () => {
   const files = DECLARED.map((file) => `be/${file}`);
-  const lite = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP, edition: 'lite' }), manifest, lcov: '' });
+  const lite = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP }), manifest, lcov: '' });
   assert.deepEqual(lite.measured, files);
   const full = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP, edition: 'full' }), manifest, lcov: '' });
   assert.deepEqual(full.measured, [], 'full has no passport slot');
@@ -81,7 +81,7 @@ const OLD_STORAGE_FILES = ['index.ts', 'storage.client.ts', 'storage.config.ts',
 
 /** A clean lite app whose object-storage folder holds exactly `names` (with the skeleton's own content where it has the file). */
 function storageApp(made: string[], names: string[]) {
-  const dir = writeCleanRepo({ ...APP, edition: 'lite' });
+  const dir = writeCleanRepo({ ...APP });
   made.push(dir);
   const folder = path.join(dir, 'be', ...STORAGE.split('/'));
   fs.rmSync(folder, { recursive: true, force: true });

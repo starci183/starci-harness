@@ -44,16 +44,15 @@ const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const readSnapshot = (): SnapshotManifest => JSON.parse(fs.readFileSync(path.join(SNAPSHOT_DIR, 'manifest.json'), 'utf8')) as SnapshotManifest;
 const capabilityOf = (app: string): string => /^be\/src\/modules\/platform\/([^/]+)\//u.exec(app)?.[1] ?? '';
 
-/** The platform files the jobs, queues and event-bus families place in an app of `edition`, each with its template; a per-instance path (`<job>`) is no platform file. */
-export function selfRecoveryPlacements(edition: string): Placement[] {
+/** The platform files the jobs, queues and event-bus families place in an app, each with its template; a per-instance path (`<job>`) is no platform file. */
+export function selfRecoveryPlacements(): Placement[] {
   const placements: Placement[] = [];
   const add = (app: string, template: string): void => { placements.push({ app, template, capability: capabilityOf(app) }); };
-  for (const topic of ['jobs', 'queues', ...(edition === 'lite' ? [] : ['event-bus'])]) {
-    const tree = readTree(topic, edition);
-    const entries = edition === 'lite' ? selectLiteQueueEntries(topic, tree) : tree;
+  for (const topic of ['jobs', 'queues']) {
+    const entries = selectLiteQueueEntries(topic, readTree(topic));
     for (const entry of entries) if (entry.template !== undefined && !entry.path.includes('<') && entry.path.startsWith('src/modules/platform/')) add(`be/${entry.path}`, `be/patterns/${entry.template}`);
   }
-  if (edition === 'lite') {
+  {
     for (const [app, template] of TICK_FILES) add(app, `be/patterns/${template}`);
     const folder = path.join(TEMPLATES_DIR, 'be', 'inbox', 'platform', 'event-bus');
     const names = fs.readdirSync(folder, { recursive: true, encoding: 'utf8' }).map((name) => name.split(path.sep).join('/')).filter((name) => name.endsWith('.tpl'));
@@ -73,15 +72,13 @@ const MIGRATION = /^(\d{14})_[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.sql$/u;
 export async function migrateSelfRecovery({ root, write = false, prettier, now = Date.now }: SelfRecoveryOptions): Promise<SelfRecoveryReport> {
   const manifest = readSnapshot();
   const report: SelfRecoveryReport = { schema: 'starci/self-recovery-report@1', root, write, snapshot: manifest.version, changes: [], findings: [] };
-  const declaration = JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')) as { edition?: string };
-  const edition = declaration.edition ?? 'full';
   const formatter = prettier === undefined ? prettierOf(root, [path.join(root, 'be')]) : prettier ?? undefined;
   const layout = async (file: string, text: string): Promise<string> => (formatter ? formatted(formatter, root, path.join(root, file), text) : text);
   const held = new Set(manifest.templates);
   const added = new Set(manifest.added);
   const present = (capability: string): boolean => fs.existsSync(path.join(root, 'be', 'src', 'modules', 'platform', capability, 'index.ts'));
   const writes = new Map<string, string>();
-  for (const placement of selfRecoveryPlacements(edition)) {
+  for (const placement of selfRecoveryPlacements()) {
     if (!present(placement.capability)) continue;
     const target = path.join(root, placement.app);
     const current = lf(fs.readFileSync(path.join(TEMPLATES_DIR, placement.template), 'utf8'));
@@ -105,7 +102,7 @@ export async function migrateSelfRecovery({ root, write = false, prettier, now =
       report.findings.push({ file: placement.app, code: 'SELF_RECOVERY_FILE_BY_HAND', reason: `${placement.app} is neither the ${manifest.version} rendering of ${placement.template} nor the current one; bring the current template's changes (BE-RESILIENCE-2) into it by hand` });
     }
   }
-  if (edition === 'lite' && present('jobs')) {
+  if (present('jobs')) {
     const folder = path.join(root, 'db', 'migrations');
     const migrations = fs.existsSync(folder) ? fs.readdirSync(folder).filter((name) => MIGRATION.test(name)).sort(byCodeUnit) : [];
     if (!migrations.some((name) => name.endsWith('_jobs-failed-awaiting-fix.sql'))) {

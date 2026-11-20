@@ -45,7 +45,7 @@ test('the lite starter imports nodemailer nowhere, and @starci/mail in its mail 
 
 const AUTH = path.join(import.meta.dirname, '..', 'templates', 'be', 'auth-lite');
 const GLUE = path.join(STARTER, 'src', 'modules', 'integrations', 'mail');
-const APP = path.join(import.meta.dirname, '..', 'templates', 'app', 'skeleton-lite');
+const APP = path.join(import.meta.dirname, '..', 'templates', 'app', 'skeleton');
 
 test('the mail glue is a module with its definition, the typed options, the config parser and the injectors, with no hand-written SMTP client', () => {
   const names = fs.readdirSync(GLUE).filter((name) => fs.statSync(path.join(GLUE, name)).isFile()).sort();

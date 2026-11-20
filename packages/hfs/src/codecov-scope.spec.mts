@@ -38,7 +38,7 @@ const reachesTarget = (records: Rec[], status: Rule) => {
   return 100 * hits / lines >= Number.parseFloat(status.target);
 };
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} rendered Codecov scope keeps uncovered logic and ignores incidental imports`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'codecov-scope-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }], connections: [
@@ -73,7 +73,7 @@ for (const edition of ['full', 'lite']) {
   });
 }
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} rendered Codecov config holds one component per root package, held at the target like the services`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'codecov-packages-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }], connections: [

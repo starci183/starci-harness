@@ -41,7 +41,6 @@ interface FoundView {
   connections: Set<string>;
   plain: Plain;
   report: Report;
-  lite: boolean;
 }
 
 /**
@@ -203,50 +202,15 @@ function reportLiteEntityArrays(key: string, kinds: SchemaKinds, graph: HfsGraph
   if (!identifiersOf(ts, graph.files.get(LITE_ENTITY_LIST)).has(wanted)) plain(LITE_ENTITY_LIST, `The ${kinds.name} capability has entities but ${LITE_ENTITY_LIST} does not name ${wanted} in PRIMARY_ENTITIES; list it there by name, the one list the app composition registers.`, { capability: kinds.name });
 }
 
-function reportDeclaredPersistenceArrays(key: string, kinds: SchemaKinds, registered: Registered, graph: HfsGraph, ts: TypeScriptApi, plain: Plain): void {
-  if (!registered.get(key)?.connections.size) plain(`${key}/persistence/connection.ts`, `The ${kinds.name} capability has entities or migrations but no app registers them; add ${camel(kinds.name)}Entities and ${camel(kinds.name)}Migrations to a connection of DatabaseModule.register and of the cli app.`, { capability: kinds.name });
-  const declared = variableNames(ts, graph.files.get(`${key}/persistence/connection.ts`));
-  for (const [kind, has] of [['Entities', kinds.entities], ['Migrations', kinds.migrations]] as const) {
-    if (has && !declared.has(`${camel(kinds.name)}${kind}`)) plain(`${key}/persistence/connection.ts`, `${key}/persistence/connection.ts must export ${camel(kinds.name)}${kind}, the ${kind.toLowerCase()} of the ${kinds.name} capability, the one file that lists them for the apps.`, { capability: kinds.name });
-  }
-}
 
-function reportEntityManagerUse(kit: Kit, capability: { kinds: SchemaKinds; only: Map<string, unknown>; home: string; connections: Set<string> }, file: GraphFile, checker: TypeChecker, report: Report): void {
-  const { kinds, only, home, connections } = capability;
-  kit.walk(file.sourceFile, (node: Node) => {
-    if (!kit.ts.isCallExpression(node)) return;
-    const declaration = kit.declarationsOf(checker, node.expression)[0];
-    const rel = declaration ? kit.graphPath(declaration) : null;
-    const used = rel ? [...connections].find(name => rel === `${DATABASE_DIR}/${name}.decorators.ts`) : null;
-    if (used && only.size > 1 && !only.has(used)) report(file, node, `${file.rel} injects the entity manager of connection ${used}, but the ${kinds.name} capability's tables are registered on ${[...only.keys()].sort(byCodeUnit).join(' and ')}; register the capability on ${used} too or inject one of its connections.`, { connection: used, expected: [...only.keys()].sort(byCodeUnit).join(','), capability: kinds.name });
-    else if (used && only.size === 1 && used !== home) report(file, node, `${file.rel} injects the entity manager of connection ${used}, but the ${kinds.name} capability's tables are registered on ${home}; a capability reads only its own database, so use Inject${pascal(home)}EntityManager or move the tables.`, { connection: used, expected: home, capability: kinds.name });
-  });
-}
 
-function reportEntityManagerUses(input: CheckInput, kit: Kit, key: string, kinds: SchemaKinds, only: Map<string, unknown>, connections: Set<string>, report: Report): void {
-  const capability = { kinds, only, home: [...only.keys()][0] ?? '', connections };
-  for (const file of input.graph.files.values()) {
-    if (!file.rel.startsWith(`${key}/`)) continue;
-    reportEntityManagerUse(kit, capability, file, kit.checkerOf(file.sourceFile), report);
-  }
-}
 
 function reportFoundCapability(input: CheckInput, kit: Kit, key: string, kinds: SchemaKinds, view: FoundView): void {
-  const { registered, connections, plain, report } = view;
-  const { graph } = input;
-  const { resolver } = kit;
-  if (view.lite) { reportLiteEntityArrays(key, kinds, graph, kit.ts, plain); return; }
-  reportDeclaredPersistenceArrays(key, kinds, registered, graph, kit.ts, plain);
-  const only = registered.get(key)?.connections;
-  if (!only || only.size < 1) return;
-  // A per-connection platform capability (event-bus, jobs) lives on every connection that uses it; any other on exactly one (reported above).
-  const perConnection = only.size > 1 && isPerConnection(resolver, key, kinds.name);
-  if (only.size > 1 && !perConnection) return;
-  reportEntityManagerUses(input, kit, key, kinds, only, connections, report);
+  reportLiteEntityArrays(key, kinds, input.graph, kit.ts, view.plain);
 }
 
 function reportFoundCapabilities(input: CheckInput, kit: Kit, found: Found, registered: Registered, connections: Set<string>, plain: Plain, report: Report): void {
-  const view = { registered, connections, plain, report, lite: kit.resolver.repo?.edition === 'lite' };
+  const view = { registered, connections, plain, report };
   for (const [key, kinds] of found) reportFoundCapability(input, kit, key, kinds, view);
 }
 
@@ -280,8 +244,7 @@ function reportCapabilityIndex(input: CheckInput, kit: Kit, capabilityRoot: stri
   const { graph } = input;
   const index = graph.files.get(`${capabilityRoot}/index.ts`);
   if (!index) return;
-  const lite = kit.resolver.repo?.edition === 'lite';
-  const wanted: Record<string, string> = lite ? { Entities: `${camel(kinds.name)}Entities` } : { Entities: `${camel(kinds.name)}Entities`, Migrations: `${camel(kinds.name)}Migrations` };
+  const wanted: Record<string, string> = { Entities: `${camel(kinds.name)}Entities` };
   const exported = collectIndexExports(kit, capabilityRoot, index, wanted, report);
   for (const [kind, has] of [['Entities', kinds.entities], ['Migrations', kinds.migrations]] as const) {
     if (has && wanted[kind] && !exported.has(wanted[kind])) report(index, index.sourceFile, `${capabilityRoot}/index.ts must export ${wanted[kind]}, the ${kind.toLowerCase()} of the capability; apps concatenate them per connection into DatabaseModule.register.`, { capability: kinds.name, expected: wanted[kind] });

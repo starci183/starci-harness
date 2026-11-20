@@ -96,7 +96,7 @@ const lockedOk = (root: string): LockResult => {
 };
 
 test('sync --execute holds the managed sign-in glue an app\'s own code still reads, writes it once the app no longer does', async (t) => {
-  const root = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-compile-guard-sync-'), harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
+  const root = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-compile-guard-sync-'), harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
   const glue = path.join(root, 'be', 'src', 'modules', 'domain', 'identity', 'persistence', 'entities', 'index.ts');
   const rendered = fs.readFileSync(glue, 'utf8');
   fs.writeFileSync(glue, `${rendered}export const legacyToken = "kept by the app"\n`);

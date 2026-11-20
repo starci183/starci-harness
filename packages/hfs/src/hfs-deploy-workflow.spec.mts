@@ -26,7 +26,7 @@ import { OR_ECHO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
 type Doc = any;
 // reason: the stub carries only the facts the workflow templates read.
 type AppSource = NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
-interface Context { repoRoot: string; files: string[]; repo: { kind: string; edition: string }; all?: string[]; isRoot?: boolean; inScope?: (file: string) => boolean }
+interface Context { repoRoot: string; files: string[]; repo: { kind: string; edition?: string }; all?: string[]; isRoot?: boolean; inScope?: (file: string) => boolean }
 
 const SHA = 'a'.repeat(40);
 const HASH = 'b'.repeat(64);
@@ -63,7 +63,7 @@ const tree = (t: TestContext, files: Record<string, unknown>) => {
 const run = (t: TestContext, edition: string, doc: Doc, file = DEPLOY_FILE) => workflowFindings({ repoRoot: tree(t, { [file]: doc }), files: [file], repo: { kind: 'app', edition } });
 const hasCode = (findings: { code: string }[], code: string) => findings.some((finding) => finding.code === code);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_DEPLOY_WORKFLOW ${edition}: refuses every missing custody/control field and dotenv/extra secret escape`, (t) => {
     const cases: [string, (doc: Doc) => void][] = [
       ['environment', (doc: Doc) => { delete doc.jobs.deploy.environment; }],
@@ -260,8 +260,8 @@ for (const edition of ['lite', 'full']) {
 test('R251 scopes to app editions, tracked workflows and the requested paths, with all-tree root ownership', (t) => {
   const bad = { on: 'push', jobs: { lint: { steps: [{ uses: 'actions/checkout@v4' }] } } };
   const files = ['.github/workflows/ci.yml', 'be/.github/workflows/ci.yml', 'tests/fixtures/.github/workflows/ci.yml', '.github/actions/local/action.yml', 'docs/workflow.yml'];
-  const context: Context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app', edition: 'lite' } };
-  for (const repo of [{ kind: 'be', edition: 'lite' }, { kind: 'app', edition: 'unknown' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
+  const context: Context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app' } };
+  for (const repo of [{ kind: 'be' }, { kind: 'app', edition: 'unknown' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, isRoot: false }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, inScope: () => false }), []);
   const findings = deployWorkflowFindings({ ...context, files: [], all: files, isRoot: true, inScope: (file: string) => file.startsWith('be/') });
@@ -280,7 +280,7 @@ test('R251: every managed workflow that opens sealed members is bound to the env
     'one environment': { images: [{ service: 'api', app: 'core', buildArgs: true }], passEnv: [], imageEnvironments: { production: ['core'] } },
     'two environments': { images: [{ service: 'api', app: 'core', buildArgs: true }], passEnv: [], imageEnvironments: { production: ['core'], staging: ['core'] } },
   };
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     for (const [name, stack] of Object.entries(stacks)) {
       const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source: { files: [], read: () => '', stack, hasImage: () => true } as unknown as AppSource });
       const workflows = Object.fromEntries(targets.filter((target) => target.path.startsWith('.github/workflows/')).map((target) => [target.path, target.content]));
@@ -327,7 +327,7 @@ const pipeline = (): Doc => ({
   },
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_DEPLOY_WORKFLOW ${edition}: a deployment caller in ci.yml holds permissions, concurrency and the environment it passes; the check jobs beside it keep their own tokens`, (t) => {
     assert.deepEqual(run(t, edition, pipeline(), CI_FILE), [], 'a Sonar token in a check job is no deploy secret');
     const cases: [string, (doc: Doc) => void][] = [

@@ -44,7 +44,7 @@ test('the shards are the cached families once each and the lint family once per 
   assert.ok(!JSON.stringify(shardsOf([])).includes('audit') && !JSON.stringify(shardsOf([])).includes('sonar'), 'the audit and the Sonar scan keep no record');
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`app sync renders a sharded cache-verify.yml for a ${edition} app: one fresh job per family, a verdict, any-branch dispatch`, (t) => {
     const root = newApp(t, edition);
     const { text, ci } = renderOf(root);

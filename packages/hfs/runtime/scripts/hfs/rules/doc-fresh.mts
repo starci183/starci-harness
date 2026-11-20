@@ -290,7 +290,7 @@ function nameFindings(file: string, lines: string[], keys: Parsed, rules: Parsed
 
 /** Findings of R270 over product READMEs and docs, in lite and full; runtime docs retain their own checks. */
 export function docFreshFindings({ repoRoot, files = [], all = files, repo, resolver, appSide = false, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; appSide?: Parsed; inScope?: (file: string) => boolean }) {
-  if (appSide || repo?.profile === 'runtime' || !['lite', 'full'].includes(repo?.edition!)) return [];
+  if (appSide || repo?.profile === 'runtime') return [];
   const inventory = repo.profile === 'app' ? all : files;
   const docs = inventory.filter((file: string) => DOCUMENT.test(file) && path.posix.basename(file) !== 'KEYS.md' && inScope(file));
   if (!docs.length) return [];

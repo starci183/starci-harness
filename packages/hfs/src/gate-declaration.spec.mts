@@ -140,7 +140,7 @@ test('CI: a declared-off gate renders as one echo line that says so, a job whose
   assert.equal(verifyShards(['be'], { test: 'x' }).includes('--gate test'), false);
   assert.ok(verifyShards(['be'], {}).includes('--gate hfs') && verifyShards(['be'], {}).includes('--gate lint --side be'));
   assert.equal(JSON.parse(offStep('lint', "it's \"odd\": x")), "echo 'lint: off (declared: it'\\''s \"odd\": x)'");
-  for (const edition of ['full', 'lite']) {
+  for (const edition of ['lite'] as const) {
     const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const ci: Doc = parseWorkflow(text);
@@ -189,12 +189,12 @@ test('every reader of a managed CI file reads the declaration: the render of a d
   const ciDeclaration = (gates: string): string => ['schema: starci/application-stacks@1', 'ci:', '  secrets:', '    - {name: SONAR_TOKEN, scope: repository, purpose: the Sonar analysis token}',
     '  vars:', '    - {name: SONAR_HOST_URL, scope: repository, value: "https://sonar.example.invalid", purpose: the Sonar host}', 'services:', '  sonar:', '    provider: sonarqube', '    mode: local',
     '    stack:', '      owner: host', '      root: .claude/ext/sonar', '    ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL}', gates === '' ? '' : `gates:\n${gates}`].join('\n') + '\n';
-  for (const edition of ['full', 'lite'] as const) {
+  for (const edition of ['lite'] as const) {
     const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const offAll = readGateDeclarations(doc(off(...OPTIONAL_GATES))).off;
     const gateItems = new Set(['job-shape', 'boot-proof', 'test-sharding', 'packages-built-first']);
-    const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', edition, rootPackages: false, off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
+    const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', rootPackages: false, off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
     assert.deepEqual(items(offAll), [], `${edition}: the CI standard reads the declaration`);
     assert.ok(items({}).length > 0, `${edition}: the same file with nothing declared misses required steps`);
     assert.deepEqual(bypassesIn(CI, text, { idle: idleJobs(offAll) }), [], `${edition}: the idled jobs are the render, not a bypass`);

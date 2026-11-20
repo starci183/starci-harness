@@ -219,21 +219,21 @@ const loadInputs=({manifestFile,deploymentModelFile,errors,add}: {manifestFile: 
   if(!object(input.model))input.model={};
   return input;
 };
-const checkStackEntry=(entry: fs.Dirent,environmentNames: Set<string>,add: Add,{stacksRoot,lite}: {stacksRoot: string; lite: boolean}): void=>{
+const checkStackEntry=(entry: fs.Dirent,environmentNames: Set<string>,add: Add,{stacksRoot}: {stacksRoot: string}): void=>{
   if(!entry.isDirectory()||entry.isSymbolicLink())return;
   if(entry.name==='tmp'){add('STACKS_SCRATCH_IN_CANONICAL',`${STACKS_DIR}/tmp`,'scratch belongs in the OS temp directory, not a tracked .starcistacks/tmp');return;}
   if(entry.name==='k8s')return;
   if(RESERVED_STACK_FOLDERS.has(entry.name))return; // the check cache, the service image folders and the shared seed level (rules/stacks.mts): reserved, never an environment
-  if(lite&&liteCustodyDirectory(path.join(stacksRoot,entry.name)))return;
+  if(liteCustodyDirectory(path.join(stacksRoot,entry.name)))return;
   if(!environmentNames.has(entry.name))add('STACKS_UNDECLARED_ENVIRONMENT',`${STACKS_DIR}/${entry.name}`,`${entry.name} is not an environment the declaration admits; either the declaration admits it or it is not an environment`);
 };
 const checkDeclaredEnvironmentDirs=(stacksRoot: string,environmentNames: Set<string>,add: Add): void=>{
   for(const name of environmentNames)if(!directory(path.join(stacksRoot,name)))add('environment-directory-missing',`${STACKS_DIR}/${name}`,`declared environment ${name} has no directory`);
 };
-const checkStacksTree=({stacksRoot,manifest,environmentNames,add,lite}: {stacksRoot: string; manifest: Parsed; environmentNames: Set<string>; add: Add; lite: boolean}): void=>{
+const checkStacksTree=({stacksRoot,manifest,environmentNames,add}: {stacksRoot: string; manifest: Parsed; environmentNames: Set<string>; add: Add}): void=>{
   if(!directory(stacksRoot))return;
   let entries: fs.Dirent[]=[];try{entries=fs.readdirSync(stacksRoot,{withFileTypes:true});}catch{}
-  for(const entry of entries)checkStackEntry(entry,environmentNames,add,{stacksRoot,lite});
+  for(const entry of entries)checkStackEntry(entry,environmentNames,add,{stacksRoot});
   checkDeclaredEnvironmentDirs(stacksRoot,environmentNames,add);
   const k8sDir=path.join(stacksRoot,'k8s'),k8sExists=directory(k8sDir);
   if(manifest.k8s?.status==='supported'&&!k8sExists)add('k8s-directory-missing',`${STACKS_DIR}/k8s`,'k8s.status is supported but .starcistacks/k8s is missing');
@@ -345,13 +345,13 @@ const checkDependencyContainers=({services,spec,manifest,repo,add}: {services: R
       add('HFS_STACKS_SHAPE',`services.${id}.platform`,'a selected dependency must use a Docker Linux container platform');
   }
 };
-const checkModel=({model,ids,spec,manifest,lite,repo,add}: {model: Parsed; ids: Set<string>; spec: Parsed; manifest: Parsed; lite: boolean; repo: Parsed; add: Add}): void=>{
+const checkModel=({model,ids,spec,manifest,repo,add}: {model: Parsed; ids: Set<string>; spec: Parsed; manifest: Parsed; repo: Parsed; add: Add}): void=>{
   const services=object(model.services)?model.services:{};
   checkServiceIds(services,ids,add);
   if(unresolvedCompose(model))add('compose-placeholder-unresolved','composeModel','rendered Compose still contains an unresolved interpolation placeholder in a host-resolved field');
   checkServiceEnvironment(services,add);
   checkDependencyContainers({services,spec,manifest,repo,add});
-  if(object(spec)&&spec.runtime==='docker-swarm')for(const issue of swarmModelIssues({model,components:manifest.components,bindings:spec.components,lite}))
+  if(object(spec)&&spec.runtime==='docker-swarm')for(const issue of swarmModelIssues({model,components:manifest.components,bindings:spec.components}))
     add('HFS_STACKS_SHAPE',issue.at,issue.message);
 };
 
@@ -377,22 +377,21 @@ const checkKubernetesDeclaration=(manifest: Parsed,add: Add): void=>{
   if(!['deferred','supported'].includes(manifest.k8s?.status)||!String(manifest.k8s?.reason??'').trim())
     add('k8s-status-invalid','k8s','Kubernetes must be explicitly deferred or supported with a reason');
 };
-const checkSelectedEnvironment=({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,lite,repo,add}: {environment: unknown; environmentNames: Set<string>; environments: Record<string,Parsed>; stacksRoot: string; ids: Set<string>; root: string; model: Parsed; manifest: Parsed; lite: boolean; repo: Parsed; add: Add}): void=>{
+const checkSelectedEnvironment=({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,repo,add}: {environment: unknown; environmentNames: Set<string>; environments: Record<string,Parsed>; stacksRoot: string; ids: Set<string>; root: string; model: Parsed; manifest: Parsed; repo: Parsed; add: Add}): void=>{
   if(nonempty(environment)&&!environmentNames.has(String(environment)))
     add('environment-unknown','environment',`environment must be one the declaration admits: ${[...environmentNames].join(', ')}`);
   const spec=environments[String(environment)],envDir=path.join(stacksRoot,String(environment??''));
   if(object(spec))checkEnvironmentSpec({spec,environment,envDir,ids,root,add});
-  checkModel({model,ids,spec,manifest,lite,repo,add});
+  checkModel({model,ids,spec,manifest,repo,add});
 };
 const checkStacksManifest=(manifest: Parsed,model: Parsed,{stacksRoot,environment,root,repo,add}: {stacksRoot: string; environment: unknown; root: string; repo: Parsed; add: Add}): void=>{
   for(const issue of validateSchema(manifest))add('schema-shape-invalid',issue.path,issue.message);
   if(manifest.schema!==SCHEMA_ID)add('schema-invalid','schema',`expected ${SCHEMA_ID}`);
   const ids=componentIdsOf(manifest,add),{environments,environmentNames}=environmentMapOf(manifest,add);
-  const lite=repo.edition==='lite';
-  checkStacksTree({stacksRoot,manifest,environmentNames,add,lite});
+  checkStacksTree({stacksRoot,manifest,environmentNames,add});
   checkKubernetesDeclaration(manifest,add);
-  for(const issue of swarmInventoryIssues({components:manifest.components,lite,swarm:new Set(Object.values(object(manifest.environments)?manifest.environments:{}).filter((spec: Parsed)=>spec?.runtime==='docker-swarm').flatMap((spec: Parsed)=>Object.keys(object(spec.components)?spec.components:{})))}))add('HFS_STACKS_SHAPE',issue.at,issue.message);
-  checkSelectedEnvironment({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,lite,repo,add});
+  for(const issue of swarmInventoryIssues({components:manifest.components,swarm:new Set(Object.values(object(manifest.environments)?manifest.environments:{}).filter((spec: Parsed)=>spec?.runtime==='docker-swarm').flatMap((spec: Parsed)=>Object.keys(object(spec.components)?spec.components:{})))}))add('HFS_STACKS_SHAPE',issue.at,issue.message);
+  checkSelectedEnvironment({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,repo,add});
 };
 
 function deploymentAvailable(model: Parsed,errors: GateError[]): boolean{
@@ -423,7 +422,7 @@ export interface StacksCheckInput { repoRoot?: string | undefined; environment?:
 
 export function checkApplicationStacks({repoRoot,environment,deploymentModelFile,files,repo}: StacksCheckInput={}): StacksCheckResult{
   const root=path.resolve(String(repoRoot??'')),stacksRoot=path.join(root,STACKS_DIR),manifestFile=path.join(stacksRoot,'application-stacks.yaml'),errors: GateError[]=[];
-  const diskDeclaration=readJson(root,'hfs.json'),declaration={edition:'full',...(object(diskDeclaration)?diskDeclaration:{}),...(object(repo)?repo:{})};
+  const diskDeclaration=readJson(root,'hfs.json'),declaration={...(object(diskDeclaration)?diskDeclaration:{}),...(object(repo)?repo:{})};
   const add: Add=(code,at,message)=>{errors.push({code,path:at,message});};
   if(fs.existsSync(path.join(root,'hfs.json'))&&!object(diskDeclaration))
     add('HFS_STACKS_SHAPE','hfs.json','the HFS declaration must be a readable JSON object before application identities can be checked');

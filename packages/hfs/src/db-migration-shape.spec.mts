@@ -7,7 +7,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
-import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
 async function judge(t: TestContext, edition: string, name: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-migration-'));
@@ -22,14 +21,13 @@ async function judge(t: TestContext, edition: string, name: string) {
       fe: { apps: [{ name: 'web', kind: 'next' }] },
     },
   }));
-  assert.equal(readRepoDeclaration(loadSlotManifest(), repoRoot).edition, edition);
   const file = `db/migrations/${name}`;
   fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, file), 'select 1;\n');
   return checkDatabase({ repoRoot, files: [file], git: () => ({ ok: false, stdout: '' }) });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`DB_MIGRATION_SHAPE@${edition} rejects a migration with an impossible UTC stamp`, async (t) => {
     const findings = await judge(t, edition, '20260230000000_baseline.sql');
     assert.deepEqual(findings.map(({ code }) => code), ['DB_MIGRATION_SHAPE']);

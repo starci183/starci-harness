@@ -13,8 +13,6 @@ import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../../engine/yaml.mjs';
 import { braceVariants, globExpression } from '../lib/glob.mjs';
 import { trimTrailingSlashes } from '../lib/path-key.mjs';
-import { declarationEdition } from '../hfs/edition-slots.mjs';
-import { errorCode } from '../api/fs/lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const GATE_FILE = 'knowledge/sonar-gate.yaml';
@@ -39,10 +37,10 @@ export interface GateOverall {
   hotspots: GateMetric & { minReviewedPercent: number };
   duplication: GateMetric & { maxPercent: number };
 }
-/** knowledge/sonar-gate.yaml: the one Sonar quality gate; an edition key (lite) overlays its own gate, newCode and overall. */
+/** knowledge/sonar-gate.yaml: the one Sonar quality gate. */
 export interface SonarGate {
   schema: string; gate: { name: string }; newCode: GateNewCode; overall: GateOverall; enforcedOps: string[];
-  [edition: string]: unknown;
+  [key: string]: unknown;
 }
 type Measures = Record<string, unknown>;
 type Numbers = Record<string, number | null>;
@@ -63,41 +61,21 @@ export interface FileCoverage { path: string; coverage: unknown }
 export interface CoverageVerdict { applied: boolean; exclusions: string[]; minPercent: number; files: Array<{ path: string; coverage: number | null; ok: boolean }>; failures: string[]; note?: string }
 
 let cache: { base: string; gate: SonarGate } | null = null;
-/** Read the canonical gate for the repository's declared edition; cache the document, never a selected app view. */
-export function loadSonarGate({ base = root, file = null, cwd = null }: { base?: string; file?: string | null; cwd?: string | null } = {}): SonarGate {
+/** Read the canonical gate; cache the document. */
+export function loadSonarGate({ base = root, file = null }: { base?: string; file?: string | null } = {}): SonarGate {
   const gate: SonarGate = !file && cache?.base === base ? cache.gate : parseYaml(fs.readFileSync(file ?? path.join(base, GATE_FILE), 'utf8'));
   if (gate?.schema !== GATE_SCHEMA) throw new Error(`${file ?? GATE_FILE}: schema must be ${GATE_SCHEMA}`);
   for (const key of ['gate', 'newCode', 'overall', 'enforcedOps'])
     if (gate[key] == null) throw new Error(`${file ?? GATE_FILE}: ${key} is required`);
-  // Coverage is a required policy descriptor of the full block; the lite block carries the same descriptor.
+  // Coverage is a required policy descriptor.
   for (const area of ['newCode', 'overall'] as const) {
     const coverage = gate[area].coverage;
     if (!coverage || typeof coverage.metric !== 'string' || !coverage.metric.trim() || !Number.isFinite(coverage.minPercent) || coverage.minPercent < 0 || coverage.minPercent > 100)
       throw new Error(`${file ?? GATE_FILE}: ${area}.coverage requires a metric and minPercent from 0 to 100`);
   }
   if (!file) cache = { base, gate };
-  if (!cwd) return gate;
-  return gateForCwd(gate, { cwd, file });
+  return gate;
 }
-
-/** The canonical gate limited to the repository's declared edition (the lite block: its own gate name, the same conditions). */
-const gateForCwd = (gate: SonarGate, { cwd, file }: { cwd: string; file: string | null }): SonarGate => {
-  let declaration: { kind?: string };
-  try { declaration = JSON.parse(fs.readFileSync(path.join(cwd, 'hfs.json'), 'utf8')); }
-  catch (error) {
-    if (errorCode(error) === 'ENOENT') return gate;
-    throw error;
-  }
-  const { edition, valid } = declarationEdition({}, declaration);
-  if (!valid) throw new Error('hfs.json declares an unsupported Sonar edition');
-  if (edition === 'full') return gate;
-  if (declaration.kind !== 'app') throw new Error('hfs.json lite Sonar policy requires an app declaration');
-  const overlay = gate[edition];
-  const selected = typeof overlay === 'object' && overlay !== null ? (overlay as Partial<SonarGate>) : undefined;
-  for (const key of ['gate', 'newCode', 'overall'])
-    if (selected?.[key] == null) throw new Error(`${file ?? GATE_FILE}: ${edition}.${key} is required`);
-  return { ...gate, ...selected };
-};
 
 /**
  * The conditions the server gate carries: [{metric, op, error}] (SonarQube api/qualitygates conditions): the new-code ones

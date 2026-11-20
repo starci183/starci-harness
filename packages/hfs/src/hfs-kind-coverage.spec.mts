@@ -12,7 +12,7 @@ const platform = ['be/src/modules/platform/jobs/index.ts', 'be/src/modules/platf
 const declaration = { kinds: ['api', 'jobs'], patterns: ['fenced-job', 'queue'] };
 const context = (edition: string, files: string[], be: Record<string, unknown>) => ({ files, repo: { edition, sides: { be } } });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} BE_KIND_DECLARATION rejects an undeclared kind and an unused declaration`, () => {
     const undeclared = kindFindings(context(edition, [...api, ...job, ...platform], {
       kinds: ['api'], patterns: ['fenced-job', 'queue'],

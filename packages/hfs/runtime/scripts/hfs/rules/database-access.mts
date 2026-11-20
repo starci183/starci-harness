@@ -352,7 +352,7 @@ function storagePrefixFindings(policies: Parsed, helpers: Parsed) {
   return findings;
 }
 
-/** All new access checks run on the ordered active migrations in either edition, through checkDatabase. */
+/** All new access checks run on the ordered active migrations, through checkDatabase. */
 export async function databaseAccessFindings({ analyses, exposed, db = {} }: { analyses: Parsed; exposed: Parsed; db?: Parsed }) {
   const declared = db ?? {};
   const appRole = declared.appRole ?? 'app_be';

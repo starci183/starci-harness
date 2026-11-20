@@ -160,7 +160,7 @@ test('R426 over a work tree: the finder reads the stack declaration and the adap
 });
 
 test('DATA_STORE_UNDECLARED: the lite skeleton stack keeps its own stateful components covered (database a store, ingress and statics storage derived)', () => {
-  const text = fs.readFileSync(new URL('../templates/app/skeleton-lite/.starcistacks/application-stacks.yaml', import.meta.url), 'utf8').replaceAll(/\{\{[^}]*\}\}/gu, '1');
+  const text = fs.readFileSync(new URL('../templates/app/skeleton/.starcistacks/application-stacks.yaml', import.meta.url), 'utf8').replaceAll(/\{\{[^}]*\}\}/gu, '1');
   const doc = parseYaml(text) as Json;
   const adapter = 'be/src/modules/integrations/seed/database.adapter.ts';
   assert.deepEqual(dataStoreFindings(doc, new Set([adapter]), () => 'export class DatabaseStore implements StoreAdapter {}\n').map(({ code, message }) => [code, message]), []);

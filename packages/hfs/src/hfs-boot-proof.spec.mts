@@ -194,14 +194,14 @@ test('BE_APP_BOOT_PROOF_MISSING lite: root, FE and changed scope avoid duplicate
   const context = fixture(t, { [APP_MODULE]: missingModule });
   assert.deepEqual(bootProofFindings({ ...context, isRoot: true }), []);
   assert.deepEqual(bootProofFindings({ ...context, repo: { ...context.repo, profile: 'fe' } }), []);
-  assert.equal(appWiring({ ...context, repo: { kind: 'fe', edition: 'lite', apps: [{ name: 'api' }] },
+  assert.equal(appWiring({ ...context, repo: { kind: 'fe', apps: [{ name: 'api' }] },
     run() { assert.fail('raw FE declarations must not compile Nest'); } }).status, 'skipped');
   assert.deepEqual(bootProofFindings({ ...context, inScope: () => false }), []);
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: raw standalone back-end declarations compile the real root', t => {
   const context = fixture(t, { [APP_MODULE]: passingModule });
-  const repo = { kind: 'be', edition: 'lite', apps: [{ name: 'api', kind: 'api' }] };
+  const repo = { kind: 'be', apps: [{ name: 'api', kind: 'api' }] };
   fs.writeFileSync(path.join(context.repoRoot, 'hfs.json'), JSON.stringify(repo));
   assert.equal(appWiring({ repoRoot: context.repoRoot }).ok, true);
 });
@@ -226,7 +226,7 @@ test('BE_APP_BOOT_PROOF_MISSING lite: CLI reports app-relative paths and returns
 
 test('the standalone wiring selector accepts the canonical inline spelling and refuses retired or other gates before reading an app', t => {
   const context = fixture(t, {}, 'lite', true);
-  fs.writeFileSync(path.join(context.repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite', sides: { be: { apps: [] } } }));
+  fs.writeFileSync(path.join(context.repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', sides: { be: { apps: [] } } }));
   let out = '', err = '';
   assert.equal(appWiringMain(['--gate=wiring', '--gate', 'wiring', '--json'], { cwd: context.repoRoot, stdout: text => { out += text; } }), 0);
   assert.equal(JSON.parse(out).ok, true);
@@ -306,5 +306,4 @@ test('the admitted boot path shares the synchronous proof result and preserves i
 test('the admitted boot path refuses a missing governor only when a real app needs a child', async t => {
   const context = fixture(t, { [APP_MODULE]: passingModule });
   await assert.rejects(appWiringAsync(context), /HFS_NODE_GOVERNOR_MISSING/u);
-  assert.equal((await appWiringAsync({ ...context, repo: { edition: 'full' } })).status, 'skipped');
 });

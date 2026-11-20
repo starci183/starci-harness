@@ -28,7 +28,7 @@ function judge(t: TestContext, edition: string, files: Record<string, string>) {
   return report.findings.filter(item => item.code === code);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${code} ${edition}: refuses an empty tracked env file and a fake sealed envelope`, t => {
     const violations = judge(t, edition, { '.env': '', '.starcistacks/dev/secrets/app.enc': 'not an encrypted envelope' });
     assert.deepEqual(violations.map(item => item.path as string).sort((left: string, right: string) => left.localeCompare(right)), ['.env', '.starcistacks/dev/secrets/app.enc']);
@@ -41,7 +41,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: staged hygiene and file judgement reject plaintext secret paths`, () => {
     assert.equal(hygieneFindings(['.starcistacks/dev/secrets/app.txt'], new Set())[0]?.code, code);
     assert.equal(secretFileFindings({ file: '.env', text: '' })[0]?.code, code);

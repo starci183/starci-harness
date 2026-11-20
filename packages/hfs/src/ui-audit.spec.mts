@@ -58,14 +58,14 @@ const screen = (over: Record<string, unknown> = {}): string => stringifyYaml({
 });
 
 /** An app with one screen (route /customers) committed with `yaml`; the base is that commit. */
-function app(t: TestContext, edition: string, yaml: string | null): { root: string; base: string } {
+function app(t: TestContext, _edition: string, yaml: string | null): { root: string; base: string } {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-ui-audit-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'a@b.c');
   git(root, 'config', 'user.name', 'n');
   git(root, 'config', 'commit.gpgsign', 'false');
-  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined, edition), null, 2)}\n`);
+  write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined), null, 2)}\n`);
   write(root, PAGE, 'import { CustomersPage } from "@/features/pages/CustomersPage"\nexport default CustomersPage\n');
   write(root, FEATURE, 'export const CustomersPage = () => null\n');
   if (yaml !== null) write(root, `${FOLDER}/screen.yaml`, yaml);
@@ -77,7 +77,7 @@ const touchSource = (root: string): void => write(root, FEATURE, 'export const C
 const codes = (root: string, base: string): string[] => uiAuditFindings({ repoRoot: root, changed: changedSince(root, base), base }).findings.map((finding) => String(finding.code));
 const io = (cwd: string) => { const out: string[] = []; const err: string[] = []; return { out, err, io: { cwd, stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text) } }; };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: an unchanged screen is grandfathered, even with no audit`, (t) => {
     const { root, base } = app(t, edition, screen({ audit: null }));
     assert.deepEqual(codes(root, base), []);

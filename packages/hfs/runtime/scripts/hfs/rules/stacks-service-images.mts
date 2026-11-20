@@ -97,7 +97,7 @@ function builtFromFolder(service: Parsed, name: string, project: string): boolea
 
 /** Findings of R374 for the app root. */
 export function stacksServiceImageFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Repo; isRoot: boolean }): Finding[] {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const { doc } = findStackDeclaration(repoRoot);
   if (!doc) return [];
   const project = String(readJson(repoRoot, 'hfs.json')?.project ?? 'app');

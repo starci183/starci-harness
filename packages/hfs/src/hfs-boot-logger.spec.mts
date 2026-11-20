@@ -37,7 +37,7 @@ function fixture(t: TestContext, entries: Record<string, string>, edition: strin
 
 const codesOf = (input: LoggerInput) => bootLoggerFindings(input).map((finding) => `${finding.code} ${finding.path}`);
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${HFS_BOOT_LOGGER_SILENCED}: ${edition} refuses an app root main that turns the Nest logger off`, (t) => {
     const context = fixture(t, {
       'be/apps/cli/src/main.ts': SILENT_CLI,
@@ -61,7 +61,7 @@ for (const edition of ['lite', 'full']) {
 test(`${HFS_BOOT_LOGGER_SILENCED}: only an app's root scope is judged, within scope, and an unreadable main is skipped`, (t) => {
   const entries = { 'be/apps/cli/src/main.ts': SILENT_CLI };
   assert.deepEqual(codesOf(fixture(t, entries, 'lite', { isRoot: false })), []);
-  assert.deepEqual(codesOf(fixture(t, entries, 'lite', { repo: { kind: 'runtime', profile: 'app', edition: 'lite' } })), []);
+  assert.deepEqual(codesOf(fixture(t, entries, 'lite', { repo: { kind: 'runtime', profile: 'app' } })), []);
   assert.deepEqual(codesOf(fixture(t, entries, 'lite', { inScope: () => false })), []);
   const missing = fixture(t, {}, 'lite', { files: ['be/apps/gone/src/main.ts'] });
   assert.deepEqual(codesOf(missing), []);

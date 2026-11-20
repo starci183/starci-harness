@@ -1,5 +1,5 @@
 // gallery-routes.mts - the routes of an app's front end and the gallery screens that cover them (R395, contexts/project/gallery.md PROJECT-GALLERY-4, PROJECT-GALLERY-5).
-// A user-facing route is a Next app router `page.tsx` under `fe/apps/<app>/src/app` (both editions share the shape: slot fe.route). The route pattern of a page is its folder
+// A user-facing route is a Next app router `page.tsx` under `fe/apps/<app>/src/app` (slot fe.route). The route pattern of a page is its folder
 // path with the structure stripped: the first `[locale]` segment (the i18n prefix), route groups `(console)`, and nothing else; a dynamic segment (`[id]`, `[...rest]`,
 // `[[...rest]]`) stays, written `[id]`. A parallel slot (`@modal`), an intercepting route (`(.)photo`) and a private folder (`_parts`) own no screen of their own and are skipped.
 // Matching an explain.md `route` to a page route compares KEYS: the locale prefix goes, a trailing slash goes, every dynamic segment (`[id]`, `:id`, `{id}`, `<id>`) is one

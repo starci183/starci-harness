@@ -1,4 +1,4 @@
-// database-keys.mts - R431, the key shape of an app table, judged over the ordered active migrations of db/migrations (both editions,
+// database-keys.mts - R431, the key shape of an app table, judged over the ordered active migrations of db/migrations (
 // through checkDatabase). A table the app creates in its schema has the primary key `id uuid` (DB_PRIMARY_KEY_SHAPE); a one-column
 // foreign key is named `<referenced table singular>_id` or `<role>_<referenced table singular>_id`, or is the table's own `id` when the
 // table shares the key of the row it extends (DB_FOREIGN_KEY_NAME); every foreign key has an index, a primary key or a unique

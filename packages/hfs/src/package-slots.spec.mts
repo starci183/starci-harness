@@ -91,7 +91,7 @@ function app(t: TestContext): { root: string; files: string[] } {
   return { root, files: [...files, 'packages/sdk/package.json', 'packages/sdk/src/index.ts', 'packages/sdk/src/anything.ts'] };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the app check judges every root package that declares slots.yaml, and leaves one without alone`, (t) => {
     const { root, files } = app(t);
     const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
@@ -129,7 +129,7 @@ test('the project declares the slots of a package in ext/manifest.json: the pack
   assert.deepEqual(unmeasuredGlobs(manifest), ['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts', 'src/views/**']);
   assert.ok(judgePackageSlots({ slots: [{ id: 'x', path: 'src/**', lint: 'grammar' }] }).problems.some((problem) => /lint is be \(the default\) or fe/u.test(problem)));
   const { root, files } = projectApp(t, { 'packages/ui': DECLARED });
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
     assert.deepEqual(found.map((finding) => [finding.code, finding.path]).sort(), [
       [PACKAGE_SLOT_MISSING, 'packages/ui/src/parts/list/list.spec.ts'],
@@ -145,12 +145,12 @@ test('the project declares the slots of a package in ext/manifest.json: the pack
 test(`${PACKAGE_SLOTS_INVALID}: a declaration the manifest cannot hold is red at the manifest: an unreadable one, a folder that is no root package, a package declared twice`, (t) => {
   const codes = (packages: unknown, extra: string[] = []): [string, string][] => {
     const { root, files } = projectApp(t, packages, extra);
-    return packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition: 'lite' }, isRoot: true, inScope: () => false }).map((finding): [string, string] => [finding.code, finding.path]);
+    return packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app' }, isRoot: true, inScope: () => false }).map((finding): [string, string] => [finding.code, finding.path]);
   };
   assert.deepEqual(codes({ 'packages/ui': { slots: [{ id: 'x', path: 'lib/**' }] } }), [[PACKAGE_SLOTS_INVALID, 'ext/manifest.json']]);
   assert.deepEqual(codes({ 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] }, 'packages/gone': { slots: [{ id: 'all', path: 'src/**' }] } }), [[PACKAGE_SLOTS_INVALID, 'ext/manifest.json']]);
   const { root, files } = projectApp(t, { 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] } }, ['packages/ui/slots.yaml']);
-  assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition: 'lite' }, isRoot: true }).map((finding) => [finding.code, finding.path, finding.level]), [[PACKAGE_SLOTS_INVALID, 'packages/ui/slots.yaml', 'error']]);
+  assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app' }, isRoot: true }).map((finding) => [finding.code, finding.path, finding.level]), [[PACKAGE_SLOTS_INVALID, 'packages/ui/slots.yaml', 'error']]);
 });
 
 test('the canon of a file is its first slot: a front-end slot less the back-end slots before it, a back-end slot a later front-end slot reaches less the front-end slots before it', () => {

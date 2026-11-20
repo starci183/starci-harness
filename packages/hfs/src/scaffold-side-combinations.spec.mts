@@ -33,7 +33,7 @@ const scripts = (root: string): Record<string, string> => (JSON.parse(fs.readFil
 
 const WITH_BE: ReadonlyArray<readonly ProjectSide[]> = [['be'], ['be', 'fe'], ['be', 'packages'], ['be', 'fe', 'packages']];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: every side set with be scaffolds and checks as clean as the default starter, with the codegen exactly when fe is declared`, (t) => {
     const baseline = new Set(starter(t, edition, ['be', 'fe']).codes);
     for (const sides of WITH_BE) {

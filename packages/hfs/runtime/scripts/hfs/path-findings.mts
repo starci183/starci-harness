@@ -127,9 +127,9 @@ function pathStatusFinding(file: string, resolver: Resolver): PathFinding | null
   return null;
 }
 
-/** The lite Work boundary, read from app.starciwork's edition-specific admission list, including paths a narrower slot owns. */
+/** The Work boundary, read from app.starciwork's admission list, including paths a narrower slot owns. */
 export function liteStarciworkFinding(file: string, resolver: Resolver, { dir = false }: { dir?: boolean } = {}): PathFinding | null {
-  if (resolver.repo?.edition !== 'lite' || !resolver.slot('app.starciwork')) return null;
+  if (!resolver.slot('app.starciwork')) return null;
   const p = resolver.classifyPath(file).path;
   if (!p.startsWith('.starciwork/')) return null;
   // A directory is admitted when the slot admits any file below it (`brand/**`) or the record it holds (`concepts/index.yaml`).
@@ -138,12 +138,12 @@ export function liteStarciworkFinding(file: string, resolver: Resolver, { dir = 
     return admitted?.slot === 'app.starciwork' && admitted.allowed;
   };
   if (dir ? admits(`${p}/.probe`) || admits(`${p}/index.yaml`) : admits(p)) return null;
-  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: lite .starciwork holds only workspace.yaml, brand/ and the concepts (concepts/README.md and concepts/<topic>.md; the records concepts/index.yaml and concepts/<name>/index.yaml of an app that still keeps them) (plus .gitignore); remove this path (per-feature Work documents are retired in both editions; full also admits shell/, _resources/ and _derived/)` };
+  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: .starciwork holds only workspace.yaml, brand/ and the concepts (concepts/README.md and concepts/<topic>.md; the records concepts/index.yaml and concepts/<name>/index.yaml of an app that still keeps them) (plus .gitignore); remove this path (per-feature Work documents are retired; full also admits shell/, _resources/ and _derived/)` };
 }
 
-/** Local lite Work leftovers, including metadata ignored by an old full-edition .gitignore. */
+/** Local Work leftovers, including metadata ignored by an old .gitignore. */
 export function liteStarciworkTreeFindings(repoRoot: string, resolver: Resolver, tracked: string[]): PathFinding[] {
-  if (resolver.repo?.edition !== 'lite' || !resolver.slot('app.starciwork')) return [];
+  if (!resolver.slot('app.starciwork')) return [];
   let entries: fs.Dirent[] = [];
   try { entries = fs.readdirSync(path.join(repoRoot, '.starciwork'), { withFileTypes: true }); } catch { /* Work is optional. */ }
   const trackedSet = new Set(tracked);

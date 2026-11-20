@@ -14,7 +14,7 @@ export interface ModuleImport {
 /** Where a compose group lives and which verb reads it. */
 export interface ComposeGroupInput {
   readonly repoRoot: string;
-  readonly repo: { readonly edition?: string | undefined };
+  readonly repo?: unknown;
   readonly app: string;
   readonly area: string;
   readonly noun: string;
@@ -49,14 +49,14 @@ export function compositionCode(text: string): string {
 
 
 /** Reads the explicitly typed expression body of a group without treating comments as active declarations. */
-export function readComposeGroup({ repoRoot, repo, app, area, noun }: ComposeGroupInput): { relative: string, file: string, exists: boolean, text: string, marker: string, body: string } {
+export function readComposeGroup({ repoRoot, app, area, noun }: ComposeGroupInput): { relative: string, file: string, exists: boolean, text: string, marker: string, body: string } {
   const relative = `be/apps/${app}/src/compose/${area}.ts`;
   const file = path.join(repoRoot, ...relative.split('/'));
   const exists = fs.existsSync(file);
-  const skeleton = repo.edition === 'lite' ? 'skeleton-lite/apps/api' : 'skeleton/apps/__app__';
+  const skeleton = 'skeleton-lite/apps/api';
   const template = path.join(TEMPLATES_DIR, 'be', ...skeleton.split('/'), 'src', 'compose', `${area}.ts`);
   const text = fs.readFileSync(exists ? file : template, 'utf8').replace(/\r\n/g, '\n');
-  const argument = area === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken: VerifyAccessToken' : '';
+  const argument = area === 'domain' ? 'verifyAccessToken: VerifyAccessToken' : '';
   const marker = `export const ${area}Modules = (${argument}): Array<Type<unknown> | DynamicModule> => [`;
   const declarationAt = compositionCode(text).indexOf(`\n${marker}`);
   const active = declarationAt >= 0;

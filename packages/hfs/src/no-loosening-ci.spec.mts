@@ -19,7 +19,7 @@ const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, projec
 } });
 const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }).find((item) => item.path === file)?.content;
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} managed CI renders no escape hatch and its Sonar token check fails the job`, () => {
     const text = rendered(edition, '.github/workflows/ci.yml');
     assert.ok(text, 'the managed CI is rendered');
@@ -30,7 +30,7 @@ for (const edition of ['full', 'lite']) {
     assert.match(token.run, /exit 1/u, 'and refused');
     const upload = doc.jobs.coverage.steps.find((step: { name: string }) => step.name === 'coverage upload');
     assert.equal(upload.with.fail_ci_if_error, true);
-    assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci', edition }), []);
+    assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
   });
 
   test(`${edition} hooks and package scripts render no escape hatch`, () => {

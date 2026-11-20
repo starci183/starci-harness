@@ -312,8 +312,6 @@ rules:
     verification:
       automated:
         - BE_REALTIME_SHAPE
-        - HFS_EDITION_INVALID
-        - HFS_EDITION_FORBIDDEN_PRESENT
         - HFS_STARCIWORK_LITE_FORBIDDEN
         - HFS_BACKING_UNDECLARED
         - HFS_BACKING_UNUSED

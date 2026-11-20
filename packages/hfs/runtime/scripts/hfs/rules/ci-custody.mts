@@ -93,9 +93,9 @@ function driftFindings(doc: Parsed, ci: Parsed, references: Parsed) {
   return findings;
 }
 
-/** Offline CI custody findings of an app root, in both lite and full editions. */
+/** Offline CI custody findings of an app root,. */
 export function ciCustodyFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Repo; isRoot: boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((edition) => edition === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const { doc } = findStackDeclaration(repoRoot);
   if (!doc) return [];
   const ci = readCiDeclaration(doc);

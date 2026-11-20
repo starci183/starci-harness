@@ -244,8 +244,7 @@ interface BeAppEntry {
   readonly kind: string;
 }
 
-export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest: SlotManifest, repo: { edition?: string | undefined } }): string[] {
-  if (repo.edition !== "lite") return [];
+export function ensureLiteCli({ root, manifest }: { root: string, manifest: SlotManifest, repo?: unknown }): string[] {
   const declarationFile = path.join(root, "hfs.json");
   const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
   const cliApps = declaration.sides.be.apps.filter((app: BeAppEntry) => app.kind === "cli");

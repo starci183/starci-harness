@@ -22,7 +22,7 @@ function liteApp(t: TestContext): string {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-queues-cli-lite-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
   const { root } = scaffoldApp({
-    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(),
+    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(),
     lock: (dir: string) => { fs.writeFileSync(path.join(dir, 'package-lock.json'), '{}\n'); return { ok: true as const }; }, initGit: init,
     now: () => new Date(SCAFFOLDED),
   });

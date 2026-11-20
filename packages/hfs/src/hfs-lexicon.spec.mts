@@ -26,7 +26,7 @@ function tree(t: TestContext, files: Record<string, string | Buffer | object>) {
   return root;
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_APP_LEXICON ${edition}: removed words in source, copy and docs are refused`, (t) => {
     const files = {
       'hfs.json': declaration(edition, { lexicon: { removed: ['cart', 'legacy offer'] } }),
@@ -98,7 +98,7 @@ test('HFS_APP_LEXICON: scoped side checks read the parent declaration and ignore
     'be/src/a.ts': 'cart', 'be/src/b.ts': 'cart', 'be/src/untracked.ts': 'cart',
     'be/docs/data.txt': Buffer.from('cart\0binary'), 'be/docs/image.png': 'cart',
   });
-  const findings = lexiconFindings({ repoRoot: path.join(root, 'be'), files: ['src/a.ts', 'src/b.ts', 'docs/data.txt', 'docs/image.png'], repo: { profile: 'be', edition: 'lite' }, inScope: (file) => file !== 'src/b.ts' });
+  const findings = lexiconFindings({ repoRoot: path.join(root, 'be'), files: ['src/a.ts', 'src/b.ts', 'docs/data.txt', 'docs/image.png'], repo: { profile: 'be' }, inScope: (file) => file !== 'src/b.ts' });
   assert.deepEqual(findings.map((item) => item.path), ['src/a.ts']);
 });
 
@@ -109,7 +109,7 @@ test('HFS_APP_LEXICON: no removed words means no scan; the runtime has no produc
 });
 
 test('hfs.json lexicon and observe: shape accepts optional declarations in both editions and preserves unknown-key refusals', () => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     for (const extra of [{}, { lexicon: {} }, { lexicon: { removed: [] }, observe: {} }, { lexicon: { removed: ['old name'] }, observe: { reporter: '@sentry/nextjs' } }]) assert.deepEqual(declarationShapeProblems(declaration(edition, extra), ['be', 'fe']), []);
     for (const lexicon of [null, [], 'old', { removed: 'old' }, { removed: [''] }, { removed: [' '] }, { removed: [12] }, { removed: ['old', 'old'] }, { removed: [], allowed: ['old'] }]) assert.ok(declarationShapeProblems(declaration(edition, { lexicon }), ['be', 'fe']).some((item) => item.startsWith('lexicon')));
     for (const observe of [null, [], 'sentry', { reporter: false }, { reporter: '' }, { reporter: ' ' }, { reporter: {} }, { enabled: false }]) assert.ok(declarationShapeProblems(declaration(edition, { observe }), ['be', 'fe']).some((item) => item.startsWith('observe')));

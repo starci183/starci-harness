@@ -151,7 +151,7 @@ function lexiconBlockProblems(lexicon: Parsed): string[] {
   return bad;
 }
 
-/** Front-end error reporting remains optional in both editions. */
+/** Front-end error reporting remains optional. */
 function observeBlockProblems(observe: Parsed): string[] {
   if (observe === undefined) return [];
   if (!isPlainObject(observe)) return ['observe must be an object'];

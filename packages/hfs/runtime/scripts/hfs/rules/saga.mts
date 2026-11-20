@@ -1,4 +1,4 @@
-// saga.mts - the saga pattern of a product that declares `patterns: ["saga"]` in hfs.json (R169 to R173). A saga is a feature of the saga kind
+// saga.mts - the saga pattern of a product that declares `patterns: ["saga"]` in hfs.json (R169 to R172). A saga is a feature of the saga kind
 //   be/src/features/saga/<saga>/
 //     <saga>.saga.service.ts              the orchestrator: the list of its steps and optional compensations (a service, unit-tested beside it)
 //     <saga>.saga-state.ts                the persisted state of a run, typed with its `status` and its `version` fence
@@ -13,8 +13,6 @@
 //   R171 BE_SAGA_EVENT_CONTRACT     a step and a compensation each name their event (`readonly event = "<name>"`), both are in a contract, and the
 //                                   contract of the compensation's event says it compensates the step's event;
 //   R172 BE_SAGA_CONSUMER_DEDUPE    a consumer of a saga feature passes the id of the delivery (`message.eventId`) on to the command, so the inbox can dedupe it;
-//   R173 BE_SAGA_E2E_MISSING        every compensation path has an e2e spec through the world that names its event and injects a failure
-//                                   (an outage of an infra service, an app or a fake: `during`, `cut`, `latency`, `failNext`, `interruptDatabase`).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
@@ -27,7 +25,6 @@ const SAGA_STEP_COMPENSATION = 'BE_SAGA_STEP_COMPENSATION';
 const SAGA_STATE_VERSIONED = 'BE_SAGA_STATE_VERSIONED';
 const SAGA_EVENT_CONTRACT = 'BE_SAGA_EVENT_CONTRACT';
 const SAGA_CONSUMER_DEDUPE = 'BE_SAGA_CONSUMER_DEDUPE';
-const SAGA_E2E_MISSING = 'BE_SAGA_E2E_MISSING';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAGA_FILE = /^be\/src\/features\/saga\/([^/]+)\/(?:(?:steps|compensations)\/)?[^/]+\.(?:saga\.service|saga-state|saga-step|compensation)\.ts$/;
@@ -36,10 +33,7 @@ const STATE = /^be\/src\/features\/saga\/([^/]+)\/([^/]+)\.saga-state\.ts$/;
 const STEP = /^be\/src\/features\/saga\/([^/]+)\/steps\/([^/]+)\.saga-step\.ts$/;
 const COMPENSATION = /^be\/src\/features\/saga\/([^/]+)\/compensations\/([^/]+)\.compensation\.ts$/;
 const CONSUMER = /^be\/src\/features\/saga\/([^/]+)\/transport\/message\/[^/]+\.consumer\.ts$/;
-const E2E_SPEC = /^be\/src\/tests\/e2e\/[^/]+\/[^/]+\.e2e-spec\.ts$/;
 const CONTRACT = /^be\/contracts\/[^/]+\/events\.json$/;
-const USE_TEST_WORLD = /\buseTestWorld\s*\(/;
-const INJECTION = /\.(?:during|cut|latency|failNext|interruptDatabase)\s*\(/;
 const STORE_MODULE = /(?:^|\/)platform\/saga$/;
 
 /** The TypeScript compiler of the app (else of the runtime), or null. */
@@ -192,19 +186,9 @@ function featureFindings(ts: Ts, repoRoot: string, files: string[], feature: Par
   return { findings, compensationPaths: eventResult.compensationPaths };
 }
 
-function compensationE2eFindings(compensationPaths: Parsed, specs: Parsed) {
-  const findings = [];
-  for (const { file, stem, event } of compensationPaths) {
-    const named = specs.filter(({ text }: { text: string }) => text.includes(event));
-    const expected = `be/src/tests/e2e/<area>/<name>.e2e-spec.ts`;
-    if (named.length === 0) findings.push(found(SAGA_E2E_MISSING, file, `${file}: the compensation path of "${event}" has no e2e spec; add ${expected}, which boots the apps with useTestWorld, drives the failure and reads the compensated state back.`, { step: stem, event }));
-    else if (!named.some(({ text }: { text: string }) => INJECTION.test(text))) findings.push(found(SAGA_E2E_MISSING, named[0].file, `${named[0].file} names "${event}" but injects no failure; the compensation path is proven with a fault through the world (an outage of an infra service or an app with \`during\`, \`cut\`, \`latency\`, a fake's \`failNext\`, \`interruptDatabase\`), not only the happy flow.`, { step: stem, event }));
-  }
-  return findings;
-}
 
-/** Findings of R169 to R173 over the tracked paths `files` of the app at `repoRoot`. */
-export function sagaFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo?: Repo }) {
+/** Findings of R169 to R172 over the tracked paths `files` of the app at `repoRoot`; the scenarios are proven through R284. */
+export function sagaFindings({ repoRoot, files }: { repoRoot: string; files: string[]; repo?: Repo }) {
   const features = featuresOf(files);
   if (features.length === 0) return [];
   const ts = typescriptFor(repoRoot);
@@ -219,11 +203,6 @@ export function sagaFindings({ repoRoot, files, repo }: { repoRoot: string; file
     const result = featureFindings(ts, repoRoot, files, feature, events);
     findings.push(...result.findings);
     compensationPaths.push(...result.compensationPaths);
-  }
-  // R173 is the full-edition test-world proof; lite keeps R169-R172 and proves its scenarios through R284.
-  if (repo?.edition !== 'lite') {
-    const specs = files.filter((file: string) => E2E_SPEC.test(file)).map((file: string) => ({ file, text: readText(repoRoot, file) ?? '' })).filter(({ text }: { text: string }) => USE_TEST_WORLD.test(text));
-    findings.push(...compensationE2eFindings(compensationPaths, specs));
   }
   return findings;
 }

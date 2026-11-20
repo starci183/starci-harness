@@ -2,29 +2,22 @@
 //   BE_EVENT_CLASS_CONTRACT   every typed event class `be/src/modules/events/<service>/<event>.event.ts` equals an entry of the vendored
 //                             contract `be/contracts/<service>/events.json` (the same name and version), every entry of a vendored
 //                             contract has its class, and a class file is named after its event (`order.placed` -> `order-placed.event.ts`);
-//   BE_PATTERN_SPEC_MISSING   a full-edition declared pattern has its required scenarios: ruleParams.be.patternScenarios.<pattern> lists scenario ids,
-//                             and an e2e or integration spec of the back end holds a test whose title starts `<pattern>/<scenario>:`.
 // Class members are read with TypeScript's own parser (a `static readonly eventName` and `version` with literal initializers), spec
 // titles are the first argument of `it(` and `test(` calls; no source text is matched by a regular expression.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadSlotManifest, ruleParams } from '../slots.mjs';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { literalText } from '../../lib/ts-ast.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Finding, Parsed, Repo, Ts } from './rule-types.mjs';
 
 const EVENT_CLASS_CONTRACT = 'BE_EVENT_CLASS_CONTRACT';
-const PATTERN_SPEC_MISSING = 'BE_PATTERN_SPEC_MISSING';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const EVENT_FILE_PREFIX = 'be/src/modules/events/';
 const EVENT_SUFFIX = '.event.ts';
 const CONTRACT_PREFIX = 'be/contracts/';
 const CONTRACT_NAME = 'events.json';
-const TEST_FOLDERS = ['be/src/tests/e2e/', 'be/src/tests/integration/'];
-const SPEC_SUFFIXES = ['.e2e-spec.ts', '.integration-spec.ts'];
-const TEST_CALLEES = new Set(['it', 'test']);
 
 /** The TypeScript compiler of the app (else of the runtime), or null. */
 const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
@@ -154,49 +147,3 @@ export function eventClassContractFindings({ repoRoot, files, repo }: { repoRoot
   return [...classes.findings, ...classContractFindings(classes.classesByService, contracts), ...contractClassFindings(classes.classesByService, contracts)];
 }
 
-/** Adds the `<pattern>` of every `<pattern>/<scenario>:` test title (the first argument of an `it(` or `test(` call) of the source. */
-function addProvenScenarios(ts: Ts, source: Parsed, proven: Parsed) {
-  const visit = (node: Parsed) => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && TEST_CALLEES.has(node.expression.text)) {
-      const title = literalText(ts, node.arguments[0]);
-      const colon = title === null ? -1 : title.indexOf(':');
-      if (title !== null && colon > 0) proven.add(title.slice(0, colon));
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-}
-
-/** The scenario ids a back end proves: every `<pattern>/<scenario>:` test title of an e2e or integration spec. */
-function provenScenarios(ts: Ts, repoRoot: string, files: string[]) {
-  const proven = new Set();
-  for (const file of files) {
-    if (!TEST_FOLDERS.some((folder) => file.startsWith(folder)) || !SPEC_SUFFIXES.some((suffix) => file.endsWith(suffix))) continue;
-    const text = readText(repoRoot, file);
-    if (text === null) continue;
-    addProvenScenarios(ts, ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), proven);
-  }
-  return proven;
-}
-
-let memoScenarios;
-/** ruleParams.be.patternScenarios of the slot manifest this runtime ships. */
-const scenariosTable = () => (memoScenarios ??= ruleParams(loadSlotManifest(), 'be').patternScenarios ?? {});
-
-/** Full-edition proof scenarios; lite integration proofs are judged by lite-proof-lane.mts. */
-export function patternSpecFindings({ repoRoot, files, repo, scenarios = scenariosTable() }: { repoRoot: string; files: string[]; repo: Repo; scenarios?: Parsed }) {
-  if (repo.edition === 'lite') return [];
-  const patterns = (repo.sides?.be?.patterns ?? []).filter((name: string) => (scenarios[name] ?? []).length > 0);
-  if (patterns.length === 0) return [];
-  const ts = typescriptFor(repoRoot);
-  if (!ts) return [];
-  const proven = provenScenarios(ts, repoRoot, files);
-  const findings = [];
-  for (const pattern of patterns) {
-    for (const scenario of scenarios[pattern]) {
-      const id = `${pattern}/${scenario}`;
-      if (!proven.has(id)) findings.push(found(PATTERN_SPEC_MISSING, 'hfs.json', `The pattern \`${pattern}\` is declared but no e2e or integration spec (be/src/tests/e2e, be/src/tests/integration) holds a test titled \`${id}: ...\`; each scenario of a declared pattern is proven on the test world.`, { pattern, scenario: id }));
-    }
-  }
-  return findings;
-}

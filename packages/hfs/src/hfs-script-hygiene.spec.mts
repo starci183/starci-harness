@@ -23,7 +23,7 @@ function fixture(t: TestContext, entries: Record<string, unknown>, edition: stri
   return { repoRoot, files: Object.keys(entries), repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_SCRIPT_PLAINTEXT_LOAD: ${edition} refuses shell, PowerShell and source-code readers`, (t) => {
     const context = fixture(t, {
       'scripts/source.sh': 'source secrets.env\n',
@@ -118,7 +118,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`HFS_SCRIPT_PLAINTEXT_LOAD: ${edition} treats the app's own home folder, .<project>/, as a secret folder, and no other dot folder`, (t) => {
     const context = fixture(t, {
       'hfs.json': { hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } },

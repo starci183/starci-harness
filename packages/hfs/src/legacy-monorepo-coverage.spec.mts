@@ -61,7 +61,7 @@ function fixture(t: TestContext, edition: string, mutate?: (files: Documents) =>
   return { repoRoot, files: Object.keys(documents), repo };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts a valid root manifest and private front-end app and package workspaces`, (t) => {
     const findings = monorepoFindings(fixture(t, edition));
     assert.deepEqual(findings, []);

@@ -202,7 +202,7 @@ test('the hfs-run families read the hfs that runs and hfs.json, never the manife
   const base = workspaces(t, installsOf(TOOLS), TOOLS, { lib: '1.0.0' });
   const tracked = ['package.json', 'be/package.json', 'hfs.json', 'turbo.json', '.gitignore'];
   const hfsDir = path.join(base, 'node_modules', '@starci', 'hfs');
-  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ edition: 'lite' }));
+  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({}));
   fs.writeFileSync(path.join(base, 'turbo.json'), '{}');
   fs.writeFileSync(path.join(base, '.gitignore'), 'node_modules\n');
   const before = computeFingerprint({ root: base, tracked, hfsDir }).parts;

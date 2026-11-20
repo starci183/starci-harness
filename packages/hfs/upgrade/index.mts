@@ -1,6 +1,5 @@
-// starci app upgrade: completes an existing FULL app. It adds the test world (scaffold/test-world.mts) the app lacks, with the world's
-// devDependencies at canon pins, and never rewrites a file the app already has. Editions are fixed at scaffold: a lite app is refused
-// (HFS_UPGRADE_EDITION_FIXED), there is no lite to full migration.
+// starci app upgrade: completes an existing app. It adds the test world (scaffold/test-world.mts) the app lacks, with the world's
+// devDependencies at canon pins, and never rewrites a file the app already has.
 //
 // A dry run returns the exact ordered operations; apply performs those operations and resolves the lockfile once when it added
 // dependencies. If that resolution fails, every file touched by this invocation is restored before the refusal is returned.
@@ -96,10 +95,10 @@ function additionStep(root: string, file: { path: string; content: string }): St
 }
 
 /**
- * The steps that complete an existing full app: every test world file it lacks when it has no world (an existing file that is not
+ * The steps that complete an existing app: every test world file it lacks when it has no world (an existing file that is not
  * the scaffold's refuses, nothing is overwritten) and the full test toolchain devDependencies it lacks, at canon pins.
  */
-function fullCompletion(root: string, declaration: Json): { managed: never[]; steps: Step[]; dependenciesChanged: boolean } {
+function worldCompletion(root: string, declaration: Json): { managed: never[]; steps: Step[]; dependenciesChanged: boolean } {
   const steps: Step[] = [];
   if (!fs.existsSync(path.join(root, ...WORLD_MARKER.split("/")))) {
     for (const file of testWorldFiles(declaration)) {
@@ -121,7 +120,7 @@ function fullCompletion(root: string, declaration: Json): { managed: never[]; st
     steps.push({
       op: "rewrite-managed",
       path: "package.json",
-      why: `Add the test world toolchain the full app lacks (${missing.join(", ")}) at canon pins.`,
+      why: `Add the test world toolchain the app lacks (${missing.join(", ")}) at canon pins.`,
       content: jsonText({ ...current, devDependencies }),
       kind: "file",
     });
@@ -130,21 +129,15 @@ function fullCompletion(root: string, declaration: Json): { managed: never[]; st
   return { managed: [], steps, dependenciesChanged: missing.length > 0 };
 }
 
-function model({ root, manifest }: { root: string; manifest: SlotManifest }): ReturnType<typeof fullCompletion> {
-  const declaration = loadHfs(root, manifest);
-  if (declaration?.edition === "lite")
-    throw new UpgradeError(
-      "HFS_UPGRADE_EDITION_FIXED",
-      "editions are fixed at scaffold: a lite app stays lite and a full app stays full; there is no lite to full upgrade",
-    );
-  return fullCompletion(root, declaration);
+function model({ root, manifest }: { root: string; manifest: SlotManifest }): ReturnType<typeof worldCompletion> {
+  return worldCompletion(root, loadHfs(root, manifest));
 }
 
 /**
- * Plans or applies the completion of a full app. Returns the ordered public plan (`{op,path,why}[]`) in both modes.
+ * Plans or applies the completion of an app. Returns the ordered public plan (`{op,path,why}[]`) in both modes.
  * `lock` is the test seam for the npm lock resolution.
  */
-async function upgradeEdition({
+async function upgradeApp({
   root,
   plan = false,
   manifest = loadSlotManifest() as SlotManifest,
@@ -178,7 +171,7 @@ async function upgradeEdition({
   return result;
 }
 
-/** The arguments of `starci app upgrade`: --execute (without it the run is a dry one: `plan`), and --repo from the CLI entry; --edition is refused (editions are fixed at scaffold). */
+/** The arguments of `starci app upgrade`: --execute (without it the run is a dry one: `plan`), and --repo from the CLI entry. */
 export function upgradeArguments(argv: readonly string[]): { root: string; plan: boolean } {
   let plan = true;
   let root = process.cwd();
@@ -190,8 +183,6 @@ export function upgradeArguments(argv: readonly string[]): { root: string; plan:
       root = path.resolve(argv[index + 1] as string);
       index += 1;
     } else if (arg === "--execute") plan = false;
-    else if (arg === "--edition" || arg.startsWith("--edition="))
-      throw new UpgradeError("HFS_UPGRADE_USAGE", "upgrade takes no --edition: editions are fixed at scaffold");
     else throw new UpgradeError("HFS_UPGRADE_USAGE", `unknown argument ${arg}`);
   }
   return { root, plan };
@@ -200,11 +191,11 @@ export function upgradeArguments(argv: readonly string[]): { root: string; plan:
 /** CLI adapter kept outside the CLI entry so that verb wiring remains one line. */
 export async function upgradeMain(argv: string[], { stdout = (value: string): unknown => process.stdout.write(value) }: { stdout?: (text: string) => unknown } = {}): Promise<number> {
   const { root, plan } = upgradeArguments(argv);
-  const steps = await upgradeEdition({ root, plan });
+  const steps = await upgradeApp({ root, plan });
   for (const step of steps) stdout(`${step.op} ${step.path}: ${step.why}
 `);
   stdout(
-    `starci app upgrade${plan ? "" : " --execute"}: ${steps.length} step${steps.length === 1 ? "" : "s"} ${plan ? "planned; no file written" : "applied"}${steps.length === 0 ? " (the full app is complete)" : ""}
+    `starci app upgrade${plan ? "" : " --execute"}: ${steps.length} step${steps.length === 1 ? "" : "s"} ${plan ? "planned; no file written" : "applied"}${steps.length === 0 ? " (the app is complete)" : ""}
 `,
   );
   return 0;

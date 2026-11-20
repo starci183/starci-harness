@@ -1,4 +1,4 @@
-// R269: app repositories in both editions declare dependency updates, a production audit gate, and image SBOM/provenance.
+// R269: app repositories declare dependency updates, a production audit gate, and image SBOM/provenance.
 import { parseWorkflow, workflowFindings } from '../runtime-rules/workflow-source.mjs';
 import { found, readText } from './read.mjs';
 import { declaredGatesOff } from '../../lib/stack-declaration.mjs';
@@ -205,7 +205,7 @@ function imageEvidence(steps: Parsed) {
 
 /** Synchronous judge of R269 at the app root; root-wide gates run only when their paths are in scope. */
 export function supplyChainFindings({ repoRoot, files, all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; isRoot: boolean; inScope?: (file: string) => boolean }) {
-  if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
+  if (repo?.kind !== 'app' || isRoot === false) return [];
   const tracked = new Set(all);
   const parsed = (file: string) => tracked.has(file) ? parseWorkflow(readText(repoRoot, file) ?? '') : null;
   const findings = [];

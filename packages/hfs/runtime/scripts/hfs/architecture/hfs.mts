@@ -248,8 +248,8 @@ function treeView(root: string): TreeView {
 }
 
 /** Presentation checks shared by the product HFS gate and this runtime's own standalone gate. */
-export function checkRepoPresentation({ root, runtime = false, tree = treeView(root), profile = 'app', edition = 'full' }: { root: string; runtime?: boolean; tree?: TreeView; profile?: string; edition?: string }) {
-  return checkRepoPresentationImpl({ root, runtime, tree, profile, edition, nonNpmEntries: NON_NPM_ENTRIES });
+export function checkRepoPresentation({ root, runtime = false, tree = treeView(root), profile = 'app' }: { root: string; runtime?: boolean; tree?: TreeView; profile?: string }) {
+  return checkRepoPresentationImpl({ root, runtime, tree, profile, nonNpmEntries: NON_NPM_ENTRIES });
 }
 function checkSideRootEntry(state: HfsState, entry: string) {
   const { profile, frontend, backend, allowed, finding } = state;
@@ -386,7 +386,7 @@ export function checkHfs(config: HfsConfig) {
 export function checkAppRoot({ root, resolver, tree = treeView(root) }: { root: string; resolver: Resolver; tree?: TreeView }) {
   const violations: ArchitectureViolation[] = [];
   const finding: Finding = (ruleId, entry, message) => violations.push({ ruleId, path: entry, line: 1, column: 1, message });
-  violations.push(...checkRepoPresentation({ root, tree, profile: 'app', edition: resolver.repo?.edition ?? 'full' }).violations);
+  violations.push(...checkRepoPresentation({ root, tree, profile: 'app' }).violations);
   const allowed = slotRootEntries(resolver, 'app');
   for (const entry of [...tree.top].sort(byCodeUnit)) {
     if (NON_NPM_ENTRIES.has(entry) || /\.md$/iu.test(entry)) continue;

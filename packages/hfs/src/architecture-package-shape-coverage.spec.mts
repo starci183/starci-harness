@@ -33,7 +33,7 @@ function packageInput(t: TestContext, edition: string, manifest: object) {
   return { config: { root, edition }, graph: { resolver } } as unknown as Parameters<typeof checkPackageShape>[0];
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} valid package builds to dist with explicit exports`, t => {
     const report = checkPackageShape(packageInput(t, edition, built));
     assert.deepEqual(report.violations, []);

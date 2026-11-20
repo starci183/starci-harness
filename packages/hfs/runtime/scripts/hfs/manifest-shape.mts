@@ -4,7 +4,7 @@
 // (sides, app kinds) and refuses a manifest whole on any problem (HFS_MANIFEST_INVALID). Pure: every function takes a
 // parsed manifest or slot and returns a list of problems in the words of modules/schemas/hfs-slots.schema.yaml.
 import { isPlainObject } from '../../engine/plain-object.mjs';
-import { stringList, byCodeUnit, nonemptyUniqueList } from '../lib/list.mjs';
+import { stringList, byCodeUnit } from '../lib/list.mjs';
 
 // reason: a manifest or declaration parsed from YAML/JSON on disk; the shape validators of this folder are what check (and so narrow) it
 export type Parsed = any;
@@ -14,19 +14,8 @@ export type SlotTracking = 'tracked' | 'ignored' | 'external' | 'generated';
 export type SlotTests = 'unit-beside' | 'e2e' | 'none';
 export type SlotCoverage = 'required' | 'none';
 
-/** A reference to the file that exemplifies a slot: a path, or a path limited to one edition or a few. */
-export type SlotEvidenceRef = string | { path: string; edition?: string; editions?: string[] };
-
-/** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
-export interface SlotLiteOverlay {
-  path?: string;
-  requires?: string[];
-  allows?: string[];
-  forbids?: string[];
-  minInstances?: number;
-  requiredInstances?: Record<string, string[]>;
-  why?: string;
-}
+/** A reference to the file that exemplifies a slot. */
+export type SlotEvidenceRef = string | { path: string };
 
 /** One slot of the manifest (knowledge/hfs/slots.yaml, or runtime-slots.yaml for kind runtime), as the loader validated it. */
 export interface Slot {
@@ -61,7 +50,6 @@ export interface Slot {
   composedBy?: string[];
   budget?: Record<string, number>;
   managedBy?: string;
-  liteManagedBy?: string;
   /** The sides (be, fe, packages) a project declares for sync to render the slot's managed files; absent: every project. */
   managedWhenSides?: string[];
   managedWhen?: string[];
@@ -71,10 +59,8 @@ export interface Slot {
   since?: string;
   perConnection?: string[];
   parent?: string;
-  editions?: string[];
-  editionWhy?: string;
-  litePresence?: SlotPresence | Record<string, SlotPresence>;
-  lite?: SlotLiteOverlay;
+  /** The presence of a both-sides slot on one side, where it differs from `presence`. */
+  sidePresence?: Record<string, SlotPresence>;
   provider?: string;
   coverage?: SlotCoverage;
   entries?: string[];
@@ -154,7 +140,7 @@ export interface BeRuleParams extends RuleParams {
   bannedSuffixes: string[];
 }
 
-/** The `ruleParams` of a manifest, by profile; `common` is shared and `lite` overrides live inside each profile. */
+/** The `ruleParams` of a manifest, by profile; `common` is shared. */
 export interface ManifestRuleParams {
   [profile: string]: RuleParams | undefined;
   common: RuleParams;
@@ -169,7 +155,6 @@ export interface SlotManifest {
   major: number;
   minor: number;
   patch: number;
-  editions?: string[];
   sides: Record<string, { reads: string[] }>;
   appKinds: Record<string, string[]>;
   triggerKinds?: string[];
@@ -192,8 +177,6 @@ const CONTEXT_ISOLATIONS = Object.freeze(["database", "schema"]);
 const CONTEXT_OWNER_KINDS = Object.freeze(["api", "worker"]);
 /** The database engine a connection runs on. */
 const CONNECTION_PROVIDERS = Object.freeze(["postgres"]);
-/** The editions an app repository may declare in hfs.json (`full` when absent): the filter slots.mts applies. */
-export const EDITIONS = Object.freeze(["full", "lite"]);
 /** What decides where schema changes live (ruleParams.<side>.schemaAuthority): TypeORM migrations under persistence/, or the SQL migration tree db/migrations. */
 export const SCHEMA_AUTHORITIES = Object.freeze(["typeorm", "sql"]);
 /**
@@ -296,11 +279,9 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'declaredBy', 'exceptDeclaredBy', 'lintProfile', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides', 'managedWhen'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'declaredBy', 'exceptDeclaredBy', 'lintProfile', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'sidePresence', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides', 'managedWhen'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
-/** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
-const LITE_OVERLAY_KEYS = ['path', 'requires', 'allows', 'forbids', 'minInstances', 'requiredInstances', 'why'];
 /** A runtime slot has no app kind, side composition, layer or managed template; it may name the generator of a generated copy. */
 const RUNTIME_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'minInstances', 'requires', 'allows', 'forbids', 'budget', 'rules', 'goesTo', 'why', 'since', 'generatedBy', 'parent', 'coverage'];
 
@@ -396,7 +377,7 @@ function slotListProblems(slot: Parsed, at: string): string[] {
   if (slot.composedBy !== undefined && !composedByValid(slot.composedBy)) bad.push(`${at}: composedBy must be a non-empty list of unique app kinds`);
   if (slot.budget !== undefined && !budgetValid(slot.budget)) bad.push(`${at}: budget must map names to positive integers`);
   if (slot.managedOnly !== undefined && (slot.managedOnly !== true || slot.managedBy === undefined)) bad.push(`${at}: managedOnly is true and needs managedBy: the slot only lists files sync renders, and the slot owning the path judges them`);
-  for (const key of ['managedBy', 'liteManagedBy']) if (slot[key] !== undefined && !NAME.test(String(slot[key]))) bad.push(`${at}: ${key} must be a template id`);
+  if (slot.managedBy !== undefined && !NAME.test(String(slot.managedBy))) bad.push(`${at}: managedBy must be a template id`);
   if (slot.managedWhenSides !== undefined && !(Array.isArray(slot.managedWhenSides) && slot.managedWhenSides.length > 0 && slot.managedWhenSides.every((side: Parsed) => ['be', 'fe', 'packages', 'desktop'].includes(side)))) bad.push(`${at}: managedWhenSides must be a non-empty list of be, fe, packages, desktop`);
   if (slot.managedWhen !== undefined && !(Array.isArray(slot.managedWhen) && slot.managedWhen.length > 0 && slot.managedWhen.every((fact: Parsed) => fact === 'storage'))) bad.push(`${at}: managedWhen must be a non-empty list of conditions (storage)`);
   return bad;
@@ -404,11 +385,10 @@ function slotListProblems(slot: Parsed, at: string): string[] {
 
 function slotAppOptionProblems(slot: Parsed, at: string): string[] {
   const bad = [];
-  bad.push(...slotEditionWhyProblems(slot, at), ...slotCoverageEvidenceProblems(slot, at));
+  bad.push(...slotCoverageEvidenceProblems(slot, at));
   // Legacy coverage status derives only from an explicit `since`; a slot that omits it is refused, so a new slot can never be taken for an old one.
   if (slot.since === undefined) bad.push(`${at}: since is required (the manifest version that added the slot)`);
-  if (slot.editions !== undefined && !(Array.isArray(slot.editions) && slot.editions.length && slot.editions.every((e: Parsed) => EDITIONS.includes(e)) && new Set(slot.editions).size === slot.editions.length)) bad.push(`${at}: editions must be a non-empty subset of ${EDITIONS.join(', ')}`);
-  if (slot.litePresence !== undefined && !(PRESENCE.includes(slot.litePresence) || (isPlainObject(slot.litePresence) && Object.keys(slot.litePresence).length && Object.entries(slot.litePresence).every(([side, value]: [string, Parsed]) => ['be', 'fe'].includes(side) && PRESENCE.includes(value))))) bad.push(`${at}: litePresence must be a presence value or map sides to presence values`);
+  if (slot.sidePresence !== undefined && !(isPlainObject(slot.sidePresence) && Object.keys(slot.sidePresence).length && Object.entries(slot.sidePresence).every(([side, value]: [string, Parsed]) => ['be', 'fe'].includes(side) && PRESENCE.includes(value)))) bad.push(`${at}: sidePresence must map sides (be, fe) to presence values`);
   if (slot.provider !== undefined) {
     if (!CONNECTION_PROVIDERS.includes(slot.provider)) bad.push(`${at}: provider must be one of ${CONNECTION_PROVIDERS.join(' | ')}`);
     else if (slot.presence !== 'opt-in' || slot.appKind !== undefined) bad.push(`${at}: provider belongs to an opt-in slot that is not an app kind (a connection with that provider enables it)`);
@@ -416,25 +396,16 @@ function slotAppOptionProblems(slot: Parsed, at: string): string[] {
   return bad;
 }
 
-function slotEditionWhyProblems(slot: Parsed, at: string): string[] {
-  if (slot.editionWhy === undefined) return [];
-  return typeof slot.editionWhy === 'string' && slot.editionWhy.trim()
-    ? [] : [`${at}: editionWhy must be non-empty text`];
-}
-
 const slotEvidencePathValid = (value: Parsed) => relPath(value) && /^[^\s]+$/.test(value);
 
 function slotEvidenceRefValid(ref: Parsed) {
   if (typeof ref === 'string') return slotEvidencePathValid(ref);
   if (!isPlainObject(ref) || !slotEvidencePathValid(ref.path)) return false;
-  if (!Object.keys(ref).every((key: Parsed) => ['path', 'edition', 'editions'].includes(key))) return false;
-  if (ref.edition !== undefined && !EDITIONS.includes(ref.edition)) return false;
-  if (ref.editions !== undefined && !nonemptyUniqueList(ref.editions, (edition: Parsed) => EDITIONS.includes(edition))) return false;
-  return ref.edition === undefined || ref.editions === undefined;
+  return Object.keys(ref).every((key: Parsed) => key === 'path');
 }
 
 const slotEvidenceRefKey = (ref: Parsed) => typeof ref === 'string' ? ref
-  : JSON.stringify([ref.path, ref.edition, ref.editions]);
+  : ref.path;
 
 function slotCoverageEvidenceProblems(slot: Parsed, at: string): string[] {
   const bad = [];
@@ -444,19 +415,8 @@ function slotCoverageEvidenceProblems(slot: Parsed, at: string): string[] {
   const refs = slot.exemplifiedBy;
   const valid = Array.isArray(refs) && refs.length > 0 && refs.every(slotEvidenceRefValid)
     && new Set(refs.map(slotEvidenceRefKey)).size === refs.length;
-  if (!valid) bad.push(`${at}: exemplifiedBy must be unique repository-relative paths or {path, edition? | editions?} references`);
+  if (!valid) bad.push(`${at}: exemplifiedBy must be unique repository-relative paths or {path} references`);
   return bad;
-}
-
-function slotLiteOverlayProblems(slot: Parsed, at: string): string[] {
-  if (slot.lite === undefined) return [];
-  const ok = isPlainObject(slot.lite) && Object.keys(slot.lite).length && Object.keys(slot.lite).every((key: Parsed) => LITE_OVERLAY_KEYS.includes(key))
-    && (slot.lite.path === undefined || (typeof slot.lite.path === 'string' && slot.lite.path))
-    && (slot.lite.why === undefined || (typeof slot.lite.why === 'string' && slot.lite.why.trim()))
-    && ['requires', 'allows', 'forbids'].every((key: Parsed) => slot.lite[key] === undefined || strList(slot.lite[key]))
-    && (slot.lite.minInstances === undefined || (Number.isInteger(slot.lite.minInstances) && slot.lite.minInstances >= 1))
-    && (slot.lite.requiredInstances === undefined || (isPlainObject(slot.lite.requiredInstances) && Object.values(slot.lite.requiredInstances).every((v: Parsed) => strList(v) && v.length)));
-  return ok ? [] : [`${at}: lite may hold only ${LITE_OVERLAY_KEYS.join(', ')}, each shaped as in the slot body`];
 }
 
 function slotEntryProblems(slot: Parsed, at: string): string[] {
@@ -491,7 +451,7 @@ export function slotProblems(slot: Parsed, index: number, kind: string, { appSco
   if (!isPlainObject(slot)) return [`${at} is not a map`];
   const bad = slotIdentityProblems(slot, runtime, slotKeys, at, appScope, scopes);
   bad.push(...slotLocationProblems(slot, at, runtime, tracked), ...slotPatternProblems(slot, at), ...slotListProblems(slot, at));
-  if (!runtime) bad.push(...slotAppOptionProblems(slot, at), ...slotLiteOverlayProblems(slot, at));
+  if (!runtime) bad.push(...slotAppOptionProblems(slot, at));
   bad.push(...slotEntryProblems(slot, at), ...slotPolicyProblems(slot, at));
   if (!runtime) bad.push(...slotLogicProblems(slot, at, logicRoles));
   return bad;

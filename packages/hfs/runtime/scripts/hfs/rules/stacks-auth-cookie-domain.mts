@@ -2,7 +2,7 @@
 // The lite skeleton's passport sets its refresh cookie host-only on the api host unless `AUTH_COOKIE_DOMAIN` is set. When the web
 // is served on app.<domain> and the api on api.<domain>, the web server forwards the browser's Cookie header to the api, and a
 // host-only api cookie is not in it: the api refuses the session and the user loops back to sign-in.
-//   Judged: a docker-swarm environment of an app whose api uses the skeleton's passport (the lite edition, a tracked
+//   Judged: a docker-swarm environment of an app whose api uses the skeleton's passport (a tracked
 //   `.../src/modules/integrations/passport/passport.config.ts`) and whose rendered stack has the `api` and `web` services.
 //   The hosts are read from the rendered stack of the environment, first match wins:
 //     web  = web NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN (api or web), the `deploy.verify.http` url named web, the api's first
@@ -135,7 +135,6 @@ export function authCookieDomainIssues(input: { environment: string; spec: unkno
 
 /** HFS finder over the tracked rendered Swarm environments of the lite app root whose api uses the skeleton's passport. */
 export function stacksAuthCookieDomainFindings(context: Parsed) {
-  if (context?.repo?.edition !== 'lite') return [];
   const files: string[] = context.all ?? context.files ?? [];
   const passport = files.some((file) => PASSPORT_CONFIG.test(file));
   if (!passport) return [];

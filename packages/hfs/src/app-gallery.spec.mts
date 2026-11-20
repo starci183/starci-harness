@@ -62,7 +62,7 @@ test('the rule is wired: its ten codes ship with the check and its finder runs',
   assert.ok(FINDERS.includes(appGalleryFindings));
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} scaffold writes the gallery on base + 50, pinned, with its shots ignored, and the gate is green`, (t) => {
     const root = starter(t, edition);
     for (const file of GALLERY_FILES) assert.ok(fs.existsSync(at(root, 'gallery', ...file.split('/'))), file);
@@ -98,8 +98,8 @@ test('the thin gallery is the one truth: sync retires the managed src files an e
   const retired = old.map((name) => `gallery/src/${name}`);
   fs.mkdirSync(at(root, 'gallery', 'src'));
   for (const name of old) fs.writeFileSync(at(root, 'gallery', 'src', name), '// written by an hfs before 6.13.33\n');
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), retired, 'every edition retires them');
-  assert.deepEqual(retiredFiles(root, { edition: 'full' }), retired);
+  assert.deepEqual(retiredFiles(root), retired, 'every edition retires them');
+  assert.deepEqual(retiredFiles(root), retired);
   assert.deepEqual(findings(root), [], 'the rule never judges gallery/src, present or not');
   const lines: string[] = [];
   const out = (line: string): void => { lines.push(line); };
@@ -210,8 +210,8 @@ test('an app that declares no basePort cannot get a gallery port: the gate asks 
 test('only an app root of an edition is judged', (t) => {
   const root = starter(t, 'lite');
   fs.rmSync(at(root, 'gallery'), { recursive: true });
-  assert.deepEqual(appGalleryFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: false }), []);
-  assert.deepEqual(appGalleryFindings({ repoRoot: root, repo: { kind: 'be', edition: 'lite' } as never, isRoot: true }), []);
+  assert.deepEqual(appGalleryFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: false }), []);
+  assert.deepEqual(appGalleryFindings({ repoRoot: root, repo: { kind: 'be' } as never, isRoot: true }), []);
 });
 
 test('app sync adds the gallery to an existing app, restores a hand edit, and a second run changes nothing', async (t) => {
@@ -273,7 +273,7 @@ test('the declared gallery hosts are the hosts of the routes named gallery, sort
   assert.equal(galleryAllowedHosts(['a.example.org']), '["a.example.org"]');
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} app that declares a gallery tunnel host gets it in server.allowedHosts and a bind the tunnel reaches, and the stack routes it to the gallery port`, async (t) => {
     const root = starter(t, edition);
     const out = (): void => {};
@@ -319,7 +319,7 @@ test('the gallery process joins only an app that has a gallery and a base port, 
   assert.equal(withGallery(parsed, root), parsed, 'no gallery folder, no process');
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`the whole check of a fresh ${edition} starter finds nothing wrong with the gallery folder: no placement, doc-path, slot or drift finding`, (t) => {
     const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-gallery-check-'));
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));
@@ -351,7 +351,7 @@ test('the gallery language is the default locale of the app: vi and en have a ta
   assert.notEqual(galleryTexts('vi', 'demo', 3050)['galleryTitle'], galleryTexts('en', 'demo', 3050)['galleryTitle']);
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} app whose default locale is vi gets a Vietnamese gallery, one whose is en an English one, and sync switches between them`, async (t) => {
     const root = starter(t, edition);
     const out = (): void => {};
@@ -509,11 +509,11 @@ test('the explanation is judged from the tracked explain.md even when CI has no 
   const root = starter(t, 'lite');
   page(root, 'inbox', 'today', [], '---\ntitle: T\nroute: /r\narea: inbox\n---\n## Header\nVì sao: CHƯA RÕ\nGrammar: `Page`\n');
   assert.deepEqual(codes(findings(root)), ['HFS_APP_GALLERY_REGION_UNCLEAR']);
-  const scoped = appGalleryFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true, inScope: (file) => !file.includes('/inbox/') });
+  const scoped = appGalleryFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true, inScope: (file) => !file.includes('/inbox/') });
   assert.deepEqual(scoped, []);
 });
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`a ${edition} starter's whole check has no placement or doc finding for gallery pages with an explanation`, (t) => {
     const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-gallery-pages-'));
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));

@@ -116,8 +116,8 @@ test('6. the verb takes --contract, prints the report and exits 1 only for a cas
 
 test('7. sync retires the two auth entity files of the old sign-in glue', () => {
   const root = app();
-  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), [ENTITY]);
-  assert.deepEqual(retiredFiles(app({}, { synced: true }), { edition: 'lite' }), []);
+  assert.deepEqual(retiredFiles(root), [ENTITY]);
+  assert.deepEqual(retiredFiles(app({}, { synced: true })), []);
 });
 
 test('8. an app that has the six earlier doors, and a reference app\'s three-argument be_auth_set_password, gets only the two new doors', () => {

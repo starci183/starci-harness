@@ -1,4 +1,4 @@
-// lite-secrets.mts - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
+// lite-secrets.mts - L17 extends the one R06 secret scan. It keeps the ordinary
 // HFS_PLAINTEXT_SECRET judgement, then adds the reduced lite custody tree and provider-shaped literals
 // in the trees that hold no secret at all (fe/ and db/). Findings name shapes, never captured values.
 import { Buffer } from 'node:buffer';
@@ -77,7 +77,7 @@ function providerSecretFindings(repoRoot: string, file: string, repo: Repo, find
   }
 }
 
-/** Raw L17 findings. The catalog-driven findings filter decides which editions judge them. */
+/** Raw L17 findings. */
 export function liteSecretCustodyFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
   const findings: Finding[] = [];
   for (const file of files) {
@@ -94,6 +94,5 @@ export function liteSecretCustodyFindings({ repoRoot, files, repo }: { repoRoot:
 export function liteSecretFindings(input: Parsed) {
   const ordinary = secretFindings(input);
   const lite = liteSecretCustodyFindings(input);
-  const liteJwtAuthority = (input.repo.edition ?? 'full') === 'lite';
-  return [...ordinary.filter(item => !(liteJwtAuthority && (item.pattern === 'jwt' || item.pattern === 'password-connection-string') && inSecretFreeTree(input.repo, item.path))), ...lite];
+  return [...ordinary.filter(item => !((item.pattern === 'jwt' || item.pattern === 'password-connection-string') && inSecretFreeTree(input.repo, item.path))), ...lite];
 }

@@ -12,7 +12,7 @@ const declaration = (edition: string, side: string, pattern: string) => ({
   },
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} exposes declared proof patterns as immutable lint metadata`, () => {
     const view = declaredHfsView({
       runtimeRoot: fileURLToPath(new URL('../runtime/', import.meta.url)),

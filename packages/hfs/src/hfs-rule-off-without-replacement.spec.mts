@@ -25,7 +25,7 @@ const synced = (context: TestContext, edition: string) => {
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const relative of ['be/eslint.config.mjs', 'fe/eslint.config.mjs', 'fe/stylelint.config.mjs']) {
     test(`${edition}: a rule override in ${relative} fails and its canon render passes`, async context => {
       const { root, findings } = synced(context, edition);
@@ -44,7 +44,7 @@ for (const edition of ['lite', 'full']) {
   }
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   for (const relative of ['be/eslint.config.mjs', 'fe/eslint.config.mjs', 'fe/stylelint.config.mjs']) {
     test(`${edition}: direct managed findings reject ${relative} overrides and accept its factory render`, async (context) => {
       const { root, tracked } = synced(context, edition);

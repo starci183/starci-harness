@@ -8,7 +8,7 @@ type Context = Parameters<typeof checkConfigUnread>[0]['context'];
 // reason: the rule reads only context.files.length, so the specs feed the minimal context rather than a full program graph.
 const contextOf = (files: readonly unknown[]): Context => ({ files }) as unknown as Context;
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} invalid: a loaded declaration with no analysed source is refused`, () => {
     const report = checkConfigUnread({ context: contextOf([]) });
     assert.deepEqual(report.violations.map(item => item.ruleId), ['HFS_ARCH_CONFIG_UNREAD']);

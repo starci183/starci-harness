@@ -205,12 +205,12 @@ export function writeCleanRepo(declaration: AppDeclaration = APP, { declare = tr
   if (fs.existsSync(path.join(dir, authDir, 'client.ts')) && !fs.existsSync(path.join(dir, authDir, 'index.ts'))) put(`${authDir}/index.ts`, 'export {};\n');
   put('.starcistacks/application-stacks.yaml', STACKS_DECLARATION);
   // Dockerfiles are app-owned scaffold output; managed workflows stay identical to sync output.
-  // reason: resolveRepoDeclaration returns the RepoView of a declaration that validateHfs would resolve to this ResolvedApp; the optional edition is read as declared.
+  // reason: resolveRepoDeclaration returns the RepoView of a declaration that validateHfs would resolve to this ResolvedApp.
   for (const file of imageFiles(resolved as ResolvedApp)) put(file.path, file.content);
   const required = resolver.requiredPaths().paths.map((entry) => entry.path);
   for (const file of required) if (!file.endsWith('/')) put(file, requiredContent(file));
-  // A lite app's schema authority holds at least one migration (app.db.migrations, minInstances 1).
-  if (resolved.edition === 'lite') put('db/migrations/20260101000000_baseline.sql', 'select 1;\n');
+  // An app's schema authority holds at least one migration (app.db.migrations, minInstances 1).
+  put('db/migrations/20260101000000_baseline.sql', 'select 1;\n');
   writeFrontend(declaration, required, writers);
   writeBackend(declaration, required, writers);
   // Both sides' tsconfig.json are the managed ones (they extend @starci/tsconfig/be.json or next.json, see installTypeScript).

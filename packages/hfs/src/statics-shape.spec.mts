@@ -31,7 +31,7 @@ function run(files: Record<string, string | number>, edition = 'lite'): string[]
 }
 const PROMPT = 'model: m\nprompt: a calm empty state\n';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a well-formed statics/ tree is clean`, () => {
     assert.deepEqual(run({ 'statics/.gitkeep': '', 'statics/illustrations/empty/customers-v2.png': 4, 'statics/illustrations/empty/customers-v2.prompt.yaml': PROMPT, 'statics/video/intro.webm': 4 }, edition), []);
     assert.deepEqual(run({ 'statics/.gitkeep': '' }, edition), []);

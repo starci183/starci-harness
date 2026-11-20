@@ -33,7 +33,7 @@ const LITE_OK = {
   'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': EMPTY,
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`FE_ERROR_PAGE_NOT_EMPTY_STATE ${edition}: the template chain (route, feature page, composite) draws the page empty state`, () => {
     const { root, files } = repoOf(LITE_OK);
     assert.deepEqual(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe', edition } }), []);

@@ -79,6 +79,6 @@ export function stacksFindings({ repoRoot, files, resolver }: { repoRoot: string
     ...treeFindings(files, allowedExpressions(slot.allows ?? []), prefix),
     ...declarationFindings(files, prefix, declaration),
     ...hostCrontabFindings({ repoRoot, files }),
-    ...(declaration.doc ? stacksRuntimeFindings({ repoRoot, files, doc: declaration.doc, edition: resolver.repo?.edition }) : []),
+    ...(declaration.doc ? stacksRuntimeFindings({ repoRoot, files, doc: declaration.doc }) : []),
   ];
 }

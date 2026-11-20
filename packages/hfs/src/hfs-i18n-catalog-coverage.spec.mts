@@ -25,7 +25,7 @@ function catalogFixture(t: TestContext, edition: string, english: object) {
   };
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} catalog parity rejects a missing nested translation key`, (t) => {
     const result = frontendFindings(catalogFixture(t, edition, { home: { title: 'Home' } }));
     const findings = result.filter((finding) => finding.code === 'FE_I18N_CATALOG');

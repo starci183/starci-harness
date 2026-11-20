@@ -140,7 +140,7 @@ function app(files: string[], { web, api, cookieDomain }: ModelOptions = {}) {
 test('the finder: a lite app with the skeleton passport and different hosts is reported at the stack file', () => {
   const { root, all, dispose } = app([PASSPORT]);
   try {
-    const findings = stacksAuthCookieDomainFindings({ repoRoot: root, all, files: all, isRoot: true, repo: { edition: 'lite', profile: 'app' } });
+    const findings = stacksAuthCookieDomainFindings({ repoRoot: root, all, files: all, isRoot: true, repo: { profile: 'app' } });
     assert.equal(findings.length, 1);
     assert.equal(findings[0]!.code, CODE);
     assert.equal(findings[0]!.level, 'error');

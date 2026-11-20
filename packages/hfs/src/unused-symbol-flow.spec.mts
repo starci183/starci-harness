@@ -20,7 +20,7 @@ function findings(t: TestContext, edition: string, sources: Record<string, strin
   return unusedSymbolFindings({ repoRoot, files: Object.keys(contents), repo: { edition }, ts }).map(item => qualified ? `${item.path}:${item.name}` : item.name).sort();
 }
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} follows shorthand translators through destructured factory parameters`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/factory.ts': `
@@ -657,7 +657,7 @@ test('a recursive function that spreads its own parameter ends the value walk at
   }, { workbench: { k_0: 'Zero' } }), []);
 });
 
-for (const edition of ['full', 'lite']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} reads the copy of a TS catalog through the function of the same file that draws it, over a generic copy type too`, t => {
     const catalog = (generic: boolean, draw: string) => [
       'interface Input { readonly brand: string }',

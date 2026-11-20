@@ -1,9 +1,8 @@
 // secret-custody-only.mts - R277: the only custody a tracked secret may take is a sops envelope at
-// `.starcistacks/<env>/secrets/**.enc`. Everything else is refused in every edition:
+// `.starcistacks/<env>/secrets/**.enc`. Everything else is refused:
 //   - a tracked plaintext secret file by being (`secrets.env`, a non-dot `*.env` with secret keys, a member of
 //     a `secrets/` directory, deploy-side dotenv) - HFS_SECRET_PLAINTEXT_FILE;
-//   - an `.enc` outside the sealed home - HFS_SECRET_OUTSIDE_ENC (lite already reports it as
-//     HFS_LITE_SECRET_CUSTODY, so the lite check keeps that one code).
+//   - an `.enc` outside the sealed home is HFS_LITE_SECRET_CUSTODY (R220), never a second code here.
 // One more custody: a business package may commit its provider keys as `packages/<pkg>/secrets/<name>.sops.yaml`, but only as a valid sops
 // document: every leaf `ENC[...]`, a `sops` block with age recipients, and those recipients equal to the ones the package's own `.sops.yaml` names for
 // that path (HFS_PACKAGE_SECRET_NOT_SEALED, HFS_PACKAGE_SECRET_RECIPIENT). Plaintext, `.env` and `*.secrets.env` stay refused.
@@ -17,7 +16,6 @@ import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 const PLAINTEXT_FILE = 'HFS_SECRET_PLAINTEXT_FILE';
-const OUTSIDE_ENC = 'HFS_SECRET_OUTSIDE_ENC';
 const PACKAGE_NOT_SEALED = 'HFS_PACKAGE_SECRET_NOT_SEALED';
 const PACKAGE_RECIPIENT = 'HFS_PACKAGE_SECRET_RECIPIENT';
 
@@ -32,7 +30,6 @@ const SECRETS_DIR = /(?:^|\/)secrets\/[^/]+\.(?:ya?ml|env|json|conf|cfg|ini|toml
 // `packages/<pkg>/secrets/<name>.sops.yaml` (or .yml): the one sealed package-secret file shape.
 const PACKAGE_SEALED = /^packages\/([^/]+)\/secrets\/[^/]+\.sops\.ya?ml$/i;
 const SEALED_DIR = /^\.starcistacks\/[^/]+\/secrets\//;
-const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
 
 const KEY_LINE = /^\s*(?:export\s+)?([A-Za-z_$][\w$]*)\s*=/;
 const hasSecretKeys = (file: string, text: string) =>
@@ -41,11 +38,6 @@ const hasSecretKeys = (file: string, text: string) =>
     return (key && secretNameLike(key[1] as string)) || secretHits(file, line).length > 0;
   });
 
-const sealedCustodyFindings = (file: string, posix: Parsed, repo: Repo) => {
-  if (SEALED_HOME.test(posix) || repo.edition === 'lite') return [];
-  return [found(OUTSIDE_ENC, file,
-    `${file} is a sealed secret outside .starcistacks/<env>/secrets/; only that directory may hold committed secret envelopes`)];
-};
 
 const byText = (a: string, b: string) => a.localeCompare(b);
 const asList = (value: unknown): string[] => {
@@ -99,14 +91,12 @@ const packageSealedFindings = (file: string, posix: string, pkg: string, repoRoo
   return [];
 };
 
-export function secretCustodyOnlyFindings({ repoRoot, files, repo, inScope }: { repoRoot: string; files: string[]; repo: Repo; inScope: (file: string) => boolean }) {
+export function secretCustodyOnlyFindings({ repoRoot, files, inScope }: { repoRoot: string; files: string[]; repo: Repo; inScope: (file: string) => boolean }) {
   const findings = [];
   for (const file of files.filter((f: Parsed) => !inScope || inScope(f))) {
     const posix = file.replaceAll('\\', '/');
-    if (/\.enc(?:\.yaml)?$/.test(file)) {
-      findings.push(...sealedCustodyFindings(file, posix, repo));
-      continue;
-    }
+    // A sealed envelope outside its home is HFS_LITE_SECRET_CUSTODY (R220).
+    if (/\.enc(?:\.yaml)?$/.test(file)) continue;
     if (SEALED_DIR.test(posix)) continue;
     const sealedPackage = PACKAGE_SEALED.exec(posix);
     if (sealedPackage) {

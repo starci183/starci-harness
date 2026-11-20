@@ -33,11 +33,10 @@
 //   HFS_CONCEPT_UNCATALOGUED      (R433, rules/concepts-conventions.mts) a concept no catalog row links, or a row whose concept is not tracked
 //   FE_STACK_FORBIDDEN            (rules/fe-stack.mts) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
-//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mts) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
-//   HFS_EDITION_FORBIDDEN_PRESENT (R212, rules/edition.mts) under edition lite: an e2e, contract, test-stack or browser script, or a
-//                                 dependency of infrastructure lite does not run (test containers, fault proxy, Kafka)
-//   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mts) under edition lite: a client library or a pattern of a backing
-//                                 service hfs.json sides.be.backing does not declare or the edition does not admit, or a declared service no dependency consumes
+//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mts) secret material or a forbidden custody path, beside the one R06 scan
+//   HFS_EDITION_DEPRECATED        (R212, rules/edition.mts) a warning: hfs.json still names the ignored `edition` field
+//   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mts) a client library or a pattern of a backing
+//                                 service hfs.json sides.be.backing does not declare, or a declared service no dependency consumes
 //   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION, DB_PRIMARY_KEY_SHAPE, DB_FOREIGN_KEY_NAME, DB_FOREIGN_KEY_INDEX (R213-R215, R332, R431, rules/database.mts, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
 //   BE_SPEC_PLACEMENT             (R102, rules/spec-placement.mts) a spec or test file outside the four test layers, scripts/ and tools/ included
 //   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mts) a local eslint rule or plugin, a check-named script outside ext/checks/, an undeclared project check
@@ -45,11 +44,10 @@
 //   HFS_BYPASS_MARKER             (R303, rules/bypass-markers.mts) an inline disable, type-check escape, skipped test or swallowed failure
 //   HFS_PROOF_COMMAND_FILE_MISSING (R105, rules/proof-commands.mts) a .starciwork proof command that runs a file the repository does not hold
 //   HFS_PEER_INTEGRATION_MISSING  (R111, rules/peer-integrations.mts) the app root package.json lacks the runtime peer a driver integration needs
-//   BE_INTEGRATION_SPEC_MISSING   (R112, rules/integration-specs.mts) an integration with no integration spec that registers its module, maps its refusals and drives an outage
 //   FE_GRAPHQL_CONTRACT           (R113, rules/fe-contract-documents.mts) a front-end GraphQL document the back end's contract snapshot does not serve
 //   HFS_MONO_* (R143-R146, rules/monorepo.mts) the monorepo shape; BE_CLI_REQUIRED (R147, rules/cli.mts) the one cli app
-//   HFS_SERVICE_PLACEMENT, HFS_IMAGE_UNPINNED, HFS_SERVICE_STACK_DECLARATION, HFS_EVENT_CONTRACT, BE_ASYNC_SPEC_MISSING   (R163-R167, rules/services.mts) the microservice policy of a product with more than one service
-//   BE_EVENT_CLASS_CONTRACT, BE_PATTERN_SPEC_MISSING, BE_KIND_DECLARATION, BE_KIND_EMPTY   (rules/app-root.mts: event-bus.mts and kinds.mts) a typed event class the vendored contract does not list, a declared pattern whose proof scenarios have no test, and the trigger kinds of the features (declared, whole, never empty)
+//   HFS_SERVICE_PLACEMENT, HFS_IMAGE_UNPINNED, HFS_SERVICE_STACK_DECLARATION, HFS_EVENT_CONTRACT   (R163-R166, rules/services.mts) the microservice policy of a product with more than one service
+//   BE_EVENT_CLASS_CONTRACT, BE_KIND_DECLARATION, BE_KIND_EMPTY   (rules/app-root.mts: event-bus.mts and kinds.mts) a typed event class the vendored contract does not list, a declared pattern whose proof scenarios have no test, and the trigger kinds of the features (declared, whole, never empty)
 //   FE_WIRE_GENERATED, FE_I18N_PLACEMENT, FE_I18N_CATALOG   (R52, R59, R60, rules/frontend.mjs) the front-end tree of each app
 //   FE_I18N_LOCALE_MISSING        (R60, rules/i18n-locales.mts) a locale defineI18n declares with no catalog, or a catalog of an undeclared locale
 //   HFS_GITIGNORE_BLOCK_DRIFT, HFS_SONAR_CONFIG, HFS_COVERAGE_SCOPE_DRIFT   (R04, R11, R204) produced by packages/hfs/sync/managed.mts, which renders the templates
@@ -79,7 +77,7 @@ import { readCatalogOnce } from './catalog-once.mjs';
 import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, createSlotResolver, declaredAppSides, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
 import type { CanonPins } from './canon-pins.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
-import { judgedFindings, summarize, withWhy, type Finding, type Summary, type Why } from './check-results.mjs';
+import { summarize, withWhy, type Finding, type Summary, type Why } from './check-results.mjs';
 import { RUNTIME_KIND } from './manifest-shape.mjs';
 import { lsFiles } from '../api/git/ls-files.mjs';
 import { diff as gitDiff } from '../api/git/diff.mjs';
@@ -128,8 +126,8 @@ export const CHECK_CODES = Object.freeze([
   'HFS_SLOT_REQUIRED_MISSING', 'HFS_MIN_INSTANCES', 'HFS_CANON_PIN_DRIFT', 'HFS_SIZE_SOFT_BACKLOG', 'BE_SOURCE_FORM',
   'HFS_MANAGED_FILE_DRIFT', 'HFS_TOOL_CONFIG_LOCAL', 'HFS_RULE_OFF_WITHOUT_REPLACEMENT', 'HFS_TS_STRICT',
   'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_BRANCH_PROFILE_INVALID', 'HFS_GATE_DECLARATION_INVALID', 'LINT_RATCHET_RAISED', 'LINT_NEW_CODE_FINDING', 'COVERAGE_NEW_CODE_BELOW', 'HFS_DEV_BRANCH_MISSING', 'STACK_PENDING_MIGRATIONS', 'STACK_DEAD_LETTER_REPEAT', 'STACK_BASE_PORT_OVERLAP', 'HFS_SEEDS_SHAPE', 'HFS_SEED_MANIFEST', 'HFS_SEED_DDL', 'HFS_SEED_DATA_SCHEMA', 'HFS_SEED_TEST_DATA', 'HFS_SEED_SECRET_REF', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT', 'HFS_MCP_TOOLS_SNAPSHOT_MISSING',
-  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_PROJECT_CHECK_FAILED', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'FE_I18N_LOCALE_MISSING', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
-  'FE_STACK_FORBIDDEN', 'HFS_EDITION_FORBIDDEN_PRESENT', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
+  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_PROJECT_CHECK_FAILED', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'FE_I18N_LOCALE_MISSING', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS',
+  'FE_STACK_FORBIDDEN', 'HFS_EDITION_DEPRECATED', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
   'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',
   'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT', 'DB_PRIMARY_KEY_SHAPE', 'DB_FOREIGN_KEY_NAME', 'DB_FOREIGN_KEY_INDEX', 'BE_FAILURE_CLASS_BY_TEXT', 'HFS_CONCEPT_CONVENTIONS_MISSING', 'HFS_CONCEPT_UNCATALOGUED',
   'DB_POLICY_TAUTOLOGY', 'DB_VIEW_UNSAFE', 'DB_STORAGE_PREFIX', 'DB_DEFINER_REVOKE',
@@ -262,7 +260,7 @@ function minimumInstanceFindings(resolver: CheckResolver, required: RequiredPath
 
 interface ContentRuleInput {
   repoRoot: string; repo: CheckRepo; resolver: CheckResolver; files: string[]; all: string[]; scoped: Set<string> | null; pins: CanonPins; fileFindings: CheckFinding[];
-  inScope: (file: string) => boolean; isRoot: boolean; appSide: boolean; editionDeclaration: boolean; manifest: CheckManifest; phase: string
+  inScope: (file: string) => boolean; isRoot: boolean; appSide: boolean; withDeclaration: boolean; manifest: CheckManifest; phase: string
 }
 
 /**
@@ -279,11 +277,11 @@ export function perFileRules({ repoRoot, repo, resolver, inScope, isRoot }: { re
   ];
 }
 
-function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, editionDeclaration, manifest, phase }: ContentRuleInput): CheckFinding[] {
+function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, withDeclaration, manifest, phase }: ContentRuleInput): CheckFinding[] {
   const findings: CheckFinding[] = [
     ...pinFindings({ repoRoot, files, profile: repo.profile, pins, only: scoped }),
     ...fileFindings,
-    ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, resolver, manifest, withDeclaration: editionDeclaration }),
+    ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest, withDeclaration }),
     ...feStackFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest }),
     ...repoLocalCheckFindings({ repoRoot, files }),
     ...lintSuppressionFindings({ repoRoot, files }),
@@ -324,10 +322,10 @@ function sizeSoftFindings({ repoRoot, resolver, files, inScope }: { repoRoot: st
  */
 interface ScopeInput {
   repoRoot: string; root: string; harness: Harness | undefined; repo: CheckRepo; resolver: CheckResolver; files: string[]; all?: string[];
-  scoped: Set<string> | null; manifest: CheckManifest; appSide?: boolean; editionDeclaration?: boolean; phase: string
+  scoped: Set<string> | null; manifest: CheckManifest; appSide?: boolean; withDeclaration?: boolean; phase: string
 }
 
-function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = files, scoped, manifest, appSide = false, editionDeclaration = true, phase }: ScopeInput): CheckFinding[] {
+function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = files, scoped, manifest, appSide = false, withDeclaration = true, phase }: ScopeInput): CheckFinding[] {
   const inScope = (file: string): boolean => !scoped || scoped.has(file);
   // A required directory of the root (be/, fe/) is present through the files below it, which are the sides' own.
   const trackedSet = new Set(all);
@@ -342,7 +340,7 @@ function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = f
 
   const pins = canonPins({ root, ...(harness ? { harness } : {}) });
   const fileFindings = memoFiles(repoRoot, files, perFileRules({ repoRoot, repo, resolver, inScope, isRoot }));
-  findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, editionDeclaration, manifest, phase }));
+  findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, withDeclaration, manifest, phase }));
   return findings;
 }
 
@@ -372,7 +370,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   try {
     repo = (declaration === undefined ? readRepoDeclaration(manifest, repoRoot) : resolveRepoDeclaration(manifest, declaration));
   } catch (error) {
-    if (!(error instanceof HfsSlotsError) || !['HFS_DECLARATION_INVALID', 'HFS_MANIFEST_MAJOR_MISMATCH', 'HFS_EDITION_INVALID'].includes(error.code)) throw error;
+    if (!(error instanceof HfsSlotsError) || !['HFS_DECLARATION_INVALID', 'HFS_MANIFEST_MAJOR_MISMATCH'].includes(error.code)) throw error;
     const findings = withWhy([{ code: error.code, level: 'error', path: HFS_DECLARATION_FILE, message: error.message.replace(/^[A-Z_]+: /, ''), problems: error.details.problems }], why);
     return { ok: false, repoRoot, manifest: manifest.version, profile: null, apps: [], tracked: 0, findings, counts: summarize(findings) };
   }
@@ -390,7 +388,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
       const sideRoot = path.join(repoRoot, side);
       const sideFiles = tracked.filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length));
       const sideScoped = scoped ? new Set([...scoped].filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length))) : null;
-      const sideFindings = scopeFindings({ repoRoot: sideRoot, root, harness, repo: repo.sides![side], resolver: resolver.sides![side], files: sideFiles, scoped: sideScoped, manifest, appSide: true, editionDeclaration: false, phase });
+      const sideFindings = scopeFindings({ repoRoot: sideRoot, root, harness, repo: repo.sides![side], resolver: resolver.sides![side], files: sideFiles, scoped: sideScoped, manifest, appSide: true, withDeclaration: false, phase });
       const message = appRelativeMessages(side, sideRoot);
       findings.push(...keep(sideFindings, sideRoot).map((finding) => ({ ...finding, side, path: onSide(side, finding.path), message: message(finding.message as string) })));
     }
@@ -403,8 +401,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   if (tree) findings.push(...treeFindings({ repoRoot, resolver, tracked, reportedUntracked: new Set(untrackedSecrets.map((finding) => finding.path as string)) }));
 
   // The app-root tree check reports machine codes: their why is read with the check's own.
-  const judged = judgedFindings(findings, repo.edition ?? 'full', root) as CheckFinding[];
-  const finished = withWhy(judged, { ...why, ...readWhy(root, [...new Set(judged.map((f) => f.code).filter((code) => !why[code]))]) }) as CheckFinding[];
+  const finished = withWhy(findings, { ...why, ...readWhy(root, [...new Set(findings.map((f) => f.code).filter((code) => !why[code]))]) }) as CheckFinding[];
   const counts = summarize(finished);
   const apps = repo.profile === APP_SCOPE ? declaredAppSides(repo).flatMap((side) => repo.sides![side].apps.map((app) => ({ ...app, side }))) : repo.apps;
   return { ok: counts.error === 0, repoRoot, manifest: manifest.version, profile: repo.profile, apps, tracked: tracked.length, findings: finished, counts };
@@ -469,7 +466,7 @@ export function checkRepository({ repoRoot, root = skillRoot, harness, fast = fa
     found.push(...run.findings);
   }
   const why = readWhy(root, [...new Set(found.map((f) => f.code))]);
-  const findings = [...slotResult.findings, ...withWhy(judgedFindings(found, repo.edition ?? 'full', root), why)] as CheckFinding[];
+  const findings = [...slotResult.findings, ...withWhy(found, why)] as CheckFinding[];
   const counts = summarize(findings);
   const ran = runs.filter((info) => info.status === 'ran');
   const result: RepositoryResult = {
@@ -486,14 +483,11 @@ export function checkRepository({ repoRoot, root = skillRoot, harness, fast = fa
 }
 
 /** Optional CLI proofs run over the whole tracked tree. */
-export interface CheckProofsInput { repoRoot: string; root?: string; manifest?: CheckManifest; wiring?: boolean; coverageFrom?: string | undefined; edition?: string | undefined }
+export interface CheckProofsInput { repoRoot: string; root?: string; manifest?: CheckManifest; wiring?: boolean; coverageFrom?: string | undefined }
 
-export function withCheckProofs(result: RepositoryResult, { repoRoot, root = skillRoot, manifest = loadSlotManifest({ root }), wiring = false, coverageFrom, edition }: CheckProofsInput): RepositoryResult {
+export function withCheckProofs(result: RepositoryResult, { repoRoot, root = skillRoot, manifest = loadSlotManifest({ root }), wiring = false, coverageFrom }: CheckProofsInput): RepositoryResult {
   if ((!wiring && coverageFrom === undefined) || result.profile === null) return result;
-  const declared = readRepoDeclaration(manifest, repoRoot);
-  const repo: CheckRepo = { ...declared, edition: edition ?? declared.edition };
-  // reason: the entries of the declared sides are exactly the keys of Side, so the rebuilt map keeps the Record<Side, RepoView> shape.
-  if (repo.sides) repo.sides = Object.fromEntries(Object.entries(repo.sides).map(([side, declaration]: [string, CheckRepo]) => [side, { ...declaration, edition: repo.edition }])) as Record<Side, CheckRepo>;
+  const repo: CheckRepo = readRepoDeclaration(manifest, repoRoot);
   const context = { repoRoot, repo, manifest, files: trackedFiles(repoRoot) };
   // reason: the wiring and coverage reports are produced by the proof modules; only their findings are read here.
   const reports: { wiring?: { findings: CheckFinding[] }; coverage?: { findings: CheckFinding[] } } = {};
@@ -503,7 +497,7 @@ export function withCheckProofs(result: RepositoryResult, { repoRoot, root = ski
   const why = readWhy(root, [...new Set(proofFindings.map((finding) => finding.code))]);
   // The explicit whole-tree wiring proof supersedes the ordinary finder's scoped result.
   const previous = result.findings.filter((finding) => !wiring || ![BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT, DI_RING_CODE].includes(finding.code));
-  const findings = [...previous, ...withWhy(judgedFindings(proofFindings, repo.edition ?? 'full', root), why)] as CheckFinding[];
+  const findings = [...previous, ...withWhy(proofFindings, why)] as CheckFinding[];
   const counts = summarize(findings);
   return { ...result, ...reports, findings, counts, ok: counts.error === 0 };
 }

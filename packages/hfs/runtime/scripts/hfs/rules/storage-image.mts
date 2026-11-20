@@ -79,10 +79,10 @@ function shapeProblems(service: Record<string, unknown>, dir: string, project: s
 
 /** The condition and the declared services of one app, as R440 judges them. Pure over its inputs. */
 export function storageImageFindings(input: {
-  stack: Parsed; packageJson: unknown; project: string; edition: string | undefined; staticsFiles: readonly string[];
+  stack: Parsed; packageJson: unknown; project: string; staticsFiles: readonly string[];
   compose: (environment: string, spec: Parsed) => { name: string; service: Record<string, unknown>; dir: string }[];
 }): Finding[] {
-  const { stack, packageJson, project, edition, staticsFiles, compose } = input;
+  const { stack, packageJson, project, staticsFiles, compose } = input;
   if (!plain(stack) || !plain(stack.environments)) return [];
   const need = storageNeed({ staticsFiles, packageJson, stack });
   const media = staticsFiles.some((file) => file.startsWith(`${STATICS_DIR}/`) && file !== `${STATICS_DIR}/.gitkeep` && !/\.ya?ml$/u.test(file));
@@ -106,7 +106,7 @@ export function storageImageFindings(input: {
           if (problems.length > 0) findings.push(found('STACK_STORAGE_IMAGE_SHAPE', storage.dir, `${at}: the \`storage\` service breaks the shape of the storage image: ${problems.join('; ')} ${WHY}`, { environment }));
         }
       }
-    } else if (edition === 'lite' && spec.runtime === 'docker-swarm' && plain(spec.deploy)) {
+    } else if (spec.runtime === 'docker-swarm' && plain(spec.deploy)) {
       const images = map(spec.deploy.images);
       const entry = images.storage;
       if (need.needed && entry === undefined) findings.push(found('STACK_STORAGE_MISSING', STACK_FILE, `${at}.deploy.images: the project needs its own object store and the production deploy builds no \`storage\` image: declare \`storage: {app: storage}\` (built from ${OVERRIDE}) and the \`storage\` service of the swarm stack ${WHY}`, { environment, reason: need.statics ? 'statics' : 'backend' }));
@@ -123,7 +123,7 @@ export function storageImageRuleFindings({ repoRoot, repo, isRoot, all = [] }: {
   const { doc } = findStackDeclaration(repoRoot);
   if (!doc) return [];
   return storageImageFindings({
-    stack: doc, packageJson: readJson(repoRoot, 'package.json'), project: String(readJson(repoRoot, 'hfs.json')?.project ?? 'app'), edition: repo.edition,
+    stack: doc, packageJson: readJson(repoRoot, 'package.json'), project: String(readJson(repoRoot, 'hfs.json')?.project ?? 'app'),
     staticsFiles: all.map((file) => file.replaceAll('\\', '/')).filter((file) => file.startsWith(`${STATICS_DIR}/`)),
     compose: (environment, spec) => composeServices(repoRoot, environment, spec),
   });

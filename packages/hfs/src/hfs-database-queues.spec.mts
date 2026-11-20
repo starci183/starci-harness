@@ -60,7 +60,7 @@ function judge(t: TestContext, edition: string, contents: Contents, db?: object,
 
 function expectCode(t: TestContext, edition: string, contents: Contents, code: string, db?: object, be?: object) {
   // A full app without a db/ tree runs no pgmq and is not judged.
-  if (edition === 'full' && !Object.keys(contents).some((file) => file.startsWith('db/'))) return [];
+  if ((edition as string) === 'full' && !Object.keys(contents).some((file) => file.startsWith('db/'))) return [];
   const findings = judge(t, edition, contents, db, be);
   assert.ok(findings.some((finding) => finding.code === code), `${code}: ${JSON.stringify(findings)}`);
   return findings;
@@ -103,7 +103,7 @@ const badGrants = [
   'alter default privileges in schema pgmq grant select on tables to app_be;',
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: the app root judges the migrations while a side scope is not judged twice`, (t) => {
     const context = fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE });
     assert.ok(databaseQueuesFindings({ ...context, isRoot: true }).some((finding: Finding) => finding.code === 'DB_PGMQ_DECLARED'));

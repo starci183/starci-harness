@@ -17,7 +17,7 @@ const declaration = (grammar: unknown, edition: string): DeclarationFixture => (
 
 test('a selected Grammar family survives the resolved frontend declaration and immutable lint view in both editions', () => {
   const manifest = loadSlotManifest();
-  for (const edition of ['lite', 'full']) for (const grammar of ['starci', 'offset-pop']) {
+  for (const edition of ['lite'] as const) for (const grammar of ['starci', 'offset-pop']) {
     const app = declaration(grammar, edition);
     assert.equal(resolveRepoDeclaration(manifest, app).sides?.fe?.grammar, grammar);
     assert.equal(resolveRepoDeclaration(manifest, app, { side: 'fe' }).grammar, grammar);

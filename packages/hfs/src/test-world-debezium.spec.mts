@@ -49,7 +49,7 @@ function topology(t: TestContext, edition: string, stacks: string, { debezium = 
   return findings(runArch(root), 'BE_TEST_TOPOLOGY').filter(hit => hit.message.includes('stacks.debezium'));
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} world declaring debezium with logical replication and redis passes`, t => {
     assert.deepEqual(topology(t, edition, `${POSTGRES_LOGICAL}, redis: {}, debezium: { connections: ["primary"] }`), []);
   });

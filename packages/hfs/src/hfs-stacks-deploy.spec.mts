@@ -111,7 +111,7 @@ const PROBLEMS: [string, (m: Model) => void, string][] = [
   ['a settings list entry from an unknown sealed member', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'nowhere', keys: ['N8N_HOST'] }]; }, 'environments.production.deploy.secrets.settings[1].member: sealed member nowhere has no'],
 ];
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${CODE}: ${edition} accepts a valid deploy block`, () => {
     assert.deepEqual(stacksDeployFindings(app(edition)), []);
   });
@@ -231,7 +231,7 @@ test(`${CODE}: only an app root of the lite or full edition is judged`, () => {
 });
 
 test(`${CODE}: the app check wires the finder, reports the declaration path and ships the catalog explanation`, () => {
-  for (const edition of ['lite', 'full']) {
+  for (const edition of ['lite'] as const) {
     const context = app(edition, (m) => { deployOf(m).extra = 1; });
     const wired = a15Findings(context).filter((finding) => finding.code === CODE);
     assert.deepEqual(messages(wired), ['environments.production.deploy.extra: is not a field of the deploy block']);

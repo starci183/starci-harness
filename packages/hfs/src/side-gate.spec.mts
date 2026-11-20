@@ -16,7 +16,7 @@ const HARNESS = { version: '1.1.0-alpha.3' };
 function project(t: TestContext, sides: Record<string, unknown>): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-side-gate-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'lite', project: 'demo', sides }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', sides }));
   return root;
 }
 

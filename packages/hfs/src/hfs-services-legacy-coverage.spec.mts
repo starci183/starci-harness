@@ -43,7 +43,7 @@ function findings(t: TestContext, edition: string, contents: Record<string, stri
     .filter((finding) => finding.code === code).map((finding) => finding.code);
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} HFS_SERVICE_PLACEMENT rejects a second service root`, (t) => {
     assert.deepEqual(findings(t, edition, {
       'services/billing/Dockerfile': 'FROM node:24.0.0\n',
