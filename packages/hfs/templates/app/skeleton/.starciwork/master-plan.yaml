@@ -1,0 +1,45 @@
+# The Master Plan of {{project}} (contexts/project/master-plan-record.md PROJECT-MASTER-PLAN-1): nine layers, each with what was decided,
+# why, and the rules every task holds, written "always" or "never". A later layer never contradicts an earlier one. To change a
+# decision, change this file first, then the code. A briefed task reads the layers of its op; a task that contradicts a rule stops
+# and asks. A rule may name what enforces it (`enforcedBy`: an hfs rule id R<n>, a check preset, or `review`);
+# `starci app master-plan` lists which rules a gate holds.
+schema: starci/master-plan@1
+project: {{project}}
+layers:
+  - id: business
+    decisions: []
+    reason: ""
+    rules: []
+  - id: tech
+    decisions: []
+    reason: ""
+    rules: []
+    roadmap: []
+  - id: patterns
+    decisions: []
+    reason: ""
+    rules: []
+  - id: ui
+    decisions: []
+    reason: ""
+    rules: []
+  - id: data
+    decisions: []
+    reason: ""
+    rules: []
+  - id: testing
+    decisions: []
+    reason: ""
+    rules: []
+  - id: security
+    decisions: []
+    reason: ""
+    rules: []
+  - id: observability
+    decisions: []
+    reason: ""
+    rules: []
+  - id: domains
+    decisions: []
+    reason: ""
+    rules: []

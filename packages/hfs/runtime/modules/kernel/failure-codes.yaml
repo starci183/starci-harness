@@ -5221,6 +5221,26 @@ HFS_CONCEPT_CONVENTIONS_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_MASTER_PLAN_INVALID:
+  title: "The Master Plan is nine layers of decisions, a reason and always/never rules"
+  title_vi: "Master Plan sai cấu trúc"
+  meaning_vi: "`.starciwork/master-plan.yaml` không phải YAML, sai schema `starci/master-plan@1`, không đủ chín tầng theo đúng thứ tự (business, tech, patterns, ui, data, testing, security, observability, domains), có luật thiếu id, kind (always hoặc never) hay text, lặp id luật, hoặc `enforcedBy` trỏ tới một luật hfs không có trong catalog."
+  causes_vi:
+    - "Vi phạm R449: sửa Master Plan bằng tay mà sai khóa, đổi thứ tự tầng, hoặc gán `enforcedBy` cho một mã luật không tồn tại."
+  nextStep_vi: "Sửa tệp theo PROJECT-MASTER-PLAN-1: giữ chín tầng theo thứ tự, mỗi tầng có decisions, reason và rules; mỗi luật `{ id, kind: always|never, text, enforcedBy? }`. Chạy `starci app master-plan` để xem luật nào đã có cổng giữ."
+  owner: op-retry
+  kind: check-finding
+
+HFS_MASTER_PLAN_MISSING:
+  title: "The app keeps no Master Plan yet"
+  title_vi: "App chưa có Master Plan"
+  meaning_vi: "App root chưa track `.starciwork/master-plan.yaml`, nên brief của task không mang được các tầng quyết định và luật của dự án. Đây là cảnh báo, không phải lỗi."
+  causes_vi:
+    - "App được tạo trước khi scaffold render Master Plan (R449)."
+  nextStep_vi: "Viết `.starciwork/master-plan.yaml` theo PROJECT-MASTER-PLAN-1 (chép khung từ template skeleton của @starci/hfs) rồi điền quyết định, lý do và luật của từng tầng."
+  owner: op-retry
+  kind: check-finding
+
 HFS_CONCEPT_UNCATALOGUED:
   title: "The concept catalog has one row per concept"
   title_vi: "Concept không có dòng trong catalog, hoặc dòng catalog trỏ tới concept không tồn tại"

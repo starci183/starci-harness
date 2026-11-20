@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added (R449, `runtime/scripts/hfs/rules/master-plan.mts`, PROJECT-MASTER-PLAN-1): the Master Plan of an app, `.starciwork/master-plan.yaml` (schema `starci/master-plan@1`): nine fixed layers (business, tech, patterns, ui, data, testing, security, observability, domains), each with `decisions[]`, `reason`, `rules[]` (`{ id, kind: always|never, text, enforcedBy? }`, `enforcedBy` an hfs rule id, a check preset or `review`) and an optional `roadmap[]`. The app check reports `HFS_MASTER_PLAN_MISSING` (a warning in every env) while the app tracks none, and `HFS_MASTER_PLAN_INVALID` (an error) for a malformed file, a repeated rule id or an `enforcedBy` naming an hfs rule the catalog does not hold. Slot `app.starciwork` admits the file (manifest 3.42.0), the `.starciwork/.gitignore` template re-admits it, the Work boundary (`isProductPath`, `isLiteProductPath`) holds it, and the app skeleton carries the nine layers with nothing decided.
+
 ## 6.14.0 - 2026-11-20
 
 - Changed (R212, owner ruling 2026-11-20): an app has ONE edition, what the live apps run (all of them declared `edition: "lite"`): the full code structure, slots, patterns and back-end unit specs; no Work features catalog; chat agents code directly; its own Docker Swarm stack with the backing services it declares; the integration and e2e test world on request only. The lite overlays of knowledge/hfs/slots.yaml (`lite:`, `litePresence`, `liteManagedBy`, `ruleParams.be.lite`) are folded into the base data and the `editions` keys, `editionWhy`, `codeEditions` and the evidence `edition(s)` fields leave the slot manifest and the rule catalog (their schemas refuse them now). A both-sides slot whose presence differs by side names it in `sidePresence` (`repo.app-image`: `{fe: optional}`).
