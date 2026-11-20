@@ -3,6 +3,7 @@
 # GitHub never holds an age key or an opened value: the job only asks the server, over a forced-command SSH key, to `deploy <app> <env> <tag>`;
 # the server fetches the tag with its own read-only repository key, opens the sealed members with its own age key and deploys
 # (ops/vps/runner/starci-deploy-gate and starci-deploy-run of the harness). The job holds:
+# The registry is read with the job's own GITHUB_TOKEN (packages: read), sent on the SSH stdin; the server keeps no registry token.
 #   secrets  RUNNER_SSH_KEY     the private half of the CI deploy key (the server's authorized_keys forces it through starci-deploy-gate)
 #            RUNNER_KNOWN_HOSTS the server's pinned host keys, one known_hosts line per key: [host]:port <type> <key>
 #            RUNNER_HOST        the server's address
@@ -64,6 +65,9 @@ jobs:
     if: ${{ vars.STARCI_DEPLOY_PAUSED != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: ssh transport
         shell: bash
@@ -81,7 +85,10 @@ jobs:
           printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts; chmod 644 ~/.ssh/known_hosts
           printf 'Host runner\n  HostName %s\n  Port %s\n  User starci-runner\n  IdentityFile ~/.ssh/runner_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n  ServerAliveInterval 30\n' "$HOST" "$PORT" > ~/.ssh/config
       - name: deploy staging
-        run: ssh -T runner "deploy ${APP} staging ${GITHUB_REF_NAME}"
+        env:
+          TOKEN: ${{ github.token }}
+        # the job's own token (packages: read, this repository, dies with the job) on stdin: the server pulls the images with it
+        run: printf '%s\n%s\n' "$GITHUB_ACTOR" "$TOKEN" | ssh -T runner "deploy ${APP} staging ${GITHUB_REF_NAME}"
       - name: smoke staging
         shell: bash
         env:
@@ -90,7 +97,9 @@ jobs:
           for i in $(seq 1 20); do [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$URL")" == 200 ]] && exit 0; sleep 15; done
           echo "::error::staging is not ready after the deploy: production is not deployed"; exit 1
       - name: deploy production
-        run: ssh -T runner "deploy ${APP} production ${GITHUB_REF_NAME}"
+        env:
+          TOKEN: ${{ github.token }}
+        run: printf '%s\n%s\n' "$GITHUB_ACTOR" "$TOKEN" | ssh -T runner "deploy ${APP} production ${GITHUB_REF_NAME}"
       - name: smoke production
         shell: bash
         env:

@@ -6,7 +6,7 @@ This runner deploys an app from CI without GitHub ever holding an age key or an 
 push v* ──► deploy-runner.yml ──ssh (forced command)──► starci-deploy-gate ──sudo (one rule)──► starci-deploy-run (root)
                                   "deploy <app> <env> <tag>"     checks the request              fetch tag (read-only repo key)
                                                                   logs it                         npm ci (pinned Node)
-                                                                                                  image digests (read-only registry token)
+                                                                                                  image digests (the job's GITHUB_TOKEN on stdin)
                                                                                                   starci app stack deploy --execute
                                                                                                   (server's own age key, /root/.config/sops/age/keys.txt)
 ```
@@ -27,7 +27,7 @@ ssh $L 'sudo -n bash /tmp/starci-runner-install.sh base'                    # (S
 ssh $L 'sudo -n bash /tmp/starci-runner-install.sh app <app>' < <app>.conf  # REPO_URL, IMAGE_PREFIX, SERVICES_staging, SERVICES_production
 gh repo deploy-key add <pub> --repo <owner/app> --title <server>-runner     # READ-ONLY (never --allow-write); its private half:
 ... | ssh $L 'sudo -n bash /tmp/starci-runner-install.sh repo-key <app>'     # on stdin, from memory
-... | ssh $L 'sudo -n bash /tmp/starci-runner-install.sh registry-token <app>'  # two lines: user, read:packages token
+# registry: none needed; the CI job sends its own GITHUB_TOKEN (packages: read) on stdin. registry-token <app> is the optional fallback file.
 ... | ssh $L 'sudo -n bash /tmp/starci-runner-install.sh ci-key <app>'       # the CI key's PUBLIC half; its private half goes to gh secret set RUNNER_SSH_KEY
 ```
 

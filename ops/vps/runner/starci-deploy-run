@@ -6,7 +6,8 @@
 #   1. fetch the app's repository with its READ-ONLY deploy key (/etc/starci-runner/<app>/repo_key) into /var/lib/starci-runner/<app>/src and
 #      check out the ANNOTATED tag; the tag must equal v<package.json version>;
 #   2. npm ci --ignore-scripts with the pinned Node (/opt/starci-node/bin);
-#   3. read the image digests of the tag's commit from the registry with the READ-only token (/etc/starci-runner/<app>/registry_token):
+#   3. read the image digests of the tag's commit from the registry with the credentials on stdin (two lines, user and token: the CI job's
+#      own short-lived GITHUB_TOKEN with packages: read, which dies with the job), or, when stdin is empty, /etc/starci-runner/<app>/registry_token:
 #      <prefix><app>:sha-<sha><suffix> per service, waiting up to IMAGE_WAIT_SECONDS for CI to push them;
 #   4. `starci app stack deploy --env <env> --image ... --sha <sha> --execute` with SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt: the
 #      server's own age key opens the sealed members here and never leaves the box; the deploy reaches the manager through the app's own sealed
@@ -33,7 +34,12 @@ eval "services=\${SERVICES_$env}"
 [ -n "$services" ] || die "no SERVICES_$env in $conf"
 key=/etc/starci-runner/$app/repo_key
 token=/etc/starci-runner/$app/registry_token
-[ -r "$key" ] && [ -r "$token" ] || die "missing $key or $token"
+[ -r "$key" ] || die "missing $key"
+# registry credentials: stdin first (the CI job's token), else the server's file; held in memory only
+reg_user='' reg_token=''
+if [ ! -t 0 ]; then IFS= read -r reg_user || true; IFS= read -r reg_token || true; fi
+if [ -z "$reg_token" ] && [ -r "$token" ]; then reg_user=$(sed -n 1p "$token"); reg_token=$(sed -n 2p "$token"); fi
+[ -n "$reg_user" ] && [ -n "$reg_token" ] || die "no registry credentials (stdin or $token)"
 
 work=/var/lib/starci-runner/$app
 log=/var/log/starci-runner/$app.log
@@ -63,7 +69,7 @@ exec > >(tee -a "$log") 2>&1
 
   export DOCKER_CONFIG="$work/docker"
   mkdir -p "$DOCKER_CONFIG"
-  user=$(sed -n 1p "$token"); sed -n 2p "$token" | docker login ghcr.io -u "$user" --password-stdin > /dev/null
+  printf '%s\n' "$reg_token" | docker login ghcr.io -u "$reg_user" --password-stdin > /dev/null; unset reg_token
   images=''
   for entry in $services; do
     service=${entry%%=*} rest=${entry#*=}
@@ -78,9 +84,11 @@ exec > >(tee -a "$log") 2>&1
     images="$images --image $service=$IMAGE_PREFIX$name@$digest"
     echo "image $service $IMAGE_PREFIX$name@$digest"
   done
-  docker logout ghcr.io > /dev/null 2>&1 || true
 
   export SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt
   cd "$src"
   # shellcheck disable=SC2086 # $images is a list of --image service=ref words built above from the closed alphabets
-  node node_modules/starci-harness/dist/main.js app stack deploy --env "$env" $images --sha "$sha" --execute
+  rc=0; node node_modules/starci-harness/dist/main.js app stack deploy --env "$env" $images --sha "$sha" --execute < /dev/null || rc=$?
+  docker logout ghcr.io > /dev/null 2>&1 || true
+  rm -rf "$DOCKER_CONFIG"
+  exit "$rc"
