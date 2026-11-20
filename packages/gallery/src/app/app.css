@@ -457,3 +457,41 @@ body,
     flex-direction: column;
     gap: 0.5rem;
 }
+
+/* The design board (PROJECT-GALLERY-9): areas, their sections, and each state's two frames side by side at one scale. The frames are pages of their own (board-frame.tsx). */
+.sg-db {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem;
+}
+
+.sg-db-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sg-db-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sg-db-frames {
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.sg-db-frame {
+    flex: none;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.sg-db-frame iframe {
+    display: block;
+    border: 0;
+    transform-origin: top left;
+}

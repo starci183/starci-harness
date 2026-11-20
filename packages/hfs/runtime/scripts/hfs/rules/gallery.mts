@@ -17,7 +17,8 @@
 //                                       blocks in `--env prod`, reported in `--env local` (the code is localOnly);
 //   HFS_APP_GALLERY_EXPLAIN_STALE      (rules/gallery-coupling.mts, run by `starci app check` over the commits since the base and by the staged guard) a change to a screen's source
 //                                       without a change to its explain.md;
-// and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _UNAPPROVED, _SHOT_MISSING, _SHOT_STALE.
+// and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _UNAPPROVED, _SHOT_MISSING, _SHOT_STALE;
+// and the design board of the app (PROJECT-GALLERY-9, rules/gallery-board.mts): HFS_APP_GALLERY_BOARD_INVALID, _ROUTE_MISSING, _SECTION_UNMAPPED.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -26,6 +27,7 @@ import { declaredBasePort, galleryParams, galleryPort } from '../gallery.mjs';
 import type { GalleryParams } from '../gallery.mjs';
 import { flowList, linkTargets, missingFrontMatter, SHOT_FILES } from '../gallery-explain.mjs';
 import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
+import { boardFindings } from './gallery-board.mjs';
 import { designFindings } from './gallery-design.mjs';
 import { parseScreen, screenSource, SCREEN_FILE } from '../screen-yaml.mjs';
 import { CROP_FILES } from '../shot-crops.mjs';
@@ -262,7 +264,7 @@ export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope =
   // No gallery at all is one finding (HFS_APP_GALLERY_MISSING), not one per route.
   if (missing.length < GALLERY_FILES.length) {
     const { screens } = galleryScreens(repoRoot, params);
-    findings.push(...routeFindings(repoRoot, params, screens), ...designFindings(repoRoot, params, screens));
+    findings.push(...routeFindings(repoRoot, params, screens), ...designFindings(repoRoot, params, screens), ...boardFindings(repoRoot, params));
   }
   return findings;
 }

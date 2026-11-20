@@ -3546,6 +3546,40 @@ HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_APP_GALLERY_BOARD_INVALID:
+  title: "The design board record has its shape and every section its module"
+  title_vi: "Sổ của board thiết kế (gallery/board/board.yaml) sai dạng hoặc một mục thiếu tệp vẽ"
+  meaning_vi: "gallery/board/board.yaml không phải YAML hoặc không đúng dạng: schema 1, revision (số nguyên từ 1), approvedAt (ISO đủ múi giờ hoặc null), tokens (các tệp CSS token của app), sections (mỗi mục một màn: id <khu>/<màn>, title, route, planned, states bắt đầu bằng default, needsApi); hoặc một mục không có tệp gallery/board/<khu>/<màn>.tsx."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-9): board là bản vẽ duy nhất của app, mỗi mục một màn hình, vẽ bằng component Grammar trong tệp riêng."
+  nextStep_vi: "Sửa board.yaml theo dạng trong PROJECT-GALLERY-9 và tạo tệp .tsx cho mục còn thiếu."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_BOARD_ROUTE_MISSING:
+  title: "Every coded route of the front end has a section on the design board"
+  title_vi: "Route đã code chưa có mục trên board thiết kế"
+  meaning_vi: "App có gallery/board/board.yaml nhưng một page.tsx của fe/apps/<app>/src/app không có mục nào trên board có route trùng, và route cũng không được loại trừ trong gallery/routes.json."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-9): board vẽ mọi màn hình của app, nên mỗi route đã code phải có một mục."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Thêm mục cho route đó (route, states, needsApi) và tệp .tsx vẽ nó, hoặc loại trừ route trong gallery/routes.json kèm lý do."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED:
+  title: "Every board section maps to a coded route or is marked planned"
+  title_vi: "Mục trên board không ứng với route nào và không đánh dấu planned"
+  meaning_vi: "Một mục của gallery/board/board.yaml có route mà front end chưa có và mục không đánh dấu planned: true; hoặc mục đánh dấu planned trong khi route đã được code."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-9): mỗi mục trên board phải trở thành một route; màn chưa code thì ghi planned, code xong thì bỏ dấu."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Sửa route của mục cho đúng, thêm planned: true cho màn chưa code, hoặc bỏ planned khi route đã có."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_APP_GALLERY_EXPLAIN_STALE:
   title: "A screen's explain.md changes with its source"
   title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"

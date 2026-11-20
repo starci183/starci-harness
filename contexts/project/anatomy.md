@@ -82,6 +82,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
   - `routes.json` — **app.gallery-routes** optional · R395 (hfs `gallery`)
+  - `board/{board.yaml,**/*.tsx}` — **app.gallery-board** optional · R395 (hfs `gallery`)
 - `scripts/`
   - `codegen.mjs` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)

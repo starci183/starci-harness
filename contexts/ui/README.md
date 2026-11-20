@@ -4,7 +4,7 @@ How an agent decides a user interface on any grammar, so that every app built fr
 same knowledge comes out the same. Knowledge decides **when and why**; the grammar package owns **what it looks
 like**; the app author decides only what the product supplies (facts, copy, routes, data).
 
-Any change a user can see goes canvas first, then code, then gallery: [PROJECT-GALLERY-7](../project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery) owns the order.
+Any change a user can see goes board first (the canvas in an app without a board), then code, then the gallery shot from the code, then one review of the whole gallery: [PROJECT-GALLERY-7](../project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns the order.
 
 ## The system in one page
 

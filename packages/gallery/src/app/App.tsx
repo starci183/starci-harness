@@ -1,6 +1,7 @@
 import { Badge, CoreGrammarRoot, Heading, IconButton, Tabs, Text, Tooltip } from "@starci/grammar/core"
 import { useState } from "react"
 import type { ReactElement } from "react"
+import { Board } from "./Board.tsx"
 import { data } from "./data.ts"
 import { fill, labelsFor } from "../labels.ts"
 import type { Labels } from "../labels.ts"
@@ -16,7 +17,7 @@ import { Legend } from "./Legend.tsx"
 import { Tree } from "./Tree.tsx"
 import { CompareModes, Viewer, ViewSwitches } from "./Viewer.tsx"
 
-const { model, devUrl } = data
+const { model, devUrl, board } = data
 const labels: Labels = labelsFor(data.locale)
 
 /** "67 màn · 41 khớp · 26 chưa code": the screens, how many match and how many have no shot; the other counts only when there are some. They add up: total = khớp + lệch + cũ + đã code chưa ghi duyệt + chưa code. */
@@ -62,7 +63,7 @@ export function App(): ReactElement {
     const hasShot = screen?.shots.includes(route.width) ?? false
     const view = effectiveView(route.view, hasDesign, hasShot)
     const open = (id: string): void => {
-        go({ screen: id, flows: false })
+        go({ screen: id, flows: false, board: false })
     }
     return (
         <CoreGrammarRoot>
@@ -80,14 +81,22 @@ export function App(): ReactElement {
                     <Tabs
                         appearance="primary"
                         label={labels.view}
-                        selectedKey={route.flows ? "flows" : "screens"}
+                        selectedKey={route.board ? "board" : route.flows ? "flows" : "screens"}
                         onSelect={(key) => {
-                            go({ flows: key === "flows", screen: key === "flows" ? null : route.screen })
+                            go({ flows: key === "flows", board: key === "board", screen: key === "screens" ? route.screen : null })
                         }}
-                        items={[
-                            { id: "screens", label: labels.screens },
-                            { id: "flows", label: labels.flows },
-                        ]}
+                        items={
+                            board === null
+                                ? [
+                                      { id: "screens", label: labels.screens },
+                                      { id: "flows", label: labels.flows },
+                                  ]
+                                : [
+                                      { id: "screens", label: labels.screens },
+                                      { id: "flows", label: labels.flows },
+                                      { id: "board", label: labels.boardView },
+                                  ]
+                        }
                     />
                     {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={view} hasDesign={hasDesign} hasShot={hasShot} showView={!narrow} onChange={go} /> : null}
                     {screen !== null && !route.flows && !narrow ? (
@@ -102,6 +111,7 @@ export function App(): ReactElement {
                 </nav>
                 <main className="sg-main">
                     {route.flows ? <FlowMap model={model} labels={labels} onOpen={open} /> : null}
+                    {route.board && board !== null ? <Board board={board} model={model} labels={labels} onOpen={open} /> : null}
                     {!route.flows && screen !== null ? (
                         <>
                             <States screen={screen} model={model} labels={labels} onOpen={open} />
@@ -153,7 +163,7 @@ export function App(): ReactElement {
                             )}
                         </>
                     ) : null}
-                    {!route.flows && screen === null ? <Text tone="muted">{model.counts.total === 0 ? labels.empty : labels.screens}</Text> : null}
+                    {!route.flows && !route.board && screen === null ? <Text tone="muted">{model.counts.total === 0 ? labels.empty : labels.screens}</Text> : null}
                 </main>
                 {!route.flows && screen !== null && explainOpen && !narrow ? (
                     <aside className="sg-explain" aria-label={labels.explain}>

@@ -4,6 +4,8 @@ import { createHash } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { parse as parseYaml } from "yaml"
+import { BOARD_DIR, BOARD_FILE, readBoard } from "./board.ts"
+import type { Board } from "./board.ts"
 import { noteToMarkdown, SHOT_WIDTHS } from "./explain.ts"
 import type { Width } from "./explain.ts"
 import { frameFile } from "./frames.ts"
@@ -16,6 +18,8 @@ export interface LoadOptions {
     readonly pages: string
     /** The folder of the design canvas, relative to the root. */
     readonly canvas: string
+    /** The folder of the design board, relative to the root (PROJECT-GALLERY-9). Default `board`. */
+    readonly board?: string
 }
 
 /** One frame served as a page of its own: `<area>__<screen>__<width>.html`. */
@@ -29,6 +33,8 @@ export interface Loaded {
     /** The stylesheet every frame shares: the canvas tokens, the board and every fragment's own style. */
     readonly frameCss: string
     readonly frames: readonly FrameDoc[]
+    /** The design board, or null when the gallery keeps no board.yaml. */
+    readonly board: Board | null
 }
 
 const read = (file: string): string | null => {
@@ -200,8 +206,16 @@ export function loadGallery(options: LoadOptions): Loaded {
         html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="frames.css"></head><body>${sprite}${element.replace(/^(<div class=")([^"]*)"/u, (_all, head: string, classes: string) => `${head}${classes.split(/\s+/u).filter((one) => one !== "zoom").join(" ")}"`)}</body></html>`,
     }))
     const flows = readJson(path.join(options.root, "flows.json"))
-    return { raw: { screens, frames, ...(flows === undefined ? {} : { flows }), ...(design === undefined ? {} : { design }) }, frameCss, frames: frameDocs }
+    return { raw: { screens, frames, ...(flows === undefined ? {} : { flows }), ...(design === undefined ? {} : { design }) }, frameCss, frames: frameDocs, board: loadBoard(options) }
 }
 
-/** The files the loader reads, for the watcher: the pages folder, the canvas folder and the flows file. */
-export const watchedPaths = (options: LoadOptions): string[] => [path.resolve(options.root, options.pages), path.resolve(options.root, options.canvas), path.resolve(options.root, "flows.json")]
+/** The design board of the gallery: board.yaml read leniently, each section told whether its module exists; null when there is no board.yaml. */
+export function loadBoard(options: LoadOptions): Board | null {
+    const dir = path.resolve(options.root, (options.board ?? BOARD_DIR))
+    const text = read(path.join(dir, BOARD_FILE))
+    if (text === null) return null
+    return readBoard(parseScreenYaml(text), (id) => fs.existsSync(path.join(dir, ...id.split("/")) + ".tsx"))
+}
+
+/** The files the loader reads, for the watcher: the pages folder, the canvas folder, the flows file and the board record. */
+export const watchedPaths = (options: LoadOptions): string[] => [path.resolve(options.root, options.pages), path.resolve(options.root, options.canvas), path.resolve(options.root, "flows.json"), path.resolve(options.root, (options.board ?? BOARD_DIR), BOARD_FILE)]

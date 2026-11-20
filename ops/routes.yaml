@@ -26,6 +26,9 @@ routes:
   - {id: audit-drift-repairs-code, on: {decision: red, from: audit, cause: findings}, to: {label: code}, limit: 5}
   - {id: audit-systemic-redraws, on: {decision: question, from: audit, cause: blocked}, to: {label: draw}, limit: 5}
   - {id: verify-red-repairs-build, on: {decision: red, from: verify, cause: findings}, to: build, limit: 3}
+  - {id: inspect-findings-repair-build, on: {decision: red, from: inspect, cause: findings}, to: build, limit: 3}
+  - {id: inspect-systemic-redesigns, on: {decision: question, from: inspect, cause: blocked}, to: {label: design}, limit: 3}
+  - {id: prove-red-repairs-build, on: {decision: red, from: prove, cause: findings}, to: build, limit: 3}
   - {id: review-findings-repair-build, on: {decision: red, from: review, cause: findings}, to: build, limit: 3}
   - {id: check-premise-amends-checks, on: {decision: check-premise, from: any, cause: rejected}, to: same, limit: 2}
   - {id: rejected-retries, on: {decision: red, from: any, cause: rejected}, to: same, limit: 2}

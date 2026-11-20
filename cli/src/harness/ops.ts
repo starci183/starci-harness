@@ -187,6 +187,9 @@ const opFrontmatterSchema = z.strictObject({
     perRecord: z.boolean().optional(),
     // masterPlan: the layers of the project's Master Plan a brief of this label carries (master-plan.ts, PROJECT-MASTER-PLAN-2).
     masterPlan: z.array(masterPlanLayerSchema).min(1).optional(),
+    // supersedes: the labels this op replaces (ops/ops/README.md "Old labels and the ops that replace them"); both stay loadable while the new
+    // one is on trial, so a plan may name either. Each must name another op file, and no label is superseded twice (loadOps).
+    supersedes: z.array(z.string().min(1)).min(1).optional(),
 })
 
 /** A named check preset from ops/checks.yaml. */
@@ -299,9 +302,16 @@ export const loadOps = (dir: string = locateOps()): Ops => {
         labels[op.label] = op
     }
     if (files.length === 0) throw new Refusal("OPS_INVALID", `${opsDir} holds no op file`)
+    const superseded = new Map<string, string>()
     for (const op of Object.values(labels)) {
         const unknown = (op.independentOf ?? []).filter((label) => !(label in labels))
         if (unknown.length > 0) throw invalid(op.file, `independentOf names labels with no op file: ${unknown.join(", ")}`)
+        for (const old of op.supersedes ?? []) {
+            if (old === op.label || !(old in labels)) throw invalid(op.file, `supersedes ${old}, which is no other op file`)
+            const earlier = superseded.get(old)
+            if (earlier !== undefined) throw invalid(op.file, `supersedes ${old}, which ${earlier} already supersedes`)
+            superseded.set(old, op.label)
+        }
     }
     const ops: Ops = { dir, root: dirname(dir), labels, presets }
     workerProcedure(ops)

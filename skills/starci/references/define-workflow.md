@@ -27,7 +27,8 @@ starci app info
 
 Split the goal into tasks, one outcome each. Per task decide:
 
-- `label`: one of the op files of `ops/ops/` (code, test, draw, image, audit, review, verify, docs, deliver). Its op
+- `label`: one of the op files of `ops/ops/` (code, design, prove, inspect, docs, deliver; and while they are on trial the labels those
+  supersede: draw, image, test, verify, review, audit, as ops/ops/README.md maps them). Its op
   gives the base context, inputs, output keys and checks, and the difficulty floor; the task only extends them. Every Work
   record a task is over walks its lane ([ops/lanes.yaml](../../../ops/lanes.yaml)): plan a task for each step its evidence
   does not satisfy yet, each behind the step before it, or define refuses `FLOW_INCOMPLETE` and names the missing step.
