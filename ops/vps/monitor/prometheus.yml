@@ -1,0 +1,46 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/prometheus.yml: the shared Prometheus of one server.
+# Its own job and the apps job are here; every other component adds its own job (components.yaml scrape) when it runs. The apps
+# job keeps every app service that opted in (`environments.<env>.monitoring` of its
+# .starcistacks/application-stacks.yaml), found by Swarm discovery through the read-only socket proxy and scraped on {{network}}.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    server: "{{server}}"
+rule_files:
+  - /etc/prometheus/alerts.yml
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: apps
+    dockerswarm_sd_configs:
+      - host: tcp://socket-proxy:2375
+        role: tasks
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__meta_dockerswarm_task_desired_state]
+        regex: running
+        action: keep
+      - source_labels: [__meta_dockerswarm_service_label_starci_monitor_scrape]
+        regex: "true"
+        action: keep
+      - source_labels: [__meta_dockerswarm_network_name]
+        regex: "{{network}}"
+        action: keep
+      - source_labels: [__address__, __meta_dockerswarm_service_label_starci_monitor_port]
+        regex: '([^:]+)(?::\d+)?;(\d+)'
+        replacement: "$1:$2"
+        target_label: __address__
+      - source_labels: [__meta_dockerswarm_service_label_starci_monitor_path]
+        regex: (.+)
+        target_label: __metrics_path__
+      - source_labels: [__meta_dockerswarm_service_label_starci_monitor_stack]
+        target_label: stack
+      - source_labels: [__meta_dockerswarm_service_name]
+        target_label: service
+      - source_labels: [__meta_dockerswarm_task_slot]
+        target_label: slot
+      - source_labels: [__meta_dockerswarm_node_hostname]
+        target_label: node

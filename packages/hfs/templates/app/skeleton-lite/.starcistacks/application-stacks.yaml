@@ -161,6 +161,15 @@ environments:
       storage: {replicas: 1, port: 9000}
       ingress: {replicas: 1, port: 443, httpPort: 80}
     runbook: README.md
+    # Opt in to the server's shared monitoring stack (`starci vps monitor up`, contexts/project/monitoring.md); absent, nothing changes.
+    # monitoring:
+    #   metrics:
+    #     - {service: api, port: 3001, path: /metrics}
+    #   logs: true
+    #   exporters:
+    #     - {kind: postgres, user: monitor, password: {member: db-password, key: DB_MONITOR_PASSWORD}}
+    #   traces: false
+    #   profiles: false
     ingress:
       component: ingress
       hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid", "storage.{{project}}.example.invalid"]

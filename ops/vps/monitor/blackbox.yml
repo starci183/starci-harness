@@ -1,0 +1,17 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/blackbox.yml: the probe modules. `https` follows redirects, wants a 2xx or 3xx
+# answer over TLS and reports the certificate's expiry (probe_ssl_earliest_cert_expiry), which the CertificateExpiresSoon alert reads.
+modules:
+  https:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200, 201, 202, 204, 301, 302, 303, 307, 308]
+      follow_redirects: true
+      fail_if_not_ssl: true
+  http:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true

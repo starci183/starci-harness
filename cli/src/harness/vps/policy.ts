@@ -36,6 +36,7 @@ const policySchema = z.strictObject({
     docker: z.strictObject({ pin: z.string().min(1), repository: z.record(family, z.url()) }),
     swarm: z.strictObject({ advertise: z.literal("host"), autolock: z.boolean(), network: z.string().regex(/^[a-z][a-z0-9-]*$/) }),
     edge: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), proxy: imageRef, resolver: z.string().regex(/^[a-z][a-z0-9]*$/) }),
+    monitor: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), network: z.string().regex(/^[a-z][a-z0-9_-]*$/), components: z.string().regex(/\.yaml$/) }),
     ui: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), server: imageRef, agent: imageRef, subdomain: z.string().regex(LABEL), port: z.number().int().min(1).max(65535) }),
     ingress: z.strictObject({
         domain: z.string().regex(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/),
@@ -82,6 +83,8 @@ const serverSchema = z.strictObject({
     projects: z.array(z.string().regex(/^[a-z0-9][a-z0-9._-]*$/)),
     ingress: z.strictObject({ mode: ingressMode }).optional(),
     firewall: firewallKind.optional(),
+    // The monitoring components this server turns on or off against their defaults (ops/vps/monitor/components.yaml).
+    monitor: z.strictObject({ components: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.boolean()) }).optional(),
 })
 
 /** One server of the inventory (its `<id>.yaml`), validated. */
@@ -174,6 +177,21 @@ export interface VpsPins {
 
 /** contexts/stack/pins.yaml beside the ops folder. */
 const pinsFile = (opsDir: string): string => join(dirname(opsDir), "contexts", "stack", "pins.yaml")
+
+/** Resolves image refs of a policy file by contexts/stack/pins.yaml: each as `repo:tag@digest`; a pin without a digest, or one the file lacks, is refused by name. */
+export const resolveImages = <K extends string>(refs: Readonly<Record<K, { readonly image: string; readonly pin: string }>>, opsDir: string = locateOps()): Record<K, string> => {
+    const file = pinsFile(opsDir)
+    const parsed = pinsSchema.safeParse(readYaml(file))
+    if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} is not in the shape ops/vps.yaml reads: ${z.prettifyError(parsed.error)}`)
+    const out = {} as Record<K, string>
+    for (const [key, ref] of Object.entries(refs) as [K, { readonly image: string; readonly pin: string }][]) {
+        const version = parsed.data.images[ref.pin]?.version
+        if (version === undefined) throw new Refusal("OPS_INVALID", `the image pin ${ref.pin} of ${key} is not in ${file} images`)
+        if (!/@sha256:[0-9a-f]{64}$/.test(version)) throw new Refusal("OPS_INVALID", `${file} images.${ref.pin} is pinned without a digest; a managed server runs digests only`)
+        out[key] = `${ref.image}:${version}`
+    }
+    return out
+}
 
 /** Resolves the policy's pins; an image pinned without a digest, or a pin the file lacks, is refused by name. */
 export const resolvePins = (policy: VpsPolicy, opsDir: string = locateOps()): VpsPins => {

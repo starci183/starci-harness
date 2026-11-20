@@ -1,0 +1,12 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/alertmanager.yml: every alert goes to the one receiver, the owner's Telegram
+# channel (ops/telegram.yaml): the bot token is the swarm secret mounted at /run/secrets/telegram_token, the chat the one stored by
+# `starci connect telegram discover-chat`. On the local swarm the receiver sends nothing.
+route:
+  receiver: owner
+  group_by: [alertname, stack, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+receivers:
+  - name: owner
+{{receiver}}

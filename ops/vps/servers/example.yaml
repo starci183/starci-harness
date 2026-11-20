@@ -19,3 +19,6 @@ ingress:
   mode: tunnel
 # Optional: csf instead of the OS family's default firewall.
 # firewall: csf
+# Optional: the monitoring components this server turns on or off against their defaults (ops/vps/monitor/components.yaml).
+# monitor:
+#   components: {blackbox: true, tempo: true}

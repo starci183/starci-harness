@@ -8,6 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { readYaml } from './config.mjs';
 import type { DeployConfig, EdgeRoute, ServiceEnvironment, SharedEdge } from './config.mjs';
+import { monitoringDeployLabels, sidecarService, telemetryEnvironment, telemetryServices } from './monitoring.mjs';
+import type { MonitoringOptIn } from './monitoring.mjs';
 import { tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isImageReference, isReleaseId } from './digest.mjs';
@@ -33,6 +35,7 @@ interface ServiceOverride {
   secrets?: { source: string; target: string; mode: number }[];
   deploy?: { labels: string[] };
   networks?: string[];
+  labels?: string[];
 }
 
 const SOURCE_SHA = /^[0-9a-f]{7,64}$/u;
@@ -149,6 +152,8 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   const edge = config.edge ?? null;
   const grant = config.secrets.grants.find((item) => item.service === service);
   const environment = plainEnvironment(config, sealed.settings, config.environment[service] ?? { files: [], values: {}, settings: {} });
+  const monitoring = config.monitoring ?? null;
+  if (monitoring !== null) Object.assign(environment, monitoring.metrics.find((entry) => entry.service === service)?.environment ?? {}, telemetryServices(monitoring).includes(service) ? telemetryEnvironment(monitoring, service, config.stack, config.env) : {});
   const keys = sealed.grants[service] ?? [];
   if (grant?.filePointers) for (const key of keys) environment[`${key}_FILE`] = `/run/secrets/${key}`;
   const out: ServiceOverride = {};
@@ -157,11 +162,18 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   if (Object.keys(environment).length > 0) out.environment = Object.fromEntries(Object.entries(environment).map(([name, value]) => [name, escapeDollar(String(value))]));
   if (keys.length > 0) out.secrets = keys.map((key) => ({ source: key, target: key, mode: SECRET_MODE }));
   const labels = edge === null ? [] : edgeLabels(edge, service, config.stack);
-  if (labels.length > 0 && edge !== null) {
-    out.deploy = { labels };
-    out.networks = joinsDefault ? ['default', edge.network] : [edge.network];
-  }
+  const monitored = monitoring === null ? [] : monitoringDeployLabels(monitoring, service, config.stack);
+  const reaches = monitoring !== null && (monitored.length > 0 || telemetryServices(monitoring).includes(service));
+  const networks = [...new Set([...(labels.length > 0 && edge !== null ? [edge.network] : []), ...(reaches && monitoring !== null ? [monitoring.network] : [])])];
+  if (labels.length + monitored.length > 0) out.deploy = { labels: [...labels, ...monitored] };
+  if (networks.length > 0) out.networks = joinsDefault ? ['default', ...networks] : networks;
+  if (monitoring?.logs === true && config.services.has(service)) out.labels = ['starci.monitor.logs=true'];
   return out;
+}
+
+/** Whether any service of the opt-in joins the monitoring network (scraped, probed, an exporter, or sending traces or profiles). */
+function monitoringReaches(monitoring: MonitoringOptIn): boolean {
+  return monitoring.metrics.length > 0 || monitoring.probeCarrier !== null || monitoring.sidecars.length > 0 || telemetryServices(monitoring).length > 0;
 }
 
 /** The services of the stack source that name no network of their own: they sit on the stack's default network, which an added edge network must not replace. */
@@ -172,13 +184,23 @@ function onDefaultNetwork(config: DeployConfig): Set<string> {
 
 function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, version: unknown): Record<string, unknown> {
   const edge = config.edge ?? null;
-  const unnamed = edge === null ? new Set<string>() : onDefaultNetwork(config);
-  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants), ...(edge?.routes.map((route) => route.service) ?? [])]);
+  const monitoring = config.monitoring ?? null;
+  const unnamed = edge === null && monitoring === null ? new Set<string>() : onDefaultNetwork(config);
+  const sidecars = new Map((monitoring?.sidecars ?? []).map((sidecar) => [sidecar.name, sidecar]));
+  const monitored = monitoring === null ? [] : [...monitoring.metrics.map((entry) => entry.service), ...(monitoring.probeCarrier === null ? [] : [monitoring.probeCarrier]), ...(monitoring.logs ? config.services : []), ...sidecars.keys()];
+  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants), ...(edge?.routes.map((route) => route.service) ?? []), ...monitored]);
+  const external = [...(edge === null ? [] : [edge.network]), ...(monitoring === null || !monitoringReaches(monitoring) ? [] : [monitoring.network])];
+  const source = monitoring === null || sidecars.size === 0 ? null : readYaml(config.stackFile, 'the stack source');
+  const overrideOf = (service: string): unknown => {
+    const sidecar = sidecars.get(service);
+    const own = serviceOverride(config, sealed, images, service, unnamed.has(service));
+    return sidecar === undefined || monitoring === null ? own : { ...sidecarService(sidecar, monitoring, config.stack, source), ...(own.secrets === undefined ? {} : { secrets: own.secrets }) };
+  };
   return {
     ...(version === undefined ? {} : { version }),
-    services: Object.fromEntries([...services].sort((a, b) => a.localeCompare(b)).map((service) => [service, serviceOverride(config, sealed, images, service, unnamed.has(service))])),
+    services: Object.fromEntries([...services].sort((a, b) => a.localeCompare(b)).map((service) => [service, overrideOf(service)])),
     secrets: Object.fromEntries(Object.entries(sealed.secrets).map(([key, entry]) => [key, { external: true, name: entry.runtimeName }])),
-    ...(edge === null ? {} : { networks: { [edge.network]: { external: true } } }),
+    ...(external.length === 0 ? {} : { networks: Object.fromEntries(external.map((network) => [network, { external: true }])) }),
   };
 }
 

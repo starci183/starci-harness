@@ -1,0 +1,12 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/grafana/dashboards.yaml: the dashboards of ops/vps/monitor/grafana/dashboards,
+# provisioned as code; an edit in the UI is not kept (the files are the source).
+apiVersion: 1
+providers:
+  - name: starci
+    folder: StarCi
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/dashboards

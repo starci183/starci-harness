@@ -108,6 +108,7 @@ import { vpsDoctorVerb, vpsListVerb } from "./core/vps/read.js"
 import { vpsBootstrapVerb, vpsSwarmVerb, vpsUiVerb } from "./core/vps/act.js"
 import { vpsAddVerb, vpsGrantVerb, vpsRevokeVerb } from "./core/vps/access.js"
 import { vpsCloudflareVerb, vpsDomainVerb, vpsEdgeVerb } from "./core/vps/domain.js"
+import { vpsMonitorVerb } from "./core/vps/monitor.js"
 import { configListVerb } from "./core/config/list.js"
 import { configGetVerb } from "./core/config/get.js"
 import { configSetVerb } from "./core/config/set.js"
@@ -254,6 +255,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     vpsGrantVerb,
     vpsRevokeVerb,
     vpsEdgeVerb,
+    vpsMonitorVerb,
     vpsDomainVerb,
     vpsCloudflareVerb,
     configListVerb,

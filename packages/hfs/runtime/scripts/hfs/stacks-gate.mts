@@ -12,6 +12,7 @@ import { RESERVED_STACK_FOLDERS } from './rules/stacks.mjs';
 import { composeIncludePaths, swarmInventoryIssues, swarmModelIssues } from '../lib/swarm-stack.mjs';
 import { swarmHardeningIssues } from './rules/stacks-swarm.mjs';
 import { ingressIssues } from './rules/stacks-ingress.mjs';
+import { monitoringIssues } from './rules/stacks-monitoring.mjs';
 import { liteBackingIssues } from './rules/stacks-lite-backing.mjs';
 import { releaseBackupIssues, scheduleIssues } from './rules/stacks-release.mjs';
 import { stacksDeploymentContexts } from './rules/stacks-runtime.mjs';
@@ -408,13 +409,13 @@ function diskEvidenceFiles(root: string): string[]{
 
 function checkSwarmHardening({manifest,model,environment,root,files,repo,errors,add}: {manifest: Parsed; model: Parsed; environment: Parsed; root: string; files: string[]; repo: Parsed; errors: GateError[]; add: Add}): void{
   const spec=manifest.environments?.[environment];
-  if(spec?.runtime!=='docker-swarm')return;
+  if(spec?.runtime!=='docker-swarm'){for(const issue of monitoringIssues({environment,spec,model}))add(issue.code,issue.at,issue.message);return;}
   if(!deploymentAvailable(model,errors)){
     add('STACKS_MODEL_UNAVAILABLE',`environments.${environment}`,'a rendered deployment model with nonempty services is required to judge Swarm safety');
     return;
   }
   const context={doc:manifest,environment,spec,model,repoRoot:root,files,repo};
-  for(const finder of [swarmHardeningIssues,ingressIssues,liteBackingIssues,releaseBackupIssues,scheduleIssues])
+  for(const finder of [swarmHardeningIssues,ingressIssues,monitoringIssues,liteBackingIssues,releaseBackupIssues,scheduleIssues])
     for(const issue of finder(context))add(issue.code,issue.at,issue.message);
 }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (train 182; the integration lane sets the version)
+
+- Added (stacks): the optional `environments.<env>.monitoring` block of application-stacks.yaml (schema, the HFS_STACKS_SHAPE rule stacks-monitoring.mts, stack/monitoring.mts). It declares metrics endpoints, logs (on by default), blackbox probes (by default the ingress hosts), exporters of backing services (postgres and redis sidecars, minio, qdrant, kafka-connect and ingress scraped natively), traces and profiles. `stack render` adds scrape and probe labels, exporter sidecars, the OTLP and Pyroscope endpoints and the external monitoring network. An environment without the block renders byte for byte as before.
+- Changed (templates): the lite skeleton application-stacks.yaml carries the block as a commented opt-in example, and its production README says how to opt in.
+
 ## 6.13.60 - 2026-11-20
 
 - Changed (pins): the Grammar family 0.50.1 and @starci/gallery 0.1.11 in canon-pins.yaml.

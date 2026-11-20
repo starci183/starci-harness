@@ -1,0 +1,26 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/tempo.yaml: Tempo as one process, blocks on its volume, receiving OTLP from
+# Alloy only (no port is published), the compactor deleting blocks older than the retention (components.yaml tempo.retention.hours).
+stream_over_http_enabled: true
+server:
+  http_listen_port: 3200
+  log_level: warn
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+ingester:
+  max_block_duration: 5m
+compactor:
+  compaction:
+    block_retention: {{retention.hours}}h
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+usage_report:
+  reporting_enabled: false

@@ -1,0 +1,388 @@
+# The components of the shared monitoring stack of a managed VPS, read by cli/src/harness/vps/monitor.ts (`starci vps monitor up`).
+# Each component is one entry and one toggle: `default` says whether a server runs it when its file says nothing, and a server's file
+# turns any one on or off (`monitor: {components: {tempo: true, cadvisor: false}}` in ops/vps/servers/<id>.yaml). The plan refuses a
+# component on whose `requires` are off, and prints the memory budget of exactly the components it runs (contexts/project/monitoring.md).
+#
+# Per component: its image (a pin of contexts/stack/pins.yaml, digests only), its limits and reservations (so monitoring cannot starve the
+# apps), its own update_config and rollback_config, its retention, and its service: the compose service without image, deploy and
+# configs, which the plan adds. Tokens in `{{...}}` are filled by the plan: {{stack}}, {{network}}, {{server}}, {{door.url}} (the component's https name, or its local address),
+# {{door.secure}}, {{door.<component>.url}} and {{retention.<key>}} of the same component. A `$` the container shell must see is written `$$` (stack deploy
+# interpolates the file once). `configs` maps a file of this folder to the path it is mounted at; `scrape`, `alerts`, `datasources` and
+# `alloy` add the component's own Prometheus jobs, alert groups, Grafana datasources and Alloy pipeline, and `dashboards` the Grafana
+# dashboards it feeds, when it runs. `door` is the name it answers on through the server's door (`vps domain add <id> <subdomain> --to
+# <stack>_<component>:<port>`), with its own login behind it; on the local swarm it is published on 127.0.0.1-facing `localPort` instead.
+schema: starci/vps-monitor@1
+# The one rollout of a stateful single-replica service (its volume is held by one task) and of a stateless one.
+x-rollout:
+  stop-first: &stopFirst {parallelism: 1, delay: 10s, order: stop-first, failure_action: rollback, monitor: 30s}
+  start-first: &startFirst {parallelism: 1, delay: 10s, order: start-first, failure_action: rollback, monitor: 30s}
+  rollback-stop-first: &rollbackStopFirst {parallelism: 1, order: stop-first, failure_action: pause, monitor: 30s}
+  rollback-start-first: &rollbackStartFirst {parallelism: 1, order: start-first, failure_action: pause, monitor: 30s}
+components:
+  socket-proxy:
+    default: true
+    purpose: "the read-only Docker API (GET of services, tasks, nodes, networks, containers, info) Prometheus, Alloy and cAdvisor discover through; nothing else of the stack holds the socket"
+    why: "every discovery reads it, and it keeps the socket itself out of every other container"
+    image: {image: tecnativa/docker-socket-proxy, pin: docker-socket-proxy}
+    resources: {memory: 32M, cpus: "0.10", reserveMemory: 16M, reserveCpus: "0.02"}
+    update: *startFirst
+    rollback: *rollbackStartFirst
+    retention: {}
+    networks: [socket]
+    service:
+      environment: {CONTAINERS: "1", SERVICES: "1", TASKS: "1", NODES: "1", NETWORKS: "1", INFO: "1", VERSION: "1", PING: "1", POST: "0", LOG_LEVEL: warning}
+      volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+  prometheus:
+    default: true
+    purpose: "the metrics store and the alert rules; discovers the opted-in app services through Swarm and scrapes them on the monitoring network"
+    why: "the core of the stack; every other metric component feeds it"
+    requires: [socket-proxy]
+    image: {image: prom/prometheus, pin: prometheus}
+    resources: {memory: 512M, cpus: "0.50", reserveMemory: 256M, reserveCpus: "0.10"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {time: 15d, size: 4GB}
+    networks: [internal, socket, monitor]
+    volumes: {prometheus-data: /prometheus}
+    configs: {prometheus.yml: /etc/prometheus/prometheus.yml, alerts.yml: /etc/prometheus/alerts.yml}
+    service:
+      command:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time={{retention.time}}
+        - --storage.tsdb.retention.size={{retention.size}}
+        - --web.console.libraries=/usr/share/prometheus/console_libraries
+      healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
+  alertmanager:
+    default: true
+    purpose: "routes the alerts to the owner's Telegram channel (ops/telegram.yaml), its bot token a swarm secret read by file"
+    why: "an alert nobody receives is no alert"
+    requires: [prometheus]
+    image: {image: prom/alertmanager, pin: alertmanager}
+    resources: {memory: 96M, cpus: "0.10", reserveMemory: 32M, reserveCpus: "0.02"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {data: 120h}
+    networks: [internal]
+    volumes: {alertmanager-data: /alertmanager}
+    configs: {alertmanager.yml: /etc/alertmanager/alertmanager.yml}
+    secrets: {telegram: telegram_token}
+    service:
+      command: [--config.file=/etc/alertmanager/alertmanager.yml, --storage.path=/alertmanager, "--data.retention={{retention.data}}"]
+      healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"], interval: 30s, timeout: 5s, retries: 3, start_period: 20s}
+    scrape:
+      - {job_name: alertmanager, dns_sd_configs: [{names: [tasks.alertmanager], type: A, port: 9093}]}
+    datasources:
+      - {name: Alertmanager, uid: alertmanager, type: alertmanager, access: proxy, url: "http://alertmanager:9093", editable: false, jsonData: {implementation: prometheus, handleGrafanaManagedAlerts: false}}
+  grafana:
+    default: true
+    purpose: "the dashboards (host, services, logs) and datasources, provisioned as code; behind the server's door with its own login, anonymous off, the admin password a sealed swarm secret"
+    why: "the one place the owner reads the server"
+    requires: [prometheus]
+    image: {image: grafana/grafana, pin: grafana}
+    resources: {memory: 256M, cpus: "0.50", reserveMemory: 128M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [internal, edge]
+    volumes: {grafana-data: /var/lib/grafana}
+    configs:
+      grafana/datasources.yaml: /etc/grafana/provisioning/datasources/datasources.yaml
+      grafana/dashboards.yaml: /etc/grafana/provisioning/dashboards/dashboards.yaml
+    door: {subdomain: "grafana-{id}", port: 3000, localPort: 3300}
+    secrets: {grafana: grafana_admin_password}
+    service:
+      environment:
+        GF_SECURITY_ADMIN_USER: admin
+        GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+        GF_AUTH_ANONYMOUS_ENABLED: "false"
+        GF_AUTH_BASIC_ENABLED: "false"
+        GF_USERS_ALLOW_SIGN_UP: "false"
+        GF_USERS_ALLOW_ORG_CREATE: "false"
+        GF_SERVER_ROOT_URL: "{{door.url}}"
+        GF_SECURITY_COOKIE_SECURE: "{{door.secure}}"
+        GF_SECURITY_COOKIE_SAMESITE: lax
+        GF_SECURITY_DISABLE_GRAVATAR: "true"
+        GF_ANALYTICS_REPORTING_ENABLED: "false"
+        GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+        GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+        GF_NEWS_NEWS_FEED_ENABLED: "false"
+        GF_PLUGINS_PREINSTALL_DISABLED: "true"
+        GF_LOG_LEVEL: warn
+      healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"], interval: 30s, timeout: 5s, retries: 3, start_period: 60s}
+    scrape:
+      - {job_name: grafana, dns_sd_configs: [{names: [tasks.grafana], type: A, port: 3000}]}
+  node-exporter:
+    default: true
+    purpose: "the host metrics (CPU, memory, disk, network, load) of every node"
+    why: "the host overview dashboard and the host alerts read it"
+    requires: [prometheus]
+    image: {image: prom/node-exporter, pin: node-exporter}
+    resources: {memory: 64M, cpus: "0.10", reserveMemory: 24M, reserveCpus: "0.02"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    global: true
+    networks: [internal]
+    service:
+      command:
+        - --path.procfs=/host/proc
+        - --path.sysfs=/host/sys
+        - --path.rootfs=/rootfs
+        - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+      volumes: ["/proc:/host/proc:ro", "/sys:/host/sys:ro", "/:/rootfs:ro"]
+    scrape:
+      - job_name: node
+        dns_sd_configs: [{names: [tasks.node-exporter], type: A, port: 9100}]
+    dashboards: [grafana/dashboards/host.json]
+    alerts:
+      - name: host
+        rules:
+          - alert: HostMemoryLow
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+            for: 10m
+            labels: {severity: warning}
+            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its memory available"}
+          - alert: HostDiskFull
+            expr: node_filesystem_avail_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} < 0.15
+            for: 10m
+            labels: {severity: warning}
+            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its root disk free"}
+          - alert: HostCpuBusy
+            expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
+            for: 15m
+            labels: {severity: warning}
+            annotations: {summary: "{{ $labels.instance }} CPU is {{ $value | humanizePercentage }} busy"}
+  cadvisor:
+    default: true
+    purpose: "the container metrics (CPU, memory against its limit, restarts, network) by stack and service"
+    why: "the per-service dashboard and the service alerts read it"
+    requires: [prometheus, socket-proxy]
+    image: {image: gcr.io/cadvisor/cadvisor, pin: cadvisor}
+    resources: {memory: 192M, cpus: "0.30", reserveMemory: 64M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    global: true
+    networks: [internal, socket]
+    service:
+      command:
+        - --docker=tcp://socket-proxy:2375
+        - --docker_only=true
+        - --housekeeping_interval=30s
+        - --store_container_labels=false
+        - --whitelisted_container_labels=com.docker.swarm.service.name,com.docker.stack.namespace
+        - --disable_metrics=percpu,sched,tcp,udp,advtcp,disk,hugetlb,referenced_memory,cpu_topology,resctrl,memory_numa,perf_event,process
+      volumes: ["/:/rootfs:ro", "/sys:/sys:ro", "/var/lib/docker/:/var/lib/docker:ro"]
+    scrape:
+      - job_name: cadvisor
+        dns_sd_configs: [{names: [tasks.cadvisor], type: A, port: 8080}]
+        metric_relabel_configs:
+          - {source_labels: [container_label_com_docker_swarm_service_name], regex: (.+), action: keep}
+          - {source_labels: [container_label_com_docker_stack_namespace], target_label: stack}
+          - {source_labels: [container_label_com_docker_swarm_service_name], target_label: service}
+          - {regex: container_label_com_docker_(stack_namespace|swarm_service_name)|id|name|image, action: labeldrop}
+    dashboards: [grafana/dashboards/services.json]
+    alerts:
+      - name: services
+        rules:
+          - alert: ServiceMemoryNearLimit
+            expr: max by (stack, service) (container_memory_working_set_bytes / (container_spec_memory_limit_bytes > 0)) > 0.90
+            for: 10m
+            labels: {severity: warning}
+            annotations: {summary: "{{ $labels.service }} uses {{ $value | humanizePercentage }} of its memory limit"}
+          - alert: ServiceRestarting
+            expr: count by (stack, service) (changes(container_start_time_seconds[15m]) > 0) > 3
+            labels: {severity: warning}
+            annotations: {summary: "{{ $labels.service }} started more than 3 new containers in 15 minutes"}
+  loki:
+    default: true
+    purpose: "the log store: one process, filesystem storage, the compactor deleting past the retention"
+    why: "the logs view and every opted-in stack's logs live here"
+    image: {image: grafana/loki, pin: loki}
+    resources: {memory: 512M, cpus: "0.50", reserveMemory: 192M, reserveCpus: "0.10"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {hours: 336}
+    networks: [internal]
+    volumes: {loki-data: /loki}
+    configs: {loki.yaml: /etc/loki/loki.yaml}
+    service:
+      command: [-config.file=/etc/loki/loki.yaml]
+      environment: {GOMEMLIMIT: 460MiB}
+    scrape:
+      - {job_name: loki, dns_sd_configs: [{names: [tasks.loki], type: A, port: 3100}]}
+    datasources:
+      - {name: Loki, uid: loki, type: loki, access: proxy, url: "http://loki:3100", editable: false, jsonData: {maxLines: 2000}}
+    dashboards: [grafana/dashboards/logs.json]
+  alloy:
+    default: true
+    purpose: "the collector of the logs of every opted-in stack and the harness stacks, labelled by stack and service; also the OTLP receiver once Tempo is on"
+    why: "without it no log reaches Loki"
+    requires: [loki, socket-proxy]
+    image: {image: grafana/alloy, pin: alloy}
+    resources: {memory: 256M, cpus: "0.30", reserveMemory: 96M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [internal, socket, monitor]
+    volumes: {alloy-data: /var/lib/alloy/data}
+    configs: {config.alloy: /etc/alloy/config.alloy}
+    service:
+      command: [run, /etc/alloy/config.alloy, --storage.path=/var/lib/alloy/data, --server.http.listen-addr=0.0.0.0:12345, --disable-reporting]
+      environment: {GOMEMLIMIT: 230MiB}
+    scrape:
+      - {job_name: alloy, dns_sd_configs: [{names: [tasks.alloy], type: A, port: 12345}]}
+  blackbox:
+    default: false
+    purpose: "HTTP and TLS probes of each opted-in environment's ingress hosts and health URLs (`monitoring.probes`), uptime and certificate-expiry alerts"
+    why: "off by default because it probes the public names from inside the server, which only says the name answers; turn it on for uptime and certificate-expiry alerts"
+    requires: [prometheus]
+    image: {image: prom/blackbox-exporter, pin: blackbox-exporter}
+    resources: {memory: 48M, cpus: "0.10", reserveMemory: 16M, reserveCpus: "0.02"}
+    update: *startFirst
+    rollback: *rollbackStartFirst
+    retention: {}
+    networks: [internal, monitor]
+    configs: {blackbox.yml: /etc/blackbox_exporter/config.yml}
+    service:
+      command: [--config.file=/etc/blackbox_exporter/config.yml]
+    alerts:
+      - name: probes
+        rules:
+          - alert: ProbeFailed
+            expr: probe_success == 0
+            for: 5m
+            labels: {severity: critical}
+            annotations: {summary: "{{ $labels.instance }} does not answer ({{ $labels.stack }})"}
+          - alert: CertificateExpiresSoon
+            expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+            for: 1h
+            labels: {severity: warning}
+            annotations: {summary: "the certificate of {{ $labels.instance }} expires in {{ $value | humanize }} days"}
+  tempo:
+    default: false
+    purpose: "the trace store; Alloy receives OTLP from the services of an environment with `monitoring.traces` and forwards it here"
+    why: "off by default because no app emits traces until it adds an OpenTelemetry SDK; turn it on with the first one"
+    requires: [alloy, grafana]
+    image: {image: grafana/tempo, pin: tempo}
+    resources: {memory: 384M, cpus: "0.30", reserveMemory: 128M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {hours: 72}
+    networks: [internal]
+    volumes: {tempo-data: /var/tempo}
+    configs: {tempo.yaml: /etc/tempo/tempo.yaml}
+    service:
+      command: [-config.file=/etc/tempo/tempo.yaml]
+      environment: {GOMEMLIMIT: 340MiB}
+    datasources:
+      - {name: Tempo, uid: tempo, type: tempo, access: proxy, url: "http://tempo:3200", editable: false, jsonData: {tracesToLogsV2: {datasourceUid: loki}, serviceMap: {datasourceUid: prometheus}}}
+    alloy: alloy-otlp.alloy
+    scrape:
+      - {job_name: tempo, dns_sd_configs: [{names: [tasks.tempo], type: A, port: 3200}]}
+  pyroscope:
+    default: false
+    purpose: "continuous profiling; the services of an environment with `monitoring.profiles` push their profiles to it"
+    why: "off by default because profiles need an SDK in the app and cost memory; turn it on while hunting CPU or memory"
+    requires: [grafana]
+    image: {image: grafana/pyroscope, pin: pyroscope}
+    resources: {memory: 384M, cpus: "0.30", reserveMemory: 128M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {hours: 168}
+    networks: [internal, monitor]
+    volumes: {pyroscope-data: /data}
+    configs: {pyroscope.yaml: /etc/pyroscope/config.yaml}
+    service:
+      command: [-config.file=/etc/pyroscope/config.yaml]
+    datasources:
+      - {name: Pyroscope, uid: pyroscope, type: grafana-pyroscope-datasource, access: proxy, url: "http://pyroscope:4040", editable: false}
+    scrape:
+      - {job_name: pyroscope, dns_sd_configs: [{names: [tasks.pyroscope], type: A, port: 4040}]}
+  consul:
+    default: false
+    purpose: "a single Consul server with its UI, behind the server's door with auth, for a workload outside Swarm or across hosts"
+    why: "off by default; Swarm DNS (`<service>`, `tasks.<service>`) and health already give discovery and health on a single VPS (contexts/project/monitoring.md \"Consul\")"
+    image: {image: hashicorp/consul, pin: consul}
+    resources: {memory: 128M, cpus: "0.20", reserveMemory: 48M, reserveCpus: "0.02"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [internal, edge]
+    volumes: {consul-data: /consul/data}
+    door: {subdomain: "consul-{id}", port: 8500, localPort: 3303}
+    service:
+      command: [agent, -server, -bootstrap-expect=1, -ui, -client=0.0.0.0, -data-dir=/consul/data, -disable-host-node-id]
+    scrape:
+      - {job_name: consul, metrics_path: /v1/agent/metrics, params: {format: [prometheus]}, dns_sd_configs: [{names: [tasks.consul], type: A, port: 8500}]}
+  uptime-kuma:
+    default: false
+    purpose: "a status page with its own monitors and login"
+    why: "off by default; blackbox and Grafana cover the same monitoring, so it is only for a public status page"
+    image: {image: louislam/uptime-kuma, pin: uptime-kuma}
+    resources: {memory: 192M, cpus: "0.20", reserveMemory: 64M, reserveCpus: "0.02"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [internal, edge]
+    volumes: {uptime-kuma-data: /app/data}
+    door: {subdomain: "status-{id}", port: 3001, localPort: 3301}
+  glitchtip-postgres:
+    default: false
+    purpose: "the PostgreSQL of GlitchTip alone (never an app's database), its password generated and sealed in the server file"
+    why: "off with GlitchTip; turn it on together with glitchtip, glitchtip-worker and glitchtip-redis"
+    image: {image: postgres, pin: postgres}
+    resources: {memory: 256M, cpus: "0.30", reserveMemory: 96M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [glitchtip]
+    volumes: {glitchtip-postgres-data: /var/lib/postgresql/data}
+    secrets: {glitchtipDb: glitchtip_db_password}
+    service:
+      environment: {POSTGRES_DB: glitchtip, POSTGRES_USER: glitchtip, POSTGRES_PASSWORD_FILE: /run/secrets/glitchtip_db_password}
+      healthcheck: {test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
+  glitchtip-redis:
+    default: false
+    purpose: "the Redis of GlitchTip alone (its task queue and cache, not persisted)"
+    why: "off with GlitchTip"
+    image: {image: redis, pin: glitchtip-redis}
+    resources: {memory: 64M, cpus: "0.10", reserveMemory: 16M, reserveCpus: "0.02"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [glitchtip]
+    service:
+      command: [redis-server, --save, "", --appendonly, "no", --maxmemory, 48mb, --maxmemory-policy, allkeys-lru]
+  glitchtip:
+    default: false
+    purpose: "Sentry-compatible error tracking (the web process), behind the server's door with its own login; its Postgres and Redis are its own"
+    why: "off by default; it is the heaviest component (about 1.2 GB with its worker, Postgres and Redis), so it runs only on a server with room"
+    requires: [glitchtip-postgres, glitchtip-redis, glitchtip-worker]
+    image: {image: glitchtip/glitchtip, pin: glitchtip}
+    resources: {memory: 512M, cpus: "0.50", reserveMemory: 192M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {days: 30}
+    networks: [glitchtip, edge]
+    door: {subdomain: "errors-{id}", port: 8000, localPort: 3302}
+    secrets: {glitchtipDb: glitchtip_db_password, glitchtipKey: glitchtip_secret_key}
+    service:
+      command: ["sh", "-c", "export DATABASE_URL=\"postgres://glitchtip:$$(cat /run/secrets/glitchtip_db_password)@glitchtip-postgres:5432/glitchtip\" SECRET_KEY=\"$$(cat /run/secrets/glitchtip_secret_key)\"; exec ./bin/start.sh"]
+      environment: {REDIS_URL: "redis://glitchtip-redis:6379/0", GLITCHTIP_DOMAIN: "{{door.glitchtip.url}}", ENABLE_USER_REGISTRATION: "false", ENABLE_ORGANIZATION_CREATION: "false", GLITCHTIP_MAX_EVENT_LIFE_DAYS: "{{retention.days}}", CELERY_WORKER_AUTOSCALE: "1,2"}
+  glitchtip-worker:
+    default: false
+    purpose: "GlitchTip's worker (celery with beat): event processing and the retention cleanup"
+    why: "off with GlitchTip"
+    requires: [glitchtip-postgres, glitchtip-redis]
+    image: {image: glitchtip/glitchtip, pin: glitchtip}
+    resources: {memory: 384M, cpus: "0.30", reserveMemory: 128M, reserveCpus: "0.05"}
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {days: 30}
+    networks: [glitchtip]
+    secrets: {glitchtipDb: glitchtip_db_password, glitchtipKey: glitchtip_secret_key}
+    service:
+      command: ["sh", "-c", "export DATABASE_URL=\"postgres://glitchtip:$$(cat /run/secrets/glitchtip_db_password)@glitchtip-postgres:5432/glitchtip\" SECRET_KEY=\"$$(cat /run/secrets/glitchtip_secret_key)\"; exec ./bin/run-celery-with-beat.sh"]
+      environment: {REDIS_URL: "redis://glitchtip-redis:6379/0", GLITCHTIP_DOMAIN: "{{door.glitchtip.url}}", GLITCHTIP_MAX_EVENT_LIFE_DAYS: "{{retention.days}}", CELERY_WORKER_AUTOSCALE: "1,2"}
