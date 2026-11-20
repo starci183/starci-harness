@@ -25,10 +25,6 @@ export const CATALOG = {
         "summary": "print the CLI version and the Node.js version it runs on",
         "flags": [],
         "positional": [],
-        "editions": [
-          "lite",
-          "full"
-        ],
         "json": "flag"
       }
     },
@@ -44,10 +40,6 @@ export const CATALOG = {
             "variadic": false
           }
         ],
-        "editions": [
-          "lite",
-          "full"
-        ],
         "json": "flag"
       }
     },
@@ -57,10 +49,6 @@ export const CATALOG = {
         "summary": "check Node, git, npm, gh and Orca on this host; report the tree, its policy profile, the harness state base and ledgers, and the repository's .starciwork",
         "flags": [],
         "positional": [],
-        "editions": [
-          "lite",
-          "full"
-        ],
         "json": "flag"
       }
     },
@@ -107,10 +95,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "lint": {
@@ -139,20 +123,12 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "loosening": {
           "summary": "scan the tree as it stands for banned loosening markers (policy/loosening.yaml); red with file:line for each",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "secrets": {
@@ -170,40 +146,24 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "shape": {
           "summary": "place every file of the harness tree in its slot of contexts/hfs/harness.yaml; red for an unplaced or forbidden file, a missing required slot, or a stale or expired exception",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "pins": {
           "summary": "judge the CLI's own @starci packages against contexts/stack/pins.yaml: every requirement of cli/package.json and every copy cli/package-lock.json resolves is at its pin; red names each CLI_PIN_SKEW with the package, where, the pin and the version found; pending (exit 0) when every skew pins a version of this repository that npm does not serve yet, which the commit's publication brings",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "heavy-sites": {
           "summary": "audit the CLI's source: every spawn of a heavy command (an npm install or build, a command check, tsc, eslint, a test runner, a container) goes through the host heavy-command governor; red names each site that bypasses it",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "ci": {
@@ -221,10 +181,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -251,10 +207,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "cut": {
@@ -282,10 +234,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "publish": {
@@ -313,10 +261,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "affected": {
@@ -334,10 +278,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -411,10 +351,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "check": {
@@ -426,10 +362,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -468,20 +400,11 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "send": {
-          "summary": "queue a fit contract (or --uat: one built from a Work flow, in its Work root) as a task; --launch also starts an Orca worker on it; prints the task id",
+          "summary": "queue a fit contract as a task; --launch also starts an Orca worker on it; prints the task id",
           "flags": [
-            {
-              "name": "uat",
-              "type": "string",
-              "summary": "instead of a contract: walk the Work flow uat.<feature>.<flow>; the task is queued in the Work root (the app's hfs.json work.root, or this repository)"
-            },
             {
               "name": "workflow",
               "type": "string",
@@ -531,13 +454,9 @@ export const CATALOG = {
           "positional": [
             {
               "name": "contract",
-              "required": false,
+              "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -556,10 +475,6 @@ export const CATALOG = {
               "required": false,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -606,10 +521,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "cancel": {
@@ -628,10 +539,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -639,12 +546,9 @@ export const CATALOG = {
     "app": {
       "verbs": {
         "info": {
-          "summary": "show what this lite app declares: back-end and front-end apps, canonical patterns and backing services",
+          "summary": "show what this app declares: back-end and front-end apps, canonical patterns and backing services",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite"
-          ],
           "json": "flag"
         },
         "add": {
@@ -657,14 +561,10 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -672,10 +572,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -689,10 +585,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "codemod": {
@@ -704,10 +596,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -721,9 +609,29 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        },
+        "audit": {
+          "summary": "run the production dependency audit and judge it against .starcistacks/security/audit-exceptions.yaml (time-boxed, owner-approved exceptions)",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        },
+        "data": {
+          "summary": "status and verify the seed-backup copies of an environment and sync a snapshot into the same environment (dry until --execute, merge mode); refuses another environment's snapshot (DATA_SYNC_OTHER_ENVIRONMENT) and a non-empty target without a young backup (DATA_SYNC_TARGET_UNPROTECTED)",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
           ],
           "json": "flag"
         },
@@ -737,10 +645,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "desktop": {
@@ -752,10 +656,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -769,9 +669,17 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        },
+        "push": {
+          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a check red for any other reason",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
           ],
           "json": "flag"
         },
@@ -785,10 +693,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "scaffold": {
@@ -800,10 +704,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -817,10 +717,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "slot": {
@@ -832,10 +728,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -849,10 +741,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "sync": {
@@ -865,14 +753,10 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "upgrade": {
-          "summary": "add the test world a full app lacks; a lite app is refused because editions are fixed at scaffold",
+          "summary": "add the test world an app lacks (on request; R12)",
           "flags": [],
           "positional": [
             {
@@ -880,10 +764,6 @@ export const CATALOG = {
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -897,9 +777,86 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        }
+      }
+    },
+    "audit": {
+      "verbs": {
+        "run": {
+          "summary": "prepare the next UI audit round of a gallery screen (PROJECT-GALLERY-8): record the shot sha256 of 1440.png and 390.png, write the next round as seven open lenses into gallery/pages/<area>/<screen>/screen.yaml and print the brief (shots at full size, the seven lenses, the laws) that an auditor agent other than the builder reads and fills; --builder and --auditor name the agents, --out writes the brief to a file",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        },
+        "status": {
+          "summary": "list the gallery screens whose UI audit is missing, stale, pending, open or waiting for the owner, with the count of audited and grandfathered screens (--json for machines)",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        }
+      }
+    },
+    "gallery": {
+      "verbs": {
+        "migrate-explain": {
+          "summary": "turn every gallery explain.md into screen.yaml (regions become sections, the options section becomes considered, shot hashes are taken from the PNGs on disk, audit: null grandfathers the screen) and delete the explain.md; a dry run unless --execute",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        }
+      }
+    },
+    "data": {
+      "verbs": {
+        "standard": {
+          "summary": "init a seed-standard copy repository (the folder, named <name>-seed-standard, or any folder with --name <name>-seed-standard): .gitattributes, an empty plain manifest.json, the commit hook .githooks/pre-commit (core.hooksPath set) and the CI workflow .github/workflows/seed-standard.yml, both running starci app check --staged (R400, R434); --adapter adds raw/README.md and an adapter/ (main.ts, a convert.ts stub, package.json pinning @starci/seed, tsconfig.json) whose output over raw/ the hook and CI compare byte for byte with the committed layout (HFS_DATA_ADAPTER_DRIFT); an existing file is kept unless --force",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the standard's repository folder (default: the working directory)"
+            },
+            {
+              "name": "adapter",
+              "type": "boolean",
+              "summary": "add raw/ and an adapter/ that converts it into the standard layout"
+            },
+            {
+              "name": "force",
+              "type": "boolean",
+              "summary": "rewrite the managed files that exist"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "summary": "the repository's name, <name>-seed-standard, when the folder is named otherwise (a repository converted in place during its rename); validated instead of the folder"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            }
           ],
           "json": "flag"
         }
@@ -958,10 +915,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "list": {
@@ -974,10 +927,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "stop": {
@@ -990,10 +939,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "ping": {
@@ -1005,10 +950,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -1032,10 +973,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "park": {
@@ -1053,10 +990,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "unpark": {
@@ -1074,10 +1007,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1100,10 +1029,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "start": {
@@ -1115,10 +1040,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1132,20 +1053,12 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "list": {
           "summary": "the project's workflows: runner, status, graph version, tasks done of total, and the reason of a blocked one",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "step": {
@@ -1179,10 +1092,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "wave": {
@@ -1205,10 +1114,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1258,10 +1163,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "stop": {
@@ -1285,10 +1186,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "pause": {
@@ -1307,10 +1204,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "resume": {
@@ -1322,10 +1215,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -1349,10 +1238,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "diff": {
@@ -1371,10 +1256,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -1418,10 +1299,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1438,10 +1315,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "recover": {
@@ -1460,10 +1333,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1503,10 +1372,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "sync": {
@@ -1519,10 +1384,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1538,10 +1399,6 @@ export const CATALOG = {
               "required": false,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1577,10 +1434,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1607,10 +1460,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1658,10 +1507,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1684,10 +1529,50 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        },
+        "integration": {
+          "summary": "run the integration specs of the app on the world slots application-stacks.yaml declares (tests.integration.workers, one when absent), exclusive specs alone, through the result cache: a spec whose inputs are unchanged since its last green run is skipped and reported cached; --full ignores the cache, --spec runs one regardless; on request only, never in CI or a hook",
+          "flags": [
+            {
+              "name": "full",
+              "type": "boolean",
+              "summary": "ignore the cache: run every spec file, then record the green ones"
+            },
+            {
+              "name": "spec",
+              "type": "list",
+              "summary": "run this spec file (a path, or a part of it) whatever the cache says (repeatable)"
+            },
+            {
+              "name": "workers",
+              "type": "string",
+              "summary": "run this many spec files at once, each on a data slot of its own, instead of the workers application-stacks.yaml declares for the kind"
+            }
           ],
+          "positional": [],
+          "json": "flag"
+        },
+        "e2e": {
+          "summary": "run the e2e specs of the app on the world slots application-stacks.yaml declares (tests.e2e.workers, one when absent), exclusive specs alone, through the result cache: a spec whose inputs are unchanged since its last green run is skipped and reported cached; --full ignores the cache, --spec runs one regardless; on request only, never in CI or a hook",
+          "flags": [
+            {
+              "name": "full",
+              "type": "boolean",
+              "summary": "ignore the cache: run every spec file, then record the green ones"
+            },
+            {
+              "name": "spec",
+              "type": "list",
+              "summary": "run this spec file (a path, or a part of it) whatever the cache says (repeatable)"
+            },
+            {
+              "name": "workers",
+              "type": "string",
+              "summary": "run this many spec files at once, each on a data slot of its own, instead of the workers application-stacks.yaml declares for the kind"
+            }
+          ],
+          "positional": [],
           "json": "flag"
         }
       }
@@ -1695,7 +1580,7 @@ export const CATALOG = {
     "contexts": {
       "verbs": {
         "anatomy": {
-          "summary": "judge the project anatomy (slot tree per edition and side) rendered from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes against the files (drift exits 1); --execute regenerates them, --slice prints one slice",
+          "summary": "judge the project anatomy (slot tree per side) rendered from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes against the files (drift exits 1); --execute regenerates them, --slice prints one slice",
           "flags": [
             {
               "name": "execute",
@@ -1705,21 +1590,15 @@ export const CATALOG = {
             {
               "name": "slice",
               "type": "boolean",
-              "summary": "print the slice of one edition and side (the app root plus that side), as a task reads it"
+              "summary": "print the slice of one side (the app root plus that side), as a task reads it"
             },
             {
               "name": "side",
               "type": "string",
               "summary": "the side of --slice: be or fe"
-            },
-            {
-              "name": "edition",
-              "type": "string",
-              "summary": "the edition of --slice: lite or full"
             }
           ],
           "positional": [],
-          "editions": [],
           "json": "flag"
         },
         "anchor": {
@@ -1737,10 +1616,6 @@ export const CATALOG = {
               "required": false,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1795,10 +1670,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -1815,10 +1686,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "status": {
@@ -1831,10 +1698,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "stop": {
@@ -1852,10 +1715,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "ask": {
@@ -1873,10 +1732,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -1896,10 +1751,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "ensure": {
@@ -1912,10 +1763,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "next": {
@@ -1933,10 +1780,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "dispatch": {
@@ -1990,10 +1833,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "workers": {
@@ -2011,10 +1850,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "accept": {
@@ -2032,10 +1867,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2060,10 +1891,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "submit": {
@@ -2081,10 +1908,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2108,10 +1931,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -2134,10 +1953,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "attach": {
@@ -2157,10 +1972,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "next": {
@@ -2179,10 +1990,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "submit": {
@@ -2194,10 +2001,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -2220,10 +2023,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "show": {
@@ -2241,10 +2040,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2269,10 +2064,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "reopen": {
@@ -2296,10 +2087,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -2333,10 +2120,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -2345,7 +2128,13 @@ export const CATALOG = {
       "verbs": {
         "status": {
           "summary": "report each host service of ops/host.yaml (up, down, not installed) with its evidence, and the StarCi tasks the harness does not own",
-          "flags": [],
+          "flags": [
+            {
+              "name": "stack",
+              "type": "string",
+              "summary": "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)"
+            }
+          ],
           "positional": [
             {
               "name": "ids",
@@ -2353,9 +2142,23 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        },
+        "guard": {
+          "summary": "judge a shell command line before it runs: an npm, pnpm or yarn command that writes node_modules (ci, install, i, uninstall, update, prune, dedupe, rebuild, link and their aliases), chained, in the background or wrapped (&&, ;, |, &, start /b, cmd /c, sh -c), is refused when its target node_modules is a junction or symlink or another worktree's node_modules links to it; --hook reads a pre-tool hook's JSON on stdin and prints the deny decision",
+          "flags": [
+            {
+              "name": "hook",
+              "type": "boolean",
+              "summary": "read the host's pre-tool hook input ({ tool_input: { command }, cwd }) on stdin and print its permission decision"
+            }
+          ],
+          "positional": [
+            {
+              "name": "line",
+              "required": false,
+              "variadic": true
+            }
           ],
           "json": "flag"
         },
@@ -2363,41 +2166,41 @@ export const CATALOG = {
           "summary": "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
           "flags": [],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "up": {
           "summary": "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone",
-          "flags": [],
+          "flags": [
+            {
+              "name": "stack",
+              "type": "string",
+              "summary": "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)"
+            }
+          ],
           "positional": [
             {
               "name": "ids",
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
         "down": {
           "summary": "stop the named host services of ops/host.yaml (and what requires them) that declare a stop; data and volumes are never removed",
-          "flags": [],
+          "flags": [
+            {
+              "name": "stack",
+              "type": "string",
+              "summary": "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)"
+            }
+          ],
           "positional": [
             {
               "name": "ids",
               "required": false,
               "variadic": true
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2422,10 +2225,6 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "uninstall": {
@@ -2449,9 +2248,322 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        }
+      }
+    },
+    "vps": {
+      "verbs": {
+        "list": {
+          "summary": "list the managed VPS fleet of ops/vps/servers with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
+          "flags": [
+            {
+              "name": "offline",
+              "type": "boolean",
+              "summary": "only the inventory, no ssh (no owner key needed)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
+        "doctor": {
+          "summary": "judge one managed server against ops/vps.yaml, read-only: sshd settings, public listening ports, firewall, intrusion guard, Docker version and swarm, pending security updates and reboots",
+          "flags": [],
+          "positional": [
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "add": {
+          "summary": "add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
+          "flags": [
+            {
+              "name": "host",
+              "type": "string",
+              "summary": "the server's IP address or DNS name",
+              "required": true
+            },
+            {
+              "name": "os",
+              "type": "string",
+              "summary": "its /etc/os-release ID (ubuntu, debian, almalinux, rocky, centos, rhel)",
+              "required": true
+            },
+            {
+              "name": "provider",
+              "type": "string",
+              "summary": "who rents it out (a free name)",
+              "required": true
+            },
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "its ssh port (default 22)"
+            },
+            {
+              "name": "user",
+              "type": "string",
+              "summary": "the login the key opens (default root; bootstrap moves it to the ops user)"
+            },
+            {
+              "name": "panel-kind",
+              "type": "string",
+              "summary": "its hosting panel: none (default), cpanel, directadmin, cyberpanel, aapanel, plesk, other"
+            },
+            {
+              "name": "panel-url",
+              "type": "string",
+              "summary": "the panel's URL"
+            },
+            {
+              "name": "project",
+              "type": "list",
+              "summary": "a project allowed on it (a deploy grant names one); repeat for several"
+            },
+            {
+              "name": "ingress",
+              "type": "string",
+              "summary": "tunnel (default: every name through its Cloudflare tunnel) or edge (app names through Traefik on 80/443)"
+            },
+            {
+              "name": "firewall",
+              "type": "string",
+              "summary": "ufw, firewalld or csf when it is not the OS family's default"
+            },
+            {
+              "name": "role",
+              "type": "string",
+              "summary": "its swarm role: manager (default), worker or none"
+            },
+            {
+              "name": "generate-key",
+              "type": "boolean",
+              "summary": "make the login key here and print its public half for the owner to install, instead of a prompt"
+            },
+            {
+              "name": "fingerprint",
+              "type": "string",
+              "summary": "the SHA256:... host key fingerprint the owner read at the provider, instead of the terminal question"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "bootstrap": {
+          "summary": "bring a managed server to ops/vps.yaml: ops user (key only, sudo), sshd hardening, firewall with only 80/443/ssh open, fail2ban or CSF lfd, automatic security updates, Docker at its pin; a dry run until --execute, idempotent",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "swarm": {
+          "summary": "`swarm init <id>`: make a managed server a one-manager Docker swarm advertised on its address, with the shared overlay network of ops/vps.yaml; a dry run until --execute, idempotent",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "ui": {
+          "summary": "`ui up <id>`: deploy the Swarm UI (Portainer CE and its agent, digests pinned in contexts/stack/pins.yaml) on a managed server, published on no port; `vps domain add <id> <sub> --to ui` opens it through the tunnel; a dry run until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "grant": {
+          "summary": "give one app environment deploy access to a managed server: a per-project deploy user (docker group, no sudo, no password) with a key made here, sealed into the app's .starcistacks/<env>/secrets/vps.enc.yaml through `app secret set` (PROJECT-STACKS-5); a grant again rotates the key; a dry run until --execute",
+          "flags": [
+            {
+              "name": "app",
+              "type": "string",
+              "summary": "the app's root folder (its name is the project the server's file must allow)",
+              "required": true
+            },
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "the app's stack environment the access is for (its .starcistacks/<env>)",
+              "required": true
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "revoke": {
+          "summary": "take an app environment's deploy access off a managed server: its deploy user and home are removed, so the sealed key in the app no longer logs in; a dry run until --execute, idempotent",
+          "flags": [
+            {
+              "name": "app",
+              "type": "string",
+              "summary": "the app's root folder (its name is the project the server's file must allow)",
+              "required": true
+            },
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "the app's stack environment the access is for (its .starcistacks/<env>)",
+              "required": true
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "edge": {
+          "summary": "`edge up <id>`: deploy Traefik as the swarm stack of ops/vps.yaml `edge` on a managed server: 80 and 443 in host mode, routing to labelled swarm services of the shared network, certificates by ACME DNS-01 through Cloudflare with the sealed token as a swarm secret; a dry run until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "domain": {
+          "summary": "`domain add <id> <sub> --to <service:port|port|ui|ssh>`, `domain list <id>`, `domain remove <id> <sub>`: a name <sub>.<domain of ops/vps.yaml> for a managed server: the UI and SSH through its Cloudflare tunnel, an app service through the tunnel or through Traefik (DNS-only A record, labels, DNS-01 certificate) by the server's ingress mode; add and remove are dry runs until --execute",
+          "flags": [
+            {
+              "name": "to",
+              "type": "string",
+              "summary": "add: what the name reaches: <service>:<port> (a swarm service on the shared network), <port> (on the host, tunnel servers), ui (the Portainer stack) or ssh"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "sub",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "cloudflare": {
+          "summary": "`cloudflare set-token --account <id>`: read the owner's Cloudflare API token at a masked prompt, verify it and seal it to the owner key (gitignored, never secret.env, never printed); `cloudflare status`: whether one is sealed and active, and the scopes it needs",
+          "flags": [
+            {
+              "name": "account",
+              "type": "string",
+              "summary": "set-token: the Cloudflare account id the tunnels live in (the dashboard's Account ID)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            }
           ],
           "json": "flag"
         }
@@ -2465,14 +2577,10 @@ export const CATALOG = {
             {
               "name": "file",
               "type": "string",
-              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram"
+              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram, vps"
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "get": {
@@ -2484,10 +2592,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2505,10 +2609,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -2531,17 +2631,13 @@ export const CATALOG = {
           }
         ],
         "positional": [],
-        "editions": [
-          "lite",
-          "full"
-        ],
         "json": "flag"
       }
     },
     "dna": {
       "verbs": {
         "check": {
-          "summary": "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390; red per law id with element path and measured vs wanted",
+          "summary": "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390 and, for a law that names `context.widths` (the phone laws), at 320, 360 and 390; red per law id with element path and measured vs wanted",
           "flags": [
             {
               "name": "storybook",
@@ -2562,6 +2658,11 @@ export const CATALOG = {
               "name": "stories",
               "type": "string",
               "summary": "only the Storybook stories whose id contains this text"
+            },
+            {
+              "name": "shard",
+              "type": "string",
+              "summary": "i/n: only every n-th Storybook story from the i-th, so a long run splits over several browsers (the --out reports of the shards add up)"
             },
             {
               "name": "contract",
@@ -2596,10 +2697,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -2627,14 +2724,10 @@ export const CATALOG = {
               "variadic": true
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "publish-local": {
-          "summary": "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; dry until --execute",
+          "summary": "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; an app whose hfs.json declares publishes publishes exactly the package folders it declares; dry until --execute",
           "flags": [
             {
               "name": "execute",
@@ -2644,19 +2737,15 @@ export const CATALOG = {
             {
               "name": "package",
               "type": "list",
-              "summary": "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch; its build prerequisites are built, not published"
+              "summary": "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch (an app: one of its declared packages); its build prerequisites are built, not published"
             },
             {
               "name": "cwd",
               "type": "string",
-              "summary": "the harness checkout to build and publish (default: the checkout of the working directory)"
+              "summary": "the harness checkout, or the app that declares hfs.json publishes, to build and publish (default: the checkout of the working directory)"
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "check": {
@@ -2669,10 +2758,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         }
       }
@@ -2694,10 +2779,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2721,10 +2802,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "test": {
@@ -2747,10 +2824,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         }
@@ -2835,10 +2908,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "list": {
@@ -2861,10 +2930,6 @@ export const CATALOG = {
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "show": {
@@ -2883,10 +2948,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "take": {
@@ -2898,10 +2959,6 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             }
-          ],
-          "editions": [
-            "lite",
-            "full"
           ],
           "json": "flag"
         },
@@ -2951,10 +3008,6 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
-          ],
           "json": "flag"
         },
         "answer": {
@@ -2983,10 +3036,101 @@ export const CATALOG = {
               "variadic": false
             }
           ],
-          "editions": [
-            "lite",
-            "full"
+          "json": "flag"
+        }
+      }
+    },
+    "lane": {
+      "verbs": {
+        "ready": {
+          "summary": "register this lane's pushed, locally gated sha with the batch lander of dev; then monitor <lanes>/_land-status/<lane>.json",
+          "flags": [
+            {
+              "name": "branch",
+              "type": "string",
+              "summary": "the pushed branch (default: the current branch)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
+            }
           ],
+          "positional": [
+            {
+              "name": "lane",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "withdraw": {
+          "summary": "take a lane out of the batch lander's ready set (a batch already under way keeps it)",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "lane",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "status": {
+          "summary": "print the batch lander's ready set, who holds the lander and the dev lock, and each lane's state (queued, landed, conflict, rejected)",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "lane",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "land": {
+          "summary": "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod, push dev; red drops the lanes its findings name and re-gates once, never bisects",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
+            },
+            {
+              "name": "worktree",
+              "type": "string",
+              "summary": "the lander's own worktree (default: <lanes>/_batch-lander)"
+            },
+            {
+              "name": "migrations",
+              "type": "string",
+              "summary": "the folder whose added files a landed lane is told to apply (default: db/migrations/)"
+            },
+            {
+              "name": "once",
+              "type": "boolean",
+              "summary": "run one batch and stop"
+            },
+            {
+              "name": "dry-run",
+              "type": "boolean",
+              "summary": "merge the ready lanes and report conflicts; no gate, no push, no status written"
+            }
+          ],
+          "positional": [],
           "json": "flag"
         }
       }
