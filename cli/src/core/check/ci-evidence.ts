@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
+import { IDLE_JOBS } from "@starci/hfs/runtime/scripts/lib/stack-declaration.mjs"
 import { parse } from "yaml"
 import { Refusal, asRefusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
@@ -72,12 +73,8 @@ export const editionOf = (root: string): Edition => {
     }
 }
 
-/**
- * The jobs of the managed CI an app may idle, each with the gates that must ALL be declared off: the same table as the renderer's IDLE_JOBS
- * (@starci/hfs scripts/lib/stack-declaration.mts), which renders such a job with a constant false `if`. Kept here because the CLI judges a run
- * with whatever @starci/hfs it is installed with.
- */
-export const IDLE_JOBS: Readonly<Record<string, readonly string[]>> = { lint: ["lint"], test: ["test"], coverage: ["coverage", "codecov"] }
+/** The jobs of the managed CI an app may idle, each with the gates that must ALL be declared off: the renderer's own table, so the CLI never drifts from it. */
+export { IDLE_JOBS }
 
 /**
  * The jobs a declaration idles (`IDLE_JOBS`: the job whose every gate the app declares off, `gates.<gate>: {run: off, reason}`).
