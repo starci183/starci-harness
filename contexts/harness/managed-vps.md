@@ -35,6 +35,16 @@ server is tracked, sealed or not: `.gitignore` keeps `ops/vps/servers/*.yaml` (b
 if one is added by force (policy/security.yaml `refusedPaths`, `vps-inventory`). The owner backs the inventory up himself, as he
 backs up SOPS_AGE_KEY.
 
+## The server and backup recipients are public and tracked
+
+Each managed server's age recipients, its own (made on the server by `starci app secret server-key`, private half only in
+`/root/.config/sops/age/keys.txt` there) and its one backup (a dedicated key whose private half exists only in a GitHub Environment
+secret of the harness repository, the break-glass copy), are tracked in `ops/vps/recipients.yaml` with the harness recipient, public
+halves only. It is the recipient policy of every app's sealed members (contexts/project/stacks.md PROJECT-STACKS-5, R451): dev to the
+harness key alone, staging and production to the server key plus that server's backup and never the harness key. The dev machine
+holds the public halves only. Minting the backup key, setting or rotating a deployed value on the server, and the break-glass
+workflow belong to the follow-up `vps` lane; until a server's `backup` is filled in, R451 reports every deployed environment on it.
+
 ## Keys, never passwords
 
 A server is reached by key only. `vps add` takes the login's private key at a masked prompt (or redirected stdin), or with

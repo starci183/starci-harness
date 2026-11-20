@@ -5276,6 +5276,67 @@ HFS_MASTER_PLAN_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_SOPS_RECIPIENTS:
+  title: "Each environment's .sops.yaml rule names exactly its recipient set"
+  title_vi: "Rule .sops.yaml của một môi trường không đúng bộ recipient"
+  meaning_vi: "Rule mà sops dùng cho member của một môi trường không nêu đúng bộ recipient của policy (R451, PROJECT-STACKS-5): dev chỉ có recipient của harness (`age173qf…`); staging và production có đúng khóa của VPS mà môi trường deploy tới cùng khóa backup của server đó, và không bao giờ có khóa harness. Một recipient không phải khóa nào được khai trong ops/vps/recipients.yaml là identity riêng của app, không được phép."
+  causes_vi:
+    - "App được tạo trước policy 2026-11-21: `starci app secret init` cũ sinh một identity riêng cho app."
+    - "Rule staging hoặc production còn khóa harness hoặc khóa owner cũ."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Dev: `starci app secret recipients --env dev --add <harness> --remove <khóa riêng> --execute`, rồi seal lại từng member. Staging/production: ghi rule `age: <khóa server>,<khóa backup>` và reseal member TRÊN server bằng khóa server (sops updatekeys, không ghi plaintext ra đĩa); máy dev chỉ giữ nửa public."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_SOPS_IDENTITY_MISMATCH:
+  title: "The SOPS_AGE_KEY this machine takes opens the app's dev members"
+  title_vi: "SOPS_AGE_KEY trên máy này không mở được member dev"
+  meaning_vi: "`starci app check --env local` so nửa public của SOPS_AGE_KEY mà lookup sẽ chọn (biến môi trường, `.claude/secret.env` của app, của main checkout, rồi secret.env của harness) với recipient của member dev đầu tiên. Không khớp thì `stack up` sẽ bị từ chối. Thông báo nêu tệp đã đọc, prefix recipient của nó và prefix cần có. Chỉ là cảnh báo, chỉ cho môi trường dev: máy dev không giữ khóa của staging/production là đúng."
+  causes_vi:
+    - "Một khóa khác (ví dụ khóa package) bị dán đè lên SOPS_AGE_KEY trong `.claude/secret.env` của app (sự cố 2026-11-21)."
+    - "Member dev còn seal cho một identity riêng của app (R451)."
+  nextStep_vi: "Xóa hoặc đổi tên dòng SOPS_AGE_KEY sai; khóa package luôn nằm dưới tên riêng (ví dụ NIVO_PACKAGE_AGE_KEY), không bao giờ là SOPS_AGE_KEY. Khóa harness nằm trong secret.env của harness."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SOPS_RECIPIENT_UNDECLARED:
+  title: "An environment's recipient set resolves to declared public keys"
+  title_vi: "Bộ recipient của một môi trường chưa xác định được"
+  meaning_vi: "Môi trường cần khóa server và khóa backup (R451), nhưng nó chưa ghi `deploy.remote.serverRecipient`, server đó chưa được khai trong ops/vps/recipients.yaml, hoặc khóa backup của server chưa được tạo."
+  causes_vi:
+    - "Môi trường production chưa chạy `starci app secret server-key --env <env> --execute`."
+    - "Khóa backup của VPS chưa được tạo (lane backup-key và break-glass GitHub)."
+    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+  nextStep_vi: "Tạo khóa server bằng `starci app secret server-key --env <env> --execute`, khai server và khóa backup (chỉ nửa public) trong ops/vps/recipients.yaml của harness, rồi bump @starci/hfs."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_SOPS_CATCH_ALL:
+  title: "Every environment keeps a .sops.yaml rule of its own, with no catch-all"
+  title_vi: ".sops.yaml có rule catch-all"
+  meaning_vi: "Một rule của .sops.yaml khớp member của mọi môi trường không có rule riêng, nên một môi trường mới sẽ bị seal vào recipient của rule đó (R451). Mỗi môi trường giữ một rule riêng: dev cho khóa harness, mỗi môi trường deploy cho khóa server cùng khóa backup."
+  causes_vi:
+    - "`starci app secret init` cũ ghi một rule cho mọi môi trường."
+    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+  nextStep_vi: "Xóa rule catch-all khỏi .sops.yaml sau khi mỗi môi trường đã có rule riêng."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_SOPS_MEMBER_RECIPIENTS:
+  title: "Every sealed member is sealed to exactly its environment's recipient set"
+  title_vi: "Member đã seal không đúng bộ recipient của môi trường"
+  meaning_vi: "Các recipient trong khối `sops.age` của một member (đọc không cần giải mã) khác bộ recipient của môi trường (R451). Member giữ recipient cũ cho tới khi được seal lại, kể cả khi rule đã sửa."
+  causes_vi:
+    - "Member được seal trước khi rule đổi, hoặc bằng một identity riêng của app."
+    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+  nextStep_vi: "Dev: `starci app secret migrate --env dev <member> --execute` với một identity mở được member. Staging/production: reseal trên server bằng khóa server (sops updatekeys); nếu giá trị đã từng được seal cho một khóa phía dev thì xoay vòng giá trị, không chỉ reseal."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_CONCEPT_UNCATALOGUED:
   title: "The concept catalog has one row per concept"
   title_vi: "Concept không có dòng trong catalog, hoặc dòng catalog trỏ tới concept không tồn tại"

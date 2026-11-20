@@ -11,6 +11,7 @@ import { updateKeys as sopsUpdateKeys } from "../api/sops/update-keys.mjs";
 import { isLegacyName } from "../lib/sealed-member.mjs";
 import { invocationDir } from "../lib/roots.mjs";
 import { envelopeOf } from "./secret-document.mjs";
+import { identityCandidates, identityMismatch as guardedMismatch, memberEnvironment, type IdentityCandidate } from "./secret-identity-guard.mjs";
 import {
   type AgeHost,
   type SecretToolOverrides,
@@ -218,8 +219,15 @@ export function defaultSops(
         );
       checkIdentity(value);
     }
+  // The SOPS_AGE_KEY guard (secret-identity-guard.mts): a dev member whose recipients the selected identity is not one of is refused naming
+  // where that identity was read and the recipient expected, before sops runs. The candidates are derived once, public halves only.
+  let candidates: IdentityCandidate[] | undefined;
   const requireIdentity = (file: string): void => {
     if (identity.source === null) throw identityMissing(repoRoot, identity, file);
+    if (memberEnvironment(file) === null) return;
+    candidates ??= identityCandidates(repoRoot, env, { tools, host });
+    const mismatch = guardedMismatch(file, candidates);
+    if (mismatch !== null) throw Object.assign(new SecretError(mismatch, "SECRET_IDENTITY_MISMATCH"), { identityRefusal: "recipient-mismatch" });
   };
   const refuse = (
     what: string,

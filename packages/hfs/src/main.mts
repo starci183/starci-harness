@@ -140,6 +140,7 @@ import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
+import { identityGuardFindings } from '../runtime/scripts/hfs/secret-identity-guard.mjs';
 import { cutoverDeclarationFindings, cutoverLines, cutoverReports, judgedForCutover, type CutoverReport } from '../runtime/scripts/hfs/check-cutover.mjs';
 import { declaredCutovers, todayOf } from '../runtime/scripts/lib/stack-cutover.mjs';
 import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureStep, runWiringStep, type AppPassParts, type AppRunInput } from '../cache/run.mjs';
@@ -765,6 +766,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const live = await liveStateFindings({ ctx: stackContext({ ...(io.stackIo ?? {}), cwd: repoRoot, env: io.env }), repoRoot });
     extra.push(...withWhy(live.findings as Dynamic[], readWhy(skillRoot, [...new Set(live.findings.map((finding) => finding.code))])));
     lines.push(...live.lines);
+    // The SOPS_AGE_KEY guard (R451): the identity this machine would take opens the dev members `stack up` needs. Never cached.
+    const guarded = identityGuardFindings(repoRoot, io.env, { host: io.hostIdentity ?? null });
+    if (guarded.length > 0) extra.push(...withWhy(guarded as Dynamic[], readWhy(skillRoot, ['HFS_SOPS_IDENTITY_MISMATCH'])));
   }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);

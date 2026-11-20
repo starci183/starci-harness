@@ -9,8 +9,8 @@ import type { Capture, SopsInvocation } from "../api/sops/lib.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
 import { runProgram } from "../api/process/run-program.mjs";
 import { claimFile } from "../api/fs/claim-file.mjs";
-import { generateAppIdentity } from "./secret-bootstrap-crypto.mjs";
-import { materializeDeclaredPlaceholders } from "./sealed-members.mjs";
+import { expectedRecipients, firstRuleFor, memberProbe, recipientPolicy, serverRecipientOf, type CreationRule, type RecipientPolicy } from "../lib/sops-recipients.mjs";
+import { declaredSealedMembers, materializeDeclaredPlaceholders } from "./sealed-members.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import {
   mainCheckout,
@@ -27,6 +27,7 @@ export const environmentRule = (environment: string): string =>
   String.raw`\.starcistacks[/\\]` + environment + String.raw`[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
 const AGE_IDENTITY_NAME = /^SOPS_AGE_KEY(?:_FILE)?$/i;
 const INITIALIZATION_PATH_RULES: readonly (string | undefined)[] = [PATH_RULE, LEGACY_PATH_RULE];
+const MANAGED_HEADER = "# Managed by starci app secret init and recipients: one rule per environment, public age recipients only.\n";
 
 /** One creation rule of an app's .sops.yaml. */
 export interface SopsRule {
@@ -75,56 +76,54 @@ export interface AgeIdentitySelection {
   looked: string[];
 }
 
-/** Bootstrap a new app with its own age identity; only its public recipient leaves this owner. */
+/** What the recipient policy made of an app's rules: the environments given a rule, the ones whose rule was kept, the ones left without one and why. */
+export interface PolicyRules {
+  rules: SopsRule[];
+  written: string[];
+  kept: string[];
+  skipped: string[];
+}
 
+/**
+ * The creation rules of the recipient policy (owner, 2026-11-21, model B; lib/sops-recipients.mts): one rule per environment the stack declares,
+ * written before any app-wide rule. A dev environment gets the harness recipient alone; a deployed one its server key plus the server's backup,
+ * public halves only (this machine never needs or looks for a private server key). An environment a rule already reaches keeps that rule: init
+ * never rotates a recipient. One whose set cannot be resolved yet gets no rule, and the reason is returned.
+ */
+export function policyCreationRules(repoRoot: string, rules: readonly SopsRule[], policy: RecipientPolicy = recipientPolicy()): PolicyRules {
+  let stackDoc: unknown = null;
+  try { stackDoc = parseYaml(fs.readFileSync(path.join(repoRoot, ".starcistacks", "application-stacks.yaml"), "utf8")); } catch { stackDoc = null; }
+  const declared = stackDoc && typeof stackDoc === "object" && (stackDoc as { environments?: unknown }).environments;
+  const environments = declared && typeof declared === "object" && !Array.isArray(declared) ? Object.keys(declared).sort() : [];
+  const next: SopsRule[] = [...rules];
+  const result: PolicyRules = { rules: next, written: [], kept: [], skipped: [] };
+  for (const environment of environments) {
+    if (firstRuleFor(next as CreationRule[], memberProbe(environment)) >= 0) { result.kept.push(environment); continue; }
+    const expected = expectedRecipients(policy, environment, serverRecipientOf(stackDoc, environment));
+    if (expected.unresolved.length) { result.skipped.push(`${environment}: ${expected.unresolved.join("; ")}`); continue; }
+    const appWide = next.findIndex((rule) => !rule?.path_regex || INITIALIZATION_PATH_RULES.includes(rule.path_regex));
+    next.splice(appWide < 0 ? next.length : appWide, 0, { path_regex: environmentRule(environment), age: expected.recipients.join(",") });
+    result.written.push(environment);
+  }
+  return result;
+}
 
-/** Bootstrap a new app with its own age identity; only the public recipient leaves this owner. */
-export function initializeAppIdentity(
+/**
+ * The scaffold's secret bootstrap: the policy's rules for a new app, and nothing private. No age identity is minted and nothing is written to the
+ * app's `.claude/secret.env`: dev members open with the harness SOPS_AGE_KEY every app shares. Returns the rules and the files written.
+ */
+export function initializeAppRules(
   repoRoot: string,
-  {
-    write,
-    tools,
-  }: {
-    write?: ((file: string, content: string | Buffer) => void) | undefined;
-    tools?: SecretToolOverrides | undefined;
-  } = {},
-): { recipient: string; files: string[] } {
-  const privateDirectory = path.join(repoRoot, ".claude");
-  const privateFile = path.join(privateDirectory, "secret.env");
-  const directoryStat = fs.lstatSync(privateDirectory, { throwIfNoEntry: false });
-  if (directoryStat && (!directoryStat.isDirectory() || directoryStat.isSymbolicLink()))
-    throw new Error("the app private identity directory must be an ordinary directory");
-  const privateStat = fs.lstatSync(privateFile, { throwIfNoEntry: false });
-  if (privateStat && (!privateStat.isFile() || privateStat.isSymbolicLink() || privateStat.nlink !== 1))
-    throw new Error("the app private identity must be an ordinary unlinked file");
-  let local: NodeJS.ProcessEnv | undefined;
-  try { local = privateStat ? (tools?.secretEnv ?? secretEnv)(privateDirectory, {}) : {}; }
-  catch { throw new Error("the app private environment could not be loaded safely"); }
-  if (Object.keys(local ?? {}).some((name) => AGE_IDENTITY_NAME.test(name)))
-    throw new Error("the app already has a private age identity; initialization must not rotate it");
+  { write }: { write?: ((file: string, content: string | Buffer) => void) | undefined } = {},
+): PolicyRules & { files: string[] } {
   const config = readInitializationConfig(path.join(repoRoot, ".sops.yaml"));
   if ((config.creation_rules ?? []).some((rule) => rule?.age))
     throw new Error("the app already has an age recipient; initialization must not rotate it");
-  const publish = write ?? ((file: string, content: string | Buffer) => {
-    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-    const append = file === privateFile || file === path.join(privateDirectory, ".gitignore");
-    fs.writeFileSync(file, content, { mode: 0o600, flag: append ? "a" : "w" });
-  });
-  const generated = generateAppIdentity();
-  let privateContent: Buffer | undefined;
-  try {
-    const prefix = privateStat ? "\nSOPS_AGE_KEY=" : "SOPS_AGE_KEY=";
-    privateContent = Buffer.concat([Buffer.from(prefix), generated.identity, Buffer.from("\n")]);
-    publish(path.join(privateDirectory, ".gitignore"), "\nsecret.env\n");
-    publish(privateFile, privateContent);
-    if (process.platform !== "win32") fs.chmodSync(privateFile, 0o600);
-    config.creation_rules = [{ path_regex: PATH_RULE, age: generated.recipient }];
-    publish(path.join(repoRoot, ".sops.yaml"), stringifyYaml(config));
-    return { recipient: generated.recipient, files: [".claude/.gitignore", ".claude/secret.env", ".sops.yaml"] };
-  } finally {
-    privateContent?.fill(0);
-    generated.identity.fill(0);
-  }
+  const made = policyCreationRules(repoRoot, config.creation_rules ?? []);
+  config.creation_rules = made.rules;
+  const text = `${MANAGED_HEADER}${stringifyYaml(config)}`;
+  (write ?? ((file: string, content: string | Buffer) => fs.writeFileSync(file, content)))(path.join(repoRoot, ".sops.yaml"), text);
+  return { ...made, files: [".sops.yaml"] };
 }
 
 /**
@@ -307,33 +306,6 @@ function readInitializationConfig(configFile: string): SopsConfig {
   return config;
 }
 
-function existingInitializationRule(
-  rules: SopsRule[],
-): (SopsRule & { age: string }) | undefined {
-  const canonical = rules.find(
-    (rule): rule is SopsRule & { age: string } =>
-      INITIALIZATION_PATH_RULES.includes(rule?.path_regex) &&
-      typeof rule.age === "string" &&
-      rule.age.trim() !== "",
-  );
-  return (
-    canonical ??
-    rules.find((rule): rule is SopsRule & { age: string } => {
-      if (typeof rule?.age !== "string" || !rule.age.trim()) return false;
-      try {
-        return (
-          !rule.path_regex ||
-          new RegExp(rule.path_regex).test(
-            ".starcistacks/production/secrets/app.enc",
-          )
-        );
-      } catch {
-        return false;
-      }
-    })
-  );
-}
-
 function legacyInitializationRecipient(
   repoRoot: string,
   env: NodeJS.ProcessEnv,
@@ -509,7 +481,13 @@ export function environmentRecipients(
   return 0;
 }
 
-/** Reuse an existing matching age rule; initialization must not rotate an app's recipient. */
+/**
+ * `starci app secret init`: writes the recipient policy's rules into the app's .sops.yaml (policyCreationRules: one rule per declared environment, dev
+ * to the harness recipient, a deployed environment to its server key plus the server's backup, public halves only) and seals the placeholders of
+ * declared members that no member file holds yet. It mints no age identity and writes nothing into the app's `.claude/secret.env`: every app shares
+ * the harness SOPS_AGE_KEY for dev, and a deployed environment is opened only by its server (or the break-glass backup). An existing rule is never
+ * rotated; `starci app check` (R451) reports one that breaks the policy.
+ */
 export function initializeSecrets(
   repoRoot: string,
   {
@@ -529,46 +507,31 @@ export function initializeSecrets(
   const configFile = path.join(repoRoot, ".sops.yaml");
   const config = readInitializationConfig(configFile);
   const rules = config.creation_rules ?? [];
-  const existing = existingInitializationRule(rules);
   if (
-    existing?.age
-      .split(",")
-      .some((value) => !/^age1[a-z0-9]+$/.test(value.trim()))
+    rules.some((rule) => typeof rule?.age === "string" && rule.age.split(",").some((value) => !/^age1[a-z0-9]+$/.test(value.trim())))
   )
     throw new Error(
       ".sops.yaml must name valid public age recipients; initialization never prints private key material",
     );
-  const localEnv = localAgeIdentity(repoRoot, {}, tools, host).env;
-  const selectedEnv = ageIdentityEnv(repoRoot, existing ? env : { ...env, ...localEnv }, tools);
-  if (!existing && !Object.keys(localEnv).some((name) => /^SOPS_AGE_KEY$/i.test(name))) {
-    const initialized = initializeAppIdentity(repoRoot, { tools });
-    materializeDeclaredPlaceholders(repoRoot, { recipient: initialized.recipient, processEnv: selectedEnv });
-    stdout('secrets initialized; public recipient: ' + initialized.recipient + '\n');
-    return 0;
+  const made = policyCreationRules(repoRoot, rules);
+  if (made.written.length) {
+    config.creation_rules = made.rules;
+    fs.writeFileSync(configFile, `${MANAGED_HEADER}${stringifyYaml(config)}`);
   }
-  const tool = secretTools(env, tools);
-  const inline = Object.keys(selectedEnv).some((name) => /^SOPS_AGE_KEY$/i.test(name));
-  const derived = existing && !inline ? existing.age : initializationRecipient(repoRoot, selectedEnv, platform, tool, tools);
-  const recipient = existing?.age ?? derived;
-  const exact = rules.findIndex((rule) => INITIALIZATION_PATH_RULES.includes(rule?.path_regex));
-  if (exact >= 0) rules[exact] = { ...rules[exact], age: recipient };
-  // SOPS uses the first matching rule: keep any existing environment-specific recipients in force.
-  else rules.push({ path_regex: PATH_RULE, age: recipient });
-  config.creation_rules = rules;
-  fs.writeFileSync(
-    configFile,
-    `# Initialized by starci app secret init; private age identities stay outside Git.\n${stringifyYaml(config)}`,
-  );
-  materializeDeclaredPlaceholders(repoRoot, {
-    recipient,
-    recipientsForFile: (file) => configuredRecipients(repoRoot, file),
-    processEnv: selectedEnv,
-    sops: { seal: (request) => defaultSops(selectedEnv, repoRoot, platform, tools).seal(request) },
-  });
-  stdout(`secrets initialized; public recipient: ${recipient}\n`);
-  if (existing)
-    stdout(
-      "existing app recipient retained; use its matching age identity for decryption\n",
-    );
+  for (const environment of made.written) stdout(`${environment}: rule written for ${configuredRecipients(repoRoot, path.join(repoRoot, memberProbe(environment))).join(", ")}\n`);
+  for (const environment of made.kept) stdout(`${environment}: existing rule kept (init never rotates a recipient; starci app check R451 judges it)\n`);
+  for (const line of made.skipped) stdout(`no rule written for ${line}\n`);
+  const ruled = (file: string): boolean => sopsFindsRule(repoRoot, file);
+  const pending = declaredSealedMembers(repoRoot).filter((member) => ruled(path.join(repoRoot, memberProbe(member.env))));
+  if (pending.length) {
+    // Sealing needs public recipients only: no identity is selected or read for it.
+    materializeDeclaredPlaceholders(repoRoot, {
+      recipientsForFile: (file) => configuredRecipients(repoRoot, file),
+      processEnv: env,
+      sops: { seal: (request) => defaultSops(env, repoRoot, platform, tools, host).seal(request) },
+      only: (member) => ruled(path.join(repoRoot, memberProbe(member.env))),
+    });
+  }
+  stdout("secrets initialized; no private identity was created or written (dev opens with the harness SOPS_AGE_KEY)\n");
   return 0;
 }

@@ -7,6 +7,7 @@ import { validateAgainstSchema } from '../lib/json-schema.mjs';
 import { PROVISION_OPERATION_SCHEMA_REF, provisionOperationSchema } from '../lib/provision-operation-schema.mjs';
 import {slash} from '../lib/path-key.mjs';
 import { envelopeOf } from './secret-document.mjs';
+import { creationRulesOf, expectedRecipients, firstRuleFor, memberProbe, recipientPolicy, serverRecipientOf } from '../lib/sops-recipients.mjs';
 import { isInside, walkFiles } from '../lib/walk.mjs';
 import { RESERVED_STACK_FOLDERS } from './rules/stacks.mjs';
 import { composeIncludePaths, swarmInventoryIssues, swarmModelIssues } from '../lib/swarm-stack.mjs';
@@ -273,7 +274,7 @@ const checkRunbook=({spec,environment,envDir,add}: {spec: Parsed; environment: u
     }
   }
 };
-const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,add}: {envDir: string; root: string; tracked: Set<string>|null; secretNames: Set<string>; add: Add}): void=>{
+const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,add,unsealable=false}: {envDir: string; root: string; tracked: Set<string>|null; secretNames: Set<string>; add: Add; unsealable?: boolean}): void=>{
   if(!object(secret))return;
   if(secretNames.has(secret.name))add('secret-duplicate',`${at}.name`,'secret names must be unique');else secretNames.add(secret.name);
   const plain=nonempty(secret.where)?resolvedPath(envDir,secret.where):null;
@@ -283,8 +284,11 @@ const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,ad
   const enc=member??(nonempty(secret.where)?resolvedPath(envDir,`${secret.where}.enc.yaml`):null);
   // A member the declaration names that is not in the tree yet, or a key its envelope does not hold yet, is STACKS_SEALED_MEMBER_MISSING: the one
   // shape a pending cutover reports (PROJECT-STACKS-20); a file that is there but no envelope stays encrypted-ref-invalid.
-  if(nonempty(secret.where)&&!member&&enc&&!fs.existsSync(enc))
-    add(SEALED_MEMBER_MISSING,`${at}.where`,`the member at ${secret.where} is not sealed: no ${secret.where}.enc.yaml (or a legacy ${secret.where}.enc) below the environment directory`);
+  // An environment that cannot be sealed yet (R451: no rule reaches it and its recipient set is unresolved, e.g. a new app's production before its
+  // server and backup keys exist) reports that once as HFS_SOPS_RECIPIENT_UNDECLARED; its absent members are not each a finding of their own.
+  if(nonempty(secret.where)&&!member&&enc&&!fs.existsSync(enc)){
+    if(!unsealable)add(SEALED_MEMBER_MISSING,`${at}.where`,`the member at ${secret.where} is not sealed: no ${secret.where}.enc.yaml (or a legacy ${secret.where}.enc) below the environment directory`);
+  }
   else if(!enc||!regular(enc,{root:envDir})||!sopsEnvelope(enc))
     add('encrypted-ref-invalid',`${at}.where`,'secret must resolve to <where>.enc.yaml (or a legacy <where>.enc) as a recognizable SOPS envelope, an existing regular file below the environment directory');
   else if(nonempty(secret.key)&&!envelopeOf(fs.readFileSync(enc,'utf8')).keys.includes(secret.key))
@@ -302,11 +306,19 @@ const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,ad
   if(tracked&&plain&&tracked.has(slash(path.relative(root,plain))))
     add('STACKS_PLAINTEXT_SECRET',`${at}.where`,'a decrypted secret member must never be a tracked file; only its .enc member is committed');
 };
+/** Whether `environment` cannot be sealed yet: no rule of the app's .sops.yaml reaches its members and its R451 recipient set is unresolved. */
+const awaitingRecipients=(root: string,environment: string,spec: Parsed): boolean=>{
+  let text: string|null=null;
+  try{text=fs.readFileSync(path.join(root,'.sops.yaml'),'utf8');}catch{text=null;}
+  if(firstRuleFor(creationRulesOf(text)??[],memberProbe(environment))>=0)return false;
+  return expectedRecipients(recipientPolicy(),environment,serverRecipientOf({environments:{[environment]:spec}},environment)).unresolved.length>0;
+};
 const checkSecrets=({spec,environment,envDir,root,add}: {spec: Parsed; environment: unknown; envDir: string; root: string; add: Add}): void=>{
   const declaredSecrets=Array.isArray(spec.secrets)?spec.secrets:[],secretNames=new Set<string>();
   const tracked=directory(envDir)?gitTrackedSet(root):null;
+  const unsealable=awaitingRecipients(root,String(environment),spec);
   for(const [index,secret] of declaredSecrets.entries())
-    checkSecret(secret,`environments.${environment}.secrets[${index}]`,{envDir,root,tracked,secretNames,add});
+    checkSecret(secret,`environments.${environment}.secrets[${index}]`,{envDir,root,tracked,secretNames,add,unsealable});
   if(tracked){
     const envPrefix=`${slash(path.relative(root,envDir))}/`;
     for(const relTracked of tracked){
