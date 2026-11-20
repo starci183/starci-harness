@@ -17,12 +17,13 @@ import { runVerb } from '../release/index.mjs';
 import type { FlagSpec, VerbContext, VerbIo, VerbResult } from '../release/index.mjs';
 import { BOOTSTRAP_FILE, buildModel, isLoopback, loadDatabase, requireArmed, resolveTarget } from './migrate.mjs';
 import type { DatabaseDecl } from './migrate.mjs';
-import { HISTORY_DDL, HISTORY_TABLE, PLATFORM_SCHEMAS, appTableCount, historyVersions, markApplied, pgTool, psqlTransaction } from './postgres.mjs';
+import { HISTORY_DDL, HISTORY_TABLE, PLATFORM_SCHEMAS, appTableCount, historyVersions, markApplied, pgTool, psqlTransaction, queryRows } from './postgres.mjs';
 import type { DbTarget } from './postgres.mjs';
-import { buildImage, dumpEntries, entryKey, exec, firstDifference, replay, startScratch } from '../runtime/scripts/hfs/db-squash.mjs';
+import { buildImage, dumpEntries, entryKey, exec, firstDifference, psqlArgs, replay, scratchTarget, startScratch } from '../runtime/scripts/hfs/db-squash.mjs';
 import type { DumpEntry } from '../runtime/scripts/hfs/db-squash.mjs';
 import { DbVerbError } from '../runtime/scripts/hfs/db-errors.mjs';
-import { DB_DOCKERFILE } from './image.mjs';
+import { DB_BASE_IMAGE, DB_DOCKERFILE } from './image.mjs';
+import { PREVIOUS_MAJOR_IMAGES } from '../stack/db-upgrade-core.mjs';
 import { SEED_RECEIPTS } from '../stack/seeds.mjs';
 
 const DUMP_FLAGS = ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((schema) => ['-N', schema])];
@@ -74,10 +75,35 @@ export function schemaDiff(live: readonly DumpEntry[], baseline: readonly DumpEn
 /** Entries of a dump that are privileges: what the baseline replay grants, applied to the live database at adoption. */
 const privilegeSql = (entries: readonly DumpEntry[]): string[] => entries.filter((entry) => entry.type === 'ACL' || entry.type === 'DEFAULT ACL').map((entry) => entry.body.replace(/^--.*$/gmu, '').trim()).filter(Boolean);
 
-/** The live schema, the baseline's replay on a scratch database, and the privileges the replay holds. */
-function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array<[string, string]>, image: string | undefined, leftOut: ReadonlyArray<{ label: string; tables: readonly string[] }>): { live: DumpEntry[]; baseline: DumpEntry[]; privileges: string[]; how: string; left: string[] } {
+/** The major version of the PostgreSQL server of a database (`server_version_num` 170011 is 17). */
+const majorOf = (ctx: VerbContext, target: DbTarget): number => Math.floor(Number(queryRows(ctx, target, "select current_setting('server_version_num')::int as num", { withhold: true })[0]?.num ?? 0) / 10000);
+
+/** The pinned postgres image of a major (contexts/stack/pins.yaml: the managed db image's base and the previous majors db-upgrade uses), or null when none is pinned. */
+export function pinnedImageOf(major: number): string | null {
+  if (Number(/^postgres:(\d+)/u.exec(DB_BASE_IMAGE)?.[1]) === major) return DB_BASE_IMAGE;
+  return PREVIOUS_MAJOR_IMAGES[String(major)]?.debian ?? null;
+}
+
+/**
+ * A constraint or index definition with the spellings two server majors disagree on taken out: the casts of literals (`'a'::text`), an `= ANY (ARRAY[...])` list (written `IN (...)`), redundant
+ * parentheses and layout. Only the fallback of the compare uses it (no image of the live major is pinned); the literals themselves stay, so a changed allowed value is still a difference.
+ */
+export function normaliseDefinition(text: string): string {
+  return text
+    .replaceAll(/::(?:character varying|text|bpchar|name|integer|bigint|smallint|numeric|boolean|uuid|timestamp(?: with(?:out)? time zone)?)(?:\[\])?/gu, '')
+    .replaceAll(/[()]/gu, '')
+    .replaceAll(/=\s*ANY\s+ARRAY\s*\[([^\]]*)\]/gu, 'IN $1')
+    .replaceAll(/\s*,\s*/gu, ',')
+    .replaceAll(/\s+/gu, ' ').trim();
+}
+
+interface Compared { live: DumpEntry[]; baseline: DumpEntry[]; privileges: string[]; how: string; left: string[]; notes: string[] }
+
+/** The live schema and the replay of bootstrap + baseline, both as entries, the replay on a server of the live major (see the notes it returns). */
+function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array<[string, string]>, image: string | undefined, leftOut: ReadonlyArray<{ label: string; tables: readonly string[] }>): Compared {
   const liveAll = dumpEntries(pgTool(ctx, target, 'pg_dump', [...DUMP_FLAGS, '--dbname', target.url], { withhold: true }).stdout).entries;
   const left: string[] = [];
+  const notes: string[] = [];
   const without = (entries: DumpEntry[], report: boolean): DumpEntry[] => {
     let kept = entries;
     for (const group of leftOut) {
@@ -89,16 +115,44 @@ function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array
     return kept;
   };
   const live = without(liveAll, true);
-  let ref: string;
-  try { ref = image ?? buildImage(root); } catch (error) { return asRefusal(error); }
-  let scratch: ReturnType<typeof startScratch>;
-  try { scratch = startScratch(ref); } catch (error) { return asRefusal(error); }
-  try {
-    const database = replay(scratch, files);
-    const baseline = without(dumpEntries(exec(database, 'pg_dump', [...DUMP_FLAGS, '-d', database.url])).entries, false);
-    const withAcl = dumpEntries(exec(database, 'pg_dump', ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((schema) => ['-N', schema]), '-d', database.url])).entries;
-    return { live, baseline, privileges: privilegeSql(withAcl), left, how: image === undefined ? `a scratch container of the image ${DB_DOCKERFILE} builds` : `a scratch container of ${image}` };
-  } catch (error) { return asRefusal(error); } finally { scratch.stop(); }
+  const liveMajor = majorOf(ctx, target);
+  /** Replays on `ref` and reads both dumps; null when the server there is not the live major (`needMajor`) or the replay cannot run (`soft`). */
+  const attempt = (ref: string, label: string, { needMajor, soft }: { needMajor: boolean; soft: boolean }): Compared | null => {
+    let scratch: ReturnType<typeof startScratch>;
+    try { scratch = startScratch(ref); } catch (error) { if (soft) return null; return asRefusal(error); }
+    try {
+      const admin = scratchTarget(scratch, 'postgres');
+      const major = Math.floor(Number(exec(admin, 'psql', [...psqlArgs(admin), '-Atc', 'show server_version_num']).trim()) / 10000);
+      if (needMajor && major !== liveMajor) return null;
+      let database: ReturnType<typeof replay>;
+      try { database = replay(scratch, files); } catch (error) { if (soft) return null; return asRefusal(error); }
+      let baseline = without(dumpEntries(exec(database, 'pg_dump', [...DUMP_FLAGS, '-d', database.url])).entries, false);
+      const withAcl = dumpEntries(exec(database, 'pg_dump', ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((schema) => ['-N', schema]), '-d', database.url])).entries;
+      let liveSide = live;
+      if (major !== liveMajor) {
+        // No server of the live major to replay on: the definitions are rendered by two majors, so both sides are compared through the textual normalisation.
+        notes.push(`compare        textual normalisation of constraint and index definitions: the replay ran on PostgreSQL ${major} and the database on ${liveMajor}, and no image of ${liveMajor} could replay bootstrap + baseline`);
+        const flat = (entries: DumpEntry[]): DumpEntry[] => entries.map((entry) => ({ ...entry, body: normaliseDefinition(entry.body) }));
+        baseline = flat(baseline);
+        liveSide = flat(live);
+      } else notes.push(`compare        definitions rendered by the same server major (PostgreSQL ${liveMajor}) on both sides`);
+      return { live: liveSide, baseline, privileges: privilegeSql(withAcl), left, notes, how: `${label} (PostgreSQL ${major})` };
+    } catch (error) { return asRefusal(error); } finally { scratch.stop(); }
+  };
+  let app: string;
+  try { app = image ?? buildImage(root); } catch (error) { return asRefusal(error); }
+  const appLabel = image === undefined ? `a scratch container of the image ${DB_DOCKERFILE} builds` : `a scratch container of ${image}`;
+  const same = attempt(app, appLabel, { needMajor: true, soft: false });
+  if (same !== null) return same;
+  // The app's db image runs another major than the database (a restore from an older server): the definitions would be rendered twice, so replay on the pinned image of the live major.
+  const pinned = pinnedImageOf(liveMajor);
+  if (pinned !== null) {
+    const there = attempt(pinned, `a scratch container of the pinned ${pinned.split('@')[0] as string}`, { needMajor: true, soft: true });
+    if (there !== null) return there;
+    notes.push(`compare        the pinned PostgreSQL ${liveMajor} image could not replay bootstrap + baseline (an extension only the app's db image holds?)`);
+  } else notes.push(`compare        no image of PostgreSQL ${liveMajor} is pinned`);
+  const fallback = attempt(app, appLabel, { needMajor: false, soft: false });
+  return fallback as Compared;
 }
 
 /**
@@ -125,7 +179,7 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
     ...(hasBootstrap ? [[BOOTSTRAP_FILE, fs.readFileSync(bootstrap, 'utf8')] as [string, string]] : []),
     [`${decl.migrationsDir}/${baselineFile}`, fs.readFileSync(path.join(ctx.cwd, decl.migrationsDir, baselineFile), 'utf8')],
   ];
-  const { live, baseline, privileges, how, left } = compared(ctx, target, ctx.cwd, files, options.image, [{ label: 'left as is, harness-owned', tables: HARNESS_TABLES }, { label: 'left as is, legacy history', tables: decl.adopt.legacyHistory }]);
+  const { live, baseline, privileges, how, left, notes } = compared(ctx, target, ctx.cwd, files, options.image, [{ label: 'left as is, harness-owned', tables: HARNESS_TABLES }, { label: 'left as is, legacy history', tables: decl.adopt.legacyHistory }]);
   const diff = schemaDiff(live, baseline);
   if (diff.length > 0) {
     const shown = diff.slice(0, DIFF_LIMIT);
@@ -134,6 +188,7 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
   const lines = [
     `target         ${target.how}`,
     `proof          schema of the database (${live.length} object(s), platform schemas ${PLATFORM_SCHEMAS.join(', ')} left out) equals bootstrap + baseline replayed on ${how}`,
+    ...notes,
     ...left.map((line) => `leave          ${line}`),
     `bootstrap      ${hasBootstrap ? `${BOOTSTRAP_FILE} runs (idempotent)` : 'none in this app'}`,
     `privileges     ${privileges.length} grant statement(s) of the baseline replay`,

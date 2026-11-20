@@ -5,7 +5,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { belongingTo } from '../db/adopt.mjs';
+import { belongingTo, normaliseDefinition, pinnedImageOf } from '../db/adopt.mjs';
+import { DB_BASE_IMAGE } from '../db/image.mjs';
+import { PREVIOUS_MAJOR_IMAGES } from '../stack/db-upgrade-core.mjs';
 import { loadDatabase } from '../db/migrate.mjs';
 import { dumpEntries } from '../runtime/scripts/hfs/db-squash.mjs';
 import { SEED_RECEIPTS } from '../stack/seeds.mjs';
@@ -44,4 +46,20 @@ test('database.adopt.legacyHistory is a list of table names; anything else is re
   assert.deepEqual(loadDatabase(app('  baseline: baseline\n')).adopt.legacyHistory, []);
   assert.throws(() => loadDatabase(app('  adopt:\n    legacyHistory: ["drop table x"]\n')), /adopt/u);
   assert.throws(() => loadDatabase(app('  adopt:\n    other: 1\n')), /adopt/u);
+});
+
+test('a CHECK a newer server renders in another form (casts, `= ANY (ARRAY[...])`) is the same definition, and a changed allowed value is not (PG16 restored into PG17)', () => {
+  const baseline = "CONSTRAINT career_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'closed'::character varying])::text[])))";
+  const live = "CONSTRAINT career_status_check CHECK ((status = ANY (ARRAY['open'::text, 'closed'::text])))";
+  const inList = "CONSTRAINT career_status_check CHECK (status IN ('open', 'closed'))";
+  assert.equal(normaliseDefinition(baseline), normaliseDefinition(live));
+  assert.equal(normaliseDefinition(live), normaliseDefinition(inList));
+  assert.notEqual(normaliseDefinition(live), normaliseDefinition(live.replace("'closed'", "'archived'")), 'a real value difference stays a difference');
+  assert.notEqual(normaliseDefinition(live), normaliseDefinition(live.replace("'closed'::text", '')), 'a dropped value stays a difference');
+});
+
+test('the scratch replay runs on the pinned image of the live major: the managed db image base for its own, the previous majors db-upgrade pins, nothing for an unpinned one', () => {
+  assert.equal(pinnedImageOf(17), DB_BASE_IMAGE);
+  assert.equal(pinnedImageOf(16), PREVIOUS_MAJOR_IMAGES['16']?.debian);
+  assert.equal(pinnedImageOf(15), null, 'no image of 15 is pinned: the compare falls back to the textual normalisation and says so');
 });
