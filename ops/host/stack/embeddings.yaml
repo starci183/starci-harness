@@ -10,8 +10,19 @@
 #                       concurrency cap; it reaches Ollama at host.docker.internal:11434, which Docker Desktop forwards to the host's
 #                       loopback. Also served on 127.0.0.1:${STARCI_PORT_EMBEDDINGS:-11435} for a process of this machine.
 #   cloudflared-embeddings  the connector of the locally managed tunnel `starci-host-services`, whose ingress is embeddings-tunnel.yml
-#                       (embed.starci.org -> embeddings-gate:8080 on this project's network). The DNS record is made once with
+#                       (embed.starci.org -> the gate at 10.77.84.2:8080 on the edge network). The DNS record is made once with
 #                       `cloudflared --config ops/host/stack/embeddings-tunnel.yml tunnel route dns --overwrite-dns starci-host-services embed.starci.org`.
+#
+# The two share one dedicated named network, `edge` (${STARCI_HOST_PROJECT:-starci}-edge), with a fixed subnet: the gate has the alias
+# `embeddings-gate` and the address 10.77.84.2, the tunnel 10.77.84.3, and the tunnel's ingress calls the gate by that address, so no
+# lookup stands between embed.starci.org and the gate. (2026-11-21: Docker's embedded DNS stopped answering `embeddings-gate` on the
+# project's default network twice in one night, and the tunnel answered 502 until a manual restart.) The alias stays for every other
+# caller and for `starci host doctor`, which resolves it from a throwaway container on the network, calls the gate by name and by
+# address, and with `--fix` repairs a network that stopped answering (reconnect, restart, recreate) and alerts the owner. ops/host.yaml
+# declares the same network, alias and addresses under each service's `network`; a spec keeps the two in step.
+#
+# Both containers have a healthcheck and `restart: unless-stopped`. Compose never restarts a container that is only unhealthy: that
+# restart is `host doctor --fix`, scheduled by the `host-doctor` service of ops/host.yaml (contexts/harness/host.md "Self-healing").
 #
 # No secret is stored here (contexts/harness/rules.md rule 1): ${EMBEDDINGS_API_KEY} (the bearer token apps send) and
 # ${HOST_SERVICES_TUNNEL_TOKEN} (the run token of the tunnel) are filled in the one process `host up` starts, from the CLI's secret
@@ -32,24 +43,50 @@ services:
       - "127.0.0.1:${STARCI_PORT_EMBEDDINGS:-11435}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      edge:
+        ipv4_address: 10.77.84.2
+        aliases:
+          - embeddings-gate
+    # The gate's own probe: Caddy answers on its health port. (The path from the tunnel to the gate is judged by `host doctor`.)
     healthcheck:
       test:
         - CMD-SHELL
         - wget -q -O /dev/null http://127.0.0.1:8081/healthz
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   cloudflared-embeddings:
     image: cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38
     container_name: ${STARCI_HOST_PROJECT:-starci}-cloudflared-embeddings
-    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 --config /etc/cloudflared/config.yml run
     environment:
       TUNNEL_TOKEN: ${HOST_SERVICES_TUNNEL_TOKEN:?set HOST_SERVICES_TUNNEL_TOKEN in the harness secret.env or the environment}
     volumes:
       - ./embeddings-tunnel.yml:/etc/cloudflared/config.yml:ro
+    networks:
+      edge:
+        ipv4_address: 10.77.84.3
     depends_on:
       embeddings-gate:
         condition: service_healthy
+    # The image is distroless: it has no shell, wget or curl (checked: `docker run --entrypoint sh` fails), so its healthcheck is its own
+    # binary. `tunnel ready` reads the connector's /ready endpoint, which answers 200 only while the connector holds a connection to
+    # Cloudflare. That the gate answers behind it is judged from outside by `host doctor`, from a throwaway container on this network.
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:20241", "ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
     restart: unless-stopped
+
+networks:
+  edge:
+    name: ${STARCI_HOST_PROJECT:-starci}-edge
+    ipam:
+      config:
+        - subnet: 10.77.84.0/29
