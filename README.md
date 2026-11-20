@@ -138,7 +138,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `needs` | the shared needs Ops reported (`task result --needs`): list and show them with their owner and waiters, merge two spellings of one |
 | `worktree` | the harness's own worktrees: `gc` removes those whose owner ended, preserving their uncommitted work first |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
-| `lane` | an app's `dev` landing ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-2): a lane registers its pushed, locally gated sha (`lane ready`), one lander merges every ready lane, runs one gate and pushes `dev` (`lane land`), each lane reads its outcome from its status file (`lane status`, `lane withdraw`) |
+| `lane` | an app's `dev` landing ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-2): a lane registers its pushed, locally gated sha (`lane ready`), one lander merges every ready lane, runs one gate and pushes `dev` (`lane land`), each lane reads its outcome from its status file (`lane status`, `lane withdraw`), and a lane worktree is removed only by `lane remove`, which unlinks every junction as a link first |
 | `project` | a project's ledger in the host registry: retire an abandoned one so no sweep, tick or pool count reads it |
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |

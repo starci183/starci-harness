@@ -35,6 +35,16 @@ verb standard") are how the CLI holds this table where it holds it.
 
 ## Worktrees
 
+**A lane or agent worktree is removed only by `starci lane remove <worktree-path> [--discard] [--execute]`** (`cli/src/harness/worktree-remove.ts`;
+a dry run is the default). Never `git worktree remove --force`, `rmdir /S`, `robocopy` or a recursive delete on one by hand: on Windows npm
+makes directory junctions (`node_modules/@scope/pkg` to a workspace folder, a node_modules to another install) that git, robocopy and
+`rmdir /S` follow, and on 2026-11-20 one such removal emptied another lane's node_modules and deleted 2533 tracked files elsewhere. The verb
+refuses the main checkout, an unregistered folder and tracked changes (`--discard` throws them away, named), takes a removal lock that
+`slot run npm`, every heavy install or build command and the install cache respect (`WORKTREE_REMOVING`), lists every junction and symlink at
+any depth with lstat without entering one, unlinks each as a link and verifies its target survived, refuses if one remains, then runs
+`git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left. The branch is kept. The rules below are the
+harness's own collector's, which unlinks through `unlinkInstallLinks` the same way.
+
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
 removes one by hand or keeps one alive past its owner. Before removing a Git checkout the collector preserves its binary tracked and index
 patches, tracked working bytes, untracked and ignored files by opaque copies, file and link metadata, and a durable HEAD ref in the project's

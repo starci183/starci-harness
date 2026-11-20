@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (train 184)
+
+- Changed (contexts): PROJECT-STACKS-20 in contexts/project/stacks.md and R450, an environment pending its cutover (@starci/hfs 6.16.0): its not-yet-cut-over findings are reported, not blocking, and every deploy to it is refused (STACK_CUTOVER_PENDING) until the cutover runbook removes the declaration.
+- Added (`starci lane remove <worktree> [--discard] [--execute]`): the only sanctioned removal of a lane worktree. It refuses a main or unregistered checkout and tracked changes, holds a per-worktree removal lock (`_remove-<hash>.lock` in the slot root; `slot run npm`, heavy install and build commands and the install cache refuse `WORKTREE_REMOVING` in a locked worktree), lists every junction and symlink at any depth with lstat without entering one, unlinks each as a link (never its target), refuses if one remains, then runs `git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left; the branch is kept. A dry run is the default.
+
 ## 1.1.0-alpha.184 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.15.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
@@ -10,7 +15,6 @@
 - Changed (contexts): PROJECT-GALLERY-7 orders a UI change board first (the owner approves a board revision once), then code copying the board, then the auto-shot gallery, then one critique and audit pass over the whole gallery; PROJECT-GALLERY-9 owns the board. An app without a board keeps the canvas order until it adopts one.
 - Added (`starci app stack`, forwarded to @starci/hfs): `stack standby` / `stack resume` (`--renamed-from`, `--timeout`), `stack volume copy` / `stack volume verify` (`--from`, `--to`, `--verify`) and `stack deploy --adopt`, the verbs that move a Swarm stack to new runtime names without an empty instance on the public hosts (contexts/project/stacks.md PROJECT-STACKS-18). An executed production `deploy --adopt` waits for green CI like any production deploy. They need the @starci/hfs that ships them; the CLI pin follows in the train.
 - Changed (contexts): PROJECT-STACKS-18 in contexts/project/stacks.md, the order of a rename window and the three verbs; cli/README.md lists them.
-- Changed (contexts): PROJECT-STACKS-20 in contexts/project/stacks.md and R450, an environment pending its cutover (@starci/hfs 6.16.0): its not-yet-cut-over findings are reported, not blocking, and every deploy to it is refused (STACK_CUTOVER_PENDING) until the cutover runbook removes the declaration.
 - Added: machine-wide slots (`ops/slots.yaml`, `cli/src/harness/slots.ts`) and the verbs a lane brief calls (contexts/authority/lanes.md): `starci slot take|release|list|run` (kinds npm, gate, shoot and stack, the lock files the lane scripts already use; a slot is reclaimed only on evidence that its holder is gone: a dead pid, a reused pid, or a boot after it was taken, logged in `_slots.log`; age is never evidence), `starci lane gate` (merge `origin/dev`, install under an npm slot when the merge needs it, codegen, then under a gate slot `app check --env prod` or with `--push` `app push`, with `--ready` registering the pushed sha) and `starci gallery shoot` (a shoot slot, the web server started and killed by its pid around the app's capture command). The batch lander takes its npm and gate slots through the same module, and the lane verbs fall back to `slots.root` for the lanes folder.
 - Changed (ops): the new ops `design`, `prove` and `inspect` carry the Master Plan layers of the labels they supersede (`design` ui, `prove` testing, `inspect` all nine).
 
