@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, parseTime } from '@internationalized/date';
 import { useState } from 'react';
-import { userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Matrix, SearchGlyph, SettingsGlyph, StarGlyph, PaperclipGlyph, State, UploadGlyph, noop, showRowStates } from './fixtures.js';
 
@@ -758,7 +758,8 @@ const MentionComposer = () => {
         label="Message"
         value={value}
         onValueChange={setValue}
-        send={{ label: 'Send message', onPress: () => { setSent((s) => [...s, value]); setValue(''); } }}
+        send={{ label: 'Send', onPress: () => { setSent((s) => [...s, value]); setValue(''); } }}
+        startAction={{ glyph: 'attach', label: 'Attach a file', onPress: () => undefined }}
         description="Type @ to mention someone. Enter sends, Shift+Enter breaks the line."
         mentions={{ options: MENTION_PEOPLE, label: 'People to mention' }}
         onSubmitShortcut={() => { setSent((s) => [...s, value]); setValue(''); }}
@@ -768,5 +769,17 @@ const MentionComposer = () => {
   );
 };
 
-/** Mention suggestions and the Enter-to-send shortcut of a chat composer. */
-export const TextareaMentions: Story = { render: () => <MentionComposer /> };
+/**
+ * Mention suggestions and the Enter-to-send shortcut of a chat composer (0.52.0): one line at 40px growing to 6, the attach action inside the
+ * box at its start, and Send as its own 40px Button 12px after the box (the round icon button below 48rem).
+ */
+export const TextareaMentions: Story = {
+  render: () => <MentionComposer />,
+  play: async ({ canvasElement }) => {
+    const box = canvasElement.querySelector<HTMLElement>('textarea[data-grammar-composer="true"]')!;
+    expect(Math.round(box.getBoundingClientRect().height)).toBe(40);
+    const row = canvasElement.querySelector<HTMLElement>('[data-grammar-composer-row="true"]')!;
+    expect(getComputedStyle(row).columnGap).toBe('12px');
+    expect(canvasElement.querySelector('[data-grammar-textarea-start-action="true"] button[aria-label="Attach a file"]')).not.toBeNull();
+  },
+};

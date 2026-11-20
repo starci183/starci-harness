@@ -6,8 +6,8 @@ import { attributeOf, elementOf, grammarBindings, keyName, propertyOf } from "./
 
 /**
  * The chat surfaces law (`FE_MESSAGE_SURFACES`, Grammar 0.37.31, DNA-COMMON-CHAT-SURFACES): every chat draws the same three faces, and they are Grammar's
- * alone. The thread is the page tone (`--background`), a message of someone else (`MessageBubble` incoming, `MessageCard`) is the flat surface (no border,
- * no shadow), the reader's own message is `--accent` with `--accent-foreground`. An app never restyles them. The law flags, in cheap static shapes only:
+ * alone. The thread is the page tone (`--background`), a message of someone else (`MessageBubble` incoming, `MessageCard`) is one outlined look (0.52.0: the
+ * 1px `--border` edge, no fill, no shadow), the reader's own message is `--accent` with `--accent-foreground`. An app never restyles them. The law flags, in cheap static shapes only:
  *   - a `className`, `class`, `style` or `UNSAFE_className` attribute on a Grammar `MessageBubble` or `MessageCard` (their props carry none; a cast or a
  *     spread that smuggles one past the type is still a restyle);
  *   - a static class string or a style key in product source that names a Grammar message part (`starci-core-message-bubble…`, `starci-core-message-card…`):
@@ -65,7 +65,7 @@ export const messageSurfaces: Rule.RuleModule = defineRule({
     docs: { description: "FE_MESSAGE_SURFACES: chat bubbles, message cards and the thread ground are Grammar's faces; an app never restyles them." },
     schema: [],
     messages: {
-      attribute: "`{{component}}` takes no `{{attribute}}`: every chat draws the same faces (the thread on `--background`, others' messages flat `--surface`, your own `--accent`). Remove it.",
+      attribute: "`{{component}}` takes no `{{attribute}}`: every chat draws the same faces (the thread on `--background`, others' messages outlined with no fill, your own `--accent`). Remove it.",
       part: "This class or style reaches into a Grammar message part (`{{part}}`). Chat faces are Grammar's (DNA-COMMON-CHAT-SURFACES); remove the override.",
       tone: "A chat thread (`scroll.role: \"log\"`) is always the page tone; `tone: \"surface\"` is ignored. Remove `tone`.",
       frame: "A chat frame (`Pane content=\"chat\"`, or a Pane that holds a `scroll.role: \"log\"` thread) is `--background` wherever it stands (DNA-COMMON-CHAT-FRAME); `surface` is ignored there. Remove `surface` and give the pane `content=\"chat\"`.",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.0 - 2026-11-20
+
+- Changed (`message-surfaces`): the messages and the bundled MESSAGE-SURFACES law say others' messages are outlined with no fill (Grammar 0.52.0, DNA-COMMON-CHAT-INCOMING-OUTLINE), not the flat `--surface`. What the rule flags is unchanged. Requires @starci/hfs ~6.14.0.
+
 ## 0.51.0 - 2026-11-20
 
 - Changed: cut with @starci/hfs 6.14.0 (one app edition, R212); the HFS view carries no `edition`. Requires @starci/hfs ~6.14.0.

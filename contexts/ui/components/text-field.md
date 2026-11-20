@@ -55,9 +55,13 @@ politely) and failed (the field's error). Known field types declare autofill and
   reveal behind a masked `onCopy`.
 
 ## Chat composer
-A `Textarea` with `onSubmitShortcut` is a chat composer, and every chat uses it: it starts at 2 lines (about 64px), grows with its text up to 6 lines and then
-scrolls (no scrollbar). `send={{ label, onPress }}` draws the send button inside the box at its bottom end, so it stays at the bottom as the box grows.
-`COMPOSER_MIN_ROWS` and `COMPOSER_MAX_ROWS` name the two bounds.
+A `Textarea` with `onSubmitShortcut` is a chat composer, and every chat uses it (0.52.0, the owner-approved chat canvas of 2026-11-20,
+`DNA-COMMON-COMPOSER-ONE-LINE`): it starts at one line, the 40px control height, grows with its text up to 6 lines, then scrolls (no
+scrollbar), and shrinks back when the text is cleared. `send={{ label, onPress, isDisabled, isPending }}` draws the send action as its own
+40px commit Button 12px (the row gap) after the box, level with the box's bottom: the send glyph and `label` from 48rem, the round 40px
+icon button named `label` below it. `startAction={{ glyph | source, label, onPress, isDisabled }}` draws one `sm` ghost icon button inside
+the box at its bottom start (attach, emoji), with the text starting after it; the caret, the selection and the mention list read the textarea
+alone. The app writes no Cluster or gap around the composer. `COMPOSER_MIN_ROWS` (1) and `COMPOSER_MAX_ROWS` (6) name the two bounds.
 
 ## Rules
 FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2, FIELD-1..4. Lint: `starci-fe/no-native-form-control`,

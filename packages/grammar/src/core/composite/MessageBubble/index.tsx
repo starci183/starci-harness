@@ -9,6 +9,7 @@ import type { NoChildren } from "../../tier.js"
 import { DEFAULT_REACTION_LABELS, ReactionBar, ReactionPill, topReaction, useReactionBursts, type MessageReaction, type MessageReactionLabels } from "./Reactions.js"
 
 export type { MessageReaction, MessageReactionLabels } from "./Reactions.js"
+export { REACTION_EMOJI } from "./Reactions.js"
 
 /**
  * Where a message stands in a run from one sender (Messenger grouping; the app computes it from the sender and the time gap). `single` (default): a lone

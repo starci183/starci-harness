@@ -24,7 +24,7 @@ import { DatePicker } from "../core/branch/DatePicker/index.js"
 import { DateRangePicker } from "../core/branch/DateRangePicker/index.js"
 
 export { Field, type FieldControlAttributes, type FieldControlProps, type FieldProps } from "../core/leaf/Field/index.js"
-export { Textarea, type TextareaMentionOption, type TextareaMentions, type TextareaProps } from "../core/branch/Textarea/index.js"
+export { Textarea, type TextareaMentionOption, type TextareaMentions, type TextareaProps, type TextareaSend, type TextareaStartAction } from "../core/branch/Textarea/index.js"
 export { SearchField, type SearchFieldProps } from "../core/leaf/SearchField/index.js"
 export { NumberField, type NumberFieldProps } from "../core/leaf/NumberField/index.js"
 export { Checkbox, type CheckboxProps } from "../core/leaf/Checkbox/index.js"
