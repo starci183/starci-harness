@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { join } from "node:path"
 import { IDLE_JOBS } from "@starci/hfs/runtime/scripts/lib/stack-declaration.mjs"
 import { parse } from "yaml"
 import { Refusal, asRefusal } from "../../shared/errors.js"
