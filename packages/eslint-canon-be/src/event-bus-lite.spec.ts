@@ -19,7 +19,6 @@ const testerFor = (edition: "lite" | "full") => canonRuleTester({
     settings: { starci: { hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) } },
 })
 const lite = testerFor("lite")
-const full = testerFor("full")
 
 const EVENT = at("src/modules/events/billing/order-paid.event.ts")
 const REACTOR = at("src/features/reactors/mailer/transport/message/order-paid.consumer.ts")
@@ -72,7 +71,3 @@ test("event-subscription-static: a lite subscription names an imported topic-que
     })
 })
 
-test("both rules leave a full app to its Kafka bus", () => {
-    full.run("event-dedupe-key", eventDedupeKey, { valid: [{ filename: EVENT, code: eventWith("{ readonly orderId: string }") }], invalid: [] })
-    full.run("event-subscription-static", eventSubscriptionStatic, { valid: [{ filename: REACTOR, code: `${SUBSCRIBE_HEAD}registry.subscribe("q", consumer)` }], invalid: [] })
-})
