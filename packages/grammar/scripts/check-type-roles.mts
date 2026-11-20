@@ -100,14 +100,15 @@ for (const [needle, message] of [
     ['[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-start-radius', "an incoming run squares the top-start corner of middle and last"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-end-radius', "an outgoing run mirrors it on the end side"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-end-radius', "an outgoing run mirrors it on the end side"],
-    ["border: 0;\n        background: var(--surface);\n        color: var(--surface-foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are the flat surface on the thread (0.37.31, DNA-COMMON-CHAT-INCOMING-FLAT)"],
-    [':not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {\n        border: 1px solid var(--separator);', "outside a thread, on a white surface, a flat bubble wears the 1px separator edge"],
+    ["border: var(--grammar-border-edge);\n        background: transparent;\n        color: var(--foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are one look on every host: the 1px border edge, no fill, no shadow (0.52.0, DNA-COMMON-CHAT-INCOMING-OUTLINE)"],
     ["@keyframes starci-core-reaction-rise", "the reaction burst needs its keyframes"],
     [".starci-core-reaction-burst-layer { display: none; }", "the burst is off under prefers-reduced-motion"],
     [".starci-core-reaction-bar-emoji:hover", "a hovered emoji scales up"],
 ] as const) {
     if (!all.replace(/\r\n/g, "\n").includes(needle)) problems.push(`${message} (${needle.slice(0, 60)})`)
 }
+/* ONE LOOK (0.52.0): no host repaints the other party's message (no surface-dependent edge or fill). */
+if (/\)\s*\.starci-core-message-bubble:is\(\[data-grammar-bubble-side="incoming"\], \[data-grammar-bubble-content="card"\]\)[^{]*\{/.test(all.replace(/\/\*[\s\S]*?\*\//g, ""))) problems.push("an incoming bubble has one look: no host-dependent rule repaints it (0.52.0)")
 const keyframes = all.match(/@keyframes starci-core-reaction-rise\s*\{([\s\S]*?)\n    \}/)?.[1] ?? ""
 if (/(?:^|[\s;{])(?:top|left|right|bottom|width|height|margin|inset)[a-z-]*\s*:/.test(keyframes)) problems.push("the reaction burst may animate transform and opacity only")
 const reactionSource = readFileSync(resolve(common, "..", "core", "composite", "MessageBubble", "Reactions.tsx"), "utf8")

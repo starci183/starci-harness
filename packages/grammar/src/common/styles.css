@@ -3604,16 +3604,6 @@
         background: var(--background);
     }
 
-    :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body {
-        /* 0.40.0: no edge by default; the bubble tokens (THE BUBBLE TOKENS) may give the other party's message, or a MessageCard, a hairline in the thread. */
-        border: var(--starci-core-bubble-incoming-border, 0) !important;
-        box-shadow: none !important;
-    }
-
-    :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, 0)) !important;
-    }
-
     /*
      * 0.37.5 THE GRID OWNS THE HEIGHT CHAIN. A pane that holds a nested PaneGrid (a tab pane of panes) is not a scroller: it clips, its stack is bounded by the pane
      * (flex 1 1 0, min-height 0, never `0 auto` which let the stack grow to the content), and the nested grid fills it, so every scroll band of every nested pane is bounded
@@ -6143,6 +6133,26 @@
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent); }
 
+    /*
+     * A chip and a quote on the brand fill (0.52.0): a Badge (a mention, a tag) is the inverse pair, the fill's foreground as its ground and
+     * the fill as its words; a Quote (the message replied to) is the foreground at the secondary tint, its words and byline inheriting it.
+     */
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body [data-component="Badge"] {
+        border-color: transparent !important;
+        background: var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) !important;
+        color: var(--starci-core-bubble-outgoing, var(--accent)) !important;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-quote {
+        background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
+        color: inherit;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body :is(.starci-core-quote-source, .starci-core-quote-byline) {
+        color: inherit;
+        opacity: var(--grammar-opacity-secondary);
+    }
+
     /* The soft face is the brand's tint with its own foreground: the AI bubble is `--accent-soft`, with no token of its own. */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body {
         background: var(--accent-soft);
@@ -6163,9 +6173,9 @@
      * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer.
      *
      * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, owner-approved drawing chat-surfaces): every thread is on the page tone (`--background`, a
-     * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is the FLAT surface:
-     * `--surface` with no border and no shadow; the reader's own message is `--accent` with `--accent-foreground`. Outside a thread, on a white surface
-     * (a drawer, a white pane, a card), a flat white bubble would vanish, so there it wears the 1px separator edge, still no shadow.
+     * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is ONE look everywhere (0.52.0,
+     * owner-approved chat canvas of 2026-11-20, law DNA-COMMON-CHAT-INCOMING-OUTLINE): the 1px `--border` edge, no fill, `--foreground` words, no shadow;
+     * the reader's own message is `--accent` with `--accent-foreground`. No surface changes either face.
      */
     .starci-core-message-bubble {
         --grammar-bubble-radius: 1.125rem;
@@ -6180,34 +6190,30 @@
 
     /*
      * THE BUBBLE TOKENS (0.40.0): optional, each defaulting to the faces above. The other party's message: `--starci-core-bubble-incoming` (fill,
-     * default `--surface`), `--starci-core-bubble-incoming-foreground` (default `--surface-foreground`), `--starci-core-bubble-incoming-border`
-     * (a `border` value, default `0`). The reader's own: `--starci-core-bubble-outgoing` (default `--accent`), `--starci-core-bubble-outgoing-foreground`
+     * default `transparent`), `--starci-core-bubble-incoming-foreground` (default `--foreground`), `--starci-core-bubble-incoming-border`
+     * (a `border` value, default `--grammar-border-edge`, the 1px `--border` edge, 0.52.0). The reader's own: `--starci-core-bubble-outgoing` (default `--accent`), `--starci-core-bubble-outgoing-foreground`
      * (default `--accent-foreground`), `--starci-core-bubble-outgoing-border` (default `0`). A MessageCard: `--starci-core-message-card` and
      * `--starci-core-message-card-border`, defaulting to the incoming face. A theme whose thread and surface are both white gives the other party a
      * quiet fill and its own message a hairline instead of the accent. The soft tone (`tone="soft"`) keeps the accent soft pair.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: 0;
-        background: var(--surface);
-        color: var(--surface-foreground);
+        border: var(--grammar-border-edge);
+        background: transparent;
+        color: var(--foreground);
         box-shadow: none;
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body {
-        border: var(--starci-core-bubble-incoming-border, 0);
-        background: var(--starci-core-bubble-incoming, var(--surface));
-        color: var(--starci-core-bubble-incoming-foreground, var(--surface-foreground));
+        border: var(--starci-core-bubble-incoming-border, var(--grammar-border-edge));
+        background: var(--starci-core-bubble-incoming, transparent);
+        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
     }
 
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, 0));
-        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, var(--surface)));
-        color: var(--starci-core-bubble-incoming-foreground, var(--surface-foreground));
-    }
-
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]):not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {
-        border: 1px solid var(--separator);
+        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, var(--grammar-border-edge)));
+        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, transparent));
+        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }
@@ -6497,25 +6503,58 @@
 
     /* --- Textarea mention suggestions: a listbox under the control. --- */
     .starci-core-textarea-anchor { position: relative; min-width: 0; }
+    .starci-core-textarea-box { position: relative; min-width: 0; }
+    /* The box is exactly its textarea: a block control leaves no line-box gap under it, so the start action and Send sit level with its edge. */
+    .starci-core-textarea-box > .starci-core-textarea-control { display: block; }
 
     /*
-     * A chat composer (a Textarea with onSubmitShortcut): never below 2 lines (4rem, about 64px), the box grows with its text up to
-     * 6 lines (set from the content by the component), then scrolls with no bar. The send button sits at the bottom end of the box.
+     * A chat composer (a Textarea with onSubmitShortcut, 0.52.0): one line at the control height (40px), the box grows with its text up to
+     * 6 lines (set from the content by the component), then scrolls with no bar, and shrinks back when the text is cleared. The block
+     * padding centres one line in the 40px box at any type size (14/20 on a desktop, 16 on a phone).
      */
     .starci-core-textarea-control[data-grammar-composer="true"] {
-        min-block-size: 4rem;
+        min-block-size: var(--starci-core-control-min-size);
+        padding-block: max(0px, calc((var(--starci-core-control-min-size) - 1lh - 2 * var(--grammar-hairline)) / 2));
         resize: none;
     }
 
-    .starci-core-textarea-anchor:has(> .starci-core-textarea-send) > .starci-core-textarea-control {
-        padding-inline-end: calc(var(--starci-core-control-min-size) + var(--grammar-inline-gap));
+    /*
+     * The composer row (0.52.0): the box, then the send action as its own 40px commit Button the row gap (12px) after it, level with the
+     * box's bottom so it stays beside the last line as the box grows. From 48rem the Button shows the send glyph and its words; below it is
+     * the round 40px icon button named by the same words.
+     */
+    .starci-core-textarea-anchor[data-grammar-composer-row="true"] {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--grammar-row-gap);
     }
 
-    .starci-core-textarea-send {
+    .starci-core-textarea-anchor[data-grammar-composer-row="true"] > .starci-core-textarea-box { flex: 1 1 auto; }
+
+    .starci-core-textarea-send { display: inline-flex; flex: none; }
+    .starci-core-textarea-send-wide,
+    .starci-core-textarea-send-compact { display: inline-flex; }
+    .starci-core-textarea-send-compact { display: none; }
+
+    @media (max-width: 47.99rem) {
+        .starci-core-textarea-send-wide { display: none; }
+        .starci-core-textarea-send-compact { display: inline-flex; }
+    }
+
+    /*
+     * The start action (0.52.0): one nested sm icon button inside the box at its bottom start (centred on the one-line 40px box: 4px from the
+     * edge), the text starting after it. The caret, the selection and the mention list read the textarea alone, so nothing else moves.
+     */
+    .starci-core-textarea-start {
         position: absolute;
+        z-index: 1;
         inset-block-end: 0.25rem;
-        inset-inline-end: 0.25rem;
+        inset-inline-start: 0.25rem;
         display: inline-flex;
+    }
+
+    .starci-core-textarea-box[data-grammar-textarea-start="true"] > .starci-core-textarea-control {
+        padding-inline-start: calc(0.25rem + 2rem + var(--grammar-identity-gap));
     }
 
     .starci-core-mention-list {
@@ -6533,6 +6572,12 @@
         background: var(--overlay);
         color: var(--overlay-foreground);
         box-shadow: var(--overlay-shadow);
+    }
+
+    /* A composer is docked at the foot of its chat (0.52.0): its mention list opens upward, above the box, so the viewport never cuts it. */
+    .starci-core-textarea-control[data-grammar-composer="true"] ~ .starci-core-mention-list {
+        inset-block-start: auto;
+        inset-block-end: calc(100% + 0.25rem);
     }
 
     .starci-core-mention-option {

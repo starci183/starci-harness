@@ -245,14 +245,14 @@ roles:
     ui: ui/components/text-field.md
     renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput, Grid]
     vendorParity: [textfield, input, input-group, textarea, search-field, number-field, date-field, time-field, input-otp]
-    slots: [label, control, description, errorMessage, prefix, suffix]
+    slots: [label, control, description, errorMessage, prefix, suffix, "Textarea composer: send (its own 40px commit Button after the box), startAction (one sm icon button inside the box at its start)"]
     variants:
       variant: { values: [primary, secondary], meaning: { primary: on the canvas, secondary: inside a surface }, chosenBy: context }
       formColumns: { values: [1, 2], meaning: { 2: Grid kind=form rows of two once its own width holds them }, chosenBy: app }
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING, DNA-COMMON-FIELD-SM]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING, DNA-COMMON-FIELD-SM, DNA-COMMON-COMPOSER-ONE-LINE]
 
   - id: select
     ui: ui/components/select.md
@@ -444,7 +444,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-OUTLINE, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
     lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -714,6 +714,11 @@ mustKeep:
       measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *, [data-grammar-select-appearance="compact"] *)', metric: height, op: "=", value: 40px }
       owner: ui/scale.md scale.choose.step
       followUp: "owner-triage 2026-11-18: Offset Pop select, combo box at 390 and pill select still above the 40px step"
+    - id: DNA-COMMON-COMPOSER-ONE-LINE
+      role: input
+      law: "A chat composer (Textarea with onSubmitShortcut) starts at one line, the 40px control height, grows with its text up to 6 lines and then scrolls; its send action is its own 40px commit Button 12px (the row gap) after the box, level with the box's bottom (0.52.0, owner-approved chat canvas of 2026-11-20)."
+      measure: { kind: box, select: 'textarea[data-grammar-composer="true"]', metric: height, op: ">=", value: 40px }
+      owner: ui/components/text-field.md
     - id: DNA-COMMON-TABS-BAR-MD
       role: tabs
       law: A tab bar, pill or underline, lands on the md height without a size prop.
@@ -1724,13 +1729,13 @@ mustKeep:
       law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge (owner 'nền chat luôn là background', drawing chat-surfaces, 0.37.31)."
       measure: { kind: style, select: '[data-grammar-pane-section-thread="true"]', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
       owner: ui/components/message-bubble.md
-    - id: DNA-COMMON-CHAT-INCOMING-FLAT
+    - id: DNA-COMMON-CHAT-INCOMING-OUTLINE
       role: pane-grid
-      law: "In a thread and anywhere in a chat frame, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow (a message is never a card); outside any chat frame on a white surface (a drawer of pinned messages, a white pane) it wears the 1px separator edge, still no shadow. An app never restyles it (lint message-surfaces)."
+      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it (owner-approved chat canvas of 2026-11-20, 0.52.0; replaces DNA-COMMON-CHAT-INCOMING-FLAT). An app never restyles it (lint message-surfaces); a theme may retune it with the bubble tokens."
       measure:
         kind: style
-        select: '[data-grammar-pane-section-thread="true"] .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
-        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+        select: '.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: border-width, op: "=", value: 1px }, { metric: box-shadow, op: "=", value: none }]
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
       role: pane-grid

@@ -7,7 +7,7 @@ import { noop } from './fixtures.js';
  * THE CHAT FRAME (0.37.33, law DNA-COMMON-CHAT-FRAME, the owner-approved drawing chat-frame-anywhere). On ANY page that renders a chat, the chat is one frame (its
  * head, its thread and its composer footer) on the page tone `--background`, whatever surface it stands on; the rest of the page keeps its own rule (the room
  * list and an aside stay white). `Pane content="chat"` names the frame (a pane whose own stack holds a `PaneSection scroll role="log"` is one without the word);
- * the app chooses no tone. The composer field stays white, the 1px lines between the zones stay, every message in the frame is flat. The thread is the only
+ * the app chooses no tone. The composer field stays white, the 1px lines between the zones stay, every message of someone else is outlined (0.52.0). The thread is the only
  * scroller between the fixed head and the fixed composer, and it opens at the newest message (DNA-COMMON-CHAT-FRAME-SCROLL). The four cases of the drawing.
  */
 const meta: Meta = { title: 'Navigation & Data/Chat frame (0.37.33)', parameters: { layout: 'fullscreen' } };
@@ -20,7 +20,7 @@ const lines = [
   'Payment sent', 'Received, thank you', 'Thanks a lot', 'You are welcome',
 ];
 
-/** A thread long enough to scroll in a 760px page: others' messages flat white, own messages accent. */
+/** A thread long enough to scroll in a 760px page: others' messages outlined with no fill, own messages accent. */
 const Thread = ({ count = lines.length }: { readonly count?: number }) => (
   <>
     {lines.slice(0, count).map((text, index) => (
@@ -33,7 +33,7 @@ const Thread = ({ count = lines.length }: { readonly count?: number }) => (
 
 const Composer = ({ placeholder }: { readonly placeholder: string }) => (
   <G.PaneSection as="footer" rule="start" gap="row">
-    <G.Textarea label="Message" isLabelHidden placeholder={placeholder} onSubmitShortcut={noop} />
+    <G.Textarea label="Message" isLabelHidden placeholder={placeholder} onSubmitShortcut={noop} startAction={{ glyph: 'attach', label: 'Attach a file', onPress: noop }} send={{ label: 'Send', onPress: noop }} />
   </G.PaneSection>
 );
 
@@ -71,10 +71,11 @@ const assertFrame = (frame: HTMLElement) => {
     const field = footer.querySelector<HTMLElement>('textarea');
     if (field !== null) expect(fill(field)).toBe(tokenColour(frame, '--surface'));
   }
+  // One look (0.52.0, DNA-COMMON-CHAT-INCOMING-OUTLINE): the other party's message is the 1px border edge with no fill, on every host.
   for (const face of frame.querySelectorAll<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')) {
-    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(0);
+    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(1);
     expect(getComputedStyle(face).boxShadow).toBe('none');
-    expect(fill(face)).toBe(tokenColour(frame, '--surface'));
+    expect(fill(face)).toBe('rgba(0, 0, 0, 0)');
   }
 };
 

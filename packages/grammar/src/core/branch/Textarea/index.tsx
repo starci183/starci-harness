@@ -3,7 +3,11 @@
 import { withRegionLoading } from "../../regionScope.js"
 import { TextArea as HeroTextArea, TextField as HeroTextField } from "@heroui/react"
 import { useEffect, useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from "react"
+import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
+import type { GlyphName } from "../../leaf/Icon/glyphs.js"
+import type { IconSource } from "../../leaf/Icon/index.js"
 import {
     FieldDescription,
     FieldErrorText,
@@ -38,17 +42,33 @@ export type TextareaMentions = {
     readonly onSelect?: (option: TextareaMentionOption) => void
 }
 
-/** The send button of a chat composer. */
+/**
+ * The send action of a chat composer: its own control-height (40px) commit Button beside the box, 12px (the row gap) after it,
+ * bottom-aligned so it stays level with the last line as the box grows. From a wide viewport it shows the send glyph and `label`;
+ * on a compact viewport (below 48rem) it is the round 40px icon button with `label` as its accessible name.
+ */
 export type TextareaSend = {
-    /** Accessible name of the icon button, e.g. "Send message". */
+    /** The words of the button and its accessible name, e.g. "Send". */
     readonly label: string
     readonly onPress: () => void
     readonly isDisabled?: boolean
     readonly isPending?: boolean
 }
 
-/** A chat composer (every chat) starts at 2 lines, about 64px. */
-export const COMPOSER_MIN_ROWS = 2
+/**
+ * One action inside the box at its start, before the text: an attach, an emoji picker. A real button (an `sm` ghost IconButton
+ * nested in the field) with its own accessible name; it stays at the bottom start as the box grows. The glyph is one of Grammar's
+ * (`glyph`, e.g. `attach`) or the app's own icon (`source`).
+ */
+export type TextareaStartAction = {
+    /** Accessible name, e.g. "Attach a file". */
+    readonly label: string
+    readonly onPress: () => void
+    readonly isDisabled?: boolean
+} & ({ readonly glyph: GlyphName; readonly source?: never } | { readonly source: IconSource; readonly glyph?: never })
+
+/** A chat composer (every chat) starts at 1 line, the 40px control height. */
+export const COMPOSER_MIN_ROWS = 1
 /** A chat composer grows with its text up to 6 lines and then scrolls. */
 export const COMPOSER_MAX_ROWS = 6
 
@@ -59,7 +79,8 @@ export type TextareaProps = NoChildren & FieldControlProps & {
     readonly defaultValue?: string
     /**
      * Initial visible lines (default 4). A chat composer (a Textarea with `onSubmitShortcut`) ignores it: it always starts at
-     * `COMPOSER_MIN_ROWS` lines (2, about 64px) and grows with its text up to `COMPOSER_MAX_ROWS` (6), then scrolls.
+     * `COMPOSER_MIN_ROWS` line (1, the 40px control height), grows with its text up to `COMPOSER_MAX_ROWS` (6), then scrolls,
+     * and shrinks back when the text is cleared.
      */
     readonly rows?: number
     /**
@@ -78,10 +99,12 @@ export type TextareaProps = NoChildren & FieldControlProps & {
      */
     readonly onSubmitShortcut?: () => void
     /**
-     * Chat composer send button, drawn inside the box at the bottom end of the field so it stays at the bottom as the box
-     * grows. Use it with `onSubmitShortcut`; the same `onPress` should run for both.
+     * Chat composer send action: its own 40px commit Button 12px after the box (the row gap), level with the box's bottom
+     * (icon only on a compact viewport). Use it with `onSubmitShortcut`; the same `onPress` should run for both.
      */
     readonly send?: TextareaSend
+    /** One action inside the box at its start (attach, emoji). The text starts after it; the mention list is unaffected. */
+    readonly startAction?: TextareaStartAction
     readonly mentions?: TextareaMentions
     /** Focus left the textarea. */
     readonly onBlur?: () => void
@@ -134,6 +157,7 @@ const TextareaControl = ({
     defaultValue,
     rows = 4,
     send,
+    startAction,
     maxLength,
     minLength,
     onValueChange,
@@ -209,7 +233,7 @@ const TextareaControl = ({
     }
 
     const isComposer = onSubmitShortcut !== undefined
-    // A composer grows with its text: the box takes its content height between the 2-line floor and the 6-line ceiling.
+    // A composer grows with its text: the box takes its content height between the 1-line floor (40px) and the 6-line ceiling.
     useEffect(() => {
         if (!isComposer) return
         const control = document.getElementById(controlId)
@@ -250,68 +274,94 @@ const TextareaControl = ({
             }}
         >
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
-            <div className="starci-core-textarea-anchor">
-                <HeroTextArea
-                    id={controlId}
-                    rows={isComposer ? COMPOSER_MIN_ROWS : rows}
-                    {...(isComposer ? { "data-grammar-composer": "true" } : {})}
-                    {...(placeholder === undefined ? {} : { placeholder })}
-                    className="starci-core-textarea-control"
-                    data-grammar-field-control="true"
-                    onKeyDown={onKeyDown}
-                    {...(autoFocus ? { autoFocus: true } : {})}
-                    {...(onPaste === undefined ? {} : { onPaste })}
-                    onBlur={() => {
-                        if (mentions !== undefined) setQuery(null)
-                        onBlur?.()
-                    }}
-                    {...(mentions === undefined
-                        ? {}
-                        : {
-                            onKeyUp: (event: KeyboardEvent<HTMLTextAreaElement>) => {
-                                if (!["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) readQuery(event.currentTarget)
-                            },
-                            onClick: (event: { currentTarget: HTMLTextAreaElement }) => readQuery(event.currentTarget),
-                            "aria-autocomplete": "list" as const,
-                            // A textbox may carry aria-controls / aria-autocomplete / aria-activedescendant, not aria-expanded (ARIA 1.2);
-                            // both references are set only while the list exists, so they never point at a missing element.
-                            ...(activeId === undefined ? {} : { "aria-controls": listId, "aria-activedescendant": activeId }),
-                        })}
-                />
+            <div className="starci-core-textarea-anchor" {...(send === undefined ? {} : { "data-grammar-composer-row": "true" })}>
+                <div className="starci-core-textarea-box" {...(startAction === undefined ? {} : { "data-grammar-textarea-start": "true" })}>
+                    {startAction === undefined ? null : (
+                        <span className="starci-core-textarea-start" data-grammar-textarea-start-action="true">
+                            <ButtonPlacementProvider placement="chrome">
+                                <IconButton
+                                    {...(startAction.glyph === undefined ? { source: startAction.source } : { glyph: startAction.glyph })}
+                                    intent="neutral"
+                                    size="sm"
+                                    label={startAction.label}
+                                    onPress={startAction.onPress}
+                                    {...(startAction.isDisabled === undefined ? {} : { isDisabled: startAction.isDisabled })}
+                                />
+                            </ButtonPlacementProvider>
+                        </span>
+                    )}
+                    <HeroTextArea
+                        id={controlId}
+                        rows={isComposer ? COMPOSER_MIN_ROWS : rows}
+                        {...(isComposer ? { "data-grammar-composer": "true" } : {})}
+                        {...(placeholder === undefined ? {} : { placeholder })}
+                        className="starci-core-textarea-control"
+                        data-grammar-field-control="true"
+                        onKeyDown={onKeyDown}
+                        {...(autoFocus ? { autoFocus: true } : {})}
+                        {...(onPaste === undefined ? {} : { onPaste })}
+                        onBlur={() => {
+                            if (mentions !== undefined) setQuery(null)
+                            onBlur?.()
+                        }}
+                        {...(mentions === undefined
+                            ? {}
+                            : {
+                                onKeyUp: (event: KeyboardEvent<HTMLTextAreaElement>) => {
+                                    if (!["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) readQuery(event.currentTarget)
+                                },
+                                onClick: (event: { currentTarget: HTMLTextAreaElement }) => readQuery(event.currentTarget),
+                                "aria-autocomplete": "list" as const,
+                                // A textbox may carry aria-controls / aria-autocomplete / aria-activedescendant, not aria-expanded (ARIA 1.2);
+                                // both references are set only while the list exists, so they never point at a missing element.
+                                ...(activeId === undefined ? {} : { "aria-controls": listId, "aria-activedescendant": activeId }),
+                            })}
+                    />
+                    {mentions === undefined || !isOpen ? null : (
+                        <ul id={listId} role="listbox" aria-label={mentions.label} className="starci-core-mention-list" data-grammar-mention-list="true">
+                            {suggestions.map((option, index) => (
+                                <li
+                                    key={option.id}
+                                    id={`${listId}-${option.id}`}
+                                    role="option"
+                                    aria-selected={index === active}
+                                    className="starci-core-mention-option"
+                                    data-grammar-mention-active={index === active ? "true" : "false"}
+                                    onMouseDown={(event) => {
+                                        event.preventDefault()
+                                        insert(option)
+                                    }}
+                                    onMouseEnter={() => setActive(index)}
+                                >
+                                    <span className="starci-core-mention-label">{option.label}</span>
+                                    {option.description === undefined ? null : <span className="starci-core-mention-description">{option.description}</span>}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
                 {send === undefined ? null : (
                     <span className="starci-core-textarea-send" data-grammar-composer-send="true">
-                        <IconButton
-                            glyph="send"
-                            intent="commit"
-                            size="sm"
-                            label={send.label}
-                            onPress={send.onPress}
-                            {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
-                            {...(send.isPending === undefined ? {} : { isPending: send.isPending })}
-                        />
+                        <span className="starci-core-textarea-send-wide">
+                            <Button
+                                intent="commit"
+                                startGlyph="send"
+                                onPress={send.onPress}
+                                {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
+                                {...(send.isPending === undefined ? {} : { isPending: send.isPending })}
+                            >{send.label}</Button>
+                        </span>
+                        <span className="starci-core-textarea-send-compact">
+                            <IconButton
+                                glyph="send"
+                                intent="commit"
+                                label={send.label}
+                                onPress={send.onPress}
+                                {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
+                                {...(send.isPending === undefined ? {} : { isPending: send.isPending })}
+                            />
+                        </span>
                     </span>
-                )}
-                {mentions === undefined || !isOpen ? null : (
-                    <ul id={listId} role="listbox" aria-label={mentions.label} className="starci-core-mention-list" data-grammar-mention-list="true">
-                        {suggestions.map((option, index) => (
-                            <li
-                                key={option.id}
-                                id={`${listId}-${option.id}`}
-                                role="option"
-                                aria-selected={index === active}
-                                className="starci-core-mention-option"
-                                data-grammar-mention-active={index === active ? "true" : "false"}
-                                onMouseDown={(event) => {
-                                    event.preventDefault()
-                                    insert(option)
-                                }}
-                                onMouseEnter={() => setActive(index)}
-                            >
-                                <span className="starci-core-mention-label">{option.label}</span>
-                                {option.description === undefined ? null : <span className="starci-core-mention-description">{option.description}</span>}
-                            </li>
-                        ))}
-                    </ul>
                 )}
             </div>
             {field.description == null && maxLength === undefined ? null : (

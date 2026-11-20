@@ -95,7 +95,7 @@ rules:
         when: A chat thread with messages is drawn (team chat, an agent's chat, an inbox thread, the assistant)
         assert: |-
           The thread is a `PaneSection scroll role="log"` on the page tone `--background`; a message of someone else
-          (`MessageBubble` incoming, `MessageCard`) is the flat `--surface` with no border and no shadow; the reader's own
+          (`MessageBubble` incoming, `MessageCard`) is one outlined look, the 1px `--border` edge with no fill and no shadow; the reader's own
           message is `--accent` with `--accent-foreground`. No class or style reaches a bubble, a card or the thread ground.
       - id: case-2
         when: A message card offers replies to send

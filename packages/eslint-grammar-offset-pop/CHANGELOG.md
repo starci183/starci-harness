@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.0 - 2026-11-20
+
+- Changed: cut with the Grammar family 0.52.0; peers @starci/eslint-grammar-core 0.52.0.
+
 ## 0.51.1 - 2026-11-20
 
 - Changed: cut with the Grammar family for @starci/hfs 6.15.0; peers @starci/eslint-grammar-core 0.51.1.

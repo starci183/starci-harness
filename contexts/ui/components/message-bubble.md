@@ -8,15 +8,16 @@ Show one message of a conversation. Every conversation is `MessageBubble` messag
 ## The chat surfaces (0.37.31)
 
 Every chat (team chat, an agent's chat, an inbox customer thread, the assistant) draws the same three faces, owner-approved drawing
-`chat-surfaces` (`DNA-COMMON-CHAT-SURFACES`, `DNA-COMMON-CHAT-INCOMING-FLAT`, `DNA-COMMON-CHAT-OUTGOING-ACCENT`):
+`chat-surfaces` (`DNA-COMMON-CHAT-SURFACES`, `DNA-COMMON-CHAT-INCOMING-OUTLINE`, `DNA-COMMON-CHAT-OUTGOING-ACCENT`):
 
 - **the thread** is the page tone `--background`, never white: a `PaneSection scroll={{ role: "log" }}` paints it whatever `tone` the app
   passes, and meets the head line above and the composer's line below edge to edge;
-- **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) is the flat `--surface` with its foreground: no border, no
-  shadow, in every content kind (text, card); a message is never a card. Outside any chat frame, on a white surface (a drawer of pinned
-  messages, a white pane), the same face wears the 1px `--separator` edge so it does not vanish, still no shadow;
-  inside a chat frame it never does;
-- **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it.
+- **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) has ONE look on every host (0.52.0, the owner-approved
+  chat canvas of 2026-11-20): the 1px `--border` edge, no fill, `--foreground` words, no shadow, in every content kind (text, card); a message is
+  never a card, and no surface (a thread, a drawer of pinned messages, a white pane) changes it;
+- **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it. A
+  `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message
+  replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread (lint
@@ -48,7 +49,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | `DNA-COMMON-CHAT-OUTGOING-ACCENT` |
-| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the flat surface and its foreground (no border, no shadow) on the thread's `--background`, at the start side | `DNA-COMMON-CHAT-INCOMING-FLAT` |
+| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the 1px `--border` edge with no fill and `--foreground` words (no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-OUTLINE` |
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
 
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line

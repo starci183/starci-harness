@@ -6,7 +6,7 @@ import { noop } from './fixtures.js';
 /**
  * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, the owner-approved drawing chat-surfaces). Every chat (team chat, an agent's chat, an inbox
  * thread, the assistant) draws the same three faces: the thread on the page tone (`--background`; a `PaneSection scroll role="log"` paints it even when the
- * app asks for `tone="surface"`), a message of someone else (MessageBubble incoming, MessageCard) the FLAT surface (`--surface`, no border, no shadow), and the
+ * app asks for `tone="surface"`), a message of someone else (MessageBubble incoming, MessageCard) one outlined look (0.52.0: the 1px `--border` edge, no fill, no shadow), and the
  * reader's own message `--accent` with `--accent-foreground`. The replies a card offers are one flat list, a pressable plain-text row per reply with a
  * chevron (`Section kind="list" layout="suggestions"`, law DNA-COMMON-CARD-SUGGESTIONS); the pills by the composer stay `Button size="sm"`. The pane
  * footer that holds the composer starts at its own hairline: no empty band above the suggestions, no second line.
@@ -110,9 +110,9 @@ export const ChatPane: Story = {
     expect(incoming.length).toBe(2);
     for (const face of incoming) {
       const style = getComputedStyle(face);
-      expect(style.backgroundColor).toBe(tokenColour(thread, '--surface'));
+      expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
       expect(style.boxShadow).toBe('none');
-      expect(Number.parseFloat(style.borderTopWidth)).toBe(0);
+      expect(Number.parseFloat(style.borderTopWidth)).toBe(1);
     }
 
     const own = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
@@ -145,7 +145,7 @@ export const ChatPane: Story = {
   },
 };
 
-/** Outside a thread, on a white surface (a drawer of pinned messages), the flat white bubble and card wear the 1px separator edge, still no shadow. */
+/** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the 1px border edge, no fill, no shadow. */
 export const BubblesOnWhite: Story = {
   render: () => (
     <G.Drawer title="Pinned messages" closeLabel="Close" isOpen onOpenChange={noop}>
@@ -160,5 +160,28 @@ export const BubblesOnWhite: Story = {
     const face = document.querySelector<HTMLElement>('.starci-core-drawer .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
     expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(1);
     expect(getComputedStyle(face).boxShadow).toBe('none');
+    expect(getComputedStyle(face).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  },
+};
+
+/** A chip and a quote in the reader's own message stay readable on the brand fill: the Badge is the inverse pair, the Quote the foreground tint (0.52.0). */
+export const OwnBubbleChips: Story = {
+  render: () => (
+    <div style={{ padding: 24, maxWidth: 640 }}>
+      <G.Stack gap="row">
+        <G.MessageBubble author="Maria" meta="09:12" body="Can someone check order ORD-0004?" />
+        <G.MessageBubble
+          side="outgoing"
+          meta="09:14"
+          body={<G.Stack gap="identity"><G.Quote source="Maria" text="Can someone check order ORD-0004?" /><G.Cluster gap="identity"><G.Badge>@Sales AI</G.Badge><G.Text>please check the transfer</G.Text></G.Cluster></G.Stack>}
+        />
+      </G.Stack>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const own = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
+    const badge = own.querySelector<HTMLElement>('[data-component="Badge"]')!;
+    expect(getComputedStyle(badge).backgroundColor).toBe(getComputedStyle(own).color);
+    expect(getComputedStyle(badge).color).toBe(getComputedStyle(own).backgroundColor);
   },
 };

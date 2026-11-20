@@ -62,7 +62,7 @@ export { PageIntro, type PageIntroLine, type PageIntroProps } from "../core/comp
 export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"
 export { PaneDrawerOpener, type PaneDrawerOpenerProps } from "../core/composite/PaneDrawerOpener/index.js"
 export { EmptyNotice, type EmptyNoticeIllustration, type EmptyNoticeProps, type EmptyNoticeSecondary, type EmptyNoticeStep } from "../core/composite/EmptyNotice/index.js"
-export { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleProps, type MessageBubbleSide, type MessageBubbleTone, type MessageReaction, type MessageReactionLabels } from "../core/composite/MessageBubble/index.js"
+export { MessageBubble, REACTION_EMOJI, type MessageBubbleGroupPosition, type MessageBubbleProps, type MessageBubbleSide, type MessageBubbleTone, type MessageReaction, type MessageReactionLabels } from "../core/composite/MessageBubble/index.js"
 export { MessageCard, type MessageCardAction, type MessageCardProps } from "../core/composite/MessageCard/index.js"
 export { MessageStatus, type MessageStatusProps, type MessageStatusReaders } from "../core/composite/MessageStatus/index.js"
 export { Inset, type InsetProps } from "../core/frame/Inset/index.js"

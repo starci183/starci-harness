@@ -712,8 +712,8 @@ on the CSS scrollers. Wheel, touch and keyboard scrolling are unchanged. An app 
 refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollRegion` or `PaneSection scroll`. `Drawer bodyInset="none"` runs the body
 edge to edge across the sheet (the default `content` keeps the inset).
 
-**Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: 2 lines minimum (about 64px), growing to 6, with `send` drawing the
-send button at the bottom end of the box. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
+**Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: one line at 40px, growing to 6, with `send` drawing its own 40px Send
+Button 12px after the box and `startAction` one icon button inside the box at its start (0.52.0). The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 

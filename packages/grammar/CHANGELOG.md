@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.52.0 - 2026-11-20 - The chat composer at one line, its own Send, outlined incoming messages
+
+A minor: a lint message of eslint-grammar-core changed and a DNA law id was renamed (RELEASE_GRAMMAR_MINOR_REQUIRED).
+
+- Changed (`Textarea` composer, visual): a Textarea with `onSubmitShortcut` starts at ONE line, the 40px control height (was 2 lines, about 64px), grows with its text up to 6 lines, then scrolls, and shrinks back when the text is cleared. `COMPOSER_MIN_ROWS` is 1. The block padding centres one line in 40px at any type size. Law `DNA-COMMON-COMPOSER-ONE-LINE`.
+- Changed (`Textarea` `send`, visual): the send action is its own 40px commit `Button` (send glyph and `label`) 12px (the row gap) after the box, level with the box's bottom; below 48rem it is the round 40px `IconButton` named `label`. It was a 32px icon button inside the box at its bottom end. `label` is now also the visible words ("Send", not "Send message"). `TextareaSend` is exported.
+- Added (`Textarea` `startAction`): `{ glyph | source, label, onPress, isDisabled? }`, one `sm` ghost `IconButton` inside the box at its bottom start (attach, emoji); the text starts after it, the caret, selection and mention list are unchanged. `TextareaStartAction` is exported.
+- Changed (`Textarea` mentions in a composer): the suggestion list opens upward, above the box, because a composer is docked at the foot of its chat and the viewport cut the list.
+- Changed (`MessageBubble` incoming, `MessageCard`, visual): the other party's message is ONE look on every host, the 1px `--border` edge (`--grammar-border-edge`), no fill, `--foreground` words, no shadow. It was the flat `--surface` with no border in a thread and the 1px `--separator` edge on a white surface; the surface-dependent rules are deleted. The theme hooks keep their names with new fallbacks: `--starci-core-bubble-incoming` `transparent`, `--starci-core-bubble-incoming-foreground` `--foreground`, `--starci-core-bubble-incoming-border` and `--starci-core-message-card-border` `--grammar-border-edge`. Law `DNA-COMMON-CHAT-INCOMING-FLAT` is renamed `DNA-COMMON-CHAT-INCOMING-OUTLINE`.
+- Added (`MessageBubble` outgoing, brand tone): a `Badge` in the body (a mention, a tag) is the inverse pair (the fill's foreground as ground, the fill as words) and a `Quote` is the foreground at a 16% tint with its words and byline inheriting, so both read on the solid fill.
+- Added (glyphs): `attach` (a paperclip) and `pin` (a pushpin).
+- Added (export): `REACTION_EMOJI`, the six emoji of the reaction toolbar, from `@starci/grammar/common`, so an app reads the set instead of copying it.
+- Added (ramps): `--grammar-border-edge`, the 1px `--border` edge as one border value.
+
 ## 0.51.1 - 2026-11-20
 
 - Changed: the Grammar family patch cut with @starci/hfs 6.15.0 (no lint rule of eslint-grammar-core changed); no component change.
