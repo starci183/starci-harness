@@ -47,7 +47,9 @@ const object=(value: Parsed): Parsed=>value&&typeof value==='object'&&!Array.isA
 const sensitive=/pass(word)?|secret|token|credential|private[_-]?key|api[_-]?key/i;
 const nonempty=(value: unknown): boolean=>typeof value==='string'&&Boolean(value.trim());
 const manifestSchema=parseYaml(fs.readFileSync(new URL('../../modules/schemas/application-stacks.schema.yaml',import.meta.url),'utf8'));
-const HARDENING_CODES=new Set([
+/** A declared sealed member, or key of one, that the environment has not sealed (yet). */
+const SEALED_MEMBER_MISSING='STACKS_SEALED_MEMBER_MISSING';
+const HARDENING_CODES=new Set([SEALED_MEMBER_MISSING,
   'STACKS_SECRET_NOT_EXTERNAL','STACKS_SECRET_UNVERSIONED','STACKS_SECRET_ENV_LITERAL','STACKS_PORT_PUBLISHED',
   'STACKS_SECOND_INGRESS','STACKS_DNS_UNDECLARED','STACKS_HOST_UNROUTED','STACKS_TLS_UNDECLARED',
   'STACKS_PLACEMENT_MISSING','STACKS_HEALTHCHECK_MISSING','STACKS_UPDATE_POLICY_MISSING','STACKS_REALTIME_SCALED',
@@ -279,15 +281,19 @@ const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,ad
   // declares that one key of the member, which its envelope must hold.
   const member=nonempty(secret.where)?[`${secret.where}.enc.yaml`,`${secret.where}.enc`].map(name=>resolvedPath(envDir,name)).find(file=>file&&regular(file,{root:envDir})):null;
   const enc=member??(nonempty(secret.where)?resolvedPath(envDir,`${secret.where}.enc.yaml`):null);
-  if(!enc||!regular(enc,{root:envDir})||!sopsEnvelope(enc))
+  // A member the declaration names that is not in the tree yet, or a key its envelope does not hold yet, is STACKS_SEALED_MEMBER_MISSING: the one
+  // shape a pending cutover reports (PROJECT-STACKS-19); a file that is there but no envelope stays encrypted-ref-invalid.
+  if(nonempty(secret.where)&&!member&&enc&&!fs.existsSync(enc))
+    add(SEALED_MEMBER_MISSING,`${at}.where`,`the member at ${secret.where} is not sealed: no ${secret.where}.enc.yaml (or a legacy ${secret.where}.enc) below the environment directory`);
+  else if(!enc||!regular(enc,{root:envDir})||!sopsEnvelope(enc))
     add('encrypted-ref-invalid',`${at}.where`,'secret must resolve to <where>.enc.yaml (or a legacy <where>.enc) as a recognizable SOPS envelope, an existing regular file below the environment directory');
   else if(nonempty(secret.key)&&!envelopeOf(fs.readFileSync(enc,'utf8')).keys.includes(secret.key))
-    add('encrypted-ref-invalid',`${at}.key`,`the member at ${secret.where} holds no ${secret.key}`);
+    add(SEALED_MEMBER_MISSING,`${at}.key`,`the member at ${secret.where} holds no ${secret.key}`);
   else if(Array.isArray(secret.keys)){
     // A grouped member declares its keys in one entry; each must be in the envelope, and one entry declares one key or a group, not both.
     if(nonempty(secret.key))add('encrypted-ref-invalid',`${at}.keys`,'an entry declares one key (key) or a group (keys), not both');
     const held=envelopeOf(fs.readFileSync(enc,'utf8')).keys;
-    for(const key of secret.keys.filter((key: string)=>!held.includes(key)))add('encrypted-ref-invalid',`${at}.keys`,`the member at ${secret.where} holds no ${key}`);
+    for(const key of secret.keys.filter((key: string)=>!held.includes(key)))add(SEALED_MEMBER_MISSING,`${at}.keys`,`the member at ${secret.where} holds no ${key}`);
   }
   if(nonempty(secret.where)&&!plain)
     add('materialized-path-invalid',`${at}.where`,'secret plaintext path and its existing ancestors must remain below the environment directory without symlinks');
@@ -444,7 +450,7 @@ export interface TrackedGateContext {
   repoRoot?: string; files?: string[]; all?: string[]; repo?: Parsed; resolver?: unknown; manifest?: unknown; isRoot?: boolean; existingFindings?: Array<{ code: string; path: string; message: string }>; inScope?: (path: string) => boolean;
 }
 
-const declarationFindingCodes=new Set(['STACKS_RELEASE_UNDECLARED','BACKUP_UNDECLARED','BACKUP_PROOF_MISSING','HFS_SCHEDULE_UNDECLARED']);
+const declarationFindingCodes=new Set([SEALED_MEMBER_MISSING,'STACKS_RELEASE_UNDECLARED','BACKUP_UNDECLARED','BACKUP_PROOF_MISSING','HFS_SCHEDULE_UNDECLARED']);
 
 function trackedGateFinding(entry: TrackedDeployment,error: GateError): GateFinding{
   let file=entry.file;

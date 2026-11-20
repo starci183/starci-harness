@@ -76,6 +76,8 @@ export interface DeployResult { config: DeployConfig | null; problems: StackProb
 export interface DeployImageTie { environment: string; service: string; app: string }
 
 export const DEPLOY_CONFIG_CODE = 'STACKS_DEPLOY_CONFIG_INVALID';
+/** A sealed member, or a key of one, the declaration names and the environment has not sealed (yet). */
+export const SEALED_MEMBER_MISSING = 'STACKS_SEALED_MEMBER_MISSING';
 
 export const NAME = /^[a-z][a-z0-9-]*$/u;
 export const KEY = /^[A-Z][A-Z0-9_]*$/u;
@@ -189,7 +191,8 @@ function imageBuildArgs(c: Collector, at: string, block: Block, members: Set<str
 
 function memberRef(c: Collector, at: string, member: unknown, members: Set<string>): void {
   if (!nameField(c, at, member)) return;
-  if (members.size > 0 && !members.has(member as string)) c.problem(at, `sealed member ${member} has no .starcistacks/<env>/secrets/${member}.enc`);
+  // A member the declaration names but the environment has not sealed yet is a finding of its own, so a pending cutover (PROJECT-STACKS-19) can report it.
+  if (members.size > 0 && !members.has(member as string)) c.problem(at, `sealed member ${member} has no .starcistacks/<env>/secrets/${member}.enc`, SEALED_MEMBER_MISSING);
 }
 
 function images(c: Collector, block: Block, services: Set<string>, members: Set<string>): Record<string, ImageEntry> {

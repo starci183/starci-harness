@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.15.1 - 2026-11-20
+
+- Added (R450, PROJECT-STACKS-19): an environment pending its cutover. `environments.<env>.cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` in .starcistacks/application-stacks.yaml (schema, `runtime/scripts/lib/stack-cutover.mts`) makes `app check` (both envs) report, for that environment alone, the findings of the codes failure-codes.yaml marks `cutoverTolerant` (`true`: STACKS_SEALED_MEMBER_MISSING, STACKS_LITE_SELFHOSTED_DB, STACKS_LITE_REDIS_PERSISTENCE, STACK_STORAGE_MISSING, STACKS_IMAGE_ENV_DIVERGES; `kept`: ENV_SEALED_UNREAD of a member or key `keep` names), listed `CUTOVER PENDING (<env>), REPORT ONLY` and in a section of their own beside the gates off by declaration (`runtime/scripts/hfs/check-cutover.mts`); every other finding still blocks. An unsound block is HFS_CUTOVER_DECLARATION_INVALID and a past `until` HFS_CUTOVER_EXPIRED, both blocking and judged outside the cache on every run that selects hfs; neither tolerates anything.
+- Added (`stack/cutover.mts`): while an environment carries a cutover block, `stack deploy` in every form (image, --ci-run, --urgent, --adopt, and so the managed stack-deploy.yml) and `stack prepare --execute` refuse it with STACK_CUTOVER_PENDING before any action module loads.
+- Added (STACKS_SEALED_MEMBER_MISSING): a sealed member the declaration names that the environment has not sealed, or a declared key its member does not hold yet, is its own code instead of HFS_STACKS_SHAPE (`secrets[]`) or STACKS_DEPLOY_CONFIG_INVALID (`deploy.secrets` members); a present file that is no sops envelope stays HFS_STACKS_SHAPE. ENV_SEALED_UNREAD findings carry their `key`.
+- Changed (templates): the skeleton's production environment carries the commented cutover example.
+
 ## 6.15.0 - 2026-11-20
 
 - Changed (templates, R212): the last lite folders take the plain names. be/skeleton-lite and fe/skeleton-lite are merged into be/skeleton and fe/skeleton (the lite file wins where both existed; the full-only be files, fe/skeleton/apps/app, apps/landing and packages/__project__-* that no scaffold rendered are gone), and be/patterns/{jobs,queues}/platform-lite into platform (the TypeORM persistence.* templates and their entries in jobs.yaml and queues.yaml are gone). The scaffold output of a new app is byte for byte the same. The template snapshot 5.8.3 took the same merge, with its manifest paths.

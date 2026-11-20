@@ -57,7 +57,7 @@ function environmentFindings({ repoRoot, project, environment, spec }: { repoRoo
   const envDir = path.join(repoRoot, STACK_ROOT, environment);
   const { problems } = normalizeDeploy(spec.deploy, { project, probe: probeOf(envDir, spec) });
   return [...problems.map((problem: Parsed) => found(
-    'STACKS_DEPLOY_CONFIG_INVALID',
+    problem.code ?? 'STACKS_DEPLOY_CONFIG_INVALID',
     DECLARATION,
     `environments.${environment}.${problem.at}: ${problem.message}`,
   )), ...lineEndingFindings({ repoRoot, envDir, environment })];

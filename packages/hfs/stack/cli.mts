@@ -1,6 +1,7 @@
 // cli.mts - `starci app stack <action>` for the Swarm deploy tooling: flags, dry run versus --execute, dispatch, text and --json output.
 //   starci app stack <action> --env <env> [the action's FLAGS]     (only the READ_ONLY actions default --env to production)
 // Each action takes only its own flags: a flag of another action is a refusal, never ignored.
+// An environment declared `cutover: {state: pending}` refuses every deploy and an executed prepare (STACK_CUTOVER_PENDING, cutover.mts; PROJECT-STACKS-19).
 // Moving a stack to new runtime names (PROJECT-STACKS-18): `standby` / `resume` (standby.mts), `volume copy` / `volume verify` (volume.mts), `deploy --adopt` (adopt.mts).
 // (`starci app world <up|down|status>` is the test world's, dispatched by packages/hfs/src/main.mts; `stack status` below is the deploy's drift report.)
 // Every action module exports one async function (ctx, config, options) -> { ok, lines, data }; a refusal throws StackError.
@@ -16,6 +17,7 @@ import { parseTargetBinding, bindStackTarget, nativeToolEnvironment } from './ta
 import type { TargetBinding } from './target-binding.mjs';
 import { oneCommand, prepareUrgentRelease } from './urgent-release.mjs';
 import { isLocalEnvironment, isLocalOnly, isLocalShared, runLocal } from './local-cli.mjs';
+import { refuseCutoverPending } from './cutover.mjs';
 import type { UrgentReleaseOptions, UrgentReleaseResult } from './urgent-release.mjs';
 
 /** The parsed flags of one action: boolean flags, value flags and the repeatable ones as lists. */
@@ -247,6 +249,8 @@ export async function stackMain(argv: string[], io: StackIo = {}): Promise<numbe
   const ctx = stackContext(io);
   try {
     const action = argv[0];
+    // An environment pending its cutover (PROJECT-STACKS-19) takes no deploy and no executed prepare, in any form, before anything else is read.
+    refuseCutoverPending(ctx.cwd, action, argv.slice(1));
     if (isLocalOnly(action)) return await runLocal(ctx, action as string, argv.slice(1), io.localDeps);
     if (!isAction(action)) throw refusal('STACK_USAGE', `starci app stack takes ${[...ACTIONS, 'doctor', 'up', 'down', 'logs'].join(', ')}`);
     if (isLocalShared(action) && argv.includes('--env') && isLocalEnvironment(ctx.cwd, String(argv[argv.indexOf('--env') + 1]))) return await runLocal(ctx, action, argv.slice(1), io.localDeps);

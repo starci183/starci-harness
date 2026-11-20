@@ -6408,3 +6408,20 @@ rules:
       - packages/hfs/templates/app/skeleton/.starciwork/master-plan.yaml
     docs:
       - contexts/project/master-plan-record.md#project-master-plan-1-a-project-keeps-its-master-plan-as-nine-layers-of-data
+  - id: R450
+    code: "HFS_CUTOVER_EXPIRED"
+    law: "An environment of `.starcistacks/application-stacks.yaml` that still runs the previous release while the branch carries the next shape may declare `cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` (PROJECT-STACKS-19): `starci app check` in both envs then reports, for that environment alone, the findings of the codes modules/kernel/failure-codes.yaml marks `cutoverTolerant` (`true`: any finding about the environment; `kept`: only one about a member or key `keep` names) and lists them in a section of their own, while every other finding still blocks; a block that is not that shape is HFS_CUTOVER_DECLARATION_INVALID and a declaration past its `until` is HFS_CUTOVER_EXPIRED, both blocking and neither tolerating anything; while the block is present at all, `stack deploy` in every form (image, --ci-run, --urgent, --adopt, the managed stack-deploy.yml) and `stack prepare --execute` refuse the environment with STACK_CUTOVER_PENDING, and the cutover runbook removes the block as its last step."
+    kinds: [check]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["HFS_CUTOVER_EXPIRED", "HFS_CUTOVER_DECLARATION_INVALID", "STACKS_SEALED_MEMBER_MISSING", "STACK_CUTOVER_PENDING"]
+    enforcers:
+      - {kind: hfs, id: cutover, at: scripts/hfs/check-cutover.mjs}
+      - {kind: hfs, id: cutover-declaration, at: scripts/lib/stack-cutover.mjs}
+    exemplifiedBy:
+      - packages/hfs/templates/app/skeleton/.starcistacks/application-stacks.yaml
+    docs:
+      - contexts/project/stacks.md#project-stacks-19-an-environment-pending-its-cutover-reported-never-deployed
+    proves:
+      - packages/hfs/src/stack-cutover.spec.mjs
+    witness:
+      - {path: packages/hfs/src/stack-cutover.spec.mjs}

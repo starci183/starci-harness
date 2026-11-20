@@ -138,6 +138,8 @@ import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
+import { cutoverDeclarationFindings, cutoverLines, cutoverReports, judgedForCutover, type CutoverReport } from '../runtime/scripts/hfs/check-cutover.mjs';
+import { declaredCutovers, todayOf } from '../runtime/scripts/lib/stack-cutover.mjs';
 import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureStep, runWiringStep, type AppPassParts, type AppRunInput } from '../cache/run.mjs';
 import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
@@ -388,7 +390,7 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 
 function printFindingGroup(code: string, list: Dynamic[], out: (text: string) => unknown): void {
   const first = list[0] as Dynamic;
-  const label = `${String(first.level).toUpperCase()}${first.local === true && first.report === true ? ', LOCAL, REPORT ONLY' : first.report === true ? ', REPORT ONLY' : ''}`;
+  const label = `${String(first.level).toUpperCase()}${typeof first.cutover === 'string' ? `, CUTOVER PENDING (${first.cutover}), REPORT ONLY` : first.local === true && first.report === true ? ', LOCAL, REPORT ONLY' : first.report === true ? ', REPORT ONLY' : ''}`;
   if (first.engine) out(`\n[${label}] ${code} x${list.length}\n`);
   else out(`\n[${label}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
   for (const finding of list.slice(0, PER_CODE_LIMIT)) out(`  - ${finding.message}\n`);
@@ -399,11 +401,14 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   const { counts } = result;
   printCheckOverview(result, out);
   const byCode = new Map<string, Dynamic[]>();
-  for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
-  for (const [code, list] of byCode) printFindingGroup(code, list, out);
-  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}${counts.local ? ` (${counts.local} of them local, report only until the restore)` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  // A finding a pending cutover reports is listed apart from the blocking ones of the same code.
+  const groupOf = (f: Dynamic): string => (typeof f.cutover === 'string' ? `${String(f.code)} ${f.cutover}` : String(f.code));
+  for (const f of result.findings) byCode.set(groupOf(f), [...(byCode.get(groupOf(f)) ?? []), f]);
+  for (const [group, list] of byCode) printFindingGroup(group.split(' ')[0] as string, list, out);
+  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.cutover ? ` (${counts.cutover} of them reported for an environment pending cutover)` : ''}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}${counts.local ? ` (${counts.local} of them local, report only until the restore)` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
   const off = (result.branchProfile?.gatesOff ?? []) as { gate: string; reason: string }[];
   if (off.length > 0) out(`gates off by declaration, not judged and not counted as passed: ${off.map((entry) => `${entry.gate} (declared: ${entry.reason})`).join('; ')}\n`);
+  for (const line of cutoverLines((result.cutover ?? []) as CutoverReport[])) out(`${line}\n`);
   const counting = Object.entries((result.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
   if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
 }
@@ -745,6 +750,13 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const unapproved = galleryDesignChangeFindings({ repoRoot, changed: changedSince(repoRoot, galleryBase), base: galleryBase });
     if (unapproved.length > 0) extra.push(...withWhy(unapproved as Dynamic[], readWhy(skillRoot, [DESIGN_CHANGE_UNAPPROVED])));
   }
+  // An environment declared `cutover: {state: pending}` (PROJECT-STACKS-19): its declaration is judged on every run that selects hfs, uncached, since its expiry reads the clock.
+  const today = todayOf();
+  const cutovers = declaredCutovers(repoRoot, today);
+  if (selected.has('hfs')) {
+    const declared = cutoverDeclarationFindings(cutovers, today);
+    if (declared.length > 0) extra.push(...withWhy(declared as Dynamic[], readWhy(skillRoot, [...new Set(declared.map((finding) => finding.code))])));
+  }
   // `--env local` also judges the LIVE dev environment (PROJECT-STACKS-11): the migration files its database has not applied and the queues that keep dead-lettering. Never cached; not asked of `--env prod`.
   if (env === 'local' && selected.has('hfs') && session !== undefined) {
     const live = await liveStateFindings({ ctx: stackContext({ ...(io.stackIo ?? {}), cwd: repoRoot, env: io.env }), repoRoot });
@@ -777,21 +789,25 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const branchJudged = [...checked.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
   // `--env local` lists the findings only a local-registry loop causes as report-only (check-env.mts); `--env prod` judges them as every other finding.
   const localCodes = localOnlyCodes();
-  const findings = judgedForEnv(branchJudged, env, localCodes);
+  // A pending cutover reports, for its environment alone, the findings of the codes the catalog marks cutoverTolerant (check-cutover.mts); every other finding still blocks.
+  const findings = judgedForCutover(judgedForEnv(branchJudged, env, localCodes), cutovers);
+  const cutover: CutoverReport[] = cutoverReports(cutovers, findings);
   const localListed = env === 'local' ? localReported(findings, localCodes) : [];
   // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.
   const judged = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
   const verdict = judged.pass ? { ...judged, line: localVerdictLine(localListed) } : judged;
   const toolErrors = [...(linted?.errors ?? []), ...style.errors, ...ratchetErrors];
   const counts = { ...checked.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
-  const reported = findings.filter(finding => finding.report === true && finding.level === 'error' && !localListed.includes(finding)).length;
+  const reported = findings.filter(finding => finding.report === true && finding.level === 'error' && finding.cutover === undefined && !localListed.includes(finding)).length;
   if (reported > 0) Object.assign(counts, { reported });
+  const cutoverReported = findings.filter(finding => finding.cutover !== undefined).length;
+  if (cutoverReported > 0) Object.assign(counts, { cutover: cutoverReported });
   if (localListed.length > 0) Object.assign(counts, { local: localListed.length });
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const gatesOff = (Object.entries(profile.declaredOff) as [string, string][]).map(([gate, reason]) => ({ gate, reason }));
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, gatesOff, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
-  const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(cutover.length > 0 ? { cutover } : {}), ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
 

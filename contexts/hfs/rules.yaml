@@ -3027,3 +3027,13 @@ rules:
       - HFS_MASTER_PLAN_MISSING
     enforcers:
       - {kind: hfs, id: master-plan}
+  - id: R450
+    code: HFS_CUTOVER_EXPIRED
+    law: "An environment that still runs the previous release while the branch carries the next shape may declare `cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` (PROJECT-STACKS-19): `starci app check` in both envs then reports, for that environment alone, the findings of the codes the failure-code catalog marks `cutoverTolerant` (`true`: any finding about the environment; `kept`: only one about a member or key `keep` names) in a section of their own, while every other finding still blocks; a block of another shape is HFS_CUTOVER_DECLARATION_INVALID and one past its `until` is HFS_CUTOVER_EXPIRED, both blocking and neither tolerating anything; while the block is present at all, every `stack deploy` and `stack prepare --execute` refuse the environment with STACK_CUTOVER_PENDING."
+    failureCodes:
+      - HFS_CUTOVER_EXPIRED
+      - HFS_CUTOVER_DECLARATION_INVALID
+      - STACKS_SEALED_MEMBER_MISSING
+      - STACK_CUTOVER_PENDING
+    enforcers:
+      - {kind: hfs, id: cutover}

@@ -3,11 +3,11 @@
 import path from 'node:path';
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 
-/** One problem: the path it concerns and the message. */
-export interface StackProblem { at: string; message: string }
+/** One problem: the path it concerns and the message; `code` when it is a finding of its own rather than STACKS_DEPLOY_CONFIG_INVALID. */
+export interface StackProblem { at: string; message: string; code?: string }
 
 /** What `collector()` returns. */
-export interface Collector { problems: StackProblem[]; problem: (at: string, message: string) => void }
+export interface Collector { problems: StackProblem[]; problem: (at: string, message: string, code?: string) => void }
 
 /** The environment-relative file probe the deploy block receives. */
 export interface TreeProbe { exists: (file: string) => boolean }
@@ -17,7 +17,7 @@ const BACKSLASH = String.fromCodePoint(92);
 /** Collects problems with the path they concern; `problem(at, message)` is the only way to add one. */
 export function collector(): Collector {
   const problems: StackProblem[] = [];
-  return { problems, problem: (at: string, message: string): void => { problems.push({ at, message }); } };
+  return { problems, problem: (at: string, message: string, code?: string): void => { problems.push(code === undefined ? { at, message } : { at, message, code }); } };
 }
 
 /** True for a mapping; reports every key outside `allowed` as "not a field of the <label> block". */
