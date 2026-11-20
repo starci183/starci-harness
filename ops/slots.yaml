@@ -10,6 +10,8 @@
 #   holder is gone: the host booted after it was taken, its pid is not alive, or its pid now belongs to a process started at another time.
 #   Age is never evidence: a slot older than `warnMinutes` is reported as old (`slot list`), never removed. Every reclaim is logged
 #   with its evidence in `<root>/_slots.log`.
+# One slot per lane per kind: a take for a lane that holds one returns it. A lock with no pid (the old helper) is also reclaimed when its lane
+#   has no worktree under the root (`gone`). A lane's slots are released when it lands, is rejected or is removed (`lane remove`).
 schema: starci/slots@1
 root: null
 kinds:

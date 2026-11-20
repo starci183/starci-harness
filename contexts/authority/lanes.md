@@ -26,7 +26,7 @@ for shots), `stack` (the shared stack and its main checkout). Each kind has a co
 | `starci slot run <kind> -- <command...>` | holds a slot for exactly the command's life, recording this process; npm and npx run through the governor |
 | `starci slot take <kind> [--pid <pid>]` | holds a slot until released; `--pid` names the long-lived process it belongs to (in Git Bash, `$(cat /proc/$$/winpid)`) |
 | `starci slot release <kind>` | releases the lane's own slots, each only once read and found to name the lane |
-| `starci slot list [kind]` | every slot with holder, age, pid, state and evidence |
+| `starci slot list [kind]` | every slot with its lane, age, whether the holder is alive (yes, no, unknown), whether it is reclaimable, pid and state |
 | `starci slot release <kind\|all> --stale` | reclaims every slot whose holder is proven gone |
 
 - **Prefer `slot run`.** A slot held by a command cannot outlive it; `slot take` is for a step that spans several commands.
@@ -35,6 +35,16 @@ for shots), `stack` (the shared stack and its main checkout). Each kind has a co
   or `slot release --stale`, reclaims a slot only when its holder is proven gone: its pid is not alive, its pid runs a process
   started at another time, or the host booted after it was taken. Each reclaim is logged with its evidence in `<root>/_slots.log`.
   Age is never evidence: a slot past its kind's `warnMinutes` is listed `old`, and the coordinator asks its holder.
+- **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds, whoever wrote its file (the old
+  `_gate-slot-N.lock` helper too), so a retried gate never takes a second one; a leaked duplicate of the lane written by the old helper is released
+  on the way. A slot held by `slot run` or `lane gate` is released in a `finally`, on SIGINT, SIGBREAK, SIGHUP and SIGTERM and on `process.exit`.
+  On Windows a process killed outright (`taskkill /F`, `process.kill`, a dead parent) runs nothing: its slot records its pid, and the next take reclaims it as `dead`.
+- **Locks with no pid** (the old helper writes `<lane> <time>` alone) cannot be probed. They are reclaimable (`gone`) once their lane has no worktree: no
+  worktree of the repositories under the slot root exists on disk whose folder ends in `/<lane>` or which has `lane/<lane>` checked out (where the slot root
+  holds no repository, `_land-status/<lane>.json` saying `landed` or `rejected` stands in), or taken before this boot (`rebooted`). Otherwise they are
+  only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or its old-format lock can be reclaimed.
+- **A lane lets go of its slots.** The batch lander releases every slot a lane holds, of any kind, once it lands or is rejected, and `starci lane remove`
+  does so as part of the removal (its dry run lists them; `--dir` names the slot root). Each release is logged in `_slots.log`.
 - **Never hold a slot while you wait** for a review, an audit or another lane; take it for the run, then let it go.
 
 ## The shared stack

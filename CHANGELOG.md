@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (slot hygiene, after lane adopt-185 left all five `_gate-slot-N.lock` held on 2026-11-20): a take for a lane that already holds a slot of the kind returns that slot, whatever format wrote it, so retried `slot run` and `lane gate` never take a second one, and a leaked duplicate of the lane written by the old helper is released; `slot run` and `lane gate` release in a `finally`, on SIGINT, SIGBREAK, SIGHUP, SIGTERM and `process.exit` (a process killed outright is reclaimed as dead by the next take); the batch lander releases every slot of a lane once it lands or is rejected; `starci lane remove` releases every slot of the lane, of any kind, listed in its dry run (new `--dir`).
+- Added: stale detection for locks that record no pid (the old helper): `gone` when no worktree of the repositories under the slot root ends in `/<lane>` or has `lane/<lane>` checked out (`_land-status/<lane>.json` landed or rejected where no repository is found), `rebooted` when taken before this boot, otherwise only `old`; every reclaim is logged with its evidence. `starci slot list` shows each lock's lane, age, holder alive (yes, no, unknown) and whether it is reclaimable.
+
 ## 1.1.0-alpha.185 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

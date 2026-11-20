@@ -8,7 +8,7 @@ import {
     CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
 } from "./land-queue.js"
 import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
-import { loadSlotRules, slotKind, takeSlot as takeSlotFile } from "./slots.js"
+import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
 
 /** The fields of a status a batch sets; the lane, its sha, branch and batch come from the entry. */
 type StatusFields = Omit<LaneStatus, "lane" | "laneSha" | "branch" | "at" | "batch">
@@ -66,6 +66,17 @@ const takeSlot = async (dir: string, kind: "gate" | "npm", count: number): Promi
     const own = slotKind(rules, kind)
     const capped = { ...rules, kinds: { ...rules.kinds, [kind]: { ...own, count: Math.min(own.count, count), burst: undefined } } }
     return (await takeSlotFile(dir, capped, kind, LANDER, { pid: process.pid })).file
+}
+
+/** Releases every slot a landed or rejected lane holds in the lanes folder; it never fails a batch, and never touches the lander's own slots. */
+export const releaseLaneSlotsOf = (dir: string, lane: string, state: string, say: (line: string) => void): void => {
+    if (lane === LANDER) return
+    try {
+        const done = releaseLaneSlots(dir, loadSlotRules(), lane, `${LANDER} (${state})`)
+        if (done.released.length > 0) say(`released ${String(done.released.length)} slot(s) of ${state} lane ${lane}: ${done.released.join(", ")}`)
+    } catch (error) {
+        say(`could not release the slots of ${lane}: ${error instanceof Error ? error.message : String(error)}`)
+    }
 }
 
 /** Waits for the dev lock and holds it for the batch. */
@@ -250,7 +261,10 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
     let landed: string | undefined
     let outcome = "nothing to merge"
     const status = (lane: ReadyEntry, rest: StatusFields): void => {
-        if (!options.dryRun) writeStatus(dir, { lane: lane.lane, laneSha: lane.sha, branch: lane.branch, batch, ...rest })
+        if (options.dryRun) return
+        writeStatus(dir, { lane: lane.lane, laneSha: lane.sha, branch: lane.branch, batch, ...rest })
+        // A lane that landed or was rejected is done with its gate: every slot it holds goes, whatever the kind or writer (never the lander's own).
+        if (rest.state === "landed" || rest.state === "rejected") releaseLaneSlotsOf(dir, lane.lane, rest.state, say)
     }
     const reject = (lane: ReadyEntry, reason: string, findings: readonly LaneFinding[]): void => {
         rejected.push(lane.lane)
