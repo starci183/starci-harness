@@ -912,3 +912,11 @@ Why: the harness holds the secret set at the point of failure, so it can say why
 alternative, relaying the whole output, leaks, and relaying none sends every operator to the container.
 
 Enforced by: `STACK_SEED_COMMAND` and `STACK_SEED_DOOR_REFUSED` carry the tail; held by `packages/hfs/src/stack-seeds.spec.mts` and `hfs-boot-entry.spec.mts`.
+
+## PROJECT-STACKS-17 Monitoring is the server's, opted into per environment
+
+A Swarm environment that wants metrics, logs, probes, traces or profiles declares `environments.<env>.monitoring`. It never runs its own
+Prometheus or Grafana: the server's one shared monitoring stack (`starci vps monitor up`, its components toggled in
+`ops/vps/monitor/components.yaml`) scrapes and keeps what the block names. An environment without the block renders byte for byte as before.
+The block's fields, the labels and sidecars the render adds, the doors and secrets, and why Consul is not part of it are in
+[monitoring.md](monitoring.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).

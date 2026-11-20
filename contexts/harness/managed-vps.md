@@ -66,6 +66,7 @@ stdin (`cli/src/harness/vps/ssh.ts`, the pattern of @starci/hfs `stack/remote.mt
 | `vps swarm init <id>` | a one-manager swarm and the attachable overlay network `edge` |
 | `vps ui up <id>` | Portainer CE and its agent (digests pinned) as the `starci-ui` stack, published on no port |
 | `vps edge up <id>` | Traefik (digest pinned) as the `starci-edge` swarm stack on 80/443 in host mode, routing to labelled services of the `edge` network, certificates by ACME DNS-01 through Cloudflare; the token is a swarm secret named by its hash |
+| `vps monitor up <id> [--with <c>] [--without <c>]`, `monitor up --local` | the shared monitoring stack `starci-monitor` of the components ops/vps/monitor/components.yaml and the server file turn on (Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy by default; blackbox, Tempo, Pyroscope, Consul, Uptime Kuma, GlitchTip optional), digests pinned, its memory budget printed; app environments opt in ([project/monitoring.md](../project/monitoring.md)) |
 | `vps domain add <id> <sub> --to <service:port\|port\|ui\|ssh>`, `domain list <id>`, `domain remove <id> <sub>` | a name `<sub>.starci.org` for the server (below) |
 | `vps cloudflare set-token --account <id>`, `cloudflare status` | the owner's Cloudflare API token, masked, verified, sealed |
 | `vps grant <id> --app <path> --env <env>` | a deploy user with a key made here, sealed into the app through `starci app secret set` |
