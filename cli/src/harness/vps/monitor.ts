@@ -69,6 +69,13 @@ const fileSchema = z.looseObject({ schema: z.literal("starci/vps-monitor@1"), co
 /** One component of the monitoring stack, as components.yaml declares it. */
 export type MonitorComponent = z.infer<typeof componentSchema>
 
+/** A component of the loaded file by name, refused when the name is none of them. */
+const componentOf = (components: Readonly<Record<string, MonitorComponent>>, name: string): MonitorComponent => {
+    const component = components[name]
+    if (component === undefined) throw new Refusal("VPS_MONITOR_COMPONENT", `${name} is no monitoring component; the components are ${Object.keys(components).join(", ")}`)
+    return component
+}
+
 /** The folder of the monitoring files: ops/vps/monitor beside the components file. */
 export const monitorDir = (policy: VpsPolicy, opsDir: string): string => join(opsDir, posix.dirname(policy.monitor.components))
 
@@ -113,7 +120,7 @@ export interface BudgetRow {
 /** The memory and CPU budget of the components that run: their limits (the most the stack can take) and reservations. */
 export const monitorBudget = (components: Readonly<Record<string, MonitorComponent>>, selected: readonly string[]): { readonly rows: readonly BudgetRow[]; readonly memoryMb: number; readonly reserveMb: number; readonly cpus: number } => {
     const rows = selected.map((name): BudgetRow => {
-        const resources = (components[name] as MonitorComponent).resources
+        const resources = componentOf(components, name).resources
         return { component: name, memoryMb: megabytes(resources.memory), reserveMb: megabytes(resources.reserveMemory), cpus: Number(resources.cpus) }
     })
     const sum = (key: "memoryMb" | "reserveMb" | "cpus"): number => Math.round(rows.reduce((total, row) => total + row[key], 0) * 100) / 100
@@ -217,7 +224,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     }
     const base = { stack: policy.monitor.stack, network: policy.monitor.network, server: serverName, ...doorTokens }
     const tokensOf = (name: string): Record<string, string> => {
-        const component = components[name] as MonitorComponent
+        const component = componentOf(components, name)
         const door = component.door === undefined ? undefined : doorOf(policy, target, component.door)
         return {
             ...base,
@@ -273,7 +280,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     const volumes = new Set<string>()
     const services: Record<string, unknown> = {}
     for (const name of selected) {
-        const component = components[name] as MonitorComponent
+        const component = componentOf(components, name)
         const service = fillDeep(component.service ?? {}, tokensOf(name), `components.yaml ${name}.service`) as Record<string, unknown>
         const text = JSON.stringify(service)
         if (/\$(?!\$)/.test(text.replaceAll("$$", ""))) throw new Refusal("OPS_INVALID", `components.yaml ${name}.service holds a single $; write $$ for a $ the container sees`)
@@ -324,8 +331,8 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     const stack = {
         version: "3.8",
         services,
-        networks: Object.fromEntries([...networks].sort().map((network) => [network, networkSpec[network]])),
-        ...(volumes.size > 0 ? { volumes: Object.fromEntries([...volumes].sort().map((volume) => [volume, {}])) } : {}),
+        networks: Object.fromEntries([...networks].sort((left, right) => left.localeCompare(right)).map((network) => [network, networkSpec[network]])),
+        ...(volumes.size > 0 ? { volumes: Object.fromEntries([...volumes].sort((left, right) => left.localeCompare(right)).map((volume) => [volume, {}])) } : {}),
         ...(Object.keys(configs).length > 0 ? { configs } : {}),
         ...(secrets.size > 0 ? { secrets: Object.fromEntries([...secrets].map((kind) => [fileOf(kind), { external: true, name: `\${${secretEnvOf(kind)}}` }])) } : {}),
     }
@@ -394,4 +401,4 @@ export const monitorUpPlan = (policy: VpsPolicy, target: MonitorTarget, render: 
 
 /** The images of the selected components, pinned by contexts/stack/pins.yaml. */
 export const monitorImages = (components: Readonly<Record<string, MonitorComponent>>, selected: readonly string[], opsDir: string): Record<string, string> =>
-    resolveImages(Object.fromEntries(selected.map((name) => [name, (components[name] as MonitorComponent).image])), opsDir)
+    resolveImages(Object.fromEntries(selected.map((name) => [name, componentOf(components, name).image])), opsDir)
