@@ -1,0 +1,86 @@
+#!/bin/bash
+# starci-deploy-run - the root half of the CI deploy runner of a managed server. Only starci-deploy-gate calls it, through the one sudo rule of
+# `starci-runner` (/etc/sudoers.d/90-starci-runner); it checks its arguments again itself, since a sudo rule is not a parser.
+#   starci-deploy-run <app> <env> <tag>
+# Steps, one deploy at a time on the whole server (flock /run/starci-runner.lock, shared by every app on the box):
+#   1. fetch the app's repository with its READ-ONLY deploy key (/etc/starci-runner/<app>/repo_key) into /var/lib/starci-runner/<app>/src and
+#      check out the ANNOTATED tag; the tag must equal v<package.json version>;
+#   2. npm ci --ignore-scripts with the pinned Node (/opt/starci-node/bin);
+#   3. read the image digests of the tag's commit from the registry with the READ-only token (/etc/starci-runner/<app>/registry_token):
+#      <prefix><app>:sha-<sha><suffix> per service, waiting up to IMAGE_WAIT_SECONDS for CI to push them;
+#   4. `starci app stack deploy --env <env> --image ... --sha <sha> --execute` with SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt: the
+#      server's own age key opens the sealed members here and never leaves the box; the deploy reaches the manager through the app's own sealed
+#      transport, exactly as from an owner machine.
+# Every run appends to /var/log/starci-runner/<app>.log (the deploy's own report; no secret is printed by the deploy) and its verdict to
+# /var/log/starci-runner/runs.log. Exit status is the deploy's.
+set -euo pipefail
+umask 077
+app=${1:-} env=${2:-} tag=${3:-}
+die() { echo "starci-deploy-run: $1" >&2; exit "${2:-2}"; }
+[ "$(id -u)" -eq 0 ] || die "must run as root (through starci-deploy-gate)"
+case "$app" in ''|-*|*[!a-z0-9-]*) die "app" ;; esac
+grep -qx -- "$app" /etc/starci-runner/apps || die "app not listed"
+case "$env" in staging|production) ;; *) die "env" ;; esac
+printf '%s\n' "$tag" | grep -Eqx 'v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,6}' || die "tag"
+
+conf=/etc/starci-runner/$app.conf
+[ -r "$conf" ] || die "no $conf"
+REPO_URL='' IMAGE_PREFIX='' SERVICES_staging='' SERVICES_production='' IMAGE_WAIT_SECONDS=3600 NODE_HOME=/opt/starci-node
+# shellcheck disable=SC1090 # root-owned config, mode 600, written by install.sh
+. "$conf"
+case "$IMAGE_PREFIX" in ghcr.io/*) ;; *) die "IMAGE_PREFIX must be a ghcr.io prefix" ;; esac
+eval "services=\${SERVICES_$env}"
+[ -n "$services" ] || die "no SERVICES_$env in $conf"
+key=/etc/starci-runner/$app/repo_key
+token=/etc/starci-runner/$app/registry_token
+[ -r "$key" ] && [ -r "$token" ] || die "missing $key or $token"
+
+work=/var/lib/starci-runner/$app
+log=/var/log/starci-runner/$app.log
+mkdir -p "$work" /var/log/starci-runner
+exec 9>/run/starci-runner.lock
+if ! flock -w 1800 9; then die "another deploy holds the server for 30 min" 75; fi
+stamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+verdict() { printf '%s app=%s env=%s tag=%s sha=%s exit=%s\n' "$(stamp)" "$app" "$env" "$tag" "${sha:-?}" "$1" >> /var/log/starci-runner/runs.log; }
+trap 'verdict $?' EXIT
+exec > >(tee -a "$log") 2>&1
+  echo "== $(stamp) deploy $app $env $tag"
+  export PATH="$NODE_HOME/bin:/usr/local/bin:/usr/bin:/bin"
+  export HOME="$work/home" XDG_DATA_HOME="$work/data" npm_config_cache="$work/npm-cache"
+  mkdir -p "$HOME/.ssh" "$XDG_DATA_HOME"
+  export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/starci-runner/github_known_hosts"
+  src=$work/src
+  if [ ! -d "$src/.git" ]; then git clone --quiet --no-checkout "$REPO_URL" "$src"; fi
+  git -C "$src" fetch --quiet --force --prune origin "refs/tags/$tag:refs/tags/$tag"
+  [ "$(git -C "$src" cat-file -t "refs/tags/$tag")" = tag ] || die "$tag is not an annotated tag"
+  git -C "$src" -c advice.detachedHead=false checkout --quiet --force "refs/tags/$tag^{commit}"
+  git -C "$src" clean -qfdx -e node_modules
+  sha=$(git -C "$src" rev-parse HEAD)
+  version=$(node -p "require('$src/package.json').version")
+  [ "v$version" = "$tag" ] || die "the tag $tag is not the package version v$version"
+  echo "commit $sha"
+  ( cd "$src" && npm ci --ignore-scripts --no-audit --no-fund --loglevel=error )
+
+  export DOCKER_CONFIG="$work/docker"
+  mkdir -p "$DOCKER_CONFIG"
+  user=$(sed -n 1p "$token"); sed -n 2p "$token" | docker login ghcr.io -u "$user" --password-stdin > /dev/null
+  images=''
+  for entry in $services; do
+    service=${entry%%=*} rest=${entry#*=}
+    name=${rest%%:*} suffix=''
+    case "$rest" in *:*) suffix=${rest#*:} ;; esac
+    ref="$IMAGE_PREFIX$name:sha-$sha$suffix"
+    waited=0
+    until digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' 2>/dev/null | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>{const d=JSON.parse(b||"{}").digest;if(!/^sha256:[0-9a-f]{64}$/.test(d||""))process.exit(1);process.stdout.write(d)})'); do
+      [ "$waited" -lt "$IMAGE_WAIT_SECONDS" ] || die "no image $ref after ${IMAGE_WAIT_SECONDS}s" 3
+      sleep 30; waited=$((waited + 30))
+    done
+    images="$images --image $service=$IMAGE_PREFIX$name@$digest"
+    echo "image $service $IMAGE_PREFIX$name@$digest"
+  done
+  docker logout ghcr.io > /dev/null 2>&1 || true
+
+  export SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt
+  cd "$src"
+  # shellcheck disable=SC2086 # $images is a list of --image service=ref words built above from the closed alphabets
+  node node_modules/starci-harness/dist/main.js app stack deploy --env "$env" $images --sha "$sha" --execute

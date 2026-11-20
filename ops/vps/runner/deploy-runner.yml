@@ -1,0 +1,103 @@
+# deploy-runner.yml - the CI deploy of an app on the GitHub Free plan through the server-side runner (owner 2026-11-21). Copy it to the app's
+# .github/workflows/ and set APP below. A green release tag v* deploys staging, smoke-checks it, then deploys production and smoke-checks it.
+# GitHub never holds an age key or an opened value: the job only asks the server, over a forced-command SSH key, to `deploy <app> <env> <tag>`;
+# the server fetches the tag with its own read-only repository key, opens the sealed members with its own age key and deploys
+# (ops/vps/runner/starci-deploy-gate and starci-deploy-run of the harness). The job holds:
+#   secrets  RUNNER_SSH_KEY     the private half of the CI deploy key (the server's authorized_keys forces it through starci-deploy-gate)
+#            RUNNER_KNOWN_HOSTS the server's pinned host keys, one known_hosts line per key: [host]:port <type> <key>
+#            RUNNER_HOST        the server's address
+#   vars     RUNNER_PORT        the server's SSH port (default 22); STARCI_DEPLOY_PAUSED (true stops the deploy without a code change)
+#            STAGING_HEALTH_URL, PRODUCTION_HEALTH_URL  the public readiness URL of each environment (the smoke check)
+# Triggers: a push of a release tag only. No pull_request, pull_request_target, workflow_run or dispatch can reach the key.
+name: deploy runner
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-runner
+  cancel-in-progress: false
+
+env:
+  APP: nivoos-lite
+
+jobs:
+  staging-web:
+    # The web image bakes its public URLs at build time: CI's sha-<sha> image carries production's, so staging gets its own, sha-<sha>-staging.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: release tag shape
+        shell: bash
+        run: '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: build and push the staging web image
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          mapfile -t args < <(npx --no-install starci app stack build-args --env staging --app web)
+          build=(); for a in "${args[@]}"; do [[ -n "$a" ]] && build+=(--build-arg "$a"); done
+          docker buildx build -f fe/apps/web/Dockerfile "${build[@]}" --provenance=false --push \
+            -t "ghcr.io/${owner}/${APP}-web:sha-${GITHUB_SHA}-staging" .
+
+  deploy:
+    needs: staging-web
+    if: ${{ vars.STARCI_DEPLOY_PAUSED != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: ssh transport
+        shell: bash
+        env:
+          KEY: ${{ secrets.RUNNER_SSH_KEY }}
+          KNOWN: ${{ secrets.RUNNER_KNOWN_HOSTS }}
+          HOST: ${{ secrets.RUNNER_HOST }}
+          PORT: ${{ vars.RUNNER_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          [[ -n "$KEY" && -n "$KNOWN" && -n "$HOST" ]] || { echo "::error::RUNNER_SSH_KEY, RUNNER_KNOWN_HOSTS and RUNNER_HOST must be set"; exit 1; }
+          echo "::add-mask::$HOST"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/runner_key; chmod 600 ~/.ssh/runner_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts; chmod 644 ~/.ssh/known_hosts
+          printf 'Host runner\n  HostName %s\n  Port %s\n  User starci-runner\n  IdentityFile ~/.ssh/runner_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n  ServerAliveInterval 30\n' "$HOST" "$PORT" > ~/.ssh/config
+      - name: deploy staging
+        run: ssh -T runner "deploy ${APP} staging ${GITHUB_REF_NAME}"
+      - name: smoke staging
+        shell: bash
+        env:
+          URL: ${{ vars.STAGING_HEALTH_URL }}
+        run: |
+          for i in $(seq 1 20); do [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$URL")" == 200 ]] && exit 0; sleep 15; done
+          echo "::error::staging is not ready after the deploy: production is not deployed"; exit 1
+      - name: deploy production
+        run: ssh -T runner "deploy ${APP} production ${GITHUB_REF_NAME}"
+      - name: smoke production
+        shell: bash
+        env:
+          URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+        run: |
+          for i in $(seq 1 20); do [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$URL")" == 200 ]] && exit 0; sleep 15; done
+          echo "::error::production is not ready after the deploy"; exit 1
+      - name: forget the key
+        if: ${{ always() }}
+        run: rm -f ~/.ssh/runner_key

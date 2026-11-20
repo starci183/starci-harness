@@ -1,0 +1,38 @@
+#!/bin/sh
+# starci-deploy-gate - the forced command of the CI deploy key on a managed server (owner 2026-11-21, the GitHub Free plan design).
+# Its authorized_keys line, in the home of the runner account `starci-runner`:
+#   restrict,command="/usr/local/sbin/starci-deploy-gate" ssh-ed25519 AAAA... <app>-ci-deploy
+# It admits exactly one request, `deploy <app> <env> <tag>`, read from SSH_ORIGINAL_COMMAND:
+#   <app>  a name listed in /etc/starci-runner/apps (one per line), with its config /etc/starci-runner/<app>.conf
+#   <env>  staging | production
+#   <tag>  v<major>.<minor>.<patch>
+# Everything else (a shell, scp, sftp, a port forward, a wrong word count, a character outside the closed alphabets) is refused with exit 126
+# and no echo of the request. An admitted request is logged, then handed to the root runner through the one sudo rule the account has.
+# No secret ever reaches GitHub: the server opens the app's sealed members with its own age key (/root/.config/sops/age/keys.txt).
+set -u
+LOG=/var/log/starci-runner/gate.log
+APPS=/etc/starci-runner/apps
+stamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+client() { c=${SSH_CLIENT:-local}; printf %s "${c%% *}"; }
+refuse() {
+  printf '%s refused from=%s reason=%s\n' "$(stamp)" "$(client)" "$1" >> "$LOG" 2>/dev/null
+  echo "starci-deploy-gate: refused ($1)" >&2
+  exit 126
+}
+request=${SSH_ORIGINAL_COMMAND:-}
+[ -n "$request" ] || refuse "no command"
+[ "${#request}" -le 120 ] || refuse "too long"
+case "$request" in
+  *[!a-z0-9.\ -]*) refuse "character outside the alphabet" ;;
+esac
+# shellcheck disable=SC2086 # the request was reduced to [a-z0-9. -] above: word splitting is the parse
+set -f; set -- $request; set +f
+[ "$#" -eq 4 ] || refuse "word count"
+[ "$1" = deploy ] || refuse "verb"
+app=$2 env=$3 tag=$4
+case "$app" in ''|-*|*[!a-z0-9-]*) refuse "app" ;; esac
+grep -qx -- "$app" "$APPS" 2>/dev/null || refuse "app not listed"
+case "$env" in staging|production) ;; *) refuse "env" ;; esac
+printf '%s\n' "$tag" | grep -Eqx 'v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,6}' || refuse "tag"
+printf '%s admitted from=%s app=%s env=%s tag=%s\n' "$(stamp)" "$(client)" "$app" "$env" "$tag" >> "$LOG" 2>/dev/null
+exec sudo -n /usr/local/sbin/starci-deploy-run "$app" "$env" "$tag"
