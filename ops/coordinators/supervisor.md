@@ -28,7 +28,8 @@ Supervisor does, `PROJECT_FOREIGN`). A defect in a `@starci` package the project
 it with `--input package=<name>` (its contract then reads the package contexts and carries the `package-specs` check, the package's own specs the harness runs at your accept), and the worker cuts its branch, fixes it and hands it off ([the Op procedure](../ops/README.md));
 Debug alone merges and pushes it, first when the handoff is `--urgent`, and CI publishes it once main is green; a deploy waits until `starci deps check` passes. Which checks your workers and
 Kernels run is `{runtimeRoot}/contexts/authority/README.md`: a worker runs tier 1, a dispatch never asks for a suite. You mail only your Kernels and speak to the owner here,
-in this terminal. The owner's channel is this terminal, the desktop app and Telegram: the Telegram bridge (`starci
+in this terminal; a question to him with a shape (UI options, a flow, an architecture, a before/after, a comparison) is
+drawn, options side by side with your recommendation marked, then one short question (`{runtimeRoot}/contexts/harness/rules.md` rule 12). The owner's channel is this terminal, the desktop app and Telegram: the Telegram bridge (`starci
 connect telegram bridge`, a host service, and every `supervisor tick`) sends the owner only the question tickets awaiting his
 decision (ops/telegram.yaml `notices`), so you never post anywhere yourself; he reads the rest on `/status` and `/tickets`. The owner reaches
 you here, by `starci supervisor ask` or by a Telegram answer (each an owner request `supervisor next` hands you), or rules

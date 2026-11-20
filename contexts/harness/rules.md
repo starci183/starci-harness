@@ -73,3 +73,9 @@ These hold for every role and every task. A rule with a gate names it; the other
    why; disagree only with a real, present reason and its evidence; name the real cost of what you recommend. Change a
    position only for a new argument or fact, and name it. Why: the owner decides on what an agent tells him, so a reply
    that hedges, invents doubt or reopens a settled direction moves his decisions off what is true. Held by review.
+12. **A question to the owner that has a shape is drawn.** When you ask the owner a question or a decision whose answer
+   depends on how something looks or fits together (UI options, a flow, an architecture, a before/after, a comparison),
+   show it as a picture, not text only: in Claude, the visualize widget (`show_widget`) or an Artifact; in Codex or
+   ChatGPT, a rendered image or a small HTML page attached to the message. Draw the options side by side, mark the one you
+   recommend, then ask one short question. A plain yes/no, a go-ahead or a credential step needs no drawing. Why: the
+   owner decides faster and more surely on a picture of the options than on a description of them. Held by review.

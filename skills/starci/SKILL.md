@@ -63,7 +63,9 @@ the worker, one task at a time, without seats.
 
 ## Approvals
 
-Get the owner's OK on the exact artefact before each effect, and reuse it only while scope stays the same:
+Get the owner's OK on the exact artefact before each effect, and reuse it only while scope stays the same. A question
+with a shape (UI options, a flow, an architecture, a before/after, a comparison) is drawn with `show_widget` or an
+Artifact, the options side by side and the recommended one marked, then one short question ([rule 12](../../contexts/harness/rules.md)):
 
 | Effect | The owner approves |
 | --- | --- |
