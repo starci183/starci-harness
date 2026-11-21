@@ -80,12 +80,6 @@ const describeCheck = (check: PrimitiveCheck): string => {
         }
         case "probe":
             return `${check.url} answers ${String(check.status)}`
-        case "cited": {
-            const keys = (check.trace ?? []).map((trace) => trace.key)
-            const work = (check.trace ?? []).filter((trace) => trace.cites === "work").map((trace) => trace.key)
-            const records = work.length === 0 ? "" : `; under ${work.join(", ")} also a Work record your context files or inputs point at by id or path`
-            return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})${records}`
-        }
         case "cite":
             return describeCiteCheck(check)
     }
@@ -107,8 +101,6 @@ const describeOutput = (item: ResolvedOutput): string => {
     const facts = [
         spec.type,
         ...("minItems" in spec && spec.minItems !== undefined && spec.minItems > 0 ? [`at least ${String(spec.minItems)}`] : []),
-        ...("cites" in spec && spec.cites === "context" ? ["ids named by the files you read that are not marked background"] : []),
-        ...("cites" in spec && spec.cites === "work" ? ["ids named by the Work files you read or the records you wrote in your allowPaths"] : []),
         item.source,
     ]
     const summary = "summary" in spec && spec.summary !== undefined ? `: ${spec.summary}` : ""
@@ -168,7 +160,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
     const fixed = resolved.context.filter((file) => file.source !== "paths")
-    // A relay node reads a context file of the source's work its checkout lacks at the source's head (run-checks.ts TraceSource).
+    // A relay node reads a context file of the source's work its checkout lacks at the source's head.
     const relayHead = relayHeadOf(contract)
     const readAt = (file: (typeof fixed)[number]): string => {
         const path = slashed(contextPath(file, ops, checkout))
@@ -216,16 +208,15 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         bullets(contract.context.allowPaths, "nothing"),
         "### Read exactly these files",
         bullets(
-            // A shared file is background every task of the label reads; its ids are never cited (citableContext).
-            fixed.map((file) => `${readAt(file)} (${file.source}${file.shared ? ", background: not citable" : ""})`),
+            fixed.map((file) => `${readAt(file)} (${file.source}${file.shared ? ", background" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
         ...(paged.length === 0
             ? []
             : [
                   "### Rule pages of your paths",
-                  // The second layer: each page owns rules over a path you may write; it is citable, and outside the op's budget.
-                  `Each page owns rules governing a path under your allowPaths. Before you write a file, open the sections of its page that govern it; the rule ids you apply from these pages are citable.\n\n${bullets(
+                  // The second layer: each page owns rules over a path you may write; it is outside the op's budget.
+                  `Each page owns rules governing a path under your allowPaths. Before you write a file, open the sections of its page that govern it.\n\n${bullets(
                       paged.map((file) => slashed(contextPath(file, ops, checkout))),
                       "none",
                   )}`,

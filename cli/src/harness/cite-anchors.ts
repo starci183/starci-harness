@@ -87,7 +87,7 @@ const corpusIds = (root: string): ReadonlyMap<string, ResolvedAnchor> => {
 
 /**
  * The resolver over the search corpus under `root` (the harness checkout): every chunk's anchor and aliases (core/contexts
- * anchors.ts owns how a chunk is anchored), every id a chunk names as the rules-cited trace reads it (a heading token or a yaml `id:`), explicit
+ * anchors.ts owns how a chunk is anchored), every id a chunk names (a heading token or a yaml `id:`), explicit
  * `{#id}` and `<a id>` anchors, and the Choose anchors of contexts/ui/components/<family>.md (`<family>.choose`, plus
  * `<family>.choose.<term>` for each sub-heading and bold term of that section). The first definition of an id wins.
  */

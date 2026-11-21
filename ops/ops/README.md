@@ -36,10 +36,10 @@ differs from the procedure below. A body never restates the common procedure.
 | `supersedes` | the labels this op replaces ("Old labels and the ops that replace them" above) |
 | `perRecord` | a task of the label works one Work record: a plan whose task of it carries the lane steps of several records is refused `TASK_NOT_SPLIT` (`assertFlow` in `cli/src/harness/lanes.ts`), so independent records run in parallel |
 | `masterPlan` | the layers of the project's Master Plan (`.starciwork/master-plan.yaml`, [contexts/project/master-plan-record.md](../../contexts/project/master-plan-record.md) PROJECT-MASTER-PLAN-2) a brief of the label carries, in plan order, under "Master Plan": `code` patterns, data, ui and domains; `design`, `draw`, `image` and `audit` ui; `prove`, `test` and `verify` testing; `deliver` tech, security and observability; `docs` business and domains; `inspect` and `review` all nine. Without the key a brief carries no layer |
-| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads its mandatory core of the app files for `side: be|fe`, the anatomy slice, the edition file, the core shared topics and the side README, the rest on demand as [contexts/code/README.md](../../contexts/code/README.md#read-for-a-coding-task) says; CONTRIBUTING.md, the tier-1 branch rules and the generated section index of cli/README.md (`contexts/harness/cli-sections.md`, whose sections it opens on demand) for `side: harness`, and CONTRIBUTING.md plus the package contexts for `side: package`). An entry marked `shared: true` is read by every task of the label for orientation, so its ids are never a read trace. `context.budget` caps the resolved context in tokens (bytes / 4), judged when a contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it; `contract check` reports it): a heavier one is refused `CONTRACT_UNFIT`. An admitted contract keeps the budget it passed: its verify, relaunch, settle and a retry of the same contract hash never refuse it for a context that grew under it (`isAdmitted` in `cli/src/harness/tasks.ts`) |
+| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads its mandatory core of the app files for `side: be|fe`, the anatomy slice, the edition file, the core shared topics and the side README, the rest on demand as [contexts/code/README.md](../../contexts/code/README.md#read-for-a-coding-task) says; CONTRIBUTING.md, the tier-1 branch rules and the generated section index of cli/README.md (`contexts/harness/cli-sections.md`, whose sections it opens on demand) for `side: harness`, and CONTRIBUTING.md plus the package contexts for `side: package`). An entry marked `shared: true` is read by every task of the label for orientation. `context.budget` caps the resolved context in tokens (bytes / 4), judged when a contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it; `contract check` reports it): a heavier one is refused `CONTRACT_UNFIT`. An admitted contract keeps the budget it passed: its verify, relaunch, settle and a retry of the same contract hash never refuse it for a context that grew under it (`isAdmitted` in `cli/src/harness/tasks.ts`) |
 | `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |
-| `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary` |
-| `checks.base` | the checks of every task of the label, each one a machine runs (what no machine can judge, taste or UX, is the owner's review step, never a check): presets of [../checks.yaml](../checks.yaml), bare (its arguments then come from the contract's inputs of the same names, which `input.base` must declare) or `{preset, args}`. Each check has a trust tier by its kind: T0 the harness observes (command, starci, files, probe), T2 is the worker's claim (json, cited) and is never behavioural. `behavioural: true` makes a contract without a T0 behavioural check unfit |
+| `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `summary` |
+| `checks.base` | the checks of every task of the label, each one a machine runs (what no machine can judge, taste or UX, is the owner's review step, never a check): presets of [../checks.yaml](../checks.yaml), bare (its arguments then come from the contract's inputs of the same names, which `input.base` must declare) or `{preset, args}`. Each check has a trust tier by its kind: T0 the harness observes (command, starci, files, probe), T2 is the worker's claim (json) and is never behavioural. `behavioural: true` makes a contract without a T0 behavioural check unfit |
 
 ## The contract's extend
 
@@ -62,20 +62,10 @@ The resolved contract always carries the op's whole base, pinned or not. A `star
 
 - The `output` check: a json check of the filed result carrying every required key with its type (base and extend), so no
   hand-written `result-json` is needed for them. It is a T2 claim: it can make a task red, never prove it green.
-- The read trace: `rulesApplied` lists the rule ids the work applied and `workRecords` the Work record ids a work-driven
-  task (one whose context reads `.starciwork/`) worked from. The `rules-cited` preset is red when a cited id is named by none
-  of the task's context files, literally as a token of a Markdown heading or a yaml `id:` value, or when fewer ids are cited
-  than `minItems`; a rule id some contexts page owns is red naming that page, which the brief did not include. The
-  context files include the rule pages of the allowPaths (`cli/src/harness/rule-pages.ts`): every code topic whose front
-  matter `slots` names a slot of [hfs/slots.yaml](../../contexts/hfs/slots.yaml) that an allowPath lies in or holds. A rule id has a letter and a digit or hyphen (`R01`, `BE-ERROR-1`); a plain word is no id.
-  `workRecords` is read against the Work records the task can read: its Work context files, the records under its own Work
-  allowPaths, and each record of the checkout that one of those context files or the contract's inputs points at by Work id
-  or `.starciwork/` path (the brand a concept names, say); never the rest of the Work tree. A cited id outside them is red as
-  naming no Work record readable by the task, with where the check looked. An op whose output cites carries `rules-cited`,
-  and only such an op, which `loadOps` enforces. `contract check` refuses a contract that must cite rules while its context, all harness files, names
-  none.
+- The rule pages of the allowPaths (`cli/src/harness/rule-pages.ts`): every code topic whose front matter `slots` names a slot of
+  [hfs/slots.yaml](../../contexts/hfs/slots.yaml) that an allowPath lies in or holds is part of the task's context.
 - The brief: the procedure below, then the op's body, the inputs, the write paths, the exact files to read (absolute,
-  base then extend), the rule pages of the paths (citable, opened on demand, outside the op's context budget), the output
+  base then extend), the rule pages of the paths (opened on demand, outside the op's context budget), the output
   keys with their types, the checks and the budget.
 
 ## The worker procedure
@@ -97,8 +87,6 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    contradicts one of them stops and asks. You change nothing it contradicts and file `blocked` with a `question` naming the rule
    id (or the decision) and the contradiction, and the plan change you propose as `default`.
 2. Write your output to `{outputFile}`: one json object carrying every key the brief lists under "Output", with its type.
-   When it asks for `rulesApplied`, name the ids of the rules you applied, each as it appears in a file you read (a heading such as
-   `BE-ERROR-1` or a yaml `id: R01`); never cite a rule you did not read.
 3. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget. The
    time your heavy commands wait in the host's heavy-command queue is the host's, not yours: your budget's clock leaves it
    out, so a verify still waiting for a slot is no reason to stop it or to file early; let it run. A run refused `HOST_HELD`

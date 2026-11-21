@@ -18,7 +18,6 @@ export interface ResolvedAnchor {
     readonly anchor: string
     readonly via: "anchor" | "alias"
     readonly aliases: readonly string[]
-    readonly citable: boolean
     readonly path: string
     readonly line: number
     readonly title: string
@@ -76,7 +75,7 @@ export const resolveAnchor = (table: AnchorTable, id: string): Resolution => {
     if (named.length > 1) return { kind: "ambiguous", id, places: named.map((item) => `${item.path}:${String(item.line)}`) }
     return {
         kind: "found",
-        anchor: { id, anchor: chunk.anchor, via: chunk.anchor === id.trim() ? "anchor" : "alias", aliases: chunk.aliases, citable: chunk.citable, path: chunk.path, line: chunk.line, title: chunk.title, text: chunk.text },
+        anchor: { id, anchor: chunk.anchor, via: chunk.anchor === id.trim() ? "anchor" : "alias", aliases: chunk.aliases, path: chunk.path, line: chunk.line, title: chunk.title, text: chunk.text },
     }
 }
 

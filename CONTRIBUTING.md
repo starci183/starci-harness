@@ -2,7 +2,7 @@
 
 These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `contexts/`, `packages/`, `skills/`
 and the root documents. Read [contexts/README.md](contexts/README.md) first. Each rule is a heading with a stable id (`CONTRIB-<n>`), so
-a task on the harness itself cites the ids it applied in its `rulesApplied`.
+a task can name the ids it applied.
 
 ## Setup and the checks you run
 

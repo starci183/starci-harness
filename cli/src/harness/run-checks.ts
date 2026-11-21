@@ -1,13 +1,12 @@
 import { existsSync, globSync, readFileSync, statSync } from "node:fs"
-import { isAbsolute, join, posix } from "node:path"
+import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 import { baseCwd, findingKeys, newKeys } from "../core/check/base-findings.js"
-import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
-import { captureGitSync, changedFiles } from "../shared/git.js"
+import { changedFiles } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
@@ -17,16 +16,14 @@ import { linkInstall } from "./land.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
 import { assertKeysHanded, CUSTODY_CODES, custodyFor, isCustodyRecheck, scrubbed } from "./custody.js"
 import type { Custody } from "./custody.js"
-import { RESULT_FILE, isRuleId, resolveChecks, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
+import { RESULT_FILE, resolveChecks, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { loadOps } from "./ops.js"
 import type { OutputType } from "./ops.js"
 import { toPinnedHfs } from "./pinned-hfs.js"
 import { relayHeadOf } from "./reconcile.js"
-import { ruleOwnerOf } from "./rule-pages.js"
 import { recordEvent } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
-import { WORK_DIR, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
 export interface CheckOutcome {
@@ -249,159 +246,6 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     const pronoun = aside.size === 1 ? "it" : "them"
     const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${pronoun}`
     return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length - check.check.requiredKeys.filter((key) => aside.has(key)).length)} required key(s)${andExpected}${setAside}`)
-}
-
-
-/**
- * Where a read trace reads its files: the checkout, and for a relay node also the source's settled head it relays
- * (reconcile.ts relayHeadOf). A relay node carries work another workflow's lane built, so the Work records its context names
- * are the source's, committed on the source's branch before the relayed commits: a file the checkout lacks is read at that
- * head, as data, and never written into the relaying branch.
- */
-interface TraceSource {
-    readonly root: string
-    readonly head?: string | undefined
-}
-
-/** A traced file as the trace reads it: a folder of the checkout, its text and the name it is reported under, or unreadable. */
-type Traced = { readonly folder: string } | { readonly text: string; readonly name: string } | undefined
-
-/** Reads one traced file: from the checkout, else (a repository file of a relay node) at the source's head, named with that head. */
-const readTraced = (source: TraceSource, file: string): Traced => {
-    const path = isAbsolute(file) ? file : join(source.root, file)
-    if (existsSync(path)) return statSync(path).isDirectory() ? { folder: path } : { text: readFileSync(path, "utf8"), name: file }
-    if (source.head === undefined || isAbsolute(file)) return undefined
-    const shown = captureGitSync(["show", `${source.head}:${file}`], source.root)
-    return shown.exitCode === 0 ? { text: shown.stdout, name: `${file} (at the relayed source ${source.head.slice(0, 12)})` } : undefined
-}
-
-/** The ids a file names, or every yaml file under a folder (a Work scope the task wrote); a file the trace cannot read names none. */
-const idsAt = (traced: Traced): Set<string> => {
-    if (traced === undefined) return new Set<string>()
-    if ("text" in traced) return ruleIdsIn(traced.text)
-    return new Set(globSync("**/*.yaml", { cwd: traced.folder }).flatMap((file) => [...ruleIdsIn(readFileSync(join(traced.folder, file), "utf8"))]))
-}
-
-/**
- * The ids each traced file or folder names, read once per check, keyed by the name a found id is reported under; a section
- * index names the ids of its source too, whose every section the task may open (sectioned-docs.ts sectionedSource).
- */
-const idsOfFiles = (files: readonly string[], source: TraceSource): Map<string, Set<string>> =>
-    new Map(
-        files.map((file) => {
-            const traced = readTraced(source, file)
-            const of = sectionedSource(file)
-            const ids = of === undefined ? idsAt(traced) : new Set([...idsAt(traced), ...idsAt(readTraced(source, of))])
-            return [traced !== undefined && "name" in traced ? traced.name : file, ids]
-        }),
-    )
-
-/**
- * The read trace: every id the filed result cites under a traced key (rulesApplied, workRecords) is named by one of the task's
- * context files, literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires. A Work
- * key reads its Work context files and the records under its own Work allowPaths, and also a record of the checkout that one
- * of those context files or the contract's inputs points at (readableWork). A relay node reads what its checkout lacks at the
- * source's head it relays (TraceSource).
- */
-const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "cited" } }, contract: Contract, place: CheckPlace): CheckOutcome => {
-    const document = readJsonDocument(RESULT_FILE, place)
-    if ("problem" in document) return outcome(check, [document.problem], "")
-    const record = typeof document.value === "object" && document.value !== null ? (document.value as Record<string, unknown>) : {}
-    const problems: string[] = []
-    const found: string[] = []
-    const source: TraceSource = { root: place.root, head: relayHeadOf(contract) }
-    for (const trace of check.check.trace ?? []) {
-        const traced = traceProblems(trace, record[trace.key] ?? [], source, check.check.harness)
-        problems.push(...traced.problems)
-        found.push(...traced.found)
-    }
-    return outcome(check, problems, found.length === 0 ? "no id cited, none required" : `cited: ${listed(found)}`)
-}
-
-interface CitedTrace {
-    readonly key: string
-    readonly minItems: number
-    readonly files: readonly string[]
-    readonly cites?: "context" | "work" | undefined
-    readonly named?: readonly string[] | undefined
-}
-
-/** The record files a Work name may point at: a Work id's record, a named record file, or a named folder's record. */
-const recordFilesOf = (name: string): string[] => {
-    if (!name.startsWith(`${WORK_DIR}/`)) {
-        const file = recordFileOfId(name)
-        return file === undefined ? [] : [file]
-    }
-    return /\.ya?ml$/.test(name) ? [name] : [posix.join(name, "index.yaml"), posix.join(name, "resource.yaml")]
-}
-
-/** The ids of the first readable Work record file of each name, unless the trace's own files already hold it. */
-const recordsNamed = (trace: CitedTrace, source: TraceSource, names: ReadonlyMap<string, string>): Map<string, Set<string>> => {
-    const records = new Map<string, Set<string>>()
-    for (const [name, by] of names) {
-        for (const candidate of recordFilesOf(name)) {
-            const traced = readTraced(source, candidate)
-            if (traced === undefined || !("text" in traced)) continue
-            if (trace.files.includes(candidate)) break
-            const key = `${traced.name} (named by ${by})`
-            if (!records.has(key)) records.set(key, idsAt(traced))
-            break
-        }
-    }
-    return records
-}
-
-/** The Work record names a trace's files and inputs name, each with what named it. */
-const namesOfWork = (trace: CitedTrace, source: TraceSource): Map<string, string> => {
-    const names = new Map<string, string>()
-    for (const file of trace.files) {
-        const traced = readTraced(source, file)
-        if (traced === undefined || !("text" in traced)) continue
-        for (const name of workNamesIn(traced.text)) if (!names.has(name)) names.set(name, file)
-    }
-    for (const name of trace.named ?? []) if (!names.has(name)) names.set(name, "the inputs")
-    return names
-}
-
-/**
- * The Work records a Work key may cite beyond its traced files: each record the trace can read (TraceSource) that a traced Work
- * file (a context file, never a whole allowPath folder) or the contract's inputs (`named`) points at by id or path, keyed by the
- * ids its file names. Only a named record counts, so a task never cites the whole Work tree.
- */
-const readableWork = (trace: CitedTrace, source: TraceSource): Map<string, Set<string>> => {
-    const names = namesOfWork(trace, source)
-    return recordsNamed(trace, source, names)
-}
-
-/**
- * The problem of a rule id no context file names: the contexts page of `harness` that owns it when there is one, which points
- * at a brief that left that page out, else the context files it was looked for in.
- */
-const unnamedRule = (key: string, id: string, context: string, harness: string | undefined): string => {
-    const owner = harness === undefined ? undefined : ruleOwnerOf(harness, id)
-    if (owner === undefined) return `${key}: ${id} is named by none of the context files (${context})`
-    return `${key}: ${id} is owned by ${owner}, which the brief did not include (context files: ${context})`
-}
-
-/** What one traced key cites: the ids found in a context file (or a Work record the task may read), and the problems of the ones that are not. */
-const traceProblems = (trace: CitedTrace, value: unknown, source: TraceSource, harness: string | undefined): { readonly problems: string[]; readonly found: string[] } => {
-    const problems: string[] = []
-    const found: string[] = []
-    if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return { problems: [`${trace.key} is not a list of ids`], found }
-    if (value.length < trace.minItems) problems.push(`${trace.key} cites ${String(value.length)} id(s); the op requires at least ${String(trace.minItems)}`)
-    const work = trace.cites === "work"
-    const files = idsOfFiles(trace.files, source)
-    const pointed = work ? readableWork(trace, source) : new Map<string, Set<string>>()
-    const context = trace.files.length === 0 ? "none" : listed(trace.files)
-    const looked = `looked in ${trace.files.length === 0 ? "no Work file" : listed(trace.files)}; records they or the inputs name: ${pointed.size === 0 ? "none" : listed([...pointed.keys()])}`
-    for (const id of value) {
-        const owner = [...files, ...pointed].find(([, ids]) => ids.has(id))?.[0]
-        if (owner !== undefined) found.push(`${id} in ${owner}`)
-        else if (work) problems.push(`${trace.key}: "${id}" names no Work record readable by this task (${looked})`)
-        else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
-        else problems.push(unnamedRule(trace.key, id, context, harness))
-    }
-    return { problems, found }
 }
 
 const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "probe" } }): Promise<CheckOutcome> => {
@@ -640,8 +484,6 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return runJsonCheck({ ...check, check: primitive }, place)
         case "probe":
             return runProbeCheck({ ...check, check: primitive })
-        case "cited":
-            return runCitedCheck({ ...check, check: primitive }, contract, place)
         case "cite": {
             // The anchor cites (harness/cite.ts) of the filed result, against the change in the checkout the check runs in.
             const document = readJsonDocument(RESULT_FILE, place)

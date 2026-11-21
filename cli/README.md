@@ -571,7 +571,7 @@ changed file under its allowPaths, `scopedTests` in `harness/coverage-scope.ts`)
 source already settled: its first waiter (the first node that depends on
 it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
 files defer to that waiter, whose check and the workflow's final verify judge them in full; a context file its checkout lacks
-(a Work record of the source's, on the source's branch alone) is read, by its brief and its read trace, at the last relayed
+(a Work record of the source's, on the source's branch alone) is read, by its brief, at the last relayed
 commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit (the
 same rule, file and message, whichever ESLint report printed it: a deferral's json findings print their message as the stylish
 report does, `judgeDeferred` in `core/check/composition.ts`) is the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,

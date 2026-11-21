@@ -178,7 +178,7 @@ const searchIndex = async (index: ReturnType<typeof indexOrRefuse>, flags: { rea
     const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
     const body = ranking.hits.map((hit, at) => {
         const askedSuffix = asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`
-        return `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
+        return `${String(at + 1)}. ${hit.anchor}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
     })
     return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
 }

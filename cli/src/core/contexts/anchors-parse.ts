@@ -12,7 +12,7 @@ import { isRuleId } from "../../harness/contract.js"
  * - a yaml entry's `id:` value, when it names a rule or a decision (isAnchorId); an id that names a record (`card`,
  *   `button-group`) is a record key;
  * - else the fallback: the file and the GitHub slug of the heading (`contexts/ui/components/tabs.md#choose`), or the file and
- *   the yaml key, with the record key of an entry (`ops/checks.yaml#presets.rules-cited`,
+ *   the yaml key, with the record key of an entry (`ops/checks.yaml#presets.anchors-cited`,
  *   `contexts/grammars/contract.yaml#roles.button-group`).
  */
 

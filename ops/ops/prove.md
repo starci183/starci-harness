@@ -24,10 +24,8 @@ output:
     files: {type: "string[]", summary: "the spec and report files you wrote, under test paths only"}
     verdict: {type: string, summary: "passed or failed, as the suite itself judged (its exit code: 0 is passed)"}
     findings: {type: array, summary: "one entry per failure or finding, empty when there is none"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the testing rules the suite follows, from the back-end test topic (never the shared files)"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the suite proves"}
 checks:
-  base: [paths-only, rules-cited, suite-verdict, result-passed]
+  base: [paths-only, suite-verdict, result-passed]
   behavioural: true
 ---
 The proof of a slice is the suite that runs it end to end: the app on a fresh database, real events in, every row checked, the third
