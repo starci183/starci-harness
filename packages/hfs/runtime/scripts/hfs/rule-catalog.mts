@@ -196,7 +196,8 @@ function checkEnforcer(enforcer: Parsed, index: Parsed, ruleLabel: Parsed, seen:
 }
 
 function checkRuleEnforcers(rule: Parsed, label: Parsed, bad: string[]) {
-  if (!Array.isArray(rule.enforcers) || !rule.enforcers.length) { bad.push(`${label}.enforcers must name at least one enforcer`); return; }
+  // A rule may name no enforcer: it is held by review (CONTRIB-10).
+  if (!Array.isArray(rule.enforcers)) { bad.push(`${label}.enforcers must be a list`); return; }
   const seen = new Set();
   rule.enforcers.forEach((enforcer: Parsed, index: number) => checkEnforcer(enforcer, index, label, seen, bad));
 }
