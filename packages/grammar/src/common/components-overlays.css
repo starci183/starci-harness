@@ -916,6 +916,11 @@
     .starci-core-skeleton-placeholder[data-shape="block"] { display: inline-flex; }
     .starci-core-skeleton-placeholder[data-shape="circle"] { display: inline-flex; border-radius: var(--grammar-radius-pill); }
     .starci-core-skeleton[data-shape="circle"] { border-radius: var(--grammar-radius-pill); }
+    /* The box shapes (0.53.0): the caller's or the named box, the same fill and shimmer as every skeleton, no border or ring; the corner by `data-radius`. */
+    .starci-core-skeleton:is([data-shape="box"], [data-shape="field"], [data-shape="button"], [data-shape="switch"]) { flex: none; border: 0; box-shadow: none; }
+    .starci-core-skeleton[data-radius="none"] { border-radius: 0; }
+    .starci-core-skeleton[data-radius="md"] { border-radius: var(--grammar-radius-md); }
+    .starci-core-skeleton[data-radius="full"] { border-radius: var(--grammar-radius-pill); }
 
     /*
      * HeroUI's `--skeleton-animation` (shimmer, pulse or none) is the app's choice. Its own Skeleton reads the token in script;

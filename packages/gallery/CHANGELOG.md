@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.16 - 2026-11-21
+
+- Changed: draws with @starci/grammar 0.52.2.
+
 ## 0.1.15 - 2026-11-21
 
 - Added: a screen (or board section) whose `design.json` entry has `pending: { reason }` shows as `Pending: <reason>` (`Chờ: <reason>`) in the tree, the header chip and the explanation panel, and on the board, instead of being hidden (`Screen.pending`, `statusPending`).

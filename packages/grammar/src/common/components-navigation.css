@@ -2665,4 +2665,60 @@
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset);
     }
+
+    /* ---------------------------------------------------------------- expandable */
+    /*
+     * Expandable (owner, 2026-11-21): the trigger is HeroUI's `link` on a native button. This only resets the button's own box (no border, background,
+     * padding or font of its own), so the vendor link paints it; nothing animates.
+     */
+    .starci-core-expandable {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-expandable-trigger {
+        padding: 0;
+        border: 0;
+        background: none;
+        font: inherit;
+        font-weight: var(--grammar-weight-medium, 500);
+        text-align: start;
+    }
+
+    .starci-core-expandable-trigger:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+    }
+
+    .starci-core-expandable-clamp {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .starci-core-expandable-clamp[data-grammar-expandable-state="closed"] {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: var(--starci-core-expandable-lines, 3);
+        line-clamp: var(--starci-core-expandable-lines, 3);
+    }
+
+    .starci-core-expandable-details {
+        max-width: 100%;
+        margin: 0;
+        overflow-x: auto;
+        padding: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface-secondary);
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-xs);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-expandable-details[hidden] { display: none; }
 }

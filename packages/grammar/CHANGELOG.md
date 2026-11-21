@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.52.2 - 2026-11-21 - Expandable, and a Skeleton sized to its box
+
+A patch: one new component and new optional Skeleton props; no lint rule, no removed or renamed prop or law.
+
+- Added (`Expandable`, owner approved 2026-11-21 with the chat-card redesign: "duyệt"): content folded behind a text-link toggle. `kind="details"`: the trigger is the title, and open it reveals a muted mono block (a raw error, a payload), verbatim. `kind="clamp"`: the content shows `lines` lines (default 3), and the toggle opens the rest; it draws no toggle when the content fits. The trigger is HeroUI's `link` on a native button (owner: "cái expandable làm link chứ ko phải làm nút", "link sao có cái border bọc như nút??"): no border, background or padding box, underline on hover, `aria-expanded` and `aria-controls`. The labels come from the caller ("Xem thêm"/"Thu gọn", "Chi tiết kỹ thuật"/"Ẩn chi tiết kỹ thuật"), and nothing animates. `ExpandableText` stays as it is.
+- Added (`Skeleton` box shapes, StarCi Next GRAMMAR-GAPS #16; owner 2026-11-21: "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì"): `shape="box"` with `width`, `height` and `radius` (`none`, `md`, `full`); `field` (40px at the control radius, `width`); `button` (`size` sm 32 / md 40, `width`); `switch` (`kind` compact 32x18 / toggle 72x40, rounded full). Every shape is HeroUI's Skeleton with the same fill and shimmer, and no border or ring, so an app writes `isLoading ? <Skeleton shape="…" /> : <Real />`.
+- Added (story): `Compositions / Expandable` (kinds, skeleton boxes).
+
 ## 0.52.1 - 2026-11-21 - Chat at 390: one reaction tray in the flow, a soft loading face, a quiet counter, a 40px retry
 
 A patch: CSS and renderer fixes, one new optional prop, new DNA laws; no lint rule, no removed or renamed prop or law.

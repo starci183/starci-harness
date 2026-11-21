@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.189 - 2026-11-21
+
+- Changed (contexts/stack/pins.yaml): @starci/grammar 0.52.2 (`Expandable` details and clamp with a text-link trigger; `Skeleton` shapes `box`, `field`, `button`, `switch` sized to their box). This is an early alpha of train 189; the rest of 189's loading rework follows.
+
 ## 1.1.0-alpha.188 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.17.2, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

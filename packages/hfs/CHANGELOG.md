@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.17.3 - 2026-11-21
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): `@starci/grammar` 0.52.2 (Expandable, the Skeleton box shapes), and the `@starci/hfs` self-pin is 6.17.3.
+
 ## 6.17.2 - 2026-11-21
 
 - Changed (the UI Audit gate, PROJECT-GALLERY-8; owner, 2026-11-21, the ruling that wins: "lần đầu ghi screen.yaml thì phải audit đến pass ghi bằng chứng. sau này sửa code trang nào hay k ưng trang nào chỉ đối chiếu với screen.yaml -> và có thể lan rộng ra để sửa hàng loạt nhưng lúc đó đủ luận điểm phản biện với thầy"): a touched screen is judged only until its audit first passes (2+ rounds, no lens open in the last, an auditor who is not the builder). That pass is its baseline: `audit.baseline` `{ at, rounds }`, written by `starci audit run` and kept by every later cycle. After it, UI_AUDIT_STALE (shots or code drifted), open lenses and later cycles are never findings. A screen with no audit is still UI_AUDIT_MISSING.

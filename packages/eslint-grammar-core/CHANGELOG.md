@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.2 - 2026-11-21
+
+- No rule changed: versioned with @starci/grammar 0.52.2 (Expandable, the Skeleton box shapes).
+
 ## 0.52.1 - 2026-11-21
 
 - Changed: cut with @starci/hfs 6.17.0 and the Grammar family 0.52.1; requires @starci/hfs ~6.17.0 (no rule change).

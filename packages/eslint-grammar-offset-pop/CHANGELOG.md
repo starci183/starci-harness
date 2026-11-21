@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.2 - 2026-11-21
+
+- No rule changed: versioned with @starci/grammar 0.52.2 (Expandable, the Skeleton box shapes).
+
 ## 0.52.1 - 2026-11-21
 
 - Changed: cut with the Grammar family 0.52.1; peers @starci/eslint-grammar-core 0.52.1.
