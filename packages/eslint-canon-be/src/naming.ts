@@ -39,28 +39,6 @@ import type { Context, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 /** A schema generation baked into an identifier. */
 const VERSIONED_NAME = /(?:^|[a-z])V[0-9]+(?:$|[A-Z_])|_V[0-9]+/
 
-/** Bare verbs that say nothing about their object. */
-const BARE_VERBS = new Set([
-  "generate",
-  "parse",
-  "run",
-  "handle",
-  "process",
-  "build",
-  "create",
-  "load",
-  "resolve",
-  "check",
-  "convert",
-  "transform",
-  "send",
-  "fetch",
-  "get",
-  "set",
-  "update",
-  "apply",
-])
-
 // -- NAME-1 ----------------------------------------------------------------------------------------
 
 /** Decorator names carried by a class declaration. */
@@ -167,42 +145,6 @@ export const noVersionInName: RuleModule = {
 
 // -- NAME-5 ----------------------------------------------------------------------------------------
 
-/** An exported function is a verb plus its object. */
-export const noBareVerbExport: RuleModule = {
-  meta: {
-    type: "problem",
-    docs: { description: "An exported function names its object, not just its verb." },
-    schema: [],
-    messages: {
-      bareVerb:
-        "`{{name}}` is a bare verb: {{name}} WHAT? At an import list it collides with every other module's `{{name}}`, so the reader falls back on reading the path to tell them apart -- and the path is the thing that moves. Give it its object.",
-    },
-  },
-  create(context) {
-    const check = (node: TSESTree.Node, name: string): void => {
-      if (!name || !BARE_VERBS.has(name)) return
-      context.report({ node, messageId: "bareVerb", data: { name } })
-    }
-    return {
-      ExportNamedDeclaration(node) {
-        const declaration = node.declaration
-        if (!declaration) return
-        if (declaration.type === "FunctionDeclaration" && declaration.id) {
-          check(declaration.id, declaration.id.name)
-          return
-        }
-        if (declaration.type !== "VariableDeclaration") return
-        for (const one of declaration.declarations) {
-          const init = one.init
-          const isFunction = init
-            && (init.type === "ArrowFunctionExpression" || init.type === "FunctionExpression")
-          if (isFunction && one.id && one.id.type === "Identifier") check(one.id, one.id.name)
-        }
-      },
-    }
-  },
-}
-
 // -- no-default-export -------------------------------------------------------------------------------------------
 
 /** A file kind that may default-export: a Jest global setup, whose API is a default function. */
@@ -243,7 +185,6 @@ export const noDefaultExport: RuleModule = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-version-in-name": noVersionInName,
-  "no-bare-verb-export": noBareVerbExport,
   "no-vendor-module-factory-name": noVendorModuleFactoryName,
   "no-default-export": noDefaultExport,
 } satisfies Rules
@@ -251,7 +192,6 @@ export const rules = {
 /** Every rule of this law at `error`. */
 export const recommended: Recommended = {
   "starci-be/no-version-in-name": "error",
-  "starci-be/no-bare-verb-export": "error",
   "starci-be/no-vendor-module-factory-name": "error",
   "starci-be/no-default-export": "error",
 }

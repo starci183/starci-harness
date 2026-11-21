@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { noBareVerbExport, noDefaultExport, noVendorModuleFactoryName, noVersionInName, rules } from "./naming.ts"
+import { noDefaultExport, noVendorModuleFactoryName, noVersionInName, rules } from "./naming.ts"
 import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
@@ -125,27 +125,6 @@ test("NAME-2: a schema generation does not go in a name", () => {
             code: "export class SchemaV3Reader {}",
             errors: [{ messageId: "versioned" }],
           },
-        ],
-      })
-  })
-})
-
-test("NAME-5: an exported function names its object", () => {
-  assert.doesNotThrow(() => {
-      tester.run("no-bare-verb-export", noBareVerbExport, {
-        valid: [
-          "export const askModel = () => null",
-          "export const parseContentBody = () => null",
-          "export function buildTranscript() { return [] }",
-          // a bare verb that is NOT exported is local vocabulary
-          "const generate = () => null",
-          // not a function
-          "export const generateLimit = 3",
-        ],
-        invalid: [
-          { code: "export const generate = () => null", errors: [{ messageId: "bareVerb" }] },
-          { code: "export function parse() { return null }", errors: [{ messageId: "bareVerb" }] },
-          { code: "export const run = async () => null", errors: [{ messageId: "bareVerb" }] },
         ],
       })
   })

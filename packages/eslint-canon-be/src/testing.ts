@@ -13,8 +13,6 @@
  *   - an e2e that never reads persisted state back, and an e2e that reaches a model provider
  *     (`e2e-asserts-persisted-state`, `no-model-call-in-e2e`);
  *   - an e2e filename that names an API shape instead of a business flow (`no-api-shaped-e2e-filename`);
- *   - a model stub that returns a bare marker instead of a payload the production parser can parse
- *     (`no-marker-model-stub`).
  *
  * Every path question is asked of the slot manifest (`hfsOf(context)`): a rule never tests a path with a regular
  * expression. A file name is a role vocabulary of the slots (`*.spec.ts`, `*.e2e-spec.ts`, `*.handler.ts`) and is read
@@ -28,7 +26,6 @@ import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isPackageType, typeOrigins } from "./lib/types.ts"
 import { doorOfSpec, isUnitSpecFile, mainSpecOfSplit, unitRoleOfSpec, unitRoleOfSubject } from "./lib/unit-spec.ts"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
-import type { HfsView } from "./lib/hfs.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 
 /** The file name of a linted path, in forward-slash form. */
@@ -315,63 +312,6 @@ export const noApiShapedE2eFilename: RuleModule = {
 
 // -- TESTING-7 -------------------------------------------------------------------------------------
 
-/** Test infrastructure: the fixtures and the test world, where the shared model stub lives (slots `be.tests.fixtures`, `be.tests.world`). */
-const isTestInfrastructure = (hfs: HfsView, filename: string) => hfs.slotOf(filename) === "be.tests.fixtures" || inTestWorld(hfs, filename)
-
-/** Bare markers a stub returns when nobody gave it a real answer to stand in for. */
-const MARKER_STRINGS = new Set(["stubbed", "stub", "ok", "test", "mock", "fake", "todo", "tbd", "n/a", "pending", ""])
-
-/** A string literal that is nothing but a marker - not an object, not a `JSON.stringify(...)` call. */
-const isMarkerLiteral = (node: Node | null | undefined): node is TSESTree.StringLiteral => Boolean(
-  node && node.type === "Literal" && typeof node.value === "string" && MARKER_STRINGS.has(node.value.trim().toLowerCase()),
-)
-
-/** The world's default model stub returns a payload the production parser can actually parse. */
-export const noMarkerModelStub: RuleModule = {
-  meta: {
-    type: "problem",
-    docs: {
-      description: "A model stub in test infra returns a parseable payload (TESTING-7), never a bare marker string.",
-    },
-    schema: [],
-    messages: {
-      marker:
-        "This stub resolves to `{{value}}`, a marker rather than an answer. TESTING-7: a stub of a model returns a payload the production parser can actually parse - a marker string means the strict-JSON parser the real flow depends on never runs, so the most fragile seam in the flow is never exercised. Return the shape the production parser expects (an object, or a `JSON.stringify(...)` of one), the way `DEFAULT_MODEL_ANSWER` does.",
-    },
-  },
-  create(context) {
-    if (!isTestInfrastructure(hfsOf(context), context.filename || context.getFilename())) return {}
-    return {
-      CallExpression(node) {
-        const callee = node.callee
-        if (!callee || callee.type !== "MemberExpression" || callee.computed) return
-        const method = callee.property.name
-        if (method === "mockResolvedValue" || method === "mockReturnValue") {
-          const argument = node.arguments[0]
-          if (isMarkerLiteral(argument)) {
-            context.report({ node: argument, messageId: "marker", data: { value: JSON.stringify(argument.value) } })
-          }
-          return
-        }
-        if (method !== "mockImplementation") return
-        const fn = node.arguments[0]
-        if (!fn || (fn.type !== "ArrowFunctionExpression" && fn.type !== "FunctionExpression")) return
-        if (fn.body.type !== "BlockStatement") {
-          if (isMarkerLiteral(fn.body)) {
-            context.report({ node: fn.body, messageId: "marker", data: { value: JSON.stringify(fn.body.value) } })
-          }
-          return
-        }
-        for (const statement of fn.body.body) {
-          if (statement.type === "ReturnStatement" && isMarkerLiteral(statement.argument)) {
-            context.report({ node: statement.argument, messageId: "marker", data: { value: JSON.stringify(statement.argument.value) } })
-          }
-        }
-      },
-    }
-  },
-}
-
 /** The rules this law contributes to the plugin. */
 
 /** The rules this law contributes to the plugin. */
@@ -381,7 +321,6 @@ export const rules = {
   "e2e-asserts-persisted-state": e2eAssertsPersistedState,
   "no-model-call-in-e2e": noModelCallInE2e,
   "no-api-shaped-e2e-filename": noApiShapedE2eFilename,
-  "no-marker-model-stub": noMarkerModelStub,
 } satisfies Rules
 
 /** Every rule of this law ships at `error`. */
@@ -391,5 +330,4 @@ export const recommended: Recommended = {
   "starci-be/e2e-asserts-persisted-state": "error",
   "starci-be/no-model-call-in-e2e": "error",
   "starci-be/no-api-shaped-e2e-filename": "error",
-  "starci-be/no-marker-model-stub": "error",
 }

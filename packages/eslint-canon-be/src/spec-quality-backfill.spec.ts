@@ -16,7 +16,6 @@ import {
     e2eAssertsPersistedState,
     noApiShapedE2eFilename,
     noCallOnlySpec,
-    noMarkerModelStub,
     noModelCallInE2e,
 } from "./testing.ts"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
@@ -27,7 +26,6 @@ const tester = canonRuleTester({
 const typed = typedTester()
 const UNIT = at("src/modules/domain/order/order.service.spec.ts")
 const FLOW = at("src/tests/e2e/checkout/project-purchase.e2e-spec.ts")
-const MODEL = at("src/tests/fixtures/model.ts")
 
 for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
@@ -153,22 +151,6 @@ for (const edition of ['lite'] as const) {
                 settings,
                 code: "it('charges the order', () => { expect(payments.charge).toHaveBeenCalledWith(5000) })",
                 errors: [{ messageId: "callOnly" }],
-            }],
-        })
-    })
-
-    test(`R48 ${edition} accepts a parseable model payload and rejects a marker stub`, () => {
-        tester.run("no-marker-model-stub", noMarkerModelStub, {
-            valid: [{
-                filename: MODEL,
-                settings,
-                code: "model.run = jest.fn().mockResolvedValue({ text: JSON.stringify({ answer: 'approved' }) })",
-            }],
-            invalid: [{
-                filename: MODEL,
-                settings,
-                code: "model.run = jest.fn().mockResolvedValue('stubbed')",
-                errors: [{ messageId: "marker" }],
             }],
         })
     })

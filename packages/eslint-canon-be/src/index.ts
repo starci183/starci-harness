@@ -43,6 +43,7 @@ import { recommended as e2eFlowRecommended, rules as e2eFlowRules } from "./e2e-
 import { recommended as errorHandlingRecommended, rules as errorHandlingRules } from "./error-handling.ts"
 import { recommended as idempotencyRecommended, rules as idempotencyRules } from "./idempotency.ts"
 import { recommended as infraOwnerRecommended, rules as infraOwnerRules } from "./infra-owner.ts"
+import { recommended as thirdPartyOwnerRecommended, rules as thirdPartyOwnerRules } from "./third-party-owner.ts"
 import { recommended as injectionRecommended, rules as injectionRules } from "./injection.ts"
 import { recommended as boundarySchemaRecommended, rules as boundarySchemaRules } from "./boundary-schema.ts"
 import { recommended as inputBoundsRecommended, rules as inputBoundsRules } from "./input-bounds.ts"
@@ -123,6 +124,7 @@ const CONTRIBUTIONS: Contribution[] = [
     { law: "error-handling", rules: errorHandlingRules, recommended: errorHandlingRecommended },
     { law: "idempotency", rules: idempotencyRules, recommended: idempotencyRecommended },
     { law: "infra-owner", rules: infraOwnerRules, recommended: infraOwnerRecommended },
+    { law: "third-party-owner", rules: thirdPartyOwnerRules, recommended: thirdPartyOwnerRecommended },
     { law: "injection", rules: injectionRules, recommended: injectionRecommended },
     { law: "boundary-schema", rules: boundarySchemaRules, recommended: boundarySchemaRecommended },
     { law: "input-bounds", rules: inputBoundsRules, recommended: inputBoundsRecommended },
@@ -248,18 +250,6 @@ export const starciBePackagesConfig = async ({ hfs }: { hfs?: HfsView | null | u
 export { linterOptions } from "./lib/config.ts"
 export { loadHfs, loadPackagesHfs } from "./lib/hfs.ts"
 
-// A12 registration is appended so the shared registry can be union-merged.
-import { recommended as thirdPartyOwnerRecommended, rules as thirdPartyOwnerRules } from "./third-party-owner.ts"
-Object.assign(rules, thirdPartyOwnerRules)
-Object.assign(recommended, thirdPartyOwnerRecommended)
-lawOwners.push("third-party-owner")
-for (const name of Object.keys(thirdPartyOwnerRules)) {
-    ruleOwners[name] = "third-party-owner"
-    // infra-owner also exposes these rules so the catalog's static contribution reader sees them.
-    const declaration = ruleDeclarations.find((entry) => entry.name === name)
-    if (declaration) declaration.law = "third-party-owner"
-    else ruleDeclarations.push({ law: "third-party-owner", name })
-}
 // A21 append-only registration: keep the already exported plugin and recommendation live.
 import { recommended as functionBudgetRecommended, rules as functionBudgetRules } from "./function-budget.ts"
 CONTRIBUTIONS.push({ law: "function-budget", rules: functionBudgetRules, recommended: functionBudgetRecommended })

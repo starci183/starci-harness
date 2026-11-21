@@ -41,7 +41,6 @@ const FOO = at("src/modules/platform/foo/foo.service.ts")
 
 test("every rule this law declares is exported under its published name", () => {
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
-    assert.equal(rules["third-party-import-owner"], thirdPartyImportOwner)
 })
 
 test("the table comes from the slot manifest and nothing else", () => {
