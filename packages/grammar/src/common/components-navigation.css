@@ -1243,11 +1243,12 @@
      * The type of a table: the header 12 / 500 muted, a cell 14 / 400, the row-header cell (the row primary) 14 / 500. A Text in a cell
      * takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
+    /* The header is the label.field role (0.54.0): 13 / 18 / 500, muted. */
     .starci-core-data-table .starci-core-data-table-column {
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-leading-xs);
+        font-size: var(--grammar-type-label-field-size);
+        font-weight: var(--grammar-type-label-field-weight);
+        line-height: var(--grammar-type-label-field-line);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
@@ -1806,7 +1807,7 @@
      * so the frame and its lines are the ready state's (STATE-8).
      */
     .starci-core-description-list[data-grammar-description-layout="stat-strip"] {
-        --starci-core-figure-size: var(--grammar-text-2xl);
+        --starci-core-figure-size: var(--grammar-type-figure-size);
         display: flex;
         flex-flow: row wrap;
         gap: 0;
@@ -1845,10 +1846,11 @@
         min-width: 0;
         align-items: center;
         gap: 0.5rem;
-        font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-leading-md);
+        /* The stat label is the label.group role (0.54.0): 12 / 16 / 500, muted. */
         color: var(--muted);
-        font-size: var(--grammar-text-md);
+        font-size: var(--grammar-type-label-group-size);
+        font-weight: var(--grammar-type-label-group-weight);
+        line-height: var(--grammar-type-label-group-line);
         /* The label breaks between words and keeps one or two lines; a word breaks only when it alone is wider than the cell. */
         overflow-wrap: break-word;
     }
@@ -1870,9 +1872,10 @@
         gap: 0.5rem;
         margin: 0;
         color: var(--foreground);
-        font-size: var(--grammar-text-2xl);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-2xl);
+        /* The stat value is the figure role (0.54.0): 24 / 32 / 500, tabular. */
+        font-size: var(--grammar-type-figure-size);
+        font-weight: var(--grammar-type-figure-weight);
+        line-height: var(--grammar-type-figure-line);
         font-variant-numeric: tabular-nums;
     }
 

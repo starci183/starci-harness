@@ -21,7 +21,7 @@ export { Progress, type ProgressProps, type ProgressTone } from "../core/leaf/Pr
 export { StatusDot, type StatusDotProps, type StatusDotSize, type StatusDotTone } from "../core/leaf/StatusDot/index.js"
 export { Code, type CodeProps } from "../core/leaf/Code/index.js"
 export { Terminal, type TerminalProps } from "../core/branch/Terminal/index.js"
-export { Text, type TextAs, type TextLive, type TextProps, type TextSize, type TextTone } from "../core/leaf/Text/index.js"
+export { Text, TEXT_ROLES, typeRoleClassName, type TextAs, type TextLive, type TextProps, type TextRole, type TextSize, type TextTone } from "../core/leaf/Text/index.js"
 export { RelativeTime, type RelativeTimeFormat, type RelativeTimeMode, type RelativeTimeProps, type RelativeTimeStyle } from "../core/leaf/RelativeTime/index.js"
 export { CalendarDay, type CalendarDayProps, type CalendarDayValue } from "../core/leaf/CalendarDay/index.js"
 export { TextAction, type TextActionAppearance, type TextActionProps, type TextActionSize } from "../core/leaf/TextAction/index.js"

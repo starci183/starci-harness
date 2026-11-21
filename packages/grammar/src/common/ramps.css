@@ -47,6 +47,40 @@
         --grammar-weight-bold: 500;
         --grammar-weight-extrabold: 500;
         --grammar-weight-black: 500;
+        /* THE TYPE ROLES (0.54.0, owner 2026-11-21, "ok chốt vậy đi"): ten roles, each a size, a line height and a weight (400 or 500 only).
+           `<Text role>` and the public classes `starci-type-<role>` (styles.css) read these; a Grammar part reads the role it draws.
+           title.page 22 / 28 is the one role under the 1.33x line height Vietnamese diacritics want (1.27): the owner's numbers stand. */
+        --grammar-type-figure-size: 1.5rem;
+        --grammar-type-figure-line: 2rem;
+        --grammar-type-figure-weight: var(--grammar-weight-medium);
+        --grammar-type-title-page-size: 1.375rem;
+        --grammar-type-title-page-line: 1.75rem;
+        --grammar-type-title-page-weight: var(--grammar-weight-medium);
+        --grammar-type-title-section-size: 1rem;
+        --grammar-type-title-section-line: 1.5rem;
+        --grammar-type-title-section-weight: var(--grammar-weight-medium);
+        --grammar-type-label-item-size: 0.875rem;
+        --grammar-type-label-item-line: 1.25rem;
+        --grammar-type-label-item-weight: var(--grammar-weight-medium);
+        --grammar-type-body-size: 0.875rem;
+        --grammar-type-body-line: 1.375rem;
+        --grammar-type-body-weight: var(--grammar-weight-regular);
+        --grammar-type-label-field-size: 0.8125rem;
+        --grammar-type-label-field-line: 1.125rem;
+        --grammar-type-label-field-weight: var(--grammar-weight-medium);
+        --grammar-type-label-group-size: 0.75rem;
+        --grammar-type-label-group-line: 1rem;
+        --grammar-type-label-group-weight: var(--grammar-weight-medium);
+        --grammar-type-caption-size: 0.75rem;
+        --grammar-type-caption-line: 1rem;
+        --grammar-type-caption-weight: var(--grammar-weight-regular);
+        --grammar-type-badge-size: 0.75rem;
+        --grammar-type-badge-line: 1rem;
+        --grammar-type-badge-weight: var(--grammar-weight-medium);
+        /* code names no weight in the owner's table: it reads the regular weight, in the mono stack. */
+        --grammar-type-code-size: 0.75rem;
+        --grammar-type-code-line: 1.125rem;
+        --grammar-type-code-weight: var(--grammar-weight-regular);
         --grammar-tracking-display: -0.045em;
         --grammar-tracking-tight: -0.025em;
         --grammar-tracking-snug: -0.015em;

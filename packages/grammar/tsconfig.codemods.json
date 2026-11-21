@@ -1,0 +1,19 @@
+{
+  "extends": "@starci/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "rootDir": "codemods",
+    "outDir": "dist/codemods"
+  },
+  "include": ["codemods/**/*.mts"],
+  "exclude": ["codemods/**/*.spec.mts", "codemods/**/fixtures/**"]
+}

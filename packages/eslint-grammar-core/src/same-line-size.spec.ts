@@ -36,8 +36,12 @@ test("FE_SAME_LINE_SIZE: Texts of one Cluster with different sizes are red", () 
       // a Text with one run
       { filename: BLOCK, code: IMPORT + "export const A = () => <Text>Total <Text isStrong>12</Text></Text>" },
       { filename: SCRIPT, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"sm\">B</Text></Cluster>" },
+      // a role states its step: caption is the 12 step, label.item and body the 14 step
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text role=\"caption\">A</Text><Text size=\"xs\">B</Text></Cluster>" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text role=\"label.item\">A</Text><Text role=\"body\">B</Text></Cluster>" },
     ],
     invalid: [
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text role=\"body\">A</Text><Text role=\"caption\">B</Text></Cluster>", errors: [{ messageId: "mixed" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"xs\">B</Text></Cluster>", errors: [{ messageId: "mixed" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"figure\">12</Text><Text size=\"xs\" tone=\"muted\">runs</Text></Cluster>", errors: [{ messageId: "mixed" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"sm\">A</Text><Badge>New</Badge><Text size=\"xs\">B</Text><Text size=\"figure\">C</Text></Cluster>", errors: [{ messageId: "mixed" }, { messageId: "mixed" }] },

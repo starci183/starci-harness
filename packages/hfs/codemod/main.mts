@@ -21,6 +21,7 @@ import { migrateSecretsCache, secretsCacheMarkdown } from './secrets-cache.mjs';
 import { migrateSeedsLayout, seedsLayoutMarkdown } from './seeds-layout.mjs';
 import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
+import { GRAMMAR_CODEMOD_ID, installedGrammar, listMarkdown, loadGrammarCodemods, rangeArguments, runGrammarCodemods } from './grammar.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
 export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery', 'common-base', 'auth-merge']);
@@ -173,13 +174,44 @@ function accountDoorsMain(argv: readonly string[], io: Io): number {
  */
 export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   const [name, ...rest] = argv;
+  if (name === '--list') return grammarListMain(rest, io);
+  if (name !== undefined && (GRAMMAR_CODEMOD_ID.test(name) || name === '--from' || name.startsWith('--from=') || name === '--to' || name.startsWith('--to='))) return grammarCodemodMain(argv, io);
   if (name === 'button-intent') return buttonIntentMain(argv, io);
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
   if (name === 'account-doors') return accountDoorsMain(rest, io);
   if (name === 'module-definition') return moduleDefinitionMain(rest, io);
   if (name === 'passport-module') return passportModuleMain(rest, io);
   if (name === 'self-recovery') return selfRecoveryMain(rest, io);
-  if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
+  if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes a Grammar codemod (v<major><minor><patch>, starci app codemod --list), --from <installed> [--to <target>], or ${CODEMODS.join(' or ')}`);
   const options = reportArguments(rest);
   return emit(options, runCodemod(name as Parameters<typeof runCodemod>[0], path.resolve(io.cwd), options.write), io);
+}
+
+/** `starci app codemod --list [--json]`: every codemod of the installed Grammar, with its version and summary. */
+async function grammarListMain(argv: readonly string[], io: Io): Promise<number> {
+  const options = reportArguments(argv);
+  const root = path.resolve(io.cwd);
+  const grammar = installedGrammar(root);
+  if (!grammar) throw new Error(`no @starci/grammar is installed under ${root}: install the app's dependencies first`);
+  const { CODEMODS: codemods } = await loadGrammarCodemods(grammar);
+  const report = { grammar: grammar.version, codemods: codemods.map(({ id, version, summary }) => ({ id, version, summary })), findings: [] };
+  return emit(options, { report, markdown: listMarkdown(codemods, grammar) }, io);
+}
+
+/**
+ * `starci app codemod v0540 [--execute]` or `starci app codemod --from <installed> [--to <target>] [--execute]`: the Grammar's codemods
+ * (codemod/grammar.mts), from the Grammar the app installed, in version order. Dry until --execute; exit 1 when a case is left for a person.
+ */
+async function grammarCodemodMain(argv: readonly string[], io: Io): Promise<number> {
+  const id = argv[0] !== undefined && GRAMMAR_CODEMOD_ID.test(argv[0]) ? argv[0] : undefined;
+  const range = rangeArguments(id === undefined ? argv : argv.slice(1));
+  if (id !== undefined && (range.from !== undefined || range.to !== undefined)) throw new Error('name one codemod, or a --from/--to range, not both');
+  const options = reportArguments(range.rest);
+  const { grammar, reports } = await runGrammarCodemods({ root: path.resolve(io.cwd), write: options.write, ...(id === undefined ? {} : { id }), ...(range.from === undefined ? {} : { from: range.from }), ...(range.to === undefined ? {} : { to: range.to }) });
+  const findings = reports.flatMap(({ report }) => report.findings);
+  const markdown = reports.length
+    ? reports.map(({ codemod, report }) => codemod.markdown(report)).join('\n')
+    : `# starci app codemod: no Grammar codemod between ${range.from ?? '?'} and ${range.to ?? grammar.version}\n\nNo app-facing change of the Grammar in that range needs one.\n`;
+  const report = { grammar: grammar.version, reports: reports.map(({ report: each }) => each), findings };
+  return emit(options, { report, markdown }, io);
 }

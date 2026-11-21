@@ -7,7 +7,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { projectDir } from "../../harness/ledger.js"
 import { captureGitSync } from "../../shared/git.js"
-import { installRecordFile, parseRequested, readInstallRecord, withPin, writeInstallRecord } from "./install-local.js"
+import { grammarCodemodHint, installRecordFile, parseRequested, readInstallRecord, withPin, writeInstallRecord } from "./install-local.js"
 import { isHarnessPackage, packageName, pinsOf, parseManifest } from "./packages.js"
 import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 
@@ -97,4 +97,13 @@ void test("the install record lands in the untracked tool cache, never in .starc
     writeInstallRecord(root, record)
     assert.deepEqual(readInstallRecord(root), record)
     assert.equal(existsSync(join(root, ".starciwork")), false)
+})
+
+void test("an install that moves the Grammar suggests its codemods from the replaced pin to the installed version, and runs nothing", () => {
+    const grammar = (spec: string | null, version = "0.54.0") => [{ name: "@starci/grammar", version, pins: [{ spec }] }]
+    assert.equal(grammarCodemodHint(grammar("0.52.3")), "the Grammar moves 0.52.3 -> 0.54.0: run its codemods with starci app codemod --from 0.52.3 --to 0.54.0 (dry; add --execute to write)")
+    assert.match(grammarCodemodHint(grammar("~0.52.3")) ?? "", /--from 0\.52\.3 --to 0\.54\.0/)
+    assert.equal(grammarCodemodHint(grammar("0.54.0")), null)
+    assert.equal(grammarCodemodHint(grammar(null)), null)
+    assert.equal(grammarCodemodHint([{ name: "@starci/hfs", version: "6.18.0", pins: [{ spec: "6.17.4" }] }]), null)
 })

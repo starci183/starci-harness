@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (`starci app codemod`, `codemod/grammar.mts`): the Grammar's codemods, one per Grammar release that needs one and named after its version (owner 2026-11-21: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars"). `starci app codemod --list` prints each codemod of the installed Grammar with its version and summary. `starci app codemod v0540` runs one codemod: it is dry until `--execute` and exits 1 when it leaves a `TODO(type-role)` case. `starci app codemod --from <installed> [--to <target>]` runs every codemod in between, in version order. The codemods load from the app's installed `@starci/grammar/codemods` (0.54.0 and later) and use the app's TypeScript compiler. A target above the installed Grammar, an unknown id and a Grammar with no codemods are refused, each with what to do.
+- Changed (canon pins): the Grammar family is 0.54.0 (`~0.54.0`).
+
 ## 6.17.5 - 2026-11-21
 
 - Fixed (ci.yml): a switched-off gate never skips the release deploy; each deploy job runs on its own status check and names the results it needs, and the verdict summary says whether a deploy runs or why not.

@@ -23,6 +23,7 @@ import { rules as mediaRules } from "./media.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as messageSurfacesRules } from "./message-surfaces.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
+import { rules as noRawTypeSizeRules } from "./no-raw-type-size.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
@@ -96,6 +97,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "message-surfaces", rules: messageSurfacesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
+  { law: "no-raw-type-size", rules: noRawTypeSizeRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
   { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
@@ -142,8 +144,21 @@ export const ruleOwners: Readonly<Record<string, string>> = Object.fromEntries(r
 /** Every rule of the selected family contract. */
 export const rules: Readonly<Record<string, Rule.RuleModule>> = Object.fromEntries(CONTRIBUTIONS.flatMap(({ rules }) => Object.entries(rules)))
 
-/** Every family rule runs at error, with no consumer override surface. */
-export const recommended: Readonly<Record<string, "error">> = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-grammar/${name}`, "error"]))
+/**
+ * THE COUNTING COHORT: a family rule that ships at `warn` while the apps migrate onto the API it asks for, with the law it
+ * enforces and what ends it. `starci app check --gate lint` reports and counts its findings and never fails on them. THE SWITCH
+ * to blocking is deleting the rule's entry here (a family minor): the rule then runs at error like every other. No other rule
+ * may be below error, and there is no consumer override (the app's eslint.config.mjs is the managed one-liner, R17).
+ */
+export const COUNTING: Readonly<Record<string, { readonly law: string; readonly until: string }>> = Object.freeze({
+  "starci-grammar/no-raw-type-size": { law: "TYPE-ROLES", until: "both apps have moved their raw type sizes onto the type roles" },
+})
+
+/** The level of one published rule: warn in the counting cohort, error otherwise. */
+const levelOf = (name: string): "error" | "warn" => (`starci-grammar/${name}` in COUNTING ? "warn" : "error")
+
+/** Every family rule runs at error, the counting cohort at warn, with no consumer override surface. */
+export const recommended: Readonly<Record<string, "error" | "warn">> = Object.fromEntries(Object.keys(rules).map((name): [string, "error" | "warn"] => [`starci-grammar/${name}`, levelOf(name)]))
 
 /** The failure-code guidance of every rule. */
 export const why: Readonly<Record<string, { readonly code: string; readonly en: string; readonly fix: string }>> = familyWhy
@@ -161,7 +176,7 @@ const SERVED_FAMILIES: readonly string[] = Object.freeze(["core", "offset-pop"])
  * Add the complete selected-family contract to the universal front-end flat config.
  * Offset Pop uses the inherited Common renderer contract through its own package entry.
  * @param input - The selected FE slot view and family.
- * @returns A typed source block with every family rule at error.
+ * @returns A typed source block with every family rule at error (the counting cohort, `COUNTING`, at warn).
  */
 export const coreGrammarConfig: (input: {
   readonly hfs: GrammarHfsView
@@ -173,8 +188,8 @@ export const coreGrammarConfig: (input: {
   if (!SERVED_FAMILIES.includes(family) || hfs.grammar !== family) {
     throw new Error(`coreGrammarConfig family ${family} does not match the selected Grammar ${hfs.grammar}`)
   }
-  const missing = Object.keys(rules).filter((name) => recommended[`starci-grammar/${name}`] !== "error")
-  if (missing.length) throw new Error(`coreGrammarConfig requires every family rule at error: ${missing.join(", ")}`)
+  const missing = Object.keys(rules).filter((name) => recommended[`starci-grammar/${name}`] !== levelOf(name))
+  if (missing.length) throw new Error(`coreGrammarConfig requires every family rule at error (the counting cohort at warn): ${missing.join(", ")}`)
   return [{
     files: [...SOURCE_FILES],
     languageOptions: {

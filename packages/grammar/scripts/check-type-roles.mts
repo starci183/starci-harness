@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
  * cell md 14, row header 500; a Link inherits the size around it; a Sublabel is 12 / 500 muted; the page header band's content takes the page measure like the body (one start edge, MEASURE-8, 0.41.0); the page body and the workspace main pane are capped at 80rem and centred.
  */
 const common = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src", "common")
-const sheets = ["styles.css", "components-navigation.css"].map((name) => ({ name, text: readFileSync(resolve(common, name), "utf8") }))
+const sheets = ["styles.css", "components-navigation.css", "components-forms.css"].map((name) => ({ name, text: readFileSync(resolve(common, name), "utf8") }))
 
 /** Each pin: the exact selector of one rule and the declarations it must hold. */
 const PINS: readonly { readonly selector: string; readonly holds: readonly string[] }[] = [
@@ -20,12 +20,17 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: '.starci-core-text[data-size="xs"]', holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: '.starci-core-text[data-strong="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-section-title", holds: ["font-size: var(--grammar-text-xl)", "font-weight: var(--grammar-weight-medium)"] },
-    { selector: ":is(h2, h3, h4, h5, h6).starci-core-section-title", holds: ["font-size: var(--grammar-text-title)", "font-weight: var(--grammar-weight-medium)"] },
-    { selector: ".starci-core-label", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-semibold)"] },
-    { selector: ".starci-core-list-row-name", holds: ["font-size: var(--grammar-text-lg)", "font-weight: var(--grammar-weight-regular)"] },
+    { selector: ":is(h2, h3, h4, h5, h6).starci-core-section-title", holds: ["font-size: var(--grammar-type-title-section-size)", "font-weight: var(--grammar-type-title-section-weight)", "line-height: var(--grammar-type-title-section-line)"] },
+    { selector: ".starci-core-label", holds: ["font-size: var(--grammar-type-title-section-size)", "font-weight: var(--grammar-type-title-section-weight)"] },
+    { selector: ".starci-core-list-row-name", holds: ["font-size: var(--grammar-type-label-item-size)", "font-weight: var(--grammar-type-label-item-weight)", "line-height: var(--grammar-type-label-item-line)"] },
     { selector: ".starci-core-list-row-description", holds: ["font-size: var(--grammar-text-sm)"] },
-    { selector: ".starci-core-list-row-meta", holds: ["font-size: var(--grammar-text-xs)"] },
-    { selector: ".starci-core-data-table .starci-core-data-table-column", holds: ["font-size: var(--grammar-text-xs)"] },
+    { selector: ".starci-core-list-row-meta", holds: ["font-size: var(--grammar-type-caption-size)", "line-height: var(--grammar-type-caption-line)"] },
+    { selector: ".starci-core-data-table .starci-core-data-table-column", holds: ["font-size: var(--grammar-type-label-field-size)", "font-weight: var(--grammar-type-label-field-weight)", "color: var(--muted)"] },
+    { selector: ".starci-core-field-label", holds: ["font-size: var(--grammar-type-label-field-size)", "font-weight: var(--grammar-type-label-field-weight)", "color: var(--muted)"] },
+    { selector: ".starci-core-field-description", holds: ["font-size: var(--grammar-type-caption-size)", "color: var(--muted)"] },
+    { selector: ".starci-core-description-stat-term", holds: ["font-size: var(--grammar-type-label-group-size)", "font-weight: var(--grammar-type-label-group-weight)", "color: var(--muted)"] },
+    { selector: ".starci-core-description-figure", holds: ["font-size: var(--grammar-type-figure-size)", "font-weight: var(--grammar-type-figure-weight)", "line-height: var(--grammar-type-figure-line)"] },
+    { selector: '[data-component="Badge"][data-loading]', holds: ["font-size: var(--grammar-type-badge-size)", "font-weight: var(--grammar-type-badge-weight)"] },
     { selector: ".starci-core-data-table .starci-core-data-table-cell", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-regular)"] },
     { selector: '.starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-link", holds: ["font-size: inherit !important", "line-height: inherit !important"] },
@@ -56,7 +61,22 @@ const problems: string[] = []
 const ramps = readFileSync(resolve(common, "ramps.css"), "utf8")
 const all = sheets.map(({ text }) => text).join("\n")
 if (!/--grammar-text-sm:\s*0\.875rem;/.test(ramps)) problems.push("ramps.css: --grammar-text-sm must be 0.875rem (no 13 anywhere)")
-if (/0\.8125rem/.test(all + ramps)) problems.push("a 13px size (0.8125rem) is back")
+/* 0.54.0: 13 is the label.field role alone (owner 2026-11-21); no other rule or token is 13. */
+if (/0\.8125rem/.test(all + ramps.replace("--grammar-type-label-field-size: 0.8125rem;", ""))) problems.push("a 13px size (0.8125rem) outside the label.field role")
+/* THE TYPE ROLES (0.54.0): ten roles, three tokens each, one public class each reading them; weights 400 and 500 only. */
+const ROLES: readonly (readonly [string, string, string, "regular" | "medium"])[] = [
+    ["figure", "1.5rem", "2rem", "medium"], ["title-page", "1.375rem", "1.75rem", "medium"], ["title-section", "1rem", "1.5rem", "medium"],
+    ["label-item", "0.875rem", "1.25rem", "medium"], ["body", "0.875rem", "1.375rem", "regular"], ["label-field", "0.8125rem", "1.125rem", "medium"],
+    ["label-group", "0.75rem", "1rem", "medium"], ["caption", "0.75rem", "1rem", "regular"], ["badge", "0.75rem", "1rem", "medium"], ["code", "0.75rem", "1.125rem", "regular"],
+]
+for (const [role, size, line, weight] of ROLES) {
+    for (const [part, value] of [["size", size], ["line", line], ["weight", `var(--grammar-weight-${weight})`]] as const) {
+        if (!ramps.includes(`--grammar-type-${role}-${part}: ${value};`)) problems.push(`ramps.css: --grammar-type-${role}-${part} must be ${value} (the owner's type roles, 0.54.0)`)
+    }
+    const reads = (part: string): string => `${part}: var(--grammar-type-${role}-${part === "font-size" ? "size" : part === "line-height" ? "line" : "weight"});`
+    const body = /\{([^}]*)\}/.exec(all.slice(all.indexOf(`.starci-type-${role} {`)))?.[1] ?? ""
+    if (!all.includes(`.starci-type-${role} {`) || !["font-size", "line-height", "font-weight"].every((part) => body.includes(reads(part)))) problems.push(`styles.css: .starci-type-${role} must read its three role tokens`)
+}
 for (const match of all.matchAll(/\.starci-core-tabs[^{]*\.tabs__tab[^{]*\{[^}]*font-size:\s*var\(--grammar-text-([a-z0-9]+)\)/g)) {
     if (match[1] !== "sm" && match[1] !== "md") problems.push(`a tab rule sets --grammar-text-${match[1]}; every tab is 14`)
 }

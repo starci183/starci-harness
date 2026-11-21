@@ -262,6 +262,11 @@ export const why: Record<string, WhyEntry> = {
     en: "An element in `<file>` makes its own scroll area with an `overflow-auto`, `overflow-y-auto` or `overflow-scroll` class.",
     fix: "Grammar never shows scrollbars. Use the Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`: they fade the edge where content continues, hide the bar and keep wheel and keyboard scrolling.",
   },
+  "no-raw-type-size": {
+    code: "FE_RAW_TYPE_SIZE",
+    en: "`<file>` sets a type size of its own: a Tailwind text-size utility (`text-sm`, `text-[13px]`), a `fontSize` or a CSS `font-size`.",
+    fix: "Type is a Grammar role (owner 2026-11-21): use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code.",
+  },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
     en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",
