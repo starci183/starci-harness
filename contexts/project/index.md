@@ -160,7 +160,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 6 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/host.md](../harness/host.md) · 23 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+- [harness/host.md](../harness/host.md) · 24 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Roles and machines · Host services · Dependencies through a link · Files and folders
   - ids: Self-healing
 - [harness/managed-vps.md](../harness/managed-vps.md) · 17 KB — The harness manages the owner's fleet of VPS servers from the harness host: it brings each server to one policy, watches its health, opens its doors under the owner's domain and ...
