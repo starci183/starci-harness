@@ -2,7 +2,6 @@ import { createHash, randomBytes } from "node:crypto"
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
-import { refuseRecordedOverlay } from "../core/deps/overlay-refusal.js"
 import { captureNpm, npmVersion, pidAlive } from "../shared/exec.js"
 import type { RunOptions, ToolRun } from "../shared/exec.js"
 import { evidenceTail } from "../shared/output.js"
@@ -277,12 +276,10 @@ export interface CheckoutInstall {
 /**
  * Gives a lockfile folder `dir` of a checkout the install every judged or served copy of the app runs against, a wave's clean
  * checkout and a walk's checkout alike: an install the folder does not hold yet comes from the cache (cachedInstall), so the checkout
- * runs the `@starci` packages its lockfile names. A project that still records the removed package overlay is refused
- * DEPS_OVERLAY_REMOVED (`source` is the repository whose record is read). Undefined when the folder already holds an install: there is
+ * runs the `@starci` packages its lockfile names. Undefined when the folder already holds an install: there is
  * nothing to give it.
  */
-export const installCheckout = async (dir: string, source: string, options: RunOptions): Promise<CheckoutInstall | undefined> => {
-    refuseRecordedOverlay(source)
+export const installCheckout = async (dir: string, options: RunOptions): Promise<CheckoutInstall | undefined> => {
     if (isInstalled(dir)) return undefined
     const cached = await cachedInstall(dir, options)
     const exitCode = cached.run?.exitCode ?? 0

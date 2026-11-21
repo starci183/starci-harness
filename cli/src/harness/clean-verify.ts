@@ -229,7 +229,7 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")) || existsSync(join(candidate, "npm-shrinkwrap.json")))
     if (dir === undefined) return undefined
-    const given = await installCheckout(dir, place.source ?? place.root, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
+    const given = await installCheckout(dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
     return given === undefined ? undefined : { name: "install", kind: "install", ...given }
 }
 
