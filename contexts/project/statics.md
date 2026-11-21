@@ -20,14 +20,13 @@ carries it into the store and of the checks that hold both. The brand the images
   image copies the folder.
 - **Cache: change the key when the art changes.** Keys are not content-hashed and no `Cache-Control` is set. A redrawn image gets a new key
   (`customers-v2.png`), and the code that shows it changes with it. There is no hash mechanism.
-- **Sizes**: a file above 2 MiB is a warning, above 10 MiB an error; the folder above 256 MiB is an error.
+- **Sizes**: a file above 2 MiB is a warning, above 10 MiB an error; the folder above 256 MiB is too much for the storage image to carry (no check judges the total).
 - `.gitattributes` marks `statics/** binary` and the prompt files `text eol=lf`.
 
 Why: one folder is the one place media is authored, so it can be sized, named and reviewed, and the store has one thing to load. A name is a URL and a
 key held in data for years, so it is fixed in shape on the first day.
 
-Enforced by: R438 (`statics-shape`: `HFS_STATICS_FILE_KIND`, `HFS_STATICS_KEY`, `HFS_STATICS_FILE_SIZE`, `HFS_STATICS_TREE_SIZE`, `HFS_STATICS_PROMPT_ORPHAN`,
-`HFS_STATICS_PROMPT_SCHEMA`); the folder's place by the slot manifest (`HFS_ROOT_ENTRY_FORBIDDEN`).
+Enforced by: R438 (`statics-shape`: `HFS_STATICS_FILE_KIND`, `HFS_STATICS_KEY`, `HFS_STATICS_FILE_SIZE`); the folder's place by the slot manifest (`HFS_ROOT_ENTRY_FORBIDDEN`).
 
 ## PROJECT-STATICS-2 The storage image and its condition
 

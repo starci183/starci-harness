@@ -180,7 +180,7 @@ const GRAPHQL_CONTRACT_SLOT = 'be.contract.graphql';
 const REST_CONTRACT_SLOT = 'be.contract.openapi';
 
 /**
- * Declares, in the app root package.json, the runtime peers its GraphQL api needs (R111, knowledge/hfs/peer-integrations.yaml) at
+ * Declares, in the app root package.json, the runtime peers its GraphQL api needs (knowledge/hfs/peer-integrations.yaml) at
  * their canon pins; returns ['package.json'] when it changed, else []. Both editions.
  */
 function ensureGraphqlPeers(repoRoot: string): string[] {

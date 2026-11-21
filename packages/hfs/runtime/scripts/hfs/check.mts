@@ -42,8 +42,6 @@
 //   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mts) a local eslint rule or plugin, a check-named script outside ext/checks/, an undeclared project check
 //   HFS_LINT_SUPPRESSION_FILE     (R104, rules/lint-suppression.mts) an eslint suppressions file, script or option
 //   HFS_BYPASS_MARKER             (R303, rules/bypass-markers.mts) an inline disable, type-check escape, skipped test or swallowed failure
-//   HFS_PROOF_COMMAND_FILE_MISSING (R105, rules/proof-commands.mts) a .starciwork proof command that runs a file the repository does not hold
-//   HFS_PEER_INTEGRATION_MISSING  (R111, rules/peer-integrations.mts) the app root package.json lacks the runtime peer a driver integration needs
 //   FE_GRAPHQL_CONTRACT           (R113, rules/fe-contract-documents.mts) a front-end GraphQL document the back end's contract snapshot does not serve
 //   HFS_MONO_* (R143-R146, rules/monorepo.mts) the monorepo shape; BE_CLI_REQUIRED (R147, rules/cli.mts) the one cli app
 //   HFS_SERVICE_PLACEMENT, HFS_IMAGE_UNPINNED, HFS_SERVICE_STACK_DECLARATION, HFS_EVENT_CONTRACT   (R163-R166, rules/services.mts) the microservice policy of a product with more than one service
@@ -55,7 +53,6 @@
 //                                 both are passed in as `extraFindings`: this module reads no template and starts no tool
 //   HFS_CANON_PIN_DRIFT           a dependency whose declared version is not the pinned one
 //   BE_SOURCE_FORM                (be) a tracked src/apps .ts file whose name is not index.ts, main.ts, a migration or <kebab>.<suffix>.ts with a suffix of ruleParams.be.suffixes
-//   HFS_SIZE_SOFT_BACKLOG         (info, report-only, never fails) a source file above ruleParams fileLines.soft
 //   HFS_EMPTY_DIR                 a directory with no file below it (git never tracks one), outside .git, node_modules and ignored slots
 //   HFS_GHOST_TREE                an empty directory beside a sibling within two edits of its name (business / bussiness)
 //   HFS_UNTRACKED_ROOT_ENTRY      an entry git neither tracks nor ignores, outside an `ignored` slot (R03)
@@ -74,7 +71,7 @@ import { skillRoot } from '../../engine/runtime-root.mjs';
 import { ARCHITECTURE_RULE_IDS, checkArchitecture } from './architecture/index.mjs';
 import { canonPins } from './canon-pins.mjs';
 import { readCatalogOnce } from './catalog-once.mjs';
-import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, createSlotResolver, declaredAppSides, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
+import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, createSlotResolver, declaredAppSides, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type Slot, type SlotManifest } from './slots.mjs';
 import type { CanonPins } from './canon-pins.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
 import { summarize, withWhy, type Finding, type Summary, type Why } from './check-results.mjs';
@@ -123,10 +120,10 @@ export const FAILURE_CODES_FILE = 'modules/kernel/failure-codes.yaml';
 /** The codes this module emits that are not the slot loader's own: the why bundle of packages/hfs ships exactly these plus the loader's. */
 export const CHECK_CODES = Object.freeze([
   'HFS_SLOT_UNDECLARED', 'HFS_SLOT_NOT_ENABLED', 'HFS_SLOT_AMBIGUOUS', 'HFS_TRACKED_MUST_BE_IGNORED', 'HFS_FORBIDDEN_PRESENT',
-  'HFS_SLOT_REQUIRED_MISSING', 'HFS_MIN_INSTANCES', 'HFS_CANON_PIN_DRIFT', 'HFS_SIZE_SOFT_BACKLOG', 'BE_SOURCE_FORM',
+  'HFS_SLOT_REQUIRED_MISSING', 'HFS_MIN_INSTANCES', 'HFS_CANON_PIN_DRIFT', 'BE_SOURCE_FORM',
   'HFS_MANAGED_FILE_DRIFT', 'HFS_TOOL_CONFIG_LOCAL', 'HFS_RULE_OFF_WITHOUT_REPLACEMENT', 'HFS_TS_STRICT',
   'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_BRANCH_PROFILE_INVALID', 'HFS_GATE_DECLARATION_INVALID', 'HFS_CUTOVER_DECLARATION_INVALID', 'HFS_CUTOVER_EXPIRED', 'LINT_RATCHET_RAISED', 'LINT_NEW_CODE_FINDING', 'COVERAGE_NEW_CODE_BELOW', 'HFS_DEV_BRANCH_MISSING', 'STACK_PENDING_MIGRATIONS', 'STACK_DEAD_LETTER_REPEAT', 'STACK_BASE_PORT_OVERLAP', 'HFS_SEEDS_SHAPE', 'HFS_SEED_MANIFEST', 'HFS_SEED_DDL', 'HFS_SEED_DATA_SCHEMA', 'HFS_SEED_TEST_DATA', 'HFS_SEED_SECRET_REF', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT', 'HFS_MCP_TOOLS_SNAPSHOT_MISSING',
-  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_PROJECT_CHECK_FAILED', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'FE_I18N_LOCALE_MISSING', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS',
+  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_PROJECT_CHECK_FAILED', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'FE_I18N_LOCALE_MISSING', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS',
   'FE_STACK_FORBIDDEN', 'HFS_EDITION_DEPRECATED', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
   'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',
   'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT', 'DB_PRIMARY_KEY_SHAPE', 'DB_FOREIGN_KEY_NAME', 'DB_FOREIGN_KEY_INDEX', 'BE_FAILURE_CLASS_BY_TEXT', 'HFS_CONCEPT_CONVENTIONS_MISSING', 'HFS_CONCEPT_UNCATALOGUED',
@@ -265,15 +262,14 @@ interface ContentRuleInput {
 
 /**
  * The rules whose findings for a file depend on that file alone (and the files `deps` names), so the result cache keeps them per file by content hash
- * (contexts/project/check-cache.md "Which step reuses what"): the plaintext secrets (R06 and the custody L17), the bypass markers (R303) and, in a side, the soft file size.
+ * (contexts/project/check-cache.md "Which step reuses what"): the plaintext secrets (R06 and the custody L17), the bypass markers (R303).
  * Each rule's findings carry the path of the file they judge; `check-cache-structure-rules.spec.mts` proves that and the declared `deps` under a file-system recorder.
  */
-export function perFileRules({ repoRoot, repo, resolver, inScope, isRoot }: { repoRoot: string; repo: CheckRepo; resolver: CheckResolver; inScope: (file: string) => boolean; isRoot: boolean }): FileRule[] {
+export function perFileRules({ repoRoot, repo, resolver, inScope }: { repoRoot: string; repo: CheckRepo; resolver: CheckResolver; inScope: (file: string) => boolean }): FileRule[] {
   return [
     { id: 'secret', run: (list) => sealedSecretFindings({ repoRoot, files: list.filter((file) => inScope(file)), resolver, repo }), deps: (file) => readmeManifestOf(file) ?? [] },
     // The managed ci.yml is judged with the gate declaration, whose idled jobs are its render (R303, PROJECT-LINT-4).
     { id: 'bypass-marker', run: (list) => bypassMarkerFindings({ repoRoot, files: list.filter((file) => inScope(file)) }), deps: (file) => (file === MANAGED_CI ? [`${STACK_ROOT}/${DECLARATION}`] : []) },
-    ...(isRoot ? [] : [{ id: 'size-soft', run: (list: string[]) => sizeSoftFindings({ repoRoot, resolver, files: list, inScope }) }]),
   ];
 }
 
@@ -298,18 +294,6 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
     findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }), ...testInfraPlacementFindings({ repoRoot, files }), ...failureClassFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
   } else {
     findings.push(...frontendFindings({ repoRoot, files, repo }), ...localeCatalogFindings({ repoRoot, files, repo }), ...feNoTestsFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
-  }
-  return findings;
-}
-
-function sizeSoftFindings({ repoRoot, resolver, files, inScope }: { repoRoot: string; resolver: CheckResolver; files: string[]; inScope: (file: string) => boolean }): CheckFinding[] {
-  const findings: CheckFinding[] = [];
-  const soft = (resolver.ruleParams() as RuleParams & { fileLines: { soft: number } }).fileLines.soft;
-  for (const file of files) {
-    if (!inScope(file) || !SOURCE_EXT.test(file) || resolver.classifyPath(file).status !== 'owned') continue;
-    let lines: number;
-    try { lines = fs.readFileSync(path.join(repoRoot, file), 'utf8').split('\n').length; } catch { continue; }
-    if (lines > soft) findings.push({ code: 'HFS_SIZE_SOFT_BACKLOG', level: 'info', path: file, lines, soft, message: `${file} has ${lines} lines, above the soft size ${soft}; report only` });
   }
   return findings;
 }
@@ -339,7 +323,7 @@ function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = f
   if (repo.kind === RUNTIME_KIND) return findings;
 
   const pins = canonPins({ root, ...(harness ? { harness } : {}) });
-  const fileFindings = memoFiles(repoRoot, files, perFileRules({ repoRoot, repo, resolver, inScope, isRoot }));
+  const fileFindings = memoFiles(repoRoot, files, perFileRules({ repoRoot, repo, resolver, inScope }));
   findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, withDeclaration, manifest, phase }));
   return findings;
 }

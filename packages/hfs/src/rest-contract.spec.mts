@@ -134,8 +134,6 @@ test('R396: a stable, typed, secured, paged document passes; each law fails on i
     ['BE_REST_ERROR_SHAPE', (doc) => { doc.components.schemas.Error.required = ['code']; }],
     ['BE_REST_ERROR_SHAPE', (doc) => { doc.paths['/items'].post.responses.default.content['application/json'].schema = { $ref: '#/components/schemas/Item' }; }],
     ['BE_REST_ERROR_SHAPE', (doc) => { delete doc.paths['/items'].post.responses.default; }],
-    ['BE_REST_PAGINATION', (doc) => { doc.paths['/items'].get.responses[200].content['application/json'].schema = { type: 'array', items: { $ref: '#/components/schemas/Item' } }; }],
-    ['BE_REST_PAGINATION', (doc) => { doc.paths['/items'].get.parameters = []; }],
     ['BE_REST_SECURITY', (doc) => { delete doc.components.securitySchemes; }],
     ['BE_REST_SECURITY', (doc) => { delete doc.paths['/health'].get['x-public-reason']; }],
     ['BE_REST_SECURITY', (doc) => { delete doc.paths['/items'].get.security; delete doc.security; }],

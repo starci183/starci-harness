@@ -1,5 +1,5 @@
 // example-refs.mts — the ONE runtime source file that may spell a path into the runtime's own examples/
-// tree or a product name the runtime legitimately knows (R206, NO_EXAMPLE_COUPLING): every other source
+// tree or a product name the runtime legitimately knows (NO_EXAMPLE_COUPLING): every other source
 // file reaches these through the constants below, and scripts/checks/check-example-coupling.mjs exempts
 // this file's name only - a declared read, never a path allowlist. A constant belongs here only when the
 // runtime genuinely reads that tree or names that product at run time; a pointer that can be generic must

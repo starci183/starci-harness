@@ -167,7 +167,7 @@ step, a multi-front-end build, the `sonar` job before its scan and the nightly `
 the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
 package unbuilt reads each import as nothing: the boot proof cannot compile the modules (`BE_APP_BOOT_PROOF_MISSING`), the
 typed lint reads them as `any` (`no-unsafe-*`), and both disagree with the cache records made with the packages built
-(`HFS_CHECK_CACHE_FORGED`). An
+(`HFS_CHECK_CACHE_FORGED`). R301 refuses a CI that checks before it builds (ci-standard.yaml `packages-built-first`); an
 app without root packages renders no such step.
 
 **Images.** One job per declared image (`deploy.images` of every environment, merged by app), in parallel with the

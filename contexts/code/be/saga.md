@@ -22,7 +22,7 @@ Why: a flow moves forward only, and a failure leaves a typed failed or stopped r
 the undo is a declared, reviewable act a person decides to make, not a reflex that can itself fail half-way. Pairing by file name
 makes an undo with no step a finding, and listing both keeps an unrun step from hiding.
 
-Enforced by: R169 BE_SAGA_STEP_COMPENSATION, R01 HFS_SLOT_UNDECLARED.
+Enforced by: R01 HFS_SLOT_UNDECLARED.
 
 ## BE-SAGA-2 The state of a run is typed, versioned and moved only through the fenced store
 `<saga>.saga-state.ts` exports the state type with `status` and `version: number`. The orchestrator is thin; `platform/saga` owns the
@@ -34,7 +34,7 @@ version fence, so a step already done is not repeated.
 Why: deliveries repeat and arrive late; the version fence stops a late delivery from moving a run twice, and the inbox makes a
 redelivery a no-op.
 
-Enforced by: R170 BE_SAGA_STATE_VERSIONED, R172 BE_SAGA_CONSUMER_DEDUPE, R80 BE_INBOX_DEDUPE_MISSING, R203 BE_FEATURE_THIN.
+Enforced by: R80 BE_INBOX_DEDUPE_MISSING, R203 BE_FEATURE_THIN.
 
 ## BE-SAGA-3 Every event of a step or compensation is in a vendored contract
 A step and a compensation each declare `readonly event = "<name>"`; both events exist in a vendored `be/contracts/<service>/events.json`,
@@ -44,7 +44,7 @@ and the compensation's event declares `compensates: "<event of the step>"`. A co
 Why: the failure event is the only thing that tells the saga to undo a step; declaring the pairing in the contract makes it
 reviewable in the provider and judged in the consumer.
 
-Enforced by: R171 BE_SAGA_EVENT_CONTRACT, R166 HFS_EVENT_CONTRACT.
+Enforced by: R166 HFS_EVENT_CONTRACT.
 
 ## BE-SAGA-4 Every compensation path has a spec that injects a failure
 For each compensation an e2e spec boots the real apps through `useTestWorld`, names the compensation's event, injects a failure
@@ -54,7 +54,7 @@ runs, and reads the compensated state back; one more spec runs the saga from the
 Why: a compensation undoes what a person decides to undo; a happy-flow spec proves nothing about it, and a fault injected at delivery
 proves retry and resume.
 
-Enforced by: R173 BE_SAGA_E2E_MISSING, R167 BE_ASYNC_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
+Enforced by: R167 BE_ASYNC_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
 
 ## BE-SAGA-5 A side step does not block the run
 A step that only informs (an owner notice posted into team chat, a report, analytics, an echo of the message) is declared non-blocking
@@ -68,7 +68,7 @@ notice: a step that posts an owner notice and fails on a migration the database 
 customer with no reply until a resume. Declaring what only informs keeps the customer path independent of the side paths.
 
 Enforced by: R390 BE_SAGA_SIDE_STEP_BLOCKING (candidate: planned, no checker yet; held by review until the step declaration carries a
-`blocking` field the checker can read, as `rules/saga.mts` reads `event` today).
+`blocking` field a checker can read).
 
 ## BE-SAGA-6 A customer who got no reply gets an honest line
 When a run triggered by a customer message (a chat channel, a web chat, an email reply) parks or dead-letters before the

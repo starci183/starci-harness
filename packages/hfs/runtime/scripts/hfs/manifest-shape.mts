@@ -201,7 +201,7 @@ export const SLOT_ID = /^(app|repo|be|fe)\.[a-z0-9-]+(\.[a-z0-9-]+)*$/;
 const RUNTIME_SLOT_ID = /^runtime\.[a-z0-9-]+(\.[a-z0-9-]+)*$/;
 export const PRESENCE = ['required', 'optional', 'opt-in', 'forbidden'];
 export const TRACKED = ['tracked', 'ignored', 'external'];
-/** A runtime manifest adds `generated`: tracked, written only by the slot's generatedBy, judged by drift (RT_GENERATED_DRIFT). */
+/** A runtime manifest adds `generated`: tracked, written only by the slot's generatedBy, judged by drift. */
 const RUNTIME_TRACKED = [...TRACKED, 'generated'];
 export const TESTS = ['unit-beside', 'e2e', 'none'];
 /** The coverage mode of a tracked slot of the be profile or of a runtime manifest (scripts/hfs/coverage-scope.mts and scripts/hfs/runtime-coverage-scope.mjs derive the coverage consumers from it). */

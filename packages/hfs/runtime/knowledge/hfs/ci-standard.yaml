@@ -49,7 +49,7 @@ items:
     title: the release CI runs on the release candidate ref
     requires: "ci.yml runs on push of branches ['main', 'release/candidate-*'] and of each branch the stack declaration gives a branch profile, and tags ['v*'], on pull_request to main and on workflow_dispatch; the release flows wait for the run of the release sha there; pull_request_target, workflow_run and schedules are never triggers"
     covers: [app-ci, runtime]
-    by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
+    by: [R251 HFS_APP_WORKFLOW_TRIGGER]
   - id: job-shape
     title: the job shape plan / fast / lint / test / coverage / build / images / verdict / sonar and the deploy jobs
     requires: "the managed CI holds exactly the jobs of `jobs` and one `deploy-<env>` job per environment with deploy.auto; the unit run is a step of `test`; the merge, the coverage proof and the Codecov upload are steps of `coverage`, which alone holds the OIDC id-token; the verdict needs every other job and runs always; a deploy job needs the verdict and calls the reusable stack-deploy.yml, and no other job deploys"
@@ -59,7 +59,7 @@ items:
     title: a pull request runs the checks with no secret and no environment
     requires: "a workflow that runs on pull_request has read-only workflow permissions, binds no job to an environment and reads no secret outside the jobs the plan skips for a pull request (sonar); it never checks out or runs the code of a pull request under pull_request_target"
     covers: [app-ci]
-    by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
+    by: [R251 HFS_APP_WORKFLOW_TRIGGER]
   - id: images-once
     title: the images are built once per commit, in parallel with the checks, and pushed by digest
     requires: "images.yml is a reusable workflow (workflow_call) that ci.yml calls beside the checks; every pushed image carries the immutable tag sha-<sha> (the release tag v<version> is a retag of that digest), an SBOM and provenance; the deploy takes digests only; no mutable environment tag is deployed; build arguments are public values"

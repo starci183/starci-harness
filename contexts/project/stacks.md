@@ -95,10 +95,10 @@ image, so any digest-pinned supported reverse proxy serves.
   ingress runs on, so a host-mode ingress is global mode or pinned by a placement constraint (`STACKS_PORT_PUBLISHED`); no other
   service publishes in host mode. DNS is an owner-run prerequisite with its receipt; the ingress obtains
   and persists its certificate, and exposes a route only after the upstream is ready.
-- Web and api on different hosts (R337): the web server forwards the browser's Cookie header to the api, and the
+- Web and api on different hosts: the web server forwards the browser's Cookie header to the api, and the
   skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. An environment whose
   web and api hosts differ gives the api `AUTH_COOKIE_DOMAIN` (the bare common parent domain, such as `example.com`) in
-  its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
+  its stack environment, its KEYS.md or a sealed key; no check judges it.
   The refresh cookie is named `refresh_token` unless the api sets the optional `AUTH_COOKIE_NAME` (an RFC 6265 token, at most 64
   characters; any other value stops the boot). Apps that share a parent cookie domain (two dev hosts under one domain) must each set a
   distinct `AUTH_COOKIE_NAME`: with one name, one app's sign-in overwrites the other's and its refresh cookie reaches the other api.

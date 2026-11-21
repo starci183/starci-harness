@@ -29,9 +29,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R59 | `src/proxy.ts`, the default `vi.json` catalog | a | `rules/frontend-tree.mts:21` |
 | R60, FE-I18N-3 | a catalog for every declared locale and none for another; the same keys in each | a | `rules/i18n-locales.mts` (`FE_I18N_LOCALE_MISSING`), `rules/frontend-tree.mts:22` (`FE_I18N_CATALOG`) |
 | R106 | every key read exists in every locale; every key is read | a | machine `architecture/i18n-keys.mts` |
-| R105 | every file a `.starciwork` proof command runs | a | `rules/proof-commands.mts:19` |
 | R109, BE-COMMENT-3 | JSDoc on every public member | a | eslint `require-public-member-jsdoc` |
-| R111 | the runtime peer of every driver integration | a | `rules/peer-integrations.mts:12` |
 | R112 | an integration spec per integration (full) | a | `rules/integration-specs.mts:22`; the law is `editions: [full]`, lite proves through R284 |
 | R143, R144, R145 | workspaces, lockfile, `nest-cli.json` projects per declared app | a | `rules/monorepo.mts:24` |
 | R147 | the ops cli app when a connection or ops command exists | a | `rules/cli.mts:20` |
@@ -40,7 +38,6 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R165 | a `role: service` component per api or worker app (multi-service) | a | `rules/services.mts:33` |
 | R166 | `events.json` per service | a | `rules/event-tables.mts:7` |
 | R167, BE-SERVICES-4 | an e2e spec per consumed event | a | `rules/services.mts:35` |
-| R173, BE-SAGA-4 | an e2e spec per saga compensation | a | `rules/saga.mts:30` |
 | R179 | `sides.be.kinds` exactly the kinds in use, with their patterns | a | `rules/kinds.mts:14` |
 | R245, R289, BE-CONFIG-1 | `<app>.env.ts`, `<app>.options.ts`, `compose/`, `app.module.ts` per app | a | `rules/app-env-required.mts:6` |
 | R248 | every required environment read is sealed or declared, every sealed key read | a | `rules/env-parity.mts:34` |
@@ -60,7 +57,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R372 | a lite app's dev environment | a | `rules/stacks-local.mts:83` |
 | R388, PROJECT-BRANCH-1 | `main` and `dev` | a | `dev-branch.mts:1` |
 | R393 | every migration file applied to the dev database (`--env local`) | a | `packages/hfs/stack/local-live-checks.mts:7` |
-| R395, PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-4, PROJECT-GALLERY-5, PROJECT-GALLERY-6 | the gallery; a screen (`explain.md`) per `page.tsx` route of the front end; a screen's `explain.md` changed with its source | a | `rules/gallery.mts` (`HFS_APP_GALLERY_MISSING` the folder; `HFS_APP_GALLERY_ROUTE_MISSING` a route with no screen, so an empty `gallery/pages/` fails), `rules/gallery-coupling.mts` (`HFS_APP_GALLERY_EXPLAIN_STALE`), `rules/gallery-design.mts` (`HFS_APP_GALLERY_DESIGN_UNAPPROVED` a screen of a designed area with no approved design); `localOnly`: warnings in `--env local`, errors in `--env prod` |
+| R395, PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-4, PROJECT-GALLERY-5, PROJECT-GALLERY-6 | the gallery; a screen (`screen.yaml`) per `page.tsx` route of the front end | a | `rules/gallery.mts` (`HFS_APP_GALLERY_MISSING` the folder; `HFS_APP_GALLERY_ROUTE_MISSING` a route with no screen, so an empty `gallery/pages/` fails), `rules/gallery-coupling.mts` (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`), `rules/gallery-design.mts` (`HFS_APP_GALLERY_DESIGN_UNAPPROVED` a screen of a designed area with no approved design); `localOnly`: warnings in `--env local`, errors in `--env prod` |
 | R437, PROJECT-BRAND-1, PROJECT-BRAND-2 | the brand sheet `.starcistacks/brand/illustration.yaml` once an app keeps a `statics/**/*.prompt.yaml`; in each prompt file the base it names (`basePrompt.name`, default `illustration`, else a base of `media.yaml`), its `basePrompt.version`, `subject` and a `prompt` that starts with the base text | a | `rules/brand.mts` (`HFS_BRAND_MISSING` the sheet, `HFS_BRAND_PROMPT_STALE` the version, `HFS_BRAND_PROMPT_INCOMPLETE` the subject and the base text; `HFS_BRAND_INVALID` a malformed sheet or media.yaml, `HFS_BRAND_BASE_UNKNOWN` a prompt file naming a base the sheet does not define); `localOnly` except the last: warnings in `--env local`, errors in `--env prod`; the folder is optional in the slot manifest and the scaffold writes it |
 | R396 | an `<area>.<action>` operationId per REST operation | a | `rules/rest-contract.mts:63`; the document's presence is R23 |
 | R399 | each declared side tracks files | a | `rules/project-sides.mts:31` |

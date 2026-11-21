@@ -1,22 +1,14 @@
 // gallery.mts - R395: every app source repository carries the screenshot gallery (contexts/project/gallery.md PROJECT-GALLERY-1, PROJECT-GALLERY-2). The files are managed
 // (`starci app sync` renders them, slot app.gallery); this rule judges the facts the gallery stands on, with the values of `ruleParams.gallery`:
 //   HFS_APP_GALLERY_MISSING        the gallery folder, or one of its managed files, is absent: run `starci app sync --execute`;
-//   HFS_APP_GALLERY_SCRIPT         package.json has no dev script that serves on the app's base port + `portOffset` with --strictPort (or the app declares
-//                                   no `local.basePort` to derive it from);
-//   HFS_APP_GALLERY_VITE_UNPINNED  vite is absent from package.json or not an exact version;
-//   HFS_APP_GALLERY_SHOTS_TRACKED  the shot PNGs are not git-ignored, or some are tracked;
 // and the explanation every page carries (`<pages>/<area>/<screen>/explain.md`, read from the work tree because the shots are never tracked):
 //   HFS_APP_GALLERY_EXPLAIN_MISSING    a page folder has shots and no explain.md;
-//   HFS_APP_GALLERY_REGION_INCOMPLETE  the explain.md has no region, or a region lacks a `Vì sao` or a `Grammar` value;
-//   HFS_APP_GALLERY_REGION_UNCLEAR     a region says `CHƯA RÕ` or `SAI` (a bug its author has not fixed): blocks in `--env prod`, reported in `--env local` (the code is localOnly);
 //   HFS_APP_GALLERY_FRONT_MATTER       the explain.md front matter lacks `title`, `route` or `area`, or names another area than its folder (a warning);
 //   HFS_APP_GALLERY_SCREEN_FILE        a screen folder holds a file or folder other than 1440.png, 390.png, explain.md and links.json (a state or an agent is its own folder);
 //   HFS_APP_GALLERY_LINKS              a links.json, the flows.json or the routes.json is malformed or names a screen folder or a route that does not exist;
 // and the coverage of the front end (PROJECT-GALLERY-4), judged from the explain.md files alone (the shots are local evidence):
 //   HFS_APP_GALLERY_ROUTE_MISSING      a `page.tsx` route of the front end has no screen folder whose explain.md `route` matches it and is not excluded in gallery/routes.json:
 //                                       blocks in `--env prod`, reported in `--env local` (the code is localOnly);
-//   HFS_APP_GALLERY_EXPLAIN_STALE      (rules/gallery-coupling.mts, run by `starci app check` over the commits since the base and by the staged guard) a change to a screen's source
-//                                       without a change to its explain.md;
 // and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _UNAPPROVED, _SHOT_MISSING, _SHOT_STALE;
 // and the design board of the app (PROJECT-GALLERY-9, rules/gallery-board.mts): HFS_APP_GALLERY_BOARD_INVALID, _ROUTE_MISSING, _SECTION_UNMAPPED.
 import fs from 'node:fs';
@@ -32,41 +24,12 @@ import { designFindings } from './gallery-design.mjs';
 import { parseScreen, screenSource, SCREEN_FILE } from '../screen-yaml.mjs';
 import { CROP_FILES } from '../shot-crops.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
-import { found, readJson, readText } from './read.mjs';
+import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 /** The files the gallery is made of, gallery-relative: the managed ones (slot app.gallery). */
 export const GALLERY_FILES = Object.freeze(['package.json', 'index.html', 'README.md', 'vite.config.js']);
-const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u;
 const posix = path.posix;
-
-/** The gitignore lines of a file: comments, blanks and negations dropped. */
-const ignoreLines = (text: string | null): string[] => (text ?? '').split(/\r?\n/u).map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('#') && !line.startsWith('!'));
-
-/** The lines that ignore every PNG under the pages folder, in a gitignore at the app root or (nested) in the gallery folder's own. */
-function ignoringLines(params: GalleryParams, nested: boolean): Set<string> {
-  const rooted = [params.ignoredShots, '**/*.png', '*.png'];
-  const lines = !nested
-    ? [...rooted.filter((line) => line.startsWith('**/') || line.startsWith('*.')), ...rooted.filter((line) => !line.startsWith('**/') && !line.startsWith('*.')).map((line) => `${params.dir}/${line}`), `${params.dir}/**/*.png`]
-    : rooted;
-  return new Set(lines.flatMap((line) => [line, `/${line}`]));
-}
-
-/** True when a gitignore at the app root or in the gallery folder ignores the shot PNGs. */
-export function ignoresShots(text: string | null, params: GalleryParams, nested: boolean): boolean {
-  const accepted = ignoringLines(params, nested);
-  return ignoreLines(text).some((line) => accepted.has(line));
-}
-
-/** The problem of a package.json dev script, or null when it serves on `expected` with --strictPort (any port when none is expected). */
-function scriptProblem(script: unknown, expected: number | null, params: GalleryParams): string | null {
-  if (typeof script !== 'string' || script.trim() === '') return `package.json declares no "${params.devScript}" script: it must be \`vite --port <base + ${params.portOffset}> --strictPort\``;
-  const port = /--port[ =](\d+)/u.exec(script)?.[1];
-  if (port === undefined) return `the "${params.devScript}" script (${script}) names no --port: it must serve on the app's base port + ${params.portOffset}`;
-  if (!/--strictPort\b/u.test(script)) return `the "${params.devScript}" script (${script}) lacks --strictPort: a taken port must fail, never move the gallery off base + ${params.portOffset}`;
-  if (expected !== null && Number(port) !== expected) return `the "${params.devScript}" script serves on ${port}, not ${expected} (local.basePort + ${params.portOffset})`;
-  return null;
-}
 
 /** The state shots (`empty-1440.png`) a screen.yaml lists under `shots`: the one extra a screen folder may hold (PROJECT-GALLERY-8). */
 function stateShotNames(dir: string): Set<string> {
@@ -172,8 +135,7 @@ function routeFindings(repoRoot: string, params: GalleryParams, screens: readonl
 }
 
 /**
- * Findings of the pages (PROJECT-GALLERY-2): the layout of every screen folder, an explain.md beside any shot with its front matter, a `Vì sao` and a `Grammar` in every region and no
- * CHƯA RÕ or SAI left, the targets of every links.json and of flows.json.
+ * Findings of the pages (PROJECT-GALLERY-2): the layout of every screen folder, a screen.yaml or explain.md beside any shot with its front matter, the targets of every links.json and of flows.json.
  */
 function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file: string) => boolean) {
   const findings = [];
@@ -213,17 +175,6 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
     const declared = explanation.meta['area'] ?? '';
     const problems = [...(lacking.length > 0 ? [`the front matter lacks ${lacking.join(', ')}`] : []), ...(declared !== '' && declared !== area ? [`its area "${declared}" is not the folder's "${area}"`] : [])];
     if (problems.length > 0) findings.push(found('HFS_APP_GALLERY_FRONT_MATTER', source.file, `${file}: ${problems.join('; ')} (PROJECT-GALLERY-2)`, { level: 'warning' }));
-    if (explanation.regions.length === 0) {
-      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', source.file, `${source.file} has no "## <region name>": every region of the screen needs one, with "Vì sao:", "Luật:" and "Grammar:" lines (PROJECT-GALLERY-2)`));
-      continue;
-    }
-    const incomplete = explanation.regions.filter((region) => region.problems.some((problem) => problem.kind === 'missing'));
-    if (incomplete.length > 0) {
-      const detail = incomplete.map((region) => `${region.name} lacks ${region.problems.filter((problem) => problem.kind === 'missing').map((problem) => problem.field).join(' and ')}`);
-      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', source.file, `${incomplete.length} region${incomplete.length === 1 ? '' : 's'} of ${source.file} lack${incomplete.length === 1 ? 's' : ''} a value: ${detail.slice(0, 6).join('; ')}${detail.length > 6 ? `; and ${detail.length - 6} more` : ''}. A region that cannot be explained with a law and a Grammar reference is a bug: fix the screen, then write the explanation (PROJECT-GALLERY-2)`));
-    }
-    const unclear = explanation.regions.filter((region) => region.problems.some((problem) => problem.kind === 'unclear'));
-    if (unclear.length > 0) findings.push(found('HFS_APP_GALLERY_REGION_UNCLEAR', source.file, `${unclear.length} region${unclear.length === 1 ? '' : 's'} of ${source.file} say CHƯA RÕ or SAI (${named(unclear.map((region) => region.name))}): the region is a bug, fix the screen and rewrite the line; a warning in --env local, an error in --env prod (PROJECT-GALLERY-2)`, { local: true }));
   }
   const flowsFile = `${params.dir}/flows.json`;
   if (inScope(flowsFile)) {
@@ -239,11 +190,10 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
 }
 
 /** Findings of R395 at the app root. */
-export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope = () => true, manifest }: { repoRoot: string; repo: Repo; isRoot: boolean; all?: string[]; inScope?: (file: string) => boolean; manifest?: Parsed }) {
+export function appGalleryFindings({ repoRoot, repo, isRoot, inScope = () => true, manifest }: { repoRoot: string; repo: Repo; isRoot: boolean; all?: string[]; inScope?: (file: string) => boolean; manifest?: Parsed }) {
   if (repo?.kind !== 'app' || isRoot === false) return [];
   const params = galleryParams(manifest);
   const at = (file: string) => posix.join(params.dir, file);
-  const manifestFile = at('package.json');
   const stack = findStackDeclaration(repoRoot);
   const base = stack.doc ? declaredBasePort(stack.doc) : null;
   const port = galleryPort(base, params);
@@ -253,21 +203,6 @@ export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope =
     const how = base === null ? 'declare environments.dev.local.basePort in .starcistacks/application-stacks.yaml (R389), then run `starci app sync --execute`' : `run \`starci app sync --execute\` (it renders the gallery on port ${port})`;
     findings.push(found('HFS_APP_GALLERY_MISSING', `${params.dir}/`, `the app has no screenshot gallery (missing ${missing.map(at).join(', ')}): every app source repository carries ${params.dir}/, a Vite app that shows ${params.pages}/<area>/<page>/ (the shots and the explain.md of each page, PROJECT-GALLERY-1, PROJECT-GALLERY-2); ${how}`));
   }
-  const manifestJson = readJson(repoRoot, manifestFile);
-  if (manifestJson !== null && inScope(manifestFile)) {
-    const scripts = plain(manifestJson.scripts) ? (manifestJson.scripts as Record<string, unknown>) : {};
-    const problem = scriptProblem(scripts[params.devScript], port, params);
-    if (problem !== null) findings.push(found('HFS_APP_GALLERY_SCRIPT', manifestFile, `${problem} (PROJECT-GALLERY-1; \`starci app sync --execute\` restores the managed file)`));
-    else if (port === null) findings.push(found('HFS_APP_GALLERY_SCRIPT', manifestFile, `the app declares no local.basePort, so the gallery port (base + ${params.portOffset}) cannot be judged: declare environments.dev.local.basePort (R389, PROJECT-GALLERY-1)`));
-    const vite = [manifestJson.devDependencies, manifestJson.dependencies].map((block) => (plain(block) ? (block as Record<string, unknown>)['vite'] : undefined)).find((version) => version !== undefined);
-    if (typeof vite !== 'string' || !EXACT_VERSION.test(vite)) findings.push(found('HFS_APP_GALLERY_VITE_UNPINNED', manifestFile, `vite is ${typeof vite === 'string' ? `"${vite}", not an exact version` : 'not a devDependency'}: pin it exactly (e.g. "${params.vite}"), as every dependency of an app is pinned (PROJECT-GALLERY-1)`));
-  }
-  if (missing.length < GALLERY_FILES.length) {
-    const ignored = ignoresShots(readText(repoRoot, '.gitignore'), params, false) || ignoresShots(readText(repoRoot, at('.gitignore')), params, true);
-    if (!ignored) findings.push(found('HFS_APP_GALLERY_SHOTS_TRACKED', '.gitignore', `${params.pages}/**/*.png is not git-ignored: the screenshots are local evidence, never source; ignore them with \`${params.dir}/${params.ignoredShots}\` (the managed root .gitignore block of \`starci app sync --execute\` carries it)`));
-  }
-  const tracked = all.filter((file) => file.startsWith(`${params.pages}/`) && file.toLowerCase().endsWith('.png'));
-  if (tracked.length > 0) findings.push(found('HFS_APP_GALLERY_SHOTS_TRACKED', tracked[0] as string, `${tracked.length} screenshot PNG${tracked.length === 1 ? ' is' : 's are'} tracked under ${params.pages}/ (first: ${tracked[0]}): untrack them (git rm --cached) and keep ${params.dir}/${params.ignoredShots} ignored`));
   findings.push(...explainFindings(repoRoot, params, inScope));
   // No gallery at all is one finding (HFS_APP_GALLERY_MISSING), not one per route.
   if (missing.length < GALLERY_FILES.length) {

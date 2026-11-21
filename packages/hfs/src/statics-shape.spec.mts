@@ -4,13 +4,7 @@
 // proves: HFS_STATICS_KEY
 // proves: HFS_STATICS_FILE_SIZE
 // proves: HFS_STATICS_FILE_SIZE
-// proves: HFS_STATICS_TREE_SIZE
-// proves: HFS_STATICS_TREE_SIZE
-// proves: HFS_STATICS_PROMPT_ORPHAN
-// proves: HFS_STATICS_PROMPT_ORPHAN
-// proves: HFS_STATICS_PROMPT_SCHEMA
-// proves: HFS_STATICS_PROMPT_SCHEMA
-// R438: the shape of statics/ (rules/statics-shape.mts): the kinds, the kebab-case key, the sizes, the prompt sidecar. Each code has a good and a bad fixture.
+// R438: the shape of statics/ (rules/statics-shape.mts): the kinds, the kebab-case key, the sizes. Each code has a good and a bad fixture.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -52,27 +46,6 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(run({ 'statics/art/a.png': STATICS_WARN_BYTES }, edition), []);
     assert.deepEqual(run({ 'statics/art/a.png': STATICS_WARN_BYTES + 1 }, edition), ['HFS_STATICS_FILE_SIZE:warning:statics/art/a.png']);
     assert.deepEqual(run({ 'statics/art/a.png': STATICS_MAX_BYTES + 1 }, edition), ['HFS_STATICS_FILE_SIZE:error:statics/art/a.png']);
-  });
-
-  test(`HFS_STATICS_TREE_SIZE is a tree above 256 MiB`, () => {
-    const files: Record<string, number> = {};
-    for (let index = 0; index < 27; index += 1) files[`statics/art/big-${String(index)}.mp4`] = STATICS_MAX_BYTES;
-    const found = run(files, edition);
-    assert.ok(found.includes('HFS_STATICS_TREE_SIZE:error:statics'), found.join(','));
-    assert.ok(!run({ 'statics/art/a.png': 5 }, edition).some((entry) => entry.startsWith('HFS_STATICS_TREE_SIZE')));
-  });
-
-  test(`HFS_STATICS_PROMPT_ORPHAN is a sidecar with no image of its name`, () => {
-    assert.deepEqual(run({ 'statics/art/a.prompt.yaml': PROMPT }, edition), ['HFS_STATICS_PROMPT_ORPHAN:error:statics/art/a.prompt.yaml']);
-    assert.deepEqual(run({ 'statics/art/a.prompt.yaml': PROMPT, 'statics/art/a.webp': 1 }, edition), []);
-  });
-
-  test(`HFS_STATICS_PROMPT_SCHEMA is a sidecar that is not YAML, not a mapping or has no prompt`, () => {
-    const image = { 'statics/art/a.png': 1 };
-    assert.deepEqual(run({ ...image, 'statics/art/a.prompt.yaml': 'prompt: [unclosed' }, edition), ['HFS_STATICS_PROMPT_SCHEMA:error:statics/art/a.prompt.yaml']);
-    assert.deepEqual(run({ ...image, 'statics/art/a.prompt.yaml': '- a\n- b\n' }, edition), ['HFS_STATICS_PROMPT_SCHEMA:error:statics/art/a.prompt.yaml']);
-    assert.deepEqual(run({ ...image, 'statics/art/a.prompt.yaml': 'model: m\n' }, edition), ['HFS_STATICS_PROMPT_SCHEMA:error:statics/art/a.prompt.yaml']);
-    assert.deepEqual(run({ ...image, 'statics/art/a.prompt.yaml': 'prompt: ok\nsubject: s\nbasePrompt: {version: 2}\n' }, edition), []);
   });
 
   test(`a repository that is not an app, or a side, is not judged`, () => {

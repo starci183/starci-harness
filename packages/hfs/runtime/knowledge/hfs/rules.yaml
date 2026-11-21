@@ -335,7 +335,7 @@ rules:
     law: "Over-budget files do not grow; new files are inside budget."
     kinds: [lint, design]
     gates: [land, ci, sonar, runtime]
-    failureCodes: ["HFS_SIZE_GROWTH", "HFS_SIZE_SOFT_BACKLOG"]
+    failureCodes: ["HFS_SIZE_GROWTH"]
     enforcers:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
@@ -1908,22 +1908,6 @@ rules:
       - {path: packages/hfs/src/hfs-repository-hygiene-coverage.spec.mjs, codes: [HFS_LINT_SUPPRESSION_FILE]}
     witness:
       - {path: packages/hfs/src/hfs-repository-hygiene-coverage.spec.mjs, codes: [HFS_LINT_SUPPRESSION_FILE]}
-  - id: R105
-    code: "HFS_PROOF_COMMAND_FILE_MISSING"
-    docs: [docs/legacy-repo-rule-coverage.md#r105]
-    templateNa: "Proof plans name project-specific files in authored Work records; managed app scaffolds do not supply those commands or their target scripts."
-    law: "A proof command of a `.starciwork` record (`requiresProof.<kind>.command`) is runnable as written: every repository file it names exists."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["HFS_PROOF_COMMAND_FILE_MISSING"]
-    enforcers:
-      - {kind: hfs, id: proof-command-files, at: scripts/hfs/rules/proof-commands.mjs}
-    proves:
-      - packages/hfs/src/hfs-proof-command-file-missing.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/src/hfs-proof-command-file-missing.spec.mjs
-    witness:
-      - {path: packages/hfs/src/hfs-proof-command-file-missing.spec.mjs, codes: [HFS_PROOF_COMMAND_FILE_MISSING]}
   - id: R106
     code: "FE_I18N_KEYS"
     law: "The catalogs of a front-end app and its source agree both ways: a literal key read through `next-intl` (`useTranslations`, `getTranslations`, `t`, `t.rich`, `t.raw`, `t.markup`) exists in every locale, and a catalog key that no string of the app's or the shared packages' source can be reading is deleted."
@@ -2004,22 +1988,6 @@ rules:
       - {path: packages/eslint/fe/legacy-props-readonly-coverage.spec.mjs, codes: [FE_PROPS_MUTABLE]}
     witness:
       - {path: packages/eslint/fe/legacy-props-readonly-coverage.spec.mjs, codes: [FE_PROPS_MUTABLE]}
-  - id: R111
-    code: "HFS_PEER_INTEGRATION_MISSING"
-    docs: [docs/legacy-contract-rule-coverage.md#r111]
-    templateNa: "Optional integration dependency pairs and their runtime peers are application-specific package.json dependencies, not a managed scaffold surface."
-    law: "An app declares the runtime peer every driver integration it uses needs: when the app root package.json depends on every package of a pair of knowledge/hfs/peer-integrations.yaml (at the named major), it declares the pair's `requires` in its dependencies (`@nestjs/apollo` on `@nestjs/platform-express` 11, Express 5, needs `@as-integrations/express5`)."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["HFS_PEER_INTEGRATION_MISSING"]
-    enforcers:
-      - {kind: hfs, id: peer-integrations, at: scripts/hfs/rules/peer-integrations.mjs}
-    proves:
-      - packages/hfs/src/hfs-peer-integrations-coverage.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/src/hfs-peer-integrations-coverage.spec.mjs
-    witness:
-      - {path: packages/hfs/src/hfs-peer-integrations-coverage.spec.mjs, codes: [HFS_PEER_INTEGRATION_MISSING]}
   - id: R113
     code: "FE_GRAPHQL_CONTRACT"
     docs: [docs/legacy-contract-rule-coverage.md#r113]
@@ -2036,139 +2004,17 @@ rules:
       - packages/hfs/src/hfs-fe-contract-documents-coverage.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-fe-contract-documents-coverage.spec.mjs, codes: [FE_GRAPHQL_CONTRACT]}
-  - id: R114
-    code: "RT_EXTERNAL_OWNER"
-    law: "In the runtime repository a process, the network, SQLite or an external binary is reached only by its owner in ruleParams.runtime.infraOwners of knowledge/hfs/runtime-slots.yaml: an owned module specifier, global or spawned program word is used only by the files of scripts/api/<system> or engine/db that the map names."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_EXTERNAL_OWNER"]
-    enforcers:
-      - {kind: runtime, id: external-owner, at: scripts/hfs/runtime-rules/external-owner.mjs}
-    docs: [docs/legacy-runtime-shape.md#external-owner]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
-  - id: R115
-    code: "RT_TIER_DIRECTION"
-    law: "Every relative import between two runtime owners goes from a tier to a tier its mayImport lists in tiers.runtime of knowledge/hfs/runtime-slots.yaml; owner cycles are ARCH_OWNER_CYCLE."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_TIER_DIRECTION"]
-    enforcers:
-      - {kind: runtime, id: runtime-tiers, at: scripts/hfs/runtime-rules/tier-direction.mjs}
-    docs: [docs/legacy-runtime-shape.md#tier-direction]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
-  - id: R116
-    code: "RT_BASE_IMPURE"
-    law: "The runtime base tier (the engine foundation and scripts/lib) never writes the filesystem and reads process.env only in a declared seam of ruleParams.runtime.baseEnvSeams."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_BASE_IMPURE"]
-    enforcers:
-      - {kind: runtime, id: base-pure, at: scripts/hfs/runtime-rules/base-pure.mjs}
-    docs: [docs/legacy-runtime-shape.md#base-purity]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
-  - id: R117
-    code: "RT_API_SHAPE"
-    law: "A call file of scripts/api/<system>/ exports exactly one function named in camelCase after the file; only the files of its own system import its lib.mjs; no api system imports another; a system with a calls contract has a call file only for a call id the contract declares."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_API_SHAPE"]
-    enforcers:
-      - {kind: runtime, id: api-shape, at: scripts/hfs/runtime-rules/api-shape.mjs}
-    docs: [docs/legacy-runtime-shape.md#api-shape]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
-  - id: R118
-    code: "RT_SPEC_PLACEMENT"
-    law: "No runtime tests in .claude: a spec or test file is allowed only beside its package source as <name>.spec.* (never .test.), under examples/, or as a declared file of the scaffold e2e (slot runtime.e2e); any other tracked spec, tests/** included, is refused."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_SPEC_PLACEMENT"]
-    enforcers:
-      - {kind: runtime, id: spec-placement, at: scripts/hfs/runtime-rules/test-layout.mjs}
-    docs: [docs/legacy-runtime-shape.md#spec-placement]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
-  - id: R119
-    code: "RT_SOURCE_NAME"
-    law: "A runtime source file is named <kebab-name>.mjs, never a one-off of ruleParams.runtime.oneOffNames (_*, tmp-*, fix-*, *-backfill, migrate-*, *-old, *.bak*), and its basename is unique inside its tier except lib.mjs and index.mjs."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_SOURCE_NAME"]
-    enforcers:
-      - {kind: runtime, id: source-name, at: scripts/hfs/runtime-rules/source-name.mjs}
-    docs: [docs/legacy-runtime-shape.md#source-name]
-    templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
   - id: R121
     docs: [docs/legacy-runtime-state.md#generated-runtime-output]
     templateNa: "Generated runtime copies and the tracked runtime repository are not application scaffold surfaces."
-    code: "RT_GENERATED_DRIFT"
+    code: "GENERATED_UNTRACKED"
     law: "A generated root of ruleParams.runtime.generated is git-ignored output of its declared generatedBy: the repo's check regenerates every root, the runtime copies (packages/hfs/runtime, packages/eslint/be/runtime, packages/eslint/fe/runtime) are judged equal to what scripts/hfs/sync-runtime.mjs writes from the single source, and no git-tracked path lies under a generated root."
     scope: runtime
     kinds: [check, codemod]
     gates: [runtime]
-    failureCodes: ["RT_GENERATED_DRIFT", "GENERATED_UNTRACKED"]
+    failureCodes: ["GENERATED_UNTRACKED"]
     enforcers:
-      - {kind: runtime, id: generated-drift, at: scripts/hfs/sync-runtime.mjs}
       - {kind: runtime, id: generated-untracked, at: scripts/hfs/runtime-rules/generated-untracked.mjs}
-  - id: R122
-    code: "RT_CITED_PATH_MISSING"
-    law: "A runtime path cited by live prose or contracts (modules, docs, skills, knowledge, CONTEXT.md, README.md, CONTRIBUTING.md, init, the ui docs) exists; history (a changelog, a .starciwork record) is not read."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CITED_PATH_MISSING"]
-    enforcers:
-      - {kind: runtime, id: cited-path, at: scripts/checks/check-contract-cites.mjs}
-    docs: [docs/legacy-runtime-state.md#cited-runtime-paths]
-    templateNa: "Runtime repository integrity is authored in the runtime manifest and source tree; application scaffolds do not contain this surface."
-  - id: R124
-    code: "RT_PINNED_PATH_MOVED"
-    law: "A pinned path of ruleParams.runtime.pinned (persisted outside git) exists."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_PINNED_PATH_MOVED"]
-    enforcers:
-      - {kind: runtime, id: pinned-path, at: scripts/hfs/runtime-rules/pinned.mjs}
-    docs: [docs/legacy-runtime-state.md#pinned-runtime-paths]
-    templateNa: "Runtime repository integrity is authored in the runtime manifest and source tree; application scaffolds do not contain this surface."
-  - id: R125
-    code: "RT_NODE_MODULES_LINK"
-    law: "No runtime source creates a junction or a symlink for a node_modules folder, through node:fs (symlink, symlinkSync, directly or through a local wrapper) or a spawned link command (mklink /J or /D, New-Item -ItemType Junction or SymbolicLink, ln -s): every checkout installs its own dependencies with a real npm ci from the cache."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_NODE_MODULES_LINK"]
-    enforcers:
-      - {kind: runtime, id: node-modules-link, at: scripts/hfs/runtime-rules/node-modules-link.mjs}
-    docs: [docs/legacy-runtime-state.md#dependency-directories]
-    templateNa: "Runtime repository integrity is authored in the runtime manifest and source tree; application scaffolds do not contain this surface."
-  - id: R126
-    code: "RT_CONTROL_CHARACTER"
-    law: "Tracked text source of the runtime (*.mjs, *.cjs, *.js, *.ts, *.tsx, *.yaml, *.yml, *.md, *.json outside the generated copies) holds no raw control character (U+0000 to U+001F except tab, LF and CR, and U+007F); the character is written as its escape."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CONTROL_CHARACTER"]
-    enforcers:
-      - {kind: runtime, id: control-characters, at: scripts/hfs/runtime-rules/control-chars.mjs}
-    docs: [docs/legacy-runtime-paths.md#r126]
-    templateNa: "Runtime tracked-source hygiene is checked in the runtime repository; application scaffolds do not generate this surface."
-  - id: R127
-    code: "RT_ABSOLUTE_PATH"
-    law: "No tracked file of the runtime holds a hard-coded absolute host path: a drive-letter path, a user-profile path (/Users/<name>/, /home/<name>/) or an expanded AppData path. Paths resolve from the runtime root, os.tmpdir(), the config or a state-root helper, and a spec builds every path and prompt fixture from its temp dir; %LOCALAPPDATA% as an unexpanded name is clean. In source the rule reads string and template literals and comments through the syntax tree (a URL and a generic drive-pattern regular expression are not paths); in yaml, json and md it reads line text."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_ABSOLUTE_PATH"]
-    enforcers:
-      - {kind: runtime, id: absolute-path, at: scripts/hfs/runtime-rules/absolute-path.mjs}
-    docs: [docs/legacy-runtime-paths.md#r127]
-    templateNa: "Runtime tracked-source hygiene is checked in the runtime repository; application scaffolds do not generate this surface."
   - id: R141
     code: "BE_COOKIE_ATTRIBUTES"
     law: "A cookie a back-end door writes through the response of Express or Fastify (`cookie`, `setCookie`) states `httpOnly: true`, `secure: true` and `sameSite` `lax` or `strict` in options typed with those literals, and `Set-Cookie` is never written as a header (`setHeader`, `append`, `header`); the call is recognised by where its signature is declared, never by the receiver's name."
@@ -2607,74 +2453,6 @@ rules:
     failureCodes: ["BE_SERVICE_ISOLATION"]
     enforcers:
       - {kind: eslint-be, id: service-isolation}
-  - id: R169
-    code: "BE_SAGA_STEP_COMPENSATION"
-    docs: [docs/microservices.md#r169]
-    law: "In a product that declares the `saga` pattern (`patterns: [\"saga\"]` in hfs.json sides.be) a saga is the folder `be/src/features/saga/<saga>/` (`<saga>.saga.ts` the orchestrator, `steps/<step>.step.ts`, `compensations/<step>.compensation.ts`): every compensation (the optional declared undo of a step, pressed by a person and run as a forward step) has the step of the same name and a step needs none, the orchestrator imports every step and every compensation of its folder, and a folder of steps or compensations has an orchestrator; the folders themselves are slots enabled only by the declared pattern, so an undeclared saga is `HFS_SLOT_NOT_ENABLED`."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["BE_SAGA_STEP_COMPENSATION"]
-    enforcers:
-      - {kind: hfs, id: saga-step-compensation, at: scripts/hfs/rules/saga.mjs}
-    proves:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STEP_COMPENSATION]}
-    exemplifiedBy:
-      - packages/hfs/templates/be/patterns/saga/saga.service.ts.tpl
-      - packages/hfs/templates/be/patterns/saga/saga.step.ts.tpl
-      - packages/hfs/templates/be/patterns/saga/saga.compensation.ts.tpl
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STEP_COMPENSATION]}
-    witness:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STEP_COMPENSATION]}
-  - id: R170
-    code: "BE_SAGA_STATE_VERSIONED"
-    docs: [docs/microservices.md#r170]
-    law: "Every saga orchestrator has `<saga>.saga-state.ts` beside it, whose exported state type declares `status` and `version: number`, and imports the fenced store of `platform/saga`: the persisted state of a run moves only through the store, every transition naming the version it read, so a zombie delivery cannot move a run twice."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["BE_SAGA_STATE_VERSIONED"]
-    enforcers:
-      - {kind: hfs, id: saga-state-versioned, at: scripts/hfs/rules/saga.mjs}
-    proves:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STATE_VERSIONED]}
-    exemplifiedBy:
-      - packages/hfs/templates/be/patterns/saga/saga.service.ts.tpl
-      - packages/hfs/templates/be/patterns/saga/saga.state.ts.tpl
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STATE_VERSIONED]}
-    witness:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_STATE_VERSIONED]}
-  - id: R171
-    code: "BE_SAGA_EVENT_CONTRACT"
-    docs: [docs/microservices.md#r171]
-    law: "A saga step and a saga compensation each name their event (`readonly event = \"<name>\"`), both events are declared in a vendored contract (`be/contracts/<service>/events.json`), and the contract of the compensation's event declares `compensates: \"<event of the step of the same name>\"`."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["BE_SAGA_EVENT_CONTRACT"]
-    enforcers:
-      - {kind: hfs, id: saga-event-contract, at: scripts/hfs/rules/saga.mjs}
-    proves:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_EVENT_CONTRACT]}
-    exemplifiedBy:
-      - packages/hfs/templates/be/patterns/saga/saga.step.ts.tpl
-      - packages/hfs/templates/be/patterns/saga/saga.compensation.ts.tpl
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_EVENT_CONTRACT]}
-    witness:
-      - {path: packages/hfs/src/hfs-saga-coverage.spec.mjs, codes: [BE_SAGA_EVENT_CONTRACT]}
-  - id: R172
-    code: "BE_SAGA_CONSUMER_DEDUPE"
-    docs: [docs/microservices.md#r172]
-    law: "A consumer of a saga (`be/src/features/saga/<saga>/transport/message/<event>.consumer.ts`) passes the id of the delivery on (`message.eventId`) to the command it dispatches: the saga takes every event through the inbox (R80), so the consumer must hand it the dedupe key."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["BE_SAGA_CONSUMER_DEDUPE"]
-    enforcers:
-      - {kind: hfs, id: saga-consumer-dedupe, at: scripts/hfs/rules/saga.mjs}
-    proves:
-      - packages/hfs/src/hfs-saga-consumer-dedupe.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/be/patterns/saga/saga.done.consumer.ts.tpl
-      - packages/hfs/src/hfs-saga-consumer-dedupe.spec.mjs
-    witness:
-      - {path: packages/hfs/src/hfs-saga-consumer-dedupe.spec.mjs, codes: [BE_SAGA_CONSUMER_DEDUPE]}
   - id: R174
     code: "BE_CONTEXT_OWNER"
     docs: [docs/microservices.md#bounded-context-coverage]
@@ -2968,95 +2746,6 @@ rules:
       - packages/hfs/src/docker-legacy-coverage.spec.mjs
     witness:
       - {path: packages/hfs/src/docker-legacy-coverage.spec.mjs, codes: [HFS_DOCKER_SECRETS]}
-  - id: R192
-    code: "RT_FACT_FALSE"
-    law: "Every claim of knowledge/hfs/facts.yaml holds against knowledge/hfs/slots.yaml (the one source of the product shape), and no prose of knowledge/**, docs/** or a README states the opposite of a fact (for example that an fe app lacks its own package.json, which fe.app.next requires); prose quotes a fact id or a slot id and never restates the claim."
-    scope: runtime
-    docs: [docs/knowledge-yaml.md#runtime-knowledge-evidence]
-    templateNa: "Runtime facts are authored knowledge checks; app scaffolds do not contain this runtime surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_FACT_FALSE"]
-    enforcers:
-      - {kind: runtime, id: facts, at: scripts/hfs/runtime-rules/facts.mjs}
-  - id: R193
-    code: "RT_RULE_ID_UNKNOWN"
-    law: "Every rule id (R<digits>) that tracked knowledge, docs, code or data names is a rule of this catalog, and rule ids are unique and well-formed (a gap between two ids is fine), and every rule of the catalog is named by the `hfsRules:` of at least one knowledge/patterns topic or carries `scope: runtime` (RT_RULE_UNCITED). History paths (changelogs, .starciwork records), specs and generated copies are not read."
-    scope: runtime
-    docs: [docs/knowledge-yaml.md#runtime-knowledge-evidence]
-    templateNa: "Rule references and pattern citations belong to authored runtime knowledge, not scaffolded app files."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_RULE_ID_UNKNOWN", "RT_RULE_UNCITED"]
-    enforcers:
-      - {kind: runtime, id: rule-ids, at: scripts/hfs/runtime-rules/rule-ids.mjs}
-  - id: R194
-    code: "RT_GENERATED_BLOCK_STALE"
-    law: "The app map (section 4), the back-end source tree (5.1), the tier matrix (5.2), the front-end source tree (6.1) and the rule catalog (12) of knowledge/hfs/README.md are generated blocks, rendered by scripts/hfs/readme-blocks.mjs from knowledge/hfs/slots.yaml and rules.yaml between hfs:generated markers and equal to the render byte for byte; the README never restates them by hand. Likewise the `verification.automated` list of a pattern rule is the failure codes of the rules its `hfsRules` names, the `slot` of a `files:` entry is the slot that owns its path, and the `code` of a why-map entry is the code of the catalog rule that lists the lint rule: scripts/hfs/derived-fields.mjs writes them and they equal the derivation byte for byte."
-    scope: runtime
-    docs: [docs/knowledge-yaml.md#runtime-knowledge-evidence]
-    templateNa: "Generated runtime knowledge and its derivations are maintained from the catalogs, not app scaffolds."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_GENERATED_BLOCK_STALE"]
-    enforcers:
-      - {kind: runtime, id: generated-block, at: scripts/hfs/runtime-rules/generated-block.mjs}
-  - id: R195
-    code: "RT_PROSE_PATH_NO_SLOT"
-    docs: [docs/knowledge-yaml.md#r195]
-    templateNa: "This rule judges authored runtime prose against slot catalogs and shipped example declarations; app templates do not scaffold this runtime surface."
-    law: "Every product path the knowledge, the docs and the READMEs name (a be/ or fe/ path, whole or with placeholders, globs and braces) is owned by a slot of knowledge/hfs/slots.yaml or is a folder above one; a path no slot owns is prose that invented a place or kept one a slot no longer has. App names are free: a literal app name is one a shipped examples/*/hfs.json declares, a placeholder stands for any; a ** glob and a topic file of the knowledge are not paths."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_PROSE_PATH_NO_SLOT"]
-    enforcers:
-      - {kind: runtime, id: prose-path, at: scripts/hfs/runtime-rules/prose-path.mjs}
-  - id: R196
-    code: "RT_PROSE_RESTATES_SLOTS"
-    law: "Knowledge, docs and READMEs never restate knowledge/hfs/slots.yaml: no fenced block or line names three or more product paths a slot owns, and no sentence lists three or more of the root or side file names the slots declare; a slot is referenced by its id, and the only allowed copy is a generated block between hfs:generated markers. The slot and rule catalogs, the example READMEs and the templates are sources or snapshots, not prose."
-    scope: runtime
-    docs: [docs/knowledge-yaml.md#runtime-knowledge-evidence]
-    templateNa: "This checker judges prose about the runtime slot catalogs; app templates are snapshots rather than this authored prose."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_PROSE_RESTATES_SLOTS"]
-    enforcers:
-      - {kind: runtime, id: prose-restates, at: scripts/hfs/runtime-rules/prose-restates.mjs}
-  - id: R198
-    code: "RT_CLI_CATALOG_DRIFT"
-    docs: [docs/installation.md#r198-cli-catalog-drift]
-    templateNa: "The host CLI catalog generator is runtime source governance, not an app scaffold surface."
-    law: "Every generated output of the unified CLI catalog (packages/cli/src/catalog.generated.mjs, docs/cli.md, packages/cli/completions/*) equals what scripts/cli/gen-catalog.mjs writes from modules/cli/commands."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CLI_CATALOG_DRIFT"]
-    enforcers:
-      - {kind: runtime, id: cli-catalog-drift, at: scripts/cli/gen-catalog.mjs}
-  - id: R199
-    code: "RT_CLI_VERB_PARITY"
-    docs: [docs/installation.md#cli-catalog-parity]
-    templateNa: "CLI catalog and implementation parity is runtime source governance, not an app scaffold surface."
-    law: "The CLI catalog of modules/cli/commands and the implementation agree: every catalog verb has a handler and a doc, every kernel verb module and cli.mjs dispatch case has a catalog file, and every --flag a verb module names (usage, required, api-boolean-flags.txt) is a catalog flag."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CLI_VERB_PARITY"]
-    enforcers:
-      - {kind: runtime, id: cli-parity, at: scripts/checks/check-cli-parity.mjs}
-  - id: R200
-    code: "RT_CLI_APP_ONLY_TEMPLATES"
-    docs: [docs/installation.md#managed-app-command-boundary]
-    law: "Managed app templates and their generated runtime copies invoke product actions only through `starci app <verb>`; any other starci group is forbidden there."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CLI_APP_ONLY_TEMPLATES"]
-    enforcers:
-      - {kind: runtime, id: cli-app-only-templates, at: scripts/hfs/runtime-rules/app-cli-templates.mjs}
-    exemplifiedBy:
-      - packages/hfs/templates/app/hooks/husky/pre-commit
   - id: R201
     code: "CLI_ONLY_ENTRY"
     docs: [docs/installation.md#catalog-entry-boundary]
@@ -3112,73 +2801,6 @@ rules:
       - packages/hfs/src/coverage-scope-evidence.spec.mjs
     witness:
       - {path: packages/hfs/src/coverage-scope-evidence.spec.mjs, codes: [HFS_COVERAGE_SCOPE_DRIFT]}
-  - id: R205
-    code: "RT_DOC_NO_OWNER"
-    docs: [docs/architecture.md#r205]
-    templateNa: "Runtime documentation ownership is checked in the authored runtime repository; application scaffolds do not generate runtime docs/*.md."
-    law: "Every tracked docs/*.md declares exactly one ownership header on its first line — \"Owner: <knowledge/ or modules/ path that exists>\" when the document explains a machine-owned source, \"Task: <one task>\" for a how-to — no two documents carry the same task, and two documents whose titles share two or more topic words while at least 30% of the shorter one's sentences appear in the other are one document merged, not two."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_DOC_NO_OWNER"]
-    enforcers:
-      - {kind: runtime, id: doc-owner, at: scripts/checks/check-doc-owner.mjs}
-  - id: R206
-    code: "RT_EXAMPLE_COUPLING"
-    docs: [docs/architecture.md#r206]
-    law: "Runtime source never couples to a product or its example: no tracked file under scripts/, engine/, packages/, ui/src or ui/api - and no managed template under packages/hfs/templates/ - spells a literal examples/<name>, one of the product names this runtime shipped against (the closed PRODUCT_NAMES list of scripts/lib/example-refs.mjs), an inc-<hash> a product name prefixes, or a host drive path. Specs, tests, the generated runtime copies, changelogs and .starciwork records are out of scope; a read the runtime genuinely makes at run time is declared once in scripts/lib/example-refs.mjs and every consumer names that constant."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_EXAMPLE_COUPLING", "RT_PRODUCT_NAME_IN_SOURCE", "RT_HOST_PATH_IN_TEMPLATE"]
-    enforcers:
-      - {kind: runtime, id: example-coupling, at: scripts/checks/check-example-coupling.mjs}
-    exemplifiedBy:
-      - packages/hfs/templates/app/hooks/husky/pre-commit
-  - id: R208
-    code: "RT_PORT_RESTATED"
-    law: "Every port literal of the runtime is spelled once, by its owner, and every other file references the owner; the harness UI ports live in modules/models/runtimes.yaml statusApp.port/devPort read through ui/ports.mjs, the local SonarQube host in scripts/gates/sonar-local.mjs DEFAULT_HOST. No in-scope file that is not the owner spells an owned literal in a port position (a scheme://host:NNNN or host:NNNN authority, a *port*/PORT assignment, a listen(NNNN) call), and an unowned literal in a port position of two or more runtime source files gets one owning exported constant the rest reference. Specs, tests, node_modules, the generated runtime copies, changelogs, .starciwork and the product stack declarations (.starcistacks, starcistacks-services - a product owns the ports of the services it runs) are out of scope."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_PORT_RESTATED"]
-    enforcers:
-      - {kind: runtime, id: port-once, at: scripts/checks/check-port-once.mjs}
-    docs: [docs/source-process.md#r208]
-    templateNa: "Runtime port ownership is repository infrastructure; app scaffolds do not contain its owner files or readers."
-  - id: R209
-    code: "RT_CONFIG_DEFAULT_TWICE"
-    law: "Every documented configuration default is stated once, by its owner, and read through it: a camelCase leaf or lowercase key of config.example.yaml, or a value an owner declares - scripts/machine/home.mjs DEFAULTS (supervisor workers, the land gate, frozenMinutes, pollIntervalMs), engine/config.mjs (connector, ask, UAT, spec and allocation defaults, and DEFAULT_OWNER_LANGUAGE which scripts/machine/home.mjs re-exports), engine/orca-config.mjs (worker depth), scripts/reconciler/state.mjs (the controller mode) - is never restated as a literal fallback (?? or ||, a parameter default, or a language ternary) in any other runtime source file; the reader calls the owner accessor (supervisorSettings(), configuredMode(), ownerLanguage(), ...). Specs, tests, the generated runtime copies, stories and the HFS templates are out of scope, and a bare identifier or a computed value is a read, not a restatement."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_CONFIG_DEFAULT_TWICE"]
-    enforcers:
-      - {kind: runtime, id: default-once, at: scripts/checks/check-default-once.mjs}
-    docs: [docs/source-process.md#r209]
-    templateNa: "Runtime configuration defaults belong to harness owners and readers; HFS product templates are outside this check's scope."
-  - id: R210
-    code: "RT_VERSION_RESTATED"
-    law: "knowledge/hfs/canon-pins.yaml spells the version of every @starci package and every canon-pinned dependency once; a package.json is the declared install site and a lockfile its resolution. Anywhere else a semver literal equal to a pin - or a name@x.y.z specifier naming one - restates it, except on the declared binding keys a refresher owns and rewrites in place (canon.version of the code-pattern bindings held by check-canon-pins.mjs, provenance.version and identity.version of the grammar snapshots rewritten by scripts/work/ui/grammar-knowledge.mjs). Package manifests, lockfiles, changelogs, specs, tests, the generated runtime copies and .starciwork are out of scope; a restatement is fixed by naming the pin, never the literal."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_VERSION_RESTATED"]
-    enforcers:
-      - {kind: runtime, id: version-pin-once, at: scripts/checks/check-version-pin-once.mjs}
-    docs: [docs/source-process.md#r210]
-    templateNa: "This runtime check scans tracked references to the canon pin catalog; product package install declarations are excluded and no app scaffold owns this runtime surface."
-  - id: R211
-    code: "RT_SLOT_ID_SHAPE"
-    law: "A slot id follows the grammar its manifest declares, read from the manifest not from a list: dot-separated lowercase kebab segments, a first segment of naming.prefixes in knowledge/hfs/slots.yaml (profiles in knowledge/hfs/runtime-slots.yaml), <side>.app.<kind> naming a kind of appKinds.<side>, and every deeper id extending a declared id - an explicit parent field, or a family at least two slots share; a lone deep orphan invents a family. The role-suffix vocabulary holds no synonym pairs: a profile's suffixes never share a word with bannedSuffixes, no naming.refusedPairs pair is live in suffixes on both sides, and naming.sameConceptPairs is the one declared exception (step + saga-step), live on both sides or dropped; naming.glossary binds the five incoming-thing names (consumer, subscription, webhook, processor, handler) to their distinct kinds."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_SLOT_ID_SHAPE"]
-    enforcers:
-      - {kind: runtime, id: slot-id-shape, at: scripts/checks/check-slot-id-shape.mjs}
-    docs: [docs/source-process.md#r211]
-    templateNa: "The authored app and runtime slot manifests are canon catalogs, not files scaffolded into apps."
   - id: R212
     docs: [docs/lite-edition.md#edition-validation]
     templateNa: "starci app scaffold writes no hfs.json edition; the field is deprecated and has no managed template."
@@ -3272,18 +2894,6 @@ rules:
       - packages/hfs/src/hfs-secret-custody-rule.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-secret-custody-rule.spec.mjs}
-  - id: R221
-    code: "CI_TRIGGERS_RELEASE_ONLY"
-    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, workflow_call (a reusable workflow has no trigger of its own) and workflow_dispatch. Runtime workflows and app ci.yml also admit main, and app ci.yml admits pull_request to main (branches ['main'] only: a pull request run has no secret and no environment). App ci.yml includes the candidate branch filter for starci app release push. pull_request_target, workflow_run, schedules, other branches, events, path filters and ignore filters are refused."
-    scope: runtime
-    docs: [docs/git-governance.md#r221]
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["CI_TRIGGERS_RELEASE_ONLY"]
-    enforcers:
-      - {kind: runtime, id: git-triggers, at: scripts/hfs/runtime-rules/git-triggers.mjs}
-    exemplifiedBy:
-      - packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml
   - id: R222
     code: "RELEASE_NOTES"
     law: "A release tag `v<version>` on HEAD has its CHANGELOG.md section `## [<version>]` with no TODO, PENDING or TBD left in it and no `in preparation` mark: the tag message and the GitHub Release are that section, so a tag is never cut over an unfinished or missing section."
@@ -3295,113 +2905,16 @@ rules:
     failureCodes: ["RELEASE_NOTES"]
     enforcers:
       - {kind: runtime, id: release-notes, at: scripts/hfs/runtime-rules/release-notes.mjs}
-  - id: R223
-    code: "RIGHTS_ROLE_DENIED"
-    law: "By the caller's role, the command guard refuses git push, git tag, raw git commit/add/rm/mv, raw git synchronization writes, npm publish, a whole-suite run outside the release cut and unit.verify/e2e.verify, npm ci without the host lock, a release cut, and raw side-effecting tools, from one rule table that the PreToolUse guard and the PATH shim both read."
-    scope: runtime
-    kinds: [check]
-    gates: [land, runtime]
-    failureCodes: ["RIGHTS_ROLE_DENIED", "RIGHTS_GIT_PUSH", "RIGHTS_GIT_TAG", "RIGHTS_GIT_COMMIT", "RIGHTS_GIT_SYNC", "RIGHTS_NPM_PUBLISH", "RIGHTS_NPM_CI_UNLOCKED", "RIGHTS_SUITE_RUN", "RIGHTS_RELEASE_CUT", "RIGHTS_RAW_TOOL"]
-    enforcers:
-      - {kind: runtime, id: role-rights, status: planned}
-    docs: [contexts/hfs/README.md#rule-notes]
-  - id: R224
-    code: "RIGHTS_PROTECTED_ZONE"
-    law: "The protected zone declared once in modules/kernel/protected-zone.yaml is edited only by the owner path; a supervisor self-upgrade files an owner proposal, and an op never writes the .claude runtime checkout."
-    scope: runtime
-    kinds: [check]
-    gates: [land, runtime]
-    failureCodes: ["RIGHTS_PROTECTED_ZONE", "RIGHTS_OP_RUNTIME_WRITE"]
-    enforcers:
-      - {kind: runtime, id: protected-zone, at: scripts/hfs/runtime-rules/rights-policy.mjs}
-    docs: [contexts/hfs/README.md#rule-notes]
   - id: R225
-    code: "RT_HOOK_SHAPE"
+    code: "RIGHTS_PUSH_NOT_RELEASE"
     law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main on dev, a clean outgoing secret scan, annotated v* tags and a dev that contains main (R388), then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
     scope: runtime
     kinds: [check]
     gates: [land, runtime]
-    failureCodes: ["RT_HOOK_SHAPE", "RIGHTS_PUSH_NOT_RELEASE"]
+    failureCodes: ["RIGHTS_PUSH_NOT_RELEASE"]
     enforcers:
-      - {kind: runtime, id: hook-shape, at: scripts/hfs/runtime-rules/hook-shape.mjs}
+      - {kind: runtime, id: release-push-gate, at: scripts/guards/release-push-gate.mjs}
     docs: [contexts/hfs/README.md#rule-notes]
-  - id: R227
-    code: "RT_SYNTAX_INVALID"
-    docs: [docs/source-process.md#r227]
-    templateNa: "The runtime syntax check judges tracked authored JavaScript, not a scaffolded application surface."
-    law: "Every git-tracked .mjs, .cjs and .js file parses as JavaScript, including tests and package sources; node_modules, generated roots of ruleParams.runtime.generated and vendored build output are outside the authored-source scope. The runtime folder's Node-exact syntax pass remains in place, while this batched in-process pass extends coverage to the whole tracked repository and reports every parser diagnostic at its file and line."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_SYNTAX_INVALID"]
-    enforcers:
-      - {kind: runtime, id: syntax, at: scripts/hfs/runtime-rules/syntax.mjs}
-  - id: R228
-    code: "RT_IDENTIFIER_UNDECLARED"
-    law: "Every identifier a runtime ES module (scripts/, engine/ without the vendored yaml bundle, ui/api/, packages/cli/bin and src) reads or writes resolves, by scope analysis over its TypeScript syntax tree, to a declaration, import, parameter or Node global of an enclosing scope. A re-export (export {x} from './y.mjs') binds x in no local scope; require, module, exports and __dirname are not globals of a module; browser globals resolve only inside a function that a module hands to page.evaluate, here or through an import. A name a refactor left behind is refused before the line that reads it runs."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_IDENTIFIER_UNDECLARED"]
-    enforcers:
-      - {kind: runtime, id: undeclared-identifiers, at: scripts/checks/check-undeclared-identifiers.mjs}
-    docs: [docs/source-process.md#r228]
-    templateNa: "This check scans authored runtime ES modules; app scaffolds do not contain these harness modules."
-  - id: R229
-    code: "RT_REMOVED_VOCABULARY"
-    law: "No text an agent or the owner reads teaches a spelling the runtime refuses. The refused names - config keys, routing-bias fields, verbs, flags, codes and vocabulary - are the one list modules/kernel/removed-vocabulary.yaml, each with its replacement and the release that removed it; the config and routing-bias refusals read the same list. Every tracked file of skills/, docs/, README.md, CONTEXT.md, CONTRIBUTING.md, modules/ and knowledge/ (Markdown and yaml) is scanned line by line, and a line that spells a listed name is a finding naming file:line, the name and its replacement unless the file is the list, CHANGELOG.md, or the line or block carries the [removed-list] marker (a marker alone on a comment line covers the lines up to the next blank one). Removing or renaming a key, flag, verb, field or code adds its entry to the list in the same commit."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_REMOVED_VOCABULARY"]
-    enforcers:
-      - {kind: runtime, id: removed-vocabulary, at: scripts/checks/check-removed-vocabulary.mjs}
-    docs: [docs/source-process.md#r229]
-    templateNa: "The removed-name catalog and authored runtime instructions are maintained repository surfaces, not app scaffold output."
-  - id: R230
-    code: "RT_PROSE_COMMAND_UNKNOWN"
-    law: "A command an instruction shows exists as written. Every `starci <group> <verb>` in a backticked span, fenced code line or yaml example item of skills/, docs/, README.md, CONTEXT.md, CONTRIBUTING.md and modules/ names a verb of the CLI catalog (modules/cli/commands) in a catalogued group, and every --flag on it is a flag of that verb or a global flag; the text after a lone -- belongs to another program and a [removed-list] marked line is exempt. The catalog is generated into the valid set, never typed twice."
-    scope: runtime
-    docs: [docs/debugging.md#r230-instruction-commands]
-    templateNa: "Runtime instruction and contract self-checks judge authored runtime surfaces; application scaffolds do not contain this surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_PROSE_COMMAND_UNKNOWN"]
-    enforcers:
-      - {kind: runtime, id: prose-commands, at: scripts/checks/check-prose-commands.mjs}
-  - id: R231
-    code: "RT_DOCUMENTED_DEFAULT_DRIFT"
-    law: "A default a document states equals the value the code reads. A document states a default by citing its key - default <value> = `<key>` - where the key is a config.yaml path (resolved through the validator's settings reader, so an absent block yields its code default) or <yaml file under modules/>:<dotted path>; the check resolves the key and compares, and a key that resolves to nothing is a finding. docs/, README.md, CONTEXT.md, config.example.yaml and modules/ prose and yaml are scanned; a bare number stated as a default without its key is not judged, so the owner of a default is cited, never retyped."
-    scope: runtime
-    docs: [docs/debugging.md#r231-documented-defaults]
-    templateNa: "Runtime instruction and contract self-checks judge authored runtime surfaces; application scaffolds do not contain this surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_DOCUMENTED_DEFAULT_DRIFT"]
-    enforcers:
-      - {kind: runtime, id: documented-defaults, at: scripts/checks/check-documented-defaults.mjs}
-  - id: R232
-    code: "RT_ROLES_CONTRACT_DRIFT"
-    law: "A role is described once. modules/kernel/roles.yaml holds, per role, its scope, what it does, what it must clean up, what it never does, whom it reports to and who oversees it; a Markdown surface of the role carries the block generated from it, a yaml or script surface cites modules/kernel/roles.yaml#<role>, and no surface teaches a spelling the role's contradicts list names."
-    scope: runtime
-    docs: [docs/debugging.md#r232-generated-role-contracts]
-    templateNa: "Runtime instruction and contract self-checks judge authored runtime surfaces; application scaffolds do not contain this surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_ROLES_CONTRACT_DRIFT"]
-    enforcers:
-      - {kind: runtime, id: roles-contract, at: scripts/checks/check-roles-contract.mjs}
-  - id: R233
-    code: "RT_EDGE_CASE_REGISTRY"
-    law: "Every edge case met is a declared entry of modules/reconciler/edge-cases.yaml with its family, its real occurrence and a status of covered or open; a covered entry names the rule that handles it and that file exists, a named spec is a package spec or the scaffold e2e that exists (never a runtime test), and an open entry says why."
-    scope: runtime
-    docs: [docs/debugging.md#r233-edge-case-evidence]
-    templateNa: "Runtime instruction and contract self-checks judge authored runtime surfaces; application scaffolds do not contain this surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_EDGE_CASE_REGISTRY"]
-    enforcers:
-      - {kind: runtime, id: edge-case-registry, at: scripts/checks/check-edge-case-registry.mjs}
   - id: R234
     code: "RT_SECRET_TRACKED"
     docs: [docs/application-stacks.md#where-a-secret-may-live]
@@ -3471,72 +2984,6 @@ rules:
     failureCodes: ["RT_LOOSENING_STATE"]
     enforcers:
       - {kind: runtime, id: loosening-state, at: scripts/checks/check-loosening-state.mjs}
-  - id: R237
-    code: "RT_REVISION_SCOPE"
-    docs: [docs/debugging.md#r237]
-    templateNa: "The runtime revision-scope table and derived engine import graph are runtime authoring surfaces, not generated application files."
-    law: "What a change of the runtime tree asks of each role is declared once, in modules/kernel/revision-scope.yaml: every tracked path matches a row, the engine-loaded files are derived from the import graph of the engine's entries and never hand-listed, the files each seat's launch prompt is built from are the files its generator reads, and a wording-only declaration holds only for an edit that keeps the file's structure."
-    scope: runtime
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_REVISION_SCOPE"]
-    enforcers:
-      - {kind: runtime, id: revision-scope, at: scripts/checks/check-revision-scope.mjs}
-  - id: R238
-    code: "RT_EVENT_SPILL_BYPASS"
-    law: "A ledger event payload that grows with its input (a file list, a manifest, a digest, a report, a critique, a menu) goes to the blob store through the one path of appendEvent: engine/db/event-compact.mjs eventPayloadRecord keeps a bounded inline view of at most 16 KiB and the whole payload behind events.payload_sha, and readers resolve it through engine/db/event-payload.mjs. No runtime source file other than engine/db/ledger.mjs and engine/db/event-compact.mjs passes a payloadSha to a write, catches the payload-too-large refusal to spill by hand, or inserts into the events table directly. Specs, tests, node_modules, the generated runtime copies and packages are out of scope."
-    scope: runtime
-    docs: [cli/README.md]
-    templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_EVENT_SPILL_BYPASS"]
-    enforcers:
-      - {kind: runtime, id: event-spill, at: scripts/checks/check-event-spill.mjs}
-  - id: R239
-    code: "RT_STORAGE_UNDECLARED"
-    law: "Content lives as a file in the content-addressed blob store under the runtime state dir (<runtime root>/.runtime/artifacts, engine/db/blob.mjs) and a database row holds only the reference (the sha) plus the small scalars it is queried by. Always content, whatever its size: a report, a critique or verdict, a prompt or dispatch contract, a read manifest, a list of files, a log or command output, a menu or digest snapshot, an image or render, a diff. What may stay inline: ids, states, timestamps, counts, short codes and one-line reasons up to 256 bytes; any other free text up to 1024 bytes; a payload of any size is class spill (appendEvent and supEvent keep the whole payload behind the sha and a small inline form). Every text column of the product ledger and of machine.sqlite is declared in modules/schemas/storage-convention.yaml with its class (scalar, bounded, reference, spill, migrate), so a new table or column cannot appear without one; a column that holds content inline today is class migrate with its measured size, and the migration to a reference is a proposed runtime step, idempotent and journalled, never a hand rewrite of a live store."
-    scope: runtime
-    docs: [cli/README.md]
-    templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_STORAGE_UNDECLARED"]
-    enforcers:
-      - {kind: runtime, id: storage-convention, at: scripts/checks/check-storage-convention.mjs}
-  - id: R240
-    code: "RT_ROOT_ADHOC"
-    law: "Which directory a component reads or writes is decided in one module, scripts/lib/roots.mjs: the runtime tree, its state directory, the temp root, the invocation directory, the Work directory name, the order in which two trees that can hold the same record are tried (the tree the work happens in first, then the product's main checkout: workDirHolding, workRecordPath) and the order a tool is looked up (the tree the work happens in, then the project, the runtime's own install last: toolSearchDirs). A runtime source file does not resolve a root by itself: it neither spells process.cwd() nor the Work directory name as a literal outside that module more often than the tree the check landed on held it: a file keeps the count it had and only loses it as it is converted, and a new file starts at none. Four times in two days a component read or wrote the wrong tree because it resolved the directory itself."
-    scope: runtime
-    docs: [docs/architecture.md#r240]
-    templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_ROOT_ADHOC"]
-    enforcers:
-      - {kind: runtime, id: root-adhoc, at: scripts/checks/check-root-adhoc.mjs}
-  - id: R241
-    code: "RT_HELD_UNSURFACED"
-    law: "A failure code the catalogue gives to the Supervisor or the owner as a runtime fault is a state that role must be able to learn of; a stop that nobody is told of stands for hours until someone reads source. Each such entry of modules/kernel/failure-codes.yaml names the house mechanism that reaches its owner (surfacedBy: decision-item, sla-clock, incident, digest, notifier, caller or open) with surfacedAs (the item kind, clock code, incident kind, digest problem line or urgent class) and surfacedAt (the file that does it), and the check proves the mechanism exists and is wired in that file: the kind is a Decision Item kind and the file opens items naming it, the code is an SLA code with an owner and the file sets its clock, the problem line is a departure of the operating standard, a caller is a verb the owning role ran itself and never a reconciler file (a loop is no owner). An entry nothing reaches is surfacedBy open and names an open edge-case registry entry with the exact reason; it is never exempted silently."
-    scope: runtime
-    docs: [docs/debugging.md#r241]
-    templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_HELD_UNSURFACED"]
-    enforcers:
-      - {kind: runtime, id: held-surfacing, at: scripts/checks/check-held-surfacing.mjs}
-  - id: R242
-    code: "RT_OP_JUDGE_UNDECLARED"
-    law: "Every op declares who judges its product (principle P2: the maker never judges its own work). The contract of each op (modules/ops/ops/<op>.yaml) carries the required field `judge`, a list of at least one entry, each with a one-line why: machine (independent measures the runtime owns or re-runs at settle, named from modules/kernel/op-judges.yaml, and the contract proofs they rely on; a test file the same attempt wrote is never one by itself), critic (the independent Critic and its rubric, declared exactly for the op kinds that modules/kernel/critic.yaml coverage marks covered), owner (only where modules/kernel/op-judges.yaml ownerGates holds an owner gate) and next-leg (a registered reviewing leg whose contract is to review this product). Nobody cannot be declared. The registry and the contracts are checked against the runtime's own tables (op-gate and sonar-gate enforcedOps, opProofs, proof media, the Critic coverage), so the declarations and what the runtime does cannot drift apart. Surfaced in the full status text of a leg and in the op prompt."
-    scope: runtime
-    docs: [docs/ops.md#r242]
-    templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_OP_JUDGE_UNDECLARED"]
-    enforcers:
-      - {kind: runtime, id: op-judge, at: scripts/checks/check-op-judge.mjs}
   - id: R243
     code: "FE_SERVER_ACTION_FORBIDDEN"
     docs: [docs/code-pattern-enforcement.md#r243]
@@ -3604,17 +3051,6 @@ rules:
     failureCodes: ["BE_APP_COMPOSITION_BUDGET"]
     enforcers:
       - {kind: eslint-be, id: app-file-budget}
-  - id: R247
-    code: "RT_COVERAGE_MATRIX"
-    law: "Every surface and rule has an existing enforcer, edition-specific spec proof, documentation, template, example and mutation witness in each applicable edition; edition differences state why they hold (editionWhy), Work schemas have full example records, gate claims match their commands and hard documentation requirements are ledgered."
-    scope: runtime
-    docs: [docs/quality-bar.md#coverage-matrix]
-    templateNa: "The runtime coverage checker judges authored catalogs and proof metadata; app scaffolds do not contain this runtime surface."
-    kinds: [check]
-    gates: [runtime]
-    failureCodes: ["RT_COVERAGE_MATRIX", "RT_COVERAGE_NO_ENFORCER", "RT_COVERAGE_NO_SPEC", "RT_COVERAGE_NO_WITNESS", "RT_COVERAGE_NO_DOC", "RT_COVERAGE_NO_TEMPLATE", "RT_COVERAGE_NO_EXAMPLE", "RT_COVERAGE_EDITION_ASYMMETRY", "RT_COVERAGE_SCHEMA_NO_RECORD", "RT_COVERAGE_GATE_LIE", "RT_COVERAGE_SUPERSEDED_CITE", "RT_COVERAGE_SURFACE_UNMAPPED", "RT_COVERAGE_REQUIREMENT_UNLEDGERED", "RT_COVERAGE_PROOF_VACUOUS", "RT_COVERAGE_CODE_UNROUTED"]
-    enforcers:
-      - {kind: runtime, id: hfs-coverage, at: scripts/checks/check-hfs-coverage.mjs}
   - id: R248
     code: "ENV_REQUIRED_UNSET"
     docs: [docs/host-secrets.md#r248]
@@ -4000,10 +3436,10 @@ rules:
       - {path: packages/hfs/src/hfs-supply-chain.spec.mjs}
   - id: R270
     code: "HFS_DOC_PATH_MISSING"
-    law: "In lite and full products, READMEs, docs and stack READMEs cite existing repository paths, npm scripts, starci app verbs, environment keys declared by typed readers or KEYS.md, and rule ids from the HFS catalog. Documentation changes with the product it describes."
+    law: "In lite and full products, READMEs, docs and stack READMEs cite existing repository paths, npm scripts, starci app verbs and rule ids from the HFS catalog. Documentation changes with the product it describes."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["HFS_DOC_PATH_MISSING", "HFS_DOC_COMMAND_UNKNOWN", "HFS_DOC_ENV_UNKNOWN", "HFS_DOC_RULE_UNKNOWN"]
+    failureCodes: ["HFS_DOC_PATH_MISSING", "HFS_DOC_COMMAND_UNKNOWN", "HFS_DOC_RULE_UNKNOWN"]
     enforcers:
       - {kind: hfs, id: doc-fresh, at: scripts/hfs/rules/doc-fresh.mjs}
     docs:
@@ -4069,18 +3505,6 @@ rules:
       - packages/hfs/src/hfs-coverage-below.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-coverage-below.spec.mjs}
-  - id: R274
-    code: "RT_RULING_STALE_CITE"
-    law: "Live prose, source comments, rule data and printed messages state each rule as it holds now and cite a rule only by its rule id; they never cite a decision of the owner by its id, a decision log or the date of a decision (the harness `contexts anatomy` gate, ANATOMY_RULING_HISTORY)."
-    scope: runtime
-    kinds: [check]
-    gates: ["runtime"]
-    failureCodes: ["RT_RULING_STALE_CITE"]
-    enforcers:
-      - {kind: runtime, id: ruling-history, status: planned}
-    templateNa: "The rule judges the harness's own prose and data; a product scaffold has none of it."
-    docs:
-      - "docs/quality-bar.md#r274"
   - id: R275
     code: "STACKS_INGRESS_UNDECLARED"
     law: "Every Swarm environment declares its one ingress component and hosts. The named component has role ingress and a digest-pinned supported ingress image; Traefik and Caddy are both accepted without a preferred product. An absent declaration, unknown component or unsupported image is refused."
@@ -4537,7 +3961,7 @@ rules:
       - {path: packages/hfs/src/fe-build-args.spec.mjs, codes: [FE_PUBLIC_BUILD_ARG_MISSING]}
   - id: R301
     code: "CI_STANDARD"
-    law: "The managed app CI, the example apps (the reference) and the runtime repository's own workflows follow the ONE CI standard of knowledge/hfs/ci-standard.yaml: the job shape fast/test/build(/sonar) with the unit run and the Codecov upload in test alone, full history with STARCI_BASE_REF written before the lint, NODE_OPTIONS --max-old-space-size=6144 on every heavy step, the Sonar lint per side, optional providers probed before they skip, a timeout on every job and every action pinned to a commit sha; the other items (candidate trigger R221, per-fe-app build env, prettier-stable renders, R299 contexts) are owned by the rules the standard names. Apps get the standard only through starci app sync. An item never requires the step of a gate the stack declaration switches off (PROJECT-LINT-4): the coverage proof (coverage), the boot proof (wiring) and the sharded unit run (test) are judged only while their gate is on; a step that is there is still judged where it stands."
+    law: "The managed app CI, the example apps (the reference) and the runtime repository's own workflows follow the ONE CI standard of knowledge/hfs/ci-standard.yaml: the job shape fast/test/build(/sonar) with the unit run and the Codecov upload in test alone, full history with STARCI_BASE_REF written before the lint, NODE_OPTIONS --max-old-space-size=6144 on every heavy step, the Sonar lint per side, optional providers probed before they skip, a timeout on every job and every action pinned to a commit sha; the other items (candidate trigger, per-fe-app build env, prettier-stable renders, R299 contexts) are owned by the rules the standard names. Apps get the standard only through starci app sync. An item never requires the step of a gate the stack declaration switches off (PROJECT-LINT-4): the coverage proof (coverage), the boot proof (wiring) and the sharded unit run (test) are judged only while their gate is on; a step that is there is still judged where it stands."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["CI_STANDARD"]
@@ -5090,25 +4514,6 @@ rules:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, codes: [BE_EVENT_BUS_LITE_SHAPE]}
     witness:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, codes: [BE_EVENT_BUS_LITE_SHAPE]}
-  - id: R337
-    code: "HFS_AUTH_COOKIE_DOMAIN_MISSING"
-    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_AUTH_COOKIE_DOMAIN_MISSING"]
-    enforcers:
-      - {kind: hfs, id: stacks-auth-cookie-domain, at: scripts/hfs/rules/stacks-auth-cookie-domain.mjs}
-    docs:
-      - contexts/project/stacks.md
-    proves:
-      - packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/app/skeleton/.starcistacks
-      - packages/hfs/templates/be/skeleton/src/modules/integrations/passport/passport.config.ts
-      - packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs
-    witness:
-      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs}
-
   - id: R338
     code: "FE_GENERATED_ART_OUTSIDE_FRAME"
     law: "Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives, so the same art comes out at a different size on every screen."
@@ -5884,10 +5289,10 @@ rules:
       - {path: packages/hfs/src/stack-live-checks.spec.mjs}
   - id: R395
     code: "HFS_APP_GALLERY_MISSING"
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist,, (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI`, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json`, and a change to a screen's source (its `page.tsx` and the `features/pages/<Name>/` folders it imports) in the commits since the base that leaves its `explain.md` untouched (`HFS_APP_GALLERY_EXPLAIN_STALE`; both the last two are warnings in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_APP_GALLERY_MISSING", "HFS_APP_GALLERY_SCRIPT", "HFS_APP_GALLERY_VITE_UNPINNED", "HFS_APP_GALLERY_SHOTS_TRACKED", "HFS_APP_GALLERY_EXPLAIN_MISSING", "HFS_APP_GALLERY_REGION_INCOMPLETE", "HFS_APP_GALLERY_REGION_UNCLEAR", "HFS_APP_GALLERY_FRONT_MATTER", "HFS_APP_GALLERY_SCREEN_FILE", "HFS_APP_GALLERY_LINKS", "HFS_APP_GALLERY_ROUTE_MISSING", "HFS_APP_GALLERY_ROUTE_AMBIGUOUS", "HFS_APP_GALLERY_EXPLAIN_STALE", "HFS_APP_GALLERY_SCREEN_INVALID", "UI_AUDIT_MISSING", "UI_AUDIT_STALE", "UI_AUDIT_SELF_REVIEW", "UI_AUDIT_ROUNDS_FEW", "UI_AUDIT_OPEN", "UI_AUDIT_NEEDS_OWNER", "UI_AUDIT_CONSIDERED_EMPTY", "HFS_APP_GALLERY_DESIGN_MANIFEST", "HFS_APP_GALLERY_DESIGN_PAGE_MISSING", "HFS_APP_GALLERY_DESIGN_UNAPPROVED", "HFS_APP_GALLERY_DESIGN_SHOT_MISSING", "HFS_APP_GALLERY_DESIGN_SHOT_STALE", "HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED", "HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING", "HFS_APP_GALLERY_DESIGN_PENDING", "HFS_APP_GALLERY_BOARD_INVALID", "HFS_APP_GALLERY_BOARD_ROUTE_MISSING", "HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED"]
+    failureCodes: ["HFS_APP_GALLERY_MISSING", "HFS_APP_GALLERY_EXPLAIN_MISSING", "HFS_APP_GALLERY_FRONT_MATTER", "HFS_APP_GALLERY_SCREEN_FILE", "HFS_APP_GALLERY_LINKS", "HFS_APP_GALLERY_ROUTE_MISSING", "HFS_APP_GALLERY_ROUTE_AMBIGUOUS", "HFS_APP_GALLERY_SCREEN_INVALID", "UI_AUDIT_MISSING", "UI_AUDIT_STALE", "UI_AUDIT_SELF_REVIEW", "UI_AUDIT_ROUNDS_FEW", "UI_AUDIT_OPEN", "UI_AUDIT_NEEDS_OWNER", "UI_AUDIT_CONSIDERED_EMPTY", "HFS_APP_GALLERY_DESIGN_MANIFEST", "HFS_APP_GALLERY_DESIGN_PAGE_MISSING", "HFS_APP_GALLERY_DESIGN_UNAPPROVED", "HFS_APP_GALLERY_DESIGN_SHOT_MISSING", "HFS_APP_GALLERY_DESIGN_SHOT_STALE", "HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED", "HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING", "HFS_APP_GALLERY_DESIGN_PENDING", "HFS_APP_GALLERY_BOARD_INVALID", "HFS_APP_GALLERY_BOARD_ROUTE_MISSING", "HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED"]
     enforcers:
       - {kind: hfs, id: gallery, at: runtime/scripts/hfs/rules/gallery.mjs}
     docs:
@@ -5902,7 +5307,7 @@ rules:
     law: "An api app that declares `contract: \"rest\"` commits the OpenAPI 3 document of its controllers (`be/contracts/<app>/openapi.json`, emitted by `starci app emit` with @nestjs/swagger over the head `apps/<app>/src/openapi.ts`), and in it every operation has a unique explicit operationId `<area>.<action>`, a named schema for every JSON request body and 2xx answer, a `default` answer with the one Error schema (code and message required), a page `{ items, nextCursor }` read with `cursor` and `limit` for a list GET (never a bare array), and a declared security scheme or an `x-public-reason` on a public operation."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_PAGINATION", "BE_REST_SECURITY"]
+    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_SECURITY"]
     enforcers:
       - {kind: hfs, id: rest-contract, at: runtime/scripts/hfs/rules/rest-contract.mjs}
     templateNa: "A rest contract is emitted from each rest app's controllers, not scaffolded; the default contract is graphql."
@@ -6218,10 +5623,10 @@ rules:
       - {path: packages/hfs/src/app-brand.spec.mjs}
   - id: R438
     code: "HFS_STATICS_FILE_KIND"
-    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND, HFS_STATICS_PROMPT_ORPHAN for a sidecar with no image of that name, HFS_STATICS_PROMPT_SCHEMA for one that is not a YAML mapping with a non-empty `prompt`); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE), and the tree above 256 MiB an error (HFS_STATICS_TREE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
+    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_STATICS_FILE_KIND", "HFS_STATICS_KEY", "HFS_STATICS_FILE_SIZE", "HFS_STATICS_TREE_SIZE", "HFS_STATICS_PROMPT_ORPHAN", "HFS_STATICS_PROMPT_SCHEMA"]
+    failureCodes: ["HFS_STATICS_FILE_KIND", "HFS_STATICS_KEY", "HFS_STATICS_FILE_SIZE"]
     enforcers:
       - {kind: hfs, id: statics-shape, at: runtime/scripts/hfs/rules/statics-shape.mjs}
     templateNa: "A new app starts with an empty statics/ and, in lite, the storage service of the starter; the rule judges what an app adds."

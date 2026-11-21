@@ -4,7 +4,7 @@ import { isAlternation, isPlaceholder, tokenise, type CommandToken } from '../li
 // The one owner of "a documented command exists": it finds every `starci <group> <verb> ...` a text shows to an agent or owner
 // (extractCommands) and judges it the way the dispatcher would (checkCommand): group and verb exist, every flag is declared, enum
 // values are valid, required flags and positionals are present unless the text is a fragment (a bare verb, a line that ends in an
-// ellipsis, a flag mentioned on its own). The prose-commands self-check (check-prose-commands.mjs, R230) and the doc-command specs
+// ellipsis, a flag mentioned on its own). The prose-commands self-check (check-prose-commands.mjs) and the doc-command specs
 // are callers: they choose the files and the reasons they enforce, never a second extractor.
 
 /** One starci command occurrence in a text: `bounded` runs to the end of its span, `prose` keeps only the flags that follow the verb. */

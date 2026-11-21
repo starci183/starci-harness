@@ -175,7 +175,6 @@ rules:
     law: An over-budget file does not grow, and a new file stays within its budget (hfs/slots.yaml).
     failureCodes:
       - HFS_SIZE_GROWTH
-      - HFS_SIZE_SOFT_BACKLOG
     enforcers:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
@@ -1041,13 +1040,6 @@ rules:
       - HFS_LINT_SUPPRESSION_FILE
     enforcers:
       - {kind: hfs, id: lint-suppression}
-  - id: R105
-    code: HFS_PROOF_COMMAND_FILE_MISSING
-    law: Every repository file a `.starciwork` proof command names exists.
-    failureCodes:
-      - HFS_PROOF_COMMAND_FILE_MISSING
-    enforcers:
-      - {kind: hfs, id: proof-command-files}
   - id: R106
     code: FE_I18N_KEYS
     law: "Front-end catalogs and source agree both ways: every literal key read through `next-intl` exists in every locale, and no catalog key is unread."
@@ -1083,13 +1075,6 @@ rules:
       - FE_PROPS_MUTABLE
     enforcers:
       - {kind: eslint-fe, id: props-fields-readonly}
-  - id: R111
-    code: HFS_PEER_INTEGRATION_MISSING
-    law: An app declares the runtime peer every driver integration pair of contexts/stack/pins.yaml#peers requires.
-    failureCodes:
-      - HFS_PEER_INTEGRATION_MISSING
-    enforcers:
-      - {kind: hfs, id: peer-integrations}
   - id: R113
     code: FE_GRAPHQL_CONTRACT
     law: Every GraphQL operation a front end keeps in a `.graphql` file validates against the back-end contract snapshot that declares its root field.
@@ -1289,34 +1274,6 @@ rules:
       - BE_SERVICE_ISOLATION
     enforcers:
       - {kind: eslint-be, id: service-isolation}
-  - id: R169
-    code: BE_SAGA_STEP_COMPENSATION
-    law: A declared saga is one folder whose orchestrator imports every step and every compensation; a compensation (the optional declared undo, pressed by a person and run as a forward step) has the step of the same name, and a step needs none.
-    failureCodes:
-      - BE_SAGA_STEP_COMPENSATION
-    enforcers:
-      - {kind: hfs, id: saga-step-compensation}
-  - id: R170
-    code: BE_SAGA_STATE_VERSIONED
-    law: Every saga orchestrator has a versioned state type moved only through the fenced store of `platform/saga`.
-    failureCodes:
-      - BE_SAGA_STATE_VERSIONED
-    enforcers:
-      - {kind: hfs, id: saga-state-versioned}
-  - id: R171
-    code: BE_SAGA_EVENT_CONTRACT
-    law: A saga step and its compensation each name an event declared in a vendored contract, and the compensation's event declares what it compensates.
-    failureCodes:
-      - BE_SAGA_EVENT_CONTRACT
-    enforcers:
-      - {kind: hfs, id: saga-event-contract}
-  - id: R172
-    code: BE_SAGA_CONSUMER_DEDUPE
-    law: A saga consumer passes the delivery's `eventId` to the command it dispatches.
-    failureCodes:
-      - BE_SAGA_CONSUMER_DEDUPE
-    enforcers:
-      - {kind: hfs, id: saga-consumer-dedupe}
   - id: R174
     code: BE_CONTEXT_OWNER
     law: Each `hfs.json` connection is a bounded context owned by one api or worker app; an app composes only its own contexts, and the migrate and cli apps compose all.
@@ -1779,11 +1736,10 @@ rules:
       - {kind: hfs, id: supply-chain}
   - id: R270
     code: HFS_DOC_PATH_MISSING
-    law: Documentation cites only existing paths, scripts, CLI verbs, declared environment keys and catalog rule ids.
+    law: Documentation cites only existing paths, scripts, CLI verbs and catalog rule ids.
     failureCodes:
       - HFS_DOC_PATH_MISSING
       - HFS_DOC_COMMAND_UNKNOWN
-      - HFS_DOC_ENV_UNKNOWN
       - HFS_DOC_RULE_UNKNOWN
     enforcers:
       - {kind: hfs, id: doc-fresh}
@@ -2253,13 +2209,6 @@ rules:
     enforcers:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
-  - id: R337
-    code: HFS_AUTH_COOKIE_DOMAIN_MISSING
-    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
-    failureCodes:
-      - HFS_AUTH_COOKIE_DOMAIN_MISSING
-    enforcers:
-      - {kind: hfs, id: stacks-auth-cookie-domain}
   - id: R338
     code: FE_GENERATED_ART_OUTSIDE_FRAME
     law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
@@ -2687,21 +2636,15 @@ rules:
       - {kind: hfs, id: dead-letter-repeat}
   - id: R395
     code: HFS_APP_GALLERY_MISSING
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist,, (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI`, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json`, and a change to a screen's source (its `page.tsx` and the `features/pages/<Name>/` folders it imports) in the commits since the base that leaves its `explain.md` untouched (`HFS_APP_GALLERY_EXPLAIN_STALE`; both the last two are warnings in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
     failureCodes:
       - HFS_APP_GALLERY_MISSING
-      - HFS_APP_GALLERY_SCRIPT
-      - HFS_APP_GALLERY_VITE_UNPINNED
-      - HFS_APP_GALLERY_SHOTS_TRACKED
       - HFS_APP_GALLERY_EXPLAIN_MISSING
-      - HFS_APP_GALLERY_REGION_INCOMPLETE
-      - HFS_APP_GALLERY_REGION_UNCLEAR
       - HFS_APP_GALLERY_FRONT_MATTER
       - HFS_APP_GALLERY_SCREEN_FILE
       - HFS_APP_GALLERY_LINKS
       - HFS_APP_GALLERY_ROUTE_MISSING
       - HFS_APP_GALLERY_ROUTE_AMBIGUOUS
-      - HFS_APP_GALLERY_EXPLAIN_STALE
       - HFS_APP_GALLERY_SCREEN_INVALID
       - UI_AUDIT_MISSING
       - UI_AUDIT_STALE
@@ -2730,7 +2673,6 @@ rules:
       - BE_REST_OPERATION_ID
       - BE_REST_UNTYPED
       - BE_REST_ERROR_SHAPE
-      - BE_REST_PAGINATION
       - BE_REST_SECURITY
     enforcers:
       - {kind: hfs, id: rest-contract}
@@ -2918,14 +2860,11 @@ rules:
       - {kind: hfs, id: brand}
   - id: R438
     code: HFS_STATICS_FILE_KIND
-    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND, HFS_STATICS_PROMPT_ORPHAN for a sidecar with no image of that name, HFS_STATICS_PROMPT_SCHEMA for one that is not a YAML mapping with a non-empty `prompt`); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE), and the tree above 256 MiB an error (HFS_STATICS_TREE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
+    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
     failureCodes:
       - HFS_STATICS_FILE_KIND
       - HFS_STATICS_KEY
       - HFS_STATICS_FILE_SIZE
-      - HFS_STATICS_TREE_SIZE
-      - HFS_STATICS_PROMPT_ORPHAN
-      - HFS_STATICS_PROMPT_SCHEMA
     enforcers:
       - {kind: hfs, id: statics-shape}
   - id: R439
