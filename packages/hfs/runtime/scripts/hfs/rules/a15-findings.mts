@@ -47,7 +47,6 @@ import { restContractFindings } from './rest-contract.mjs';
 import { projectSidesFindings } from './project-sides.mjs';
 import { dataBoundaryFindings } from './data-copies.mjs';
 import { dataSecondLoaderFindings } from './data-loaders.mjs';
-import { errorPageFindings } from './error-pages.mjs';
 import { brandOneFindings, canvasBrandFindings } from './brand-one.mjs';
 import { globalsOneFindings } from './globals-one.mjs';
 import { statePageFindings } from './state-pages.mjs';
@@ -70,7 +69,7 @@ export const A15_CODES = [
   // codes-begin
   'BE_DI_RING', 'BE_BOOT_ENTRY_FAILED', 'BE_BOOT_ENTRY_UNJUDGED',
   'HFS_DATA_IN_CODE', 'HFS_DATA_DEPENDENCY', 'HFS_DATA_UNSEALED', 'HFS_DATA_STANDARD_SEALED', 'HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_FILE_SIZE', 'HFS_DATA_CAP',
-  'HFS_DATA_ADAPTER_DRIFT', 'HFS_DATA_ADAPTER_UNGUARDED', 'HFS_DATA_SECOND_LOADER', 'FE_ERROR_PAGE_NOT_EMPTY_STATE',
+  'HFS_DATA_ADAPTER_DRIFT', 'HFS_DATA_ADAPTER_UNGUARDED', 'HFS_DATA_SECOND_LOADER',
   'DATA_STORE_UNDECLARED', 'DATA_STORE_KIND', 'DATA_STORE_ADAPTER', 'DATA_DERIVED_SOURCE',
   'HFS_STATICS_FILE_KIND', 'HFS_STATICS_KEY', 'HFS_STATICS_FILE_SIZE', 'HFS_STATICS_TREE_SIZE', 'HFS_STATICS_PROMPT_ORPHAN', 'HFS_STATICS_PROMPT_SCHEMA', 'HFS_STATIC_ASSET_OUTSIDE_STATICS',
   'STACK_STORAGE_MISSING', 'STACK_STORAGE_UNUSED', 'STACK_STORAGE_IMAGE_UNUSED', 'STACK_STORAGE_IMAGE_SHAPE',
@@ -124,7 +123,6 @@ export const FINDERS = [
   lexiconFindings,
   textIntegrityFindings,
   assetsFindings,
-  errorPageFindings,
   statePageFindings,
   globalsOneFindings,
   brandOneFindings,

@@ -6295,20 +6295,6 @@ rules:
     witness:
       - {path: packages/eslint-grammar-core/src/media.spec.ts, codes: [FE_RAW_MEDIA_ELEMENT]}
 
-  - id: R443
-    code: "FE_ERROR_PAGE_NOT_EMPTY_STATE"
-    law: "The not-found, error and global-error pages of a web app (the boundaries R53 requires) draw the Grammar's one empty state: the source they reach, through the app's own files and the composites of its workspace ui package, holds an EmptyNotice of scope page with an illustration, so they are never hand-rolled from other components. An app edits their words and art; it never replaces the empty state."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["FE_ERROR_PAGE_NOT_EMPTY_STATE"]
-    enforcers:
-      - {kind: hfs, id: error-pages, at: runtime/scripts/hfs/rules/error-pages.mjs}
-    docs:
-      - contexts/ui/components/empty-state.md
-    proves:
-      - packages/hfs/src/error-pages.spec.mts
-    witness:
-      - {path: packages/hfs/src/error-pages.spec.mts}
   - id: R444
     code: "HFS_DESKTOP_UNDECLARED"
     law: "The desktop app a project declares (hfs.json `sides.desktop`: `app` the fe app it wraps, `name`, a reverse-DNS `identifier` that does not end in `.app`, the https `origin` the shell loads, optional `devOrigin`, `allowedOrigins`, deep link `schemes`, `targets` (macos, windows, linux) and an `updater` `{ pubkey, endpoint }`; it needs the fe side) is a Tauri v2 remote-origin shell at `desktop/` and agrees with its tree and its config, each way: a tracked file of `desktop/` or the release workflow without the declaration is HFS_DESKTOP_UNDECLARED; a declared app tracks the icons `tauri icon` writes (and its Cargo.lock, a warning) or is HFS_DESKTOP_FILE_MISSING; `desktop/src-tauri/tauri.conf.json` says what the declaration says (identifier, product name, the version read from the app's package.json, deep link schemes, the updater key and endpoint, no window in the config) or is HFS_DESKTOP_CONFIG; the shell's isolation holds, with no global Tauri API, no dangerous* switch, a CSP without unsafe-eval or a wildcard, an updater over https and no capability that hands the IPC to a wildcard or plain-http remote origin, or it is HFS_DESKTOP_SECURITY; and no signing certificate, key store or private key is a tracked file and no signing secret is written into `desktop/`, or it is HFS_DESKTOP_SIGNING_KEY. The Tauri config, the Cargo manifest, the Rust of the shell, the bundled page and the release workflow are rendered from the declaration by `starci app sync` (slots `app.desktop-config`, `app.ci-desktop-release`, HFS_MANAGED_FILE_DRIFT); the signing secrets the workflow reads are names of `ci.secrets` (CI_DECLARATION_DRIFT) and are never committed."
@@ -6354,7 +6340,7 @@ rules:
 
   - id: R447
     code: "FE_STATE_PAGE_NOT_SHARED"
-    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state (R443)."
+    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["FE_STATE_PAGE_NOT_SHARED", "FE_STATE_PAGE_GROUP_MISSING"]

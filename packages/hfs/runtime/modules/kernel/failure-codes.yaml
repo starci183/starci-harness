@@ -2601,16 +2601,6 @@ FE_NATIVE_IMAGE:
   owner: op-retry
   kind: check-finding
 
-FE_ERROR_PAGE_NOT_EMPTY_STATE:
-  title: "An error page is not the Grammar's empty state"
-  title_vi: "Trang lỗi không dùng trạng thái rỗng của Grammar"
-  meaning_vi: "Trang not-found, error hoặc global-error của ứng dụng web không vẽ `EmptyNotice scope=\"page\"` có `illustration`: trang được tự dựng từ các thành phần khác, hoặc bỏ phạm vi trang hay hình minh họa."
-  causes_vi:
-    - "Vi phạm R443: ba trang lỗi bắt buộc của ứng dụng web (not-found 404, error 500, global-error) chỉ được dựng từ EmptyNotice phạm vi trang có hình minh họa, tiêu đề, mô tả và hành động (về trang chủ, thử lại)."
-  nextStep_vi: "Dựng lại trang từ composite NotFoundNotice, ErrorNotice hoặc GlobalErrorNotice của template (EmptyNotice scope=\"page\" với illustration); chỉ sửa lời và hình, không dựng tay (R443; contexts/ui/components/empty-state.md)."
-  owner: op-retry
-  kind: check-finding
-
 FE_BRAND_NOT_ONE:
   title: "The front end does not have exactly one brand file"
   title_vi: "Front end không có đúng một file thương hiệu"
