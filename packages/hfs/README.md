@@ -270,7 +270,6 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_BRAND_PROMPT_STALE` | error (a warning in `--env local`) | a `statics/**/*.prompt.yaml` records no `basePrompt.version`, or one other than the current version of the base it names (`illustration.yaml`, or a base of `media.yaml`): the image is prompted and generated again (R437, PROJECT-BRAND-2) |
 | `HFS_BRAND_PROMPT_INCOMPLETE` | error (a warning in `--env local`) | a `statics/**/*.prompt.yaml` is not YAML, has no `subject`, or its `prompt` does not start with the current text of the base it names (R437, PROJECT-BRAND-2) |
 | `HFS_BRAND_BASE_UNKNOWN` | error (a warning in `--env local`) | a `statics/**/*.prompt.yaml` names a `basePrompt.name` (default `illustration`) that neither `illustration.yaml` nor `.starcistacks/brand/media.yaml` defines (R437, PROJECT-BRAND-2) |
-| `HFS_PEER_INTEGRATION_MISSING` | error | the app root `package.json` depends on a driver integration (a pair of `knowledge/hfs/peer-integrations.yaml`) without its runtime peer, e.g. `@nestjs/apollo` on `@nestjs/platform-express` 11 without `@as-integrations/express5` (R111) |
 | `FE_WIRE_GENERATED` | error | a contract copy with no `codegen` script wired before `build` and `typecheck`, or generated types older than the copy (R52) |
 | `FE_I18N_PLACEMENT` | error | no `next-intl`, no `src/proxy.ts`, a `middleware.ts`, a route file outside `[locale]`, no `vi.json` catalog (R59) |
 | `FE_I18N_CATALOG` | error | a locale catalog lacking a key another locale has (R60) |

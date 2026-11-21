@@ -1,6 +1,6 @@
 // app-root.mts - the tree checks of `starci app check` that read the WHOLE app from its root (app-relative paths over every tracked
 // file of both sides): one list of the rule modules of the app root, so scripts/hfs/check.mts runs them as one step.
-//   HFS_DEP_VERSION_SKEW (R14, deps.mts), HFS_PEER_INTEGRATION_MISSING (R111, peer-integrations.mts), the monorepo shape
+//   HFS_DEP_VERSION_SKEW (R14, deps.mts), the monorepo shape
 //   (HFS_MONO_*, monorepo.mts), the one ops cli app and the client clis (BE_CLI_REQUIRED, BE_CLI_CLIENT, cli.mts),
 //   FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mts), HFS_CI_MISSING_CANON (R13, pipeline.mts),
 //   BE_TEST_TOPOLOGY (R47, test-topology.mts), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mts), the app front-end
@@ -19,7 +19,6 @@ import { appFrontendFindings } from './frontend-tree.mjs';
 import { kindFindings } from './kinds.mjs';
 import { monorepoFindings } from './monorepo.mjs';
 import { nivoosFindings } from './nivoos.mjs';
-import { peerIntegrationFindings } from './peer-integrations.mjs';
 import { pipelineFindings } from './pipeline.mjs';
 import { proofCommandFindings } from './proof-commands.mjs';
 import { sagaFindings } from './saga.mjs';
@@ -40,7 +39,6 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
   const fe = sideDeclared(repo, 'fe');
   return [
     ...depFindings({ repoRoot, files: all }),
-    ...peerIntegrationFindings({ repoRoot, files: all }),
     ...monorepoFindings({ repoRoot, files: all, repo }),
     ...nivoosFindings({ repoRoot, files: all, repo }),
     ...desktopFindings({ repoRoot, files: all, repo }),

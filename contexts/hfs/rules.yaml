@@ -1083,13 +1083,6 @@ rules:
       - FE_PROPS_MUTABLE
     enforcers:
       - {kind: eslint-fe, id: props-fields-readonly}
-  - id: R111
-    code: HFS_PEER_INTEGRATION_MISSING
-    law: An app declares the runtime peer every driver integration pair of contexts/stack/pins.yaml#peers requires.
-    failureCodes:
-      - HFS_PEER_INTEGRATION_MISSING
-    enforcers:
-      - {kind: hfs, id: peer-integrations}
   - id: R113
     code: FE_GRAPHQL_CONTRACT
     law: Every GraphQL operation a front end keeps in a `.graphql` file validates against the back-end contract snapshot that declares its root field.

@@ -31,7 +31,6 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R106 | every key read exists in every locale; every key is read | a | machine `architecture/i18n-keys.mts` |
 | R105 | every file a `.starciwork` proof command runs | a | `rules/proof-commands.mts:19` |
 | R109, BE-COMMENT-3 | JSDoc on every public member | a | eslint `require-public-member-jsdoc` |
-| R111 | the runtime peer of every driver integration | a | `rules/peer-integrations.mts:12` |
 | R112 | an integration spec per integration (full) | a | `rules/integration-specs.mts:22`; the law is `editions: [full]`, lite proves through R284 |
 | R143, R144, R145 | workspaces, lockfile, `nest-cli.json` projects per declared app | a | `rules/monorepo.mts:24` |
 | R147 | the ops cli app when a connection or ops command exists | a | `rules/cli.mts:20` |

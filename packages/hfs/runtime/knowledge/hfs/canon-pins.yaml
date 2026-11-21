@@ -697,7 +697,7 @@ pins:
     version: 1.1.2
     group: framework
     side: be
-    why: 'the Express 5 integration @nestjs/apollo loads at boot (R111 nestjs-apollo-express5, knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
+    why: 'the Express 5 integration @nestjs/apollo loads at boot (knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
   undici:
     version: 6.29.1
     group: framework

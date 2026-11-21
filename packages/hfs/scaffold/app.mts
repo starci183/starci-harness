@@ -133,7 +133,7 @@ const FE_STACK_FILES = [
   path.join(import.meta.dirname, '..', '..', '..', 'knowledge', 'hfs', 'fe-stack.yaml'),
 ];
 const SONAR_GATE_FILE = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'sonar-gate.yaml');
-/** The runtime-peer catalog (knowledge/hfs/peer-integrations.yaml, R111) the package carries. */
+/** The runtime-peer catalog (knowledge/hfs/peer-integrations.yaml) the package carries. */
 const PEERS_FILE = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'peer-integrations.yaml');
 const pascal = (name: string) => name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
 
@@ -324,7 +324,7 @@ interface PeerPair {
 }
 
 /**
- * The runtime peers (R111, knowledge/hfs/peer-integrations.yaml) a root package.json needs and does not declare in its
+ * The runtime peers (knowledge/hfs/peer-integrations.yaml) a root package.json needs and does not declare in its
  * dependencies: the `requires` of every pair whose `when` packages it declares (at the named major, read from the declared
  * exact pin), each at its canon pin. @nestjs/apollo on @nestjs/platform-express 11 needs
  * @as-integrations/express5.
