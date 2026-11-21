@@ -4735,91 +4735,15 @@ HFS_PROOF_COMMAND_FILE_MISSING:
   owner: op-retry
   kind: check-finding
 
-HFS_README_BADGE_NOT_LIVE:
-  title: "README badge is not a live service"
-  title_vi: "Huy hiệu README không phải dịch vụ ngoài đang chạy"
-  meaning_vi: "Một huy hiệu trong README không trỏ tới dịch vụ ngoài HTTPS đang hoạt động."
+HFS_README_INVALID:
+  title: "README breaks its standard shape"
+  title_vi: "README không đúng khuôn chuẩn"
+  meaning_vi: "README.md của kho không đúng khuôn chuẩn. Thông báo của lỗi nêu đúng điểm sai: tiêu đề khác tên kho, thiếu dòng mô tả ngắn, thiếu hoặc sai thứ tự một mục chuẩn (Overview, Stack, Repository layout, Development, Work), mục Development chưa nêu đủ lệnh npm (các script do starci app sync quản lý; test chạy bằng npm test), mục Work chưa trỏ tới cây .starciwork của backend, có địa chỉ cục bộ hoặc mạng riêng, hoặc có huy hiệu không phải dịch vụ ngoài HTTPS đang chạy."
   causes_vi:
-    - "Dùng huy hiệu tĩnh hoặc địa chỉ nội bộ"
-    - "Địa chỉ huy hiệu không hợp lệ"
-  nextStep_vi: "Op docs.author thay bằng huy hiệu từ dịch vụ ngoài HTTPS thật."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_DESCRIPTION_INVALID:
-  title: "README description line invalid"
-  title_vi: "Dòng mô tả trong README chưa đúng"
-  meaning_vi: "README thiếu một dòng mô tả ngắn ngay dưới tên kho."
-  causes_vi:
-    - "Không có dòng mô tả dưới tiêu đề"
-    - "Mô tả dài nhiều dòng"
-  nextStep_vi: "Op docs.author thêm một dòng mô tả ngắn ngay dưới tiêu đề."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_DEVELOPMENT_INCOMPLETE:
-  title: "README Development section incomplete"
-  title_vi: "Mục Development trong README chưa đủ lệnh"
-  meaning_vi: "Mục Development chưa nêu đủ các lệnh cài đặt, typecheck, lint, build và test (các script do starci app sync quản lý; test chạy bằng npm test)."
-  causes_vi:
-    - "Quên một hoặc vài lệnh"
-    - "Viết bằng lệnh của trình quản lý khác"
-  nextStep_vi: "Op docs.author bổ sung đủ các lệnh npm còn thiếu."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_PRIVATE_URL:
-  title: "README links a private host"
-  title_vi: "README chứa địa chỉ nội bộ hoặc cục bộ"
-  meaning_vi: "README có địa chỉ trỏ tới máy cục bộ hoặc mạng riêng."
-  causes_vi:
-    - "Để nguyên địa chỉ localhost hoặc IP riêng"
-    - "Dán nhầm liên kết nội bộ"
-  nextStep_vi: "Op docs.author xóa hoặc thay bằng địa chỉ công khai."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_SECTION_MISSING:
-  title: "README lacks a standard section"
-  title_vi: "README thiếu một mục chuẩn"
-  meaning_vi: "README thiếu một trong các mục chuẩn: Overview, Stack, Repository layout, Development."
-  causes_vi:
-    - "Chưa viết mục đó"
-    - "Đặt sai cấp tiêu đề (không phải ##)"
-  nextStep_vi: "Op docs.author thêm mục còn thiếu bằng tiêu đề ## đúng tên."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_SECTION_ORDER:
-  title: "README sections out of order"
-  title_vi: "Các mục README sai thứ tự"
-  meaning_vi: "Các mục chuẩn của README không theo đúng thứ tự quy định."
-  causes_vi:
-    - "Đặt mục sau trước mục trước"
-    - "Chèn mục thêm làm xáo trộn thứ tự"
-  nextStep_vi: "Op docs.author sắp lại các mục theo thứ tự chuẩn."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_TITLE_INVALID:
-  title: "README title does not match repo name"
-  title_vi: "Tiêu đề README không khớp tên kho"
-  meaning_vi: "Dòng đầu README phải là # kèm tên kho nhưng đang khác."
-  causes_vi:
-    - "Tiêu đề đặt tên khác"
-    - "Kho đổi tên mà README chưa đổi"
-  nextStep_vi: "Op docs.author sửa dòng đầu thành # <tên kho>."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_WORK_POINTER_MISSING:
-  title: "README lacks Work pointer"
-  title_vi: "README thiếu chỉ dẫn tới cây Work"
-  meaning_vi: "README chưa chỉ tới cây .starciwork của kho backend."
-  causes_vi:
-    - "Chưa viết dòng trỏ tới .starciwork"
-    - "Chỉ dẫn viết sai nơi"
-  nextStep_vi: "Op docs.author thêm chỉ dẫn tới cây .starciwork của backend."
+    - "Tiêu đề, dòng mô tả hoặc thứ tự mục lệch khuôn"
+    - "Thiếu lệnh hoặc chỉ dẫn trong Development và Work"
+    - "Để nguyên địa chỉ localhost hoặc IP riêng, hoặc dùng huy hiệu tĩnh"
+  nextStep_vi: "Op docs.author sửa README.md theo đúng điều thông báo nêu."
   owner: other-op:docs.author
   kind: check-finding
 

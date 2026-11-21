@@ -13,6 +13,10 @@
 - Added (`application-stacks.schema.yaml` `$defs.environment.hostServices`): the host services an environment needs (`needs: {starci.embed: [local, sv-hk-1]}`, an optional landing `machine`), judged by the starci CLI against the owner host's config.yaml (contexts/harness/host.md "What an app needs"); the render ignores it. Spec: `src/hfs-stacks-host-services-schema.spec.mts`.
 - Changed: the shared embeddings opt-in describes `qwen3-embedding:4b` at 2560 dimensions.
 
+## Unreleased (jc8, code families)
+
+- Changed (owner 2026-11-21, one fact per code): the eight README codes HFS_README_BADGE_NOT_LIVE, HFS_README_DESCRIPTION_INVALID, HFS_README_DEVELOPMENT_INCOMPLETE, HFS_README_PRIVATE_URL, HFS_README_SECTION_MISSING, HFS_README_SECTION_ORDER, HFS_README_TITLE_INVALID and HFS_README_WORK_POINTER_MISSING are one code, HFS_README_INVALID. Detection is unchanged and every finding keeps its message (it names the title, section, command, URL or badge at fault). There is no code alias: a record or note that cites an old code reads the new one.
+
 ## 6.17.4 - 2026-11-21
 
 - Fixed (`starci app check`, the build and audit parity families): the run asked the failure-code catalog for CI_PARITY_STEP_FAILED only, so a host without Docker, whose database step is the warning CI_PARITY_DB_SKIPPED, ended in HFS_MANIFEST_INVALID ("has no failure-code catalog entry loaded"). It now asks for every code the parity steps reported. Found by StarCi Next.

@@ -65,7 +65,7 @@ rules:
     law: "A slot is missing a required file (feature `index.ts`, app `main.ts`, FE `global-error.tsx`), or the root README breaks its standard shape (title, description, standard sections in order, Work pointer, live badges only, no private URL)."
     kinds: [check, codemod]
     gates: [settle, land, ci, runtime]
-    failureCodes: ["HFS_SLOT_REQUIRED_MISSING", "HFS_MIN_INSTANCES", "HFS_REQUIRED_FILE_MISSING", "HFS_ROOT_ENTRY_MISSING", "HFS_APPS_REQUIRED", "HFS_APP_LAYOUT_INVALID", "HFS_README_TITLE_INVALID", "HFS_README_DESCRIPTION_INVALID", "HFS_README_SECTION_MISSING", "HFS_README_SECTION_ORDER", "HFS_README_DEVELOPMENT_INCOMPLETE", "HFS_README_WORK_POINTER_MISSING", "HFS_README_PRIVATE_URL", "HFS_README_BADGE_NOT_LIVE"]
+    failureCodes: ["HFS_SLOT_REQUIRED_MISSING", "HFS_MIN_INSTANCES", "HFS_REQUIRED_FILE_MISSING", "HFS_ROOT_ENTRY_MISSING", "HFS_APPS_REQUIRED", "HFS_APP_LAYOUT_INVALID", "HFS_README_INVALID"]
     enforcers:
       - {kind: hfs, id: slot-required-missing, at: scripts/hfs/check.mjs}
       - {kind: machine, id: required-files, at: scripts/hfs/architecture/required-files.mjs}

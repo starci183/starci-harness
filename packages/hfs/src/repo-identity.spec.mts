@@ -1,5 +1,5 @@
 // repo-identity.spec.mts - a repository is named by its origin remote, whatever folder it is cloned into: the README
-// title (HFS_README_TITLE_INVALID) and the stack project name read repositoryName, so a clone into a folder of another
+// title (HFS_README_INVALID) and the stack project name read repositoryName, so a clone into a folder of another
 // name must not change them. The folder names it only when no origin remote does.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
