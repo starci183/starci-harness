@@ -338,7 +338,8 @@ export interface UpOutcome {
 /** The monitor components a run deploys: every component of the machine's monitor services; all other defaults turned off. */
 const monitorToggles = (reach: Reach, opsDir: string, wanted: readonly string[]): { readonly with: string[]; readonly without: string[] } => {
     const components = loadMonitorComponents(reach.policy, opsDir)
-    return { with: [...wanted], without: Object.keys(components).filter((name) => !wanted.includes(name) && components[name]?.default === true) }
+    // A component on by `alert-bots` (the monitor bot) follows whether an app on the server has a bot ready, never forced on by host up.
+    return { with: wanted.filter((name) => components[name]?.default !== "alert-bots"), without: Object.keys(components).filter((name) => !wanted.includes(name) && components[name]?.default !== false) }
 }
 
 /** Hands one missing placement to its deployer; true when the deployer reported no failure. */

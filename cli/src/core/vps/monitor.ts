@@ -69,7 +69,7 @@ const generatedSecrets = (store: SealedStore, file: string, kinds: readonly Moni
  */
 export const vpsMonitorVerb = defineVerb({
     path: ["vps", "monitor"],
-    summary: "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
+    summary: "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), the two-way monitor bot when an app has a bot ready, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-monitor@1",
@@ -91,10 +91,12 @@ export const vpsMonitorVerb = defineVerb({
         const target: MonitorTarget = server === undefined ? { kind: "local" } : { kind: "server", server }
         const components = loadMonitorComponents(policy, opsDir)
         const toggles = { ...(server?.monitor?.components ?? {}), ...Object.fromEntries(flags.with.map((name) => [name, true])), ...Object.fromEntries(flags.without.map((name) => [name, false])) }
-        const selected = selectComponents(components, toggles)
+        // The alert bots are read first: the monitor bot runs by default only when an app on the server has one ready.
+        const found: ServerAlerts = server === undefined ? { bots: [], lacking: [] } : serverAlerts(server.projects, [...flags.app.map((dir) => resolve(context.cwd, dir)), ...registeredRoots()], serverRecipientOf(server.id, opsDir))
+        const selected = selectComponents(components, toggles, found.bots.length > 0)
         const budget = monitorBudget(components, selected)
         const alerting = selected.includes("alertmanager") && server !== undefined
-        const alerts: ServerAlerts = alerting ? serverAlerts(server.projects, [...flags.app.map((dir) => resolve(context.cwd, dir)), ...registeredRoots()], serverRecipientOf(server.id, opsDir)) : { bots: [], lacking: [] }
+        const alerts: ServerAlerts = alerting ? found : { bots: [], lacking: [] }
         const heldText = alerting ? heldLine(alerts) : null
         const held = heldText === null ? [] : [`  note: ${heldText}`]
         const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, alertBots: alerts.bots })

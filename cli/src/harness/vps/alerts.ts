@@ -16,6 +16,12 @@ import { shellQuote } from "./ssh.js"
 /** The keys of an app's alert-bot member (equal to @starci/hfs stack/monitoring.mts ALERT_BOT_KEYS). */
 export const ALERT_BOT_KEYS = { token: "ALERTS_TELEGRAM_BOT_TOKEN", chat: "ALERTS_TELEGRAM_CHAT_ID" } as const
 
+/**
+ * The optional key of the same member listing the Telegram user ids that may run the monitor bot's write commands (a silence), comma
+ * separated; without it only the owner chat's own user (a private chat) may.
+ */
+export const ALERT_BOT_ADMINS_KEY = "ALERTS_TELEGRAM_ADMIN_IDS"
+
 /** Where the server's own age identity lives (@starci/hfs stack/server-key.mts SERVER_AGE_IDENTITY). */
 export const SERVER_AGE_IDENTITY = "/root/.config/sops/age/keys.txt"
 
@@ -28,6 +34,8 @@ export interface AlertBot {
     /** The sealed member file, and its ciphertext (safe to ship: only the server's key, its backup or its CI key opens it). */
     readonly file: string
     readonly sealed: string
+    /** Whether the member holds ALERT_BOT_ADMINS_KEY. */
+    readonly admins: boolean
 }
 
 /** The alert bots of a server and what holds the rest of its alerts. */
@@ -92,7 +100,7 @@ export const appAlertBots = (root: string, serverRecipient: string | null): { re
             continue
         }
         const stack = fieldAt(value, "deploy.stack")
-        bots.push({ project, env, stack: typeof stack === "string" && stack !== "" ? stack : `${project}-${env}`, file: memberFile, sealed })
+        bots.push({ project, env, stack: typeof stack === "string" && stack !== "" ? stack : `${project}-${env}`, file: memberFile, sealed, admins: keys.includes(ALERT_BOT_ADMINS_KEY) })
     }
     return { bots, lacking, envs }
 }
@@ -150,12 +158,20 @@ export const chatPlaceholder = (slot: number): string => `__STARCI_ALERTS_CHAT_$
 /** The swarm secret file a bot's token is mounted at. */
 export const tokenFile = (slot: number): string => `alerts_${String(slot)}`
 
+/** The placeholder of a bot's admin ids in the monitor bot's config, filled on the server (empty when the member lists none). */
+export const adminsPlaceholder = (slot: number): string => `__STARCI_ALERTS_ADMINS_${String(slot)}__`
+
+/** The port the monitor bot serves Alertmanager's webhooks on, inside the stack's internal network. */
+export const BOT_WEBHOOK_PORT = 9095
+
 /**
  * The routes and receivers of Alertmanager: an app's alerts (its stack's label) to its environment's bot; a host alert (no stack label: disk,
  * memory, a node, the edge) to one bot of every app, each once (continue); everything else, and everything when no bot is ready, to the null
- * receiver `held`.
+ * receiver `held`. A receiver is a telegram_config of the bot, or, with the monitor bot on (`viaBot`), a webhook to the bot's slot, so the
+ * bot posts the same notification with its buttons; the routes are the same either way. `botHost` is the bot's full swarm name
+ * (`<stack>_monitor-bot`): a short name falls through to the host's search domain.
  */
-export const alertRouting = (bots: readonly AlertBot[]): { readonly routes: string; readonly receivers: string } => {
+export const alertRouting = (bots: readonly AlertBot[], viaBot = false, botHost = "monitor-bot"): { readonly routes: string; readonly receivers: string } => {
     if (bots.length === 0) return { routes: "  # no app on this server has an alert bot ready: every alert is held", receivers: "" }
     const hostBots = bots.filter((bot, slot) => bots.findIndex((other) => other.project === bot.project) === slot).map((bot) => ({ bot }))
     const routes = [
@@ -163,30 +179,43 @@ export const alertRouting = (bots: readonly AlertBot[]): { readonly routes: stri
         ...hostBots.flatMap(({ bot }) => [`    - matchers: ['stack=""']`, `      receiver: ${receiverOf(bot)}`, "      continue: true"]),
         ...bots.flatMap((bot) => [`    - matchers: ['stack="${bot.stack}"']`, `      receiver: ${receiverOf(bot)}`]),
     ]
-    const receivers = bots.flatMap((bot, slot) => [`  - name: ${receiverOf(bot)}`, "    telegram_configs:", `      - bot_token_file: /run/secrets/${tokenFile(slot)}`, `        chat_id: ${chatPlaceholder(slot)}`, "        send_resolved: true"])
+    const receivers = bots.flatMap((bot, slot) =>
+        viaBot
+            ? [`  - name: ${receiverOf(bot)}`, "    webhook_configs:", `      - url: http://${botHost}:${String(BOT_WEBHOOK_PORT)}/alert/${String(slot)}`, "        send_resolved: true", "        max_alerts: 20"]
+            : [`  - name: ${receiverOf(bot)}`, "    telegram_configs:", `      - bot_token_file: /run/secrets/${tokenFile(slot)}`, `        chat_id: ${chatPlaceholder(slot)}`, "        send_resolved: true"],
+    )
     return { routes: routes.join("\n"), receivers: receivers.join("\n") }
 }
 
-/** The env name the stack file reads a bot token's swarm secret name from, and the one of the filled alertmanager.yml's config name. */
+/** The env name the stack file reads a bot token's swarm secret name from, and the ones of the configs filled on the server. */
 export const tokenEnvOf = (slot: number): string => `STARCI_MON_ALERTS_${String(slot)}`
 export const ALERTMANAGER_CONFIG_ENV = "STARCI_MON_ALERTMANAGER"
+export const BOT_CONFIG_ENV = "STARCI_MON_BOT_CONFIG"
+
+/** A file the server fills from its `.tmpl` with each bot's chat id (and admin ids), and the env its config's hashed name is exported to. */
+export interface FilledFile {
+    readonly rel: string
+    readonly env: string
+}
+
+/** The swarm config name of a file filled on the server, hashed there (equal to monitor.ts's naming of the other configs, but for the hash). */
+const filledName = (rel: string): string => `starci_monitor_${rel.replaceAll(/[^a-z0-9]+/gi, "_").toLowerCase()}`
 
 /**
  * The server-side lines that open each bot's member with the server's own key (sops, SERVER_AGE_IDENTITY): the token becomes a swarm secret named
- * by its hash, the chat id fills alertmanager.yml from its template, and the filled file names its config by its hash. No value is echoed; a
- * member the server key does not open stops the step naming it.
+ * by its hash, the chat id (and the admin ids, when the member lists them) fill each of `filled` from its template, and each filled file names
+ * its config by its hash. No value is echoed; a member the server key does not open stops the step naming it.
  */
-export const alertBotLines = (bots: readonly AlertBot[], base: string, marker: string): string[] => {
+export const alertBotLines = (bots: readonly AlertBot[], base: string, marker: string, filled: readonly FilledFile[] = [{ rel: "alertmanager.yml", env: ALERTMANAGER_CONFIG_ENV }]): string[] => {
     if (bots.length === 0) return []
     const dir = `${base}/alerts`
     const identity = shellQuote(SERVER_AGE_IDENTITY)
-    const template = shellQuote(`${base}/alertmanager.yml.tmpl`)
-    const target = shellQuote(`${base}/alertmanager.yml`)
+    const targets = filled.map((file) => ({ ...file, template: shellQuote(`${base}/${file.rel}.tmpl`), target: shellQuote(`${base}/${file.rel}`) }))
     const lines = [
         `command -v sops >/dev/null 2>&1 || { echo "no sops on this server: the app alert bots are opened here with its own key" >&2; exit 7; }`,
         `[ -r ${identity} ] || { echo "no server age identity at ${SERVER_AGE_IDENTITY} (starci app secret server-key makes it)" >&2; exit 7; }`,
         `install -d -m 700 ${shellQuote(dir)}`,
-        `cp ${template} ${target}.starci-new`,
+        ...targets.map((file) => `cp ${file.template} ${file.target}.starci-new`),
     ]
     bots.forEach((bot, slot) => {
         if (bot.sealed.includes(marker)) throw new Error(`${bot.file} holds ${marker}`)
@@ -201,16 +230,21 @@ export const alertBotLines = (bots: readonly AlertBot[], base: string, marker: s
             `T="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_KEYS.token}"]' ${sealedFile})" || { echo "the server key does not open the alert bot of ${name}" >&2; exit 7; }`,
             `K="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_KEYS.chat}"]' ${sealedFile})" || { echo "the server key does not open the alert chat of ${name}" >&2; exit 7; }`,
             `printf '%s' "$K" | grep -Eqx -- '-?[0-9]+' || { echo "the alert chat of ${name} is no Telegram chat id" >&2; exit 7; }`,
+            bot.admins
+                ? `A="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_ADMINS_KEY}"]' ${sealedFile} | tr -d ' ')" || { echo "the server key does not open the admin ids of ${name}" >&2; exit 7; }`
+                : `A=""`,
+            `[ -z "$A" ] || printf '%s' "$A" | grep -Eqx -- '-?[0-9]+(,-?[0-9]+)*' || { echo "the ${ALERT_BOT_ADMINS_KEY} of ${name} is no comma list of Telegram ids" >&2; exit 7; }`,
             `export ${env}="starci_monitor_alerts_${String(slot)}_$(printf '%s' "$T" | sha256sum | cut -c1-12)"`,
             `if ! docker secret inspect "$${env}" >/dev/null 2>&1; then printf '%s' "$T" | docker secret create --label starci.monitor=alerts "$${env}" - >/dev/null; C=changed; fi`,
-            `sed -i "s/${chatPlaceholder(slot)}/$K/" ${target}.starci-new`,
-            "unset T K",
+            ...targets.map((file) => `sed -i "s/${chatPlaceholder(slot)}/$K/; s/${adminsPlaceholder(slot)}/$A/" ${file.target}.starci-new`),
+            "unset T K A",
         )
     })
-    lines.push(
-        `if ! cmp -s ${target}.starci-new ${target}; then mv ${target}.starci-new ${target}; C=changed; else rm -f ${target}.starci-new; fi`,
-        `export ${ALERTMANAGER_CONFIG_ENV}="starci_monitor_alertmanager_yml_$(sha256sum < ${target} | cut -c1-12)"`,
-    )
+    for (const file of targets)
+        lines.push(
+            `if ! cmp -s ${file.target}.starci-new ${file.target}; then mv ${file.target}.starci-new ${file.target}; C=changed; else rm -f ${file.target}.starci-new; fi`,
+            `export ${file.env}="${filledName(file.rel)}_$(sha256sum < ${file.target} | cut -c1-12)"`,
+        )
     return lines
 }
 

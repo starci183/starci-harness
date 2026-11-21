@@ -35,6 +35,7 @@ budget of exactly what runs.
 | socket-proxy | on | the read-only Docker API (GET only) that Prometheus, Alloy and cAdvisor use to discover containers | 32M | every discovery reads it, and only it holds the socket |
 | prometheus | on | the metrics store and the alert rules; Swarm discovery of the opted-in services, of every task Swarm wants running, and of the edge Traefik | 512M | the core; retention 15d or 4GB |
 | alertmanager | on | sends each app's alerts to that app's own Telegram bot (PROJECT-MONITORING-5) | 96M | an alert nobody receives is no alert |
+| monitor-bot | on when an app has a bot ready (`alert-bots`) | the two-way Telegram bot of each app: commands, alerts with buttons, the daily report (PROJECT-MONITORING-6) | 96M | nothing to poll without a bot |
 | grafana | on | dashboards (host, stacks and services, logs) and datasources as code, behind the server's door with its own login | 256M | the one place the owner reads the server |
 | node-exporter | on, global | host metrics | 64M | the host dashboard and host alerts read it |
 | cadvisor | on, global | container metrics by stack and service | 192M | the services dashboard and service alerts read it |
@@ -47,7 +48,8 @@ budget of exactly what runs.
 | uptime-kuma | off | a status page | 192M | blackbox and Grafana already cover the same monitoring |
 | glitchtip, glitchtip-worker, glitchtip-postgres, glitchtip-redis | off | Sentry-compatible error tracking, with its own Postgres and Redis (never an app's) | 512M + 384M + 256M + 64M = 1216M | the heaviest add-on; run it only on a server with room |
 
-**Memory budget of the defaults:** about 1.9 GB of limits (1920 MB) and 808 MB of reservations; CPU limits add up to 2.4. The limits are the
+**Memory budget of the defaults:** about 1.9 GB of limits (1920 MB) and 808 MB of reservations; CPU limits add up to 2.4 (the monitor bot adds
+96 MB, 48 MB and 0.2 on a server where an app has a bot ready). The limits are the
 most the stack can take, and it usually uses far less. With every optional component on, the limits add up to about 4.2 GB (4272 MB), reservations 1624 MB, CPU limits 4.7.
 
 ## PROJECT-MONITORING-2 An environment opts in
@@ -159,6 +161,69 @@ environments:
   A later `monitor up` with a bot rewires the receiver.
 - **Owed in the apps.** Neither nivoos-lite nor starci-next declares `monitoring.alerts` or has a bot yet: the owner's BotFather step, then
   the member, the declaration and the discovery above, per environment.
+
+## PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons
+
+The owner's words (2026-11-21): "ghi rõ các câu lệnh ví dụ: /ram /cpu, trò nghiên cứu để có bộ lệnh monitor chuẩn chỉ cả 2 chiều check lẫn
+báo và render đẹp dễ track". The `monitor-bot` component is one Node process for every app bot of the server. It runs on the pinned node
+image (`monitor-bot-node` in [stack/pins.yaml](../stack/pins.yaml)). Its code is the CLI's own `cli/src/harness/vps/monitor-bot`, compiled
+by the CLI build and shipped as swarm configs mounted under `/app`. It uses Node's built-ins only, so no image is built and no package
+is installed. It runs read-only as uid 1000 and stops first on an update, because two pollers of one token conflict.
+
+- **When it runs.** Its default is `alert-bots`: `vps monitor up` turns it on when an app on the server has a bot ready
+  (PROJECT-MONITORING-5). The server file's `monitor.components` or `--with/--without monitor-bot` overrides that. `host up` never forces it
+  on. In ops/host-roles.yaml, `monitor.bot` is off by default; with `+monitor.bot`, host doctor judges it on a machine.
+- **Two ways.**
+  - It long-polls each app's bot, with no public webhook. Bots that share a token are polled once. A second project on the same token
+    posts its alerts but answers no command.
+  - With the bot on, each Alertmanager receiver is a webhook to the bot's slot (`http://monitor-bot:9095/alert/<slot>`) instead of a
+    telegram_config. The routes stay the same: an app's alerts go to its environment's bot, and a host alert goes to one bot of every app,
+    once. The grouping is also the same: one message per group, repeated at most every `repeat_interval`. The bot posts each group with
+    its buttons. If Telegram refuses the message, the bot answers 500 and Alertmanager retries.
+- **Who it answers.**
+  - It answers only the owner chat of an environment (`ALERTS_TELEGRAM_CHAT_ID`) and ignores every other chat.
+  - A write (`/silence`, or the silence button under an alert) needs an admin: a user id in the member's optional
+    `ALERTS_TELEGRAM_ADMIN_IDS` (a comma list, sealed with `starci app secret set --env <env> alerts ALERTS_TELEGRAM_ADMIN_IDS`). With no
+    list, the admin is the owner chat's own user, in a private chat.
+  - Each write is confirmed by a button pressed by an admin within 5 minutes. The confirmation lives in memory only. After a restart,
+    messages older than 2 minutes are skipped, never replayed.
+  - An app's silence always matches that app's own stacks. A host alert reaches every app, so no app's bot can silence it.
+- **What it reads.** It reads Prometheus, Loki and Alertmanager on the stack's internal network, and the Docker API through the read-only
+  socket proxy. Every app query carries a matcher on the app's stacks. So an app's bot shows its own services and a summary of the machine,
+  never another app's services.
+- **Commands.** Replies use Telegram's HTML mode: `<pre>` tables, ▓░ bars, ▁▂▃▅▇ sparklines, 🟢/⚠️/🔴/✅ status emojis. The copy is
+  Vietnamese, with numbers written the Vietnamese way (1.234,5), and each reply fits one screen. Buttons under a reply choose the period
+  or open a related command.
+
+| command | reply |
+|---|---|
+| /status | per environment: the version (the image tag), uptime, p95 and 5xx over 1h at the edge; the machine's CPU, RAM and disk |
+| /cpu [1h\|6h\|24h] | the machine's CPU with a bar and a sparkline over the period; the app's services using the most CPU |
+| /ram [1h\|6h\|24h] | used/total, a bar, a sparkline, the alert threshold (ops/vps.yaml `health.memoryAlertPercent`); the app's top services by memory |
+| /disk | each file system: use, size, 7-day growth and the days until it is full at that pace; the alert threshold |
+| /svc | each service of the app: replicas running of wanted, uptime, restarts over 24h, database connections (postgres exporter) |
+| /logs &lt;svc&gt; [15m\|1h\|6h] | the newest 15 errors and warnings of one service from Loki, and the Grafana Explore link of the same query |
+| /alerts | the app's (and the host's) open alerts, the silenced ones, and which fired over 24h |
+| /silence &lt;name\|all&gt; &lt;30m..7d&gt; | a silence through Alertmanager, limited to the app's stacks; admin only, confirmed |
+| /deploys | the latest update of each service of every environment of the app: its image tag, when, and the update state |
+| /chart &lt;cpu\|ram\|disk\|5xx&gt; [1h\|6h\|24h\|7d] | a text sparkline with its low, high and last values (no Grafana image renderer runs in the stack, and the reply says so) |
+| /help | the list |
+
+- **Alerts.**
+  - Each firing alert shows its severity and an emoji for its topic, its summary (which holds the value), and its `threshold` annotation
+    (alerts.yml and the components' rules carry one).
+  - It shows how long the alert has been firing. For a CPU or memory alert, it also shows the likely cause: the app's own top service.
+  - The buttons are the related command, the chart and, for an app alert, a 1-hour silence.
+  - A resolved alert follows with how long it lasted.
+- **The daily report.** At 08:00 Asia/Ho_Chi_Minh (UTC+7, no daylight saving; monitor.ts `BOT_REPORT`), each chat gets one report per
+  app: per environment, uptime (targets up), requests, 5xx and p95 at the edge, and the alerts that fired over 24h; for the machine, its
+  CPU, RAM and disk, and the disk growth over 24h.
+- **Owed.**
+  - /chart as a PNG from Grafana's render API, once a renderer component exists.
+  - The queue depth and the failed runs of /status and the report, once the apps expose metrics for them under one name.
+  - The docker volume share of /disk (the socket proxy does not allow `/system/df`).
+  - `/restart`.
+  - The app's `monitoring.bot` opt-in: today the bot follows whether an app has a bot ready.
 
 ## Consul
 

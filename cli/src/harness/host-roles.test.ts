@@ -54,7 +54,7 @@ void test("ops/host-roles.yaml loads: the four roles of the owner's words and de
     assert.equal(catalog.roles["app-host"]?.engine, "swarm")
     assert.deepEqual(catalog.roles["app-host"].engines, { swarm: "built", k3s: "declared" })
     assert.deepEqual(Object.keys(catalog.roles.starci?.services ?? {}), ["embed", "buildkit", "sonar", "registry"])
-    assert.deepEqual(Object.keys(catalog.roles.monitor?.services ?? {}), ["prometheus", "grafana", "loki", "alertmanager", "exporters", "portainer"])
+    assert.deepEqual(Object.keys(catalog.roles.monitor?.services ?? {}), ["prometheus", "grafana", "loki", "alertmanager", "bot", "exporters", "portainer"])
     assert.deepEqual(Object.keys(catalog.roles.edge?.services ?? {}), ["traefik"])
     const text = readFileSync(join(opsDir, "host-roles.yaml"), "utf8")
     assert.doesNotMatch(text.replaceAll("127.0.0.1", "loopback"), /\b(?:\d{1,3}\.){3}\d{1,3}\b/u, "no machine address in the pushed catalog (loopback only)")
@@ -315,7 +315,8 @@ void test("the remote catalog of monitor services covers the default monitoring 
         const placement = placementOf(catalog, id, "remote")
         return placement?.via === "vps-monitor" ? placement.components : []
     })
-    const defaults = Object.entries(components).filter(([, component]) => component.default).map(([name]) => name)
+    // `alert-bots` (the monitor bot) is a default too: on wherever an app has a bot ready
+    const defaults = Object.entries(components).filter(([, component]) => component.default !== false).map(([name]) => name)
     assert.deepEqual([...listed].sort((a, b) => a.localeCompare(b)), [...defaults].sort((a, b) => a.localeCompare(b)))
     assert.equal(new Set(listed).size, listed.length)
     const unused: HostRoles = catalog

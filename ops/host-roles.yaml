@@ -217,6 +217,24 @@ roles:
             secrets: []
             network: starci-monitor
             probe: {kind: replicas}
+      bot:
+        summary: the two-way Telegram monitor bot of each app (its own alert bot), commands and alerts with buttons (contexts/project/monitoring.md PROJECT-MONITORING-6)
+        # Off here: `vps monitor up` runs it by itself when an app on the server has an alert bot ready (components.yaml `default: alert-bots`);
+        # +monitor.bot makes host doctor judge it on a machine.
+        default: false
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [monitor-bot]
+            stack: starci-monitor
+            match: []
+            images:
+              - {image: node, pin: monitor-bot-node}
+            limits: {memory: 96M, cpus: "0.20"}
+            secrets: []
+            network: starci-monitor
+            probe: {kind: replicas}
       exporters:
         summary: node-exporter and cAdvisor, the host and container metrics
         default: true

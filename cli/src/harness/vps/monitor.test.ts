@@ -26,7 +26,7 @@ const exampleFile = join(opsDir, "vps", "servers", "example.yaml")
 const server = parseServer(policy, { ...(parse(readFileSync(exampleFile, "utf8")) as Record<string, unknown>), ingress: { mode: "edge" } }, exampleFile, join(opsDir, "vps", "servers"))
 
 const render = (facts: MonitorFacts, toggles: Record<string, boolean> = {}): Readonly<Record<string, string>> => {
-    const selected = selectComponents(components, toggles)
+    const selected = selectComponents(components, toggles, facts.alertBots.length > 0)
     return renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), facts).files
 }
 
@@ -118,7 +118,7 @@ void test("each app's ready bot is found from its sealed member's key names; the
     assert.equal(heldLine(serverAlerts([], [], SERVER)), null)
 })
 
-const bot = (project: string, env: string): AlertBot => ({ project, env, stack: `${project}-${env}`, file: `${project}.enc.yaml`, sealed: sealedMember(["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"]) })
+const bot = (project: string, env: string, admins = false): AlertBot => ({ project, env, stack: `${project}-${env}`, file: `${project}.enc.yaml`, sealed: sealedMember(["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"]), admins })
 
 void test("with no app bot ready every alert goes to the null receiver, no token is mounted and nothing is opened", () => {
     const files = render({ target: { kind: "server", server }, alertBots: [] })
@@ -132,7 +132,7 @@ void test("with no app bot ready every alert goes to the null receiver, no token
 
 void test("an app's alerts go to its own bot, a host alert to one bot of every app once, and the server opens the members", () => {
     const bots = [bot("nivo", "staging"), bot("nivo", "production"), bot("next", "production")]
-    const files = render({ target: { kind: "server", server }, alertBots: bots })
+    const files = render({ target: { kind: "server", server }, alertBots: bots }, { "monitor-bot": false })
     assert.equal(files["alertmanager.yml"], undefined, "the chat ids are filled on the server")
     const manager = parse(files["alertmanager.yml.tmpl"] ?? "") as { route: { receiver: string; routes: { matchers: string[]; receiver: string; continue?: boolean }[] }; receivers: { name: string; telegram_configs?: { bot_token_file: string; chat_id: string }[] }[] }
     assert.equal(manager.route.receiver, "held")
@@ -191,4 +191,47 @@ void test("the embeddings stack reaches its model by the swarm name and every se
     const services = (parse(rendered["stack.yml"] ?? "") as { services: Record<string, { dns_search?: string[] }> }).services
     assert.ok(Object.keys(services).length > 0)
     for (const [name, one] of Object.entries(services)) assert.deepEqual(one.dns_search, ["."], `${name} sets dns_search`)
+})
+
+void test("the monitor bot runs by default only where an app has a bot ready; Alertmanager then posts through its webhook and the bot holds the tokens", () => {
+    assert.equal(selectComponents(components, {}, false).includes("monitor-bot"), false, "no bot ready: nothing to poll")
+    assert.equal(selectComponents(components, {}, true).includes("monitor-bot"), true)
+    assert.equal(selectComponents(components, { "monitor-bot": false }, true).includes("monitor-bot"), false, "the server file turns it off")
+    const bots = [bot("nivo", "staging"), bot("nivo", "production", true), bot("next", "production")]
+    const files = render({ target: { kind: "server", server }, alertBots: bots })
+    const manager = parse(files["alertmanager.yml"] ?? "") as { route: { routes: { matchers: string[]; receiver: string; continue?: boolean }[] }; receivers: { name: string; webhook_configs?: { url: string; send_resolved: boolean }[]; telegram_configs?: unknown }[] }
+    assert.equal(files["alertmanager.yml.tmpl"], undefined, "Alertmanager holds no chat id: the bot does")
+    assert.deepEqual(manager.route.routes.filter((route) => route.matchers[0] === 'stack=""').map((route) => [route.receiver, route.continue]), [["nivo-staging", true], ["next-production", true]], "the routing of PROJECT-MONITORING-5 is the same")
+    assert.deepEqual(manager.receivers.find((receiver) => receiver.name === "next-production")?.webhook_configs, [{ url: `http://${policy.monitor.stack}_monitor-bot:9095/alert/2`, send_resolved: true, max_alerts: 20 }])
+    assert.equal(manager.receivers.some((receiver) => receiver.telegram_configs !== undefined), false)
+    const config = files["monitor-bot/config.json.tmpl"] ?? ""
+    assert.match(config, /"chat": __STARCI_ALERTS_CHAT_1__,/, "the chat id is a number once the server fills it")
+    assert.match(config, /"admins": "__STARCI_ALERTS_ADMINS_1__"/)
+    assert.ok(config.includes(`"loki": "http://${policy.monitor.stack}_loki:3100"`))
+    assert.match(config, /"memoryAlertPercent": 90/)
+    assert.ok(files["monitor-bot/main.js"]?.includes("long-polls every distinct bot"), "the bot's code is the CLI's compiled folder")
+    for (const [rel, text] of Object.entries(files)) if (rel.startsWith("monitor-bot/")) assert.doesNotMatch(text, /sourceMappingURL|\.test\.js/, rel)
+    const stack = parse(files["stack.yml"] ?? "") as { services: Record<string, { image: string; networks: string[]; user?: string; read_only?: boolean; secrets?: { source: string }[]; configs?: { source: string; target: string }[]; deploy: { update_config: { order: string } } }>; configs: Record<string, { name: string; file: string }> }
+    const service = stack.services["monitor-bot"]
+    assert.ok(service !== undefined)
+    assert.match(service.image, /^node:22\.20\.0-alpine3\.21@sha256:[0-9a-f]{64}$/)
+    assert.deepEqual(service.networks, ["internal", "socket"])
+    assert.equal(service.user, "1000:1000")
+    assert.equal(service.read_only, true)
+    assert.equal(service.deploy.update_config.order, "stop-first", "two pollers of one token conflict")
+    assert.deepEqual(service.secrets?.map((secret) => secret.source), ["alerts_0", "alerts_1", "alerts_2"])
+    assert.equal(stack.services.alertmanager?.secrets, undefined, "Alertmanager needs no token behind the bot")
+    assert.ok(service.configs?.some((mount) => mount.target === "/app/main.js"))
+    assert.ok(service.configs?.some((mount) => mount.target === "/app/package.json"))
+    assert.equal(stack.configs.monitor_bot_config_json?.name, "${STARCI_MON_BOT_CONFIG}")
+    assert.equal(stack.configs.monitor_bot_config_json.file, "./monitor-bot/config.json")
+    assert.match(stack.configs.alertmanager_yml?.name ?? "", /^starci_monitor_alertmanager_yml_[0-9a-f]{12}$/, "Alertmanager's file is shipped whole")
+    const lines = alertBotLines(bots, "/opt/starci/monitor", "STARCI_EOF", [{ rel: "monitor-bot/config.json", env: "STARCI_MON_BOT_CONFIG" }]).join("\n")
+    assert.match(lines, /cp '\/opt\/starci\/monitor\/monitor-bot\/config\.json\.tmpl' '\/opt\/starci\/monitor\/monitor-bot\/config\.json'\.starci-new/)
+    assert.match(lines, /s\/__STARCI_ALERTS_CHAT_1__\/\$K\/; s\/__STARCI_ALERTS_ADMINS_1__\/\$A\//)
+    assert.equal((lines.match(/--extract '\["ALERTS_TELEGRAM_ADMIN_IDS"\]'/g) ?? []).length, 1, "the admin ids are opened only where the member holds them")
+    assert.match(lines, /export STARCI_MON_BOT_CONFIG="starci_monitor_monitor_bot_config_json_\$\(sha256sum/)
+    assert.doesNotMatch(lines, /alertmanager\.yml/, "behind the bot Alertmanager's file is not filled on the server")
+    const none = render({ target: { kind: "server", server }, alertBots: [] }, { "monitor-bot": true })
+    assert.match(none["monitor-bot/config.json"] ?? "", /"bots": \[\]/, "turned on with no bot it polls nothing")
 })

@@ -2,7 +2,8 @@
 # opted-in app alike (no app's own words): a scraped target down, a Swarm service with fewer running tasks than it wants, a postgres or redis
 # exporter's server down or near its limit, slow queries (only where pg_stat_statements is collected), the edge's 5xx rate; and by component
 # the host short of memory, disk or CPU (ops/vps.yaml health), a service near its memory limit or restarting in a loop, a probe failing or a
-# certificate expiring. A rule whose metric no target serves stays silent. Alertmanager sends them to the owner's Telegram channel.
+# certificate expiring. A rule whose metric no target serves stays silent. Alertmanager sends them to each app's own bot (PROJECT-MONITORING-5);
+# a `threshold` annotation is the limit the monitor bot shows beside the value (PROJECT-MONITORING-6).
 groups:
   - name: targets
     rules:
@@ -34,6 +35,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "the postgres of {{ $labels.stack }} holds {{ $value | humanizePercentage }} of max_connections"
+          threshold: "80% of max_connections for 10m"
       - alert: PostgresSlowQueries
         expr: sum by (stack, service) (rate(pg_stat_statements_seconds_total[10m])) / (sum by (stack, service) (rate(pg_stat_statements_calls_total[10m])) > 0) > 1
         for: 15m
@@ -54,6 +56,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "the redis of {{ $labels.stack }} uses {{ $value | humanizePercentage }} of its maxmemory"
+          threshold: "90% of maxmemory for 10m"
   - name: edge
     rules:
       # Over 2% of the answers of one edge service are 5xx for 5 minutes, once it serves more than 3 requests a minute.
@@ -63,3 +66,4 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "{{ $labels.service }} answers {{ $value | humanizePercentage }} 5xx through the edge"
+          threshold: "2% 5xx for 5m"
