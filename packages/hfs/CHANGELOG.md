@@ -8,6 +8,10 @@
 - Added (`starci app stack`, PROJECT-STACKS-6): a native process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`. `stack up` then builds it and runs the built artifact (next start, node dist/...), never a watcher. Its own `argv` (next dev, ts-node-dev) runs only with `--watch`, the opt-in for live coding. A process without `serve` runs as before.
 - Added: `starci app stack restart --env <env> --process <name>[,<name>] [--watch] [--execute]`. It ends only the named processes, rebuilds and starts them, and waits for their health on the loopback and over each dev tunnel hostname that routes their port. The compose services, volumes, custody and tunnel stay up. An environment with no running process is STACK_LOCAL_NOT_UP.
 - Changed (the app skeleton's `.starcistacks/application-stacks.yaml`): the api and web processes declare `serve` (`npm run build:be` then `node dist/apps/api/src/main.js`; `npm run build:fe` then `npm run start:web`), and the web gets `PORT`.
+## Unreleased (train 190, lane hosts)
+
+- Added (`application-stacks.schema.yaml` `$defs.environment.hostServices`): the host services an environment needs (`needs: {starci.embed: [local, sv-hk-1]}`, an optional landing `machine`), judged by the starci CLI against the owner host's config.yaml (contexts/harness/host.md "What an app needs"); the render ignores it. Spec: `src/hfs-stacks-host-services-schema.spec.mts`.
+- Changed: the shared embeddings opt-in describes `qwen3-embedding:4b` at 2560 dimensions.
 
 ## 6.17.4 - 2026-11-21
 

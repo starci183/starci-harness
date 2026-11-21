@@ -12,11 +12,16 @@ import { headline } from "../../shared/exec.js"
 import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { runHfs } from "../app/hfs.js"
+import { registerMachine } from "./machines.js"
 import { EXECUTE, OWNER, planResult, scopeOf, SERVER_ID } from "./shared.js"
 import type { VpsData } from "./shared.js"
 
 /**
- * `starci vps add <id> --host <ip> --os <os> --provider <name> [...] [--execute]`: adds a server to the inventory. Its key is never a
+ * `starci vps add <name> --host <addr> --user <user> [--port] [--ssh-key <path>] --roles <r1,r2>`: registers a machine in this host's config.yaml
+ * (never pushed, contexts/harness/host.md "Machines"), with no question asked; `--import <file>` (or the inventory file of the same name, when
+ * it exists and no --host is given) takes its address from an ops/vps/servers/<id>.yaml and keeps its sealed login.
+ *
+ * `starci vps add <id> --host <ip> --os <os> --provider <name> [...] [--execute]` (no --roles): adds a server to the managed inventory. Its key is never a
  * password: either the owner pastes the login's private key at a masked prompt (or redirects it on stdin), or `--generate-key`
  * makes one here and prints only its public half, which the owner adds to the login's authorized_keys at the provider (the one
  * owner step for a server that only allows password login). The host keys come from ssh-keyscan and are pinned only after the
@@ -25,15 +30,18 @@ import type { VpsData } from "./shared.js"
  */
 export const vpsAddVerb = defineVerb({
     path: ["vps", "add"],
-    summary: "add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
+    summary: "with --roles: register a machine in this host's config.yaml (never pushed) with its address, login user, port, ssh key path and roles (ops/host-roles.yaml: app-host, starci, monitor, edge, dev), no question asked, --import <ops/vps/servers/<id>.yaml> (or the inventory file of the same name) taking its address and sealed login; without --roles: add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-add@1",
     flags: {
         id: SERVER_ID,
-        host: { kind: "string", summary: "the server's IP address or DNS name", required: true },
-        os: { kind: "string", summary: "its /etc/os-release ID (ubuntu, debian, almalinux, rocky, centos, rhel)", required: true },
-        provider: { kind: "string", summary: "who rents it out (a free name)", required: true },
+        host: { kind: "string", summary: "the server's IP address or DNS name" },
+        roles: { kind: "string", summary: "the roles it hosts, a comma list (app-host,starci,monitor,edge; +starci.sonar or -starci.embed toggles one service): registers it in config.yaml" },
+        "ssh-key": { kind: "string", summary: "with --roles: the private key file ssh logs in with (config.yaml keeps the path, never the key)" },
+        import: { kind: "string", summary: "with --roles: an ops/vps/servers/<id>.yaml to take the address, port and sealed login from" },
+        os: { kind: "string", summary: "its /etc/os-release ID (ubuntu, debian, almalinux, rocky, centos, rhel); the inventory enrollment needs it" },
+        provider: { kind: "string", summary: "who rents it out (a free name); the inventory enrollment needs it" },
         port: { kind: "string", summary: "its ssh port (default 22)" },
         user: { kind: "string", summary: "the login the key opens (default root; bootstrap moves it to the ops user)" },
         "panel-kind": { kind: "string", summary: "its hosting panel: none (default), cpanel, directadmin, cyberpanel, aapanel, plesk, other" },
@@ -47,6 +55,11 @@ export const vpsAddVerb = defineVerb({
         execute: EXECUTE,
     },
     run: async (context, flags): Promise<VerbResult<VpsData>> => {
+        if (flags.roles !== undefined || flags.import !== undefined || flags["ssh-key"] !== undefined) {
+            const registered = registerMachine({ name: flags.id, roles: flags.roles, import: flags.import, host: flags.host, user: flags.user, port: flags.port, "ssh-key": flags["ssh-key"], os: flags.os })
+            return { data: registered.data, message: registered.lines.join("\n") }
+        }
+        if (flags.host === undefined || flags.os === undefined || flags.provider === undefined) throw new UsageError("starci vps add <name> takes --roles <r1,r2> to register a machine (with --host and --user), or --host, --os and --provider to enroll a managed server")
         const opsDir = locateOps()
         const policy = loadVpsPolicy(opsDir)
         const dir = inventoryDir(policy, opsDir)

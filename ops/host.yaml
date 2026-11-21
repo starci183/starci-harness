@@ -1,7 +1,8 @@
 # The services a host runs for the harness, read by cli/src/harness/host.ts (`starci host status|up|install|uninstall`).
 # An argv runs without a shell. Tokens: {starci} is this CLI (node and its main.js), {node} this Node, {orca} the Orca CLI
 # (STARCI_ORCA_BIN honoured), {state} the state base, {shared-state} the state base shared by every checkout of this machine (the main checkout's `.runtime`, or STARCI_LOCAL_ROOT), {runtime} the runtime root, {env:NAME} an environment variable.
-# A check is up when it exits 0 and, with `json`, when the value at `path` of its json output equals `equals`.
+# A check is up when it exits 0 and, with `json`, when the value at `path` of its json output equals `equals` (or, with `includes`, when the
+# values at `path`, a `*` segment mapping over a list, hold it).
 # `install` registers a service to run by itself (kind schedule: a scheduled task named StarCi ...), or nothing (kind none).
 # A check is an `argv` or an `http` URL (the declared status, default 200). `start` may add `env` (its values expand the tokens) and `secrets` (secret-loader keys, never argv);
 # `stack` names the compose project a service is a container of (`host up|status|down --stack <name>` select it).
@@ -200,14 +201,15 @@ services:
   # (ops/host/stack/embeddings.yaml). `embeddings-gate` and `embeddings-tunnel` are up when they refuse a call without the token,
   # so a gate that answered openly would read down.
   - id: embeddings
-    summary: the native Ollama of the host on 127.0.0.1:11434 (its own install, on the GPU), its model list naming qwen3-embedding:8b
+    summary: the native Ollama of the host on 127.0.0.1:11434 (its own install, on the GPU), its model list holding qwen3-embedding:4b, the model ops/host-roles.yaml pins for starci.embed (8b stays pulled until the apps move to 4b)
     platform: win32
     check:
       http:
         url: http://127.0.0.1:11434/api/tags
+      # Any position: Ollama lists the most recently pulled model first.
       json:
-        path: models.0.name
-        equals: qwen3-embedding:8b
+        path: models.*.name
+        includes: qwen3-embedding:4b
     start:
       argv: ["{env:LOCALAPPDATA}/Programs/Ollama/ollama app.exe"]
       detach: true

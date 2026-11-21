@@ -109,6 +109,7 @@ import { hostUninstallVerb } from "./core/host/uninstall.js"
 import { vpsDoctorVerb, vpsListVerb } from "./core/vps/read.js"
 import { vpsBootstrapVerb, vpsSwarmVerb, vpsUiVerb } from "./core/vps/act.js"
 import { vpsAddVerb, vpsGrantVerb, vpsRevokeVerb } from "./core/vps/access.js"
+import { vpsRemoveVerb, vpsSetVerb, vpsShowVerb } from "./core/vps/machines.js"
 import { vpsCloudflareVerb, vpsDomainVerb, vpsEdgeVerb } from "./core/vps/domain.js"
 import { vpsMonitorVerb } from "./core/vps/monitor.js"
 import { vpsServiceVerb } from "./core/vps/service.js"
@@ -263,6 +264,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     vpsListVerb,
     vpsDoctorVerb,
     vpsAddVerb,
+    vpsShowVerb,
+    vpsSetVerb,
+    vpsRemoveVerb,
     vpsBootstrapVerb,
     vpsSwarmVerb,
     vpsUiVerb,

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { headline } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
@@ -12,8 +15,23 @@ import type { SealedStore } from "./sealed.js"
 import { openSession } from "./ssh.js"
 import type { SshSession } from "./ssh.js"
 
-/** Opens a session to a server with its sealed login; `as` logs in as another user with the same key (bootstrap's check). */
+/** The user's own known_hosts (`~/.ssh/known_hosts`), which pins a config.yaml machine's host keys; refused when absent. */
+export const userKnownHosts = (): string => {
+    const file = join(homedir(), ".ssh", "known_hosts")
+    if (!existsSync(file)) throw new Refusal("VPS_SSH_KNOWN_HOSTS", `${file} does not exist: log in once with ssh to pin the machine's host key (StrictHostKeyChecking stays on)`)
+    return readFileSync(file, "utf8")
+}
+
+/**
+ * Opens a session to a server with its sealed login; `as` logs in as another user with the same key (bootstrap's check). A machine of
+ * config.yaml that is no inventory file logs in with its own key file as its user, its host key pinned by the user's known_hosts.
+ */
 export const sessionFor = async (policy: VpsPolicy, server: ManagedServer, store: SealedStore, as?: string): Promise<SshSession> => {
+    if (server.login !== undefined) {
+        const { keyFile, user } = server.login
+        if (!existsSync(keyFile)) throw new Refusal("VPS_SSH_KEY", `the key file of ${server.id} (config.yaml sshKey) does not exist: ${keyFile}`)
+        return openSession({ host: server.host, port: server.sshPort, user: as ?? user, privateKey: readFileSync(keyFile, "utf8"), knownHosts: userKnownHosts(), connectTimeoutSeconds: policy.ssh.connectTimeoutSeconds })
+    }
     const sealed = store.open(server.sealedFile)
     return openSession({
         host: server.host,
