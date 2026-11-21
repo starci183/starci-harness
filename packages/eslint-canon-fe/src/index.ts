@@ -27,6 +27,7 @@ import { recommended as fileLayoutRecommended, rules as fileLayoutRules } from "
 import { recommended as formattingRecommended, rules as formattingRules } from "./formatting.ts"
 import { recommended as grammarShimRecommended, rules as grammarShimRules } from "./grammar-shim.ts"
 import { recommended as hooksFolderRecommended, rules as hooksFolderRules } from "./hooks-folder.ts"
+import { recommended as swrFamilyRecommended, rules as swrFamilyRules } from "./swr-family.ts"
 import { recommended as hygieneRecommended, rules as hygieneRules } from "./hygiene.ts"
 import { recommended as landmarkRecommended, rules as landmarkRules } from "./landmark.ts"
 import { recommended as listsRecommended, rules as listsRules } from "./lists.ts"
@@ -95,6 +96,7 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "formatting", rules: formattingRules, recommended: formattingRecommended },
   { law: "grammar-shim", rules: exemptFragmentRules(grammarShimRules), recommended: grammarShimRecommended },
   { law: "hooks-folder", rules: hooksFolderRules, recommended: hooksFolderRecommended },
+  { law: "swr-family", rules: swrFamilyRules, recommended: swrFamilyRecommended },
   { law: "hygiene", rules: hygieneRules, recommended: hygieneRecommended },
   { law: "landmark", rules: exemptFragmentRules(landmarkRules), recommended: landmarkRecommended },
   { law: "lists", rules: exemptFragmentRules(listsRules), recommended: listsRecommended },
@@ -362,44 +364,6 @@ ruleDeclarations.push(...Object.keys(functionBudgetRules).map((name) => ({ law: 
 Object.assign(ruleOwners, Object.fromEntries(Object.keys(functionBudgetRules).map((name) => [name, "function-budget"])))
 Object.assign(rules, functionBudgetRules)
 Object.assign(recommended, functionBudgetRecommended)
-// A14 modules are also forwarded by the existing hooks-folder and transport contributions so
-// source-only catalog discovery can find them. The appended registration gives each module
-// ownership of those same rule instances without declaring either rule twice.
-import { recommended as swrFamilyRecommended, rules as swrFamilyRules } from "./swr-family.ts"
-
-const A14_CONTRIBUTIONS: Contribution[] = [
-  { law: "swr-family", rules: swrFamilyRules, recommended: swrFamilyRecommended },
-]
-
-for (const addition of A14_CONTRIBUTIONS) {
-  const names = new Set(Object.keys(addition.rules))
-  for (const contribution of CONTRIBUTIONS) {
-    for (const name of names) {
-      if (name in contribution.rules && contribution.rules[name] !== addition.rules[name]) {
-        throw new Error("A14 registration: two laws publish different rules named " + name)
-      }
-    }
-    // Replace contribution views only; the law module's exported maps retain their forwarding
-    // entries for the source-only catalog reader.
-    contribution.rules = Object.fromEntries(Object.entries(contribution.rules).filter(([name]) => !names.has(name)))
-    contribution.recommended = Object.fromEntries(
-      Object.entries(contribution.recommended).filter(([name]) => !names.has(name.replace(/^starci-fe\//, ""))),
-    )
-  }
-  CONTRIBUTIONS.push(addition)
-  lawOwners.push(addition.law)
-  for (const name of names) {
-    const declarations = ruleDeclarations.filter((entry) => entry.name === name)
-    if (declarations.length > 1) throw new Error("A14 registration: duplicate declarations for " + name)
-    const [declared] = declarations
-    if (declared !== undefined) declared.law = addition.law
-    else ruleDeclarations.push({ law: addition.law, name })
-    ruleOwners[name] = addition.law
-  }
-  Object.assign(rules, addition.rules)
-  Object.assign(recommended, addition.recommended)
-}
-
 // The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"

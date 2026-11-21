@@ -87,7 +87,7 @@ it, MEASURE-4).
 
 ## Rules
 COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, BOUNDARY-6, SURFACE-2. Lint:
-`starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
+`starci-fe/no-app-surface-paint`, `starci-grammar/no-raised-surface-in-surface` (R340),
 `surface-card-kind` (R355), `card-is-object` (COLLECTION-2), `surface-card-list`, `rows-in-card` (COLLECTION-4),
 `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354), `starci-grammar/surface-in-surface` (a list of rows inside
 the card body is a `Section kind="list"`, BOUNDARY-7), `starci-grammar/gap-proximity`. Proof: TASTE-7.

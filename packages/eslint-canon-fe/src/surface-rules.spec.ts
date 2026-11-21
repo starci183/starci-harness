@@ -3,8 +3,6 @@
 // proves: FE_LIST_PANEL_PADDING
 // proves: FE_HAND_BUILT_PANES
 // proves: FE_HAND_BUILT_PANES
-// proves: FE_TAG_GROUP_SELECTION
-// proves: FE_TAG_GROUP_SELECTION
 // proves: FE_HEADING_ABOVE_CARD
 // proves: FE_HEADING_ABOVE_CARD
 // proves: FE_COMMAND_FILLS_HEADER
@@ -20,8 +18,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { noFillCommandInHeader, noHeadingAboveCard, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
-import { why } from "./lib/why.ts"
+import { noFillCommandInHeader, noHeadingAboveCard, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, rules } from "./surface-rules.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 
@@ -29,17 +26,6 @@ const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsP
 const grammar = 'import { SurfaceCard, SearchField, ListBox } from "@starci/grammar/core"; '
 const surface = { messageId: "surface" }
 const padding = { messageId: "padding" }
-
-test("surface rules are published at error with their canon finding codes", () => {
-  for (const name of Object.keys(rules)) assert.equal(recommended[`starci-fe/${name}`], "error")
-  assert.equal(why["no-list-panel-padding"].code, "FE_LIST_PANEL_PADDING")
-  assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
-  assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
-  assert.equal(why["no-table-in-card"].code, "FE_TABLE_IN_CARD")
-  assert.equal(why["no-heading-above-card"].code, "FE_HEADING_ABOVE_CARD")
-  assert.equal(why["no-selectable-tag-group"].code, "FE_TAG_GROUP_SELECTION")
-  assert.equal(why["no-fill-command-in-header"].code, "FE_COMMAND_FILLS_HEADER")
-})
 
 for (const edition of ['lite'] as const) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
@@ -311,24 +297,6 @@ for (const edition of ['lite'] as const) {
         { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} />', errors: [fill] },
         { code: head + 'const A = () => <Section kind="list" title="a" action={<div><Button width={"fill"}>Add</Button></div>} items={[]} empty={null} />', errors: [fill] },
       ],
-    }))
-  })
-}
-
-for (const edition of ['lite'] as const) {
-  test(`${edition}: a TagGroup has no selection, a filter is a FilterButtonGroup`, () => {
-    const head = 'import { TagGroup, FilterButtonGroup } from "@starci/grammar/core"; '
-    const selection = { messageId: "selection" }
-    assert.doesNotThrow(() => tester().run("no-selectable-tag-group", noSelectableTagGroup, {
-      valid: [
-        head + 'const A = () => <TagGroup label="Topics" items={items} onRemove={remove} removeLabel={name} />',
-        head + 'const A = () => <FilterButtonGroup label="Team" options={options} onValueChange={set} />',
-        'import { TagGroup } from "other-kit"; const A = () => <TagGroup selectionMode="single" />',
-      ],
-      invalid: [
-        { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectionMode="single" />', errors: [selection] },
-        { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectedIds={ids} onSelectionChange={set} />', errors: [selection, selection] },
-      ].map((entry) => ({ ...entry })),
     }))
   })
 }

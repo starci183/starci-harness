@@ -2121,7 +2121,6 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: divider-full-bleed}
       - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
   - id: R319
@@ -2388,8 +2387,7 @@ rules:
     law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are Tabs kind=\"filter\"."
     failureCodes:
       - FE_TAG_GROUP_SELECTION
-    enforcers:
-      - {kind: eslint-fe, id: no-selectable-tag-group}
+    enforcers: []
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD

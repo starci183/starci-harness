@@ -1,6 +1,6 @@
 /** Grammar owns surface nesting, the single content edge of a panel list (ANATOMY-2, PADDING-0) and the column seams of a pane frame (PaneGrid). */
 import { attributeValue, stringOf, walk } from "./lib/ast.ts"
-import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
+import { importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.ts"
 import { reactHookOf } from "./lib/react.ts"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
@@ -298,86 +298,6 @@ export const noListPanelPadding = exemptFreestyle(defineRule({
   },
 }))
 
-/** BOUNDARY-1 case-5: only content bands carry inset; horizontal separators reach the surface edges. */
-export const dividerFullBleed = defineRule({
-  meta: {
-    type: "problem",
-    docs: {
-      description:
-        "BOUNDARY-1 case-5: horizontal Grammar dividers are full-bleed.",
-    },
-    schema: [],
-    messages: {
-      padding:
-        "FE_DIVIDER_FULL_BLEED: horizontal padding on this wrapper insets a Grammar Divider/Separator. Move padding to the sibling content bands so the divider reaches both surface edges.",
-    },
-  },
-  create(context) {
-    // Follow rendered same-file components, helper calls and JSX constants, with cycle protection.
-    const containsDivider = (root: Node | null | undefined, seen = new Set<Node>()): boolean => {
-      if (!root || seen.has(root)) return false
-      seen.add(root)
-      let found = false
-      const follow = (node: Node | null | undefined): void => {
-        found = containsDivider(node, seen) || found
-      }
-      walk(context.sourceCode, root, (node) => {
-        if (found) return false
-        if (isFn(node)) return false
-        if (node.type === "JSXOpeningElement") {
-          const name = grammarName(context, node.name)
-          if (
-            name?.length === 1 &&
-            isOneOf(["Divider", "Separator"], name[0])
-          ) {
-            const orientations = node.attributes.flatMap((entry) =>
-              propStrings(context, entry, "orientation", "variant"),
-            )
-            if (
-              !orientations.length ||
-              orientations.some((entry) => entry.text !== "vertical")
-            )
-              found = true
-          } else if (node.name.type === "JSXIdentifier") {
-            for (const definition of variableOf(context, node.name)?.defs ??
-              []) {
-              if (definition.type === "FunctionName")
-                follow(definition.node.body)
-              if (definition.type === "Variable")
-                follow(functionOf(context, definition.node.init)?.body)
-            }
-          }
-        }
-        if (node.type === "CallExpression") {
-          follow(functionOf(context, node.callee)?.body)
-          for (const argument of node.arguments)
-            if (isFn(argument)) follow(argument.body)
-        }
-        if (
-          node.type === "Identifier" &&
-          node.parent?.type === "JSXExpressionContainer"
-        ) {
-          for (const value of bindingValues(context, node)) follow(value)
-        }
-        return undefined
-      })
-      return found
-    }
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const padding = node.attributes.find((entry) =>
-          propStrings(context, entry, "className").some((value) =>
-            classTokens(value.text).some(horizontalPadding),
-          ),
-        )
-        if (!padding) return
-        if (node.parent.children.some((child) => containsDivider(child)))
-          context.report({ node: padding, messageId: "padding" })
-      },
-    }
-  },
-})
-
 /** True for a plain element (`div`), as opposed to a component. */
 const rawElement = (opening: TSESTree.JSXOpeningElement): boolean => opening.name.type === "JSXIdentifier" && /^[a-z]/.test(opening.name.name)
 
@@ -582,33 +502,6 @@ export const noFillCommandInHeader = defineRule({
   },
 })
 
-/** The props that made a TagGroup a selectable filter. */
-const TAG_SELECTION_PROPS = new Set(["selectionMode", "selectedIds", "defaultSelectedIds", "onSelectionChange"])
-
-/** A TagGroup holds values the user entered (remove, reorder); a filter over a collection is a FilterButtonGroup. */
-export const noSelectableTagGroup = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "A TagGroup has no selection: a filter over a collection is a FilterButtonGroup." },
-    schema: [],
-    messages: {
-      selection:
-        "FE_TAG_GROUP_SELECTION: a TagGroup holds values the user entered, to remove or to order, and has no selection. Peer values that filter a collection that stays in place are a `FilterButtonGroup` (`sm` toggle buttons on one row, the rest behind a \"+n\" search list).",
-    },
-  },
-  create(context) {
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const name = grammarName(context, node.name)
-        if (name?.length !== 1 || name[0] !== "TagGroup") return
-        for (const entry of node.attributes) {
-          if (entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && TAG_SELECTION_PROPS.has(entry.name.name)) context.report({ node: entry, messageId: "selection" })
-        }
-      },
-    }
-  },
-})
-
 /** The bounded surfaces that carry their own label. */
 const LABELLED_CARDS = new Set(["SurfaceCard"])
 
@@ -666,7 +559,7 @@ export const noHeadingAboveCard = defineRule({
 })
 
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

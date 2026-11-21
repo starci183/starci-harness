@@ -120,8 +120,7 @@ Padding and gap together:
   children closer than the container's siblings); a card or tile grid is closer still, its siblings 8 apart under a heading
   12 above.
 - **R2 Touching panes take 0 and a divider; floating cards take the grid step of their kind.** The two never mix.
-- **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
-  `starci-fe/divider-full-bleed`.
+- **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider.
 
 Margin:
 

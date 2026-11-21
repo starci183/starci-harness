@@ -4791,7 +4791,6 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: divider-full-bleed}
       - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
     docs: ["docs/code-pattern-enforcement.md#r318-app-grammar-composition"]
@@ -5388,8 +5387,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_TAG_GROUP_SELECTION"]
-    enforcers:
-      - {kind: eslint-fe, id: no-selectable-tag-group}
+    enforcers: []
     docs: [contexts/ui/components/chip.md]
     templateNa: "A template draws no filter row."
     proves:

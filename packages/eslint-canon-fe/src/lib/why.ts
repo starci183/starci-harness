@@ -29,11 +29,6 @@ export const why = {
     en: "`<file>` targets a Grammar internal class from application styles.",
     fix: "Use the Grammar public props and slots; keep internal selectors inside Grammar.",
   },
-  "divider-full-bleed": {
-    code: "FE_DIVIDER_FULL_BLEED",
-    en: "`<file>` insets a horizontal Grammar divider with wrapper padding.",
-    fix: "Move horizontal padding to the sibling content bands so the divider reaches both surface edges.",
-  },
   "no-spacing-utility": {
     code: "FE_SPACING_UTILITY",
     en: "`<file>` writes a padding, margin, gap or space utility (`<what>`): a distance the Grammar owns.",
@@ -48,11 +43,6 @@ export const why = {
     code: "FE_COMMAND_FILLS_HEADER",
     en: "`<file>` stretches a command in a page or card header (`PageHeader actions`, `labelEnd`, `Section action`) with `width=\"fill\"`.",
     fix: "A page or pane command hugs its label and sits at the end of its header row: drop `width`. `width=\"fill\"` is for a form submit, an auth panel and a phone action bar.",
-  },
-  "no-selectable-tag-group": {
-    code: "FE_TAG_GROUP_SELECTION",
-    en: "`<file>` gives a TagGroup a selection (`selectionMode`, `selectedIds`, `onSelectionChange`) to use it as a filter.",
-    fix: "A TagGroup holds values the user entered; peer values that filter a collection are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list).",
   },
   "no-heading-above-card": {
     code: "FE_HEADING_ABOVE_CARD",
