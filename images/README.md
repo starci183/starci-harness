@@ -56,5 +56,4 @@ A service of an app that customises a forked service builds it from its own imag
 `.starcistacks/images/<service>/Dockerfile`, whose final stage is `FROM` the fork's published reference
 (`ghcr.io/starci183/<image>:<tag>@sha256:...`) and adds only the app's own files. The app runs that one image in dev
 and production and bind-mounts no code, plugins or scripts into it
-([contexts/project/stacks.md](../contexts/project/stacks.md) PROJECT-STACKS-11, lint R374, whose fork list is
-`packages/hfs/runtime/knowledge/hfs/fork-images.yaml`, held equal to this `sources.json`).
+([contexts/project/stacks.md](../contexts/project/stacks.md) PROJECT-STACKS-11, lint R374; that the final stage is the fork is held by review).

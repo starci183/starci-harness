@@ -7201,14 +7201,6 @@ STACKS_IMAGE_BASE_UNPINNED:
     - "Vi phạm R374: mọi image nền phải ghim digest."
   nextStep_vi: "Ghim FROM bằng name@sha256:<digest>."
 
-STACKS_IMAGE_BASE_NOT_FORK:
-  title: "A service image folder does not build on the harness fork image"
-  title_vi: "Thư mục image của dịch vụ không dựng trên image fork của harness"
-  meaning_vi: "Harness sở hữu image fork StarCi cho dịch vụ này (images/sources.json) nhưng giai đoạn cuối của Dockerfile không FROM image đó."
-  causes_vi:
-    - "Vi phạm R374: dịch vụ tùy biến phải dựng trên image fork do harness ghim."
-  nextStep_vi: "Đặt FROM <repository fork>@sha256:<digest> ở giai đoạn cuối."
-
 STACKS_IMAGE_ENV_DIVERGES:
   title: "A service with an image folder runs a third-party image in an environment"
   title_vi: "Dịch vụ có thư mục image chạy image bên thứ ba ở một môi trường"

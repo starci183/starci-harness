@@ -518,7 +518,7 @@ Rules learned from running apps on developer hosts; each holds in every app.
 A service the app customises (wrapper scripts, plugins, configuration code) is built from the app's own image folder
 `.starcistacks/images/<name>/` whose Dockerfile starts every `FROM` at a digest-pinned base; when the harness owns a StarCi
 fork image for that service ([images/README.md](../../images/README.md), `images/sources.json`) the final stage is `FROM` that
-fork image and the app only adds its own files. No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
+fork image and the app only adds its own files (held by review). No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
 volume, a secret or config grant, a bind under the data root (`${data}` or `STACK_DATA_DIR`), the Docker socket read-only and a
 read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
 production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
@@ -527,9 +527,8 @@ project's own or a variable image reference, never a literal upstream image besi
 Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
 differs between dev and production proves nothing about production.
 
-Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`, `STACKS_IMAGE_BASE_NOT_FORK`,
-`STACKS_IMAGE_ENV_DIVERGES`); the fork list is `runtime/knowledge/hfs/fork-images.yaml`, held equal to `images/sources.json` by
-`stacks-service-images.spec.mts`.
+Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`,
+`STACKS_IMAGE_ENV_DIVERGES`); the fork base of a service the harness owns an image for is held by review.
 
 ## PROJECT-STACKS-12 Seed data lives in the seed levels of the stack
 

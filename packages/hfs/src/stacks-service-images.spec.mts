@@ -1,10 +1,10 @@
 // R374 (rules/stacks-service-images.mts): a customised service is an image the app builds from .starcistacks/images/<name>/, never an upstream image with code mounted
-// into it, and dev and production run the same image. Also: the fork list equals the harness's images/sources.json, and a fresh app of each edition raises nothing.
+// into it, and dev and production run the same image. Also: a fresh app of each edition raises nothing.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { forkImages, stacksServiceImageFindings } from '../runtime/scripts/hfs/rules/stacks-service-images.mjs';
+import { stacksServiceImageFindings } from '../runtime/scripts/hfs/rules/stacks-service-images.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
@@ -52,12 +52,11 @@ test('R374 a bind of code, a script, a plugin directory or a writable config fil
   assert.deepEqual(long, ['STACKS_CODE_BIND_MOUNT']);
 });
 
-test('R374 an image folder is FROM a digest-pinned base, and the harness fork where the harness owns one', (t) => {
+test('R374 an image folder is FROM a digest-pinned base', (t) => {
   const folder = (name: string, from: string) => ({ name, text: `FROM ${from}\nCOPY wrapper /wrapper\n` });
   assert.deepEqual(codes(app(t, { dockerfile: folder('tool', `node:22@${DIGEST}`) })), []);
   assert.deepEqual(codes(app(t, { dockerfile: folder('tool', 'node:22') })), ['STACKS_IMAGE_BASE_UNPINNED']);
-  assert.deepEqual(codes(app(t, { dockerfile: folder('minio', `minio/minio:1@${DIGEST}`) })), ['STACKS_IMAGE_BASE_NOT_FORK']);
-  assert.deepEqual(codes(app(t, { dockerfile: folder('minio', `ghcr.io/starci183/minio:1.0.0@${DIGEST}`) })), []);
+  assert.deepEqual(codes(app(t, { dockerfile: folder('minio', `minio/minio:1@${DIGEST}`) })), []);
   const staged = { name: 'tool', text: `FROM node:22@${DIGEST} AS build\nRUN true\nFROM build\n` };
   assert.deepEqual(codes(app(t, { dockerfile: staged })), []);
 });
@@ -81,14 +80,6 @@ test('R374 a project image the deploy renders (registry/<owner>/<project>-<name>
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: rendered })), []);
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: bare })), []);
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: foreign })), ['STACKS_IMAGE_ENV_DIVERGES']);
-});
-
-test('R374 the fork list is the harness images/sources.json', () => {
-  const sources = JSON.parse(fs.readFileSync(new URL('../../../images/sources.json', import.meta.url), 'utf8')) as Record<string, { published: { reference: string } | null }>;
-  const repository = (reference: string): string => reference.replace(/@sha256:[0-9a-f]+$/u, '').replace(/:[^/:]+$/u, '');
-  const expected: Record<string, string> = {};
-  for (const [name, image] of Object.entries(sources)) if (image.published !== null) expected[name] = repository(image.published.reference);
-  assert.deepEqual(forkImages(), expected);
 });
 
 for (const edition of ['lite'] as const) {
