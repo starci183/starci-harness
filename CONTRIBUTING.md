@@ -97,9 +97,10 @@ harness for that concept, then:
 Appended cases contradict silently: a reader takes the first sentence and never meets the second, and the tree grows
 without becoming truer. Held by review.
 
-### CONTRIB-7 Feedback hardens
+### CONTRIB-7 Feedback is fixed at its root
 
-Owner feedback and owner decisions become the rule rewritten in its owning file, a check, or a code change. There is
+Owner feedback and owner decisions become a code change that removes the cause, or the rule rewritten in its owning
+file. Never a check written for that one case ([CONTRIB-10](#contrib-10-general-checks-only)). There is
 one rule book, `contexts/` and this file: a decision is written once, as the rule that holds now, and never logged a
 second time, attributed or dated. A rule cites other rules by their ids, never a ruling, a decision log or a date, and a
 CHANGELOG entry says what changed, never which ruling asked for it. A question that awaits the owner is one entry of
@@ -117,9 +118,19 @@ code or remove the claim.
 `ops/` and `policy/` hold declarative YAML (and the op files' front matter) the CLI validates; a key no code reads is
 deleted. Numbers live there once and are never repeated in prose.
 
-### CONTRIB-10 Gates before rules
+### CONTRIB-10 General checks only
 
-Prefer a check that refuses the mistake over a sentence that forbids it; a rule with no gate says it is held by review.
+Checks are general. A one-off mistake gets no check: fix its root cause (an
+API or generator change that removes the choice, or the fix in the owning component) or rewrite the general rule in its
+one place. A new check, lint rule, finding code or refusal needs all of:
+
+1. a broad bug class, stated without naming one app, file, component or literal;
+2. evidence that it recurred in more than one place or app;
+3. no existing general check that can be widened to cover it;
+4. the owner's sign-off, recorded in the commit.
+
+Widen an existing check before adding a code. A rule with no gate is held by review, and that is a complete state, not a
+debt.
 
 ## Code rules
 

@@ -145,9 +145,9 @@ No gate judges an app's colours; a family's defaults are proved in the package's
 
 ## Where feedback lands
 
-Feedback hardens, it never accumulates. In order of preference it becomes an API that removes the choice
-(grammar package), a DNA entry or a lint rule, a stricter row in the Choose table that owns the decision, or a
-stricter sentence in the one section that owns the concept: the contract role, the common section or the
+Feedback is fixed at its root and never accumulates ([contexts/README.md](../README.md#feedback-is-fixed-at-its-root)).
+Here it lands as an API that removes the choice (grammar package), a stricter row in the Choose table that owns the
+decision, or a stricter sentence in the one section that owns the concept: the contract role, the common section or the
 grammar's role row. It is never a case note appended beside a rule.
 
 ## Grammar lint
