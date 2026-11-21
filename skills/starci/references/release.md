@@ -51,6 +51,8 @@ starci release cut --execute
 
 Without `--execute` it is a dry run. Tags `v<version>` of the package (`--package <p>` when there are several) on a commit already on the remote
 main, with its finished CHANGELOG section as the notes, and pushes the tag alone. It runs no suite.
+`starci release cut --from <sha> --execute` cuts that fixed sha in its own temporary worktree, removed after the cut: prod work
+never moves the dev checkout and never waits for dev ([contexts/project/cicd.md](../../../contexts/project/cicd.md) "Dev and prod").
 
 ## 5. Publish
 

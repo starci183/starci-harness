@@ -1,12 +1,14 @@
 // build-args.mts - `starci app stack build-args --app <app>`: the public build values of one image (literal values plus the declared keys
 // of a sealed member). They are public by design (the browser receives them), so they are printed as KEY=VALUE; `data` carries key names only.
 // In GitHub Actions each sealed value is masked first and the lines are appended to $GITHUB_OUTPUT as a multi-line `args` output.
+// An image that declares `runtimePublicEnv: true` prints no NEXT_PUBLIC_* key: those reach the service at runtime (render.mts), so one image serves every environment.
 import fs from 'node:fs';
 import type { BuildArgsBlock, BuildArgsSealed, DeployConfig } from './config.mjs';
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import { openMember } from './sealed.mjs';
+import { buildTimeArgs } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 
 const OUTPUT_DELIMITER = 'BUILD_ARGS_OUTPUT_END';
 const ONE_LINE = /^[^\r\n]+$/u;
@@ -14,7 +16,7 @@ const ONE_LINE = /^[^\r\n]+$/u;
 function imageOf(config: DeployConfig, app: string | undefined): { service: string; buildArgs: BuildArgsBlock } {
   const found = Object.entries(config.images).find(([, entry]) => entry.app === app);
   if (!found) throw refusal('STACK_APP_UNKNOWN', `no image of the deploy block builds the app ${app}`);
-  return { service: found[0], buildArgs: found[1].buildArgs };
+  return { service: found[0], buildArgs: buildTimeArgs(found[1]) };
 }
 
 function checkedValue(key: string, value: unknown): string {

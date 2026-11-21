@@ -868,7 +868,7 @@ serve, their auth and their limits are [contexts/harness/host.md](../contexts/ha
 reports it and `host down --stack starci` stops it; a stack no service declares is `HOST_UNKNOWN_STACK`. The services are
 each behind `docker`. A check is an `argv` or an `http` URL (a status, and with `json` a body value): `sonar` is up when
 `GET 127.0.0.1:9010/api/system/status` says `UP`, `sonar-tunnel` when `https://sonar.starci.org/api/server/version` answers 200,
-`embeddings` when `127.0.0.1:11434/api/tags` names `qwen3-embedding:8b`, `embeddings-gate` and `embeddings-tunnel` when
+`embeddings` when `127.0.0.1:11434/api/tags` lists `qwen3-embedding:4b` (a `json.includes` over `models.*.name`, any position), `embeddings-gate` and `embeddings-tunnel` when
 `GET /v1/models` without the token answers 401 on `127.0.0.1:11435` and on `https://embed.starci.org`, `sonar-postgres` when its container is healthy, `sonar-bootstrap` when its one-shot container exited 0, `local-registry` when
 `127.0.0.1:4873/-/ping` answers. `host up` runs `docker compose up -d --no-recreate <service>` only for a service whose check is
 down, so the running `starci` containers are adopted (same project name, container names and named volumes) and never
@@ -879,6 +879,23 @@ left alone); it never runs `compose down` and removes no container or volume, an
 `CLOUDFLARE_TUNNEL_TOKEN`, `EMBEDDINGS_API_KEY`, `HOST_SERVICES_TUNNEL_TOKEN`, all in policy/security.yaml `secretKeys`) are resolved by the loader below into the environment of the
 one compose process, never argv, a file, output or evidence; an unset one is `HOST_SECRET_MISSING`, naming the key. These
 services register no schedule: Docker's `restart: unless-stopped` brings the containers back with Docker Desktop. Never `down -v`.
+
+### Roles and machines
+
+`starci host up|status|doctor --host <name>` work on a machine of this host's config.yaml (`<shared state>/config.yaml`, never pushed,
+written by `starci vps add|set|remove`; `local` always there) and the union of the services its roles turn on
+([ops/host-roles.yaml](../ops/host-roles.yaml): `app-host`, `starci`, `monitor`, `edge`, `dev`; `cli/src/harness/host-roles.ts`,
+`machines.ts`, `host-machine.ts`, `core/host/machine.ts`). `status` judges each one running, adopted (found by its image under another
+name), partial, missing, unsupported or unbuilt, with its drift, and lists in `--json` `data.endpoints` every served model's endpoints in
+router order (local first). `up` is a dry run that observes the machine; `--execute` adopts (recorded, never redeployed or restarted),
+deploys only what is missing through its deployer (`host up` of ops/host.yaml here, `vps service|monitor|ui|edge up` on a server, a
+host-compose adapter of `harness/host-compose.ts`), waits for its health and rolls it back when it never turns healthy (`--no-rollback`
+keeps it), under a local lock and a lock on the server (`HOST_BUSY`); no app stack is touched. `doctor` makes one real call per service and
+compares the embed vectors of every machine serving `starci.embed` (`HOST_EMBED_MISMATCH`). Codes: `HOST_MACHINE_UNKNOWN`,
+`HOST_MACHINE_EXISTS`, `HOST_MACHINE_LOCAL`, `HOST_ROLE_UNKNOWN`, `HOST_ROLES_EMPTY`, `HOST_SERVICE_UNKNOWN`, `HOST_SERVICE_UNBUILT`,
+`HOST_UNREACHABLE`, `HOST_BUSY`, `HOST_EMBED_MISMATCH`, `HOST_IMPORT_INVALID`, `HOST_SSH_KEY_MISSING`, `MACHINES_INVALID`. An app
+environment's `hostServices` (contexts/harness/host.md "What an app needs") is judged before `app check --env prod` and `app stack deploy`:
+`HOST_SERVICE_MISSING`, `HOST_ROLE_MISSING`, `HOST_MACHINE_UNKNOWN`, `HOST_NEEDS_INVALID`; a host with no config.yaml does not judge.
 
 ### Host secrets
 

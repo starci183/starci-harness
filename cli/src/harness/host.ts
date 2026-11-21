@@ -29,7 +29,8 @@ const checkSchema = z
     .strictObject({
         argv: argvSchema.optional(),
         http: z.strictObject({ url: z.url(), status: z.number().int().min(100).max(599).default(200) }).optional(),
-        json: z.strictObject({ path: z.string().min(1), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]) }).optional(),
+        // `equals`: the value at `path` is this one; `includes`: the values at `path` (a `*` segment maps over a list) hold this one.
+        json: z.union([z.strictObject({ path: z.string().min(1), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]) }), z.strictObject({ path: z.string().min(1), includes: z.union([z.string(), z.number(), z.boolean()]) })]).optional(),
     })
     .refine((check) => (check.argv === undefined) !== (check.http === undefined), "a check names exactly one of argv and http")
 
@@ -205,10 +206,15 @@ export interface Probe {
     readonly evidence: string
 }
 
-const valueAt = (value: unknown, path: string): unknown =>
-    path.split(".").reduce<unknown>((at, key) => (typeof at === "object" && at !== null && key in at ? (at as Record<string, unknown>)[key] : undefined), value)
+/** The value at a dotted path; a `*` segment maps over a list (`models.*.name` is every model's name). */
+export const valueAt = (value: unknown, path: string): unknown =>
+    path.split(".").reduce<unknown>((at, key) => {
+        if (key === "*") return Array.isArray(at) ? at : undefined
+        if (Array.isArray(at) && !/^\d+$/.test(key)) return at.map((item: unknown) => (typeof item === "object" && item !== null && key in item ? (item as Record<string, unknown>)[key] : undefined))
+        return typeof at === "object" && at !== null && key in at ? (at as Record<string, unknown>)[key] : undefined
+    }, value)
 
-/** Judges a check's output or body: up when it is not json-checked, else when the value at the json path equals the expected one. */
+/** Judges a check's output or body: up when it is not json-checked, else when the value at the json path equals (or, a list, includes) the expected one. */
 const judgeJson = (check: NonNullable<HostService["check"]>, text: string, what: string): Probe => {
     if (check.json === undefined) return { up: true, evidence: what }
     let parsed: unknown
@@ -218,7 +224,9 @@ const judgeJson = (check: NonNullable<HostService["check"]>, text: string, what:
         return { up: false, evidence: `${what}, but it is not json` }
     }
     const value = valueAt(parsed, check.json.path)
-    return { up: value === check.json.equals, evidence: `${check.json.path} = ${value === undefined ? "absent" : JSON.stringify(value)}` }
+    const shown = value === undefined ? "absent" : JSON.stringify(value)
+    if ("includes" in check.json) return { up: Array.isArray(value) && value.includes(check.json.includes), evidence: `${check.json.path} = ${shown}` }
+    return { up: value === check.json.equals, evidence: `${check.json.path} = ${shown}` }
 }
 
 /** An http check: one GET (no redirects followed), up when the status is the declared one and the json body, when named, matches. */

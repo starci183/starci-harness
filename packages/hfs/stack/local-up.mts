@@ -1,6 +1,7 @@
 // local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: the base port range against the machine's other projects (an overlap refuses before anything starts), host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
 // migrations with a receipt, the migration runners (seed commands of mode always), the seed levels and the loader of the pinned seed-standards with their receipts, the other seed commands, native app processes, readiness, the dev tunnel routes (PROJECT-STACKS-15), origins. Idempotent: what runs is kept, what changed is converged.
+// Native processes run built (their `serve` block: build, then the built artifact) unless `--watch` opts into their own watcher argv (local-run.mts ProcessMode).
 // `compose up --build` rebuilds an image whose build inputs changed (the db image, the storage image with its statics/) and is a cached no-op otherwise.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
@@ -16,8 +17,9 @@ import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
-import type { LocalDeps } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
+import type { LocalDeps, ProcessMode } from './local-run.mjs';
+import type { LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { launch } from './local-host.mjs';
 import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
@@ -34,6 +36,66 @@ export function migrationsDigest(repoRoot: string): string {
   try { names = fs.readdirSync(directory).filter((name) => name.endsWith('.sql')).sort(); } catch { return 'none'; }
   for (const name of names) hash.update(name).update(fs.readFileSync(path.join(directory, name)));
   return hash.digest('hex').slice(0, 16);
+}
+
+/** The route folder roots of a Next app, app-relative: `src/app` (the app template) or `app`. */
+const ROUTE_ROOTS = ['src/app', 'app'];
+
+/**
+ * The digest of a Next app's route folder tree: the sorted relative paths of every folder under its route root (`(entry)/sign-in`), names only, no contents, so
+ * reading it is one directory walk. null when the app has no route root.
+ */
+export function routeTreeDigest(appDir: string): string | null {
+  const root = ROUTE_ROOTS.map((name) => path.join(appDir, name)).find((candidate) => fs.existsSync(candidate));
+  if (root === undefined) return null;
+  const folders: string[] = [];
+  const walk = (dir: string, rel: string): void => {
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const child = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      folders.push(child);
+      walk(path.join(dir, entry.name), child);
+    }
+  };
+  walk(root, '');
+  return crypto.createHash('sha256').update(folders.sort().join('\n')).digest('hex').slice(0, 16);
+}
+
+/**
+ * Clears a front-end app's `.next` when its route folders moved since the last `up` (a renamed route group such as `(auth)` to `(entry)`): `next dev` keeps the
+ * compiled routes of the old tree in `.next` and goes on serving the groups that no longer exist. The check is the recorded digest of each app's route folder tree
+ * (routeTreeDigest), so an unchanged tree keeps its cache and its fast start; a tree with no digest yet (the first up that records one) clears it once, since an older
+ * `.next` cannot be trusted either. While a process of the environment still runs, its `next dev` holds `.next`: nothing is cleared and nothing recorded, so the next
+ * up after a `stack down` clears it.
+ */
+export async function clearMovedRoutes(ctx: StackContext, local: LocalConfig, deps: LocalDeps = {}): Promise<string[]> {
+  const appsDir = path.join(local.repoRoot, 'fe', 'apps');
+  let apps: string[] = [];
+  try { apps = fs.readdirSync(appsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort(); } catch { return []; }
+  const dir = stateOf(ctx, local);
+  const record = readRecord(dir);
+  const held = record.receipts.routes ?? {};
+  const moved = apps.flatMap((app) => {
+    const digest = routeTreeDigest(path.join(appsDir, app));
+    return digest === null || held[`fe/apps/${app}`] === digest ? [] : [{ app, digest }];
+  });
+  if (moved.length === 0) return [];
+  for (const [name, known] of Object.entries(record.processes)) {
+    if ((await ownedProcess(ctx, known, deps)).ours) return [`routes: the route folders of ${moved.map(({ app }) => app).join(', ')} moved, .next kept while process ${name} runs; run stack down and up again to clear it`];
+  }
+  const lines: string[] = [];
+  for (const { app, digest } of moved) {
+    const cache = path.join(appsDir, app, '.next');
+    const had = fs.existsSync(cache);
+    if (had) fs.rmSync(cache, { recursive: true, force: true });
+    held[`fe/apps/${app}`] = digest;
+    if (had) lines.push(`routes: fe/apps/${app} route folders changed since the last up; cleared its .next`);
+  }
+  record.receipts.routes = held;
+  writeRecord(dir, record);
+  return lines;
 }
 
 /** Creates the environment's own login role and database if absent and sets its password (psql in the db container, SQL on stdin, never argv). */
@@ -180,8 +242,22 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
   return out;
 }
 
-/** Starts each native process that is not already running. */
-async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps): Promise<string[]> {
+/**
+ * Builds (serve mode, when the process declares a build) and starts one native process, recording its pid, port, command line and mode.
+ * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file.
+ */
+export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>): Promise<string> {
+  const build = buildCommand(run, mode);
+  if (build !== null) await runCommand(ctx, local, build, runEnvironment(ctx, local, build, custody, null));
+  const launched = launchedCommand(run, mode);
+  const pid = startProcess(ctx, local, launched, runEnvironment(ctx, local, run, custody, 'app'));
+  const actual = modeOf(run, mode);
+  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null), command: processCommand(ctx, local, launched), mode: actual };
+  return `process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'})`;
+}
+
+/** Starts each native process that is not already running: built and served by default, its watcher only with `--watch`. */
+async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps, mode: ProcessMode): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   const out: string[] = [];
@@ -194,24 +270,29 @@ async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Cu
         out.push(`process ${run.name}: discarded a stale record: ${owned.stale}; starting fresh`);
       }
     }
-    const pid = startProcess(ctx, local, run, runEnvironment(ctx, local, run, custody, 'app'));
-    record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null), command: processCommand(ctx, local, run) };
-    out.push(`process ${run.name}: started (pid ${pid})`);
+    out.push(await launchProcess(ctx, local, run, custody, mode, record));
+    writeRecord(dir, record);
   }
   record.ports = { ...local.ports };
   writeRecord(dir, record);
   return out;
 }
 
+/** The plan lines of one process in `mode`: its build, then the command it runs. */
+export const processPlan = (run: LocalProcess, mode: ProcessMode): string[] => {
+  const build = buildCommand(run, mode);
+  return [...(build === null ? [] : [`plan build ${run.name}: ${build.argv.join(' ')}`]), `plan process ${run.name} (${modeOf(run, mode)}): ${launchedCommand(run, mode).argv.join(' ')}`];
+};
+
 /** The plan a dry run prints. */
-function plan(local: LocalConfig, missing: string[]): string[] {
+function plan(local: LocalConfig, missing: string[], mode: ProcessMode): string[] {
   return [
     `plan custody: ${missing.length ? `missing ${missing.join(', ')}: ${missingStep(local, missing)}` : 'open the sealed dev values into host-local files'}`,
     ...local.setup.map((run) => `plan setup ${run.name}: ${run.argv.join(' ')}`),
     `plan services: compose up -d --build ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')} (a changed build input rebuilds, cached otherwise)`,
     ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, ...local.databases.map((database) => `plan database (connection ${database.connection}): own role ${database.role}, database ${database.name}`), `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
-    ...local.processes.map((run) => `plan process ${run.name}: ${run.argv.join(' ')}`),
+    ...local.processes.flatMap((run) => processPlan(run, mode)),
     ...local.ready.map((row) => `plan ready ${row.name}: ${row.url}`),
     ...planTunnel(local),
   ];
@@ -248,12 +329,13 @@ export async function waitReady(ctx: StackContext, local: LocalConfig, deadline:
 }
 
 /** `up` for a dev environment. */
-export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only, watch = false }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined; watch?: boolean } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+  const mode: ProcessMode = watch ? 'watch' : 'serve';
   refuseTakenRange(ctx, local, deps);
   const host = await preflight(ctx, local, deps);
   if (!host.ok) return hostRefusal(host.lines);
   const missing = missingKeys(local);
-  if (!execute) return { ok: missing.length === 0, lines: [...host.lines, ...plan(local, missing), 'dry run: nothing was started; arm it with --execute'], data: { rows: host.rows } };
+  if (!execute) return { ok: missing.length === 0, lines: [...host.lines, ...plan(local, missing, mode), 'dry run: nothing was started; arm it with --execute'], data: { rows: host.rows } };
   if (only !== undefined && !local.services.some((service) => service.name === only)) throw refusal('STACK_USAGE', `--only names no service of ${local.env} (${local.services.map((service) => service.name).join(', ')})`);
   const lines = [...host.lines];
   const custody = openCustody(ctx, local);
@@ -289,7 +371,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     provisioned = true;
     await bring(local.services.map((service) => service.name).filter((name) => name !== dbService));
   } else await bring(local.services.map((service) => service.name));
-  lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
+  lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await clearMovedRoutes(ctx, local, deps), ...await startProcesses(ctx, local, custody, deps, mode));
   lines.push(...await waitReady(ctx, local, deadline, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));

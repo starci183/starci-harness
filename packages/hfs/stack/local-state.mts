@@ -7,13 +7,15 @@ import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
 
 /** What the environment recorded about itself. */
 export interface LocalRecord {
-  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string }>;
+  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string; /** serve (built) or watch (hot reload); absent in a record written before the built mode. */ mode?: 'serve' | 'watch' }>;
   ports: Record<string, number>;
   receipts: {
     migrate?: { at: string; digest: string };
     seed: Record<string, { at: string; digest: string; volumes?: string }>;
     setup: Record<string, { at: string; digest: string }>;
     database?: { at: string; role: string };
+    /** Per front-end app folder (`fe/apps/web`), the digest of its route folder tree when `up` last judged its `.next` (local-up.mts clearMovedRoutes). */
+    routes?: Record<string, string>;
   };
 }
 

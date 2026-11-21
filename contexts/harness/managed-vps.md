@@ -5,6 +5,25 @@ health, opens its doors under the owner's domain and hands each project the narr
 [ops/vps.yaml](../../ops/vps.yaml); the verbs are `starci vps` (`cli/src/harness/vps/`, `cli/src/core/vps/`); the harness app's
 "Máy chủ VPS" page (`#/vps`) reads the same rows as `starci vps list --json`.
 
+## Machines and roles
+
+The owner's words (2026-11-21): "phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái này là push xài chung" and "gõ cli starci cái
+là dựng lun chứ k phải hỏi lại". A machine is registered once in this host's config.yaml (never pushed) with its roles, and one command
+brings it up:
+
+```
+starci vps add sv-hk-1 --roles app-host,starci,monitor,edge          # imports ops/vps/servers/sv-hk-1.yaml when it is on this host
+starci vps add box-2 --host <addr> --user <user> --ssh-key <path> --roles app-host,starci   # a new machine, no question asked
+starci vps set sv-hk-1 --roles +starci.buildkit,-starci.sonar
+starci host status --host sv-hk-1        # what runs, what is adopted, the gaps, the drift
+starci host up --host sv-hk-1 --execute  # deploys only what is missing, each with its rollback; adopts traefik and portainer
+starci host doctor --host sv-hk-1        # one real call per service, the embed parity across machines
+```
+
+The roles, the services and their deployers are [ops/host-roles.yaml](../../ops/host-roles.yaml) and [host.md](host.md) "Roles and
+machines". The verbs below stay the deployers `host up` hands each missing service to; a config.yaml machine is a managed server for every
+one of them (its login the key file config.yaml names, its generated keys sealed in `<shared state>/machines/<name>.enc.yaml`).
+
 ## Clean boxes only
 
 `starci vps` is made for a clean, empty VPS, and bootstrap owns the whole box: the ops user and key, root by key only and password
@@ -53,11 +72,10 @@ A server is reached by key only. `vps add` takes the login's private key at a ma
 The secret scan refuses any key named like VPS_PASSWORD, ROOT_PASSWORD or SSH_PASSWORD anywhere, a sealed envelope included
 (policy/security.yaml `refusedKeys`).
 
-**The owner's one manual step.** A server the provider hands over with password login only gets a key before the harness can
-touch it: run `starci vps add <id> --host <ip> --os <os> --provider <name> --generate-key --execute`, then paste the printed
-public key into root's `~/.ssh/authorized_keys` through the provider's web console or the panel's SSH-keys page (or, from a
-shell already open on the server, append it to that file). From then on every login is that sealed key; `vps bootstrap` turns
-password login off.
+**A server that allows password login only** gets a key before the harness can touch it: run `starci vps add <id> --host <ip>
+--os <os> --provider <name> --generate-key --execute`, then paste the printed public key into root's `~/.ssh/authorized_keys` through the
+provider's web console or the panel's SSH-keys page. That is the provider's side, which no verb can reach; everything after it (the box's
+policy, its swarm, its role services) is a verb: `vps bootstrap`, `vps swarm init`, `host up --host <id> --execute`.
 
 The host keys are pinned at `vps add` by ssh-keyscan, after the owner confirms one SHA256 fingerprint against the provider's
 console (on the terminal, or `--fingerprint SHA256:...`). Every later session runs with `StrictHostKeyChecking=yes`.
@@ -70,7 +88,9 @@ stdin (`cli/src/harness/vps/ssh.ts`, the pattern of @starci/hfs `stack/remote.mt
 
 | verb | does |
 |---|---|
-| `vps list [--offline]` | the fleet with health: reachable, uptime, CPU, load, memory, disk, failed SSH logins in the window, swarm nodes and services, the UI and panel links; alerts by `health` of ops/vps.yaml |
+| `vps add <name> --host --user [--port] [--ssh-key] --roles <r1,r2>` | registers a machine in this host's config.yaml (never pushed), no question asked; `--import <file>` (or the inventory file of the same name) takes its address and keeps its sealed login |
+| `vps set <name> --roles ...` · `vps show <name>` · `vps remove <name>` | changes a machine's roles (`+starci.sonar,-starci.embed`) or login, shows it with the services its roles turn on, forgets it (the server untouched) |
+| `vps list [--offline]` | this host's machines with their roles, then the fleet with health: reachable, uptime, CPU, load, memory, disk, failed SSH logins in the window, swarm nodes and services, the UI and panel links; alerts by `health` of ops/vps.yaml |
 | `vps add <id> --host --os --provider [--port] [--user] [--panel-kind] [--panel-url] [--project ...] [--ingress] [--firewall] [--role] [--generate-key] [--fingerprint]` | writes `<id>.yaml`, seals `VPS_USER`, `privateKey`, `knownHosts` in `<id>.enc.yaml` to the owner key |
 | `vps doctor <id>` | read-only: whether the box is clean, sshd's effective settings, public listening ports, firewall, fail2ban or lfd, Docker against its pin, swarm, pending security updates and reboot |
 | `vps bootstrap <id>` | refuses a box that is not clean; then ops user, sshd drop-in (`sshd -t` before reload), firewall (ufw, firewalld or a CSF the owner installed: 80, 443 and ssh only; CSF with DOCKER="0" and a csfpost.sh that restarts Docker), fail2ban or CSF lfd, automatic security updates, Docker at `contexts/stack/pins.yaml` `hosts.docker-ce`; the login moves to the ops user only after it is proven |
@@ -78,7 +98,7 @@ stdin (`cli/src/harness/vps/ssh.ts`, the pattern of @starci/hfs `stack/remote.mt
 | `vps ui up <id>` | Portainer CE and its agent (digests pinned) as the `starci-ui` stack, published on no port |
 | `vps edge up <id>` | Traefik (digest pinned) as the `starci-edge` swarm stack on 80/443 in host mode, routing to labelled services of the `edge` network, certificates by ACME DNS-01 through Cloudflare; the token is a swarm secret named by its hash |
 | `vps monitor up <id> [--with <c>] [--without <c>]`, `monitor up --local` | the shared monitoring stack `starci-monitor` of the components ops/vps/monitor/components.yaml and the server file turn on (Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy by default; blackbox, Tempo, Pyroscope, Consul, Uptime Kuma, GlitchTip optional), digests pinned, its memory budget printed; app environments opt in ([project/monitoring.md](../project/monitoring.md)) |
-| `vps service up\|status\|down\|grant <id> --service <name>`, `service ... --local` | an opt-in shared service of ops/vps/services/<name>/components.yaml, one stack per server (the embeddings server: qwen3-embedding:8b pinned by digest on CPU behind a bearer-key gate), its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk beside the other shared stacks; `grant` seals its key into an app environment's member; app environments opt in ([project/shared-services.md](../project/shared-services.md)) |
+| `vps service up\|status\|down\|grant <id> --service <name>`, `service ... --local` | an opt-in shared service of ops/vps/services/<name>/components.yaml, one stack per server (the embeddings server: qwen3-embedding:4b, 2560 dimensions, pinned by digest on CPU behind a bearer-key gate), its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk beside the other shared stacks; `grant` seals its key into an app environment's member; app environments opt in ([project/shared-services.md](../project/shared-services.md)) |
 | `vps domain add <id> <sub> --to <service:port\|port\|ui\|ssh>`, `domain list <id>`, `domain remove <id> <sub>` | a name `<sub>.starci.org` for the server (below) |
 | `vps cloudflare set-token --account <id>`, `cloudflare status` | the owner's Cloudflare API token, masked, verified, sealed |
 | `vps grant <id> --app <path> --env <env>` | a deploy user with a key made here, sealed into the app through `starci app secret set` |
@@ -102,7 +122,7 @@ the exact reason; there is no privileged fallback, that would be an owner decisi
   (`systempaths=unconfined` is refused). `cpus` 6, `mem_limit` 8G and `pids_limit` sit under the box's app reserve (ops/vps.yaml
   `services.capacity`, `judgeBuildkitCapacity`); the cache lives on its own volume with `maxUsedSpace` 100GB (the successor of
   keepStorage). The render refuses privileged, an engine socket, host namespaces, added capabilities or devices, published ports, a
-  root user and missing limits (BUILDKIT_RENDER_UNSAFE). Rollback is `docker compose -p starci-buildkit down`: no app stack is touched
+  root user and missing limits (BUILDKIT_RENDER_UNSAFE). Rollback is `docker compose -p buildkit down`: no app stack is touched
   and the cache volume stays.
 - **The preflight** reads the kernel first: `user.max_user_namespaces`, `kernel.unprivileged_userns_clone` and, on Ubuntu 24.04 and
   later, `kernel.apparmor_restrict_unprivileged_userns` (it must be 0 for rootlesskit; changing it is a host security setting, so the

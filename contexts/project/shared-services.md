@@ -46,15 +46,17 @@ ONE per server, CPU only, shared by every opted-in environment (owner, 2026-11-2
   404 for everything else, a 1 MB body cap, at most 4 requests upstream. It is the only service on the network `starci-embeddings`, as
   `embeddings-gate`; the model is on the stack's own network only.
 
-**The model is pinned**: `qwen3-embedding:8b`, quantization Q4_K_M, 4096 dimensions (an app cuts to 2048), manifest sha256
-`64b933495768fbd3b87c20583d379728a07471e0c66733a9df87cd1901b3c44b`, the exact model the owner's host gate serves in dev. A different
+**The model is pinned**: `qwen3-embedding:4b`, quantization Q4_K_M, its native 2560 dimensions with no truncation, manifest sha256
+`df5bd2e3c74cd8d069d21dc038f1b359fcdc9458fce1c99bd43c9eb1518ff907`, the model `starci.embed` pins in the harness ops/host-roles.yaml for every
+machine, the owner's PC included (owner, 2026-11-21: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc."); `starci host doctor`
+compares the vectors of every machine serving it (`HOST_EMBED_MISMATCH`). A different
 quantization or size is a different vector space: dev and server vectors, and any index copied between them, would stop being comparable.
 The model service pulls the model once into its volume and, at every start, compares the sha256 of its manifest with the pin and refuses to
 serve on a mismatch (`starci: <model> is <digest>, not the pinned <digest>; refusing to serve`). Retention `otherModels: remove` deletes every
 other model of the volume at start.
 
-**A lighter model only by explicit choice.** The catalog also pins `qwen3-embedding-0.6b` (Q8_0, 1024 dimensions, manifest
-`ac6da0df...`). It is never the default (the loader refuses a default variant that forces a reindex). A server file that chooses it
+**Another model only by explicit choice.** The catalog also pins `qwen3-embedding-8b` (Q4_K_M, 4096 dimensions, manifest `64b93349...`,
+the model the apps called before 4b) and `qwen3-embedding-0.6b` (Q8_0, 1024 dimensions, manifest `ac6da0df...`). Neither is the default (the loader refuses a default variant that forces a reindex). A server file that chooses it
 (`services: {embeddings: {model: qwen3-embedding-0.6b}}`) is refused `VPS_SERVICE_REINDEX` unless the run passes `--acknowledge-reindex`, and
 an acknowledged plan still prints `FINDING (reindex acknowledged)`: every app that calls the server re-embeds its whole index first.
 
@@ -122,7 +124,10 @@ environments:
   has one source;
 - a grant of `EMBEDDINGS_API_KEY` from the member, read through `EMBEDDINGS_API_KEY_FILE=/run/secrets/EMBEDDINGS_API_KEY` (BE-CONFIG-4).
 
-The model is `qwen3-embedding:8b`; an app keeps its own model and dimension settings. The defaults live in the catalog (`app`) and in
+The model is `qwen3-embedding:4b` at 2560 dimensions; an app keeps its own model and dimension settings (its vector columns
+`halfvec(2560)`, since pgvector cannot HNSW-index a `vector` above 2000 dimensions). An environment that needs the embedding model on its
+machines declares it in `hostServices` (contexts/harness/host.md "What an app needs"); `starci host up --host <name> --execute` deploys this
+service on a machine whose roles turn `starci.embed` on. The defaults live in the catalog (`app`) and in
 `packages/hfs/stack/shared-services.mts` `SHARED_SERVICES` (the hfs package cannot read `ops/`). The schema is
 `$defs.environment.services` of `application-stacks.schema.yaml`; `HFS_STACKS_SHAPE` checks the consumers against the rendered model
 (`rules/stacks-shared-services.mts`) and the render refuses the same problems with `STACKS_DEPLOY_CONFIG_INVALID`. A docker-compose

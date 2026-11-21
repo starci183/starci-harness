@@ -208,7 +208,7 @@ const grant = async (scope: Scope, flags: GrantFlags, context: VerbContext): Pro
  */
 export const vpsServiceVerb = defineVerb({
     path: ["vps", "service"],
-    summary: "`service up|status|down|grant <id> --service <name>` (or `--local`): an opt-in shared service of a managed server from ops/vps/services/<name>/components.yaml (embeddings: one CPU embeddings server, qwen3-embedding:8b pinned by digest, behind a bearer-key gate), one stack per server, its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk; `grant` seals its key into an app environment's member; a dry run until --execute",
+    summary: "`service up|status|down|grant <id> --service <name>` (or `--local`): an opt-in shared service of a managed server from ops/vps/services/<name>/components.yaml (embeddings: one CPU embeddings server, qwen3-embedding:4b (2560 dimensions) pinned by digest, behind a bearer-key gate), one stack per server, its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk; `grant` seals its key into an app environment's member; a dry run until --execute",
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-service@1",

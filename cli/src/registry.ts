@@ -109,6 +109,7 @@ import { hostUninstallVerb } from "./core/host/uninstall.js"
 import { vpsDoctorVerb, vpsListVerb } from "./core/vps/read.js"
 import { vpsBootstrapVerb, vpsSwarmVerb, vpsUiVerb } from "./core/vps/act.js"
 import { vpsAddVerb, vpsGrantVerb, vpsRevokeVerb } from "./core/vps/access.js"
+import { vpsRemoveVerb, vpsSetVerb, vpsShowVerb } from "./core/vps/machines.js"
 import { vpsCloudflareVerb, vpsDomainVerb, vpsEdgeVerb } from "./core/vps/domain.js"
 import { vpsMonitorVerb } from "./core/vps/monitor.js"
 import { vpsServiceVerb } from "./core/vps/service.js"
@@ -131,6 +132,7 @@ import { ticketOpenVerb } from "./core/ticket/open.js"
 import { ticketShowVerb } from "./core/ticket/show.js"
 import { ticketTakeVerb } from "./core/ticket/take.js"
 import { laneLandVerb } from "./core/lane/land.js"
+import { devSyncVerb } from "./core/dev/sync.js"
 import { laneRemoveVerb } from "./core/lane/remove.js"
 import { laneReadyVerb } from "./core/lane/ready.js"
 import { laneStatusVerb } from "./core/lane/status.js"
@@ -263,6 +265,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     vpsListVerb,
     vpsDoctorVerb,
     vpsAddVerb,
+    vpsShowVerb,
+    vpsSetVerb,
+    vpsRemoveVerb,
     vpsBootstrapVerb,
     vpsSwarmVerb,
     vpsUiVerb,
@@ -295,6 +300,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     laneWithdrawVerb,
     laneStatusVerb,
     laneLandVerb,
+    devSyncVerb,
     laneGateVerb,
     slotTakeVerb,
     slotReleaseVerb,

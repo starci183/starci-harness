@@ -21,7 +21,7 @@ export const LENSES = ['order', 'layout', 'actionable', 'live', 'words', 'states
 export type Lens = (typeof LENSES)[number];
 export const LENS_MEANING: Readonly<Record<Lens, string>> = Object.freeze({
   order: 'Content order: what the user needs first comes first.',
-  layout: 'UI/UX arrangement: grouping, hierarchy, the Grammar rules, and the control checklist below (height 40, no wrapped label, overflow to the menu, tap target 44).',
+  layout: 'UI/UX arrangement: grouping, hierarchy, the Grammar rules, and the control checklist below (height 40, no wrapped label, overflow to the menu).',
   actionable: 'Every value shows how to change it.',
   live: 'Running, done, waiting and failed are visible with an icon and motion.',
   words: 'No mixed English or raw ids; one term per concept.',
@@ -36,7 +36,6 @@ export const LAYOUT_CHECKLIST: readonly string[] = Object.freeze([
   'control height: every button, field and menu trigger is 40px tall (an sm control only nested in a list item or a dense toolbar; in a header never) - DNA-COMMON-CONTROLS-PHONE-40, DNA-COMMON-HEADER-CONTROLS-40',
   'no wrapped label: every button label, header action and link is on ONE line at 390 - DNA-COMMON-BUTTON-ONE-LINE, DNA-COMMON-HEADER-FIT-ONE-LINE',
   'overflow goes to the menu: a header with more actions than fit moves them into the three-line menu (TopBar fit), it never wraps, scrolls or runs off the edge - DNA-COMMON-HEADER-NO-OVERFLOW',
-  'tap targets: every pressable part is at least 44px by 44px to touch at 390, its own box or the extended hit area (thresholds target.coarse.min)',
 ]);
 export const VERDICTS = ['pass', 'fixed', 'open'] as const;
 export type Verdict = (typeof VERDICTS)[number];
@@ -45,7 +44,38 @@ export const MAX_ROUNDS = 4;
 
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
-const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
+/**
+ * An exact instant with its zone. The writer's form is ISO `2026-11-21T03:20:37.425Z`; a screen.yaml another tool rewrote is read too: PyYAML loads an unquoted
+ * timestamp as a datetime and dumps it back as `2026-11-21 03:20:37.425000+00:00` (a space for the T, microseconds, an offset for Z). That is still one instant
+ * with its zone, so refusing it (HFS_APP_GALLERY_SCREEN_INVALID) failed a screen for its writer's style; a time with no zone stays refused, it names no instant.
+ */
+const INSTANT = /^(?<date>\d{4}-\d{2}-\d{2})[T ](?<time>\d{2}:\d{2}(?::\d{2}(?:\.(?<fraction>\d+))?)?)(?<zone>Z|[+-]\d{2}:\d{2})$/u;
+
+/** The ISO `…T…Z` form of an audit timestamp (either form INSTANT reads), or null when it is no instant with its zone. Digits below the millisecond are dropped. */
+export function isoInstant(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const groups = INSTANT.exec(value)?.groups;
+  if (groups === undefined) return null;
+  const fraction = groups['fraction'];
+  const time = fraction === undefined ? groups['time'] ?? '' : (groups['time'] ?? '').replace(/\.\d+$/u, `.${fraction.slice(0, 3).padEnd(3, '0')}`);
+  const date = new Date(`${groups['date'] ?? ''}T${time}${groups['zone'] ?? ''}`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/** A copy of the screen value whose audit timestamps (each round's `at`, `baseline.at`) are in the ISO form: what `starci audit run` and `cycle` write back. */
+export function withIsoTimes(value: Record<string, unknown>): Record<string, unknown> {
+  const next = structuredClone(value);
+  const audit = next['audit'];
+  if (!plain(audit)) return next;
+  const fix = (holder: unknown): void => {
+    if (!plain(holder)) return;
+    const iso = isoInstant(holder['at']);
+    if (iso !== null) holder['at'] = iso;
+  };
+  if (Array.isArray(audit['rounds'])) for (const round of audit['rounds']) fix(round);
+  fix(audit['baseline']);
+  return next;
+}
 /** The shot a state adds beside the two widths: `<state>-<width>`, e.g. `empty-1440`. */
 const STATE_SHOT = /^[a-z0-9]+(?:-[a-z0-9]+)*-(?:1440|390)$/u;
 
@@ -77,7 +107,7 @@ export function auditProblems(audit: unknown): string[] {
     const at = `audit.rounds[${index}]`;
     if (!plain(round)) { problems.push(`${at} is not a mapping`); return; }
     if (round['n'] !== index + 1) problems.push(`${at}.n is ${JSON.stringify(round['n'])}, expected ${index + 1}`);
-    if (typeof round['at'] !== 'string' || !ISO.test(round['at']) || Number.isNaN(Date.parse(round['at']))) problems.push(`${at}.at is not an ISO timestamp with its zone`);
+    if (isoInstant(round['at']) === null) problems.push(`${at}.at is not an ISO timestamp with its zone`);
     const lenses = round['lenses'];
     if (!plain(lenses)) { problems.push(`${at}.lenses is not a mapping`); return; }
     for (const key of Object.keys(lenses)) if (!(LENSES as readonly string[]).includes(key)) problems.push(`${at}.lenses.${key} is no lens (${LENSES.join(', ')})`);
@@ -91,7 +121,7 @@ export function auditProblems(audit: unknown): string[] {
   });
   if (audit['escalate'] !== null && audit['escalate'] !== undefined && !text(audit['escalate'])) problems.push('audit.escalate is neither null nor a text');
   const baseline = audit['baseline'];
-  if (baseline !== undefined && (!plain(baseline) || typeof baseline['at'] !== 'string' || !ISO.test(baseline['at']) || typeof baseline['rounds'] !== 'number')) problems.push('audit.baseline is { at: <ISO timestamp with its zone>, rounds: <n> }, written by `starci audit run` when the audit first passes');
+  if (baseline !== undefined && (!plain(baseline) || isoInstant(baseline['at']) === null || typeof baseline['rounds'] !== 'number')) problems.push('audit.baseline is { at: <ISO timestamp with its zone>, rounds: <n> }, written by `starci audit run` when the audit first passes');
   return problems;
 }
 
@@ -281,7 +311,8 @@ export function nextRound(value: Record<string, unknown>, { disk, builder, audit
   const waiting = lastDone !== undefined && plain(lastDone.lenses) && LENSES.some((lens) => lastDone.lenses[lens]?.notes?.startsWith('auditor: fill this lens'));
   // a closed cycle keeps the shots its last round judged: a reshoot after it opens a new cycle (`starci audit cycle`), never inherits round 4's verdicts
   if (done.length >= MAX_ROUNDS && !waiting) return { value, note: `round ${MAX_ROUNDS} closed this cycle: nothing recorded; for a new look at the screen run \`starci audit cycle <area>/<screen> --reason <why>\`` };
-  const next = structuredClone(value);
+  // the rewrite normalises the timestamps it read: a PyYAML-written `2026-11-21 03:20:37.425000+00:00` goes back as `2026-11-21T03:20:37.425Z`
+  const next = withIsoTimes(value);
   const shots = (plain(next['shots']) ? next['shots'] : {}) as Record<string, ShotRecord>;
   for (const width of SHOT_WIDTHS) shots[width] = { file: `${width}.png`, sha256: disk[width] ?? shots[width]?.sha256 ?? null };
   next['shots'] = shots;
@@ -304,7 +335,9 @@ export function nextRound(value: Record<string, unknown>, { disk, builder, audit
  * reason, its rounds, their dates, the last verdict of each lens, builder and auditor; the rounds themselves stay in git history) and `audit` starts empty again, so the next
  * `starci audit run` prepares round 1. A screen with no audit has no cycle to close.
  */
-export function nextCycle(value: Record<string, unknown>, { reason }: { reason: string }): { value: Record<string, unknown>; note: string } | { error: string } {
+export function nextCycle(read: Record<string, unknown>, { reason }: { reason: string }): { value: Record<string, unknown>; note: string } | { error: string } {
+  // the cycle rewrites the file too: its kept baseline and the closed rounds it names carry the ISO form
+  const value = withIsoTimes(read);
   if (!plain(value['audit'])) return { error: 'has no audit to close: run `starci audit run` for its first round' };
   const audit = value['audit'] as unknown as Audit;
   const rounds = Array.isArray(audit.rounds) ? audit.rounds : [];

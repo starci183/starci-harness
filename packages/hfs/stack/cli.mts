@@ -261,7 +261,7 @@ export async function stackMain(argv: string[], io: StackIo = {}): Promise<numbe
     // An environment pending its cutover (PROJECT-STACKS-20) takes no deploy and no executed prepare, in any form, before anything else is read.
     refuseCutoverPending(ctx.cwd, action, argv.slice(1));
     if (isLocalOnly(action)) return await runLocal(ctx, action as string, argv.slice(1), io.localDeps);
-    if (!isAction(action)) throw refusal('STACK_USAGE', `starci app stack takes ${[...ACTIONS, 'doctor', 'up', 'down', 'logs'].join(', ')}`);
+    if (!isAction(action)) throw refusal('STACK_USAGE', `starci app stack takes ${[...ACTIONS, 'doctor', 'up', 'restart', 'down', 'logs'].join(', ')}`);
     if (isLocalShared(action) && argv.includes('--env') && isLocalEnvironment(ctx.cwd, String(argv[argv.indexOf('--env') + 1]))) return await runLocal(ctx, action, argv.slice(1), io.localDeps);
     const { flags, positional } = parseFlags(action, argv.slice(1));
     if (flags.env === undefined && !READ_ONLY.includes(action)) throw refusal('STACK_USAGE', `stack ${action} has an effect: name its environment with --env <env> (only ${READ_ONLY.join(', ')} default to production)`);

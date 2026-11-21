@@ -1,0 +1,306 @@
+# The host roles: what a machine can host, read by cli/src/harness/host-roles.ts (`starci host up|status|doctor --host <name>`,
+# `starci vps add|set ... --roles`; contexts/harness/host.md "Roles").
+#
+# The owner's words (2026-11-21): "tùy vps có vps kiểu [k3s, starci{sonar,embed,buildkit,...}, monitor(prom, portainer, grafana,...},...)
+# chia thành các hạng mục 1 vps có thể có 1 hoặc N hạng mục để host, tối thiểu 1 cái ví dụ k3s để host services". A machine lists one or
+# more roles in its entry of the LOCAL config.yaml (never this repository: "phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái
+# này là push xài chung"), and `host up` brings up the union of the services of its roles.
+#
+# This file is GENERIC and pushed: no address, user, port or account id is written here. A machine is a name in config.yaml.
+#
+# Per service (`<role>.<service>`, e.g. starci.embed):
+#   default     on when the role is on, unless the machine toggles it (`starci vps set <name> --roles +starci.sonar,-starci.embed`).
+#   model       a pinned model it serves (by manifest digest), and its native dimensions.
+#   on.local    how it runs on the machine `local` (this harness host); on.remote how it runs on a managed server. A service with no
+#               placement for a machine is HOST_SERVICE_UNSUPPORTED there.
+# Per placement:
+#   kind        swarm-stack (one Swarm stack) or host-compose (a host-level docker compose project).
+#   via         the deployer `host up --execute` hands a missing service to (the one that existed before the roles):
+#                 host-stack    the services `ids` of ops/host.yaml (`starci host up` of this machine, compose up --no-recreate)
+#                 vps-service   ops/vps/services/<name>/components.yaml (`starci vps service up`)
+#                 vps-monitor   the components of ops/vps/monitor/components.yaml (`starci vps monitor up`)
+#                 vps-ui        ops/vps.yaml `ui` (`starci vps ui up`); vps-edge: ops/vps.yaml `edge` (`starci vps edge up`)
+#                 host-compose  a compose project under /opt/starci/services/<project> rendered from `dir` (ops/<dir>/compose.yaml), with
+#                               its adapter registered in cli/src/harness/host-compose.ts (BuildKit: lane t190-buildkit)
+#   stack       the Swarm stack or compose project it is found as; `match` the image repositories that find it running under another
+#               name (then it is ADOPTED: recorded and checked, never redeployed or restarted; a drift is reported only).
+#   images      its images: a pin of contexts/stack/pins.yaml (digests only) or a ref pinned by digest; specs hold them equal to the
+#               deployer's own files.
+#   limits      the memory and CPU limits it runs under (null: none declared, the owner's PC).
+#   secrets     the secret names it needs (the values stay in the sealed stores and the harness secret loader, named only).
+#   network     the network a caller reaches it on.
+#   endpoint    the URL a caller uses (the embed endpoints `host status --json` lists for the apps' router).
+#   probe       the real call `host doctor` makes: http (from a throwaway container on `network` on a server), embed (one fixed text,
+#               the model's dimensions), hook (a registered ping of the deployer, buildkit), host (the ops/host.yaml checks of `ids`),
+#               replicas (every Swarm service of the stack runs its desired replicas).
+schema: starci/host-roles@1
+# How long `host up --execute` waits for a deployed service to turn healthy before it rolls it back (a service may say its own).
+waitSeconds: 300
+roles:
+  app-host:
+    summary: runs the app stacks; an app environment lands only on a machine with this role
+    # The engine the app stacks run on. swarm is built (the managed VPS today); k3s is declared for a later train of its own (an adapter that renders a
+    # stack as Kubernetes objects, kubectl rollout, a per-repo ServiceAccount for CI, Jobs for db-upgrade), never chosen today.
+    engine: swarm
+    engines:
+      swarm: built
+      k3s: declared
+    services: {}
+  starci:
+    summary: the harness services, each toggleable
+    services:
+      embed:
+        summary: the embedding model behind a bearer-key gate (Ollama), one served model on every machine
+        default: true
+        # The owner's decision (2026-11-21): "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc." qwen3-embedding:4b at its native
+        # 2560 dimensions, no truncation, the same manifest on every machine, for NIVO and StarCi Next alike.
+        model:
+          name: qwen3-embedding:4b
+          # sha256 of the registry manifest (the id `ollama list` prints first: df5bd2e3c74c), read from this machine's Ollama /api/tags.
+          digest: df5bd2e3c74cd8d069d21dc038f1b359fcdc9458fce1c99bd43c9eb1518ff907
+          quantization: Q4_K_M
+          dimensions: 2560
+          # host doctor embeds this text on every machine serving starci.embed: equal dimensions and cosine >= minCosine, else HOST_EMBED_MISMATCH.
+          probeText: "StarCi embedding parity probe: the same text, the same model, the same vector."
+          minCosine: 0.999
+        on:
+          local:
+            kind: host-compose
+            via: host-stack
+            ids: [embeddings, embeddings-gate, embeddings-tunnel]
+            stack: starci
+            images:
+              - {image: caddy, pin: caddy}
+              - {image: cloudflare/cloudflared, pin: cloudflared}
+            limits: null
+            secrets: [EMBEDDINGS_API_KEY, HOST_SERVICES_TUNNEL_TOKEN]
+            network: starci-edge
+            endpoint: https://embed.starci.org/v1
+            probe: {kind: embed}
+          remote:
+            kind: swarm-stack
+            via: vps-service
+            name: embeddings
+            stack: starci-embeddings
+            match: [ollama/ollama]
+            images:
+              - {image: ollama/ollama, pin: ollama}
+              - {image: caddy, pin: caddy}
+            # The model and gate limits of ops/vps/services/embeddings/components.yaml, summed.
+            limits: {memory: 10368M, cpus: "16.50"}
+            secrets: [serviceEmbeddingsApiKey]
+            network: starci-embeddings
+            endpoint: http://embeddings-gate:8080/v1
+            probe: {kind: embed}
+            waitSeconds: 1500
+      buildkit:
+        summary: the remote BuildKit CI and dev build through, rootless, reached over ssh (buildctl dial-stdio behind the gate)
+        default: false
+        on:
+          remote:
+            # The definition is ops/vps/services/buildkit (service.yaml, compose.yaml, buildkitd.toml: rootless moby/buildkit by digest, never
+            # privileged, no docker socket); its adapter is BUILDKIT_ADAPTER of cli/src/harness/host-compose.ts (cli/src/harness/vps/buildkit.ts).
+            kind: host-compose
+            via: host-compose
+            project: buildkit
+            dir: vps/services/buildkit
+            stack: buildkit
+            match: [moby/buildkit]
+            images:
+              - {image: moby/buildkit, pin: buildkit}
+            # ops/vps/services/buildkit/service.yaml limits.
+            limits: {memory: 8G, cpus: "6.00"}
+            secrets: []
+            network: null
+            probe: {kind: hook, name: buildkit}
+      sonar:
+        summary: the shared SonarQube with its PostgreSQL, admin bootstrap and public tunnel (https://sonar.starci.org)
+        default: false
+        on:
+          local:
+            kind: host-compose
+            via: host-stack
+            ids: [sonar-postgres, sonar, sonar-bootstrap, sonar-tunnel]
+            stack: starci
+            images:
+              - {ref: "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"}
+              - {ref: "sonarqube:26.8.0.126808-community@sha256:9026624a61cd25542a402a9e7213dd7dbb39724ac9597e331e6b85362558c079"}
+              - {ref: "curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922"}
+              - {image: cloudflare/cloudflared, pin: cloudflared}
+            limits: null
+            secrets: [SONARQUBE_DB_PASSWORD, SONARQUBE_ADMIN_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN]
+            network: null
+            endpoint: https://sonar.starci.org
+            probe: {kind: http, url: "http://127.0.0.1:9010/api/system/status", status: 200, json: {path: status, equals: UP}}
+      registry:
+        summary: the local npm registry (Verdaccio) `deps publish-local` publishes to
+        default: false
+        on:
+          local:
+            kind: host-compose
+            via: host-stack
+            ids: [local-registry]
+            stack: starci
+            images:
+              - {ref: "verdaccio/verdaccio:5.33.0@sha256:9d622d256378c6e7ae09f384774ee2f0f8ac67a66c066db55921a0b7218abc4c"}
+            limits: null
+            secrets: []
+            network: null
+            endpoint: http://127.0.0.1:4873
+            probe: {kind: http, url: "http://127.0.0.1:4873/-/ping", status: 200}
+  monitor:
+    summary: the monitoring of a server (ops/vps/monitor) and its Swarm UI
+    services:
+      prometheus:
+        summary: Prometheus and the read-only docker-socket proxy it scrapes through
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [socket-proxy, prometheus]
+            stack: starci-monitor
+            match: [prom/prometheus]
+            images:
+              - {image: tecnativa/docker-socket-proxy, pin: docker-socket-proxy}
+              - {image: prom/prometheus, pin: prometheus}
+            limits: {memory: 544M, cpus: "0.60"}
+            secrets: []
+            network: starci-monitor
+            probe: {kind: http, url: "http://starci-monitor_prometheus:9090/-/ready", status: 200, network: starci-monitor}
+      grafana:
+        summary: Grafana with its provisioned datasources and dashboards
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [grafana]
+            stack: starci-monitor
+            match: [grafana/grafana]
+            images:
+              - {image: grafana/grafana, pin: grafana}
+            limits: {memory: 256M, cpus: "0.50"}
+            secrets: [monitorGrafanaAdminPassword]
+            network: edge
+            probe: {kind: http, url: "http://starci-monitor_grafana:3000/login", status: 200, network: edge}
+      loki:
+        summary: Loki and the Alloy collector that ships the Swarm logs to it
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [loki, alloy]
+            stack: starci-monitor
+            match: [grafana/loki]
+            images:
+              - {image: grafana/loki, pin: loki}
+              - {image: grafana/alloy, pin: alloy}
+            limits: {memory: 768M, cpus: "0.80"}
+            secrets: []
+            network: starci-monitor
+            probe: {kind: replicas}
+      alertmanager:
+        summary: Alertmanager, its alerts to the owner's Telegram channel
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [alertmanager]
+            stack: starci-monitor
+            match: [prom/alertmanager]
+            images:
+              - {image: prom/alertmanager, pin: alertmanager}
+            limits: {memory: 96M, cpus: "0.10"}
+            secrets: [TELEGRAM_BOT_TOKEN]
+            network: starci-monitor
+            probe: {kind: replicas}
+      exporters:
+        summary: node-exporter and cAdvisor, the host and container metrics
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-monitor
+            components: [node-exporter, cadvisor]
+            stack: starci-monitor
+            match: [prom/node-exporter, gcr.io/cadvisor/cadvisor]
+            images:
+              - {image: prom/node-exporter, pin: node-exporter}
+              - {image: gcr.io/cadvisor/cadvisor, pin: cadvisor}
+            limits: {memory: 256M, cpus: "0.40"}
+            secrets: []
+            network: starci-monitor
+            probe: {kind: replicas}
+      portainer:
+        summary: the Swarm UI (Portainer CE and its agent), published on no port, reached through the server's tunnel
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-ui
+            stack: starci-ui
+            match: [portainer/portainer-ce]
+            images:
+              - {image: portainer/portainer-ce, pin: portainer-ce}
+              - {image: portainer/agent, pin: portainer-agent}
+            limits: null
+            secrets: []
+            network: edge
+            probe: {kind: replicas}
+  edge:
+    summary: the public edge of a server
+    services:
+      traefik:
+        summary: Traefik on 80 and 443, certificates by ACME DNS-01 through Cloudflare
+        default: true
+        on:
+          remote:
+            kind: swarm-stack
+            via: vps-edge
+            stack: starci-edge
+            match: [traefik]
+            images:
+              - {image: traefik, pin: traefik}
+            limits: null
+            secrets: [CLOUDFLARE_API_TOKEN]
+            network: edge
+            probe: {kind: replicas}
+  dev:
+    summary: the owner's workstation tools the harness drives (the machine `local` only)
+    services:
+      orca:
+        summary: the Orca app and runtime every seat runs in
+        default: true
+        on:
+          local:
+            kind: host-compose
+            via: host-stack
+            ids: [orca]
+            stack: none
+            images: []
+            limits: null
+            secrets: []
+            network: null
+            probe: {kind: host}
+      docker:
+        summary: Docker Desktop, which runs the host stack and the pinned uat image
+        default: true
+        on:
+          local:
+            kind: host-compose
+            via: host-stack
+            ids: [docker]
+            stack: none
+            images: []
+            limits: null
+            secrets: []
+            network: null
+            probe: {kind: host}
+# The entry `local` gets when config.yaml does not hold one yet: this machine, the harness services it runs today (the SonarQube, the npm
+# registry and the embedding model with its tunnel) and the dev tools.
+local:
+  roles: [starci, dev]
+  services: {starci.sonar: true, starci.registry: true}

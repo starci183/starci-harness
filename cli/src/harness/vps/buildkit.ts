@@ -241,7 +241,7 @@ echo unchanged`
 /** The host compose project: rootless preflight, users, buildctl, gate, socket folder, files, up; each step idempotent, printing changed or unchanged. */
 export const buildkitUpPlan = (service: BuildkitService, render: BuildkitRender, serverId: string): VpsPlan => {
     const { access, socket, daemon } = service
-    const tmpfiles = `/etc/tmpfiles.d/${service.project}.conf`
+    const tmpfiles = `/etc/tmpfiles.d/starci-${service.project}.conf`
     const composeFile = `${service.dir}/compose.yaml`
     const compose = `docker compose -p ${shellQuote(service.project)} -f ${shellQuote(composeFile)}`
     const tmpfilesText = [
@@ -359,7 +359,8 @@ echo "socket.groupWrite=$(runuser -u ${shellQuote(access.user)} -- test -w ${she
 echo "user.groups=$(id -nG ${shellQuote(access.user)} 2>/dev/null | tr ' ' ',')"
 echo "gate.installed=$([ -x ${shellQuote(access.gate)} ] && echo yes || echo no)"
 echo "buildctl.version=$(${shellQuote(service.buildctl.path)} --version 2>/dev/null | awk '{print $3}')"
-echo "workers=$(runuser -u ${shellQuote(access.user)} -- ${shellQuote(service.buildctl.path)} --addr ${shellQuote(`unix://${socket.path}`)} debug workers 2>/dev/null | awk 'NR>1{print $1}' | paste -sd, -)"
+WORKERS=$(runuser -u ${shellQuote(access.user)} -- ${shellQuote(service.buildctl.path)} --addr ${shellQuote(`unix://${socket.path}`)} debug workers 2>/dev/null | awk 'NR>1{print $1}' | paste -sd, - || true)
+echo "workers=$WORKERS"
 echo "keys=$(grep -c ' starci-build:' ${shellQuote(`${access.home}/.ssh/authorized_keys`)} 2>/dev/null || true)"`.trim()
 }
 

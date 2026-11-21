@@ -181,6 +181,15 @@ describe("embeddings of an MRL model", () => {
         }
     })
 
+    test("the catalog declares qwen3-embedding:4b as a 2560-dimension MRL model, at its native size or cut", () => {
+        const native = localModel("qwen3-embedding:4b", { dimensions: 2560 })
+        assert.deepEqual(native.capabilities, ["embeddings"])
+        assert.equal(native.dimensions, 2560)
+        assert.equal(native.truncate, "mrl")
+        assert.equal(localModel("qwen3-embedding:4b", { dimensions: 1024 }).dimensions, 1024)
+        assert.equal(LOCAL_MODELS.find((entry) => entry.id === "qwen3-embedding:4b")?.dimensions, 2560)
+    })
+
     test("the catalog declares qwen3-embedding:8b as a 4096-dimension MRL model, cut to what the app asks", () => {
         const model = localModel("qwen3-embedding:8b", { dimensions: 1024 })
         assert.equal(model.dimensions, 1024)

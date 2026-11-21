@@ -9,7 +9,7 @@ import path from 'node:path';
 import { combineHashes } from './hash.mjs';
 import { git } from './git.mjs';
 import { shellArgv, type ParityRun } from './parity-family.mjs';
-import type { CheckSession } from './types.mjs';
+import type { CheckSession, ContentIndex } from './types.mjs';
 
 /** The failure code of a code generation that fails. */
 export const TYPES_CODEGEN_FAILED = 'TYPES_CODEGEN_FAILED';
@@ -41,11 +41,15 @@ export function generatedInputs(root: string, prefix: string): string[] {
 
 const stampFile = (toolCacheDir: string): string => path.join(path.resolve(toolCacheDir), 'codegen', 'stamp.json');
 
-function inputKey(session: CheckSession): string {
+/** The key of what the generation reads: the hash of every tracked input file (the stamp of `runCodegen`, and the part of a side key that stands for the generated output). */
+export function codegenInputKey(index: ContentIndex): string {
   const parts: Record<string, string> = {};
-  for (const file of session.index.paths) if (INPUT.test(file) && !file.startsWith('.starcistacks/')) parts[file] = session.index.hashOf(file) ?? 'absent';
+  for (const file of index.paths) if (INPUT.test(file) && !file.startsWith('.starcistacks/')) parts[file] = index.hashOf(file) ?? 'absent';
   return combineHashes(parts);
 }
+
+/** Whether an app-relative path is generated output: a file under a folder named `__generated__` (the convention `generatedFiles` lists). */
+export const isGeneratedOutput = (file: string): boolean => /(?:^|\/)__generated__\//u.test(file);
 
 export interface CodegenResult {
   readonly state: 'none' | 'ran' | 'skipped' | 'failed';
@@ -59,7 +63,7 @@ const tailOf = (text: string): string => text.split('\n').map((line) => line.tri
 export async function runCodegen(options: { readonly session: CheckSession; readonly repoRoot: string; readonly toolCacheDir: string; readonly env: NodeJS.ProcessEnv; readonly run: ParityRun }): Promise<CodegenResult> {
   const { session, repoRoot, toolCacheDir, env, run } = options;
   if (codegenScript(repoRoot) === undefined) return { state: 'none' };
-  const key = inputKey(session);
+  const key = codegenInputKey(session.index);
   const stamp = stampFile(toolCacheDir);
   let held: { key?: unknown; outputs?: unknown } = {};
   try { held = JSON.parse(fs.readFileSync(stamp, 'utf8')) as typeof held; } catch { /* no stamp */ }

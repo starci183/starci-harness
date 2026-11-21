@@ -10,6 +10,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { builderHostValue, ghSecretDeleteCalls, ghSecretSetCalls } from "../../core/vps/build-key.js"
+import { BUILDKIT_ADAPTER, HOST_COMPOSE_ADAPTERS, readPing } from "../host-compose.js"
 import {
     BUILDER_SECRETS,
     buildGateScript,
@@ -30,6 +31,8 @@ import {
     readBuildkitDoctor,
     renderBuildkit,
 } from "./buildkit.js"
+import { loadVpsPolicy } from "./policy.js"
+import type { ManagedServer } from "./policy.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops")
 const service = loadBuildkit(opsDir)
@@ -181,12 +184,12 @@ void test("the up plan stops at a rootless preflight first, installs a checked b
     assert.ok((gate?.script ?? "").includes(buildGateScript(service).trimEnd()))
     assert.match(socketDir?.script ?? "", /default:group:starci-build:rw/)
     assert.ok((files?.script ?? "").includes(render.compose.trimEnd()))
-    assert.match(up?.script ?? "", /docker compose -p 'starci-buildkit' .* up -d --wait/)
+    assert.match(up?.script ?? "", /docker compose -p 'buildkit' .* up -d --wait/)
     assert.doesNotMatch(plan.steps.map((entry) => entry.script).join("\n"), /docker\.sock|--privileged|privileged: true/)
     for (const entry of plan.steps) assert.deepEqual(entry.secrets, [])
     const down = buildkitDownPlan(service, "sv-test")
     assert.deepEqual(down.steps.map((entry) => entry.id), ["down"])
-    assert.match(down.steps[0]?.script ?? "", /docker compose -p 'starci-buildkit' -f '\/opt\/starci\/services\/buildkit\/compose\.yaml' down/)
+    assert.match(down.steps[0]?.script ?? "", /docker compose -p 'buildkit' -f '\/opt\/starci\/services\/buildkit\/compose\.yaml' down/)
     assert.doesNotMatch(down.steps[0]?.script ?? "", /-v\b|--volumes|stack rm/)
 })
 
@@ -200,7 +203,7 @@ const HEALTHY = [
     "container.user=1000:1000",
     "container.privileged=false",
     "container.pid=",
-    "container.network=starci-buildkit_default",
+    "container.network=buildkit_default",
     "container.mounts=/run/starci-buildkit,/var/lib/docker/volumes/starci-buildkit-state/_data,/opt/starci/services/buildkit/buildkitd.toml,",
     "container.health=healthy",
     `container.image=${image}`,
@@ -251,4 +254,19 @@ void test("the client endpoint and ping commands, and the capacity judge against
     assert.throws(() => judgeBuildkitCapacity(service, { ...roomy, totalMb: 8000 }, keep), refused("BUILDKIT_CAPACITY"))
     assert.throws(() => judgeBuildkitCapacity(service, { ...roomy, diskFreeMb: 50000 }, keep), refused("BUILDKIT_CAPACITY"))
     assert.doesNotThrow(() => judgeBuildkitCapacity(service, { ...roomy, diskFreeMb: 50000, volumes: [service.storage.volume] }, keep))
+})
+
+void test("the host-compose registry holds the BuildKit adapter under the placement's project, and its ping ends in an ok or fail verdict", () => {
+    const adapter = HOST_COMPOSE_ADAPTERS.get("buildkit")
+    assert.equal(adapter, BUILDKIT_ADAPTER)
+    assert.equal(service.project, "buildkit")
+    const server = { id: "sv-test" } as ManagedServer
+    const policy = loadVpsPolicy(opsDir)
+    assert.deepEqual(BUILDKIT_ADAPTER.up(policy, server, opsDir).steps.map((entry) => entry.id), ["rootless-preflight", "build-user", "buildctl", "gate", "socket-dir", "files", "up"])
+    assert.deepEqual(BUILDKIT_ADAPTER.down(policy, server).steps.map((entry) => entry.id), ["down"])
+    const ping = BUILDKIT_ADAPTER.ping(server)
+    assert.match(ping, /debug workers/)
+    assert.match(ping.trim().split("\n").slice(-6).join("\n"), /echo "fail \$B"[\s\S]*echo "ok workers \$WORKERS"/)
+    assert.deepEqual(readPing("workers=abc\nok workers abc"), { ok: true, evidence: "workers abc" })
+    assert.equal(readPing("fail kernel.apparmor_restrict_unprivileged_userns is 1").ok, false)
 })

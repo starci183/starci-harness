@@ -16,7 +16,8 @@ export interface DeployProbe extends TreeProbe { services?: Set<string>; members
 export interface SealedRoles { ops: string; sshKey: string; knownHosts: string }
 export interface RemoteConfig { host: string; releasesBase: string | null; sealed: SealedRoles | null; serverRecipient: string | null }
 export interface ImageBuildArgs { values: Record<string, string>; sealed: { member: string; keys: string[] } | null }
-export interface ImageEntry { app: string; buildArgs: ImageBuildArgs }
+/** `runtimePublicEnv`: set (only) by an explicit `runtimePublicEnv: true`, so an image that does not opt in normalises exactly as before. */
+export interface ImageEntry { app: string; buildArgs: ImageBuildArgs; runtimePublicEnv?: true }
 /** One sealed source of a grant; `optional` is set only for an explicit `required: false`, whose member may not be sealed yet (PROJECT-STACKS-5). */
 export interface SourceEntry { member: string; keys: string[] | null; required: boolean; fill: boolean; optional?: true }
 export interface GrantEntry { service: string; filePointers: boolean; from: SourceEntry[] }
@@ -124,7 +125,7 @@ const UPPER_ENV = KEY;
 const FIELDS = {
   deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom', 'dbUpgrade'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
-  image: ['app', 'buildArgs'],
+  image: ['app', 'buildArgs', 'runtimePublicEnv'],
   buildArgs: ['values', 'sealed'],
   secrets: ['grants', 'settings'],
   grant: ['service', 'filePointers', 'from'],
@@ -221,6 +222,37 @@ function imageBuildArgs(c: Collector, at: string, block: Block, members: Set<str
   return out;
 }
 
+/**
+ * One image per sha (owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?"). Next.js inlines every NEXT_PUBLIC_* read at build time, so a public URL
+ * baked into the image ties it to one environment. An image that declares `runtimePublicEnv: true` keeps its NEXT_PUBLIC_* build values out of the
+ * build: images.yml and `stack build-args` pass only the other keys, and the deploy hands the public ones to the service as runtime environment
+ * (render.mts), where the app's server renders them into `window.__ENV` (@starci/next-data publicEnv). Without the opt-in both halves are what they were.
+ */
+export const RUNTIME_PUBLIC_KEY = /^NEXT_PUBLIC_[A-Z0-9_]+$/u;
+
+// reason: read both from a normalised entry and from the raw YAML entry sync reads; only the fields below are touched, each checked
+type ImageArgsSource = { runtimePublicEnv?: unknown; buildArgs?: any } | null | undefined;
+
+/** The part of `buildArgs` whose keys `keep` accepts; a sealed member none of whose keys is kept is left out. */
+function splitArgs(entry: ImageArgsSource, keep: (key: string) => boolean): ImageBuildArgs {
+  const args = plain(entry?.buildArgs) ? entry?.buildArgs : {};
+  const values = Object.fromEntries(Object.entries(plain(args.values) ? args.values : {}).filter(([key]) => keep(key))) as Record<string, string>;
+  const sealed = plain(args.sealed) ? { member: args.sealed.member, keys: (Array.isArray(args.sealed.keys) ? args.sealed.keys : []).filter((key: unknown) => typeof key === 'string' && keep(key)) } : null;
+  return { values, sealed: sealed !== null && sealed.keys.length > 0 ? sealed : null };
+}
+
+/** The build values an image is built with: `buildArgs` itself, or without the NEXT_PUBLIC_* keys when the image declares `runtimePublicEnv: true`. */
+export function buildTimeArgs(entry: ImageArgsSource): ImageBuildArgs {
+  if (entry?.runtimePublicEnv !== true) return entry?.buildArgs ?? { values: {}, sealed: null };
+  return splitArgs(entry, (key) => !RUNTIME_PUBLIC_KEY.test(key));
+}
+
+/** The NEXT_PUBLIC_* build values the deploy passes to the service at runtime instead; none without `runtimePublicEnv: true`. */
+export function runtimePublicArgs(entry: ImageArgsSource): ImageBuildArgs {
+  if (entry?.runtimePublicEnv !== true) return { values: {}, sealed: null };
+  return splitArgs(entry, (key) => RUNTIME_PUBLIC_KEY.test(key));
+}
+
 function memberRef(c: Collector, at: string, member: unknown, members: Set<string>): void {
   if (!nameField(c, at, member)) return;
   // A member the declaration names but the environment has not sealed yet is a finding of its own, so a pending cutover (PROJECT-STACKS-20) can report it.
@@ -237,7 +269,8 @@ function images(c: Collector, block: Block, services: Set<string>, members: Set<
     if (services.size > 0 && !services.has(service)) c.problem(at, `${service} is not a service of the stack source`);
     if (!closedFields(c, at, entry, FIELDS.image)) continue;
     nameField(c, `${at}.app`, entry.app);
-    out[service] = { app: entry.app, buildArgs: imageBuildArgs(c, `${at}.buildArgs`, entry.buildArgs, members) };
+    const runtimePublic = flag(c, `${at}.runtimePublicEnv`, entry.runtimePublicEnv, false);
+    out[service] = { app: entry.app, buildArgs: imageBuildArgs(c, `${at}.buildArgs`, entry.buildArgs, members), ...(runtimePublic ? { runtimePublicEnv: true as const } : {}) };
   }
   return out;
 }

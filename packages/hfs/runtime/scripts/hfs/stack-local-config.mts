@@ -41,8 +41,14 @@ export const GALLERY_ROUTE = 'gallery';
 export interface LocalTunnelRoute { name: string; host: string; port: string }
 /** The locally managed named tunnel of the environment and the hostnames it publishes (PROJECT-STACKS-15); `stack up --execute` routes them. */
 export interface LocalTunnel { name: string; routes: LocalTunnelRoute[] }
+/**
+ * The built mode of a native process (`processes[].serve`): `build` once (the governor's build class) and then `argv`, the built artifact
+ * served (next start, node dist/...), each from its own `cwd` (default: the process's). A process that declares it runs this way on `stack up`
+ * and `stack restart`; its own `argv` (next dev, ts-node-dev, a watcher) runs only with `--watch`, the explicit opt-in for live coding.
+ */
+export interface LocalServe { argv: string[]; cwd: string | null; build: { argv: string[]; cwd: string | null } | null }
 /** A native app process. */
-export interface LocalProcess extends LocalCommand { port: string | null; health: HttpProbe | null }
+export interface LocalProcess extends LocalCommand { port: string | null; health: HttpProbe | null; serve: LocalServe | null }
 /** One HTTP probe: the readiness of a process, a `ready` row or a `verify` row. */
 export interface HttpProbe { name: string; url: string; method: string; status: number; contains: string | null }
 /** The per-environment database: its compose service, its own login role and where the app reads its URL. */
@@ -94,7 +100,7 @@ export interface LocalBlock {
 const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources', 'dbUpgrade'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after', 'mode'];
-const PROCESS = [...COMMAND, 'port', 'health'];
+const PROCESS = [...COMMAND, 'port', 'health', 'serve'];
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
 
@@ -157,6 +163,22 @@ function command(c: Collector, at: string, value: unknown, allowed: readonly str
 function modeOf(c: Collector, at: string, value: unknown): 'once' | 'always' {
   if (value !== 'once' && value !== 'always') c.problem(`${at}.mode`, 'must be once or always (always: a migration runner that runs on every up, idempotent by its own ledger)');
   return value === 'always' ? 'always' : 'once';
+}
+
+function serveOf(c: Collector, at: string, value: unknown): LocalServe | null {
+  if (value === undefined) return null;
+  if (!closedFields(c, at, value, ['argv', 'cwd', 'build'], 'local')) return null;
+  const entry = value as Record<string, unknown>;
+  const argv = strings(c, `${at}.argv`, entry.argv);
+  if (argv.length === 0) c.problem(`${at}.argv`, 'must hold the command that serves the built artifact (next start, node dist/...), an argv list');
+  let build: LocalServe['build'] = null;
+  if (entry.build !== undefined && closedFields(c, `${at}.build`, entry.build, ['argv', 'cwd'], 'local')) {
+    const item = entry.build as Record<string, unknown>;
+    const buildArgv = strings(c, `${at}.build.argv`, item.argv);
+    if (buildArgv.length === 0) c.problem(`${at}.build.argv`, 'must hold the build command (next build, the api build), an argv list');
+    build = { argv: buildArgv, cwd: item.cwd === undefined ? null : relative(c, `${at}.build.cwd`, item.cwd) };
+  }
+  return { argv, cwd: entry.cwd === undefined ? null : relative(c, `${at}.cwd`, entry.cwd), build };
 }
 
 function afterOf(c: Collector, at: string, value: unknown): 'migrate' | 'ready' {
@@ -367,6 +389,7 @@ function referencedPorts(c: Collector, block: LocalBlock): void {
     for (const value of Object.values(run.env)) check(`env of ${run.name}`, value);
   }
   for (const process of block.processes) {
+    for (const part of [...(process.serve?.argv ?? []), ...(process.serve?.build?.argv ?? [])]) check(`serve of ${process.name}`, part);
     if (process.port !== null && !known.has(process.port)) c.problem(`processes.${process.name}.port`, `${process.port} is not a declared port`);
     if (process.health) check(`health of ${process.name}`, process.health.url);
   }
@@ -412,7 +435,7 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
       const at = `processes[${index}]`;
       const base = command(c, at, item, PROCESS, names);
       const value = plain(item) ? item as Record<string, unknown> : {};
-      return { ...base, port: value.port === undefined ? null : String(value.port), health: value.health === undefined ? null : probe(c, `${at}.health`, { name: base.name || 'health', ...(value.health as object) }) };
+      return { ...base, port: value.port === undefined ? null : String(value.port), health: value.health === undefined ? null : probe(c, `${at}.health`, { name: base.name || 'health', ...(value.health as object) }), serve: serveOf(c, `${at}.serve`, value.serve) };
     }),
     ready: listOf(c, 'ready', entry.ready, (item, index) => probe(c, `ready[${index}]`, item)),
     verify: listOf(c, 'verify', entry.verify, (item, index) => probe(c, `verify[${index}]`, item)),

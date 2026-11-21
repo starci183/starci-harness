@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { starterDeclaration } from '../scaffold/app.mjs';
 import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { appGalleryFindings } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { LENSES, parseScreen, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { isoInstant, LENSES, parseScreen, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { uiAuditFindings } from '../cache/uiaudit-family.mjs';
 import { galleryMain, uiauditMain } from '../uiaudit/cli.mjs';
 
@@ -171,6 +171,28 @@ for (const edition of ['lite'] as const) {
     // a malformed block is not
     assert.match(doc(audit([round(1), { n: 2, at: '2026-11-19 12:00:00', lenses: { order: { verdict: 'pass' } } }])).audit.join('; '), /at is not an ISO timestamp/);
     assert.match(doc({ builder: { agent: 'a' }, rounds: 'x' }).audit.join('; '), /auditor\.agent is missing/);
+  });
+
+  test(`a timestamp PyYAML rewrote (space, microseconds, +00:00) is still an instant with its zone, and audit run writes it back as ISO`, (t) => {
+    const pyyaml = '2026-11-19 12:00:00.425000+00:00';
+    const doc = (at: string) => parseScreen(screen({ audit: { builder: { agent: 'lane-a' }, auditor: { agent: 'lane-b' }, rounds: [{ ...round(1), at }, round(2)], escalate: null, baseline: { at, rounds: 2 } } }), 'customers/list').audit;
+    assert.deepEqual(doc(pyyaml), []);
+    assert.deepEqual(doc('2026-11-19T19:00:00.425+07:00'), []);
+    assert.match(doc('2026-11-19 12:00:00.425000').join('; '), /at is not an ISO timestamp/, 'a time with no zone names no instant');
+    assert.equal(isoInstant(pyyaml), '2026-11-19T12:00:00.425Z');
+    assert.equal(isoInstant('2026-11-19T19:00:00.4+07:00'), '2026-11-19T12:00:00.400Z');
+    assert.equal(isoInstant('2026-13-40 12:00:00Z'), null);
+    const { root } = app(t, edition, screen({ audit: { builder: { agent: 'lane-a' }, auditor: { agent: 'lane-b' }, rounds: [{ ...round(1, { order: 'fixed' }), at: pyyaml }, { ...round(2), at: pyyaml }], escalate: null, baseline: { at: pyyaml, rounds: 2 } } }).replaceAll(`'${pyyaml}'`, pyyaml).replaceAll(`"${pyyaml}"`, pyyaml));
+    const file = path.join(root, FOLDER, 'screen.yaml');
+    assert.match(fs.readFileSync(file, 'utf8'), /at: 2026-11-19 12:00:00\.425000\+00:00/, 'the fixture is the unquoted form PyYAML dumps');
+    write(root, `${FOLDER}/1440.png`, 'x');
+    write(root, `${FOLDER}/390.png`, 'y');
+    const run = io(root);
+    assert.equal(uiauditMain(['run', 'customers/list'], run.io), 0, run.err.join(''));
+    const written = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(written, /\.425000\+00:00/);
+    assert.equal(written.match(/2026-11-19T12:00:00\.425Z/gu)?.length, 3, 'both rounds and the baseline are rewritten as ISO');
+    assert.deepEqual(parseScreen(written, 'customers/list').audit, []);
   });
 
   test(`a malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID; open lenses are not`, (t) => {

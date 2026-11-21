@@ -17,9 +17,9 @@ name: buildkit
 kind: host-compose
 role: starci
 purpose: "one rootless BuildKit per server that the images workflow and `starci app stack build --builder-host` build through, reached over ssh only"
-# The compose project and the folder its two files are written to on the host. Rollback is `docker compose -p <project> down` of this
+# The compose project (the placement's `project` and `stack` in ops/host-roles.yaml starci.buildkit) and the folder its two files are written to on the host. Rollback is `docker compose -p <project> down` of this
 # project alone: it touches no app stack and keeps the cache volume.
-project: starci-buildkit
+project: buildkit
 dir: /opt/starci/services/buildkit
 image: {image: moby/buildkit, pin: buildkit}
 buildctl:

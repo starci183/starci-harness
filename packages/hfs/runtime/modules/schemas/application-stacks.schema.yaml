@@ -843,7 +843,7 @@ $defs:
         additionalProperties: false
         properties:
           embeddings:
-            description: "The server's one embeddings server (qwen3-embedding:8b on CPU behind a bearer-token gate): EMBEDDINGS_BASE_URL=http://embeddings-gate:8080/v1 on the network starci-embeddings."
+            description: "The server's one embeddings server (qwen3-embedding:4b, 2560 dimensions, on CPU behind a bearer-token gate): EMBEDDINGS_BASE_URL=http://embeddings-gate:8080/v1 on the network starci-embeddings."
             type: object
             additionalProperties: false
             required: [member]
@@ -862,6 +862,28 @@ $defs:
               network: {description: "The external network the gate answers on (default starci-embeddings, the catalog's network).", type: string, pattern: '^[a-z][a-z0-9_-]*$'}
               url: {description: "The URL the consumers call (default http://embeddings-gate:8080/v1).", type: string, pattern: '^https?://\S+$'}
               urlEnv: {description: "The variable the URL is set in (default EMBEDDINGS_BASE_URL).", type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+      hostServices:
+        description: >-
+          Optional: the host services this environment needs (the harness's ops/host-roles.yaml, contexts/harness/host.md "What an app needs"),
+          judged by the starci CLI against the owner host's own config.yaml (the machines are never in a repository). `starci app check --env prod`
+          and `starci app stack deploy` refuse HOST_SERVICE_MISSING when no machine of a need's list hosts the service, HOST_ROLE_MISSING when the
+          server the environment lands on lacks the app-host role, and HOST_MACHINE_UNKNOWN when config.yaml does not know it; a host with no
+          config.yaml (a CI runner) reports the judgement skipped. The render ignores this block.
+        type: object
+        additionalProperties: false
+        required: [needs]
+        properties:
+          machine:
+            description: "The machine the environment lands on; default the server its deploy.remote.serverRecipient belongs to (the harness ops/vps/recipients.yaml), else local."
+            type: string
+            pattern: '^[a-z][a-z0-9-]{0,30}[a-z0-9]$'
+          needs:
+            description: "Each host service (`<role>.<service>` such as starci.embed, or a bare name the catalog holds once such as embed) and the machines that may serve it, in the order the app tries them (`[local, sv-hk-1]`: the owner's PC first, the VPS as fallback); [] is the landing machine alone."
+            type: object
+            minProperties: 1
+            additionalProperties:
+              type: array
+              items: {type: string, pattern: '^[a-z][a-z0-9-]{0,30}[a-z0-9]$'}
       dns:
         description: Owner-run DNS prerequisites, one declaration per ingress host.
         type: array
@@ -1037,6 +1059,9 @@ $defs:
             propertyNames: {$ref: '#/$defs/deployKey'}
             additionalProperties: {type: string}
           sealed: {$ref: '#/$defs/deployMemberKeys'}
+      runtimePublicEnv:
+        description: 'One image per sha: true keeps the NEXT_PUBLIC_* keys of buildArgs out of the build (images.yml, stack build-args) and the deploy passes them to this service as runtime environment, which the app reads through @starci/next-data publicEnv (window.__ENV). Default false: built in, as before.'
+        type: boolean
   deploySecrets:
     type: object
     additionalProperties: false

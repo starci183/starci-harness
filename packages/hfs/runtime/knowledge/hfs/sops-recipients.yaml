@@ -33,6 +33,8 @@ servers:
 apps:
   nivoos-lite:
     ci: age138u6dmh8z6ptgtd5ukk8arfcnx9r7ec780nlpr5s5yl2z3m6vunqncm6mu
+  starci-next:
+    ci: age1r5sg06278pzgfhus06xa5u3z60veulyn9weh0dtukzkeeh5khseqjzz0wj
 # The recipient set each environment's rule and members hold, exactly: `harness`, `server` (the server whose key the environment records as
 # deploy.remote.serverRecipient), `backup` (that server's backup) and `ci` (the judged app's own CI key, when apps declares one; nothing otherwise).
 # An environment not named here takes `otherwise`.

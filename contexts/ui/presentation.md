@@ -82,7 +82,7 @@ Padding (inline and block chosen apart):
   inline padding follows the step, one step less on the side a leading or trailing glyph stands on.
 - **P6 Optical anatomy stays inside components.** A large figure or heading keeps its own leading; a one-line row is
   8 + 24 + 8 = 40 at `md`, and a two-line row keeps 8 and grows by its content.
-- **P7 The 44 target never comes from padding.** On a coarse pointer the grammar extends the hit area (UI-6).
+- **P7 (removed 2026-11-21).** No invisible hit area: a control is the size it is drawn, Button md 40 and sm 32 (owner: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy").
 - **P8 Responsive only at the gutter and the header's top.** Surfaces, panes and divider-facing sides keep one value
   at every breakpoint. The page container owns the page's inline inset; routed content owns only its block inset.
 

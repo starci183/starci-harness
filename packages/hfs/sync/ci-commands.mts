@@ -330,6 +330,9 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     // lint script does, on every side of the matrix: a side that imports a package it finds unbuilt reads it as any.
     ciLintInputs: lintInputs,
     ciVerifyShards: verifyShards(scopes, off),
+    // Every verify shard but lint (whose inputs step generates them) runs the app's codegen first, as ci.yml's jobs do before they read the fe: the generated
+    // wire types are gitignored, so a fresh checkout has none, and the hfs family refuses their absence (FE_WIRE_GENERATED) and locked the release gate every night.
+    ciVerifyCodegen: sideDeclared(app, 'fe') ? ['      - name: generate the wire types', "        if: ${{ !startsWith(matrix.args, '--gate lint') }}", '        run: ' + exampleCommand(source, 'npm run codegen --silent')].join('\n') : '',
     ciFormatRun: run('format', 'npx --no-install starci app check --gate format --env prod'),
     ciWiringRun: run('wiring', 'npx --no-install starci app check --gate wiring --env prod'),
     ciTypecheckRun: run('types', 'npm run typecheck'),

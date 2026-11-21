@@ -304,6 +304,14 @@ custody, runs the setup (install, codegen), starts the compose services under th
 MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; the store is built from the managed `.starcistacks/images/storage/Dockerfile` and loads the repo-owned `statics/` into its bucket, [statics.md](statics.md) PROJECT-STATICS-2) with `docker compose up --build` (a changed build input rebuilds, cached otherwise) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack, and runs right after `db migrate`, before the seed levels and the loader of the pinned seed-standards, whose doors write into the tables it creates), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
+**A native process runs built, not watched.** A process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`: `up` and `restart`
+run its `build` (the governor's build class, with the process's non-secret env and no custody file) and then its `serve.argv`, the built
+artifact (`next start`, `node dist/...`), so code merged on dev is never hot-reloaded half written. The process's own `argv` (`next dev`,
+`ts-node-dev`) runs only with `--watch`, the explicit opt-in for live coding; a process without `serve` runs its `argv` either way. `starci app
+stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends only those processes (only the ones this environment started),
+builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
+hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
+process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.
@@ -968,6 +976,40 @@ gate checks. An environment without the block renders byte for byte as before. A
 marked required, renders without its key while the member is not sealed yet (`STACKS_SEALED_MEMBER_PENDING`, report only), so the declaration
 can land before the owner seals the key. The block, the catalog, the key's custody and the capacity check are in
 [shared-services.md](shared-services.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).
+
+## PROJECT-STACKS-22 One web image per sha; its public config is read at runtime
+
+The owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?" (one image, configured per environment). A front end is built once per commit,
+and the same digest goes from staging to production; only its environment differs. Next.js inlines every `process.env.NEXT_PUBLIC_*` read at
+build time, so a public URL passed as a build argument ties the image to the environment it was built for. An image entry opts out of that
+with `runtimePublicEnv: true`:
+
+```yaml
+environments:
+  production:
+    deploy:
+      images:
+        web:
+          app: web
+          runtimePublicEnv: true          # NEXT_PUBLIC_* below reach the service at runtime, not the build
+          buildArgs:
+            values: {NEXT_PUBLIC_API_URL: "https://api.example.com"}
+            sealed: {member: web, keys: [NEXT_PUBLIC_MAPS_KEY]}
+```
+
+- **Build.** The NEXT_PUBLIC_* keys of `buildArgs` (literal and sealed) are left out of the build: `starci app stack build-args` prints the
+  other keys only, `stack build` passes the same, and images.yml (rendered by sync) builds the image in the public `image` job with no build
+  values, no GitHub Environment and no secret when nothing else is left. The image is pushed under `sha-<sha>` on every pushed run, not only
+  on a release.
+- **Deploy.** The render (`stack render` / `stack deploy`) sets those keys as the service's environment, the sealed ones opened from their
+  member like any setting; `deploy.environment.<service>` wins over them for a key both name, and a changed value changes the release's
+  `configDigest`. The keys stay declared under `buildArgs`, so R300 (`FE_PUBLIC_BUILD_ARG_MISSING`) still reads them.
+- **App.** The server renders an allowlist of `NEXT_PUBLIC_*` keys into `window.__ENV` and the client reads them through one module,
+  `createPublicEnv` of `@starci/next-data` ([its README](../../packages/next-data/README.md)); the root layout renders per request, so the
+  script carries the runtime environment, not the build's. Only public keys: the allowlist refuses any name that is not `NEXT_PUBLIC_*`, and
+  a secret stays a grant (PROJECT-STACKS-5).
+- Without the declaration nothing changes: the values are build arguments of the release environment, as before. Apps adopt it in their own
+  lanes, each moving its `process.env.NEXT_PUBLIC_*` reads to `publicEnv(key)` first.
 
 ## PROJECT-STACKS-18 Moving a stack to new runtime names: standby, copy, adopt
 

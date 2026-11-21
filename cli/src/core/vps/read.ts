@@ -8,6 +8,7 @@ import { headline } from "../../shared/exec.js"
 import { Refusal } from "../../shared/errors.js"
 import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
+import { machineRows } from "./machines.js"
 import { pinsOf, READERS, scopeOf, SERVER_ID } from "./shared.js"
 import type { VpsData } from "./shared.js"
 
@@ -27,7 +28,7 @@ const rowLine = (row: FleetRow): string => {
 /** `starci vps list [--offline]`: the managed fleet with each server's health; changes nothing. */
 export const vpsListVerb = defineVerb({
     path: ["vps", "list"],
-    summary: "list the managed VPS fleet of ops/vps/servers with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
+    summary: "list this host's machines (config.yaml, never pushed: local and every `vps add`, each with its roles and the services they turn on), then the managed VPS fleet of ops/vps/servers and config.yaml with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
     effect: "read",
     roles: READERS,
     schema: "starci/vps-list@1",
@@ -35,10 +36,12 @@ export const vpsListVerb = defineVerb({
     run: async (_context, flags): Promise<VerbResult<VpsData>> => {
         const opsDir = locateOps()
         const policy = loadVpsPolicy(opsDir)
+        const machines = machineRows()
         const rows = await fleetOf(policy, opsDir, !flags.offline, ownerStore)
         const alerts = rows.reduce((sum, row) => sum + (row.health?.alerts.length ?? 0), 0)
-        const message = rows.length === 0 ? "no managed server yet: `starci vps add <id>` adds one (contexts/harness/managed-vps.md)" : rows.map(rowLine).join("\n")
-        return { data: { servers: rows, alerts }, message }
+        const fleet = rows.length === 0 ? "no managed server yet: `starci vps add <name> --host <addr> --user <user> --roles <r1,r2>` adds one (contexts/harness/host.md \"Machines\")" : rows.map(rowLine).join("\n")
+        const message = [`machines (${machines.file}${machines.exists ? "" : ", not written yet"}):`, ...machines.lines.map((line) => `  ${line}`), "fleet:", fleet].join("\n")
+        return { data: { machines: machines.views, servers: rows, alerts }, message }
     },
 })
 

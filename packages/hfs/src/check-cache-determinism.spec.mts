@@ -18,7 +18,8 @@ import { createTscRunner } from '../cache/types-family.mjs';
 import { runDbFamily, DB_FOLDER } from '../cache/db-family.mjs';
 import { runProjectChecks } from '../cache/project-checks.mjs';
 import { VERDICT_FOLDER } from '../cache/check-verdicts.mjs';
-import { untrackedProgramInputs } from '../cache/side-key.mjs';
+import { sideKey, untrackedProgramInputs } from '../cache/side-key.mjs';
+import { hashFile } from '../cache/hash.mjs';
 import { CACHE_DIR } from '../cache/types.mjs';
 import { readTypeScriptProject } from '../runtime/scripts/hfs/typescript-programs.mjs';
 import { trackedFiles, type MachineFn } from '../runtime/scripts/hfs/check.mjs';
@@ -158,4 +159,23 @@ test('a program and a side key leave the build artifacts out and keep the genera
   const names = (parsed?.fileNames ?? []).map((file) => path.relative(root, file).split(path.sep).join('/')).sort();
   assert.deepEqual(names, [GENERATED, 'fe/apps/web/src/page.ts']);
   assert.deepEqual(untrackedProgramInputs(root, 'fe', new Set(trackedFiles(root))), [GENERATED]);
+});
+
+test('a side key stands for generated code by its codegen inputs, so the gate rewriting it mid-run (types codegen) keeps the key', (t) => {
+  const { remote } = origin(t);
+  const root = checkout(t, remote);
+  const index = () => ({ paths: trackedFiles(root), hashOf: (file: string) => hashFile(path.join(root, file)) });
+  assert.ok(sideKey(root, index(), 'fe').inputs.includes(GENERATED), 'with no codegen declared the generated file is keyed by its bytes');
+  write(root, 'package.json', JSON.stringify({ name: 'demo', private: true, scripts: { codegen: 'graphql-codegen' } }));
+  // The schema the codegen reads lives outside the side: only the codegen part of the key can see it.
+  write(root, 'contracts/schema.graphql', 'type Query { notes: Int }\n');
+  commit(root, 'declare the codegen');
+  const before = sideKey(root, index(), 'fe');
+  assert.ok(!before.inputs.includes(GENERATED), 'generated output is no input of its own');
+  write(root, GENERATED, 'export const generated = 2;\n');
+  assert.equal(sideKey(root, index(), 'fe').key, before.key, 'codegen rewrote its output: the key holds');
+  fs.rmSync(path.join(root, GENERATED));
+  assert.equal(sideKey(root, index(), 'fe').key, before.key, 'a tree whose codegen has not run yet has the same key');
+  write(root, 'contracts/schema.graphql', 'type Query { notes: String }\n');
+  assert.notEqual(sideKey(root, index(), 'fe').key, before.key, 'a changed codegen input re-keys the side');
 });

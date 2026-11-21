@@ -2,7 +2,8 @@
 // named environment runs docker-compose. Each takes only its own flags; effects (up, down, prepare) are dry runs until --execute.
 //   starci app stack doctor  --env <env>
 //   starci app stack prepare --env <env> [--execute]
-//   starci app stack up      --env <env> [--execute] [--timeout <seconds>]
+//   starci app stack up      --env <env> [--execute] [--timeout <seconds>] [--watch]
+//   starci app stack restart --env <env> --process <name>[,<name>] [--execute] [--timeout <seconds>] [--watch]   (local-restart.mts)
 //   starci app stack status  --env <env>
 //   starci app stack logs    --env <env> --service <name> [--lines <n>]
 //   starci app stack verify  --env <env>
@@ -16,7 +17,7 @@ import type { ActionResult } from './remote.mjs';
 import type { LocalDeps } from './local-run.mjs';
 
 /** The actions that exist only for a dev environment. */
-export const LOCAL_ONLY = Object.freeze(['doctor', 'up', 'down', 'logs'] as const);
+export const LOCAL_ONLY = Object.freeze(['doctor', 'up', 'restart', 'down', 'logs'] as const);
 /** The actions a swarm environment already has, which a docker-compose environment answers with its dev implementation. */
 export const LOCAL_SHARED = Object.freeze(['prepare', 'status', 'verify', 'db-upgrade'] as const);
 /** True when `value` is an action only a dev environment has. */
@@ -25,23 +26,24 @@ export const isLocalOnly = (value: unknown): boolean => (LOCAL_ONLY as readonly 
 export const isLocalShared = (value: unknown): boolean => (LOCAL_SHARED as readonly unknown[]).includes(value);
 
 const FLAGS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  doctor: [], up: ['--execute', '--timeout', '--only'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [], 'db-upgrade': ['--execute', '--old-image'],
+  doctor: [], up: ['--execute', '--timeout', '--only', '--watch'], restart: ['--execute', '--timeout', '--process', '--watch'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [], 'db-upgrade': ['--execute', '--old-image'],
 });
-const VALUES = new Set(['--env', '--timeout', '--service', '--lines', '--old-image', '--only']);
+const VALUES = new Set(['--env', '--timeout', '--service', '--lines', '--old-image', '--only', '--process']);
 
 /** The parsed flags of a dev action. */
-export interface LocalFlags { env?: string; json: boolean; execute: boolean; timeout?: string; service?: string; lines?: string; 'old-image'?: string; only?: string }
+export interface LocalFlags { env?: string; json: boolean; execute: boolean; watch: boolean; timeout?: string; service?: string; lines?: string; 'old-image'?: string; only?: string; process?: string }
 
 /** Parses the flags of one dev action; a flag of another action, an unknown flag and a missing value are refusals. */
 export function parseLocalFlags(action: string, argv: readonly string[]): LocalFlags {
   const own = new Set(['--env', '--json', ...(FLAGS[action] ?? [])]);
-  const flags: LocalFlags = { json: false, execute: false };
+  const flags: LocalFlags = { json: false, execute: false, watch: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] as string;
     if (!arg.startsWith('--')) throw refusal('STACK_USAGE', `stack ${action} takes no operand (got ${arg})`);
     if (!own.has(arg)) throw refusal('STACK_USAGE', `stack ${action} takes no ${arg}: its flags are ${[...own].join(', ')}`);
     if (arg === '--json') flags.json = true;
     else if (arg === '--execute') flags.execute = true;
+    else if (arg === '--watch') flags.watch = true;
     else if (VALUES.has(arg)) {
       const value = argv[index + 1];
       if (value === undefined || value.startsWith('--')) throw refusal('STACK_USAGE', `${arg} needs a value`);
@@ -64,7 +66,7 @@ type LocalHandler = (ctx: StackContext, local: LocalConfig, options: Record<stri
 
 /** The module of each dev action. */
 const MODULES: Record<string, [string, string]> = {
-  doctor: ['./local-doctor.mjs', 'doctorLocal'], prepare: ['./local-prepare.mjs', 'prepareLocal'], up: ['./local-up.mjs', 'upLocal'], status: ['./local-status.mjs', 'statusLocal'],
+  doctor: ['./local-doctor.mjs', 'doctorLocal'], prepare: ['./local-prepare.mjs', 'prepareLocal'], up: ['./local-up.mjs', 'upLocal'], restart: ['./local-restart.mjs', 'restartLocal'], status: ['./local-status.mjs', 'statusLocal'],
   logs: ['./local-logs.mjs', 'logsLocal'], verify: ['./local-verify.mjs', 'verifyLocal'], down: ['./local-down.mjs', 'downLocal'],
   'db-upgrade': ['./local-db-upgrade.mjs', 'upgradeLocal'],
 };
@@ -75,7 +77,7 @@ export async function runLocal(ctx: StackContext, action: string, argv: readonly
   const local = loadLocalConfig({ repoRoot: ctx.cwd, env: flags.env as string });
   const [file, name] = MODULES[action] as [string, string];
   const handler = (await import(file) as Record<string, LocalHandler>)[name] as LocalHandler;
-  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, only: flags.only, lines: whole(flags.lines, '--lines', 200), oldImage: flags['old-image'] }, deps);
+  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, only: flags.only, process: flags.process, watch: flags.watch, lines: whole(flags.lines, '--lines', 200), oldImage: flags['old-image'] }, deps);
   if (flags.json) ctx.stdout(`${JSON.stringify({ verb: action, ok: result.ok, ...result.data }, null, 2)}\n`);
   else for (const line of result.lines) ctx.stdout(`${line}\n`);
   if (result.refused) {

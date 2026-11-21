@@ -52,8 +52,7 @@ own smaller scales: they label, they are not pressed. Which step a control takes
 heights are Common tokens (`--grammar-control-height-*`).
 
 **Drawn height and target are two facts** ([ui/scale](../ui/scale.md#drawn-height-and-target-size-are-two-facts)):
-the box is the ramp, the hit area meets its floor without redrawing the box (`DNA-COMMON-TARGET-COARSE`,
-`DNA-COMMON-TARGET-FINE`). The floors are Common tokens (`--grammar-target-*`).
+the box is the ramp, and a control is pressed where it is drawn: no invisible hit area extends it on a coarse pointer (owner, 2026-11-21: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy"; Button md 40, sm 32). On a fine pointer the hit area meets its floor (`DNA-COMMON-TARGET-FINE`). The floors are Common tokens (`--grammar-target-*`).
 
 **Corners are roles.** HeroUI derives every corner from `radius` and `field-radius`, and a Button's corner is
 three times `radius`, so whether a Button is a pill follows from the grammar's radius, never from a per-button
