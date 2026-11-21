@@ -1,14 +1,17 @@
-// freshness.mts - the push gate of the committed check cache (contexts/project/check-cache.md, "Every push carries a warm cache"). CI re-checks only what the
-// committed cache does not cover, so a push whose cache records are missing or stale sends CI cold and past its ESLint budget. `starci app check --env prod` (the
-// managed pre-push hook) runs every family diff-only against the cache in the tree and refuses the push when that run had to write or remove a cache file, or
-// when the tree holds cache files git does not have committed: the records the push carries are then not the ones a real run on its tree produces.
+// freshness.mts - the cache verdict of a whole `starci app check` run and the push gate of the committed check cache (contexts/project/check-cache.md, "Every push
+// carries a warm cache"). CI re-checks only what the committed cache does not cover, so a push whose cache records are missing or stale sends CI cold and past its
+// ESLint budget. A whole run goes diff-only against the cache in the tree; when it had to write or remove a cache file, or the tree holds cache files git does not
+// have committed, the records a push would carry are not the ones a real run on its tree produces (HFS_CHECK_CACHE_UNWARMED).
+// That is a fact about the push, never a defect in the code: the run computed every family it had no valid record for and wrote the records. So the finding is
+// report-only (level info, exit code unaffected) in every run, and an error only in the run the managed pre-push hook makes (STARCI_PUSH_GATE=1, `pushGate` below),
+// the one moment a cold cache costs something. `starci app push` and the batch lander commit the records before that hook runs, so nobody commits a cache by hand.
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from './git.mjs';
 import { RECORD_FILE_MAX_BYTES } from './jsonl.mjs';
 import { CACHE_DIR } from './types.mjs';
 
-/** A push whose committed cache a real run on its tree changes (records missing, stale or never committed). */
+/** A tree whose committed cache a real run on it changes (records missing, stale or never committed): info in a run, an error at the push gate. */
 export const UNWARMED = 'HFS_CHECK_CACHE_UNWARMED';
 /** A push from a host that cannot write a portable cache (a linked or locally copied @starci package, or a local-registry build packed without a source digest). */
 export const UNPORTABLE = 'HFS_CHECK_CACHE_UNPORTABLE';
@@ -37,7 +40,7 @@ export function oversizedCacheFiles(root: string, limitMb: number): Array<{ file
 /** One refusal of the push gate, shaped like a check finding. */
 export interface FreshnessFinding {
   readonly code: string;
-  readonly level: 'error';
+  readonly level: 'error' | 'info';
   readonly path: string;
   readonly message: string;
   /** Set when a local-registry install alone causes the finding: the cause `--env local` lists as report-only (failure-codes.yaml `localOnly`). */
@@ -58,6 +61,8 @@ export interface FreshnessInput {
   readonly uncommitted?: readonly string[] | undefined;
   /** The largest cache file a push may carry, in MB (cacheFileLimitMb when not given). */
   readonly limitMb?: number | undefined;
+  /** Whether this is the run of the managed pre-push hook (STARCI_PUSH_GATE=1): only there is an unwarmed cache an error; in every other run it is info. */
+  readonly pushGate?: boolean | undefined;
   /** Whether HEAD is the first commit of the repository and holds no cache file (pristineFirstCommit; read from git when not given). */
   readonly firstCommit?: boolean | undefined;
 }
@@ -82,7 +87,7 @@ export function uncommittedCacheFiles(root: string): string[] {
   return answer.stdout.split('\n').map((line) => line.slice(3).trim()).filter((line) => line !== '').sort();
 }
 
-/** The refusals of the push gate for one `--fresh` run; empty when the committed cache is what a real run on the tree produces. */
+/** The cache verdicts of one whole run: errors for a cache a push cannot carry (unportable, too large) and, at the push gate only, an unwarmed one; empty when the committed cache is what a real run on the tree produces. */
 export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   // The pristine first commit pushes no cache, so nothing it pushes can be too large, unportable or stale.
   if (input.firstCommit ?? pristineFirstCommit(input.root)) return [];
@@ -103,8 +108,14 @@ export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   const changed = [...new Set([...input.written, ...input.removed, ...(input.uncommitted ?? uncommittedCacheFiles(input.root))])].sort();
   if (changed.length === 0) return [];
   const listed = changed.slice(0, 5).join(', ') + (changed.length > 5 ? `, and ${changed.length - 5} more` : '');
+  if (input.pushGate !== true) {
+    return [{
+      code: UNWARMED, level: 'info', path: CACHE_DIR,
+      message: `this run wrote cache records the commit does not hold yet (${listed}); report only, the run is judged on its other findings; \`starci app push\` or the lander commits the records before a push`,
+    }];
+  }
   return [{
     code: UNWARMED, level: 'error', path: CACHE_DIR,
-    message: `the pushed cache is not the one a run on this tree writes (${listed}); the records are written; commit ${CACHE_DIR} as this run left it and push once more, or run npx --no-install starci app push (it commits what a real run writes, then pushes, in one round)`,
+    message: `the pushed cache is not the one a run on this tree writes (${listed}); the records are written but not committed, so CI would run cold; run npx --no-install starci app push (it commits what a real run writes, then pushes, in one round)`,
   }];
 }

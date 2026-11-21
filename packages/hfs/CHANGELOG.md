@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (jc9: the unwarmed cache is not a defect)
+
+- Changed (`HFS_CHECK_CACHE_UNWARMED`, `cache/freshness.mts`): the finding says a whole run wrote cache records its commit does not hold; it was the only error in 172 of 286 red runs and never a defect. It is now `info` (exit code unaffected) in every run, and an error only in the run of the managed pre-push hook, which exports `STARCI_PUSH_GATE=1` (the one place a cold cache costs CI time). `starci app push` and the lander commit the records before that hook runs. `_FORGED`, `_STALE`, `_MISSING`, `_UNPORTABLE`, `_FILE_TOO_LARGE` are unchanged. Apps: refresh the managed `.husky/pre-push` (`starci sync`) so the hook sets the variable; until then a plain `git push` of an uncommitted cache is not refused (CI recomputes it).
+- Changed (`starci` CLI): `lane land`/`lane gate` no longer discard the finding, `app push` no longer filters it; `app push` still loops (a record can move once its own commit changes HEAD).
+
 ## Unreleased (t190 runtime public env)
 
 - Added (`deploy.images.<service>.runtimePublicEnv`, owner 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?"): one web image per sha, configured per environment at runtime. An image that declares `runtimePublicEnv: true` is built without the NEXT_PUBLIC_* keys of its `buildArgs` (literal and sealed): `starci app stack build-args` and `stack build` pass only the other keys, and images.yml builds it in the public `image` job, with no GitHub Environment and no secret when no other key is left, pushed under `sha-<sha>` on every pushed run. The render (`stack render` / `stack deploy`) sets those keys as the service's runtime environment (sealed ones opened from their member; `deploy.environment` wins for a key both name; a changed value changes `configDigest`). The app reads them through `createPublicEnv` of `@starci/next-data` (`window.__ENV`). Without the declaration everything renders as before. Shared split: `buildTimeArgs` / `runtimePublicArgs` (`runtime/scripts/hfs/stack-deploy-config.mts`). Docs: contexts/project/stacks.md PROJECT-STACKS-22, cicd.md. Spec: `src/stack-runtime-public-env.spec.mts`.

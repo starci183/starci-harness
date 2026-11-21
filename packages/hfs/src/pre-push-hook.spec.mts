@@ -80,6 +80,13 @@ test('a push the bundled and dependency gates allow is still refused when its ch
   assert.match(result.stderr, /HFS_CHECK_CACHE_UNWARMED/);
 });
 
+test('the hook runs the check as the push gate: STARCI_PUSH_GATE=1 is what makes an unwarmed cache an error there and nowhere else', t => {
+  const repo = fixture(t);
+  const result = push(repo, [ref('refs/heads/main', repo.head, repo.older)]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /push gate: 1/);
+});
+
 test('backups retain their push and delete behavior; another allowed ref cannot hide a main refusal', t => {
   const repo = fixture(t);
   for (const sha of [repo.head, ZERO]) assert.equal(push(repo, [ref('refs/backup/lane', sha)]).status, 0);

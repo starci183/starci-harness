@@ -305,7 +305,8 @@ repository without `typescript` installed fails with `ARCH_TYPESCRIPT_MISSING`; 
 
 With no selector `starci app check` is a whole run: every family diff-only against the committed cache `.starcistacks/cache/` (contexts/project/check-cache.md),
 the CI-parity families (`build`, `audit`) and CI's coverage step, then the cache verdict; it writes what it judged back, and the result equals a full run's.
-A committed cache that run changed or a tree holding uncommitted cache files is `HFS_CHECK_CACHE_UNWARMED`, a host that cannot write a portable cache is
+A committed cache that run changed or a tree holding uncommitted cache files is `HFS_CHECK_CACHE_UNWARMED`: info, never red, because the run computed and wrote the records (only the
+managed pre-push hook's run, `STARCI_PUSH_GATE=1`, refuses a push for it, and `starci app push` commits the records before it); a host that cannot write a portable cache is
 `HFS_CHECK_CACHE_UNPORTABLE`. `--fresh` is the escape hatch for a broken or suspect cache: it ignores the records, recomputes the selected families (all when none
 is selected) from scratch and writes the refreshed records; never routine. Repeat `--gate <name>` to run those gates alone (a job selector of the managed CI): `hfs`,
 `format`, `db`, `secrets`, `wiring`, `types`, `lint`, `test`, `sonar`, `codecov`, `build` and `audit`. `sonar` and `codecov` dispatch to the same combined prediction family

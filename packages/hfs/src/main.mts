@@ -14,8 +14,8 @@
 //                                            the universal canon and the explicitly selected Grammar-family canon.
 //                                            The results are committed in .starcistacks/cache/ (cache/, contexts/project/check-cache.md): a run with no selector
 //                                            runs every family diff-only against the cache (reusing every valid record and recomputing what a change or a moved pin
-//                                            invalidated), the CI-parity families (build, audit) and CI's coverage step, writes what it judged back, and refuses a
-//                                            tree whose committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED), a host
+//                                            invalidated), the CI-parity families (build, audit) and CI's coverage step, writes what it judged back, and reports a
+//                                            tree whose committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED: info, an error only in the pre-push hook's run, STARCI_PUSH_GATE=1), a host
 //                                            that cannot write a portable cache (HFS_CHECK_CACHE_UNPORTABLE) or a cache file too large to push: every push carries warm
 //                                            records. A missing cache or a fingerprint change selects full automatically. Repeat --gate to select gates (a selector runs
 //                                            those gates alone, with no parity and no cache verdict); sonar and codecov select the same combined baseline predictions, not
@@ -779,9 +779,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
-  // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
+  // The cache verdict of a whole run: an unwarmed cache is report-only here and an error only in the pre-push hook's run (STARCI_PUSH_GATE=1, cache/freshness.mts); unportable and too large stay errors.
   if (whole && session !== undefined && flushed !== undefined) {
-    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, localRegistry: session.fingerprint.localRegistry, written: flushed.written, removed: flushed.removed });
+    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, localRegistry: session.fingerprint.localRegistry, pushGate: io.env.STARCI_PUSH_GATE === '1', written: flushed.written, removed: flushed.removed });
     verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message, ...(refusal.local === true ? { local: true } : {}) })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
   }
   const checked = proof();
