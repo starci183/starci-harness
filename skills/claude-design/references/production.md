@@ -100,9 +100,9 @@ A UI change to a page that is already built enters this flow at step 1: its page
 `starci app check` then judges the manifest against the gallery (the `HFS_APP_GALLERY_DESIGN_*` codes of
 PROJECT-GALLERY-6).
 
-## The UI audit: the critique above, as a recorded loop
+## The UI audit: the critique above, as a gated loop until the first pass
 
-Since 2026-11-19 the final critique is the UI audit, recorded in the screen's `screen.yaml` (one file replaces `explain.md` and `audit.json`). Since 2026-11-21 (owner, train 188) it is evidence, never a gate: only a malformed screen.yaml fails a check.
+Since 2026-11-19 the final critique is the UI audit, recorded in the screen's `screen.yaml` (one file replaces `explain.md` and `audit.json`) and judged by the "UI Audit" gate (`starci app check --gate uiaudit`) until its first cycle passes. That pass is the screen's baseline (owner, 2026-11-21): after it, drift and later cycles are evidence to compare against, never a finding.
 
 1. Shoot the screen at 1440 and 390.
 2. `starci audit run <area>/<screen> --builder <your agent id>`: it records the shot sha256 and writes round 1 as seven open lenses (order, layout, actionable, live, words, states, truth) into `screen.yaml`, and prints the brief.
@@ -110,4 +110,4 @@ Since 2026-11-19 the final critique is the UI audit, recorded in the screen's `s
 4. Fix what is `open`, shoot again, `starci audit run` for the next round. At least 2 rounds, at most 4 a cycle; still open after round 4 goes to `escalate`, and a later fix opens a new cycle with `starci audit cycle <area>/<screen> --reason <why>`.
 5. Sync the canvas page to the code, then land. `starci audit status` lists the screens still pending, stale or open.
 
-Audit the screens the change reaches; the others keep the audit they have. The brief template above stays the weighing guide for the auditor's lenses.
+Only a screen the diff touches is judged, and only until its first pass; the others are grandfathered. The brief template above stays the weighing guide for the auditor's lenses.

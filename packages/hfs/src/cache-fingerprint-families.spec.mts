@@ -37,8 +37,8 @@ const families = (root: string, before: string): Map<string, string[]> => {
 
 test('every part names the families that read it, and nothing else is invalidated by it', () => {
   assert.deepEqual(familiesOfPart('cache-format'), FAMILIES);
-  assert.deepEqual(familiesOfPart('hfs'), ['hfs', 'secrets', 'wiring', 'db']);
-  assert.deepEqual(familiesOfPart('pkg:@starci/hfs'), ['hfs', 'secrets', 'wiring', 'db']);
+  assert.deepEqual(familiesOfPart('hfs'), ['hfs', 'secrets', 'wiring', 'db', 'uiaudit']);
+  assert.deepEqual(familiesOfPart('pkg:@starci/hfs'), ['hfs', 'secrets', 'wiring', 'db', 'uiaudit']);
   assert.deepEqual(familiesOfPart('node'), ['test', 'sonar']);
   assert.deepEqual(familiesOfPart('pkg:@starci/auth'), [], 'a library is no toolchain');
   assert.deepEqual(familiesOfPart('pkg:@starci/eslint-canon-be'), ['lint', 'sonar']);
@@ -49,7 +49,7 @@ test('every part names the families that read it, and nothing else is invalidate
   assert.deepEqual(familiesOfPart('lock:format'), ['format']);
   assert.deepEqual(familiesOfPart('lock:unknown'), []);
   assert.deepEqual(familiesOfPart('shape:fe/package.json'), ['hfs', 'lint', 'types', 'test', 'format', 'sonar']);
-  assert.deepEqual(familiesOfPart('file:hfs.json'), ['hfs', 'secrets', 'wiring', 'db', 'lint', 'sonar']);
+  assert.deepEqual(familiesOfPart('file:hfs.json'), ['hfs', 'secrets', 'wiring', 'db', 'uiaudit', 'lint', 'sonar']);
   assert.deepEqual(familiesOfPart('file:be/tsconfig.build.json'), ['types', 'lint', 'test', 'sonar']);
   assert.deepEqual(familiesOfPart('file:fe/eslint.config.mjs'), ['lint', 'sonar']);
   assert.deepEqual(familiesOfPart('file:fe/stylelint.config.mjs'), ['lint', 'sonar']);
@@ -160,7 +160,7 @@ test('a bump of the harness packages re-runs the hfs-run families and neither ty
     computeFingerprint({ root: base, tracked: [], hfsDir: hfsAt(t, '6.0.1') }).parts,
     computeFingerprint({ root: base, tracked: [], hfsDir: hfsAt(t, '6.0.2') }).parts,
   ));
-  assert.deepEqual([...hfsRun.keys()].sort(), ['db', 'hfs', 'secrets', 'wiring'], 'a new hfs re-runs what hfs computes and no unit spec, program or lint file');
+  assert.deepEqual([...hfsRun.keys()].sort(), ['db', 'hfs', 'secrets', 'uiaudit', 'wiring'], 'a new hfs re-runs what hfs computes and no unit spec, program or lint file');
 });
 
 test('a tool bump re-runs the families whose toolchain it is', (t) => {
@@ -211,7 +211,7 @@ test('the hfs-run families read the hfs that runs and hfs.json, never the manife
   fs.writeFileSync(path.join(base, 'be', 'package.json'), JSON.stringify({ name: 'be', dependencies: { lib: '2.0.0' } }));
   assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()], [], 'turbo.json and .gitignore are read by the rules that run every run, a dependency version by no family');
   fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ kind: 'app' }));
-  assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'wiring'], 'the declaration is read by the rules, the custody and the proof');
+  assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'uiaudit', 'wiring'], 'the declaration is read by the rules, the custody and the proof');
 });
 
 /** An installed @starci/hfs at `version` (its folder under a node_modules, so the fingerprint stays portable). */

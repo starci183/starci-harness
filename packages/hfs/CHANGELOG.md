@@ -1,12 +1,12 @@
 # Changelog
 
-## 6.18.0 - 2026-11-21
+## 6.17.2 - 2026-11-21
 
-- Removed (the UI audit gate, PROJECT-GALLERY-8; owner, 2026-11-21: "Screen.yaml mang tính tương đối dc k chỉ được dùng để check lại như thanh tra. Yêu cầu có screen.yaml chứ ko can thiệp vào ci, tức là phải audit mới hợp lý còn kết quả ntn kệ", clarified "Tức là chỉ còn hfs check và bỏ gate audit hiểu k, k cần cảnh báo. Sau này làm có bằng chứng sửa dễ hơn"): the `uiaudit` family of `starci app check` (`--gate uiaudit`, its step, its family, its profile gate) and its codes UI_AUDIT_MISSING, _INVALID, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER and _CONSIDERED_EMPTY, with the screen reach that served only it (`cache/uiaudit-family.mts`, `screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`). No warning and no list replaces them: the audit rounds in screen.yaml are evidence for later fixes, never a gate.
-- Changed (HFS_APP_GALLERY_SCREEN_INVALID, R395): the one UI audit requirement left. The screen.yaml is well formed, its audit block included (seven lenses a round, a verdict of the three, notes unless pass, rounds numbered 1.., `at` an ISO timestamp with its zone). The round count is no longer part of the shape.
-- Added (`starci app uiaudit cycle <area>/<screen> --reason <why>`, reached as `starci audit cycle`): closes the screen's audit cycle into `considered` (one chosen entry: the reason, the rounds and their dates, the last verdict of each lens, builder and auditor; the rounds stay in git history) and starts an empty audit, so the next `audit run` prepares round 1. The lawful way back to a screen after its round 4.
+- Changed (the UI Audit gate, PROJECT-GALLERY-8; owner, 2026-11-21, the ruling that wins: "lần đầu ghi screen.yaml thì phải audit đến pass ghi bằng chứng. sau này sửa code trang nào hay k ưng trang nào chỉ đối chiếu với screen.yaml -> và có thể lan rộng ra để sửa hàng loạt nhưng lúc đó đủ luận điểm phản biện với thầy"): a touched screen is judged only until its audit first passes (2+ rounds, no lens open in the last, an auditor who is not the builder). That pass is its baseline: `audit.baseline` `{ at, rounds }`, written by `starci audit run` and kept by every later cycle. After it, UI_AUDIT_STALE (shots or code drifted), open lenses and later cycles are never findings. A screen with no audit is still UI_AUDIT_MISSING.
+- Changed (HFS_APP_GALLERY_SCREEN_INVALID, R395): the audit block's shape is judged here, for every screen, with `baseline`. UI_AUDIT_INVALID is gone, and the round count is no longer part of the shape.
+- Added (`starci app uiaudit cycle <area>/<screen> --reason <why>`, reached as `starci audit cycle`): closes the screen's audit cycle into `considered` (one chosen entry: the reason, the rounds and their dates, the last verdict of each lens, builder and auditor; the rounds stay in git history) and starts an empty audit, so the next `audit run` prepares round 1. The lawful way back after round 4: a first cycle that never passed stays the one to pass (UI_AUDIT_NEEDS_OWNER names the verb), and a baseline is kept.
 - Fixed (`starci audit run` past a cycle's round 4): it records nothing. Before, it re-recorded the shot sha256, so a reshot image inherited round 4's verdicts.
-- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.18.0.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.17.2.
 
 ## 6.17.1 - 2026-11-21
 

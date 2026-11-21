@@ -172,7 +172,7 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
   }
   const pending = Object.entries(manifest.pages).filter(([, page]) => page.pending !== undefined);
   if (pending.length > 0) {
-    findings.push(found(PENDING_UNBUILT, file, `${pending.length} screen${pending.length === 1 ? '' : 's'} pending, skipped by the change gates (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED): ${pending.map(([id, page]) => `${id} (${page.pending?.reason.trim() ?? ''})`).join('; ')} ${rule}`, { level: 'info' }));
+    findings.push(found(PENDING_UNBUILT, file, `${pending.length} screen${pending.length === 1 ? '' : 's'} pending, skipped by the change gates (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, UI_AUDIT_*): ${pending.map(([id, page]) => `${id} (${page.pending?.reason.trim() ?? ''})`).join('; ')} ${rule}`, { level: 'info' }));
     for (const [id] of pending) {
       const shot = byId.get(id);
       if (shot !== undefined && shot.shots > 0) findings.push(found(PENDING_UNBUILT, `${params.pages}/${id}`, `the pending screen ${id} has a shot in the work tree, so it is coded: drop "pending" from its entry in ${file} and let the change gates judge it ${rule}`, { level: 'info' }));

@@ -46,7 +46,8 @@ in your context and the rules of the topics it adds. Each place the diff breaks 
 finding naming the file, the line, the rule or record and the problem.
 
 **The gallery** (scope `ui` or `both`), once for the whole change, never screen by screen. The screens to cover are every screen the change
-reaches: the route's page and every screen whose page imports a changed file (shared composites, hooks, modules, i18n catalogs). Shoot them at 1440 and 390 from the code, then run the critique and the audit of
+reaches: `starci app check --gate uiaudit` lists them (a screen is touched when its route's page reaches a changed file through imports,
+PROJECT-GALLERY-8 item 3). Shoot them at 1440 and 390 from the code, then run the critique and the audit of
 [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review)
 over all of them in each round: round 1 the desktop compositions against the board and real products of the same archetype, round 2 the
 390 frames and every state, each round all seven lenses of every touched screen's `screen.yaml` (`starci audit run <area>/<screen>` opens

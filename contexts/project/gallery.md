@@ -141,7 +141,7 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    change. On a branch other than `main` and `dev` the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/dev`, else with
    `origin/main`, so a lane's own check judges the whole diff the batch lander's gate judges (the lane merged into `origin/dev`); on `main`, on `dev`
    or when none of those refs is behind `HEAD` it is the lint ratchet's base (`origin/<branch>`, else `HEAD^`). The same base serves
-   `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7), and the run prints it
+   `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7) and the UI Audit (PROJECT-GALLERY-8), and the run prints it
    (`gallery coupling: judged N file(s) changed since <sha>, <why>`). A lane's own `origin/<lane>` is never the base: once the lane is pushed it
    equals `HEAD` and the base would fall to `HEAD^`, the last commit alone. The pre-commit guard (`starci app check --staged`) lists the same finding for the staged files and never blocks
    the commit.
@@ -233,7 +233,7 @@ the gate judges.
    ```json
    "premium/qr-payment": { "status": "approved", "approvedAt": "2026-11-11T09:00:00+07:00", "board": "https://claude.ai/artifact/…", "pending": { "reason": "waits on the QR payment API" } }
    ```
-   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below), the gallery shows it as
+   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below) and by the UI Audit (PROJECT-GALLERY-8 item 4), the gallery shows it as
    `Chờ: <reason>` (`pending: <reason>` in English) instead of hiding it, and its folder in `gallery/pages` is no longer needed to keep the note (the reason is the
    note). It is not a silent bypass: `reason` is required and non-empty, and only `drafted` or `approved` may carry it (a `built` page is judged like any
    other); every run lists each pending screen with its reason, and a pending screen whose shots exist in the work tree is nudged to drop `pending`
@@ -326,13 +326,14 @@ same order until it adopts a board.
   The rule judges code against the canvas, so a screen with no `explain.md` has no mapped source and is not judged here (`HFS_APP_GALLERY_ROUTE_MISSING` is its finding).
   It is not `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, which judges a screen existing in a designed area, not a change.
 
-## PROJECT-GALLERY-8 One file per screen, `screen.yaml`, and its UI audit as evidence
+## PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes
 
 The owner's decision of 2026-11-19: a screen is described by one structured file, and a changed screen is audited by an agent other than its builder.
-The owner's ruling of 2026-11-21 (train 188) makes the audit evidence, never a gate. In his words: "Screen.yaml mang tính tương đối dc k chỉ được dùng để check lại như thanh tra. Yêu cầu có
-screen.yaml chứ ko can thiệp vào ci, tức là phải audit mới hợp lý còn kết quả ntn kệ", then, clarified: "Tức là chỉ còn hfs check và bỏ gate audit hiểu k, k cần cảnh báo. Sau này làm có bằng
-chứng sửa dễ hơn". So the only check is that each screen.yaml is well formed (`HFS_APP_GALLERY_SCREEN_INVALID`, the audit block included); what the rounds found (open lenses, the round
-count, the builder as auditor, shots or code drifted since) blocks nothing, warns nothing and is listed by no gate. The rounds are kept so a later fix starts from what was seen.
+The owner's rulings of 2026-11-21 (train 188). First: "Screen.yaml mang tính tương đối dc k chỉ được dùng để check lại như thanh tra. Yêu cầu có screen.yaml chứ ko can thiệp vào ci,
+tức là phải audit mới hợp lý còn kết quả ntn kệ"; then: "Tức là chỉ còn hfs check và bỏ gate audit hiểu k, k cần cảnh báo. Sau này làm có bằng chứng sửa dễ hơn"; and the version that
+wins: "lần đầu ghi screen.yaml thì phải audit đến pass ghi bằng chứng. sau này sửa code trang nào hay k ưng trang nào chỉ đối chiếu với screen.yaml -> và có thể lan rộng ra để sửa hàng
+loạt nhưng lúc đó đủ luận điểm phản biện với thầy". So a screen's first audit cycle must reach a pass, and that pass is its baseline evidence. From then on nothing about its audit blocks or
+warns: drift since the pass and later cycles are the reference a later fix compares against, and a mass fix drawn from that comparison is argued with the owner first.
 
 1. **`screen.yaml` replaces `explain.md` and `audit.json`.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`, `app` (optional: the front-end app, needed only when two apps serve the route),
    `area`, `summary` (one to three sentences), `code` (the source paths the screen is built from, relative to the front-end app's `src/`), `shots` (`"1440"` and `"390"`, each `{ file, sha256 }`,
@@ -346,27 +347,36 @@ count, the builder as auditor, shots or code drifted since) blocks nothing, warn
 2. **`starci gallery migrate-explain [--execute]`** turns every `explain.md` into a `screen.yaml` (regions become sections with their `Vì sao`, `Luật` and `Grammar`, the options section becomes
    `considered`, the `code` is read from the route's source, the shot sha256 from the PNGs on disk) with `audit: null`, and deletes the explain.md. A dry run lists what it would do; a screen it cannot convert (no route, no title) is
    skipped and named.
-3. **The UI audit.** A screen whose code or text changes is audited by an agent other than its builder, and its screen.yaml carries the rounds as evidence; no check requires or judges them (item 4). The audit holds
+3. **The UI audit.** A touched screen is audited by an agent other than its builder until its first cycle passes (item 4). A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (`packages/hfs/cache/screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`: a shared composite, a hook, a module, a workspace package, the i18n keys its sources read; a barrel is transparent, a `renders: false` slot marks nothing), or when its audited screen.yaml changed. The audit holds
    `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the seven `lenses` `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth`, each
-   `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`, `at` an ISO timestamp with its zone) and `escalate`. The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
+   `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`, `at` an ISO timestamp with its zone), `escalate`, and `baseline` (`{ at, rounds }`: the first pass, written by `starci audit run`, kept by every later cycle). The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
    rules, with an explicit checklist read on the full-resolution crops of the first viewport and the header at 390 and 1440 (never on the shrunk full-page shot): control height 40 (an `sm` control only nested in an item or a dense toolbar, never in a header), no wrapped label, overflow goes to the menu (`TopBar fit`), tap targets at least 44 at 390 (ui/presentation.md PHONE-1..4; `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE`, `DNA-COMMON-HEADER-NO-OVERFLOW`); **actionable** every value shows how to change it; **live** running, done, waiting and failed are visible with an icon and motion; **words** no mixed English or raw ids, one term per concept; **states** empty,
    loading, error and no-permission at 1440 and 390; **truth** the data is real or marked "cần API". The audit loops, each round running all seven lenses, until every lens of the last round is `pass` or `fixed`:
    at least 2 rounds, at most 4 a cycle. Still `open` after round 4 is written to `escalate` ("needs owner: <why>"). A screen looked at again after its round 4 (a fix, a reshoot)
    opens a new cycle with `starci audit cycle` (item 5); `audit run` past a cycle's round 4 records nothing, so a reshot image never inherits round 4's verdicts.
-4. **No UI audit gate** (owner, 2026-11-21; the `uiaudit` gate and its `UI_AUDIT_*` codes were removed in train 188). `starci app check`, the pre-push hook, CI and the lander judge only
-   the shape of each screen.yaml, inside the hfs family: `HFS_APP_GALLERY_SCREEN_INVALID` names a missing key, a screen or area that is not the folder's, a shot that is no width, a sha that is not a
-   lowercase sha256, and an audit block that is not its shape (a lens missing from a round, a verdict outside the three, notes missing, rounds not numbered 1.., an `at` that is not ISO with its zone).
-   Whether a screen was audited, how many rounds it ran and what they found is the builder's and the inspector's evidence, read with `starci audit status`.
+4. **The gate is "UI Audit" until the first pass** (`starci app check --gate uiaudit`, in every whole run and the pre-push hook; a mandatory gate no app switches off). It judges the touched
+   screens only; every other screen is grandfathered and never read, and a screen `design.json` marks `pending` (PROJECT-GALLERY-6 item 9) is skipped and named on the summary line. A screen
+   whose audit has passed once (`baseline`, or current rounds that pass) is never judged again. Until then its findings are `localOnly` (a warning in `--env local`, an error in `--env prod`):
+   - `UI_AUDIT_MISSING`: a touched screen has `audit: null` or no screen.yaml;
+   - `UI_AUDIT_STALE`: a shot's sha256 is not recorded or differs from the PNG on this machine, or the screen's code or text changed since the base and screen.yaml did not;
+   - `UI_AUDIT_SELF_REVIEW`: the auditor is the builder;
+   - `UI_AUDIT_ROUNDS_FEW`: fewer than 2 rounds;
+   - `UI_AUDIT_OPEN`: a lens is open in the last round (before round 4);
+   - `UI_AUDIT_NEEDS_OWNER`: a lens is still open in round 4 of the first cycle: fix and open the next cycle with `starci audit cycle`, or the owner decides;
+   - `UI_AUDIT_CONSIDERED_EMPTY`: `considered` is empty.
+
+   A malformed audit block (a lens missing from a round, a verdict outside the three, notes missing, rounds not numbered 1.., an `at` that is not ISO with its zone, a bad `baseline`) is
+   `HFS_APP_GALLERY_SCREEN_INVALID`, judged for every screen in the hfs family.
 5. **`starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`** prepares a round: it takes the sha256 of `1440.png` and `390.png`, writes the next round into screen.yaml as seven
    open lenses, writes full-resolution CROPS beside the shots (`1440-first.png`, `1440-header.png`, `390-first.png`, `390-header.png`: the first viewport and the header region, cut at the shot's own pixel density, never scaled; a screen folder may hold them) and prints the brief an auditor agent reads (the crops first, then the shots at full size, the seven lenses with the layout lens's checklist, the laws: PROJECT-GALLERY-7, the DNA laws of the Grammar contract, ui-on-grammar, the owner rules).
    **The harness never calls a model.** The auditor is a separate agent (a subagent or another lane) given the brief; it fills the round, the builder fixes and shoots again, and `run` opens the next round.
    `starci audit cycle <area>/<screen> --reason <why>` closes the current cycle into `considered` (one chosen entry: the reason, the rounds and their dates, the last verdict of each lens,
    builder and auditor; the rounds stay in git history) and starts an empty audit, so the next `starci audit run` prepares round 1 of the new cycle.
-   `starci audit status [--json]` lists the screens with an audit pending, open, stale or past its round 4: evidence for the builder, never a finding.
+   `starci audit status [--json]` lists the screens with an audit missing, pending, open, stale or past its round 4.
 6. **A UI change ends** with the one review of PROJECT-GALLERY-7 item 4: shoot every touched screen (1440 and 390) → `starci audit run` on each → the reviewer fills the round of all of them → the builder fixes → shoot → the next round, until round 2 or later has no open lens on any → sync the board (or the canvas) →
    land. The touched set is what the review covers; its record of options is `considered`.
 
-**Enforced by** `runtime/scripts/hfs/screen-yaml.mts` (the schema, the round skeleton and the new cycle), `rules/gallery.mts` (`HFS_APP_GALLERY_SCREEN_INVALID`), `uiaudit/cli.mts` (`starci audit run|cycle|status`, `starci gallery`).
+**Enforced by** `packages/hfs/cache/uiaudit-family.mts` and `runtime/scripts/hfs/screen-yaml.mts` (the UI Audit gate until the first pass, the schema, the round skeleton, the baseline and the new cycle), `rules/gallery.mts` (`HFS_APP_GALLERY_SCREEN_INVALID`), `uiaudit/cli.mts` (`starci audit run|cycle|status`, `starci gallery`).
 
 ## PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar
 
