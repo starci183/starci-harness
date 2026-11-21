@@ -7775,22 +7775,13 @@ STACK_STORAGE_MISSING:
   owner: op-retry
   kind: check-finding
   cutoverTolerant: true
-STACK_STORAGE_IMAGE_UNUSED:
-  title: "statics/ holds media and the storage service does not build the storage image"
-  title_vi: "statics/ có media nhưng service storage không build image storage"
-  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
-  owner: op-retry
-  kind: check-finding
 STACK_STORAGE_IMAGE_SHAPE:
-  title: "The storage service does not have the shape of the storage image"
-  title_vi: "Service storage sai hình dạng của image storage"
-  meaning_vi: "Service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}."
+  title: "The storage service does not build the storage image or does not have its shape"
+  title_vi: "Service storage không build image storage hoặc sai hình dạng của image đó"
+  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API: khi statics/ có media, service storage của dev phải build .starcistacks/images/storage/Dockerfile; service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}. Thông báo của finding nêu điều còn thiếu."
   causes_vi:
     - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn."
+  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn, hoặc cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
   owner: op-retry
   kind: check-finding
 

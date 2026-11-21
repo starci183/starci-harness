@@ -65,7 +65,7 @@ Why: statics must exist in the store the app reads, on a fresh machine and after
 the project's own (so an app reads one origin for statics and for its uploads). A harness loader would be a second path into the store; the image
 entrypoint is the only one.
 
-Enforced by: R440 (`storage-image`: `STACK_STORAGE_MISSING`, `STACK_STORAGE_IMAGE_UNUSED`, `STACK_STORAGE_IMAGE_SHAPE`),
+Enforced by: R440 (`storage-image`: `STACK_STORAGE_MISSING`, `STACK_STORAGE_IMAGE_SHAPE`),
 `HFS_MANAGED_FILE_DRIFT` for the two managed files, `packages/hfs/src/dev-storage.spec.mts` for the pin.
 
 ## PROJECT-STATICS-3 Media lives in statics, never beside the code

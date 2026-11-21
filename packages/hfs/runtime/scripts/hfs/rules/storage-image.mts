@@ -5,8 +5,8 @@
 // files of the environments:
 //   STACK_STORAGE_MISSING       the condition holds and the dev environment declares no `storage` service (or, in an app, the production environment
 //                               declares no `deploy.images.storage`): error;
-//   STACK_STORAGE_IMAGE_UNUSED  statics/ holds media and the dev `storage` service does not build the override Dockerfile, so the statics never reach the bucket;
-//   STACK_STORAGE_IMAGE_SHAPE   the dev `storage` service builds the override but one of these fails: build.context is the app root, build.dockerfile is the
+//   STACK_STORAGE_IMAGE_SHAPE   statics/ holds media and the dev `storage` service does not build the override Dockerfile, so the statics never reach the bucket; or the dev `storage`
+//                               service builds the override but one of these fails: build.context is the app root, build.dockerfile is the
 //                               override, image is <project>-storage:local, the environment holds STATICS_BUCKET (non-empty), STATICS_PREFIX (kebab-case
 //                               segments) and STATICS_PUBLIC (download or none), the healthcheck tests /tmp/statics-ready, statics/ exists; or, in a
 //                               production, `deploy.images.storage` names another app than `storage`.
@@ -98,7 +98,7 @@ export function storageImageFindings(input: {
       if (need.needed && !present) findings.push(found('STACK_STORAGE_MISSING', STACK_FILE, `${at}: ${need.statics ? 'statics/ holds files' : 'the back end uses object storage'} and the environment declares no \`storage\` service: add the storage service built from ${OVERRIDE} (starci app sync --execute renders the Dockerfile) ${WHY}`, { environment, reason: need.statics ? 'statics' : 'backend' }));
       if (storage !== undefined) {
         const builds = buildsOverride(storage.service);
-        if (media && !builds) findings.push(found('STACK_STORAGE_IMAGE_UNUSED', `${storage.dir}/compose.yaml`, `${at}: statics/ holds media but the \`storage\` service does not build ${OVERRIDE}, so the statics never reach the bucket: build the managed image (build.context the app root, build.dockerfile ${OVERRIDE}) ${WHY}`, { environment }));
+        if (media && !builds) findings.push(found('STACK_STORAGE_IMAGE_SHAPE', `${storage.dir}/compose.yaml`, `${at}: statics/ holds media but the \`storage\` service does not build ${OVERRIDE}, so the statics never reach the bucket: build the managed image (build.context the app root, build.dockerfile ${OVERRIDE}) ${WHY}`, { environment }));
         else if (builds) {
           const problems = shapeProblems(storage.service, storage.dir, project, hasFolder);
           if (problems.length > 0) findings.push(found('STACK_STORAGE_IMAGE_SHAPE', storage.dir, `${at}: the \`storage\` service breaks the shape of the storage image: ${problems.join('; ')} ${WHY}`, { environment }));
