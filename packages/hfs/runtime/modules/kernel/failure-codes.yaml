@@ -7947,15 +7947,6 @@ STACK_STORAGE_MISSING:
   owner: op-retry
   kind: check-finding
   cutoverTolerant: true
-STACK_STORAGE_UNUSED:
-  title: "A storage service is declared and nothing needs it"
-  title_vi: "Có service storage nhưng không cần dùng (cảnh báo)"
-  meaning_vi: "Không có statics/ (ngoài .gitkeep) và back end không dùng storage thì không cần MinIO."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Gỡ service storage hoặc thêm statics hay phần dùng storage."
-  owner: op-retry
-  kind: check-finding
 STACK_STORAGE_IMAGE_UNUSED:
   title: "statics/ holds media and the storage service does not build the storage image"
   title_vi: "statics/ có media nhưng service storage không build image storage"

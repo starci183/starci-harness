@@ -5,7 +5,6 @@
 // files of the environments:
 //   STACK_STORAGE_MISSING       the condition holds and the dev environment declares no `storage` service (or, in an app, the production environment
 //                               declares no `deploy.images.storage`): error;
-//   STACK_STORAGE_UNUSED        a storage service is declared and no condition holds: the app runs an object store nothing uses (warning);
 //   STACK_STORAGE_IMAGE_UNUSED  statics/ holds media and the dev `storage` service does not build the override Dockerfile, so the statics never reach the bucket;
 //   STACK_STORAGE_IMAGE_SHAPE   the dev `storage` service builds the override but one of these fails: build.context is the app root, build.dockerfile is the
 //                               override, image is <project>-storage:local, the environment holds STATICS_BUCKET (non-empty), STATICS_PREFIX (kebab-case
@@ -97,7 +96,6 @@ export function storageImageFindings(input: {
       const storage = services.find((entry) => entry.name === 'storage');
       const present = storage !== undefined || declared.has('storage');
       if (need.needed && !present) findings.push(found('STACK_STORAGE_MISSING', STACK_FILE, `${at}: ${need.statics ? 'statics/ holds files' : 'the back end uses object storage'} and the environment declares no \`storage\` service: add the storage service built from ${OVERRIDE} (starci app sync --execute renders the Dockerfile) ${WHY}`, { environment, reason: need.statics ? 'statics' : 'backend' }));
-      if (!need.needed && present) findings.push({ ...found('STACK_STORAGE_UNUSED', STACK_FILE, `${at}: a \`storage\` service runs and nothing needs it (no file under statics/ besides .gitkeep, no ${'@starci/object-storage'} dependency, no \`storage\` custody member): remove the service, or add the statics or the storage use ${WHY}`, { environment }), level: 'warning' });
       if (storage !== undefined) {
         const builds = buildsOverride(storage.service);
         if (media && !builds) findings.push(found('STACK_STORAGE_IMAGE_UNUSED', `${storage.dir}/compose.yaml`, `${at}: statics/ holds media but the \`storage\` service does not build ${OVERRIDE}, so the statics never reach the bucket: build the managed image (build.context the app root, build.dockerfile ${OVERRIDE}) ${WHY}`, { environment }));
@@ -110,7 +108,6 @@ export function storageImageFindings(input: {
       const images = map(spec.deploy.images);
       const entry = images.storage;
       if (need.needed && entry === undefined) findings.push(found('STACK_STORAGE_MISSING', STACK_FILE, `${at}.deploy.images: the project needs its own object store and the production deploy builds no \`storage\` image: declare \`storage: {app: storage}\` (built from ${OVERRIDE}) and the \`storage\` service of the swarm stack ${WHY}`, { environment, reason: need.statics ? 'statics' : 'backend' }));
-      if (!need.needed && entry !== undefined) findings.push({ ...found('STACK_STORAGE_UNUSED', STACK_FILE, `${at}.deploy.images.storage: the production deploy builds a storage image and nothing needs it ${WHY}`, { environment }), level: 'warning' });
       if (entry !== undefined && !(plain(entry) && entry.app === 'storage')) findings.push(found('STACK_STORAGE_IMAGE_SHAPE', STACK_FILE, `${at}.deploy.images.storage must be {app: storage}, the app of ${OVERRIDE} ${WHY}`, { environment }));
     }
   }
