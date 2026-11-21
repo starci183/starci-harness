@@ -212,12 +212,12 @@ export const ledgerAnswers = (command: Command, scope: CommandScope): string[] =
 
 /**
  * Refuses a `settle` that settles nothing (COMMAND_INVALID): it belongs to a workflow-change or an escalation that answers a
- * decision on a task (red, question, check-premise, conflict) and is no hold, since a hold keeps its task where it stands.
+ * decision on a task (red, question, conflict) and is no hold, since a hold keeps its task where it stands.
  */
 const assertSettle = (db: DatabaseSync, command: Command): void => {
     if (command.settle === undefined) return
     if ((command.kind !== "workflow-change" && command.kind !== "escalation") || isHold(command) || decidedTasks(db, command.answers ?? []).length === 0) {
-        throw new Refusal("COMMAND_INVALID", `settle: ${command.settle} belongs to a workflow-change or escalation that answers a decision on a task (red, question, check-premise, conflict) without holding it; ${command.cmdId} settles no task`)
+        throw new Refusal("COMMAND_INVALID", `settle: ${command.settle} belongs to a workflow-change or escalation that answers a decision on a task (red, question, conflict) without holding it; ${command.cmdId} settles no task`)
     }
 }
 
@@ -309,7 +309,7 @@ export const finishCommand = (db: DatabaseSync, scope: CommandScope, command: Co
     })
 
 /** The decision kinds `kernel next` returns. */
-export type KernelDecisionKind = "red" | "check-premise" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
+export type KernelDecisionKind = "red" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
 
 /** The decision kinds `supervisor next` returns. */
 export type SupervisorDecisionKind = "escalation" | "handoff" | "shared-need" | typeof KERNEL_UNDECIDED

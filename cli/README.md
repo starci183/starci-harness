@@ -264,7 +264,7 @@ An Op reports, the harness verifies, and each ended attempt is settled once in i
 (`settleDue` and `settleWork` in `harness/prior.ts`, recorded `op-settled`): MERGE,
 a green verify that landed it; KEEP, a stop the harness owes a continuation (custody's `awaiting_owner`, a cause
 `harnessCause` of `harness/revive.ts` names, a verify the host held, a waiter parked on a shared need); and, for a red the
-task caused, its Kernel's decision, the `settle` of the command answering its red, question, check-premise or conflict
+task caused, its Kernel's decision, the `settle` of the command answering its red, question or conflict
 decision: `discard` (the default) or `repair` (`recordSettles` in `core/kernel/driver.ts`; refused `COMMAND_INVALID` on a
 command that answers no such decision, or holds it). A task with no Kernel (outside a workflow), or cancelled with no harness
 cause, is DISCARD, and one whose Kernel answered nothing is DISCARD once its workflow ended or its key went on to a later
@@ -513,11 +513,8 @@ changes only the workflow's ceiling. A workflow with tasks left is `near` its ce
 `harness/budget-warn.ts`) once its minutes or tries reach `budgets.nearPercent` of [ops/routing.yaml](../ops/routing.yaml) or
 fewer tries are left than tasks to run; `supervisor tick` then asks the owner one `question:business` ticket per ceiling (deduped
 by `keyedFingerprint`, each later tick a repeat) proposing a raise sized to those tasks at the done tasks' pace, opened as the
-Supervisor's so the answer wakes it, and the workflow-wide `budget raise` answers it. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
-one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A failed task whose only reds are command checks its contract wrote, each output stating an
-expectation the otherwise green result contradicts, is a `check-premise` decision carrying each check's command and output
-(`premiseChecks` in `harness/check-premise.ts`), answered only by an edit that sets the task's checks: a worker never
-changes its own checks, so the Kernel amends a stale premise. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
+Supervisor's so the answer wakes it, and the workflow-wide `budget raise` answers it. Every other retry is the Kernel's amend: the red or question decision carries its
+one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A worker never changes its own checks; the Kernel amends them. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
 ### Shared needs
@@ -1024,7 +1021,7 @@ wakes, give-ups and a ruling told are never progress.
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
 (decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor),
 plus `settle` (`discard` or `repair`) on a Kernel's answer to a decision on a task ("Settling an attempt").
-A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
+A `workflow-change` that answers a red, question or conflict decision on a task with no change and no need holds
 the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
 `time`; `tasks` names, by plan key, the tasks a hold keeps beside those whose decisions it answers, and with `tasks` a hold
 needs no open decision at all, so a Kernel holds a key on an open ticket alone), refused

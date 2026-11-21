@@ -16,14 +16,14 @@ import { getWorkflow, graphOf } from "./workflow.js"
 export const ROUTES_SCHEMA = "starci/routes@1"
 
 /** The causes of a decision on a task, by decision kind (ops/routes.yaml says what each means; causeOf reads them). */
-const CAUSES = { red: ["findings", "failed", "rejected", "no-report"], question: ["blocked", "mismatch"], "check-premise": ["rejected"] } as const
+const CAUSES = { red: ["findings", "failed", "rejected", "no-report"], question: ["blocked", "mismatch"] } as const
 
 /** The decision kinds that carry routes. */
 type RoutedKind = keyof typeof CAUSES
 
 const routeSchema = z.strictObject({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-    on: z.strictObject({ decision: z.enum(["red", "question", "check-premise"]), from: z.string().min(1), cause: z.enum([...CAUSES.red, ...CAUSES.question]) }),
+    on: z.strictObject({ decision: z.enum(["red", "question"]), from: z.string().min(1), cause: z.enum([...CAUSES.red, ...CAUSES.question]) }),
     to: z.union([z.literal("same"), z.literal("build"), z.strictObject({ label: z.string().min(1) })]),
     limit: z.number().int().min(1),
 })
@@ -76,7 +76,6 @@ const causeOf = (db: DatabaseSync, taskId: string, kind: RoutedKind): string => 
     const attempt = latestAttempt(db, taskId)
     const result = attempt === undefined ? undefined : resultOf(db, attempt.id)
     if (kind === "question") return result?.status === "mismatch" ? "mismatch" : "blocked"
-    if (kind === "check-premise") return "rejected"
     if (result === undefined) return "no-report"
     const output: unknown = result.output
     if (typeof output === "object" && output !== null && "verdict" in output && output.verdict === "failed") return "findings"
@@ -131,7 +130,7 @@ export const routeOptions = (db: DatabaseSync, workflowId: string, kind: RoutedK
     return { key, cause, held, routes: [], gate: "owner" }
 }
 
-/** True for a Kernel decision that carries routes: red, check-premise or question on a task. */
+/** True for a Kernel decision that carries routes: red or question on a task. */
 export const isRouted = <T extends { readonly scope: string; readonly kind: string; readonly subject: string }>(decision: T): decision is T & { readonly kind: RoutedKind } =>
     decision.scope === "kernel" && decision.kind in CAUSES && decision.subject.startsWith("t-")
 
@@ -161,10 +160,9 @@ export interface RoutedCommand {
 }
 
 /**
- * Why a change file does not do what a route asks for a task key, or undefined when it does. A check-premise decision is answered
- * only by an edit of the task that sets its checks (or its contract): the check is what was wrong, so a plain retry is unfit.
+ * Why a change file does not do what a route asks for a task key, or undefined when it does.
  */
-const unfitChange = (db: DatabaseSync, workflowId: string, file: string, dir: string, key: string, route: LegalRoute, kind: RoutedKind): string | undefined => {
+const unfitChange = (db: DatabaseSync, workflowId: string, file: string, dir: string, key: string, route: LegalRoute): string | undefined => {
     let parsed: z.infer<typeof changeSchema>
     try {
         const raw: unknown = parse(readFileSync(file, "utf8"))
@@ -176,10 +174,6 @@ const unfitChange = (db: DatabaseSync, workflowId: string, file: string, dir: st
     }
     const workflow = getWorkflow(db, workflowId)
     const labels = new Map(graphOf(db, workflowId, workflow.graphVersion).map((node) => [node.key, node.contract.label]))
-    if (kind === "check-premise") {
-        const amends = parsed.changes.some((change) => change.op === "edit" && change.id === key && (change.set?.checks !== undefined || change.set?.contract !== undefined))
-        return amends ? undefined : `route ${route.id} amends the checks of ${key}: an edit of it whose set carries checks (or a contract), and the change has none`
-    }
     const fits = parsed.changes.some((change) => {
         if (change.op === "add") return change.task !== undefined && addedLabel(change.task, dir) === route.label
         if (route.to === "same") return (change.op === "retry" || change.op === "edit") && change.id === key
@@ -215,7 +209,7 @@ export const assertRoute = (db: DatabaseSync, command: RoutedCommand, dir: strin
             throw new Refusal("ROUTE_ILLEGAL", `decision ${decision.id} (${decision.kind}, ${options.cause}, task ${options.key}) allows route ${legal.id} (to ${legal.to}, ${String(legal.taken)} of ${String(legal.limit)} taken), not ${command.route ?? "none named"}; name it as route and do what it asks, or escalate`)
         }
         if (command.change === undefined) throw new Refusal("ROUTE_ILLEGAL", `route ${legal.id} needs a change file doing what it asks`)
-        const why = unfitChange(db, command.workflow, resolve(dir, command.change), dir, options.key, legal, decision.kind)
+        const why = unfitChange(db, command.workflow, resolve(dir, command.change), dir, options.key, legal)
         if (why !== undefined) throw new Refusal("ROUTE_ILLEGAL", why)
     }
 }
