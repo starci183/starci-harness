@@ -7232,16 +7232,6 @@ HFS_PACKAGE_SLOTS_INVALID:
   owner: op-retry
   kind: check-finding
 
-HFS_PACKAGE_SLOTS_MOVED:
-  title: "A package still declares its slots in its own slots.yaml"
-  title_vi: "Một package vẫn khai slot trong slots.yaml riêng"
-  meaning_vi: "Slot của một root package do dự án khai trong ext/manifest.json (packages[\"packages/<name>\"]). packages/<name>/slots.yaml chỉ còn được đọc trong minor này, kèm cảnh báo."
-  causes_vi:
-    - "Vi phạm R382: package còn slots.yaml và manifest của dự án chưa khai package đó."
-  nextStep_vi: "Chuyển nội dung slots.yaml vào ext/manifest.json dưới packages[\"packages/<name>\"] (cùng khóa, dạng JSON) rồi xóa slots.yaml."
-  owner: op-retry
-  kind: check-finding
-
 HFS_PACKAGE_SLOT_MISSING:
   title: "An instance of a package slot lacks a file its slot requires"
   title_vi: "Một instance của slot trong package thiếu file mà slot yêu cầu"

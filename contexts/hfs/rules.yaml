@@ -2580,7 +2580,6 @@ rules:
       - HFS_PACKAGE_SLOT_MISSING
       - HFS_PACKAGE_SLOT_DISALLOWED
       - HFS_PACKAGE_SLOTS_INVALID
-      - HFS_PACKAGE_SLOTS_MOVED
     enforcers:
       - {kind: hfs, id: package-slots}
   - id: R383

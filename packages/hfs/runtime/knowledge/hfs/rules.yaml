@@ -5764,7 +5764,7 @@ rules:
     law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID", "HFS_PACKAGE_SLOTS_MOVED"]
+    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID"]
     enforcers:
       - {kind: hfs, id: package-slots, at: scripts/hfs/rules/app-extension-findings.mjs}
     docs:
