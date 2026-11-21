@@ -11,7 +11,6 @@
  */
 import { themeLayerShape } from "./theme-layer-shape.ts"
 import { breakpointScale } from "./breakpoint-scale.ts"
-import { globalsImportOrder } from "./globals-import-order.ts"
 import { noClassSelector } from "./no-class-selector.ts"
 import { noCssModule } from "./no-css-module.ts"
 import { sourceResolves } from "./source-resolves.ts"
@@ -19,7 +18,6 @@ import { spacingScale } from "./spacing-scale.ts"
 import { globalsShape } from "./globals-shape.ts"
 import { noApplyRaw } from "./no-apply-raw.ts"
 import { noImportant } from "./no-important.ts"
-import { noSelfReference } from "./no-self-reference.ts"
 import { noInlineLintConfig } from "./no-inline-lint-config.ts"
 import { noGrammarPrivateToken } from "./no-grammar-private-token.ts"
 import { noTokenRedefinition } from "./no-token-redefinition.ts"
@@ -41,7 +39,6 @@ export const rules = {
   "raw-brand-value": rawBrandValue,
   "no-apply-raw": noApplyRaw,
   "no-important": noImportant,
-  "no-self-reference": noSelfReference,
   "globals-shape": globalsShape,
   "no-token-redefinition": noTokenRedefinition,
   "no-grammar-private-token": noGrammarPrivateToken,
@@ -52,7 +49,6 @@ export const rules = {
   "breakpoint-scale": breakpointScale,
   "spacing-scale": spacingScale,
   "source-resolves": sourceResolves,
-  "globals-import-order": globalsImportOrder,
 }
 
 /** The stylelint plugin objects, in rule order. */

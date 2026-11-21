@@ -53,7 +53,7 @@ classes.
 @source "../../../../../node_modules/@starci/grammar/dist";
 ```
 
-Enforced by: R61 (stylelint `globals-import-order`, `globals-shape`, `source-resolves`).
+Enforced by: R61 (stylelint `globals-shape`, `source-resolves`).
 
 ## FE-CSS-3 Colour lives in one brand file
 
@@ -85,7 +85,7 @@ a `globals.css`, or whose globals import no Grammar stylesheet or no brand file,
 
 Why: a second global sheet is a second design system for part of the routes, which is how a site and an app of one product end up looking like two.
 
-Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`, `globals-import-order`).
+Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`).
 
 ## FE-STATE-PAGES One page per system state
 

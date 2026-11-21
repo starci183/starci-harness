@@ -43,7 +43,6 @@ Colour values exist only in `modules/brand/brand.css`, on HeroUI's tokens, which
 | `starci/breakpoint-scale` | A width in `@media` that is not on the grammar's scale (rem, or px at 16px to the rem). |
 | `starci/spacing-scale` | A padding, margin, gap or scroll inset (and a custom property carrying one) whose length is off the spacing scale 0 4 8 12 24 32 (rem, or px at 16px to the rem; a 1px or 2px line passes), or fluid (`clamp()`, a viewport unit). Its spec also judges every `@starci/grammar` stylesheet (finding `FE_SPACING_OFF_SCALE`). |
 | `starci/source-resolves` | A Tailwind `@source` path that does not exist, resolved from the stylesheet's folder (finding `FE_STYLE_SOURCE_UNRESOLVED`). |
-| `starci/globals-import-order` | In `globals.css`: an import outside, or out of, the order `tailwindcss`, `@heroui/styles/css`, a grammar family stylesheet (and its optional `theme.css`), `modules/brand/brand.css`, then `@source`. |
 
 The file kind comes from the path: `**/modules/brand/brand.css` is the brand layer, `globals.css` the global sheet,
 `*.module.css` a CSS module, anything else a plain stylesheet. There is no per-file override to turn a rule off.
@@ -63,9 +62,7 @@ refreshes the snapshots.
 
 The brand layer is the app's theme. No rule here measures a contrast, a palette or a pairing of light and dark; the
 family's own defaults (`@starci/grammar/<family>/theme.css`) are proved in the package's own render proof, for the family's
-sake, and block nothing in an app. Status tones follow HeroUI's soft pairing (`--<tone>-soft`, `--<tone>-soft-foreground`);
-the vocabulary's `STATUS_TONES` reach `status-text-uses-soft-foreground` in the selected Grammar lint package
-(`@starci/eslint-grammar-core` or `@starci/eslint-grammar-offset-pop`).
+sake, and block nothing in an app. Status tones follow HeroUI's soft pairing (`--<tone>-soft`, `--<tone>-soft-foreground`).
 
 ## Not covered
 
