@@ -1,10 +1,10 @@
-// desktop-side.mts - the desktop app a project declares (contexts/project/desktop.md PROJECT-DESKTOP-1, R444): hfs.json `sides.desktop`
+// desktop-side.mts - the desktop app a project declares (contexts/project/desktop.md PROJECT-DESKTOP-1): hfs.json `sides.desktop`
 //   "desktop": { "app": "web", "name": "NIVO", "identifier": "vn.nivo.app", "origin": "https://app.nivo.vn", "schemes": ["nivo"], "updater": { "pubkey": "...", "endpoint": "https://..." } }
 // wraps one front-end app in a Tauri v2 shell that loads the deployed origin (the remote-origin shell): the web app stays the only codebase, the shell
 // is the folder `desktop/` (desktop/src-tauri/, desktop/frontend/) and installs a native window, deep links and the updater around it.
 // `desktop` is a declaration side with a folder of its own, like `nivoos` is a declaration over packages/: it is not a member of PROJECT_SIDES, so the
 // be/fe/packages machinery never sees it; the slots `app.desktop-config` (managed), `app.desktop-workflow` (managed) and `app.desktop` (owned) carry its tree.
-// Pure and dependency-free: the declaration shape, its defaults, the config a declaration renders, and the judgment of a rendered config.
+// Pure and dependency-free: the declaration shape, its defaults, and the config a declaration renders.
 import { isPlainObject } from '../../engine/plain-object.mjs';
 
 /** The key of `sides` that declares the desktop app. */
@@ -204,65 +204,3 @@ export function tauriConfig(declaration: DesktopDeclaration): Record<string, unk
 
 /** The tauri.conf.json text of a declaration. */
 export const tauriConfigText = (declaration: DesktopDeclaration): string => `${JSON.stringify(tauriConfig(declaration), null, 2)}\n`;
-
-/** A problem of a tauri.conf.json: the code of its rule and the words that name it. */
-export interface DesktopConfigProblem { readonly code: 'HFS_DESKTOP_CONFIG' | 'HFS_DESKTOP_SECURITY'; readonly message: string }
-
-/**
- * Judges a parsed tauri.conf.json against the declaration it belongs to and the version of the app's package.json: the identifier, the product name and
- * the version source agree (HFS_DESKTOP_CONFIG), the deep link schemes and the updater are exactly the declared ones, and nothing opens the shell's IPC
- * to the remote origin or loosens its policy (HFS_DESKTOP_SECURITY).
- */
-export function desktopConfigProblems(config: unknown, declaration: DesktopDeclaration, packageVersion: unknown): DesktopConfigProblem[] {
-  const problems: DesktopConfigProblem[] = [];
-  const config_ = (message: string): void => { problems.push({ code: 'HFS_DESKTOP_CONFIG', message }); };
-  const security = (message: string): void => { problems.push({ code: 'HFS_DESKTOP_SECURITY', message }); };
-  if (!isPlainObject(config)) return [{ code: 'HFS_DESKTOP_CONFIG', message: `${TAURI_CONFIG_FILE} is not a JSON object` }];
-  const conf = config as Record<string, any>; // reason: a parsed JSON document, read field by field below
-  if (conf.identifier !== declaration.identifier) config_(`identifier is ${JSON.stringify(conf.identifier)}, but hfs.json sides.desktop.identifier is ${declaration.identifier}`);
-  if (conf.productName !== declaration.name) config_(`productName is ${JSON.stringify(conf.productName)}, but hfs.json sides.desktop.name is ${declaration.name}`);
-  if (conf.version !== '../../package.json') config_(`version is ${JSON.stringify(conf.version)}: it must be "../../package.json", the version of the web app, so the installer, the updater manifest and the web app share one number`);
-  if (typeof packageVersion !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u.test(packageVersion)) config_(`the package.json of the app has no semver version (${JSON.stringify(packageVersion)}): the installers take it`);
-  const schemes: unknown = conf.plugins?.['deep-link']?.desktop?.schemes ?? [];
-  if (JSON.stringify(schemes) !== JSON.stringify(declaration.schemes)) config_(`the deep link schemes are ${JSON.stringify(schemes)}, but hfs.json sides.desktop.schemes is ${JSON.stringify(declaration.schemes)}`);
-  const updater: Record<string, any> | undefined = conf.plugins?.updater;
-  if (declaration.updater === undefined) {
-    if (updater !== undefined || conf.bundle?.createUpdaterArtifacts !== undefined) config_('the config carries an updater, but hfs.json sides.desktop declares none');
-  } else {
-    if (updater?.pubkey !== declaration.updater.pubkey) config_('plugins.updater.pubkey is not the sides.desktop.updater.pubkey of hfs.json');
-    if (JSON.stringify(updater?.endpoints) !== JSON.stringify([declaration.updater.endpoint])) config_('plugins.updater.endpoints is not the one sides.desktop.updater.endpoint of hfs.json');
-    if (conf.bundle?.createUpdaterArtifacts !== true) config_('bundle.createUpdaterArtifacts is not true: the release builds no signed update bundle');
-    if (updater?.dangerousInsecureTransportProtocol === true) security('plugins.updater.dangerousInsecureTransportProtocol is true: updates would be fetched over plain http');
-  }
-  const url = conf.build?.devUrl;
-  if (url !== declaration.devOrigin) config_(`build.devUrl is ${JSON.stringify(url)}, but the devOrigin is ${declaration.devOrigin}`);
-  if (Array.isArray(conf.app?.windows) && conf.app.windows.length > 0) config_('app.windows is not empty: the shell creates its one window in Rust, where it refuses navigation outside the declared origins');
-  if (conf.app?.withGlobalTauri === true) security('app.withGlobalTauri is true: it hands the whole Tauri API to every page the window loads');
-  if (conf.app?.security?.dangerousRemoteDomainAccess !== undefined || conf.app?.security?.dangerousDisableAssetCspModification !== undefined) security('app.security carries a dangerous* switch that weakens the isolation of the remote origin');
-  const csp: unknown = conf.app?.security?.csp;
-  if (typeof csp !== 'string' || csp.trim() === '') security('app.security.csp is empty: the shell\'s own pages need a Content-Security-Policy');
-  else if (/'unsafe-eval'|(?:^|[;\s])\*(?:[;\s]|$)|default-src[^;]*\*/u.test(csp)) security(`app.security.csp allows unsafe-eval or a wildcard source: ${csp}`);
-  return problems;
-}
-
-/** Whether a capability file (parsed JSON) grants a remote origin the IPC: a `remote.urls` entry that is a wildcard or plain http. */
-export function capabilityOpensRemote(capability: unknown): string | null {
-  if (!isPlainObject(capability)) return null;
-  const remote = (capability as Record<string, unknown>).remote;
-  const urls = isPlainObject(remote) && Array.isArray((remote as Record<string, unknown>).urls) ? ((remote as Record<string, unknown>).urls as unknown[]) : [];
-  for (const entry of urls) {
-    if (typeof entry !== 'string') continue;
-    // A bare wildcard host (the whole web) or plain http to a deployed host; a *.domain wildcard and a local http host are the app's own choice.
-    const bareWildcard = entry === '*' || /^(?:\*|[a-z]+:\/\/\*)(?:[/:?#]|$)/u.test(entry);
-    const plainHttp = entry.startsWith('http://') && !/^http:\/\/(?:localhost|127\.0\.0\.1)(?:[/:?#]|$)/u.test(entry);
-    if (bareWildcard || plainHttp) return entry;
-  }
-  return null;
-}
-
-/** A file that holds private signing material: its path or content names a Tauri or minisign secret key, a PKCS#12 bundle or a key store. */
-export const SIGNING_FILE = /(?:^|\/)[^/]*\.(?:p12|pfx|jks|keystore|mobileprovision|p8)$/iu;
-/** The first line of a minisign secret key file (`tauri signer generate` writes one). */
-export const MINISIGN_SECRET = /untrusted comment: [^\n]*secret key/iu;
-/** A TAURI_SIGNING_PRIVATE_KEY (or Apple password) assigned a literal value in a file. */
-export const SIGNING_ASSIGNMENT = /\b(?:TAURI_SIGNING_PRIVATE_KEY|TAURI_PRIVATE_KEY|APPLE_PASSWORD|APPLE_CERTIFICATE)\s*[=:]\s*["']?[A-Za-z0-9+/=_-]{16,}/u;

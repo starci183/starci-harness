@@ -677,7 +677,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
     nivoosSeedIgnore: scope === APP_SCOPE ? nivoosSeedIgnore(app).join(LINE) : '',
-    // The desktop app (hfs.json sides.desktop, R444): the Tauri config, the shell's Rust, the release matrix and the ignore lines; all empty without it.
+    // The desktop app (hfs.json sides.desktop): the Tauri config, the shell's Rust, the release matrix and the ignore lines; all empty without it.
     ...desktopVariables(app, HEADER(scope)),
     sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,

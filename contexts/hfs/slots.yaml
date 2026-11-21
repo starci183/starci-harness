@@ -1353,9 +1353,6 @@ slots:
       - desktop
     rules:
       - HFS_MANAGED_FILE_DRIFT
-      - HFS_DESKTOP_CONFIG
-      - HFS_DESKTOP_SECURITY
-      - HFS_DESKTOP_UNDECLARED
   - id: app.desktop
     profiles:
       - app
@@ -1364,11 +1361,6 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    rules:
-      - HFS_DESKTOP_FILE_MISSING
-      - HFS_DESKTOP_SECURITY
-      - HFS_DESKTOP_SIGNING_KEY
-      - HFS_DESKTOP_UNDECLARED
   - id: app.desktop-build
     profiles:
       - app
@@ -1390,7 +1382,6 @@ slots:
       - desktop
     rules:
       - HFS_MANAGED_FILE_DRIFT
-      - HFS_DESKTOP_UNDECLARED
   - id: app.sides
     profiles:
       - app

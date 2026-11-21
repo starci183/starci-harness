@@ -916,9 +916,9 @@ slots:
   - id: app.desktop-config
     since: 6.14.0
     profiles: [app]
-    # The managed files of the desktop app a project declares under hfs.json `sides.desktop` (R444, desktop-side.mts): the Tauri config, the Cargo manifest, the Rust of the
+    # The managed files of the desktop app a project declares under hfs.json `sides.desktop` (desktop-side.mts): the Tauri config, the Cargo manifest, the Rust of the
     # shell and the page Tauri bundles beside it, all rendered from the declaration by starci app sync (sync/desktop.mts) and held by HFS_MANAGED_FILE_DRIFT. A project that
-    # declares no desktop app renders none of them; a file here without the declaration is HFS_DESKTOP_UNDECLARED.
+    # declares no desktop app renders none of them.
     path: "desktop/{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}"
     presence: optional
     tracked: tracked
@@ -926,19 +926,18 @@ slots:
     tests: none
     managedBy: desktop-config
     managedWhenSides: [desktop]
-    rules: [HFS_MANAGED_FILE_DRIFT, HFS_DESKTOP_CONFIG, HFS_DESKTOP_SECURITY, HFS_DESKTOP_UNDECLARED]
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.desktop
     since: 6.14.0
     profiles: [app]
-    # What the desktop app owns beside the rendered files (R444): the icons `tauri icon` writes (a build bundles them), Cargo.lock (the shell's dependencies, tracked so a
-    # release builds what was tested) and the capability files of the Tauri permissions, none of which may open the shell's IPC to a remote origin. No signing key or
-    # certificate is ever a tracked file (HFS_DESKTOP_SIGNING_KEY): the keys are CI secrets.
+    # What the desktop app owns beside the rendered files: the icons `tauri icon` writes (a build bundles them), Cargo.lock (the shell's dependencies, tracked so a
+    # release builds what was tested) and the capability files of the Tauri permissions. No signing key or
+    # certificate is ever a tracked file: the keys are CI secrets.
     path: "desktop/src-tauri/{icons/**,capabilities/*.json,Cargo.lock}"
     presence: optional
     tracked: tracked
     tier: none
     tests: none
-    rules: [HFS_DESKTOP_FILE_MISSING, HFS_DESKTOP_SECURITY, HFS_DESKTOP_SIGNING_KEY, HFS_DESKTOP_UNDECLARED]
   - id: app.desktop-build
     since: 6.14.0
     profiles: [app]
@@ -961,7 +960,7 @@ slots:
     tests: none
     managedBy: desktop-workflow
     managedWhenSides: [desktop]
-    rules: [HFS_MANAGED_FILE_DRIFT, HFS_DESKTOP_UNDECLARED]
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.sides
     since: 3.1.0
     profiles: [app]

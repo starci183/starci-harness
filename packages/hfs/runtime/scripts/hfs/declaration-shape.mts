@@ -193,7 +193,7 @@ function productDeclarationProblems(declaration: Parsed, profiles: Parsed): stri
 /**
  * PROJECT-1: `sides` declares a non-empty subset of be, fe and packages; `packages` is the empty object `{}` (the root workspace packages/*).
  * It may also hold `nivoos`, the business packages authored with the nivoos SDK, each at packages/<name>/ (nivoos-side.mts, R436), and `desktop`, the
- * Tauri shell that wraps a front-end app in a native window at desktop/ (desktop-side.mts, R444).
+ * Tauri shell that wraps a front-end app in a native window at desktop/ (desktop-side.mts).
  */
 function sidesProblems(sides: Parsed): string[] {
   if (!isPlainObject(sides)) return [`sides must be an object declaring some of ${PROJECT_SIDES.join(', ')}`];
