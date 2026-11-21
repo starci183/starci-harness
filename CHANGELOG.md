@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.190 - 2026-11-21
+
+- Changed: the pins name @starci/hfs 6.17.4 (`app check` no longer crashes on CI_PARITY_DB_SKIPPED when Docker is missing).
+
 ## 1.1.0-alpha.189 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.17.3, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

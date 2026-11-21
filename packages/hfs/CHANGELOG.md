@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.17.4 - 2026-11-21
+
+- Fixed (`starci app check`, the build and audit parity families): the run asked the failure-code catalog for CI_PARITY_STEP_FAILED only, so a host without Docker, whose database step is the warning CI_PARITY_DB_SKIPPED, ended in HFS_MANIFEST_INVALID ("has no failure-code catalog entry loaded"). It now asks for every code the parity steps reported. Found by StarCi Next.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.17.4.
+
 ## 6.17.3 - 2026-11-21
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): `@starci/grammar` 0.52.2 (Expandable, the Skeleton box shapes), and the `@starci/hfs` self-pin is 6.17.3.

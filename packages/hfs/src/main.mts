@@ -689,7 +689,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     if (session === undefined || !selected.has(family)) continue;
     bodies.set(family, async (step) => {
       const parity = await runParityFamilies(session, { repoRoot, families: new Set([family]), env: io.env, run: step.parity });
-      found.set(family, withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
+      // every code the parity steps reported (a failed step, a database step skipped on a host without Docker), never one assumed
+      found.set(family, withWhy(parity.findings, readWhy(skillRoot, [...new Set(parity.findings.map((finding) => String(finding.code)))])));
     });
   }
   if (session !== undefined && selected.has('sonar')) {
