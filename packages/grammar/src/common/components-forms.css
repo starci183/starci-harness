@@ -182,61 +182,98 @@
     }
 
     /*
-     * Loading field (knowledge STATE-8) with skeleton parity: the control renders its ready anatomy inside
-     * `.starci-core-field-skeleton-scope` (layout-neutral, inert), so label, description and control box keep the ready
-     * geometry by construction. Every control box in the scope is painted as a Skeleton (the vendor skeleton tint and
-     * shimmer); what it holds - a value, a placeholder, an indicator, a thumb - is not drawn. Its border stays, so a
-     * family's outline keeps the field box.
+     * Loading field (knowledge STATE-8; owner, 2026-11-21: "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì").
+     * A loading control draws HeroUI's own Skeleton shapes in the field's anatomy (`FieldSkeletonScope`), never its real control painted over: one fill and shimmer,
+     * no border, no ring, no tone. This sheet only places and sizes the shapes; their look is the vendor's.
      */
-    .starci-core-field-skeleton-scope { display: contents; }
-
-    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), .starci-core-input-field, [data-grammar-choice-control], [data-grammar-tag-id]) {
-        position: relative;
-        overflow: hidden;
-        background: color-mix(in oklab, var(--surface-tertiary) 70%, transparent) !important;
-        color: transparent !important;
-        user-select: none;
+    .starci-core-field-skeleton {
+        gap: var(--starci-core-field-gap);
     }
 
-    /* A control box whose rounded part is inside it (a ComboBox group, a Field control slot) takes the field radius. */
-    .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-field-control) {
-        border-radius: var(--field-radius);
+    .starci-core-field-skeleton[data-row="true"] {
+        flex-direction: row !important;
+        align-items: center;
+        gap: var(--grammar-row-gap);
     }
 
-    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), [data-grammar-choice-control], [data-grammar-tag-id]) > * { visibility: hidden; }
-    .starci-core-field-skeleton-scope :is(input, textarea)::placeholder { color: transparent; }
-
-    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        visibility: visible;
-        background-image: linear-gradient(to right, transparent, var(--surface-tertiary), transparent);
-        translate: -100%;
-        animation: skeleton var(--grammar-loop-skeleton) var(--grammar-loop-easing) infinite;
+    .starci-core-field-skeleton-text {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
     }
 
-    /* HeroUI's `--skeleton-animation` (shimmer, pulse or none) is the app's choice; the field skeleton's sweep follows it. */
-    @container style(--skeleton-animation: none) {
-        .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
-            animation: none;
-            content: none;
-        }
+    .starci-core-field-skeleton-control {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
     }
 
-    @container style(--skeleton-animation: pulse) {
-        @media (prefers-reduced-motion: no-preference) {
-            .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
-                translate: none;
-                background-image: none;
-                background-color: var(--surface-tertiary);
-                animation: starci-core-pulse var(--grammar-loop-pulse) var(--grammar-loop-pulse-easing) infinite;
-            }
-        }
+    .starci-core-field-skeleton-control[data-kind="choices"] {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-        .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"], [data-grammar-choice-control])::after { animation: none; content: none; }
+    .starci-core-field-skeleton-choice {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-field-skeleton-bone {
+        flex: none;
+        max-inline-size: 100%;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .starci-core-field-skeleton-bone[data-part="line"] {
+        inline-size: var(--grammar-skeleton-line-m);
+        block-size: var(--starci-core-skeleton-line);
+        margin-block: calc((1lh - var(--starci-core-skeleton-line)) / 2);
+        border-radius: var(--grammar-radius-sm);
+    }
+
+    .starci-core-field-skeleton-bone[data-part="line"][data-length="s"] { inline-size: var(--grammar-skeleton-line-s); }
+    .starci-core-field-skeleton-bone[data-part="line"][data-length="l"] { inline-size: var(--grammar-skeleton-line-l); }
+
+    .starci-core-field-skeleton-bone:is([data-part="field"], [data-part="area"], [data-part="slider"], [data-part="zone"]) { inline-size: 100%; }
+    .starci-core-field-skeleton-bone[data-part="field"] { block-size: var(--starci-core-field-min-height); border-radius: var(--field-radius); }
+    .starci-core-field-skeleton-bone[data-part="area"] { block-size: var(--grammar-skeleton-area-height); border-radius: var(--field-radius); }
+    .starci-core-field-skeleton-bone[data-part="slider"] { block-size: var(--grammar-skeleton-track-height); border-radius: var(--grammar-radius-pill); }
+    .starci-core-field-skeleton-bone[data-part="zone"] { block-size: var(--grammar-skeleton-zone-height); border-radius: var(--grammar-radius-md); }
+
+    .starci-core-field-skeleton-bone[data-part="switch-compact"] {
+        inline-size: var(--grammar-switch-compact-width);
+        block-size: var(--grammar-switch-compact-height);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-field-skeleton-bone[data-part="switch-toggle"] {
+        inline-size: var(--grammar-switch-toggle-width);
+        block-size: var(--starci-core-control-min-size);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-field-skeleton-bone[data-part="check"] {
+        inline-size: var(--grammar-skeleton-check-size);
+        block-size: var(--grammar-skeleton-check-size);
+        border-radius: var(--grammar-radius-sm);
+    }
+
+    .starci-core-field-skeleton-bone[data-part="pill"] {
+        inline-size: var(--grammar-skeleton-pill-width);
+        block-size: var(--grammar-skeleton-button-sm-height);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-field-skeleton-bone[data-part="mark"] {
+        inline-size: var(--grammar-skeleton-mark-size);
+        block-size: var(--grammar-skeleton-mark-size);
+        border-radius: var(--grammar-radius-sm);
     }
 
     .starci-core-combo-box-group,

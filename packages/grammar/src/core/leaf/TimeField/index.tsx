@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { FieldSkeletonScope } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { TimeField as HeroTimeField, type TimeValue } from "@heroui/react"
 import {
@@ -72,7 +72,7 @@ const TimeFieldControl = ({
 
 /** A typed time of day in locale-ordered spinbutton segments. */
 const TimeFieldRegion = ({ isLoading = false, ...props }: TimeFieldProps) => isLoading
-    ? <FieldSkeletonScope component="TimeField"><TimeFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="TimeField" field={props} control={{ kind: "field" }} />
     : <TimeFieldControl {...props} />
 
 export const TimeField = withRegionLoading(TimeFieldRegion)

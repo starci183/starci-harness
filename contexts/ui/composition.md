@@ -207,6 +207,14 @@ its size is known. A failed region fails in place (its `EmptyNotice` with a safe
 ships its own loading and error views. Lint: `starci-fe/no-resting-twin-component`,
 `starci-fe/no-placeholder-prop`.
 
+The owner's rule of 2026-11-21 (Grammar 0.52.3) sets what the geometry is:
+- In his words: "không có xxxx -> ske. và không có plain text như label -> ske nốt", "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì", "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè".
+- **Loading is a plain conditional, `isLoading ? <Skeleton/> : <Real/>`, with HeroUI's Skeleton as shipped.** A loading form control draws Skeleton shapes in its field anatomy: a line for its label and description, and its control box at its own size (a 40px field, a Switch track at its kind's size, a check box, pills, marks). It never draws its real control painted over.
+- **No fake text and no real label.** No "xxxx" in a loading view; a label, description, section title, count or value is a skeleton line.
+- **No tone, no border.** A loading card, region, alert or button keeps only the plain neutral surface and border, and a skeleton has no border or ring.
+- **The content zone.** `Page isContentLoading` makes everything below the page header skeleton edge to edge, section headings included; the shell, the breadcrumbs and the header's static parts stay real. A data-driven header part (a record's name) may be a placeholder.
+- **The flag is gated.** It comes from `@starci/next-data`'s `useSkeletonGate` / `skeletonGate` (shown only past 250ms, then held at least 500ms); Grammar has no timer.
+
 ### FEEDBACK-1 Correct at the nearest owner
 A field failure lives on that field (`errorMessage` plus `isError` on the same fact), exactly once; standing
 guidance is the field's `description`, which does not come and go with validation; the entry survives revalidation.

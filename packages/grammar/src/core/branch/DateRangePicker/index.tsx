@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import {
     DateField as HeroDateField,
@@ -107,7 +107,7 @@ const DateRangePickerControl = ({
 
 /** A start and an end date, typed in two segment groups or picked as a span on a month grid. */
 const DateRangePickerRegion = ({ isLoading = false, ...props }: DateRangePickerProps) => isLoading
-    ? <FieldSkeletonScope component="DateRangePicker"><DateRangePickerControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="DateRangePicker" field={props} control={{ kind: "field" }} />
     : <DateRangePickerControl {...props} />
 
 export const DateRangePicker = withRegionLoading(DateRangePickerRegion)

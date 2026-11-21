@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { FieldSkeletonScope } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { Slider as HeroSlider } from "@heroui/react"
 import { useId, useState } from "react"
@@ -136,7 +136,7 @@ const SliderControl = ({
  * through `aria-describedby`, and read-only holds the value while keeping the thumbs focusable.
  */
 const SliderRegion = ({ isLoading = false, ...props }: SliderProps) => isLoading
-    ? <FieldSkeletonScope component="Slider"><SliderControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Slider" field={props} control={{ kind: "slider" }} />
     : <SliderControl {...props} />
 
 export const Slider = withRegionLoading(SliderRegion)

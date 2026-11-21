@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 - 2026-11-21
+
+- Added: `useSkeletonGate(isLoading, delayMs = 250, minMs = 500)` and its React-free core `createSkeletonGate`. A load shows the skeleton only past 250ms, then holds it at least 500ms (owner: "sao k bỏ useSkeletonGate vào packages/next-data").
+- Added: `skeletonGate()`, an SWR middleware that adds a gated `showSkeleton` to every response.
+- Added: `timedFetcher(fetcher, { route, sink })`, which reports `{ route, ms, ok }` to a pluggable sink, off by default, for per-route load-time percentiles.
+
 ## 0.1.0 - 2026-11-03
 
 The data helpers of a StarCi front end over SWR, lifted from the product that ran them in production and generalised: no product names, typed, one entry, no component.

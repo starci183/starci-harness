@@ -989,6 +989,38 @@
     .starci-core-skeleton-placeholder[data-shape="region"] { display: block; }
     .starci-core-skeleton-placeholder[data-shape="text"]:empty { inline-size: min(100%, 8rem); block-size: 1lh; }
 
+    /*
+     * No tone while loading (owner, 2026-11-21: "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè"): a card, a region, an alert or a button that is loading drops its
+     * tone, keeping only the plain neutral surface and border; a skeleton has no border or ring of its own.
+     */
+    :is([data-grammar-loading-region="true"], .starci-core-alert[data-loading="true"]) {
+        border-color: var(--border) !important;
+        background-color: var(--surface) !important;
+        box-shadow: none !important;
+    }
+
+    .starci-core-button[data-loading="true"] {
+        border-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /*
+     * The page content zone loading (`Page isContentLoading`): its copy that a loading region would keep real (a Text, a Heading, a section title, a
+     * field or group label) is a skeleton line too, painted with HeroUI's own skeleton fill (`--surface-tertiary` at 70%) so it reads as the Skeleton
+     * shapes around it; the words are laid out unseen, so each bar is the length of its copy. Those components are server components, so the zone reaches
+     * them through the stylesheet; every client component reads the zone's region and draws its own Skeleton.
+     */
+    [data-grammar-content-loading="true"] :is(.starci-core-text, [data-component="Heading"], .starci-core-section-title-text, .starci-core-label, .starci-core-field-label, .starci-core-section-count) {
+        inline-size: fit-content;
+        max-inline-size: 100%;
+        border-radius: var(--grammar-radius-sm);
+        background-color: color-mix(in oklab, var(--surface-tertiary) 70%, transparent);
+        color: transparent !important;
+        user-select: none;
+    }
+
+    [data-grammar-content-loading="true"] :is(.starci-core-text, [data-component="Heading"], .starci-core-section-title-text, .starci-core-label, .starci-core-field-label) * { visibility: hidden; }
+
     /* A skeleton root that keeps its content as a measured placeholder (Button, Badge, StatusDot) paints none of it. */
     :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { FieldSkeletonScope } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { Icon, type IconSource } from "../Icon/index.js"
 import {
@@ -66,7 +66,7 @@ const PressableFieldControl = ({ label, placeholder, source, shortcut, isDisable
  * field is one press target - so it carries its own accessible name and no form value.
  */
 const PressableFieldRegion = ({ isLoading = false, ...props }: PressableFieldProps) => isLoading
-    ? <FieldSkeletonScope component="PressableField"><PressableFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="PressableField" field={props} control={{ kind: "field" }} />
     : <PressableFieldControl {...props} />
 
 export const PressableField = withRegionLoading(PressableFieldRegion)

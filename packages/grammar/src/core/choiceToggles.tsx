@@ -3,11 +3,10 @@
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, Tooltip as HeroTooltip, type Key } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { FieldSkeletonScope } from "./leaf/Field/index.js"
-import { Skeleton } from "./leaf/Skeleton/index.js"
 import { useOverlayContainer } from "./overlayScope.js"
 import { tooltipContentClassName } from "./tooltipClassName.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "./loadingState.js"
-import { useIsLoading, useRegionOwnsBusy } from "./regionScope.js"
+import { useIsLoading } from "./regionScope.js"
 import type { NoChildren } from "./tier.js"
 
 /** One option of a choice group (ChoiceChips, ChoiceButtons). */
@@ -83,9 +82,10 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 export const ChoiceGroup = ({ look, size = "md", label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, width = "content", isLoading: ownLoading, error }: ChoiceGroupProps & { readonly look: "chip" | "button"; readonly size?: "sm" | "md" }) => {
     const labelId = useId()
     const isLoading = useIsLoading(ownLoading)
-    const ownsBusy = useRegionOwnsBusy()
     const isMultiple = selectionMode === "multiple"
     const labelClass = isLabelHidden ? "starci-core-field-label starci-core-form-label--screen-reader" : "starci-core-field-label"
+    // loading: HeroUI Skeleton shapes only, the label line and one pill per option (owner, 2026-11-21: no real text, no painted real control)
+    if (isLoading) return <FieldSkeletonScope component={look === "chip" ? "ChoiceChips" : "ChoiceButtons"} field={{ label, isLabelHidden }} control={{ kind: "pills", count: options.length === 0 ? LOADING_ROWS : options.length }} />
     return (
         <div
             className="starci-core-choice-chips"
@@ -95,25 +95,9 @@ export const ChoiceGroup = ({ look, size = "md", label, isLabelHidden = false, o
             data-tier="composite"
             data-grammar-width={width}
             data-contract="A11Y-1 STATE-6 FOCUS-2"
-            {...(isLoading && !ownsBusy ? { "aria-busy": true } : {})}
         >
             <span id={labelId} className={labelClass} data-grammar-field-label="true">{label}</span>
-            {isLoading && options.length > 0 ? (
-                // The ready chips laid out as they are, painted as skeletons and made inert by the field scope: the box is the ready box.
-                <FieldSkeletonScope component={look === "chip" ? "ChoiceChips" : "ChoiceButtons"}>
-                    <HeroToggleButtonGroup aria-labelledby={labelId} className="starci-core-choice-chips-row" isDetached selectionMode={selectionMode} size={look === "chip" ? "sm" : size}>
-                        {options.map((option) => (
-                            <HeroToggleButton key={option.value} id={option.value} className="starci-core-choice-chip" data-grammar-choice-control="true">{option.label}</HeroToggleButton>
-                        ))}
-                    </HeroToggleButtonGroup>
-                </FieldSkeletonScope>
-            ) : isLoading ? (
-                <div className="starci-core-choice-chips-row" aria-hidden="true">
-                    {Array.from({ length: options.length === 0 ? LOADING_ROWS : options.length }, (_, index) => (
-                        <span className="starci-core-choice-chips-skeleton" key={index}><Skeleton shape="rect" /></span>
-                    ))}
-                </div>
-            ) : error !== undefined ? <ErrorView error={error} /> : options.length === 0 ? empty : (
+            {error !== undefined ? <ErrorView error={error} /> : options.length === 0 ? empty : (
                 <HeroToggleButtonGroup
                     aria-labelledby={labelId}
                     className="starci-core-choice-chips-row"

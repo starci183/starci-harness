@@ -8,7 +8,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
     type FieldSizeProps,
@@ -63,7 +62,7 @@ export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
 const SearchFieldInner = ({ isLoading = false, ...props }: SearchFieldProps) => {
     useRefuseInCardActions("SearchField")
     return isLoading
-        ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+        ? <FieldSkeletonScope component="SearchField" field={props} control={{ kind: "field" }} />
         : <SearchFieldControl {...props} />
 }
 

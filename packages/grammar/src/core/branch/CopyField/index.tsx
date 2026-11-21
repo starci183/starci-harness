@@ -84,7 +84,7 @@ const writeClipboard = async (text: string | Promise<string>): Promise<void> => 
  * (inert, `aria-busy`, the field box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
 const CopyFieldInner = (props: CopyFieldProps) => props.isLoading === true
-    ? <FieldSkeletonScope component="CopyField"><CopyFieldControl {...props} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="CopyField" field={props} control={{ kind: "field" }} />
     : <CopyFieldControl {...props} />
 
 /**

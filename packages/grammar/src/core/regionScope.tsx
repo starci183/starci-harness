@@ -7,6 +7,15 @@ import { SkeletonPlaceholder } from "./leaf/Skeleton/index.js"
 
 const LoadingScopeContext = createContext<boolean | null>(null)
 
+/*
+ * The page's content zone is loading (owner, 2026-11-21: "không có plain text như label -> ske nốt"; the zone below the page header's last divider is skeleton
+ * edge to edge, section headings included). Inside it, the copy that a loading region keeps real (a Text, a Heading, a section title) is a skeleton too.
+ */
+const ContentZoneContext = createContext(false)
+
+/** Whether this component sits in a page content zone that is loading (`Page isContentLoading`). */
+export const useIsContentZoneLoading = (): boolean => useContext(ContentZoneContext)
+
 /**
  * Whether the region around this component is loading. A region that loads (`PaneSection isLoading`, a `Section`) tells every
  * Grammar component inside it, so a frame passes one flag, not one per child. A component's own `isLoading` wins.
@@ -15,6 +24,13 @@ export const useIsLoading = (own: boolean | undefined): boolean => {
     const scope = useContext(LoadingScopeContext)
     return own ?? scope ?? false
 }
+
+/** The page content zone's loading: every region inside it loads, and its copy is a skeleton too. It takes the already-gated flag (next-data `useSkeletonGate`); it has no timer. */
+export const ContentZoneLoading = ({ isLoading, children }: { readonly isLoading: boolean; readonly children: ReactNode }) => (
+    <ContentZoneContext.Provider value={isLoading}>
+        <LoadingScopeContext.Provider value={isLoading}>{children}</LoadingScopeContext.Provider>
+    </ContentZoneContext.Provider>
+)
 
 /** Tells the Grammar components inside that their region is (or is no longer) loading. */
 export const LoadingScope = ({ isLoading, children }: { readonly isLoading: boolean; readonly children: ReactNode }) => (

@@ -14,7 +14,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -64,7 +63,7 @@ export type ComboBoxProps = NoChildren & FieldControlProps & FieldSizeProps & {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const ComboBoxInner = ({ isLoading = false, ...props }: ComboBoxProps) => isLoading
-    ? <FieldSkeletonScope component="ComboBox"><ComboBoxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="ComboBox" field={props} control={{ kind: "field" }} />
     : <ComboBoxControl {...props} />
 
 /**

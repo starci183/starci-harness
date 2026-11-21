@@ -1,7 +1,7 @@
 {
   "name": "@starci/next-data",
-  "version": "0.1.0",
-  "description": "The data helpers of a StarCi Next.js front end over SWR, as pure logic with no component: the pollingRestart middleware (a function refreshInterval that stopped at 0 starts again when newer data makes it answer above 0), the viewer and tenant key helpers (a key carries every identity that changes the answer), the viewer-keyed cache config and the writes that reach the cache of the viewer on screen.",
+  "version": "0.2.0",
+  "description": "The data helpers of a StarCi Next.js front end over SWR, as pure logic with no component: the pollingRestart middleware (a function refreshInterval that stopped at 0 starts again when newer data makes it answer above 0), the viewer and tenant key helpers (a key carries every identity that changes the answer), the viewer-keyed cache config, the writes that reach the cache of the viewer on screen, the skeleton gate (useSkeletonGate, its pure createSkeletonGate core and the skeletonGate middleware adding showSkeleton: a skeleton only after 250ms of loading, then held 500ms at least) and timedFetcher (each fetch reported as {route, ms, ok} to a pluggable sink, off by default).",
   "keywords": [
     "swr",
     "nextjs",

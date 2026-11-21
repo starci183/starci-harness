@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.52.3 - 2026-11-21 - Loading as HeroUI Skeleton shapes, and the page content zone
+
+The owner's loading rule (2026-11-21): "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì", "không có xxxx -> ske. và không có plain text như label -> ske nốt", "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè".
+
+- Changed (`FieldSkeletonScope`, every form control's `isLoading`, visual): a loading control is `isLoading ? <skeleton> : <control>`. It draws HeroUI's Skeleton shapes in its field anatomy and never renders its real control painted over:
+  - its label and description become lines of about their length;
+  - its control becomes the box it stands for: a 40px field, a text area, a Switch track at its kind's size (compact 32x18, toggle 72x40), a check box, choice rows, pills, marks, a slider track or a drop zone;
+  - one fill, no border, no ring, no tone. The darker sweep and the kept field ring are gone.
+  - The parts keep the field's slots, so a form grid places them as it places a ready field. ChoiceChips and ChoiceButtons follow the same rule.
+- Added (`Page isContentLoading`): the page content zone's loading mode. Everything below the page header is skeleton edge to edge, section headings, labels and copy included; the shell, the breadcrumbs and the header stay. It takes the already-gated flag from `@starci/next-data` (`useSkeletonGate`, `skeletonGate`) and has no timer.
+- Changed (loading tone, visual): a loading card, region, alert or button drops its tone, keeping only the plain neutral surface and border.
+
 ## 0.52.2 - 2026-11-21 - Expandable, and a Skeleton sized to its box
 
 A patch: one new component and new optional Skeleton props; no lint rule, no removed or renamed prop or law.

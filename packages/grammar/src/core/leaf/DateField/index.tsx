@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { FieldSkeletonScope } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { DateField as HeroDateField, type DateValue } from "@heroui/react"
 import type { ReactNode } from "react"
@@ -117,7 +117,7 @@ const DateFieldControl = ({
  * are `@internationalized/date` objects (the vendor's `DateValue`), never ambiguous strings.
  */
 const DateFieldRegion = ({ isLoading = false, ...props }: DateFieldProps) => isLoading
-    ? <FieldSkeletonScope component="DateField"><DateFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="DateField" field={props} control={{ kind: "field" }} />
     : <DateFieldControl {...props} />
 
 export const DateField = withRegionLoading(DateFieldRegion)

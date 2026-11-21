@@ -13,7 +13,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     isFieldInvalid,
     vendorFieldProps,
     type FieldControlProps,
@@ -153,7 +152,7 @@ export const filterMentionOptions = (options: ReadonlyArray<TextareaMentionOptio
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const TextareaInner = ({ isLoading = false, ...props }: TextareaProps) => isLoading
-    ? <FieldSkeletonScope component="Textarea"><TextareaControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Textarea" field={props} control={{ kind: "field", rows: props.rows ?? 3 }} />
     : <TextareaControl {...props} />
 
 /** Multi-line text with the shared field anatomy, an optional Enter-to-submit shortcut and optional mention suggestions. */

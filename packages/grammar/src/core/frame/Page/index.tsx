@@ -1,3 +1,4 @@
+import { ContentZoneLoading } from "../../regionScope.js"
 import { isValidElement, type ReactElement, type ReactNode } from "react"
 import { Breadcrumbs } from "../../composite/Breadcrumbs/index.js"
 import { PageContainerPart, type PageContainerProps } from "../PageContainer/index.js"
@@ -51,6 +52,12 @@ type PageCommonProps = {
     readonly headerCollapse?: "narrow"
     /** Unresolved page subject (STATE-8): passed to the header, which keeps its slots' boxes. The body owns its own loading. */
     readonly isLoading?: boolean
+    /**
+     * The content zone is loading (0.52.3; owner, 2026-11-21): everything below the page header is skeleton edge to edge, section headings, labels and copy
+     * included, with no tone and no empty copy; the shell, the breadcrumbs and the header's static parts stay real. Pass the already-gated flag (next-data
+     * `useSkeletonGate`, `skeletonGate`): Page has no timer.
+     */
+    readonly isContentLoading?: boolean
 }
 
 /** A standard page: its header, when given, is the band with its heading. */
@@ -128,8 +135,9 @@ const isPaneGridElement = (child: ReactNode): boolean => {
  * is there a persistent selection column or a full-height chat/editor? Then a workspace, else a report.
  */
 export const Page = (props: PageProps) => {
-    const { chrome = "standard", header, children, measure = "product", isLoading = false } = props
-    if (props.chrome === "panes" && !isPaneGridElement(children)) {
+    const { chrome = "standard", header, children: content, measure = "product", isLoading = false, isContentLoading = false } = props
+    const children = isContentLoading ? <ContentZoneLoading isLoading>{content}</ContentZoneLoading> : content
+    if (props.chrome === "panes" && !isPaneGridElement(content)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
     const layout: PageLayout = chrome === "standard" ? "report" : "workspace"
@@ -158,6 +166,7 @@ export const Page = (props: PageProps) => {
             data-grammar-page-header={band === undefined ? "false" : "true"}
             data-grammar-page-trail={trail === undefined ? "false" : "true"}
             {...(props.headerCollapse === undefined ? {} : { "data-grammar-page-header-collapse": props.headerCollapse })}
+            {...(isContentLoading ? { "data-grammar-content-loading": "true" } : {})}
         >
             {band === undefined ? null : <PageHeader {...band} measure={chrome === "panes" ? "full" : measure} isLoading={isLoading} />}
             {trail === undefined ? null : (

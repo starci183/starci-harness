@@ -1,7 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { FieldDescription, FieldSkeletonScope, loadingFieldProps, type FieldSizeProps } from "../../leaf/Field/index.js"
+import { FieldDescription, FieldSkeletonScope, type FieldSizeProps } from "../../leaf/Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
 import {
     ErrorMessage as HeroErrorMessage,
@@ -86,7 +86,7 @@ const KINDS = {
  * (inert, `aria-busy`, the control box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
 const InputInner = ({ isLoading = false, ...props }: InputProps) => isLoading
-    ? <FieldSkeletonScope component="Input"><InputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Input" field={props} control={{ kind: "field" }} />
     : <InputControl {...props} />
 
 const InputControl = ({

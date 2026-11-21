@@ -106,7 +106,7 @@ const tagIdOf = (target: EventTarget | null, root: HTMLElement): string | undefi
  * Contract: root STATE-1, list FOCUS-2, chip FOCUS-1, remove A11Y-2, empty STATE-3.
  */
 const TagGroupInner = (props: TagGroupProps) => props.isLoading === true
-    ? <FieldSkeletonScope component="TagGroup"><TagGroupControl {...props} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="TagGroup" field={props} control={{ kind: "pills", count: props.items.length }} />
     : <TagGroupControl {...props} />
 
 const TagGroupControl = ({

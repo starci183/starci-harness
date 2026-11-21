@@ -8,7 +8,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
@@ -76,7 +75,7 @@ export type SwitchProps = NoChildren & Omit<FieldControlProps, "description" | "
  * keeps the bare control for an icon-only switch (a theme toggle).
  */
 const SwitchInner = ({ isLoading = false, ...props }: SwitchProps) => isLoading
-    ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Switch" field={props} control={{ kind: "switch", size: props.kind === "compact" ? "compact" : "toggle" }} />
     : <SwitchControl {...props} />
 
 const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, kind, size = "control", thumbIcon: wantedThumbIcon, selectedThumbIcon: wantedSelectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => {

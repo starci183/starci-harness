@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import {
     Calendar as HeroCalendar,
@@ -130,7 +130,7 @@ const DatePickerControl = ({
  * the popover is a dialog that traps and returns focus, and the grid is the vendor's.
  */
 const DatePickerRegion = ({ isLoading = false, ...props }: DatePickerProps) => isLoading
-    ? <FieldSkeletonScope component="DatePicker"><DatePickerControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="DatePicker" field={props} control={{ kind: "field" }} />
     : <DatePickerControl {...props} />
 
 export const DatePicker = withRegionLoading(DatePickerRegion)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useState, type ReactNode } from "react"
-import { fieldStateAttributes, FieldSkeletonScope, loadingFieldProps, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
+import { fieldStateAttributes, FieldSkeletonScope, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
 import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -36,7 +36,7 @@ export type FileDropzoneProps = NoChildren & FieldControlProps & {
 export const FileDropzone = ({ isLoading: own, ...props }: FileDropzoneProps) => {
     const isLoading = useIsLoading(own)
     return isLoading
-        ? <FieldSkeletonScope component="FileDropzone"><FileDropzoneControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+        ? <FieldSkeletonScope component="FileDropzone" field={props} control={{ kind: "zone" }} />
         : <FileDropzoneControl {...props} />
 }
 

@@ -9,7 +9,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
@@ -60,7 +59,7 @@ export const CheckboxItem = ({ label, description, errorMessage, isStandalone, i
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const CheckboxInner = ({ isLoading = false, ...props }: CheckboxProps) => isLoading
-    ? <FieldSkeletonScope component="Checkbox"><CheckboxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Checkbox" field={props} control={{ kind: "check" }} />
     : <CheckboxControl {...props} />
 
 /**

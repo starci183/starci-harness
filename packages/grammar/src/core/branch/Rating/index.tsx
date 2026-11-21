@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { useId, useState, type ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
@@ -129,7 +129,7 @@ const RatingControl = ({
  * Contract: read-only A11Y-3; radiogroup A11Y-3 FOCUS-2 STATE-1; option FOCUS-1; glyph A11Y-2.
  */
 const RatingRegion = ({ isLoading = false, ...props }: RatingProps) => isLoading
-    ? <FieldSkeletonScope component="Rating"><RatingControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Rating" field={props} control={{ kind: "marks", count: props.max ?? 5 }} />
     : <RatingControl {...props} />
 
 export const Rating = withRegionLoading(RatingRegion)

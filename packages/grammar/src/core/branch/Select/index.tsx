@@ -16,7 +16,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -110,7 +109,7 @@ export const ListOptions = ({ options }: { readonly options: ReadonlyArray<ListO
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const SelectInner = ({ isLoading = false, ...props }: SelectProps) => isLoading
-    ? <FieldSkeletonScope component="Select"><SelectControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Select" field={props} control={{ kind: "field" }} />
     : <SelectControl {...props} />
 
 /**

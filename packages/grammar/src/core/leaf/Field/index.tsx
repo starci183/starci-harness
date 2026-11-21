@@ -5,6 +5,7 @@ import {
     Description as HeroDescription,
     FieldError as HeroFieldError,
     Label as HeroLabel,
+    Skeleton as HeroSkeleton,
 } from "@heroui/react"
 import { FieldErrorContext } from "react-aria-components/FieldError"
 import { useCallback, useId, useState, type ReactNode } from "react"
@@ -206,7 +207,7 @@ export type FieldProps = NoChildren & FieldControlProps & {
  * control so a custom control is announced exactly like a Grammar one.
  */
 const FieldInner = ({ isLoading = false, ...props }: FieldProps) => isLoading
-    ? <FieldSkeletonScope component="Field"><FieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="Field" field={props} control={{ kind: "field" }} />
     : <FieldControl {...props} />
 
 const FieldControl = ({
@@ -269,28 +270,91 @@ const FieldControl = ({
     )
 }
 
+/** The control part of a loading field: the box it stands for, as HeroUI Skeleton shapes. */
+export type FieldSkeletonControl =
+    /** A 40px field box: an input, a select, a date, a number, a search, a combo box, a copy field, a pressable field. `rows` > 1: a text area of that many lines. */
+    | { readonly kind: "field"; readonly rows?: number }
+    /** A Switch track at the end of its row: `compact` 32x18 or `toggle` 72x40. */
+    | { readonly kind: "switch"; readonly size: "compact" | "toggle" }
+    /** A Checkbox: its box beside its label line. */
+    | { readonly kind: "check" }
+    /** A list of choices (radio, checkbox group): `count` rows of a mark and a line. */
+    | { readonly kind: "choices"; readonly count: number }
+    /** A row of chips or buttons (ChoiceChips, ChoiceButtons, TagGroup): `count` pills. */
+    | { readonly kind: "pills"; readonly count: number }
+    /** A row of small boxes (Rating stars, OTP cells): `count` of them. */
+    | { readonly kind: "marks"; readonly count: number }
+    /** A Slider track. */
+    | { readonly kind: "slider" }
+    /** A drop zone's box. */
+    | { readonly kind: "zone" }
+
+/** The width bucket of a text line skeleton: about the length of the words it stands for. */
+const lengthOf = (text: unknown): "s" | "m" | "l" => {
+    const length = typeof text === "string" ? text.length : 24
+    return length <= 12 ? "s" : length <= 28 ? "m" : "l"
+}
+
+const Bone = ({ part, length }: { readonly part: string; readonly length?: "s" | "m" | "l" }) => (
+    <HeroSkeleton animationType="shimmer" className="starci-core-skeleton starci-core-field-skeleton-bone" data-part={part} {...(length === undefined ? {} : { "data-length": length })} />
+)
+
+const controlBones = (control: FieldSkeletonControl): ReactNode => {
+    switch (control.kind) {
+    case "field":
+        return <Bone part={control.rows !== undefined && control.rows > 1 ? "area" : "field"} />
+    case "switch":
+        return <Bone part={control.size === "compact" ? "switch-compact" : "switch-toggle"} />
+    case "check":
+        return <Bone part="check" />
+    case "choices":
+        return Array.from({ length: Math.max(1, control.count) }, (_, index) => (
+            <span key={index} className="starci-core-field-skeleton-choice"><Bone part="check" /><Bone part="line" length="m" /></span>
+        ))
+    case "pills":
+        return Array.from({ length: Math.max(1, control.count) }, (_, index) => <Bone key={index} part="pill" />)
+    case "marks":
+        return Array.from({ length: Math.max(1, control.count) }, (_, index) => <Bone key={index} part="mark" />)
+    case "slider":
+        return <Bone part="slider" />
+    case "zone":
+        return <Bone part="zone" />
+    }
+}
+
 /**
- * Loading view of a form control (knowledge STATE-8), with skeleton parity: the control renders its READY anatomy at the same
- * props (label, description, control box, options), so the loading field has the ready field's box by construction, inside
- * this scope. The scope is layout-neutral (`display: contents`), `inert` (nothing focusable or announced but the
- * root's `aria-busy`), and paints every control box in it (`data-grammar-field-control`, the Input control, the choice
- * controls) as a Skeleton: its value, indicator or thumb is not drawn. Label and description stay real text.
+ * Loading view of a form control (knowledge STATE-8; owner, 2026-11-21: "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì"
+ * and "không có plain text như label -> ske nốt"). A loading control is `isLoading ? <FieldSkeletonScope … /> : <Control … />`: this draws HeroUI's own Skeleton as shipped,
+ * in the field's anatomy, and nothing real. The label, the description and the control are each a Skeleton shape of about their size (a label line, a 40px field box,
+ * a Switch track at its kind's size, a check box beside a line, choice rows, pills, marks, a slider track, a drop zone), with one fill, no border, no ring and no tone.
+ * The parts keep the field's slots (`data-slot="label"`, `data-grammar-field-control`, `data-grammar-field-description`), so a form grid places them as it places a ready
+ * field. The root is `inert`; inside a loading region the region carries the one `aria-busy`, a field loading on its own flag carries it itself.
  */
-export const FieldSkeletonScope = ({ component, children }: { readonly component: string; readonly children: ReactNode }) => {
-    // Inside a loading region the region carries the one `aria-busy`; a field loading on its own flag carries it itself.
+export const FieldSkeletonScope = ({ component, field, control }: { readonly component: string; readonly field: { readonly label?: unknown; readonly isLabelHidden?: boolean; readonly description?: unknown }; readonly control: FieldSkeletonControl }) => {
     const regionBusy = useRegionOwnsBusy()
+    const hasLabel = field.label !== undefined && field.label !== null && field.label !== "" && field.isLabelHidden !== true
+    const hasDescription = field.description !== undefined && field.description !== null && field.description !== ""
+    const isRow = control.kind === "switch" || control.kind === "check"
+    const label = hasLabel ? <span className="starci-core-field-skeleton-label" data-slot="label"><Bone part="line" length={lengthOf(field.label)} /></span> : null
+    const description = hasDescription ? <span className="starci-core-field-skeleton-description" data-grammar-field-description="true"><Bone part="line" length={lengthOf(field.description)} /></span> : null
+    const box = <div className="starci-core-field-skeleton-control" data-grammar-field-control="true" data-kind={control.kind}>{controlBones(control)}</div>
     return (
         <div
-            className="starci-core-field-skeleton-scope"
+            className="starci-core-field starci-core-field-skeleton"
+            data-component={component}
             data-grammar-skeleton-of={component}
             data-grammar-field-skeleton="true"
             data-grammar-skeleton="true"
             data-loading="true"
+            data-row={isRow ? "true" : undefined}
             data-contract="A11Y-1 STATE-8"
+            aria-hidden={regionBusy ? "true" : undefined}
             {...(regionBusy ? {} : { "aria-busy": "true" })}
             inert
         >
-            {children}
+            {isRow
+                ? <>{control.kind === "check" ? box : null}<span className="starci-core-field-skeleton-text">{label}{description}</span>{control.kind === "switch" ? box : null}</>
+                : <>{label}{box}{description}</>}
         </div>
     )
 }

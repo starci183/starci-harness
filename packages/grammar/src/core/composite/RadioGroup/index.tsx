@@ -8,7 +8,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
@@ -47,7 +46,7 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const RadioGroupInner = ({ isLoading = false, ...props }: RadioGroupProps) => isLoading
-    ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} isDataLoading /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="RadioGroup" field={props} control={{ kind: "choices", count: props.options.length }} />
     : <RadioGroupControl {...props} />
 
 /**

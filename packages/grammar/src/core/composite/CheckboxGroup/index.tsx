@@ -8,7 +8,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
@@ -56,7 +55,7 @@ export type CheckboxGroupProps = NoChildren & FieldControlProps & {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const CheckboxGroupInner = ({ isLoading = false, ...props }: CheckboxGroupProps) => isLoading
-    ? <FieldSkeletonScope component="CheckboxGroup"><CheckboxGroupControl {...loadingFieldProps(props)} isDataLoading /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="CheckboxGroup" field={props} control={{ kind: "choices", count: props.options.length }} />
     : <CheckboxGroupControl {...props} />
 
 /**

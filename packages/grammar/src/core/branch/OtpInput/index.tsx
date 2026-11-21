@@ -1,6 +1,6 @@
 "use client"
 
-import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { useCallback, useId, useRef } from "react"
 import { InputOTP, Label as HeroLabel, REGEXP_ONLY_DIGITS } from "@heroui/react"
@@ -114,7 +114,7 @@ const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
  * which the focused input already reaches, so the region adds no extra Tab stop.
  */
 const OtpInputRegion = ({ isLoading = false, ...props }: OtpInputProps) => isLoading
-    ? <FieldSkeletonScope component="OtpInput"><OtpInputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="OtpInput" field={props} control={{ kind: "marks", count: 6 }} />
     : <OtpInputControl {...props} />
 
 export const OtpInput = withRegionLoading(OtpInputRegion)

@@ -7,7 +7,6 @@ import {
     FieldErrorText,
     FieldLabel,
     FieldSkeletonScope,
-    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
     type FieldSizeProps,
@@ -47,7 +46,7 @@ export type NumberFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const NumberFieldInner = ({ isLoading = false, ...props }: NumberFieldProps) => isLoading
-    ? <FieldSkeletonScope component="NumberField"><NumberFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="NumberField" field={props} control={{ kind: "field" }} />
     : <NumberFieldControl {...props} />
 
 /**
