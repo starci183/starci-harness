@@ -2,6 +2,7 @@ import { existsSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
+import type { ToolRun } from "../../shared/exec.js"
 import { captureGit, currentBranch, git, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
@@ -10,6 +11,10 @@ import { installLocal, installRecordFile, parseRequested, readInstallRecord } fr
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm } from "../deps/packages.js"
+import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
+import type { InstallFs } from "./safe-install.js"
+import { appCli, readStackProcesses, stopStackProcesses } from "./stack-stop.js"
+import type { StackProcesses, StackStop } from "./stack-stop.js"
 
 /** The two sides of a dev stack a sync may restart. */
 export type Side = "be" | "fe"
@@ -53,6 +58,8 @@ export interface DevSyncData {
     readonly overlayBefore: readonly string[]
     readonly overlay: readonly string[]
     readonly installed: boolean
+    /** The dev stack processes ended before the install, restarted after it. */
+    readonly stopped: readonly string[]
     readonly sides: readonly Side[]
     readonly restarted: readonly string[]
     readonly restart: "done" | "skipped" | "failed" | "planned" | "none"
@@ -69,13 +76,34 @@ export interface DevSyncRequest {
     readonly say: (line: string) => void
 }
 
+/** The seams of a sync that touch processes and node_modules, real by default and replaced by the specs. */
+export interface DevSyncDeps {
+    /** The processes the checkout's dev environment recorded (stack-stop.ts readStackProcesses). */
+    readonly stackProcesses: (root: string, env: string) => Promise<StackProcesses | string | undefined>
+    /** Ends them and sees them gone. */
+    readonly stop: (processes: StackProcesses) => Promise<StackStop>
+    /** The clean install of the checkout. */
+    readonly npmCi: (root: string) => Promise<void>
+    /** The renames and removals of the install. */
+    readonly fs: InstallFs
+    readonly pause: (ms: number) => Promise<void>
+    /** One run of the app's pinned CLI (`app stack restart`). */
+    readonly appRun: (root: string, args: readonly string[]) => Promise<ToolRun>
+}
+
+export const realDevSyncDeps: DevSyncDeps = {
+    stackProcesses: readStackProcesses,
+    stop: stopStackProcesses,
+    npmCi: (root) => appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci"),
+    fs: realInstallFs,
+    pause: (ms) => new Promise((done) => setTimeout(done, ms)),
+    appRun: (root, args) => captureTool(process.execPath, [appCli(root), ...args], root),
+}
+
 const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
     const run = await captureGit(args, cwd)
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
 }
-
-/** The app's own pinned CLI in the checkout: the stack restart runs with the hfs the app pins, never this CLI's. */
-const appCli = (root: string): string => join(root, "node_modules", "starci-harness", "dist", "main.js")
 
 /** The overlay line every sync prints. Pure. */
 export const overlayLine = (overlay: readonly string[]): string =>
@@ -85,9 +113,12 @@ export const overlayLine = (overlay: readonly string[]): string =>
  * One `dev sync` of an app's dev checkout: refuse any tracked change but a recorded overlay's; put a recorded overlay back to the committed
  * pins (the overlay never survives a sync that does not name it again); fast-forward the checkout to origin/dev; npm ci; install the `local`
  * packages from the local registry (deps install-local); and restart the changed side of the running dev stack (`app stack restart`, which
- * builds and serves the built artifact). Dry until `execute`: the dry run fetches and prints the plan.
+ * builds and serves the built artifact). Before anything writes node_modules, the dev stack processes the checkout's local state records
+ * are ended and seen gone (a process that loaded a file of node_modules makes npm fail halfway on Windows); a stop that fails refuses
+ * DEV_SYNC_STOP before anything moved. The install runs with the old node_modules moved aside and put back on failure (safe-install.ts),
+ * and the stopped processes are restarted after it with the changed ones. Dry until `execute`: the dry run fetches and prints the plan.
  */
-export const devSync = async (request: DevSyncRequest): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
+export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     const root = await repositoryRoot(request.checkout)
     assertNpm(root)
     const lines: string[] = []
@@ -114,19 +145,24 @@ export const devSync = async (request: DevSyncRequest): Promise<{ readonly data:
     const sides = changedSides([...files, ...(overlayChanged ? [LOCKFILE] : [])])
     const processes = processesFor(sides, request.processes)
     const lockChanged = files.includes(LOCKFILE)
-    const needInstall = lockChanged || overlayBefore.length > 0 || !existsSync(join(root, "node_modules"))
-    const restartArgs = ["app", "stack", "restart", "--env", request.env, "--process", processes.join(","), "--execute"]
-    const base: Omit<DevSyncData, "overlay" | "installed" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
+    const aside = leftAside(root, deps.fs)
+    const needInstall = lockChanged || overlayBefore.length > 0 || aside.length > 0 || !existsSync(join(root, "node_modules"))
+    const writesModules = needInstall || requested.length > 0
+    const restartArgs = (names: readonly string[]): string[] => ["app", "stack", "restart", "--env", request.env, "--process", names.join(","), "--execute"]
+    const base: Omit<DevSyncData, "overlay" | "installed" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
     if (!request.execute) {
         say(`would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
         if (overlayBefore.length > 0) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
-        say(needInstall ? "would run npm ci" : "npm ci: the lockfile did not change, skipped")
+        if (aside.length > 0) say(`would move back the copy an earlier sync left aside: ${aside.join(", ")}`)
+        if (writesModules) say(`would stop the dev stack processes the ${request.env} environment records before node_modules is written, and restart them after`)
+        say(needInstall ? "would run npm ci (the old node_modules moved aside until it passes)" : "npm ci: the lockfile did not change, skipped")
         if (requested.length > 0) say(`would install from the local registry: ${requested.map((one) => one.name + (one.version === undefined ? "" : `@${one.version}`)).join(", ")}`)
-        say(processes.length === 0 ? "restart: nothing a running process reads changed" : request.restart ? `would rebuild and restart ${processes.join(", ")}: ${restartArgs.join(" ")}` : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
+        say(processes.length === 0 ? "restart: nothing a running process reads changed" : request.restart ? `would rebuild and restart ${processes.join(", ")}: ${restartArgs(processes).join(" ")}` : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
         say(overlayLine(overlayBefore))
         say("dry run: nothing moved; add --execute")
-        return { data: { ...base, overlay: overlayBefore, installed: false, restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
+        return { data: { ...base, overlay: overlayBefore, installed: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
     }
+    const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
     if (record !== undefined) {
         const restored = await gitOk(root, ["checkout", "--", ...ownFiles])
         if (!restored.ok) throw new Refusal("DEV_SYNC_RESTORE", `git checkout -- ${ownFiles.join(" ")} in ${root}: ${restored.err}`)
@@ -136,32 +172,60 @@ export const devSync = async (request: DevSyncRequest): Promise<{ readonly data:
     const merged = await gitOk(root, ["merge", "--ff-only", "--quiet", to])
     if (!merged.ok) throw new Refusal("DEV_SYNC_DIVERGED", `git merge --ff-only origin/dev in ${root}: ${merged.err}`)
     say(from === to ? `${root} is at origin/dev ${to.slice(0, 9)}` : `fast-forwarded ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
-    if (needInstall) {
-        await appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci")
-        say("npm ci: done")
-    } else say("npm ci: the lockfile did not change, skipped")
-    if (requested.length > 0) {
-        const installed = await installLocal(root, requested, PORT, true)
-        say(installed.message.split("\n")[0] ?? "installed the local packages")
+    const restartNames = async (names: readonly string[], why: string): Promise<boolean> => {
+        say(`${why} ${names.join(", ")} (the database, storage and tunnel stay up)`)
+        const run = await deps.appRun(root, restartArgs(names))
+        for (const line of `${run.stdout}\n${run.stderr}`.split("\n").map((one) => one.trimEnd()).filter((one) => one !== "")) say(`  ${line}`)
+        return run.exitCode === 0
+    }
+    try {
+        const restored = restoreLeftAside(root, deps.fs)
+        if (restored.length > 0) say(`moved back the copy an earlier sync left aside: ${restored.join(", ")}`)
+        if (needInstall) {
+            await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+            say("npm ci: done")
+        } else say("npm ci: the lockfile did not change, skipped")
+        if (requested.length > 0) {
+            const installed = await installLocal(root, requested, PORT, true)
+            say(installed.message.split("\n")[0] ?? "installed the local packages")
+        }
+    } catch (error) {
+        // The install failed with the previous node_modules back in place: the stopped processes come back on it before the refusal is said.
+        if (stopped.length > 0 && !(await restartNames(stopped, "the install failed; restarting the stopped"))) say(`the stopped ${stopped.join(", ")} did not come back: starci app stack up --env ${request.env} --execute`)
+        throw error
     }
     const overlay = overlayOf(readInstallRecord(root))
-    const done = { ...base, overlay, installed: needInstall || requested.length > 0 }
-    if (processes.length === 0) {
-        say("restart: nothing a running process reads changed")
+    const done = { ...base, overlay, installed: needInstall || requested.length > 0, stopped }
+    const restart = request.restart ? [...new Set([...stopped, ...processes])] : stopped
+    if (restart.length === 0) {
+        say(processes.length === 0 ? "restart: nothing a running process reads changed" : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
         say(overlayLine(overlay))
-        return { data: { ...done, restarted: [], restart: "none" }, message: lines.join("\n") }
+        return { data: { ...done, restarted: [], restart: processes.length === 0 ? "none" : "skipped" }, message: lines.join("\n") }
     }
-    if (!request.restart) {
-        say(`restart skipped (--no-restart): ${processes.join(", ")} changed`)
-        say(overlayLine(overlay))
-        return { data: { ...done, restarted: [], restart: "skipped" }, message: lines.join("\n") }
-    }
-    say(`rebuilding and restarting ${processes.join(", ")} (the database, storage and tunnel stay up)`)
-    const run = await captureTool(process.execPath, [appCli(root), ...restartArgs], root)
-    for (const line of `${run.stdout}\n${run.stderr}`.split("\n").map((one) => one.trimEnd()).filter((one) => one !== "")) say(`  ${line}`)
+    const ok = await restartNames(restart, request.restart ? "rebuilding and restarting" : "restarting the processes stopped for the install (--no-restart restarts nothing else):")
     say(overlayLine(overlay))
-    if (run.exitCode !== 0) return { data: { ...done, restarted: [], restart: "failed" }, message: lines.join("\n"), exitCode: 1 }
-    return { data: { ...done, restarted: processes, restart: "done" }, message: lines.join("\n") }
+    if (!ok) return { data: { ...done, restarted: [], restart: "failed" }, message: lines.join("\n"), exitCode: 1 }
+    return { data: { ...done, restarted: restart, restart: "done" }, message: lines.join("\n") }
+}
+
+/**
+ * Ends the dev stack processes the environment records before node_modules is written, and says which; the names it ended. No pinned
+ * CLI to read them from (no install, or a half-wiped one) ends nothing: the install's move aside then fails fast while a process still
+ * holds a file. A record that cannot be read, or a process still alive after the stop, refuses DEV_SYNC_STOP before anything moved.
+ */
+const stopBeforeInstall = async (root: string, env: string, deps: DevSyncDeps, say: (line: string) => void): Promise<readonly string[]> => {
+    const processes = await deps.stackProcesses(root, env)
+    if (processes === undefined) {
+        say(`no pinned CLI in ${root} to read the ${env} stack's processes from: nothing stopped; the install moves node_modules aside first, which fails while a process still holds a file in it`)
+        return []
+    }
+    if (typeof processes === "string") throw new Refusal("DEV_SYNC_STOP", `the processes of the ${env} dev stack could not be read (starci app stack status --env ${env}: ${processes}): nothing was installed and nothing moved`)
+    const stop = await deps.stop(processes)
+    if (stop.alive.length > 0) {
+        throw new Refusal("DEV_SYNC_STOP", `the ${env} dev stack could not be stopped before the install: still running ${stop.alive.join(", ")}${stop.stopped.length > 0 ? ` (ended ${stop.stopped.join(", ")})` : ""}. Nothing was installed and nothing moved; end them (starci app stack down --env ${env} --execute) and sync again`)
+    }
+    say(stop.stopped.length === 0 ? `the ${env} dev stack runs no recorded process: nothing to stop before the install` : `stopped ${stop.stopped.join(", ")} of the ${env} dev stack before the install (restarted after it)`)
+    return stop.stopped
 }
 
 /** The closing line of a sync: where the checkout stands, what restarted, and the overlay. Pure. */
