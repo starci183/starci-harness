@@ -228,6 +228,11 @@ export const CATALOG = {
               "summary": "tag and push for real (default: a dry run that runs every judgement and tags nothing)"
             },
             {
+              "name": "from",
+              "type": "string",
+              "summary": "cut this fixed sha (on the remote main) in its own temporary worktree, removed after: prod work never moves the dev checkout (default: this checkout's HEAD)"
+            },
+            {
               "name": "urgent",
               "type": "boolean",
               "summary": "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI (contexts/project/cicd.md \"The urgent path\")"
@@ -570,7 +575,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -678,7 +683,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "push": {
-          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a check red for any other reason",
+          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
           "flags": [],
           "positional": [
             {
@@ -709,6 +714,30 @@ export const CATALOG = {
               "name": "args",
               "required": false,
               "variadic": true
+            }
+          ],
+          "json": "flag"
+        },
+        "alerts": {
+          "summary": "`alerts discover-chat --env <env>`: after /start to the environment's own alert bot, find the private chat that wrote and seal ALERTS_TELEGRAM_CHAT_ID into its alert member (monitoring.alerts.telegram.member), to the member's own recipients; never the harness bot",
+          "flags": [
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "the environment whose alert bot it is",
+              "required": true
+            },
+            {
+              "name": "chat",
+              "type": "string",
+              "summary": "the chat id to seal when several chats wrote to the bot"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
             }
           ],
           "json": "flag"
@@ -2203,12 +2232,17 @@ export const CATALOG = {
     "host": {
       "verbs": {
         "status": {
-          "summary": "report each host service of ops/host.yaml (up, down, not installed) with its evidence, and the StarCi tasks the harness does not own",
+          "summary": "report each host service of ops/host.yaml (up, down, not installed) with its evidence, and the StarCi tasks the harness does not own; with --host <name>, the services that machine's roles turn on, their gaps and the model endpoints",
           "flags": [
             {
               "name": "stack",
               "type": "string",
               "summary": "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)"
+            },
+            {
+              "name": "host",
+              "type": "string",
+              "summary": "a machine of config.yaml: report each service its roles turn on (running, adopted, partial, missing, unsupported, unbuilt), its drift, the gaps, and the endpoints of every served model in router order (`--json` data.endpoints, what the apps' ai-router reads)"
             }
           ],
           "positional": [
@@ -2245,12 +2279,27 @@ export const CATALOG = {
           "json": "flag"
         },
         "up": {
-          "summary": "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone",
+          "summary": "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, wait for its health and roll it back when it never turns healthy; a service already running (even under another name) is adopted, never redeployed or restarted, a drift only reported; no app stack is touched; one writer per host (HOST_BUSY)",
           "flags": [
             {
               "name": "stack",
               "type": "string",
               "summary": "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)"
+            },
+            {
+              "name": "host",
+              "type": "string",
+              "summary": "a machine of config.yaml (local, or one `starci vps add` registered): bring up the services its roles turn on"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "with --host: apply the plan (default: a dry run that observes the machine and prints the plan)"
+            },
+            {
+              "name": "no-rollback",
+              "type": "boolean",
+              "summary": "with --host --execute: keep a deployed service that never turned healthy, for inspection, instead of rolling it back"
             }
           ],
           "positional": [
@@ -2320,6 +2369,11 @@ export const CATALOG = {
               "name": "execute",
               "type": "boolean",
               "summary": "with --fix: perform the repair and send the alert (default: a dry run)"
+            },
+            {
+              "name": "host",
+              "type": "string",
+              "summary": "a machine of config.yaml: one real call per service its roles turn on (an embed vector of the pinned dimensions, the Grafana login page, a status API, a BuildKit ping hook, each Swarm service at its replicas), then the parity of every served model across the machines serving it (equal dimensions, cosine >= the catalog's minimum, else HOST_EMBED_MISMATCH)"
             }
           ],
           "positional": [],
@@ -2353,7 +2407,7 @@ export const CATALOG = {
     "vps": {
       "verbs": {
         "list": {
-          "summary": "list the managed VPS fleet of ops/vps/servers with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
+          "summary": "list this host's machines (config.yaml, never pushed: local and every `vps add`, each with its roles and the services they turn on), then the managed VPS fleet of ops/vps/servers and config.yaml with each server's health over its sealed login (reachable, uptime, CPU, memory, disk, failed ssh logins, swarm nodes and services) and its UI and panel links; changes nothing",
           "flags": [
             {
               "name": "offline",
@@ -2377,25 +2431,37 @@ export const CATALOG = {
           "json": "flag"
         },
         "add": {
-          "summary": "add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
+          "summary": "with --roles: register a machine in this host's config.yaml (never pushed) with its address, login user, port, ssh key path and roles (ops/host-roles.yaml: app-host, starci, monitor, edge, dev), no question asked, --import <ops/vps/servers/<id>.yaml> (or the inventory file of the same name) taking its address and sealed login; without --roles: add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
           "flags": [
             {
               "name": "host",
               "type": "string",
-              "summary": "the server's IP address or DNS name",
-              "required": true
+              "summary": "the server's IP address or DNS name"
+            },
+            {
+              "name": "roles",
+              "type": "string",
+              "summary": "the roles it hosts, a comma list (app-host,starci,monitor,edge; +starci.sonar or -starci.embed toggles one service): registers it in config.yaml"
+            },
+            {
+              "name": "ssh-key",
+              "type": "string",
+              "summary": "with --roles: the private key file ssh logs in with (config.yaml keeps the path, never the key)"
+            },
+            {
+              "name": "import",
+              "type": "string",
+              "summary": "with --roles: an ops/vps/servers/<id>.yaml to take the address, port and sealed login from"
             },
             {
               "name": "os",
               "type": "string",
-              "summary": "its /etc/os-release ID (ubuntu, debian, almalinux, rocky, centos, rhel)",
-              "required": true
+              "summary": "its /etc/os-release ID (ubuntu, debian, almalinux, rocky, centos, rhel); the inventory enrollment needs it"
             },
             {
               "name": "provider",
               "type": "string",
-              "summary": "who rents it out (a free name)",
-              "required": true
+              "summary": "who rents it out (a free name); the inventory enrollment needs it"
             },
             {
               "name": "port",
@@ -2456,6 +2522,68 @@ export const CATALOG = {
           "positional": [
             {
               "name": "id",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "show": {
+          "summary": "show one machine of this host's config.yaml (never pushed): its login, roles and toggles, the services they turn on (ops/host-roles.yaml) and what host up adopted; reads only the file",
+          "flags": [],
+          "positional": [
+            {
+              "name": "name",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "set": {
+          "summary": "change a machine of this host's config.yaml: --roles app-host,starci replaces its roles, --roles +monitor,-edge adds and removes roles, --roles +starci.sonar,-starci.embed turns one service on or off against its role's default; --host, --user, --port, --ssh-key change its login; at least one role stays; no server is reached",
+          "flags": [
+            {
+              "name": "roles",
+              "type": "string",
+              "summary": "a comma list: plain roles replace the list; +role/-role add or remove one; +role.service/-role.service toggle one service"
+            },
+            {
+              "name": "host",
+              "type": "string",
+              "summary": "its address (an IP or a DNS name)"
+            },
+            {
+              "name": "user",
+              "type": "string",
+              "summary": "the login user"
+            },
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "its ssh port"
+            },
+            {
+              "name": "ssh-key",
+              "type": "string",
+              "summary": "the private key file ssh logs in with (the path is kept, never the key)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "name",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "remove": {
+          "summary": "forget a machine of this host's config.yaml; nothing on the server, no stack and no sealed file is touched (local cannot be removed)",
+          "flags": [],
+          "positional": [
+            {
+              "name": "name",
               "required": true,
               "variadic": false
             }
@@ -2610,7 +2738,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "monitor": {
-          "summary": "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
+          "summary": "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
           "flags": [
             {
               "name": "local",
@@ -2626,6 +2754,11 @@ export const CATALOG = {
               "name": "without",
               "type": "list",
               "summary": "a component to turn off for this run (repeat)"
+            },
+            {
+              "name": "app",
+              "type": "list",
+              "summary": "an app checkout whose alert bots (environments.<env>.monitoring.alerts) this server's Alertmanager reads, beside the checkouts registered with this harness (repeat)"
             },
             {
               "name": "execute",
@@ -2648,7 +2781,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "service": {
-          "summary": "`service up|status|down|grant <id> --service <name>` (or `--local`): an opt-in shared service of a managed server from ops/vps/services/<name>/components.yaml (embeddings: one CPU embeddings server, qwen3-embedding:8b pinned by digest, behind a bearer-key gate), one stack per server, its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk; `grant` seals its key into an app environment's member; a dry run until --execute",
+          "summary": "`service up|status|down|grant <id> --service <name>` (or `--local`): an opt-in shared service of a managed server from ops/vps/services/<name>/components.yaml (embeddings: one CPU embeddings server, qwen3-embedding:4b (2560 dimensions) pinned by digest, behind a bearer-key gate), one stack per server, its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk; `grant` seals its key into an app environment's member; a dry run until --execute",
           "flags": [
             {
               "name": "service",
@@ -2716,6 +2849,34 @@ export const CATALOG = {
             {
               "name": "id",
               "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "build-key": {
+          "summary": "`build-key add|list|remove <id> --repo <owner>/<name>`: the keys of the remote BuildKit's ssh user starci-build (not in the docker group), one gated line per repository admitting only `buildctl dial-stdio`; add mints the key here, installs the public half and sets the private half as the repository's Actions secret STARCI_BUILDER_SSH_KEY through gh on stdin (never printed), with STARCI_BUILDER_HOST and STARCI_BUILDER_KNOWN_HOSTS; a dry run until --execute",
+          "flags": [
+            {
+              "name": "repo",
+              "type": "string",
+              "summary": "add, remove: the GitHub repository <owner>/<name> whose CI builds through the server"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": true,
               "variadic": false
             }
           ],
@@ -2924,7 +3085,7 @@ export const CATALOG = {
             {
               "name": "restore",
               "type": "boolean",
-              "summary": "put the recorded npm pins back and install them from npmjs, dropping every lock entry resolved on this machine; also clears a record of the removed overlay"
+              "summary": "put the recorded npm pins back and install them from npmjs, dropping every lock entry resolved on this machine"
             }
           ],
           "positional": [
@@ -2959,7 +3120,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED), a lockfile whose harness package integrity is not the one npm serves for that version (DEPS_LOCK_INTEGRITY) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
+          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a lockfile whose harness package integrity is not the one npm serves for that version (DEPS_LOCK_INTEGRITY)",
           "flags": [
             {
               "name": "sha",
@@ -3173,7 +3334,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "close": {
-          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves",
+          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves (--target-kind, --target) or as declined with --reason",
           "flags": [
             {
               "name": "kind",
@@ -3193,7 +3354,7 @@ export const CATALOG = {
             {
               "name": "reason",
               "type": "string",
-              "summary": "why it is not fixed (with --wontfix)"
+              "summary": "why it is not fixed (with --wontfix), or with --kind feedback why it is not acted on (--target-kind declined)"
             },
             {
               "name": "duplicate",
@@ -3203,12 +3364,12 @@ export const CATALOG = {
             {
               "name": "target-kind",
               "type": "string",
-              "summary": "feedback: the kind of target that closes it: grammar, cli, app, rule, context"
+              "summary": "feedback: the kind of target that closes it: grammar, cli, app, rule, context, root-fix, declined"
             },
             {
               "name": "target",
               "type": "string",
-              "summary": "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule) or an anchor id (context)"
+              "summary": "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule), an anchor id (context), or the commit that fixed the cause (root-fix): a sha of the harness checkout or <repo path>@<sha> of another repository; none for declined"
             }
           ],
           "positional": [
@@ -3344,7 +3505,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "gate": {
-          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green except the cache), or --push app push, and --ready register with the batch lander",
+          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green on its findings alone; the cache records it wrote are not a finding), or --push app push, and --ready register with the batch lander",
           "flags": [
             {
               "name": "ref",
@@ -3427,6 +3588,42 @@ export const CATALOG = {
               "variadic": false
             }
           ],
+          "json": "flag"
+        }
+      }
+    },
+    "dev": {
+      "verbs": {
+        "sync": {
+          "summary": "fast-forward the app's dev checkout to origin/dev, npm ci, install each --local harness package from the local registry, then rebuild and restart only the changed api/web of the running dev stack; a plain sync drops any local overlay (dry until --execute)",
+          "flags": [
+            {
+              "name": "local",
+              "type": "list",
+              "summary": "a harness package to install from the local registry after the install (grammar, @starci/hfs@6.18.0-local.1; repeat); without it every @starci package comes from npm"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the app's dev checkout (default: the current one)"
+            },
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "the dev environment of the running stack (default: the local settings' devSync.env, dev)"
+            },
+            {
+              "name": "no-restart",
+              "type": "boolean",
+              "summary": "move the checkout and install, but leave the running stack as it is"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "move, install and restart for real (default: a dry run that fetches and prints the plan)"
+            }
+          ],
+          "positional": [],
           "json": "flag"
         }
       }

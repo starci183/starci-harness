@@ -1,6 +1,6 @@
 /**
  * The rules that hold model calls behind the ai-router gateway (catalog R326 `BE_AI_KEY_CUSTODY`, R327
- * `BE_AI_GATEWAY_CLIENT`, R344 `BE_AI_VIRTUAL_KEY`; contexts/code/be/ai.md BE-AI-1 and BE-AI-3).
+ * `BE_AI_GATEWAY_CLIENT`; contexts/code/be/ai.md BE-AI-1 and BE-AI-3).
  *
  *   - `provider-key-custody` keeps every upstream provider key inside the gateway's custody owner, `integrations/ai-gateway`,
  *     the one owner that registers `@starci/ai-router` with the provider pool. Anywhere else a provider key variable
@@ -15,9 +15,6 @@
  *     virtual key). A literal provider URL, a missing base URL (the library falls back to the provider's own) and a
  *     missing key (the library falls back to `OPENAI_API_KEY`) are refused. The constructor is found by its import, never
  *     by its spelling.
- *   - `ai-virtual-key-name` holds the one client key of the gateway: inside `integrations/ai` every `<env>.secret(...)` names
- *     exactly `STARCI_AI_KEY` (`VIRTUAL_KEY_VARIABLE`) as a literal, the virtual key the gateway mounts from the sealed `ai`
- *     member; and the custody owner hands the gateway no `adminToken`, since the gateway exposes no admin API.
  *
  * Which owner may import LangChain, `openai` or another provider SDK at all is the infrastructure table of the slot
  * manifest (`ruleParams.be.infraOwners`, judged by `infra-import-owner`, R90).
@@ -61,12 +58,6 @@ export const PROVIDER_KEY_VARIABLES: readonly string[] = Object.freeze([
 ])
 
 const PROVIDER_KEYS = new Set(PROVIDER_KEY_VARIABLES.flatMap((name) => [name, `${name}_FILE`]))
-
-/** The one virtual key every client of the gateway authenticates with (`sk-starci-<app>-<48 hex>`, sealed in the `ai` member). */
-export const VIRTUAL_KEY_VARIABLE = "STARCI_AI_KEY"
-
-/** The owner id of the app's LangChain integration, whose config reads the virtual key. */
-const AI_INTEGRATION = "integrations/ai"
 
 /** The LangChain provider package whose clients are judged, and the clients code may build from it. */
 const LANGCHAIN_OPENAI = "@langchain/openai"
@@ -189,51 +180,14 @@ export const aiClientThroughGateway: RuleModule = {
     },
 }
 
-/** `<x>.secret(<arg>)`: the first argument of a non-computed `secret` member call, or null. */
-const secretArgumentOf = (node: TSESTree.CallExpression): Node | null =>
-    node.callee.type === "MemberExpression" && !node.callee.computed && keyName(node.callee.property) === "secret" ? (node.arguments[0] ?? null) : null
-
-/** The gateway's one client key is `STARCI_AI_KEY`, read by `integrations/ai`; the gateway gets no admin token. */
-export const aiVirtualKeyName: RuleModule = {
-    meta: {
-        type: "problem",
-        docs: { description: "`integrations/ai` reads exactly `STARCI_AI_KEY` as its secret, and the gateway's custody owner passes no admin token." },
-        schema: [],
-        messages: {
-            name: "`integrations/ai` reads one secret, the gateway's virtual key `STARCI_AI_KEY` (`env.secret(\"STARCI_AI_KEY\")`); `{{name}}` is not it. Every client of the gateway, this integration and the agent runtime alike, uses that one key.",
-            dynamic: "`integrations/ai` names its secret as the literal `\"STARCI_AI_KEY\"`, so the one virtual key the gateway mounts is visible here.",
-            adminToken: "The ai-router gateway exposes no admin API: pass no `adminToken`. The one virtual key `STARCI_AI_KEY` is mounted from the sealed `ai` member (`mountedKeys`) and rotated by resealing it and deploying.",
-        },
-    },
-    create(context) {
-        const owner = ownerIdOf(context, context.filename)
-        return {
-            Property(node) {
-                if (node.computed || node.key.type !== "Identifier") return
-                if (owner === GATEWAY_CUSTODY && node.key.name === "adminToken") context.report({ node: node.key, messageId: "adminToken" })
-            },
-            CallExpression(node) {
-                if (owner !== AI_INTEGRATION) return
-                const argument = secretArgumentOf(node)
-                if (argument === null) return
-                const name = staticText(argument)
-                if (name === null) context.report({ node: argument, messageId: "dynamic" })
-                else if (name !== VIRTUAL_KEY_VARIABLE) context.report({ node: argument, messageId: "name", data: { name } })
-            },
-        }
-    },
-}
-
 /** The rules this law contributes to the plugin. */
 export const rules = {
     "provider-key-custody": providerKeyCustody,
     "ai-client-through-gateway": aiClientThroughGateway,
-    "ai-virtual-key-name": aiVirtualKeyName,
 } satisfies Rules
 
 /** Every rule of this law at `error`. */
 export const recommended: Recommended = {
     "starci-be/provider-key-custody": "error",
     "starci-be/ai-client-through-gateway": "error",
-    "starci-be/ai-virtual-key-name": "error",
 }

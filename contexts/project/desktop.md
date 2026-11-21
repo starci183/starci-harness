@@ -81,11 +81,11 @@ change the app you change `hfs.json`, not the files. The managed `.prettierignor
 installer, the updater manifest and the web app share one number and there is nothing to keep in step. The release tag must be `v<that version>` (the
 workflow's verify job refuses any other).
 
-**The security the rendered shell holds** (R444 judges the config and the capability files):
+**The security the rendered shell holds** (a convention; the rendered files are held by `HFS_MANAGED_FILE_DRIFT`):
 
 - one window, created in Rust (`app.windows` is empty in the config), with a navigation handler: the declared origin, `allowedOrigins` and the shell's own page
   stay in the window; other `http(s)`, `mailto` and `tel` links open in the system browser; everything else is refused;
-- no IPC for the page: no registered command, no capability naming the origin (`HFS_DESKTOP_SECURITY` also refuses a capability whose `remote.urls` is a bare
+- no IPC for the page: no registered command, no capability naming the origin (nor one whose `remote.urls` is a bare
   wildcard or plain http), no `withGlobalTauri`, no `dangerous*` switch, a CSP (for the shell's own page) without `unsafe-eval` or a wildcard;
 - deep links go through the single-instance plugin (a second launch reaches the running window) and only the declared schemes are handled;
 - the updater is configured with its public key and an https endpoint, and `dangerousInsecureTransportProtocol` is never set.
@@ -101,7 +101,7 @@ workflow's verify job refuses any other).
 | `starci app desktop keygen --out <file>` | `cargo tauri signer generate`, refusing a path inside the repository or an existing file | the same |
 
 **A machine without Rust is a normal machine.** Nothing in `starci app check`, `sync`, the hooks or the gates runs cargo: the checks read the declaration, the
-tree and the config (R444) as files. Only `build`, `dev` and `keygen` need the toolchain, and without it they refuse (`DESKTOP_TOOLCHAIN_MISSING`, exit 2)
+tree and the config as files. Only `build`, `dev` and `keygen` need the toolchain, and without it they refuse (`DESKTOP_TOOLCHAIN_MISSING`, exit 2)
 and say that CI builds the installers. A project that declares no desktop app has none of this. An installer is built on its own system (a macOS app needs
 macOS), so `--target` for another system is refused (`DESKTOP_TARGET_HOST`); the release builds each system on its own runner.
 
@@ -118,8 +118,8 @@ The installers are the GitHub Release assets (`.dmg`, `.app.tar.gz`, `.msi`, `.e
 
 ## PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files
 
-No key is ever a tracked file (`HFS_DESKTOP_SIGNING_KEY` refuses a `.p12`, `.pfx`, key store, a minisign secret key, or a signing secret written into a file of
-`desktop/`). The workflow reads these names, which `init` declares in `ci.secrets` (scope repository, **optional**: an unset secret leaves that signature out
+No key is ever a tracked file (the secret scan refuses a `.p12`, `.pfx` or private key file; a minisign secret key or a signing secret written into a file of
+`desktop/` is the same mistake). The workflow reads these names, which `init` declares in `ci.secrets` (scope repository, **optional**: an unset secret leaves that signature out
 and fails nothing) and which the owner sets with the existing flow, `starci app ci secret set <NAME> --execute` (the value on stdin):
 
 | secret | for | who provides it |
@@ -142,5 +142,4 @@ decision and arrives as a `bundle.windows` setting plus its secrets in a later h
    web routes;
 5. tag `v<version>`: the workflow builds, signs what it can and opens the release.
 
-Enforced by: R444 (`desktop`: `HFS_DESKTOP_UNDECLARED`, `HFS_DESKTOP_FILE_MISSING`, `HFS_DESKTOP_CONFIG`, `HFS_DESKTOP_SECURITY`, `HFS_DESKTOP_SIGNING_KEY`); the
-rendered files by `HFS_MANAGED_FILE_DRIFT`; the workflow's secret reads by `CI_DECLARATION_DRIFT`.
+Enforced by: the rendered files by `HFS_MANAGED_FILE_DRIFT`; the workflow's secret reads by `CI_DECLARATION_DRIFT`.

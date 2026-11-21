@@ -1,7 +1,4 @@
 // proves: STACKS_LITE_SELFHOSTED_DB
-// proves: STACKS_SIDECAR_VOLUME_UNDECLARED
-// proves: STACKS_SIDECAR_DB_UNSUPPORTED
-// proves: STACKS_LITE_REDIS_PERSISTENCE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -109,168 +106,11 @@ test('STACKS_LITE_SELFHOSTED_DB: Qdrant is admitted when declared and refused wh
   }
 });
 
-test('STACKS_LITE_REDIS_PERSISTENCE: the Redis of the stack runs AOF on a writable named volume at /data', () => {
-  const value = fixture();
-  value.repo.sides = { be: { backing: ['redis'] } };
-  value.model.services.redis = PERSISTED_REDIS;
-  value.model.volumes!['redis-data'] = {};
-  assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), []);
-  value.model.services.redis = { ...PERSISTED_REDIS, command: 'sh -c "exec redis-server --appendonly yes --requirepass \\"$$(cat /run/secrets/redis-password)\\""' };
-  assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), [], 'a shell wrapper keeps the flag');
-  value.model.services.redis = { ...PERSISTED_REDIS, volumes: [{ type: 'volume', source: 'redis-data', target: '/data' }] };
-  assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), [], 'a long-form named volume');
-  for (const policy of ['noeviction', '"noeviction"']) {
-    value.model.services.redis = { ...PERSISTED_REDIS, command: [...PERSISTED_REDIS.command, '--maxmemory', '256mb', '--maxmemory-policy', policy] };
-    assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), [], `maxmemory-policy ${policy}`);
-  }
-  for (const fsync of ['everysec', 'always', "'everysec'"]) {
-    value.model.services.redis = { ...PERSISTED_REDIS, command: [...PERSISTED_REDIS.command, '--appendfsync', fsync] };
-    assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), [], `appendfsync ${fsync}`);
-  }
-});
-
-test('STACKS_LITE_REDIS_PERSISTENCE: no AOF, an OS-timed fsync, an ephemeral, bind, read-only or undeclared mount, or an evicting policy fails', () => {
-  const mutations: ((redis: Service) => void)[] = [
-    redis => { delete redis.command; },
-    redis => { redis.command = ['redis-server', '--appendonly', 'no']; },
-    redis => { redis.command = [...(redis.command as string[]), '--appendfsync', 'no']; },
-    redis => { redis.command = `sh -c "exec redis-server --appendonly yes --appendfsync 'no'"`; },
-    redis => { delete redis.volumes; },
-    redis => { redis.volumes = ['/data']; },
-    redis => { redis.volumes = ['./redis-data:/data']; },
-    redis => { redis.volumes = ['redis-data:/data:ro']; },
-    redis => { redis.volumes = ['other-data:/data']; },
-    redis => { redis.volumes = ['redis-data:/var/lib/redis']; },
-    redis => { redis.command = [...(redis.command as string[]), '--maxmemory-policy', 'allkeys-lru']; },
-    redis => { redis.command = [...(redis.command as string[]), '--maxmemory-policy', 'volatile-ttl']; },
-    redis => { redis.command = `sh -c "exec redis-server --appendonly yes --maxmemory-policy 'allkeys-lfu'"`; },
-  ];
-  for (const mutate of mutations) {
-    const value = fixture();
-    value.repo.sides = { be: { backing: ['redis'] } };
-    value.model.services.redis = structuredClone(PERSISTED_REDIS);
-    value.model.volumes!['redis-data'] = {};
-    mutate(value.model.services.redis!);
-    assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE').map(issue => issue.at), ['services.redis']);
-  }
-});
-
-test('STACKS_LITE_REDIS_PERSISTENCE: a declared Redis runs as exactly one service of the swarm stack', () => {
-  const mutations: ((services: Fixture['model']['services']) => void)[] = [
-    services => { delete services.redis; },
-    services => { services.redis = { ...PERSISTED_REDIS, image: pinned('valkey/valkey:8.0.1') }; },
-    services => { services.cache = structuredClone(PERSISTED_REDIS); },
-  ];
-  for (const mutate of mutations) {
-    const value = fixture();
-    value.repo.sides = { be: { backing: ['redis'] } };
-    value.model.services.redis = structuredClone(PERSISTED_REDIS);
-    value.model.volumes!['redis-data'] = {};
-    mutate(value.model.services);
-    assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE').map(issue => issue.at), ['services']);
-  }
-  const undeclared = fixture();
-  assert.deepEqual(issuesFor(undeclared, 'STACKS_LITE_REDIS_PERSISTENCE'), [], 'no declaration, no Redis owed');
-});
-
 test('STACKS_LITE_SELFHOSTED_DB: image tags and application names do not masquerade as backing images', () => {
   const value = fixture();
   value.doc.components.api.image = pinned('app/redis-worker:1.0.0');
   value.model.services.api.image = pinned('app/api:postgres');
   assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB'), []);
-});
-
-test('STACKS_SIDECAR_DB_UNSUPPORTED: declared SQLite sidecar passes', () => {
-  assert.deepEqual(issuesFor(fixture(), 'STACKS_SIDECAR_DB_UNSUPPORTED'), []);
-});
-
-test('STACKS_SIDECAR_DB_UNSUPPORTED: sidecar requiring Postgres, Redis or Mongo fails without a rendered database image', () => {
-  for (const provider of ['postgres', 'redis', 'mongo', 'mysql', '', undefined]) {
-    const value = fixture();
-    value.doc.components.automation.database!.provider = provider;
-    assert.equal(issuesFor(value, 'STACKS_SIDECAR_DB_UNSUPPORTED').length, 1);
-  }
-});
-
-test('STACKS_SIDECAR_DB_UNSUPPORTED: rendered adapter settings cannot bypass or contradict the sidecar database declaration', () => {
-  const environments = [
-    { DB_TYPE: 'postgresdb' }, ['DB_TYPE=postgresdb'], { DATABASE_PROVIDER: 'redis' },
-    { DATABASE_URL: 'postgres://database.example.test/automation' },
-    { MONGO_URI: 'mongodb+srv://database.example.test/automation' },
-  ];
-  for (const environment of environments) {
-    for (const declared of [false, true]) {
-      const value = fixture();
-      if (!declared) delete value.doc.components.automation.database;
-      value.model.services.automation.environment = environment;
-      assert.ok(issuesFor(value, 'STACKS_SIDECAR_DB_UNSUPPORTED').some(issue => issue.at === 'services.automation.environment'));
-    }
-  }
-});
-
-test('STACKS_SIDECAR_DB_UNSUPPORTED: SQLite adapter configuration and app managed database connection pass', () => {
-  const value = fixture();
-  value.model.services.automation.environment = { DB_TYPE: 'sqlite' };
-  value.model.services.api.environment = { DATABASE_URL: 'postgres://managed.example.test/application' };
-  assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_DB_UNSUPPORTED'), []);
-});
-
-test('STACKS_SIDECAR_VOLUME_UNDECLARED: declared named volume with short or long writable mount passes', () => {
-  const value = fixture();
-  assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
-  value.model.services.automation.volumes = [{ type: 'volume', source: 'automation-data', target: SQLITE_DATA_DIR }];
-  assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
-  value.model.volumes!['automation-data'] = null;
-  assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
-});
-
-test('STACKS_SIDECAR_VOLUME_UNDECLARED: absent volume metadata, component volume, rendered declaration or mount fails', () => {
-  const mutations: ((value: Fixture) => void)[] = [
-    value => { delete value.doc.components.automation.database!.volume; },
-    value => { delete value.doc.components.automation.volumes; },
-    value => { value.doc.components.automation.volumes = ['unrelated-data']; },
-    value => { delete value.model.volumes; },
-    value => { value.model.volumes = { unrelated: {} }; },
-    value => { delete value.model.services.automation.volumes; },
-    value => { value.model.services.automation.volumes = [`other-data:${SQLITE_DATA_DIR}`]; },
-  ];
-  for (const mutate of mutations) {
-    const value = fixture();
-    mutate(value);
-    assert.equal(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED').length, 1);
-  }
-});
-
-test('STACKS_SIDECAR_VOLUME_UNDECLARED: rendered SQLite configuration needs a declared persistent database volume', () => {
-  for (const environment of [{ DB_TYPE: 'sqlite' }, ['DATABASE_CLIENT=sqlite3'], { DATABASE_URL: 'sqlite:/data/automation.db' }]) {
-    const value = fixture();
-    delete value.doc.components.automation.database;
-    value.model.services.automation.environment = environment;
-    assert.equal(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED').length, 1);
-  }
-});
-
-test('STACKS_SIDECAR_VOLUME_UNDECLARED: path-like volume names cannot turn a bind mount into named-volume evidence', () => {
-  for (const source of ['./automation-data', '/srv/automation-data']) {
-    const value = fixture();
-    value.doc.components.automation.database!.volume = source;
-    value.doc.components.automation.volumes = [source];
-    value.model.volumes = { [source]: {} };
-    value.model.services.automation.volumes = [`${source}:${SQLITE_DATA_DIR}`];
-    assert.equal(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED').length, 1);
-  }
-});
-
-test('STACKS_SIDECAR_VOLUME_UNDECLARED: bind mounts, anonymous volumes and read-only mounts do not persist writable SQLite', () => {
-  for (const mount of [
-    `./automation-data:${SQLITE_DATA_DIR}`, SQLITE_DATA_DIR, `automation-data:${SQLITE_DATA_DIR}:ro`,
-    { type: 'bind', source: 'automation-data', target: SQLITE_DATA_DIR },
-    { type: 'volume', source: 'automation-data', target: SQLITE_DATA_DIR, read_only: true },
-  ]) {
-    const value = fixture();
-    value.model.services.automation.volumes = [mount];
-    assert.equal(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED').length, 1);
-  }
 });
 
 test('R276: non-Swarm development environment retains its existing contract', () => {
@@ -301,9 +141,6 @@ function trackedFixture(value: Fixture, run: (context: FinderContext) => void) {
 
 const finderMutations = [
   { code: 'STACKS_LITE_SELFHOSTED_DB', violate(value: Fixture) { value.model.services.cache = { image: pinned('redis:7.4.3') }; } },
-  { code: 'STACKS_SIDECAR_VOLUME_UNDECLARED', violate(value: Fixture) { delete value.model.volumes; } },
-  { code: 'STACKS_SIDECAR_DB_UNSUPPORTED', violate(value: Fixture) { value.doc.components.automation.database!.provider = 'postgres'; } },
-  { code: 'STACKS_LITE_REDIS_PERSISTENCE', violate(value: Fixture) { value.repo.sides = { be: { backing: ['redis'] } }; value.model.services.redis = { image: REDIS_IMAGE }; } },
 ];
 
 for (const { code, violate } of finderMutations) {

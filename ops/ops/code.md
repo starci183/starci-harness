@@ -40,11 +40,9 @@ output:
   base:
     summary: {type: string, summary: "what you changed and why"}
     files: {type: "string[]", summary: "the repository paths you changed"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the rules the code follows, from the side's files and the topics the contract adds (never the shared files)"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the code implements"}
     cites: {type: "string[]", minItems: 0, summary: "the anchor ids you decided by: a Choose anchor (<family>.choose[.<term>]) per Grammar component family you import, plus the DNA and rule ids (R<n>) you applied"}
 checks:
-  base: [check-run-green, paths-only, rules-cited, anchors-cited]
+  base: [check-run-green, paths-only, anchors-cited]
   behavioural: true
 ---
 Write the code of the slice and the tests that prove what it changed, in the slots the anatomy slice of your side and edition

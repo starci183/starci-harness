@@ -1,16 +1,18 @@
 // data-sets.mts - R427: every copy is written through a driver (contexts/project/stacks.md PROJECT-STACKS-14), over `data.sets[]` of
 // .starcistacks/application-stacks.yaml:
-//   DATA_PURPOSE               a set with no id (or a twin), a purpose outside {seed-standard, seed-backup}, no or an unknown store, no or an
-//                              unknown environment (stores name declared stores, environments name declared environments);
-//   DATA_DRIVER_KIND           a set with no destination, a driver outside {git, s3}, or a git destination without a repository;
-//   DATA_COPY_NAME             a git repository (its last path segment, without .git) that does not end -seed-standard for a standard, or for a
-//                              backup does not carry {env} and end -seed-backup-<env> for each of the set's environments (<env> = the environment's declared `short`,
-//                              else its name; a `short` that is not lowercase kebab of at most 12 characters, or two environments with one label);
-//   DATA_SEED_UNPINNED         a seed-standard without `commit`, a 40-hex pin;
-//   DATA_FORCE_MISPLACED       `force` (a boolean) on a backup, `commit` on a backup, `everyMinutes` or `maxAgeMinutes` on a standard, a `maxAgeMinutes` that is not a whole number;
-//   DATA_BACKUP_LOADED         a seeds.yaml entry of any level, or a document it names, mentions a -seed-backup repository: a backup is
-//                              never loaded by a bring-up;
-//   DATA_EXTENSION_UNDECLARED  `completeness` is not `ext:<id>` of a check ext/manifest.json declares.
+//   DATA_SET_INVALID    the code of R427 but DATA_COPY_NAME; its message names which of these it is:
+//     - a set with no id (or a twin), a purpose outside {seed-standard, seed-backup}, no or an unknown store, no or an
+//       unknown environment (stores name declared stores, environments name declared environments);
+//     - a set with no destination, a driver outside {git, s3}, or a git destination without a repository;
+//     - a seed-standard without `commit`, a 40-hex pin;
+//     - `force` (a boolean) on a backup, `commit` on a backup, `everyMinutes` or `maxAgeMinutes` on a standard, a `maxAgeMinutes` that is not a whole number;
+//     - a seeds.yaml entry of any level, or a document it names, mentions a -seed-backup repository: a backup is
+//       never loaded by a bring-up;
+//     - `completeness` is not `ext:<id>` of a check ext/manifest.json declares.
+//   DATA_COPY_NAME      a git repository (its last path segment, without .git) that does not end -seed-standard for a standard, or for a
+//                       backup does not carry {env} and end -seed-backup-<env> for each of the set's environments (<env> = the environment's declared `short`,
+//                       else its name; a `short` that is not lowercase kebab of at most 12 characters, or two environments with one label).
+//                       It stays its own code because the CLI refuses the same law with it (cli/src/core/data/standard.ts).
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
@@ -67,7 +69,7 @@ function shortProblems(environments: Record<string, Parsed>): string[] {
   return problems;
 }
 
-/** DATA_PURPOSE, DATA_DRIVER_KIND, DATA_COPY_NAME, DATA_SEED_UNPINNED, DATA_FORCE_MISPLACED and DATA_EXTENSION_UNDECLARED over a parsed stack declaration. `extensionChecks` are the check ids of ext/manifest.json. Pure. */
+/** DATA_SET_INVALID and DATA_COPY_NAME over a parsed stack declaration. `extensionChecks` are the check ids of ext/manifest.json. Pure. */
 export function dataSetFindings(doc: Parsed, extensionChecks: ReadonlySet<string>): Finding[] {
   const data = plain(doc) ? doc.data : undefined;
   if (!plain(data) || data.sets === undefined) return [];
@@ -79,37 +81,37 @@ export function dataSetFindings(doc: Parsed, extensionChecks: ReadonlySet<string
   for (const problem of shortProblems(mapping(doc.environments))) at('DATA_COPY_NAME', 'environments', problem);
   list(data.sets).forEach((set: Parsed, index: number) => {
     const where = `sets[${String(index)}]`;
-    if (!plain(set)) { at('DATA_PURPOSE', where, 'a data set is a mapping {id, purpose, stores, environments, to}'); return; }
-    if (!present(set.id)) at('DATA_PURPOSE', where, 'a data set needs an id');
-    else if (ids.has(set.id)) at('DATA_PURPOSE', where, `the data set id ${set.id} is declared twice`);
+    if (!plain(set)) { at('DATA_SET_INVALID', where, 'a data set is a mapping {id, purpose, stores, environments, to}'); return; }
+    if (!present(set.id)) at('DATA_SET_INVALID', where, 'a data set needs an id');
+    else if (ids.has(set.id)) at('DATA_SET_INVALID', where, `the data set id ${set.id} is declared twice`);
     else ids.add(set.id);
     const purpose = DATA_PURPOSES.includes(set.purpose) ? set.purpose as string : null;
-    if (purpose === null) at('DATA_PURPOSE', where, `purpose ${JSON.stringify(set.purpose ?? null)} must be seed-standard or seed-backup`, { set: set.id });
+    if (purpose === null) at('DATA_SET_INVALID', where, `purpose ${JSON.stringify(set.purpose ?? null)} must be seed-standard or seed-backup`, { set: set.id });
     const named = list(set.stores).filter(present), envs = list(set.environments).filter(present);
-    if (named.length === 0) at('DATA_PURPOSE', where, 'stores must name at least one declared store', { set: set.id });
-    for (const store of named.filter((id: string) => !stores.has(id))) at('DATA_PURPOSE', where, `stores names ${store}, which data.stores does not declare`, { set: set.id });
-    if (envs.length === 0) at('DATA_PURPOSE', where, 'environments must name at least one declared environment', { set: set.id });
-    for (const env of envs.filter((name: string) => !environments.has(name))) at('DATA_PURPOSE', where, `environments names ${env}, which the stack does not declare`, { set: set.id });
+    if (named.length === 0) at('DATA_SET_INVALID', where, 'stores must name at least one declared store', { set: set.id });
+    for (const store of named.filter((id: string) => !stores.has(id))) at('DATA_SET_INVALID', where, `stores names ${store}, which data.stores does not declare`, { set: set.id });
+    if (envs.length === 0) at('DATA_SET_INVALID', where, 'environments must name at least one declared environment', { set: set.id });
+    for (const env of envs.filter((name: string) => !environments.has(name))) at('DATA_SET_INVALID', where, `environments names ${env}, which the stack does not declare`, { set: set.id });
 
     const to = list(set.to);
-    if (to.length === 0) at('DATA_DRIVER_KIND', where, 'to must name at least one destination {driver, repository}', { set: set.id });
+    if (to.length === 0) at('DATA_SET_INVALID', where, 'to must name at least one destination {driver, repository}', { set: set.id });
     to.forEach((destination: Parsed, at2: number) => {
       const here = `${where}.to[${String(at2)}]`;
-      if (!plain(destination) || !DRIVER_KINDS.includes(destination.driver)) { at('DATA_DRIVER_KIND', here, `driver ${JSON.stringify(plain(destination) ? destination.driver ?? null : null)} is outside the closed list (${DRIVER_KINDS.join(', ')}); a new driver is a harness change`, { set: set.id }); return; }
+      if (!plain(destination) || !DRIVER_KINDS.includes(destination.driver)) { at('DATA_SET_INVALID', here, `driver ${JSON.stringify(plain(destination) ? destination.driver ?? null : null)} is outside the closed list (${DRIVER_KINDS.join(', ')}); a new driver is a harness change`, { set: set.id }); return; }
       if (destination.driver !== 'git') return;
-      if (!present(destination.repository)) { at('DATA_DRIVER_KIND', here, 'a git destination names its repository (a URL or a path)', { set: set.id }); return; }
+      if (!present(destination.repository)) { at('DATA_SET_INVALID', here, 'a git destination names its repository (a URL or a path)', { set: set.id }); return; }
       if (purpose !== null) for (const problem of nameProblems(purpose, destination.repository, envs, (env) => environmentLabel(doc.environments, env))) at('DATA_COPY_NAME', here, problem, { set: set.id });
     });
 
-    if (purpose === 'seed-standard' && !(typeof set.commit === 'string' && COMMIT.test(set.commit))) at('DATA_SEED_UNPINNED', where, 'a seed-standard is pinned by commit: a 40-hex `commit`', { set: set.id });
-    if (purpose === 'seed-standard' && set.force !== undefined && typeof set.force !== 'boolean') at('DATA_FORCE_MISPLACED', where, 'force is a boolean', { set: set.id });
-    if (purpose === 'seed-standard') for (const key of ['everyMinutes', 'maxAgeMinutes']) if (set[key] !== undefined) at('DATA_FORCE_MISPLACED', where, `${key} belongs to a seed-backup only`, { set: set.id });
-    if (purpose === 'seed-backup' && set.maxAgeMinutes !== undefined && !(Number.isInteger(set.maxAgeMinutes) && set.maxAgeMinutes >= 1)) at('DATA_FORCE_MISPLACED', where, 'maxAgeMinutes is a whole number of minutes, at least 1', { set: set.id });
-    if (purpose === 'seed-backup') for (const key of ['force', 'commit']) if (set[key] !== undefined) at('DATA_FORCE_MISPLACED', where, `${key} belongs to a seed-standard only`, { set: set.id });
+    if (purpose === 'seed-standard' && !(typeof set.commit === 'string' && COMMIT.test(set.commit))) at('DATA_SET_INVALID', where, 'a seed-standard is pinned by commit: a 40-hex `commit`', { set: set.id });
+    if (purpose === 'seed-standard' && set.force !== undefined && typeof set.force !== 'boolean') at('DATA_SET_INVALID', where, 'force is a boolean', { set: set.id });
+    if (purpose === 'seed-standard') for (const key of ['everyMinutes', 'maxAgeMinutes']) if (set[key] !== undefined) at('DATA_SET_INVALID', where, `${key} belongs to a seed-backup only`, { set: set.id });
+    if (purpose === 'seed-backup' && set.maxAgeMinutes !== undefined && !(Number.isInteger(set.maxAgeMinutes) && set.maxAgeMinutes >= 1)) at('DATA_SET_INVALID', where, 'maxAgeMinutes is a whole number of minutes, at least 1', { set: set.id });
+    if (purpose === 'seed-backup') for (const key of ['force', 'commit']) if (set[key] !== undefined) at('DATA_SET_INVALID', where, `${key} belongs to a seed-standard only`, { set: set.id });
 
     if (set.completeness !== undefined) {
       const id = typeof set.completeness === 'string' && set.completeness.startsWith('ext:') ? set.completeness.slice(4) : null;
-      if (id === null || !extensionChecks.has(id)) at('DATA_EXTENSION_UNDECLARED', where, `completeness ${JSON.stringify(set.completeness)} must be ext:<id> of a check that ext/manifest.json declares`, { set: set.id });
+      if (id === null || !extensionChecks.has(id)) at('DATA_SET_INVALID', where, `completeness ${JSON.stringify(set.completeness)} must be ext:<id> of a check that ext/manifest.json declares`, { set: set.id });
     }
   });
   return findings;
@@ -118,7 +120,7 @@ export function dataSetFindings(doc: Parsed, extensionChecks: ReadonlySet<string
 const SEED_LEVELS = /^\.starcistacks\/(?:seeds|[^/]+\/seeds)\/seeds\.ya?ml$/u;
 const BACKUP_REPOSITORY = /-seed-backup/u;
 
-/** DATA_BACKUP_LOADED over the seed manifests of every level: `all` the tracked tree, `source` a tracked file's text. */
+/** DATA_SET_INVALID over the seed manifests of every level: `all` the tracked tree, `source` a tracked file's text. */
 export function backupLoadedFindings(all: readonly string[], source: (file: string) => string | null): Finding[] {
   const findings: Finding[] = [];
   for (const manifest of all.filter((file) => SEED_LEVELS.test(file))) {
@@ -126,11 +128,11 @@ export function backupLoadedFindings(all: readonly string[], source: (file: stri
     let doc: Parsed;
     try { doc = parseYaml(source(manifest) ?? ''); } catch { continue; }
     for (const entry of list(plain(doc) ? doc.entries : undefined)) {
-      if (BACKUP_REPOSITORY.test(JSON.stringify(entry ?? null))) findings.push(found('DATA_BACKUP_LOADED', manifest, `${manifest} has an entry that names a -seed-backup repository: a backup is read only by an explicit sync into the same environment, never by a bring-up (PROJECT-STACKS-13)`, { entry: plain(entry) ? entry.id : undefined }));
+      if (BACKUP_REPOSITORY.test(JSON.stringify(entry ?? null))) findings.push(found('DATA_SET_INVALID', manifest, `${manifest} has an entry that names a -seed-backup repository: a backup is read only by an explicit sync into the same environment, never by a bring-up (PROJECT-STACKS-13)`, { entry: plain(entry) ? entry.id : undefined }));
       const target = plain(entry) && present(entry.path) ? `${level}${entry.path.replace(/^\.?\//u, '').replace(/\/+$/u, '')}` : null;
       if (target === null) continue;
       for (const file of all.filter((name) => name === target || name.startsWith(`${target}/`))) {
-        if (BACKUP_REPOSITORY.test(source(file) ?? '')) findings.push(found('DATA_BACKUP_LOADED', file, `${file}, loaded by an entry of ${manifest}, names a -seed-backup repository: a backup is read only by an explicit sync into the same environment, never by a bring-up (PROJECT-STACKS-13)`, { entry: plain(entry) ? entry.id : undefined }));
+        if (BACKUP_REPOSITORY.test(source(file) ?? '')) findings.push(found('DATA_SET_INVALID', file, `${file}, loaded by an entry of ${manifest}, names a -seed-backup repository: a backup is read only by an explicit sync into the same environment, never by a bring-up (PROJECT-STACKS-13)`, { entry: plain(entry) ? entry.id : undefined }));
       }
     }
   }

@@ -1174,9 +1174,6 @@ slots:
     rules:
       - HFS_MANAGED_FILE_DRIFT
       - HFS_APP_GALLERY_MISSING
-      - HFS_APP_GALLERY_SCRIPT
-      - HFS_APP_GALLERY_VITE_UNPINNED
-      - HFS_APP_GALLERY_SHOTS_TRACKED
   - id: app.gallery-lock
     profiles:
       - app
@@ -1193,8 +1190,7 @@ slots:
     tracked: ignored
     tier: none
     tests: none
-    rules:
-      - HFS_APP_GALLERY_SHOTS_TRACKED
+    rules: []
   - id: app.gallery-explain
     profiles:
       - app
@@ -1206,8 +1202,6 @@ slots:
     rules:
       - HFS_APP_GALLERY_EXPLAIN_MISSING
       - HFS_APP_GALLERY_SCREEN_INVALID
-      - HFS_APP_GALLERY_REGION_INCOMPLETE
-      - HFS_APP_GALLERY_REGION_UNCLEAR
       - HFS_APP_GALLERY_FRONT_MATTER
       - HFS_APP_GALLERY_SCREEN_FILE
       - HFS_APP_GALLERY_LINKS
@@ -1353,9 +1347,6 @@ slots:
       - desktop
     rules:
       - HFS_MANAGED_FILE_DRIFT
-      - HFS_DESKTOP_CONFIG
-      - HFS_DESKTOP_SECURITY
-      - HFS_DESKTOP_UNDECLARED
   - id: app.desktop
     profiles:
       - app
@@ -1364,11 +1355,6 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    rules:
-      - HFS_DESKTOP_FILE_MISSING
-      - HFS_DESKTOP_SECURITY
-      - HFS_DESKTOP_SIGNING_KEY
-      - HFS_DESKTOP_UNDECLARED
   - id: app.desktop-build
     profiles:
       - app
@@ -1390,7 +1376,6 @@ slots:
       - desktop
     rules:
       - HFS_MANAGED_FILE_DRIFT
-      - HFS_DESKTOP_UNDECLARED
   - id: app.sides
     profiles:
       - app
@@ -1489,11 +1474,6 @@ slots:
       - HFS_PLAINTEXT_SECRET
       - HFS_IDENTITY_CUSTODY
       - HFS_SEEDS_SHAPE
-      - HFS_SEED_MANIFEST
-      - HFS_SEED_DDL
-      - HFS_SEED_DATA_SCHEMA
-      - HFS_SEED_TEST_DATA
-      - HFS_SEED_SECRET_REF
       - HFS_SEED_PII
   - id: app.sops
     profiles:
@@ -1625,9 +1605,6 @@ slots:
       - HFS_STATICS_FILE_KIND
       - HFS_STATICS_KEY
       - HFS_STATICS_FILE_SIZE
-      - HFS_STATICS_TREE_SIZE
-      - HFS_STATICS_PROMPT_ORPHAN
-      - HFS_STATICS_PROMPT_SCHEMA
   - id: app.starcistacks.cache
     profiles:
       - app
@@ -1661,10 +1638,7 @@ slots:
       - references/**
     rules:
       - HFS_BRAND_INVALID
-      - HFS_BRAND_MISSING
-      - HFS_BRAND_PROMPT_STALE
-      - HFS_BRAND_PROMPT_INCOMPLETE
-      - HFS_BRAND_BASE_UNKNOWN
+      - HFS_BRAND_PROMPT_INVALID
   - id: app.starcistacks.canvas
     profiles:
       - app
@@ -1978,7 +1952,6 @@ slots:
       - BE_REST_OPERATION_ID
       - BE_REST_UNTYPED
       - BE_REST_ERROR_SHAPE
-      - BE_REST_PAGINATION
       - BE_REST_SECURITY
   - id: be.contract.openapi.pin
     profiles:
@@ -2286,9 +2259,6 @@ slots:
       - BE_KIND_ISOLATION
       - BE_FEATURE_IMPORTS_FEATURE
       - BE_FEATURE_NOT_COMPOSED
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_STATE_VERSIONED
-      - BE_SAGA_EVENT_CONTRACT
   - id: be.feature.saga.steps
     profiles:
       - be
@@ -2301,9 +2271,7 @@ slots:
       - <step>.saga-step.ts
     tests: none
     coverage: none
-    rules:
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_EVENT_CONTRACT
+    rules: []
   - id: be.feature.saga.compensations
     profiles:
       - be
@@ -2316,9 +2284,7 @@ slots:
       - <step>.compensation.ts
     tests: none
     coverage: none
-    rules:
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_EVENT_CONTRACT
+    rules: []
   - id: be.feature.application.support
     profiles:
       - be
@@ -2407,7 +2373,6 @@ slots:
       - worker
     rules:
       - BE_BACKGROUND_UNOWNED
-      - BE_SAGA_CONSUMER_DEDUPE
   - id: be.feature.webhooks
     profiles:
       - be

@@ -127,7 +127,7 @@ roles:
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge, radius via surfaceRadius, the label's paint]
     dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION, DNA-COMMON-TILE-GROUND-ACCENT, DNA-COMMON-TILE-GROUND-SUCCESS, DNA-COMMON-TILE-GROUND-WARNING, DNA-COMMON-TILE-GROUND-DANGER, DNA-COMMON-GRID-TILE-FLOOR, DNA-COMMON-TILE-BLEED-TOP, DNA-COMMON-TILE-BLEED-START, DNA-COMMON-TILE-BLEED-END]
-    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object, starci-grammar/surface-card-list]
+    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object]
 
   - id: button
     ui: ui/components/button.md
@@ -445,7 +445,7 @@ roles:
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
     dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-OUTLINE, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
-    lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
+    lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
     ui: ui/components/data-views.md
@@ -838,7 +838,7 @@ mustKeep:
       role: shell
       law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet; 0.46.0, owner 2026-11-18) and nowhere else; otherwise the navigation on a phone is the drawer."
       measure: { kind: count, context: { viewport: 375x812 }, select: 'document [data-component="BottomNav"]:not([data-grammar-workspace-compact-navigation] [data-component="BottomNav"])', op: "=", value: 0 }
-      owner: contract roles.shell; ui/components/bottom-nav.md; lint no-shell-bottom-tabs (R316)
+      owner: contract roles.shell; ui/components/bottom-nav.md
     - id: DNA-COMMON-ONE-SHELL
       role: shell
       law: One shell owns the frame, the bar and the mobile drawer.
@@ -1745,7 +1745,7 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-INCOMING-OUTLINE
       role: pane-grid
-      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it (owner-approved chat canvas of 2026-11-20, 0.52.0; replaces DNA-COMMON-CHAT-INCOMING-FLAT). An app never restyles it (lint message-surfaces); a theme may retune it with the bubble tokens."
+      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it (owner-approved chat canvas of 2026-11-20, 0.52.0; replaces DNA-COMMON-CHAT-INCOMING-FLAT). An app never restyles it; a theme may retune it with the bubble tokens."
       measure:
         kind: style
         select: '.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
@@ -1770,7 +1770,7 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME
       role: pane-grid
-      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it (lint message-surfaces). The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."
+      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it. The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."
       measure:
         kind: style
         select: '.starci-core-pane[data-grammar-pane-content="chat"], .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-footer'

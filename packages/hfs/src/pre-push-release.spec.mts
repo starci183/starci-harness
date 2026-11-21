@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { renderTargets } from '../sync/index.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { git, push, ref, repository, ZERO } from './helpers/pre-push-fixture.mjs';
-import { hookShapeFindings } from '../runtime/scripts/hfs/runtime-rules/hook-shape.mjs';
 
 for (const edition of ['lite'] as const) {
   test(`the rendered hook permits clean main and candidate pushes without release evidence`, t => {
@@ -13,8 +12,6 @@ for (const edition of ['lite'] as const) {
     const repo = repository(t, target.content);
     const result = push(repo, [ref('refs/heads/main', repo.head, repo.older), ref('refs/heads/release/candidate-1.2.3', repo.head)]);
     assert.equal(result.status, 0, result.stderr);
-    const file = 'packages/hfs/templates/app/hooks/husky/pre-push';
-    assert.deepEqual(hookShapeFindings({ fileSet: new Set([file]), read: () => target.content }), []);
   });
 
   test(`an annotated tag can leave with main; a lightweight tag or deleted main refuses the whole push`, t => {

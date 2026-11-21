@@ -14,9 +14,7 @@ import tsParser from "@typescript-eslint/parser"
 import { BE_DECLARATION, at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import {
   e2eAssertsPersistedState,
-  noApiShapedE2eFilename,
   noCallOnlySpec,
-  noMarkerModelStub,
   noModelCallInE2e,
   rules,
   unitTestColocated,
@@ -226,47 +224,3 @@ test("TESTING-9: an e2e reaches a model only through the world's network fake; o
   }) })
 })
 
-test("TESTING-1 / E2E-1: an e2e filename is the business sentence, not an API-shape noun", () => {
-  assert.doesNotThrow(() => { tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
-    valid: [
-      // a business sentence
-      { filename: E2E, code: "it('x', () => {})" },
-      // multi-word business sentences that happen to end near an API-flavoured word but not one
-      { filename: at("src/tests/e2e/community/community-chat-room-authorization.e2e-spec.ts"), code: "it('x', () => {})" },
-      { filename: at("src/tests/e2e/github/github-account-link.e2e-spec.ts"), code: "it('x', () => {})" },
-      // not an e2e file - this code has nothing to say about a unit spec's name
-      { filename: UNIT, code: "it('x', () => {})" },
-    ],
-    invalid: [
-      // the law's own anchor example
-      { filename: at("src/tests/e2e/rewards/rewards-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-      { filename: at("src/tests/e2e/plans/installment-plan-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-      { filename: at("src/tests/e2e/projects/project-resolvers.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-    ],
-  }) })
-})
-
-test("TESTING-7: a model stub returns a payload the production parser can parse, not a marker", () => {
-  const FIXTURE = at("src/tests/fixtures/model.ts")
-  assert.doesNotThrow(() => { tester.run("no-marker-model-stub", noMarkerModelStub, {
-    valid: [
-      // the real shape: JSON.stringify(...) is a CallExpression, not a bare marker Literal
-      { filename: FIXTURE, code: "model.run = jest.fn().mockResolvedValue({ text: JSON.stringify({ answer: 'x' }) })" },
-      // an object literal payload with a "stub" field elsewhere is not what this rule looks at:
-      // only a BARE string literal standing in for the whole argument is
-      { filename: FIXTURE, code: "model.run = jest.fn().mockResolvedValue({ text: answer.text, provider: 'stub' })" },
-      // a real (non-marker) literal payload is a legitimate stub
-      { filename: FIXTURE, code: "model.run = jest.fn().mockResolvedValue('{\"answer\":1}')" },
-      // not test infrastructure: a marker string in a unit spec is not this rule's business
-      { filename: UNIT, code: "x.run = jest.fn().mockResolvedValue('stubbed')" },
-    ],
-    invalid: [
-      { filename: FIXTURE, code: "model.run = jest.fn().mockResolvedValue('stubbed')", errors: [{ messageId: "marker" }] },
-      { filename: FIXTURE, code: "model.run = jest.fn().mockReturnValue('ok')", errors: [{ messageId: "marker" }] },
-      { filename: FIXTURE, code: "model.run = jest.fn().mockImplementation(() => 'test')", errors: [{ messageId: "marker" }] },
-      { filename: FIXTURE, code: "model.run = jest.fn().mockImplementation(() => { return 'mock' })", errors: [{ messageId: "marker" }] },
-      // the e2e setup is test infrastructure too
-      { filename: at("src/tests/world/use-test-world.ts"), code: "model.run = jest.fn().mockResolvedValue('stubbed')", errors: [{ messageId: "marker" }] },
-    ],
-  }) })
-})

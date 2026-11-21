@@ -71,7 +71,7 @@ export const rangeOf = (base: number): { from: number; to: number } => ({ from: 
 export const rangesOverlap = (a: number, b: number): boolean => Math.abs(a - b) < BASE_PORT_SPAN;
 
 /** One departure from the role table: `code` is the failure code, `at` names the process or port, `message` says the port it must have. */
-export interface BasePortProblem { code: 'STACKS_BASE_PORT_ROLE' | 'STACKS_COMPOSE_PORT_ROLE'; at: string; message: string }
+export interface BasePortProblem { code: 'STACKS_LOCAL_CONFIG_INVALID'; at: string; message: string }
 
 type Judged = Pick<LocalBlock, 'basePort' | 'ports' | 'processes'> & { database?: Pick<NonNullable<LocalBlock['database']>, 'port'> | null };
 
@@ -114,9 +114,9 @@ function nativeProblems(base: number, block: Judged): BasePortProblem[] {
   for (const process of processes) {
     const own = process.role !== 'other' && first.get(process.role) === process.name ? exact[process.role] : null;
     if (own) {
-      if (process.port !== own.port) problems.push({ code: 'STACKS_BASE_PORT_ROLE', at: `processes.${process.name}`, message: `is ${own.what} = ${own.port}, not ${process.port}` });
+      if (process.port !== own.port) problems.push({ code: 'STACKS_LOCAL_CONFIG_INVALID', at: `processes.${process.name}`, message: `is ${own.what} = ${own.port}, not ${process.port}` });
     } else if (process.port < low || process.port > high) {
-      problems.push({ code: 'STACKS_BASE_PORT_ROLE', at: `processes.${process.name}`, message: `is a further native process: its port must be from ${low} to ${high} (basePort ${first.has('gateway') ? '+ 3' : '+ 2'} to basePort + ${COMPOSE_BAND - 1}), not ${process.port}` });
+      problems.push({ code: 'STACKS_LOCAL_CONFIG_INVALID', at: `processes.${process.name}`, message: `is a further native process: its port must be from ${low} to ${high} (basePort ${first.has('gateway') ? '+ 3' : '+ 2'} to basePort + ${COMPOSE_BAND - 1}), not ${process.port}` });
     }
   }
   return problems;
@@ -128,7 +128,7 @@ export function basePortProblems(block: Judged): BasePortProblem[] {
   if (base === null) return [];
   const compose = composePorts(block)
     .filter((entry) => entry.port !== composePort(base, entry.role))
-    .map((entry): BasePortProblem => ({ code: 'STACKS_COMPOSE_PORT_ROLE', at: `ports.${entry.name}`, message: `is the ${entry.role} compose port: basePort + ${COMPOSE_ROLES[entry.role]} = ${composePort(base, entry.role)}, not ${entry.port}` }));
+    .map((entry): BasePortProblem => ({ code: 'STACKS_LOCAL_CONFIG_INVALID', at: `ports.${entry.name}`, message: `is the ${entry.role} compose port: basePort + ${COMPOSE_ROLES[entry.role]} = ${composePort(base, entry.role)}, not ${entry.port}` }));
   return [...nativeProblems(base, block), ...compose];
 }
 

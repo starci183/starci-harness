@@ -264,7 +264,7 @@ An Op reports, the harness verifies, and each ended attempt is settled once in i
 (`settleDue` and `settleWork` in `harness/prior.ts`, recorded `op-settled`): MERGE,
 a green verify that landed it; KEEP, a stop the harness owes a continuation (custody's `awaiting_owner`, a cause
 `harnessCause` of `harness/revive.ts` names, a verify the host held, a waiter parked on a shared need); and, for a red the
-task caused, its Kernel's decision, the `settle` of the command answering its red, question, check-premise or conflict
+task caused, its Kernel's decision, the `settle` of the command answering its red, question or conflict
 decision: `discard` (the default) or `repair` (`recordSettles` in `core/kernel/driver.ts`; refused `COMMAND_INVALID` on a
 command that answers no such decision, or holds it). A task with no Kernel (outside a workflow), or cancelled with no harness
 cause, is DISCARD, and one whose Kernel answered nothing is DISCARD once its workflow ended or its key went on to a later
@@ -513,11 +513,8 @@ changes only the workflow's ceiling. A workflow with tasks left is `near` its ce
 `harness/budget-warn.ts`) once its minutes or tries reach `budgets.nearPercent` of [ops/routing.yaml](../ops/routing.yaml) or
 fewer tries are left than tasks to run; `supervisor tick` then asks the owner one `question:business` ticket per ceiling (deduped
 by `keyedFingerprint`, each later tick a repeat) proposing a raise sized to those tasks at the done tasks' pace, opened as the
-Supervisor's so the answer wakes it, and the workflow-wide `budget raise` answers it. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
-one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A failed task whose only reds are command checks its contract wrote, each output stating an
-expectation the otherwise green result contradicts, is a `check-premise` decision carrying each check's command and output
-(`premiseChecks` in `harness/check-premise.ts`), answered only by an edit that sets the task's checks: a worker never
-changes its own checks, so the Kernel amends a stale premise. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
+Supervisor's so the answer wakes it, and the workflow-wide `budget raise` answers it. Every other retry is the Kernel's amend: the red or question decision carries its
+one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A worker never changes its own checks; the Kernel amends them. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
 ### Shared needs
@@ -571,7 +568,7 @@ changed file under its allowPaths, `scopedTests` in `harness/coverage-scope.ts`)
 source already settled: its first waiter (the first node that depends on
 it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
 files defer to that waiter, whose check and the workflow's final verify judge them in full; a context file its checkout lacks
-(a Work record of the source's, on the source's branch alone) is read, by its brief and its read trace, at the last relayed
+(a Work record of the source's, on the source's branch alone) is read, by its brief, at the last relayed
 commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit (the
 same rule, file and message, whichever ESLint report printed it: a deferral's json findings print their message as the stylish
 report does, `judgeDeferred` in `core/check/composition.ts`) is the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
@@ -632,8 +629,7 @@ package edit reaches an app one way, the npm registry on this machine (`deps pub
 mechanism in the doc comment of `core/deps/packages.ts`; nothing is linked or copied into `node_modules`. Every checkout of the app
 (a worker's, a clean verify's, a wave's, a walk's over its install through `installCheckout` in `harness/install-cache.ts`, which
 `uat run` calls through `prepareWorkspace` for each install its checkout holds) therefore runs the packages its lockfile names.
-`installCheckout` and `judgePush` refuse `DEPS_OVERLAY_REMOVED` (`core/deps/overlay-refusal.ts`) for a project whose state folder
-still holds the record of the removed package overlay (`deps-local.json`); `deps install-local --restore` clears it. The push gate is
+The push gate is
 `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
 `@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
 (`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg test <package>`
@@ -671,7 +667,7 @@ commit whose CLI version npm serves (`isDoneFollow`).
 
 `deps install-local <package>...` is dry until `--execute`. For each named package (`grammar`, `@starci/grammar`, or `starci-harness`, the one unscoped package of the harness, named by the CLI's own manifest; either with `@<version>` the registry lists) it takes the version its `local` dist-tag names (the last publish) and refuses `INSTALL_LOCAL_NONE` when there is none. It raises every requirement of the package in the app's tracked manifests (any dependency field, `overrides` included) to that version, adding an `overrides` entry to the root manifest for a package no manifest requires, drops the package's entries from `package-lock.json` (npm keeps a locked version that satisfies the pin, and with it the other build's resolved URL and integrity; `withoutLocked` of `core/deps/lockfile.ts`), and runs `npm install --prefer-online` per command with `--@starci:registry=http://127.0.0.1:4873/ --replace-registry-host=never` and, when `starci-harness` is among the packages (npm routes an unscoped name only by `--registry`), `--registry=http://127.0.0.1:4873/` too (`installFlags`): the registry is never npm's default, a `resolved` already locked to npmjs stays there, and no `.npmrc` changes. A failed install writes the manifests and the lockfile back, and a package whose lock entry did not resolve from the registry refuses `INSTALL_LOCAL_NOT_RESOLVED` and does the same. `install-local.json` in the untracked tool cache of the checkout (`toolCacheDir` of `@starci/hfs`, slot `app.tool-cache`, beside the check journal; a lite app holds no `.starciwork`) records each package, its version and the specs it replaced.
 
-`deps install-local --restore` is the one way back to npm's builds: it clears a record of the removed overlay, puts each recorded pin that still holds its version back (an entry it added is removed; a pin changed since is left and named), drops every lockfile entry resolved on this machine, runs `npm install --prefer-online` with `NPMJS_FLAGS` (npmjs named for the registry and for `@starci` on the command), so the lockfile's `resolved` and `integrity` are npm's even for a version the local build shared, refuses `INSTALL_LOCAL_RESTORE_INCOMPLETE` while the lockfile still names the registry or holds a harness package whose integrity is not npm's, and deletes the record. With no record and a lockfile naming the registry it refuses `INSTALL_LOCAL_NO_RECORD`. Nothing local may be committed: `judgePush` runs `judgeLocalRegistry` (`core/deps/local-refs.ts`) and `judgeLockIntegrity` (`core/deps/lock-integrity.ts`) first. The first refuses `DEPS_LOCAL_REGISTRY_COMMITTED` for a `package-lock.json`, `npm-shrinkwrap.json` or `.npmrc` committed with a loopback registry, including compact lockfiles with several `resolved` URLs on one line and JSON-escaped URLs; the second refuses `DEPS_LOCK_INTEGRITY` for a committed lockfile that holds a `@starci` package or `starci-harness` at a version npm serves with another integrity (a version npm does not serve is judged by the pin gates and the release plan). A committed pin only the registry holds is `DEPS_PIN_UNPUBLISHED`. Every `npm view`, `npm pack` and `npm publish` of the push gate and `release publish` carries `NPMJS_FLAGS` so a registry set in the environment never makes an unpublished pin look installable.
+`deps install-local --restore` is the one way back to npm's builds: it puts each recorded pin that still holds its version back (an entry it added is removed; a pin changed since is left and named), drops every lockfile entry resolved on this machine, runs `npm install --prefer-online` with `NPMJS_FLAGS` (npmjs named for the registry and for `@starci` on the command), so the lockfile's `resolved` and `integrity` are npm's even for a version the local build shared, refuses `INSTALL_LOCAL_RESTORE_INCOMPLETE` while the lockfile still names the registry or holds a harness package whose integrity is not npm's, and deletes the record. With no record and a lockfile naming the registry it refuses `INSTALL_LOCAL_NO_RECORD`. Nothing local may be committed: `judgePush` runs `judgeLocalRegistry` (`core/deps/local-refs.ts`) and `judgeLockIntegrity` (`core/deps/lock-integrity.ts`) first. The first refuses `DEPS_LOCAL_REGISTRY_COMMITTED` for a `package-lock.json`, `npm-shrinkwrap.json` or `.npmrc` committed with a loopback registry, including compact lockfiles with several `resolved` URLs on one line and JSON-escaped URLs; the second refuses `DEPS_LOCK_INTEGRITY` for a committed lockfile that holds a `@starci` package or `starci-harness` at a version npm serves with another integrity (a version npm does not serve is judged by the pin gates and the release plan). A committed pin only the registry holds is `DEPS_PIN_UNPUBLISHED`. Every `npm view`, `npm pack` and `npm publish` of the push gate and `release publish` carries `NPMJS_FLAGS` so a registry set in the environment never makes an unpublished pin look installable.
 
 ### Seats as a tree
 
@@ -981,7 +977,7 @@ then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks
 `ticket answer --answer | --accept-default [--reason]` (the owner, and the bridge for a Telegram reply) answers a question. Owner
 feedback is the kind `feedback` (`core/ticket/feedback.ts`, every writing role): `ticket open --kind feedback --title "<words>"`
 records the owner's words verbatim with the day given, `ticket close <id> --kind feedback --target-kind <kind> --target <t>`
-closes it only on a target that resolves, and `ticket list --kind feedback --status overdue` exits 1 on an item open past
+closes it on a target that resolves (kinds `grammar`, `cli`, `app`, `rule`, `context`, and `root-fix`: the commit that fixed the cause, a sha of the harness checkout or `<repo path>@<sha>` of another repository, verified with git in that path; a rule with no enforcer is held by review) or `--target-kind declined --reason <why>` (no target) when the owner or lead decided not to act, and `ticket list --kind feedback --status overdue` exits 1 on an item open past
 `feedback.openMaxDays` of ops/liveness.yaml or a closed one whose target no longer resolves. An end is
 recorded with who gave it and why, releases every waiter and wakes the Supervisor of each waiter's project (and of the
 ticket's, when the Supervisor opened it) with an owner request by the closer naming the ticket, the fix or answer and what it
@@ -1024,11 +1020,10 @@ wakes, give-ups and a ruling told are never progress.
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
 (decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor),
 plus `settle` (`discard` or `repair`) on a Kernel's answer to a decision on a task ("Settling an attempt").
-A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
+A `workflow-change` that answers a red, question or conflict decision on a task with no change and no need holds
 the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
 `time`; `tasks` names, by plan key, the tasks a hold keeps beside those whose decisions it answers, and with `tasks` a hold
-needs no open decision at all, so a Kernel holds a key on an open ticket alone), refused
-`HOLD_UNCONDITIONED` without one (`assertHold` in `harness/holds.ts`) and admitted off the decision's route; the hold is a `task-held` event, the
+needs no open decision at all, so a Kernel holds a key on an open ticket alone) and is admitted off the decision's route (`assertHold` in `harness/holds.ts`); the hold is a `task-held` event, the
 task leaves `decisionIdle` while it holds, nothing runs it again meanwhile (a shared need's release leaves a held waiter, or
 one a live ticket's `task:<id>` waiter holds, parked: `holdOf`, `ticketHoldingTask`, core/needs/tend.ts), and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
 `wakeOnClose` for a ticket's close or answer) releases it once the condition is met (`hold-released`): a task the harness ended

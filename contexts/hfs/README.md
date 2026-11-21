@@ -11,7 +11,7 @@ import which, and which rules judge it. It is data a machine reads; the reasons 
 
 An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold, its sides, apps, patterns,
 backing services and its grammar). `sides` holds any non-empty subset of `be`, `fe` and `packages` (`"packages": {}`,
-the root workspace packages), and `nivoos` (`{ "packages": [{ "name": "<folder of packages/>" }] }`, the business packages authored with the nivoos SDK, which implies the packages side; [project/business-repo.md](../project/business-repo.md), R436), and `desktop` (`{ "app": "<fe app>", "name": "...", "identifier": "...", "origin": "https://..." }`, the Tauri shell that wraps a front-end app at `desktop/`; [project/desktop.md](../project/desktop.md), R444); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
+the root workspace packages), and `nivoos` (`{ "packages": [{ "name": "<folder of packages/>" }] }`, the business packages authored with the nivoos SDK, which implies the packages side; [project/business-repo.md](../project/business-repo.md), R436), and `desktop` (`{ "app": "<fe app>", "name": "...", "identifier": "...", "origin": "https://..." }`, the Tauri shell that wraps a front-end app at `desktop/`; [project/desktop.md](../project/desktop.md)); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
 PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An app may also declare `publishes`, the workspace package folders `starci deps publish-local` puts on the local registry ([authority/packages.md](../authority/packages.md) "An app's own packages"). An api app of be may add `contract`, `graphql` (the default) or `rest`
 ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`); a client cli (kind `client-cli`) adds the npm
 `package` it is published as and the `bin` it installs ([code/be/cli.md](../code/be/cli.md) BE-CLI-5). No product content lives here; product records belong in the app's `.starciwork`.
@@ -60,7 +60,7 @@ law names the parameter instead of its value.
 
 A rule is a law that a machine can decide; one that needs judgement is a pattern rule reviewed by an agent. Each
 entry names its enforcers by kind (`eslint-be`, `eslint-fe`, `eslint-grammar-core`, `stylelint`, `machine`,
-`hfs`, `sonar`). Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
+`hfs`, `sonar`). A rule may name no enforcer: it is then held by review, and an enforcer marked `status: planned` is a note, not a debt. Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
 StarCi runtime repository itself are harness policy, not app knowledge, and are not in this catalog.
 
 ## The harness's own shape
@@ -97,8 +97,6 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R07 | `.starciwork` stays product records | Move agent or session data out of `.starciwork`; it holds product records only. |
 | R09 | identity custody | Point an identity's secret at `secrets/identity-<slug>.enc`; UAT chooses an identity by role. |
 | R385 | `scripts/` stays standing tooling | Delete the one-off codemod or fix script; only tooling the app keeps running is committed. |
-| R223 | roles do not act as each other | The command guard refuses `git push`, `git tag` and raw git writes by role; use the verb that owns the step. |
-| R224 | the protected zone | Edit the zone declared in `modules/kernel/protected-zone.yaml` only by the owner path. |
 | R225 | the hook model | Keep pre-commit L0 only (no typecheck or test run) and let pre-push call the bundled push policy. |
 | R03 | the tree holds only declared things | Track the file under a slot, or add it to `.gitignore` through the managed block. |
 | R04 | the shared ignore list | Run `starci app sync --execute`; never edit the managed `.gitignore` block by hand. |
@@ -109,7 +107,6 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R15 | canon packages match their pins | Change the pin in `contexts/stack/pins.yaml` or the dependency, not both silently. |
 | R24 | the architecture machine reads the repository | Fix `hfs.json` so the machine sees files; zero analysed files is red. |
 | R104 | findings are fixed, not hidden | Delete the suppression file, script or option and fix the finding in code. |
-| R105 | proof commands run | Create the file the `.starciwork` proof command names, or correct the command. |
 | R143 | the monorepo shape | Declare the workspaces, an exact `packageManager`, the pinned turbo and one root lockfile. |
 | R146 | each workspace declares what it imports | Add the import to that workspace's `package.json`; the app root declares no workspace package. |
 | R187 | image builds are reproducible | Build from the app root and copy only from inside the build context. |
@@ -127,15 +124,12 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R275 | one ingress | Declare one ingress component with a digest-pinned image and its hosts per Swarm environment. |
 | R276 | lite has no self-hosted store | Use the managed database; declare Redis only when needed, durably, on a declared volume. |
 | R282 | the repository stays small | Keep assets inside the `be.assets` budget and allowlist; never track model weights or datasets. |
-| R283 | removed words stay removed | Replace the word `hfs.json` `lexicon.removed` lists with its replacement. |
 | R293 | deploy tooling has one owner | Call the canon stack verbs instead of re-implementing them in scripts or workflows. |
 | R294 | deploy config is coherent | Fix the environment's deploy block until the stack verbs normalise it against the real tree. |
 | R372 | dev environment is runnable | Declare `environments.dev` as docker-compose with a `local` block the dev verbs normalise; a lite app has one. |
-| R373 | dev runbook names the verb | Replace docker commands in the runbook with `starci app stack up --env <env> --execute` and its siblings. |
 | R389 | dev ports derive from a base port | Declare `local.basePort`; give the front end base, the api base+1, the AI gateway base+2, the other native processes up to base+79 and the compose services base+80 to base+99 (database base+90, mail base+91 and +92, storage base+93 and +94), published from `local.ports`; `starci app sync --execute` moves an existing app's (PROJECT-STACKS-10). |
-| R395 | every app carries a screenshot gallery | Run `starci app sync --execute` for `gallery/` (a Vite app on `local.basePort` + 50, pinned, its shots git-ignored); save each UI round's shots in `gallery/pages/<area>/<screen>/` (only `1440.png`, `390.png`, `explain.md`, `links.json`) and write that screen's `explain.md` (a `Vì sao`, `Luật` and `Grammar` line per region; `CHƯA RÕ` or `SAI` is a warning in `--env local`, an error in `--env prod`); every `page.tsx` route of the front end has a screen whose `explain.md` `route` matches it (or a reasoned exclusion in `gallery/routes.json`), and a change to a screen's source touches its `explain.md` (both warnings in `--env local`, errors in `--env prod`) ; an area drawn before code keeps `.starcistacks/canvas/design.json`, where only the owner approves a page and a built page records the sha256 of its 1440 and 390 shots (PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-3, PROJECT-GALLERY-4, PROJECT-GALLERY-5, PROJECT-GALLERY-6). |
-| R437 | the brand sheet and the prompts of the AI images | `starci app scaffold` writes `.starcistacks/brand/` once (`brand.md`, `illustration.md`, `illustration.yaml`, `media.md`, `media.yaml`, `references/`; sync never overwrites it); every `statics/**/*.prompt.yaml` records the current `basePrompt.version` of the base it names (`basePrompt.name`: the `illustration` of `illustration.yaml` by default, else a base of `media.yaml`; an unknown name is HFS_BRAND_BASE_UNKNOWN), a `subject` and a `prompt` that starts with the base text; a malformed sheet is an error, a stale, incomplete or sheet-less prompt file a warning in `--env local` and an error in `--env prod` (PROJECT-BRAND-1, PROJECT-BRAND-2). |
-| R444 | the desktop app of a project that ships installers | Declare `sides.desktop` (`starci app desktop init`), run `starci app sync --execute` to render `desktop/` and the release workflow, never edit the rendered files; make the icons with `tauri icon`, track `Cargo.lock`, keep every key a CI secret ([project/desktop.md](../project/desktop.md) PROJECT-DESKTOP-1..4). |
+| R395 | every app carries a screenshot gallery | Run `starci app sync --execute` for `gallery/` (a Vite app on `local.basePort` + 50, pinned, its shots git-ignored); save each UI round's shots in `gallery/pages/<area>/<screen>/` (only `1440.png`, `390.png`, `explain.md`, `links.json`) and write that screen's `explain.md` (a `Vì sao`, `Luật` and `Grammar` line per region); every `page.tsx` route of the front end has a screen whose `explain.md` `route` matches it (or a reasoned exclusion in `gallery/routes.json`; a warning in `--env local`, an error in `--env prod`); an area drawn before code keeps `.starcistacks/canvas/design.json`, where only the owner approves a page and a built page records the sha256 of its 1440 and 390 shots (PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-3, PROJECT-GALLERY-4, PROJECT-GALLERY-5, PROJECT-GALLERY-6). |
+| R437 | the brand sheet and the prompts of the AI images | `starci app scaffold` writes `.starcistacks/brand/` once (`brand.md`, `illustration.md`, `illustration.yaml`, `media.md`, `media.yaml`, `references/`; sync never overwrites it); every `statics/**/*.prompt.yaml` records the current `basePrompt.version` of the base it names (`basePrompt.name`: the `illustration` of `illustration.yaml` by default, else a base of `media.yaml`; an unknown name is HFS_BRAND_PROMPT_INVALID), a `subject` and a `prompt` that starts with the base text; a malformed sheet is an error, a stale, incomplete or sheet-less prompt file a warning in `--env local` and an error in `--env prod` (PROJECT-BRAND-1, PROJECT-BRAND-2). |
 | R296 | service custody and CI execution copies | Bind each sealed tooling copy to its exact product service, project, environment, member and key; keep runtime keys out of CI. |
 | R297 | app secrets are not CI secrets | Remove from CI secrets or vars any key granted to the app container. |
 | R298 | CI declarations match use | Declare each referenced secret or variable in its CI class, and drop declarations nothing consumes. |
@@ -145,7 +139,6 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R314 | navbar control size | Use one control height and one icon size per region from the Grammar scale. |
 | R315 | navbar order | Order the cluster language, theme, notifications, account, each from the Grammar. |
 | R316 | no bottom tabs | Keep the Grammar shell's navigation on every viewport; the only bottom bar is the Grammar `BottomNav` as the `compactNavigation` of a `WorkspaceShell`; draw no other bottom tab bar. |
-| R337 | auth cookie domain | Set the cookie domain when the web and the api are served from different hosts. |
 | R343 | the check cache is trusted only at its base | Re-run the check and commit the computed cache; never edit a record. |
 | R378 | a branch profile lowers only the polish gates ([project/lint.md](../project/lint.md) PROJECT-LINT-2) | Lower only lint, sonar or codecov, on `dev`; keep every safety gate blocking and never declare main. |
 | R379 | a report branch never raises lint (the lint ratchet, PROJECT-LINT-2) | Fix the new lint findings of the files you touched; leave their older ones and every untouched file to the report. |

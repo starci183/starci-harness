@@ -8,10 +8,11 @@ import type { GateRun } from "./land-batch.js"
 import { OOM_RETRIES, isOutOfMemory, judgeRound } from "./land-queue.js"
 import type { RoundVerdict } from "./land-queue.js"
 
-const report = (...findings: readonly { code: string; path: string; message: string }[]): string =>
-    JSON.stringify({ data: { output: { findings: findings.map((finding) => ({ ...finding, level: "error" })) } } })
+const report = (...findings: readonly { code: string; path: string; message: string; level?: string }[]): string =>
+    JSON.stringify({ data: { output: { findings: findings.map((finding) => ({ ...finding, level: finding.level ?? "error" })) } } })
 const changed = new Map<string, readonly string[]>([["lane-a", ["packages/a/src/a.ts"]], ["lane-b", ["packages/b/src/b.ts"]]])
-const cache = { code: "HFS_CHECK_CACHE_UNWARMED", path: ".starcistacks/cache", message: "warm the cache" }
+/** What a gate that wrote cache records reports: info, which the verdict never counts. */
+const cache = { code: "HFS_CHECK_CACHE_UNWARMED", level: "info", path: ".starcistacks/cache", message: "warm the cache" }
 /** The lanes a drop verdict names; none for any other verdict. */
 const blamedLanes = (verdict: RoundVerdict): string[] => (verdict.kind === "drop" ? [...verdict.blamed.keys()] : [])
 const heapAbort = {
@@ -46,15 +47,15 @@ void test("a gate that aborted with no report is oom; one that failed with no re
     assert.equal(judgeRound(1, 1, "", changed).kind, "no-verdict")
 })
 
-void test("a real finding still drops the lane its diff names; green except the cache still lands", () => {
+void test("a real finding still drops the lane its diff names; a run whose only finding is the unwarmed cache (info) still lands", () => {
     const verdict = judgeRound(1, 1, report(cache, { code: "TS2304", path: "packages/a/src/a.ts", message: "Cannot find name" }), changed)
     assert.equal(verdict.kind, "drop")
     assert.deepEqual(blamedLanes(verdict), ["lane-a"])
-    assert.equal(judgeRound(1, 1, report(cache), changed).kind, "green")
+    assert.equal(judgeRound(1, 0, report(cache), changed).kind, "green")
 })
 
 const oomRun: GateRun = { exitCode: 134, stdout: "", stderr: "JavaScript heap out of memory" }
-const greenRun: GateRun = { exitCode: 1, stdout: report(cache), stderr: "" }
+const greenRun: GateRun = { exitCode: 0, stdout: report(cache), stderr: "" }
 const judge = (run: GateRun): RoundVerdict => judgeRound(1, run.exitCode, run.stdout, changed, run.stderr)
 
 void test("a round that ran out of memory waits for RAM and runs again, and the run after it gives the verdict", async () => {

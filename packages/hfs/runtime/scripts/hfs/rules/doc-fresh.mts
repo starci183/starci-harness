@@ -1,27 +1,20 @@
-// R270: product documentation cites paths, commands, environment keys and rules that still exist.
+// R270: product documentation cites paths, commands and rules that still exist.
 // Paths in links are document-relative; code/prose paths may be repository-relative. Only tracked
-// names are inspected: no environment file, sealed member or secret value is ever read.
+// names are inspected.
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { CATALOG } from '../../../packages/cli/src/catalog.generated.mjs';
 import { checkCommand, extractCommands } from '../doc-commands.mjs';
 import { globExpression } from '../../lib/glob.mjs';
-import { loadTypescript } from '../../lib/package-at.mjs';
 import { loadRuleCatalog } from '../rule-catalog.mjs';
 import { found, readJson, readText } from './read.mjs';
-import type { Parsed, Repo, Resolver, Ts } from './rule-types.mjs';
+import type { Parsed, Repo, Resolver } from './rule-types.mjs';
 
 const PATH_MISSING = 'HFS_DOC_PATH_MISSING';
 const COMMAND_UNKNOWN = 'HFS_DOC_COMMAND_UNKNOWN';
-const ENV_UNKNOWN = 'HFS_DOC_ENV_UNKNOWN';
 const RULE_UNKNOWN = 'HFS_DOC_RULE_UNKNOWN';
 const DOCUMENT = /(?:^|\/)README\.md$|(?:^|\/)docs\/.+\.mdx?$/i;
-const KEY = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
 const PLACEHOLDER = /[<>{}*$]/;
-const ERROR_CODE_FILE = /(?:^|\/)errors\/[^/]+\.[cm]?[jt]s$|\.error\.[cm]?[jt]s$|\.messages\.[cm]?[jt]s$/;
-const ERROR_CODE_PROSE = /\b(?:error|failure|exception)s?\s+codes?\b/i;
-const ENV_PROSE = /\benv(?:ironment)?\b|\bvariable\b/i;
 const PATH_TOKEN = /^(?:\.\.?\/)?[\w@.-]+(?:\/[\w@.()[\]-]+)*\/?$/;
 let runtimeCatalogs;
 
@@ -56,7 +49,6 @@ function resolvedPath(raw: Parsed, file: string, tracked: Parsed, link: Parsed, 
   return candidates.some((candidate) => !candidate.startsWith('../') && (trackedPath(candidate, tracked) || generated.has(candidate)));
 }
 
-const ENV_NAME = /[A-Z][A-Z0-9_]*/.source;
 const INLINE_LINK = /\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+['"][^)]*)?\)/.source;
 const REFERENCE_LINK = /^\s*\[[^\]]+\]:\s*(?:<([^>]+)>|(\S+))/.source;
 const MARKDOWN_LINK = new RegExp(`${INLINE_LINK}|${REFERENCE_LINK}`, 'g');
@@ -168,121 +160,11 @@ function commandFindings(repoRoot: string, file: string, text: string, tracked: 
   return findings;
 }
 
-function importedFiles(file: string, text: string, tracked: Parsed) {
-  const prefix = /^(be|fe)\//.exec(file)?.[1] ?? '';
-  const imports = [...text.matchAll(/\b(?:from\s*|import\s*|export\s*\*\s*from\s*)['"]([^'"]+)['"]/g)].map((match) => match[1]);
-  return imports.flatMap((specifier) => {
-    let target;
-    if (specifier!.startsWith('.')) target = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier!));
-    else if (specifier!.startsWith('@modules/')) target = path.posix.join(prefix, 'src/modules', specifier!.slice('@modules/'.length));
-    else return [];
-    return [target, `${target}.ts`, `${target}/index.ts`].filter((candidate) => tracked.has(candidate));
-  });
-}
-
-const READER_CALL = /\b(\w+)\s*\.\s*\w+\s*\(\s*['"]([A-Z][A-Z0-9_]*)['"]/.source;
-const PROCESS_ENV_DOT = /\bprocess\.env\.([A-Z][A-Z0-9_]*)/.source;
-const PROCESS_ENV_INDEX = /\bprocess\.env\[['"]([A-Z][A-Z0-9_]*)['"]\]/.source;
-const ENV_READ = new RegExp(`${READER_CALL}|${PROCESS_ENV_DOT}|${PROCESS_ENV_INDEX}`, 'g');
-
-function addReaderKeys(text: string, keys: Parsed) {
-  const readers = new Set(['env', 'source', ...[...text.matchAll(/\b(\w+)\s*:\s*EnvSource\b/g)].map((match) => match[1])]);
-  for (const match of text.matchAll(ENV_READ)) {
-    if (match[3] || match[4]) keys.add(match[3] ?? match[4]);
-    else if (readers.has(match[1])) keys.add(match[2]);
-  }
-}
-
-function addDocumentedKeys(text: string, keys: Parsed) {
-  for (const line of text.split(/\r?\n/)) {
-    const cell = /^\s*\|\s*`?([A-Z][A-Z0-9_]*)`?\s*\|/.exec(line);
-    if (cell) keys.add(cell[1]);
-    const bullet = /^\s*[-*]\s*`([A-Z][A-Z0-9_]*)`/.exec(line);
-    if (bullet) keys.add(bullet[1]);
-  }
-}
-
-function environmentKeys(repoRoot: string, tracked: Parsed) {
-  const keys = new Set();
-  const pending = [...tracked].filter((file) => /(?:^|\/)[^/]+\.env\.ts$/.test(file));
-  const seen = new Set();
-  while (pending.length) {
-    const file = pending.pop();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const text = readText(repoRoot, file) ?? '';
-    // Follow the typed reader's local capability parsers and barrel exports, never execute them.
-    pending.push(...importedFiles(file, text, tracked));
-    addReaderKeys(text, keys);
-  }
-  for (const file of [...tracked].filter((entry) => /(?:^|\/)KEYS\.md$/.test(entry))) {
-    const text = readText(repoRoot, file) ?? '';
-    addDocumentedKeys(text, keys);
-  }
-  return keys;
-}
-
-function symbolCall(ts: Ts, node: Parsed) {
-  if (!node || !ts.isCallExpression(node)) return false;
-  const callee = node.expression;
-  if (ts.isIdentifier(callee)) return callee.text === 'Symbol';
-  return ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'Symbol' && callee.name.text === 'for';
-}
-
-/** A code the app declares: a string literal of an error file (enum member, kind map) or an `errors.<CODE>` message key. */
-function declaredErrorCode(ts: Ts, node: Parsed) {
-  if (!ts.isStringLiteralLike(node)) return undefined;
-  const key = /^(?:errors\.)?([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)$/.exec(node.text);
-  return key?.[1];
-}
-
-function declaredTokens(ts: Ts, source: Parsed, tokens: Parsed, file = '') {
-  const errorFile = ERROR_CODE_FILE.test(file);
-  const visit = (node: Parsed) => {
-    const code = errorFile ? declaredErrorCode(ts, node) : undefined;
-    if (code) tokens.add(code);
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && KEY.test(node.name.text) && symbolCall(ts, node.initializer)) tokens.add(node.name.text);
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-}
-
-function injectionTokens(repoRoot: string, tracked: Parsed) {
-  const tokens = new Set();
-  const ts = loadTypescript(repoRoot, path.dirname(fileURLToPath(import.meta.url)));
-  if (!ts) return tokens;
-  for (const file of tracked) {
-    if (!/\.[cm]?[jt]sx?$/.test(file) || /(?:(?:^|\/)(?:tests?|__tests__)\/)|(?:(?:\.(?:spec|test)|-spec)\.[cm]?[jt]sx?$)/.test(file)) continue;
-    const text = readText(repoRoot, file) ?? '';
-    declaredTokens(ts, ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), tokens, file);
-  }
-  return tokens;
-}
-
-function unknownEnvironmentName(name: string, line: string, keys: Parsed, codes: Parsed, tokens: Parsed, explicit: Parsed) {
-  if (!KEY.test(name) || /^R\d+$/.test(name) || codes.has(name)) return false;
-  if (!explicit && tokens.has(name) && !ENV_PROSE.test(line)) return false;
-  if (!explicit && ERROR_CODE_PROSE.test(line) && !ENV_PROSE.test(line)) return false;
-  if (!name.includes('_') && !keys.has(name) && !/\benv(?:ironment)?\b|\b(?:key|variable)s?\b/i.test(line)) return false;
-  return !keys.has(name) && !(name.endsWith('_FILE') && keys.has(name.slice(0, -5)));
-}
-
-const QUOTED_ENV_NAME = `\`(${ENV_NAME})\``;
-const REFERENCED_ENV_NAME = String.raw`\b(?:process\.env\.|\$\{?)(${ENV_NAME})`;
-const ASSIGNED_ENV_NAME = String.raw`\b(${ENV_NAME})\s*=`;
-const ENV_NAME_CITATION = new RegExp(`${QUOTED_ENV_NAME}|${REFERENCED_ENV_NAME}|${ASSIGNED_ENV_NAME}`, 'g');
-
-function nameFindings(file: string, lines: string[], keys: Parsed, rules: Parsed, tokens: Parsed) {
+function ruleFindings(file: string, lines: string[], rules: Parsed) {
   const findings = [];
-  const codes = new Set(rules.rules.flatMap((rule: Parsed) => rule.failureCodes));
   for (const [index, line] of lines.entries()) {
     for (const match of line.matchAll(/\bR\d+\b/g)) {
       if (!rules.rule(match[0])) findings.push(found(RULE_UNKNOWN, file, `${file} cites unknown rule ${match[0]}; use an id from the HFS rule catalog`, { line: index + 1, reference: match[0] }));
-    }
-    for (const match of line.matchAll(ENV_NAME_CITATION)) {
-      const name = match[1] ?? match[2] ?? match[3];
-      if (!unknownEnvironmentName(name!, line, keys, codes, tokens, !match[1])) continue;
-      findings.push(found(ENV_UNKNOWN, file, `${file} cites unknown environment key ${name}; declare it in a typed environment reader or KEYS.md, or update the documentation`, { line: index + 1, reference: name }));
     }
   }
   return findings;
@@ -296,15 +178,13 @@ export function docFreshFindings({ repoRoot, files = [], all = files, repo, reso
   if (!docs.length) return [];
   const tracked = new Set(all);
   const { commands, rules } = catalogs();
-  const keys = environmentKeys(repoRoot, tracked);
-  const tokens = injectionTokens(repoRoot, tracked);
   const generated = generatedReports(repoRoot, tracked, resolver);
   const findings = [];
   for (const file of docs) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
     const lines = text.split(/\r?\n/);
-    findings.push(...pathFindings(file, lines, tracked, generated), ...commandFindings(repoRoot, file, text, tracked, commands), ...nameFindings(file, lines, keys, rules, tokens));
+    findings.push(...pathFindings(file, lines, tracked, generated), ...commandFindings(repoRoot, file, text, tracked, commands), ...ruleFindings(file, lines, rules));
   }
   const seen = new Set();
   return findings.filter((finding) => {

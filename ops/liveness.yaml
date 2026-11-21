@@ -168,7 +168,8 @@ budget:
   prompt: "Task {task} has used its budget of {minutes} min. Wrap up now: stop new work, file your result with starci task result {task} (done if the contract is met, else failed or blocked naming what is left) within {grace} min, or the task is fenced and its work set aside."
 
 # Owner feedback (`starci ticket open --kind feedback`): an item the owner gave stays open at most this many days; `ticket list --kind feedback --status overdue` is red past
-# it, and `supervisor tick` lists every open item.
+# it, and `supervisor tick` lists every open item. It closes when acted on (a target, or `root-fix`: the commit that fixed the cause) or
+# decided against (`declined`, with a reason).
 feedback:
   openMaxDays: 3
 

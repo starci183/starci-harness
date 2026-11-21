@@ -30,9 +30,4 @@ export default defineConfig(
             ],
         },
     },
-    {
-        // ErrorParams is a named interface with an index signature (the contract the apps' skeletons declared, which the back-end canon reads as a named type, never an inline object).
-        files: ["src/error.ts"],
-        rules: { "@typescript-eslint/consistent-indexed-object-style": ["error", "index-signature"] },
-    },
 )

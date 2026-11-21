@@ -95,10 +95,10 @@ image, so any digest-pinned supported reverse proxy serves.
   ingress runs on, so a host-mode ingress is global mode or pinned by a placement constraint (`STACKS_PORT_PUBLISHED`); no other
   service publishes in host mode. DNS is an owner-run prerequisite with its receipt; the ingress obtains
   and persists its certificate, and exposes a route only after the upstream is ready.
-- Web and api on different hosts (R337): the web server forwards the browser's Cookie header to the api, and the
+- Web and api on different hosts: the web server forwards the browser's Cookie header to the api, and the
   skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. An environment whose
   web and api hosts differ gives the api `AUTH_COOKIE_DOMAIN` (the bare common parent domain, such as `example.com`) in
-  its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
+  its stack environment, its KEYS.md or a sealed key; no check judges it.
   The refresh cookie is named `refresh_token` unless the api sets the optional `AUTH_COOKIE_NAME` (an RFC 6265 token, at most 64
   characters; any other value stops the boot). Apps that share a parent cookie domain (two dev hosts under one domain) must each set a
   distinct `AUTH_COOKIE_NAME`: with one name, one app's sign-in overwrites the other's and its refresh cookie reaches the other api.
@@ -111,7 +111,7 @@ image, so any digest-pinned supported reverse proxy serves.
   (default `websecure`), `tls.certresolver`, the service port, `traefik.swarm.network` and `traefik.docker.network`) and attaches the service to the external edge `network`;
   a route with `paths` or `pathPrefixes` serves only those paths of its host (one host can split between a front end and an api; give the path route an explicit `priority`), and routes that share a port and a constraint form one router; a service that names no network of its own keeps the stack's default one. A shared-edge environment renders no ingress and publishes no port, and its
   DNS and TLS stay declared per host. A hostname written in the stack file's labels, or a rendered host that `routes` does not hold, is
-  `STACKS_HOST_UNROUTED`; a malformed shared-edge block is `STACKS_INGRESS_UNDECLARED`.
+  `STACKS_INGRESS_INVALID`, as is a malformed shared-edge block.
 - The application origin the back end trusts (BE-AUTH-7 in [code/be/api-auth.md](../code/be/api-auth.md)) is the
   ingress origin of that environment; the app is opened there, never at a process port.
 
@@ -309,7 +309,7 @@ stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends on
 builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
 hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
 process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
-the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
+the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (held by review; Docker is run by the harness verb, never by hand). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.
 
@@ -481,8 +481,8 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and port 9000 belongs to the host's shared analysis server, which no app's dev environment takes.
   The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
   A compose file of an environment with a base publishes every host port from `local.ports`, `127.0.0.1:${STACK_PORT_<NAME>}:<container port>`,
-  never a literal port, which the base cannot move. A native process off the table is `STACKS_BASE_PORT_ROLE`, a compose port of a role off
-  its slot `STACKS_COMPOSE_PORT_ROLE`, a literal host port in a compose file `STACKS_COMPOSE_PORT_LITERAL` (errors); the slot of another compose
+  never a literal port, which the base cannot move. A native process off the table, a compose port of a role off
+  its slot and a literal host port in a compose file are `STACKS_LOCAL_CONFIG_INVALID` (an error); the slot of another compose
   service is not judged yet. An app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
   that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
   of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store
@@ -525,7 +525,7 @@ Rules learned from running apps on developer hosts; each holds in every app.
 A service the app customises (wrapper scripts, plugins, configuration code) is built from the app's own image folder
 `.starcistacks/images/<name>/` whose Dockerfile starts every `FROM` at a digest-pinned base; when the harness owns a StarCi
 fork image for that service ([images/README.md](../../images/README.md), `images/sources.json`) the final stage is `FROM` that
-fork image and the app only adds its own files. No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
+fork image and the app only adds its own files (held by review). No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
 volume, a secret or config grant, a bind under the data root (`${data}` or `STACK_DATA_DIR`), the Docker socket read-only and a
 read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
 production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
@@ -534,9 +534,8 @@ project's own or a variable image reference, never a literal upstream image besi
 Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
 differs between dev and production proves nothing about production.
 
-Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`, `STACKS_IMAGE_BASE_NOT_FORK`,
-`STACKS_IMAGE_ENV_DIVERGES`); the fork list is `runtime/knowledge/hfs/fork-images.yaml`, held equal to `images/sources.json` by
-`stacks-service-images.spec.mts`.
+Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`,
+`STACKS_IMAGE_ENV_DIVERGES`); the fork base of a service the harness owns an image for is held by review.
 
 ## PROJECT-STACKS-12 Seed data lives in the seed levels of the stack
 
@@ -595,8 +594,7 @@ convergence (so a data command is the new release's), its app commands and probe
 names every entry, each applied unless its receipt holds; a dry run runs no probe. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
 the environment's for a manual run.
 
-Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`,
-`HFS_SEED_SECRET_REF`), R06
+Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`), R06
 (a plaintext secret on any tracked line), R259 (`HFS_SEED_PII` over the SQL and the JSON and YAML data), R332 (no SQL under `db/` but
 migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
@@ -677,7 +675,7 @@ the committed `manifest.json`, `data/`, `blobs/` and `index/`; a run that fails,
 hand edit of `data/`, `raw/` committed without its output and an `adapter/` change left unstaged are HFS_DATA_ADAPTER_DRIFT. The adapter, and the git and npm
 the bring-up gate runs in its scratch checkout, run without the caller's `GIT_*` variables: under a hook they would point the scratch git
 of `renderStandard` at the user's repository. An adapter
-repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_UNGUARDED. `starci data standard init [--adapter]
+repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_DRIFT. `starci data standard init [--adapter]
 [--dir <folder>] [--name <name>-seed-standard] [--force]` writes the guard, `.gitattributes`, an empty plain manifest (byte for byte what the driver renders for no entry)
 and, with `--adapter`, `raw/README.md` and a compiling `adapter/` stub, and sets `core.hooksPath` to `.githooks`; a file a person changed is
 kept unless `--force`. The folder is named `<name>-seed-standard`; a repository converted in place during its rename passes `--name`, which is
@@ -716,9 +714,8 @@ upserts the lessons into the `database` store and the images into the `storage` 
 destination, no project `completeness`) through `pinRepository` into the harness's cache and, when the pinned commit carries `adapter/`,
 installs it from its lockfile in a scratch checkout and runs the same drift check; a pin whose output drifts, or that cannot be read, is
 refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded (an `npm ci` of its adapter that fails is STACK_SEED_ADAPTER_INSTALL, a checkout that fails STACK_SEED_STANDARD_UNREADABLE). A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
-commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: a git clone, pull or fetch of a
-`-seed-standard` repository, a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435, an error). Known
-gap: R435 reads one line at a time, so a repository name kept in a variable and cloned on another line is held by review.
+commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: no git clone, pull or fetch of a
+`-seed-standard` repository, no content-sync command, no environment variable naming one. The one path is the loader of the seed step (R435); review holds the convention, no check guesses at the ways around it.
 
 **The loader** (`packages/hfs/stack/standard-load.mts`, called by `seedStep` of `stack/seeds.mts` after the gate and before the levels: a
 standard is how the environment is born). Per pin of the environment, in declaration order:
@@ -804,12 +801,11 @@ rule of PROJECT-STACKS-6, take a backup first) and `DATA_SYNC_UNREACHABLE` (the 
 docker-compose environment is synced). The harness reaches a store through its declared `adapter.command` (PROJECT-STACKS-14), run from the app root in the environment's custody;
 no value, store error text or identity reaches an output.
 
-Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
-`HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`, raw/ included); R427 (the data sets);
-R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_INSTALL`); R435 (`data-loaders`:
-`HFS_DATA_SECOND_LOADER`; `standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
+Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`; in a copy repository's commit hook
+`HFS_DATA_COPY_INVALID`, raw/ included); R427 (the data sets);
+R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_INSTALL`); R435 (`standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
 `STACK_SEED_DOOR_REFUSED`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
-`packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
+`packages/hfs/src/data-adapter.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
 
 ## PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver
 
@@ -870,9 +866,8 @@ protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <opt
 of a `seed-backup` set declares one, and so does a store a `seed-standard` fills (no project `completeness`): that command is the app's **seed door**,
 the one way the bring-up's loader writes a standard into the store (PROJECT-STACKS-13, "The loader").
 
-Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER` including the `command` of a backed-up store and of a store a standard fills, `DATA_DERIVED_SOURCE`) and R427
-(`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
-`DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
+Enforced by: R426 (`data-stores`: `DATA_STORE_INVALID`, including the `command` of a backed-up store and of a store a standard fills) and R427
+(`data-sets`: `DATA_SET_INVALID`, `DATA_COPY_NAME`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
 
 ## PROJECT-STACKS-15 An object store a dev environment runs has a public route; links are built on it, never on the loopback
 
@@ -928,14 +923,14 @@ environments:
             STORAGE_PUBLIC_URL: "https://shop-local-files.example.org"
 ```
 
-An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the rule starts with the first
+An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the convention starts with the first
 public origin, because until then nothing outside the machine follows a link. Production is not judged here: its `STORAGE_ENDPOINT` is already a public
-host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store (`STORAGE_PUBLIC_LINK_INTERNAL`, R428). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
+host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store. The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
 file and served through the same public base; a project that wants a provider to fetch them seeds the files into the bucket.
 
-Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`, also for the statics base), R440 for the store itself ([statics.md](statics.md)), the shape of
-`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the stored value and the
-read-time link are held by review and by the app's own specs (no rule reads code for a host).
+Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_CONSOLE`, no tunnel route reaches the admin console), R440 for the store itself ([statics.md](statics.md)), the shape of
+`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the route to the S3 port, the two
+values (`STORAGE_ENDPOINT`, `STORAGE_PUBLIC_URL`), the stored value and the read-time link are held by review and by the app's own specs (no rule reads code for a host).
 
 ## Read with
 
@@ -1178,7 +1173,7 @@ unsound declaration tolerates nothing.
   findings of the codes `modules/kernel/failure-codes.yaml` marks `cutoverTolerant` whose environment is the pending one: a finding's environment is
   its `.starcistacks/<env>/` folder, or the one `environments.<env>.` its message names on the declaration file. `cutoverTolerant: true` codes are
   the not-yet-cut-over shape: a declared sealed member or key not sealed yet (`STACKS_SEALED_MEMBER_MISSING`) and the rendered stack of the old shape
-  (`STACKS_LITE_SELFHOSTED_DB`, `STACKS_LITE_REDIS_PERSISTENCE`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
+  (`STACKS_LITE_SELFHOSTED_DB`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
   (`ENV_SEALED_UNREAD`) is reported only for a member, or one key of a member, that `keep` names. Every other finding, of every environment, still
   blocks. The tolerated findings are listed `CUTOVER PENDING (<env>), REPORT ONLY`, and a section beside the gates off by declaration names each
   pending environment with its reason, its until, what it keeps and the codes it tolerated, so the state is never silent.

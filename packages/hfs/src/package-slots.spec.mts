@@ -1,16 +1,14 @@
 // proves: HFS_PACKAGE_SLOT_UNPLACED
 // proves: HFS_PACKAGE_SLOT_UNPLACED
-// proves: HFS_PACKAGE_SLOTS_MOVED
-// proves: HFS_PACKAGE_SLOTS_MOVED
 // A package's inner slots (PROJECT-LINT-3, R382): the project declares them in ext/manifest.json (packages, by folder) and hfs holds the package's tree to
-// them as it holds the be and fe sides; a package's own slots.yaml is the read path of one more minor; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
+// them as it holds the be and fe sides; a package's own slots.yaml is still read; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
 // out with a reason.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, frontEndGlobs, judgePackageSlots, packageLintScopes, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
+import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, frontEndGlobs, judgePackageSlots, packageLintScopes, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
 import { packageSlotFindings } from '../runtime/scripts/hfs/rules/app-extension-findings.mjs';
 import { declaredPackageScopes, packageMeasuredBy, packagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
@@ -95,8 +93,7 @@ for (const edition of ['lite'] as const) {
   test(`the app check judges every root package that declares slots.yaml, and leaves one without alone`, (t) => {
     const { root, files } = app(t);
     const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
-    assert.deepEqual(found.map((finding) => finding.code).sort(), [PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED]);
-    assert.deepEqual(found.filter((finding) => finding.code === PACKAGE_SLOTS_MOVED).map((finding) => [finding.path, finding.level]), [['packages/ui-kit/slots.yaml', 'warning']], 'the package file is still read, with a warning that it moves');
+    assert.deepEqual(found.map((finding) => finding.code).sort(), [PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED]);
     assert.ok(found.every((finding) => finding.path.startsWith('packages/ui-kit/')), 'sdk declares no manifest');
     assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: false }), []);
   });

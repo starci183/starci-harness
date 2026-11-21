@@ -6,24 +6,6 @@ Law module: `surface-rules.mjs`. HFS rule: R318. Canon: ANATOMY-2 and PADDING-0.
 
 Finding code: `FE_GRAMMAR_LAYOUT_ONLY`. App classes carry layout. A raw `bg-surface` utility paints a surface and is refused, including conditional classes, class builders, responsive variants, important modifiers and opacity suffixes. Compose a painted Grammar surface such as `SurfaceCard`. Static props spreads keep the same obligations. The typed lint of an app follows imported colocated class declarations as well as local constants.
 
-## `starci-fe/no-list-panel-padding`
-
-Finding code: `FE_LIST_PANEL_PADDING`. Within the nearest painted Grammar surface (`Pane` and `PaneSection` included), a wrapper around `ListBox` or its section caption cannot add horizontal padding through `p-*`, `px-*`, `ps-*`, `pe-*`, `pl-*`, `pr-*` or arbitrary `padding-inline` properties. These insets add to the list's own padding. Page gutters outside that surface and lists outside any surface retain their layout padding. Unpainted containers such as `Rail` pass the parent context through.
-
-Invalid:
-
-```tsx
-import { SurfaceCard, ListBox } from "@starci/grammar/core"
-const Panel = () => <SurfaceCard><div className="pl-2"><ListBox label="Members" items={members} /></div></SurfaceCard>
-```
-
-Valid:
-
-```tsx
-import { SurfaceCard, ListBox } from "@starci/grammar/core"
-const Panel = () => <div className="px-4"><SurfaceCard><ListBox inset="panel" label="Members" items={members} /></SurfaceCard></div>
-```
-
 ## `starci-fe/no-hand-built-panes`
 
 Finding code: `FE_HAND_BUILT_PANES`. A multi-pane frame is a `PaneGrid` of `Pane`s, which draws the dividers between panes, sizes the columns and collapses a side pane below medium. A vertical `Divider` used as a column seam is a pane frame drawn by hand: a vertical `Divider` (or the plain wrapper element that holds only it) standing among plain column elements (`div`, `aside`, `Region`) of a flex row, or a vertical `Divider` anywhere inside a `SurfaceCard composition="joined"`; and a joined card that holds a plain flex row of two or more columns as one of its own children. `joined` stacks bands divided by horizontal separators. A short vertical separator between controls of a toolbar, a `flex-col` stack, and a row whose classes cannot be read in the file are not judged. The typed lint of an app follows imported colocated class declarations.
@@ -116,24 +98,6 @@ Valid:
 ```tsx
 import { PageHeader, Button } from "@starci/grammar/core"
 const Head = () => <PageHeader title="Agents" actions={<Button intent="commit">Add agent</Button>} />
-```
-
-## `starci-fe/no-selectable-tag-group`
-
-Finding code: `FE_TAG_GROUP_SELECTION` (R353). A Grammar `TagGroup` holds values the user entered, to remove or to order, and has no selection: `selectionMode`, `selectedIds`, `defaultSelectedIds` and `onSelectionChange` on it are refused. Peer values that filter a collection that stays in place are a `FilterButtonGroup`.
-
-Invalid:
-
-```tsx
-import { TagGroup } from "@starci/grammar/core"
-const Filter = () => <TagGroup label="Team" items={items} selectionMode="single" selectedIds={[team]} onSelectionChange={pick} />
-```
-
-Valid:
-
-```tsx
-import { FilterButtonGroup } from "@starci/grammar/core"
-const Filter = () => <FilterButtonGroup label="Team" options={options} value={team} onValueChange={pick} />
 ```
 
 ## `starci-fe/no-heading-above-card`

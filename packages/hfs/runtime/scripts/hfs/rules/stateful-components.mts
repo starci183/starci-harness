@@ -1,5 +1,5 @@
 // stateful-components.mts - the one definition of "this component keeps state" of a stack declaration. R267 (BACKUP_UNDECLARED: a swarm
-// environment's backup records) and R426 (DATA_STORE_UNDECLARED: a store or a derived entry of the data declaration) both ask it, so the two
+// environment's backup records) and R426 (DATA_STORE_INVALID: a store or a derived entry of the data declaration) both ask it, so the two
 // rules can never disagree on which components owe recovery.
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import type { Parsed } from './rule-types.mjs';

@@ -2,14 +2,12 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
-import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { Refusal } from "../shared/errors.js"
 import { contractCiteProblems, fillCiteCheck } from "./cite.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
 import { loadPolicy, neverRead } from "./policy.js"
 import { rulePagesOf } from "./rule-pages.js"
-import { trimEndChars } from "../shared/trim.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
@@ -229,7 +227,6 @@ export interface ResolvedContract {
     readonly inputs: readonly ResolvedInput[]
     readonly output: readonly ResolvedOutput[]
     readonly checks: readonly { readonly entry: CheckEntry; readonly source: Source }[]
-    readonly workDriven: boolean
     readonly problems: readonly string[]
 }
 
@@ -242,14 +239,9 @@ export const opOf = (contract: Contract, ops: Ops): Op => {
 
 const fill = (entry: string, values: Readonly<Record<string, string>>): string => entry.replace(/\{([A-Za-z]\w*)\}/g, (match: string, key: string) => values[key] ?? match)
 
-/** True when `entry` is not looser than `base`: same type, no fewer items, no new condition, the same trace. */
+/** True when `entry` is not looser than `base`: same type, no fewer items. */
 const notLooser = (spec: OutputSpec, base: OutputSpec): boolean =>
-    spec.type === base.type &&
-    ("minItems" in spec ? (spec.minItems ?? 0) : 0) >= ("minItems" in base ? (base.minItems ?? 0) : 0) &&
-    (!("when" in spec) || spec.when === undefined || ("when" in base && base.when !== undefined)) &&
-    (!("cites" in base) || base.cites === undefined || ("cites" in spec && spec.cites === base.cites))
-
-const minItemsOf = (spec: OutputSpec): number => ("minItems" in spec ? (spec.minItems ?? 0) : 0)
+    spec.type === base.type && ("minItems" in spec ? (spec.minItems ?? 0) : 0) >= ("minItems" in base ? (base.minItems ?? 0) : 0)
 
 /** Inputs: the op names its base inputs, the contract gives their values in input.base and adds its own in input.extend. */
 const resolveInputs = (contract: Contract, op: Op, problems: string[]): ResolvedInput[] => {
@@ -272,7 +264,7 @@ const resolveInputs = (contract: Contract, op: Op, problems: string[]): Resolved
 
 /**
  * Context: the op's files, then the contract's, then the rule pages of the allowPaths that neither names (each contexts page
- * owning a rule over a path the task may write, so a rule the worker applies there is citable). A pinned base must keep every
+ * owning a rule over a path the task may write, so a rule the worker applies there is read). A pinned base must keep every
  * file of the op's base.
  */
 const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<string, string>>, harnessRoot: string, problems: string[]): ContextFile[] => {
@@ -281,7 +273,7 @@ const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<stri
     const add = (entry: string, source: Source, shared = false): void => {
         const filled = normaliseContextEntry(fill(entry, values))
         const known = context.findIndex((file) => file.entry === filled)
-        // A file the contract names again (its extend) is one the task means to apply, so it is citable even when the base reads it as background.
+        // A file the contract names again (its extend) is one the task means to apply, so it is not background even when the base reads it so.
         if (known >= 0) {
             const file = context[known]
             if (file !== undefined && file.shared && !shared) context[known] = { ...file, shared: false }
@@ -347,9 +339,7 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
     const context = resolveContext(contract, op, values, ops.root, problems)
     const output = resolveOutput(contract, op, problems)
     const checks = resolveCheckEntries(contract, op, problems)
-    const workDriven = context.some((file) => !file.harness && underPaths(file.path, [WORK_TREE]))
-    const required = [...output.values()].filter((item) => !("when" in item.spec) || item.spec.when === undefined || workDriven)
-    return { op, context, inputs, output: required, checks, workDriven, problems }
+    return { op, context, inputs, output: [...output.values()], checks, problems }
 }
 
 /** The absolute path of a context file: a harness file under the harness checkout, a repository file under `root`. */
@@ -373,22 +363,6 @@ export const ruleIdsIn = (text: string): Set<string> => {
     return ids
 }
 
-// A Work record id: lower-case dotted segments (environment.dev).
-const WORK_ID = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/
-
-/**
- * The Work records a text points at: every token shaped as a Work id or a path under `.starciwork/`. A token is only a
- * candidate; the cited check accepts it when the checkout holds the record it names.
- */
-export const workNamesIn = (text: string): Set<string> => {
-    const names = new Set<string>()
-    for (const raw of text.split(/[^A-Za-z0-9._/-]+/)) {
-        const token = trimEndChars(raw, "./")
-        if (WORK_ID.test(token) || token.startsWith(`${WORK_TREE}/`)) names.add(token)
-    }
-    return names
-}
-
 /** Replaces `{name}` placeholders with the contract's arguments; a whole-value placeholder keeps the argument's type. */
 const substitute = (value: unknown, args: CheckArgs): unknown => {
     if (typeof value === "string") {
@@ -404,40 +378,6 @@ const substitute = (value: unknown, args: CheckArgs): unknown => {
     if (typeof value === "object" && value !== null) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, substitute(item, args)]))
     return value
 }
-
-/** The context files a read trace may cite: every file but the shared ones every task of the label reads anyway. */
-export const citableContext = (resolved: ResolvedContract): ContextFile[] => resolved.context.filter((file) => !file.shared)
-
-/** One traced key of a `cited` check: the files its ids come from and, for a Work key, the Work names its inputs give. */
-interface Trace {
-    key: string
-    minItems: number
-    files: string[]
-    cites: "context" | "work"
-    named?: string[]
-}
-
-/**
- * The trace a `cited` check verifies: each output key that cites, with the context files its ids must come from. A Work key
- * reads the Work context files and its own Work allowPaths, and carries the Work ids and paths its inputs name, so the check
- * also accepts a record a context file or an input points at (run-checks.ts readableWork).
- */
-const traceOf = (resolved: ResolvedContract, contract: Contract, ops: Ops): Trace[] =>
-    resolved.output
-        .filter((item) => "cites" in item.spec && item.spec.cites !== undefined)
-        .map((item) => {
-            const work = "cites" in item.spec && item.spec.cites === "work"
-            const files = citableContext(resolved).filter((file) => !work || (!file.harness && underPaths(file.path, [WORK_TREE])))
-            // Harness files are absolute here; repository files stay relative, read from the checkout the check runs in.
-            const read = files.map((file) => (file.harness ? join(ops.root, file.path) : file.path))
-            const base = { key: item.key, minItems: minItemsOf(item.spec), files: read }
-            if (!work) return { ...base, cites: "context" }
-            // A Work key may also cite a record the task wrote: its own Work scope is read in the candidate, folders included.
-            const written = contract.context.allowPaths.filter((path) => underPaths(path, [WORK_TREE]))
-            const inputs = [contract.input.summary, contract.input.details ?? "", ...resolved.inputs.map((input) => input.value)].join("\n")
-            const named = [...workNamesIn(inputs)].sort(byCodeUnit)
-            return { ...base, files: [...read, ...written], cites: "work", ...(named.length === 0 ? {} : { named }) }
-        })
 
 /**
  * Expands one entry into its primitive check. A preset's arguments come from the entry, else from the contract's inputs of the
@@ -466,7 +406,7 @@ export const OUTPUT_CHECK = "output"
 
 /**
  * Expands every check of the resolved contract into a primitive one (refusing unknown presets and missing arguments), fills
- * the trace of a `cited` check and the contract's part of a `cite` check, and adds the generated `output` check: the filed result carries every required key with its type.
+ * the contract's part of a `cite` check, and adds the generated `output` check: the filed result carries every required key with its type.
  */
 export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => {
     const resolved = resolveContract(contract, ops)
@@ -475,8 +415,7 @@ export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => 
     const checks = resolved.checks.map(({ entry }, index): ResolvedCheck => {
         const check = expand(entry, index, ops, inputs)
         if (check.check.kind === "cite") return { ...check, check: { kind: "cite", ...fillCiteCheck(check.check, ops.root, contract.cites, outputKeys) } }
-        // The harness checkout rides along so a red trace names the page that owns an id the task was not handed.
-        return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, contract, ops), harness: ops.root } } : check
+        return check
     })
     if (resolved.output.length === 0) return checks
     const types: Record<string, OutputType> = Object.fromEntries(resolved.output.map((item) => [item.key, item.spec.type]))
@@ -496,25 +435,6 @@ const placeProblems = (what: string, path: string): string[] => [
     ...(path.split("/").includes("..") ? [`${what} "${path}" leaves the repository`] : []),
     ...(path.startsWith("/") || /^[A-Za-z]:/.test(path) ? [`${what} "${path}" must be repository-relative`] : []),
 ]
-
-/** Problems of the read trace the contract can be judged on now: a cited key needs ids, and harness files say whether they have any. */
-const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
-    const problems: string[] = []
-    for (const item of resolved.output) {
-        if (!("cites" in item.spec) || item.spec.cites !== "context" || minItemsOf(item.spec) === 0) continue
-        // A repository file may be written by an earlier task, so only an all-harness context can be judged before the work.
-        const citable = citableContext(resolved)
-        if (citable.some((file) => !file.harness)) continue
-        // A section index stands for its source, whose every section the task may open (sectioned-docs.ts sectionedSource).
-        const names = (path: string): boolean => existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
-        const named = citable.some((file) => {
-            const source = sectionedSource(file.path)
-            return names(join(ops.root, file.path)) || (source !== undefined && names(join(ops.root, source)))
-        })
-        if (!named) problems.push(`output key ${item.key} must cite at least ${String(minItemsOf(item.spec))} rule id(s), but no context file it may cite (shared files excluded) names one; extend context with the rules the task applies`)
-    }
-    return problems
-}
 
 /** The bytes per token the context budget estimates with. */
 export const BYTES_PER_TOKEN = 4
@@ -621,7 +541,7 @@ export const contractProblems = (contract: Contract, ops: Ops, judging: Contract
     } catch (error: unknown) {
         return [...problems, error instanceof Error ? error.message : String(error)]
     }
-    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...(judging.budget === false ? [] : budgetProblems(resolved, ops)), ...contractCiteProblems(contract.cites, ops.root))
+    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...(judging.budget === false ? [] : budgetProblems(resolved, ops)), ...contractCiteProblems(contract.cites, ops.root))
     try {
         problems.push(...checkProblems(contract, resolved, ops))
     } catch (error: unknown) {

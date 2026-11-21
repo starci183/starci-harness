@@ -10,8 +10,6 @@ import { configuredSlotRoot, takeLockFile } from "./slots.js"
  * its outcome from a status file. Every file lives in one lanes folder shared by the lanes of a machine.
  */
 
-/** The cache rule a batch is allowed to be red on: the push commits the records the run wrote (contexts/project/check-cache.md). */
-export const CACHE_RULE = "HFS_CHECK_CACHE_UNWARMED"
 /** The committed cache folder of an app; a conflict in it alone is no conflict between lanes. */
 export const CACHE_DIR = ".starcistacks/cache/"
 /** The name the lander writes into every lock and slot it holds. */
@@ -224,7 +222,7 @@ interface RawFinding {
     readonly message?: unknown
 }
 
-/** The blocking findings of an `app check --json` report (an error outside a report profile), cache included; undefined when it is not a report. */
+/** The blocking findings of an `app check --json` report (an error outside a report profile); undefined when it is not a report. */
 export const blockingFindings = (stdout: string): LaneFinding[] | undefined => {
     try {
         const found: RawFinding[] = []
@@ -292,7 +290,7 @@ export type RoundVerdict =
 
 /**
  * Judges one gate round. A gate that ran out of memory, itself (its exit code or its log) or in any check a blocking finding reports, is
- * `oom`: nothing is blamed. Green except the cache lands. No report, or a red exit with no finding at all, is no verdict (nothing is
+ * `oom`: nothing is blamed. Green lands (the push commits the cache records the gate wrote, contexts/project/check-cache.md). No report, or a red exit with no finding at all, is no verdict (nothing is
  * blamed). Otherwise every finding is mapped to the lanes whose diff names it: on the first round with every finding mapped and some
  * lane left, those lanes drop and the rest run once more; a second red round, an unmapped finding or a batch where every lane is named
  * stops the batch, landing nothing.
@@ -303,17 +301,16 @@ export const judgeRound = (round: number, exitCode: number, stdout: string, chan
     if (crashed !== undefined) return { kind: "oom", evidence: `${crashed.code} ${crashed.path}: ${crashed.message.slice(0, 200)}` }
     if (all === undefined && isOutOfMemory(exitCode, stderr)) return { kind: "oom", evidence: `the gate itself exited ${String(exitCode)} with no report` }
     if (all === undefined || (exitCode !== 0 && all.length === 0)) return { kind: "no-verdict" }
-    const findings = all.filter((finding) => finding.code !== CACHE_RULE)
-    if (findings.length === 0) return { kind: "green" }
+    if (all.length === 0) return { kind: "green" }
     const blamed = new Map<string, LaneFinding[]>()
     const unmapped: LaneFinding[] = []
-    for (const finding of findings) {
+    for (const finding of all) {
         const lanes = lanesNamedBy(finding, changed)
         if (lanes.length === 0) unmapped.push(finding)
         for (const lane of lanes) blamed.set(lane, [...(blamed.get(lane) ?? []), finding])
     }
-    if (unmapped.length > 0) return { kind: "stop", why: `the gate is red on ${String(unmapped.length)} finding(s) no lane's diff names`, blamed, findings }
-    if (round >= GATE_ROUNDS) return { kind: "stop", why: "the gate is still red on the second run", blamed, findings }
-    if (blamed.size >= changed.size) return { kind: "stop", why: "every lane in the batch is named by a finding", blamed, findings }
+    if (unmapped.length > 0) return { kind: "stop", why: `the gate is red on ${String(unmapped.length)} finding(s) no lane's diff names`, blamed, findings: all }
+    if (round >= GATE_ROUNDS) return { kind: "stop", why: "the gate is still red on the second run", blamed, findings: all }
+    if (blamed.size >= changed.size) return { kind: "stop", why: "every lane in the batch is named by a finding", blamed, findings: all }
     return { kind: "drop", blamed }
 }

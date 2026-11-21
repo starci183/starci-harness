@@ -42,4 +42,4 @@ under a shimmer. The file is `loading="lazy"` by default; the first screen's art
 - **App author decides:** the files and their crops, the compact ratio, the statics base URL.
 
 ## Rules
-BRAND-2, DISCIPLINE-3, DISCIPLINE-4, A11Y-2; lint `starci-grammar/no-raw-media` (R442), `starci-grammar/generated-art-in-mascot-or-media-frame` (R338).
+BRAND-2, DISCIPLINE-3, DISCIPLINE-4, A11Y-2; lint `starci-grammar/no-raw-media` (R442).

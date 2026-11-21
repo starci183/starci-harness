@@ -2,14 +2,8 @@
 // proves: STACKS_SECRET_UNVERSIONED
 // proves: STACKS_SECRET_ENV_LITERAL
 // proves: STACKS_PORT_PUBLISHED
-// proves: STACKS_SECOND_INGRESS
-// proves: STACKS_DNS_UNDECLARED
-// proves: STACKS_HOST_UNROUTED
-// proves: STACKS_TLS_UNDECLARED
-// proves: STACKS_PLACEMENT_MISSING
-// proves: STACKS_HEALTHCHECK_MISSING
-// proves: STACKS_UPDATE_POLICY_MISSING
-// proves: STACKS_REALTIME_SCALED
+// proves: STACKS_INGRESS_INVALID
+// proves: STACKS_SERVICE_POLICY_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import { randomBytes } from 'node:crypto';
@@ -20,13 +14,11 @@ import { swarmFixture, swarmService } from './helpers/swarm-stack-fixture.mjs';
 import type { SwarmFixture } from './helpers/swarm-stack-fixture.mjs';
 import { swarmHardeningIssues, stacksSwarmFindings } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { ingressIssues } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
-import { ts } from '../runtime/scripts/hfs/runtime-rules/source-ast.mjs';
 
 import { OR_TRUE, SEMI_TRUE } from './fixtures/loosening/swallows.mjs';
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const ROUTE = 'traefik.http.routers.api.rule';
-const REALTIME = 'be/src/features/realtime/chat/index.ts';
 const pinned = (image: string) => `${image}@sha256:${'a'.repeat(64)}`;
 
 function fixture(t: TestContext, edition = 'lite') {
@@ -47,7 +39,23 @@ function fixture(t: TestContext, edition = 'lite') {
 
 const inputFor = (value: SwarmFixture) => ({ doc: value.manifest, spec: value.manifest.environments.production,
   model: value.model, environment: 'production', repo: value.declaration, repoRoot: value.root, files: [...value.files] });
-const issuesFor = (value: SwarmFixture, code: string) => swarmHardeningIssues(inputFor(value)).filter(issue => issue.code === code);
+/** One finding code carries several detections; a detection is named CODE/part and told apart by its message. */
+const PARTS: Record<string, (message: string) => boolean> = {
+  placement: message => message.includes('placement constraints'),
+  healthcheck: message => message.includes('healthcheck'),
+  update: message => message.includes('update order'),
+  second: message => message.includes('second ingress') || message.includes('exactly one ingress') || message.includes('must not render an ingress of its own'),
+  unknown: message => message.includes('Traefik or Caddy pinned'),
+  dns: message => message.includes('DNS owner'),
+  tls: message => message.includes('TLS owner'),
+  host: message => message.includes('the stack file names the host') || message.includes('bound by an actual ingress route'),
+  undeclared: message => !['second', 'unknown', 'dns', 'tls', 'host'].some(other => PARTS[other]!(message)),
+};
+const detects = (name: string, item: { code: string; message: string }) => {
+  const [code, part] = name.split('/');
+  return item.code === code && (part === undefined || PARTS[part]!(item.message));
+};
+const issuesFor = (value: SwarmFixture, name: string) => swarmHardeningIssues(inputFor(value)).filter(issue => detects(name, issue));
 const finderContext = (value: SwarmFixture) => ({ repoRoot: value.root, files: [...value.files], repo: value.declaration, isRoot: true });
 
 const cases = [
@@ -55,13 +63,12 @@ const cases = [
   { code: 'STACKS_SECRET_UNVERSIONED', violate(value: SwarmFixture) { value.model.secrets['database-url'].name = 'swarm-app-database-url'; } },
   { code: 'STACKS_SECRET_ENV_LITERAL', violate(value: SwarmFixture) { value.model.services.api.environment = { API_TOKEN: 'synthetic-fixture-value' }; } },
   { code: 'STACKS_PORT_PUBLISHED', violate(value: SwarmFixture) { value.model.services.api.ports = ['3000:3000']; } },
-  { code: 'STACKS_DNS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
-  { code: 'STACKS_HOST_UNROUTED', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
-  { code: 'STACKS_TLS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
-  { code: 'STACKS_PLACEMENT_MISSING', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
-  { code: 'STACKS_HEALTHCHECK_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
-  { code: 'STACKS_UPDATE_POLICY_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
-  { code: 'STACKS_REALTIME_SCALED', violate(value: SwarmFixture) { addRealtime(value); runRealtime(value, 2, 'memory'); } },
+  { code: 'STACKS_INGRESS_INVALID/dns', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
+  { code: 'STACKS_INGRESS_INVALID/host', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
+  { code: 'STACKS_INGRESS_INVALID/tls', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/placement', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/healthcheck', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/update', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
 ];
 
 for (const edition of ['lite'] as const) {
@@ -77,15 +84,15 @@ for (const edition of ['lite'] as const) {
       violate(value);
       assert.ok(issuesFor(value, code).length > 0);
       value.write();
-      assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === code));
+      assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => detects(code, finding)));
     });
   }
 
-  test(`STACKS_SECOND_INGRESS@${edition}: single ingress passes and a second rendered ingress fails`, t => {
+  test(`STACKS_INGRESS_INVALID/second@${edition}: single ingress passes and a second rendered ingress fails`, t => {
     const value = fixture(t, edition);
     assert.deepEqual(ingressIssues(inputFor(value)), []);
     value.model.services.preview = swarmService(pinned('caddy:2.10.2'));
-    assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_SECOND_INGRESS'));
+    assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/second', issue)));
   });
 
   test(`STACKS_SECRET_NOT_EXTERNAL@${edition}: embedded sources, undeclared grants and absent secrets fail`, t => {
@@ -170,58 +177,58 @@ for (const edition of ['lite'] as const) {
     assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'a non-ingress service in host mode');
   });
 
-  test(`STACKS_DNS_UNDECLARED@${edition}: each rendered route needs its own owner and receipt`, t => {
+  test(`STACKS_INGRESS_INVALID/dns@${edition}: each rendered route needs its own owner and receipt`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     value.model.services.api.deploy.labels[ROUTE] = 'Host(`app.example.test`, `admin.example.test`)';
     spec.ingress.hosts.push('admin.example.test');
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     spec.dns.push({ host: 'admin.example.test', owner: 'operator', receipt: 'docs/admin-dns.md' });
-    assert.deepEqual(issuesFor(value, 'STACKS_DNS_UNDECLARED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/dns'), []);
     delete spec.dns[1].receipt;
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     spec.dns[1].receipt = 'docs/admin-dns.md';
     delete spec.dns[1].owner;
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
   });
 
-  test(`STACKS_HOST_UNROUTED@${edition}: labels must bind declared hosts using the selected ingress`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: labels must bind declared hosts using the selected ingress`, t => {
     const value = fixture(t, edition);
     value.model.services.api.deploy.labels[ROUTE] = 'Host(`other.example.test`)';
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     for (const rule of ['!Host(`app.example.test`)', '!(Host(`app.example.test`))', 'Host(`https://app.example.test/path`)']) {
       value.model.services.api.deploy.labels = { [ROUTE]: rule };
-      assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     }
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`) && !Path(`/private`)' };
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
     value.model.services.api.deploy.labels = { caddy: 'app.example.test' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`)', 'traefik.enable': 'false' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
   });
 
-  test(`STACKS_TLS_UNDECLARED@${edition}: issuance receipt and owner are both required`, t => {
+  test(`STACKS_INGRESS_INVALID/tls@${edition}: issuance receipt and owner are both required`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     for (const tls of [{ owner: 'operator' }, { receipt: 'docs/tls.md' }, { owner: '', receipt: 'docs/tls.md' }]) {
       spec.tls = tls;
-      assert.ok(issuesFor(value, 'STACKS_TLS_UNDECLARED').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/tls').length > 0);
     }
   });
 
-  test(`STACKS_PLACEMENT_MISSING@${edition}: stateful components and persistent volumes pin a node`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/placement@${edition}: stateful components and persistent volumes pin a node`, t => {
     const value = fixture(t, edition), service = value.model.services.api;
     value.manifest.components.api.stateful = true;
-    assert.ok(issuesFor(value, 'STACKS_PLACEMENT_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement').length > 0);
     service.deploy.placement = { constraints: ['node.labels.storage == app'] };
-    assert.deepEqual(issuesFor(value, 'STACKS_PLACEMENT_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement'), []);
     delete value.manifest.components.api.stateful;
     service.volumes = [{ type: 'volume', source: 'app-data', target: '/data' }];
-    assert.deepEqual(issuesFor(value, 'STACKS_PLACEMENT_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement'), []);
     service.deploy.placement.constraints = [''];
-    assert.ok(issuesFor(value, 'STACKS_PLACEMENT_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement').length > 0);
   });
 
-  test(`STACKS_HEALTHCHECK_MISSING@${edition}: disabled, empty and always successful probes fail`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/healthcheck@${edition}: disabled, empty and always successful probes fail`, t => {
     const value = fixture(t, edition), service = value.model.services.api;
     const healthchecks = [{ disable: true, test: ['CMD', 'curl', '-f', '/live'] }, { test: ['NONE'] },
       { test: [] }, { test: ['CMD-SHELL', 'true'] }, { test: ['CMD-SHELL', 'exit 0'] },
@@ -229,199 +236,30 @@ for (const edition of ['lite'] as const) {
       { test: ['CMD-SHELL', 'false; exit 0'] }, { test: ['CMD-SHELL', `curl -f http://localhost/live${SEMI_TRUE}`] }];
     for (const healthcheck of healthchecks) {
       service.healthcheck = healthcheck;
-      assert.ok(issuesFor(value, 'STACKS_HEALTHCHECK_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/healthcheck').length > 0);
     }
     service.healthcheck = { test: ['CMD', 'curl', '-f', 'http://localhost/health/live'] };
-    assert.deepEqual(issuesFor(value, 'STACKS_HEALTHCHECK_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/healthcheck'), []);
   });
 
-  test(`STACKS_UPDATE_POLICY_MISSING@${edition}: update, rollback and restart contracts are mandatory`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/update@${edition}: update, rollback and restart contracts are mandatory`, t => {
     const value = fixture(t, edition), deploy = value.model.services.api.deploy;
     const valid = structuredClone(deploy);
     for (const key of ['update_config', 'rollback_config', 'restart_policy']) {
       delete deploy[key];
-      assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
       Object.assign(deploy, structuredClone(valid));
     }
     for (const monitor of ['0s', '30', '-1s', '30s garbage', 0, Number.POSITIVE_INFINITY]) {
       deploy.update_config.monitor = monitor;
-      assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
     }
     deploy.update_config.monitor = '1m30s';
-    assert.deepEqual(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update'), []);
     deploy.update_config.failure_action = 'pause';
-    assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
   });
 }
-
-function addRealtime(value: SwarmFixture, composition = "import { ChatModule } from '@features/realtime/chat'; export const modules = [ChatModule];") {
-  value.put('be/apps/api/src/main.ts', "import { AppModule } from './app.module'; export const entry = AppModule;");
-  value.put('be/apps/api/src/app.module.ts', "import { modules } from './compose/streams'; export class AppModule { modules = modules; }");
-  value.put('be/apps/api/src/compose/streams.ts', composition);
-  value.put(REALTIME, 'export class ChatModule {}');
-}
-
-/** Runs the composed realtime API with `replicas` replicas and the hub `hub` (undefined declares none). */
-function runRealtime(value: SwarmFixture, replicas: number | string | undefined, hub: string | undefined) {
-  value.model.services.api.deploy.replicas = replicas;
-  value.model.services.api.environment = { DATABASE_URL_FILE: '/run/secrets/database-url', ...(hub === undefined ? {} : { REALTIME_HUB: hub }) };
-}
-
-/** Titles are literal so the coverage scanner reads the evidence of each edition. */
-function provesSharedHubForReplicas(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  for (const replicas of [2, 10, '3'])
-    for (const hub of [undefined, 'memory']) {
-      runRealtime(value, replicas, hub);
-      assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0, `${replicas} replicas on ${hub}`);
-    }
-  runRealtime(value, 2, 'postgres');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  runRealtime(value, 2, ' postgres ');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  runRealtime(value, 2, 'redis');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-}
-
-function provesOneReplicaMayRunMemory(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  for (const replicas of [undefined, 0, 1, '1'])
-    for (const hub of [undefined, 'memory', 'postgres']) {
-      runRealtime(value, replicas, hub);
-      assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), [], `${replicas} replicas on ${hub}`);
-    }
-}
-
-function provesUnjudgedApis(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  runRealtime(value, 3, 'memory');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  addRealtime(value);
-  value.declaration.sides.be.apps[0].kind = 'worker';
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-}
-
-function provesGlobalModeIsScaled(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  value.model.services.api.deploy.mode = 'global';
-  for (const hub of [undefined, 'memory']) {
-    runRealtime(value, undefined, hub);
-    assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0, `global on ${hub}`);
-  }
-  for (const hub of ['postgres', 'redis']) {
-    runRealtime(value, undefined, hub);
-    assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), [], `global on ${hub}`);
-  }
-}
-
-test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'lite'));
-test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'full'));
-test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'lite'));
-test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'full'));
-test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'lite'));
-test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'full'));
-test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'lite'));
-test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'full'));
-
-for (const edition of ['lite'] as const) {
-  test(`STACKS_REALTIME_SCALED@${edition}: the finder reports a scaled memory hub and accepts a shared one`, t => {
-    const value = fixture(t, edition);
-    addRealtime(value);
-    runRealtime(value, 2, 'memory');
-    value.write();
-    assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === 'STACKS_REALTIME_SCALED'));
-    runRealtime(value, 2, 'postgres');
-    value.write();
-    assert.deepEqual(stacksSwarmFindings(finderContext(value)).filter(finding => finding.code === 'STACKS_REALTIME_SCALED'), []);
-  });
-}
-
-test('STACKS_REALTIME_SCALED: reexports, dynamic import, require and import-equals reach realtime', t => {
-  const value = fixture(t);
-  const compositions = [
-    "export { ChatModule as StreamModule } from '@features/realtime/chat';",
-    "export const load = () => import('@features/realtime/chat');",
-    "export const modules = [require('@features/realtime/chat').ChatModule];",
-    "import Stream = require('@features/realtime/chat'); export const modules = [Stream.ChatModule];",
-  ];
-  runRealtime(value, 2, 'memory');
-  for (const composition of compositions) {
-    addRealtime(value, composition);
-    assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0);
-  }
-});
-
-test('STACKS_REALTIME_SCALED: type-only imports, comments and disconnected features do not compose', t => {
-  const value = fixture(t);
-  const compositions = [
-    "import type { ChatModule } from '@features/realtime/chat'; export type Entry = ChatModule;",
-    "import { type ChatModule } from '@features/realtime/chat'; export type Entry = ChatModule;",
-    "export type { ChatModule } from '@features/realtime/chat';",
-    "export { type ChatModule } from '@features/realtime/chat';",
-    "// import { ChatModule } from '@features/realtime/chat';\nexport const modules = [];",
-  ];
-  runRealtime(value, 2, 'memory');
-  for (const composition of compositions) {
-    addRealtime(value, composition);
-    assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  }
-});
-
-test('STACKS_REALTIME_SCALED: tracked tsconfig aliases and mapped API component names are respected', t => {
-  const value = fixture(t);
-  value.put('be/tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@stream/*': ['src/features/realtime/*'] } } }));
-  addRealtime(value, "import { ChatModule } from '@stream/chat'; export const modules = [ChatModule];");
-  runRealtime(value, 2, 'memory');
-  value.manifest.components.backend = { ...value.manifest.components.api, app: 'api' };
-  value.model.services.backend = value.model.services.api;
-  delete value.manifest.components.api;
-  delete value.model.services.api;
-  assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0);
-  value.declaration.sides.be.apps[0].kind = 'worker';
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-});
-
-test('STACKS_REALTIME_SCALED: untracked composition evidence cannot enable a feature', t => {
-  const value = fixture(t);
-  addRealtime(value);
-  runRealtime(value, 2, 'memory');
-  value.files.delete(REALTIME);
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-});
-
-test('STACKS_REALTIME_SCALED: tracked config cannot read untracked or secret-path extensions', t => {
-  const value = fixture(t), compiler = ts(), reads: string[] = [];
-  addRealtime(value);
-  runRealtime(value, 2, 'memory');
-  const original = compiler.sys.readFile;
-  compiler.sys.readFile = (file: string) => { reads.push(file); return original(file); };
-  try {
-    for (const extension of ['./untracked.json', '../secrets/config.json', '../../../outside.json']) {
-      value.put('be/tsconfig.json', JSON.stringify({ extends: extension }));
-      issuesFor(value, 'STACKS_REALTIME_SCALED');
-    }
-    assert.deepEqual(reads, []);
-  } finally {
-    compiler.sys.readFile = original;
-  }
-});
-
-test('STACKS_REALTIME_SCALED: the tracked finder passes a shared hub and fails the in-process hub of a scaled API', t => {
-  const value = fixture(t);
-  addRealtime(value);
-  runRealtime(value, 2, 'postgres');
-  value.write();
-  assert.deepEqual(stacksSwarmFindings(finderContext(value)), []);
-  runRealtime(value, 2, 'memory');
-  value.write();
-  assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === 'STACKS_REALTIME_SCALED'));
-  runRealtime(value, 2, 'redis');
-  value.write();
-  assert.deepEqual(stacksSwarmFindings(finderContext(value)), []);
-});
 
 test('R266 tracked finder uses renderedModel and returns standard findings for both editions', t => {
   for (const edition of ['lite'] as const) {
@@ -434,7 +272,7 @@ test('R266 tracked finder uses renderedModel and returns standard findings for b
     delete rendered.services.api.healthcheck;
     value.put(renderedFile, JSON.stringify(rendered));
     const findings = stacksSwarmFindings(finderContext(value));
-    assert.ok(findings.some(finding => finding.code === 'STACKS_HEALTHCHECK_MISSING'));
+    assert.ok(findings.some(finding => detects('STACKS_SERVICE_POLICY_MISSING/healthcheck', finding)));
     for (const finding of findings) {
       assert.equal(finding.level, 'error');
       assert.equal(finding.path, renderedFile);
@@ -469,10 +307,10 @@ test('R266 Caddy routes require a tracked config or matching docker-proxy labels
     value.put(config, 'app.example.test {\n  reverse_proxy api:3000\n}\n');
     assert.deepEqual(swarmHardeningIssues(inputFor(value)), []);
     value.files.delete(config);
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     ingress.image = pinned('lucaslorentz/caddy-docker-proxy:2.10.0');
     value.model.services.api.deploy.labels = { caddy: 'app.example.test', 'caddy.reverse_proxy': '{{upstreams 3000}}' };
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
   }
 });
 
@@ -485,7 +323,7 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   value.put(config, 'app.example.test {\n  reverse_proxy api:3000\n}\n');
   for (const file of ['../../secrets/routes.enc', '../../../../routes', path.join(value.root, config)]) {
     value.model.configs = { routes: { file } };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
   }
   const alias = '.starcistacks/production/infra/swarm/Caddy-alias';
   try {
@@ -496,11 +334,11 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   }
   value.files.add(alias);
   value.model.configs = { routes: { file: './Caddy-alias' } };
-  assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+  assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
 });
 
 for (const edition of ['lite'] as const) {
-  test(`STACKS_HOST_UNROUTED@${edition}: an external shared ingress routes the declared hosts itself, but DNS, TLS and ports stay judged`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: an external shared ingress routes the declared hosts itself, but DNS, TLS and ports stay judged`, t => {
     const value = fixture(t, edition);
     const spec = value.manifest.environments.production;
     delete value.manifest.components.ingress;
@@ -508,24 +346,24 @@ for (const edition of ['lite'] as const) {
     delete spec.components?.ingress;
     spec.ingress = { external: { stack: 'ingress' }, hosts: ['app.example.test'] };
     value.model.services.api.deploy.labels = {};
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
-    assert.deepEqual(issuesFor(value, 'STACKS_DNS_UNDECLARED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/dns'), []);
     value.model.services.api.ports = [{ published: 443, target: 3000, mode: 'ingress' }];
     assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'only the shared ingress may publish ports');
     delete spec.tls;
-    assert.ok(issuesFor(value, 'STACKS_TLS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/tls').length > 0);
     spec.tls = { owner: 'application operator', receipt: 'docs/tls.md' };
     spec.dns = [];
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     delete spec.ingress.external;
     spec.ingress.component = 'ingress';
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0, 'a declared component still needs a route');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0, 'a declared component still needs a route');
   });
 }
 
 // A shared edge-traefik (ingress.kind: shared-edge): hosts are declared once, in ingress.routes; the stack file names none, its deploy renders the labels.
 for (const edition of ['lite'] as const) {
-  test(`STACKS_HOST_UNROUTED@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     delete value.manifest.components.ingress;
     delete value.model.services.ingress;
@@ -535,18 +373,18 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(ingressIssues(inputFor(value)), []);
     assert.deepEqual(swarmHardeningIssues(inputFor(value)), [], 'no label in the stack file, the host is declared once');
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`)' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').some(issue => /names the host app\.example\.test/.test(issue.message)), 'even a declared host must not be hardcoded');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').some(issue => /names the host app\.example\.test/.test(issue.message)), 'even a declared host must not be hardcoded');
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`other.example.test`)' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     value.model.services.api.deploy.labels = {};
     spec.dns = [];
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0, 'the DNS of each route host stays declared');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0, 'the DNS of each route host stays declared');
     spec.dns = [{ host: 'app.example.test', owner: 'application operator', receipt: 'docs/dns.md' }];
     for (const broken of [{ network: undefined }, { certResolver: undefined }, { routes: [] }, { routes: [{ host: 'a.example.test', service: 'api' }] }, { component: 'ingress' }, { hosts: ['x.example.test'] }]) {
       spec.ingress = { kind: 'shared-edge', network: 'edge', certResolver: 'letsencrypt', routes: [{ host: 'app.example.test', service: 'api', port: 3000 }], ...broken };
-      assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), JSON.stringify(broken));
+      assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/undeclared', issue)), JSON.stringify(broken));
     }
     spec.ingress = { component: 'ingress' };
-    assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), 'an own ingress still declares its hosts');
+    assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/undeclared', issue)), 'an own ingress still declares its hosts');
   });
 }

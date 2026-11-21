@@ -124,7 +124,7 @@ test('records a run on the local build wrote are reused warm after the restore t
   assert.equal(rebuilt.decide('format').mode, 'diff', 'and no other');
 });
 
-const EXPECTED_LOCAL_ONLY = ['FE_I18N_LOCALE_MISSING', 'HFS_APP_GALLERY_BOARD_ROUTE_MISSING', 'HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', 'HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_EXPLAIN_STALE', 'HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS', 'HFS_APP_GALLERY_ROUTE_MISSING', 'HFS_BRAND_BASE_UNKNOWN', 'HFS_BRAND_MISSING', 'HFS_BRAND_PROMPT_INCOMPLETE', 'HFS_BRAND_PROMPT_STALE', 'HFS_CANON_PIN_DRIFT', 'HFS_CHECK_CACHE_UNPORTABLE', 'HFS_CONCEPT_UNCATALOGUED', 'HFS_MCP_TOOLS_SNAPSHOT_MISSING', 'HFS_SOPS_CATCH_ALL', 'HFS_SOPS_MEMBER_RECIPIENTS', 'HFS_SOPS_RECIPIENTS', 'HFS_SOPS_RECIPIENT_UNDECLARED', 'UI_AUDIT_CONSIDERED_EMPTY', 'UI_AUDIT_MISSING', 'UI_AUDIT_NEEDS_OWNER', 'UI_AUDIT_OPEN', 'UI_AUDIT_ROUNDS_FEW', 'UI_AUDIT_SELF_REVIEW', 'UI_AUDIT_STALE'];
+const EXPECTED_LOCAL_ONLY = ['FE_I18N_LOCALE_MISSING', 'HFS_APP_GALLERY_BOARD_ROUTE_MISSING', 'HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED', 'HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS', 'HFS_APP_GALLERY_ROUTE_MISSING', 'HFS_BRAND_PROMPT_INVALID', 'HFS_CANON_PIN_DRIFT', 'HFS_CHECK_CACHE_UNPORTABLE', 'HFS_CONCEPT_UNCATALOGUED', 'HFS_MCP_TOOLS_SNAPSHOT_MISSING', 'HFS_SOPS_CATCH_ALL', 'HFS_SOPS_MEMBER_RECIPIENTS', 'HFS_SOPS_RECIPIENTS', 'HFS_SOPS_RECIPIENT_UNDECLARED', 'UI_AUDIT_CONSIDERED_EMPTY', 'UI_AUDIT_MISSING', 'UI_AUDIT_NEEDS_OWNER', 'UI_AUDIT_OPEN', 'UI_AUDIT_ROUNDS_FEW', 'UI_AUDIT_SELF_REVIEW', 'UI_AUDIT_STALE'];
 
 test('the local-only finding set is the one list of failure-codes.yaml', () => {
   assert.deepEqual([...localOnlyCodes()].sort(), [...EXPECTED_LOCAL_ONLY].sort());
@@ -176,7 +176,7 @@ test('local tolerates exactly the listed local findings, prod blocks them, and a
 test('the managed hook, the CI templates and the release gate judge as prod', () => {
   const templates = new URL('../templates/app/', import.meta.url);
   const read = (file: string): string => fs.readFileSync(new URL(file, templates), 'utf8');
-  assert.match(read('hooks/husky/pre-push'), /^node node_modules\/starci-harness\/dist\/main\.js app check --env prod$/mu);
+  assert.match(read('hooks/husky/pre-push'), /^STARCI_PUSH_GATE=1 node node_modules\/starci-harness\/dist\/main\.js app check --env prod$/mu);
   for (const flavour of ['ci-workflows']) {
     const verify = read(`${flavour}/github/workflows/cache-verify.yml`);
     assert.match(verify, /starci app check --env prod --fresh \$\{\{ matrix\.args \}\}$/mu, 'every shard of the verify judges as prod');

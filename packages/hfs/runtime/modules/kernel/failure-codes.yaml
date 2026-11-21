@@ -1,3 +1,4 @@
+
 APP_SECRET_IN_CI:
   title: "App runtime secret appears in CI custody"
   title_vi: "Bí mật ứng dụng xuất hiện trong CI"
@@ -1320,46 +1321,6 @@ BE_RETURN_TYPE:
   owner: op-retry
   kind: check-finding
 
-BE_SAGA_CONSUMER_DEDUPE:
-  title: "A saga consumer passes the delivery id on"
-  title_vi: "Consumer của saga không chuyển id lần giao đi tiếp"
-  meaning_vi: "Một `transport/message/<event>.consumer.ts` của feature có saga không đọc `message.eventId` để đưa vào lệnh nó gửi."
-  causes_vi:
-    - "Vi phạm luật R172: saga nhận mọi sự kiện qua inbox (R80), nên consumer phải chuyển khoá chống trùng (id lần giao) cho lệnh."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đưa `message.eventId` vào yêu cầu của lệnh để saga claim qua inbox."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_EVENT_CONTRACT:
-  title: "Every event of a saga step and compensation is in a vendored contract"
-  title_vi: "Sự kiện của bước saga không nằm trong hợp đồng hoặc bù trừ không khớp"
-  meaning_vi: "Một bước hoặc bù trừ không khai `readonly event = \"<tên>\"`, sự kiện đó không có trong `be/contracts/<service>/events.json`, hoặc hợp đồng của sự kiện bù trừ không khai `compensates` đúng sự kiện của bước cùng tên."
-  causes_vi:
-    - "Vi phạm luật R171: mọi sự kiện của saga nằm trong hợp đồng đã vendor, và sự kiện thất bại của một bù trừ nói rõ nó hoàn tác sự kiện của bước nào."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: khai sự kiện trong `events.ts` của bên phát (có `compensates`), chạy `starci app emit`, và ghi tên sự kiện vào bước/bù trừ."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_STATE_VERSIONED:
-  title: "The persisted state of a saga run carries a version and goes through the fenced store"
-  title_vi: "Trạng thái saga không có phiên bản hoặc không đi qua kho có rào"
-  meaning_vi: "Orchestrator không có `<saga>.saga-state.ts`, kiểu trạng thái xuất ra không khai `status` và `version: number`, hoặc orchestrator không dùng kho có rào của `platform/saga`."
-  causes_vi:
-    - "Vi phạm luật R170: trạng thái một lần chạy saga được lưu cùng phiên bản (rào), mọi chuyển trạng thái nêu phiên bản đã đọc, nên một lần giao lại \"xác sống\" không thể chuyển hai lần."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: khai kiểu trạng thái có `status` và `version`, và chuyển trạng thái qua `SagaService` của `platform/saga`."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_STEP_COMPENSATION:
-  title: "Every saga compensation has its step and the orchestrator lists them"
-  title_vi: "Bù trừ saga không có bước tương ứng hoặc orchestrator không liệt kê đủ"
-  meaning_vi: "Một bù trừ `saga/compensations/<step>.compensation.ts` không có `saga/steps/<step>.step.ts`, thư mục saga không có orchestrator `<saga>.saga.ts`, hoặc orchestrator không import đủ mọi bước và mọi bù trừ của thư mục."
-  causes_vi:
-    - "Vi phạm luật R169: bù trừ là phép hoàn tác tuỳ chọn của một bước, do một người bấm và chạy như một bước tiến; nó phải có bước cùng tên, và orchestrator liệt kê tất cả nên không có bước nào chạy mà không ai thấy."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt bù trừ cạnh bước cùng tên (hoặc xoá bù trừ mồ côi) và import mọi bước và bù trừ trong orchestrator; không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
-
 BE_SCHEMA_AUTHORITY:
   title: "Schema defined at runtime"
   title_vi: "Schema được định nghĩa lúc chạy"
@@ -1807,17 +1768,6 @@ CI_STANDARD:
   owner: op-retry
   kind: check-finding
 
-CI_TRIGGERS_RELEASE_ONLY:
-  title: "Workflow trigger outside R221"
-  title_vi: "Workflow có trigger ngoài R221"
-  meaning_vi: "Workflow khai báo trigger ngoài R221: main được phép trong workflow runtime và ci.yml của app; pull_request tới main chỉ được phép trong ci.yml, workflow_call dành cho workflow dùng lại; pull_request_target, workflow_run, lịch chạy và các nhánh, sự kiện, bộ lọc khác phải theo R221."
-  causes_vi:
-    - "Khai báo nhánh, sự kiện hoặc bộ lọc không thuộc R221"
-    - "Khai báo nhánh, sự kiện hoặc bộ lọc không thuộc R221"
-  nextStep_vi: "Sửa on theo R221 rồi chạy starci app sync --execute để tạo lại workflow ứng dụng."
-  owner: supervisor
-  kind: check-finding
-
 CI_UPLOAD_NOT_SILENT:
   title: "Coverage upload can skip or fail silently"
   title_vi: "Bước tải coverage có thể bị bỏ qua hoặc lỗi mà không báo"
@@ -2059,17 +2009,6 @@ ENV_EXAMPLE_DRIFT:
     - "Vi phạm luật R248: file example là hợp đồng tài liệu của môi trường; khoá trong đó phải là khoá code đọc."
     - "Đổi tên hoặc xoá reader mà quên cập nhật file example (D2-23 `QUEUE_RELAY_*`)."
   nextStep_vi: "Sửa file example cho khớp các khoá `<app>.env.ts`/`*.config.ts` đọc, hoặc thêm reader nếu khoá thật sự cần."
-  owner: op-retry
-  kind: check-finding
-
-ENV_KEY_ENVIRONMENT_NAMED:
-  title: "A key name carries an environment"
-  title_vi: "Tên khoá mang tên môi trường"
-  meaning_vi: "Một khoá được niêm phong hoặc khai báo có tên bắt đầu bằng tên môi trường (DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_, TEST_). Môi trường của một khoá là thư mục của nó (`.starcistacks/<env>/secrets/`): một tên dùng cho mọi môi trường, mỗi môi trường niêm phong giá trị riêng."
-  causes_vi:
-    - "Vi phạm luật R248: khoá đặt tên theo môi trường nên dev và production phải khai hai tên cho cùng một vai trò."
-    - "Hai tên starter cũ DEV_DB_OWNER_PASSWORD và DEV_DB_APP_PASSWORD: cảnh báo trong minor này, lỗi từ minor sau."
-  nextStep_vi: "Đổi tên khoá thành tên không có tiền tố môi trường ở mọi chỗ khai báo (starci app sync in ra danh sách), rồi chủ dự án niêm phong giá trị dưới tên mới bằng starci app secret init hoặc rotate."
   owner: op-retry
   kind: check-finding
 
@@ -2612,16 +2551,6 @@ FE_NATIVE_IMAGE:
   owner: op-retry
   kind: check-finding
 
-FE_ERROR_PAGE_NOT_EMPTY_STATE:
-  title: "An error page is not the Grammar's empty state"
-  title_vi: "Trang lỗi không dùng trạng thái rỗng của Grammar"
-  meaning_vi: "Trang not-found, error hoặc global-error của ứng dụng web không vẽ `EmptyNotice scope=\"page\"` có `illustration`: trang được tự dựng từ các thành phần khác, hoặc bỏ phạm vi trang hay hình minh họa."
-  causes_vi:
-    - "Vi phạm R443: ba trang lỗi bắt buộc của ứng dụng web (not-found 404, error 500, global-error) chỉ được dựng từ EmptyNotice phạm vi trang có hình minh họa, tiêu đề, mô tả và hành động (về trang chủ, thử lại)."
-  nextStep_vi: "Dựng lại trang từ composite NotFoundNotice, ErrorNotice hoặc GlobalErrorNotice của template (EmptyNotice scope=\"page\" với illustration); chỉ sửa lời và hình, không dựng tay (R443; contexts/ui/components/empty-state.md)."
-  owner: op-retry
-  kind: check-finding
-
 FE_BRAND_NOT_ONE:
   title: "The front end does not have exactly one brand file"
   title_vi: "Front end không có đúng một file thương hiệu"
@@ -3087,16 +3016,6 @@ FE_STACK_CORE_MISSING:
   owner: op-retry
   kind: check-finding
 
-FE_STACK_FAMILY_LINT_MISSING:
-  title: "The front end installs canon-fe 9 without the selected Grammar family's lint package"
-  title_vi: "Front end dùng canon-fe 9 nhưng thiếu gói lint của họ Grammar đã chọn"
-  meaning_vi: "hfs.json chọn sides.fe.grammar (starci hoặc offset-pop) và front end khai báo @starci/eslint-canon-fe 9 trở lên, nhưng không manifest nào khai báo gói lint của họ đó; từ canon-fe 9 các luật component Grammar nằm trong gói này, thiếu gói thì các luật ấy không chạy."
-  causes_vi:
-    - "Nâng @starci/eslint-canon-fe lên 9 mà chưa thêm @starci/eslint-grammar-core (Grammar StarCi) hoặc @starci/eslint-grammar-offset-pop (Grammar Offset Pop)."
-  nextStep_vi: "Thêm @starci/eslint-grammar-core (hoặc @starci/eslint-grammar-offset-pop) cạnh @starci/eslint-canon-fe, ghép coreGrammarConfig({ hfs }) (hoặc offsetPopGrammarConfig({ hfs })) sau starciFeConfig({ hfs }) trong fe/eslint.config.mjs, hoặc chạy starci app sync --execute."
-  owner: op-retry
-  kind: check-finding
-
 FE_STACK_FORBIDDEN:
   title: "A front end declares or imports a package or scoped package family forbidden by the stack"
   title_vi: "Front end dùng thư viện hoặc họ package bị fe-stack cấm"
@@ -3349,38 +3268,6 @@ HFS_APP_GALLERY_MISSING:
   owner: op-retry
   kind: check-finding
 
-HFS_APP_GALLERY_SCRIPT:
-  title: "The gallery serves on the base port plus 50"
-  title_vi: "Gallery không chạy ở cổng gốc cộng 50"
-  meaning_vi: "gallery/package.json không có script dev chạy vite --port <basePort + 50> --strictPort, hoặc ứng dụng chưa khai báo local.basePort để suy ra cổng đó."
-  causes_vi:
-    - "Vi phạm R395: cổng của gallery phải suy ra từ cổng gốc dự án như mọi tiến trình native khác, và --strictPort để cổng bị chiếm báo lỗi thay vì lệch cổng."
-    - "Tệp gallery/package.json bị sửa tay hoặc cổng gốc đã đổi mà chưa chạy lại starci app sync."
-  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json từ mẫu; nếu chưa có basePort thì khai báo nó trong .starcistacks/application-stacks.yaml trước."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_VITE_UNPINNED:
-  title: "The gallery pins its Vite version"
-  title_vi: "Gallery chưa ghim phiên bản Vite"
-  meaning_vi: "gallery/package.json không có vite trong devDependencies hoặc phiên bản không phải số chính xác (có ^, ~ hoặc khoảng)."
-  causes_vi:
-    - "Vi phạm R395: mọi phụ thuộc của ứng dụng được ghim đúng một phiên bản."
-    - "Tệp gallery/package.json bị sửa tay."
-  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json với phiên bản Vite đã ghim."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_SHOTS_TRACKED:
-  title: "The gallery screenshots are git-ignored"
-  title_vi: "Ảnh chụp của gallery chưa được git bỏ qua"
-  meaning_vi: "gallery/pages/**/*.png không nằm trong .gitignore, hoặc đã có ảnh PNG bị git theo dõi: ảnh chụp là bằng chứng cục bộ, không phải mã nguồn."
-  causes_vi:
-    - "Vi phạm R395: khối .gitignore do sync quản lý thiếu dòng gallery/pages/**/*.png, hoặc ảnh đã được git add."
-  nextStep_vi: "Chạy starci app sync --execute để khối .gitignore có dòng gallery/pages/**/*.png, rồi git rm --cached các ảnh đã bị theo dõi."
-  owner: op-retry
-  kind: check-finding
-
 HFS_APP_GALLERY_EXPLAIN_MISSING:
   title: "A gallery page with shots has an explain.md"
   title_vi: "Trang trong gallery có ảnh nhưng thiếu explain.md"
@@ -3391,29 +3278,6 @@ HFS_APP_GALLERY_EXPLAIN_MISSING:
   nextStep_vi: "Viết gallery/pages/<khu>/<trang>/explain.md: front matter (title, route, area) và mỗi vùng một mục `## <tên vùng>` với ba dòng `Vì sao:`, `Luật:`, `Grammar:`; vùng không giải thích được là lỗi giao diện, sửa trang trước."
   owner: op-retry
   kind: check-finding
-
-HFS_APP_GALLERY_REGION_INCOMPLETE:
-  title: "Every region of a gallery page says why and names its Grammar"
-  title_vi: "Vùng trong explain.md thiếu Vì sao hoặc Grammar"
-  meaning_vi: "explain.md của một trang gallery không có mục `## <tên vùng>` nào, hoặc có vùng thiếu dòng `Vì sao:` hoặc dòng `Grammar:` (hoặc để trống)."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi vùng phải nêu luật của chủ sản phẩm quyết định nó và thành phần Grammar (component, prop, đường dẫn hoặc story) tạo ra nó."
-    - "Vùng được vẽ mà không giải thích được: đó là lỗi giao diện, không phải lỗi tài liệu."
-  nextStep_vi: "Điền `Vì sao:` (luật nào) và `Grammar:` (component + prop, kèm đường dẫn nguồn hoặc story) cho từng vùng được liệt kê; nếu không điền được thì sửa trang cho đến khi giải thích được."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_REGION_UNCLEAR:
-  title: "No region of a gallery page is marked CHƯA RÕ or SAI"
-  title_vi: "Vùng trong explain.md còn ghi CHƯA RÕ hoặc SAI"
-  meaning_vi: "Một dòng Vì sao, Luật hoặc Grammar của explain.md bắt đầu bằng CHƯA RÕ hoặc SAI: tác giả tự nhận vùng đó chưa giải thích được hoặc đang sai, tức là một lỗi giao diện chưa sửa."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-2): một vùng chưa giải thích được bằng luật và tham chiếu Grammar là lỗi, phải sửa trước khi báo cáo."
-    - "`--env local` chỉ liệt kê (đang lặp lại khi sửa), `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Sửa trang cho đến khi vùng đó giải thích được, rồi viết lại dòng với luật và tham chiếu Grammar thật."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
 
 HFS_APP_GALLERY_FRONT_MATTER:
   title: "A gallery explain.md declares its title, route and area"
@@ -3605,18 +3469,6 @@ HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED:
   kind: check-finding
   localOnly: true
 
-HFS_APP_GALLERY_EXPLAIN_STALE:
-  title: "A screen's explain.md changes with its source"
-  title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"
-  meaning_vi: "Các commit kể từ nhánh gốc (hoặc commit đang tạo) đổi page.tsx của một route hoặc tệp trong thư mục features/pages/<Tên>/ mà page.tsx nhập, nhưng không đổi explain.md của màn hình đó trong gallery/pages."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-5): người sửa giao diện phải cập nhật lời giải thích (và ảnh) cùng lúc với màn hình; nếu không, gallery nói về màn hình cũ."
-    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Mở explain.md của màn hình, đối chiếu từng vùng với giao diện mới, sửa Vì sao/Luật/Grammar (hoặc chụp lại ảnh) rồi commit cùng thay đổi; nếu giao diện không đổi gì nhìn thấy được, vẫn mở explain.md và xác nhận nó còn đúng."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
 HFS_APP_GALLERY_SCREEN_INVALID:
   title: "A screen.yaml is not the schema of PROJECT-GALLERY-8"
   title_vi: "screen.yaml của màn hình sai khuôn (thiếu khóa bắt buộc, sai id, ảnh, section hoặc considered)"
@@ -3714,16 +3566,6 @@ HFS_APP_LAYOUT_INVALID:
     - "Ứng dụng thiếu tệp bắt buộc"
   nextStep_vi: "Op dựng khung sửa bố cục ứng dụng theo HFS rồi kiểm tra lại."
   owner: other-op:backend.scaffold
-  kind: check-finding
-
-HFS_APP_LEXICON:
-  title: "App source or documentation uses a removed product word"
-  title_vi: "Mã hoặc tài liệu dùng từ sản phẩm đã bỏ"
-  meaning_vi: "Tệp nguồn hoặc tài liệu dùng từ nằm trong hfs.json lexicon.removed, kể cả trong tên định danh, chú thích và nội dung giao diện."
-  causes_vi:
-    - "Đổi thuật ngữ sản phẩm nhưng chưa cập nhật toàn bộ mã và tài liệu."
-  nextStep_vi: "Thay từ đã bỏ bằng thuật ngữ sản phẩm hiện hành tại đường dẫn và dòng được báo."
-  owner: op-retry
   kind: check-finding
 
 HFS_APP_WORKFLOW_TRIGGER:
@@ -3858,17 +3700,6 @@ AUDIT_REPORT_UNREADABLE:
   owner: op-retry
   kind: check-finding
 
-HFS_AUTH_COOKIE_DOMAIN_MISSING:
-  title: "The api's refresh cookie cannot reach a web served on another host"
-  title_vi: "Cookie refresh của api không tới được web chạy ở host khác"
-  meaning_vi: "Web và api của một môi trường chạy ở hai host khác nhau nhưng môi trường của api không có AUTH_COOKIE_DOMAIN (hoặc giá trị khai báo không phải tên miền trần, hoặc không phải miền cha của cả hai host), nên cookie refresh chỉ gắn với host của api và không có trong header Cookie mà máy chủ web chuyển tiếp: api từ chối phiên và người dùng bị đưa về trang đăng nhập."
-  causes_vi:
-    - "Vi phạm R337: passport của skeleton lite đặt cookie refresh theo host khi AUTH_COOKIE_DOMAIN không được đặt."
-    - "AUTH_COOKIE_DOMAIN có scheme, cổng, dấu chấm đầu, hoặc là miền không bao trùm host của web hay của api."
-  nextStep_vi: "Đặt AUTH_COOKIE_DOMAIN bằng miền cha chung của hai host (thông báo nêu giá trị) trong environment của api, KEYS.md hoặc một khoá sealed, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
 BE_FLOW_FAILURE_SWALLOWED:
   title: "A job or saga flow swallows a failure or deletes its failed job"
   title_vi: "Một job hoặc saga nuốt lỗi hoặc xoá job đã lỗi"
@@ -3879,16 +3710,6 @@ BE_FLOW_FAILURE_SWALLOWED:
   nextStep_vi: "Bỏ catch để lỗi tới runner (runner retry lỗi tạm thời và park phần còn lại với một cảnh báo), bỏ removeOnFail, rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
-HFS_BOOT_LOGGER_SILENCED:
-  title: "A back-end app root boots Nest with the logger off"
-  title_vi: "Một app back-end khởi động Nest với logger bị tắt"
-  meaning_vi: "main.ts của một app back-end truyền logger: false cho NestFactory hoặc CommandFactory, nên một provider mà module cần nhưng app root không ghép, hay bất kỳ lỗi khởi động nào, làm tiến trình dừng mà không in gì ra stderr: mọi lệnh cli chết im lặng."
-  causes_vi:
-    - "Vi phạm R376: main.ts của app root đặt logger: false."
-  nextStep_vi: "Truyền logger của app (createNestLogger) và một errorHandler in lỗi rồi thoát với mã khác 0, như main.ts của template, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
 HFS_BACKING_UNDECLARED:
   title: "A lite app uses undeclared Redis or full-only Qdrant instead of Supabase pgvector"
   title_vi: "App lite dùng Redis chưa khai báo hoặc Qdrant chỉ thuộc full thay cho Supabase pgvector"
@@ -4151,16 +3972,6 @@ HFS_DOC_COMMAND_UNKNOWN:
   owner: op-retry
   kind: check-finding
 
-HFS_DOC_ENV_UNKNOWN:
-  title: "Product documentation cites an undeclared environment key"
-  title_vi: "Tài liệu sản phẩm dẫn khóa môi trường chưa khai báo"
-  meaning_vi: "Tên khóa được tài liệu dẫn không có trong bộ đọc môi trường có kiểu hoặc KEYS.md; kiểm tra chỉ đọc tên, không đọc giá trị bí mật."
-  causes_vi:
-    - "Tên khóa cũ còn trong tài liệu hoặc bộ đọc chưa khai báo khóa theo luật R270."
-  nextStep_vi: "Cập nhật tên khóa hoặc khai báo khóa trong bộ đọc môi trường và KEYS.md, không đưa giá trị bí mật vào tài liệu."
-  owner: op-retry
-  kind: check-finding
-
 HFS_DOC_NOT_ENGLISH:
   title: "Document is not English"
   title_vi: "Tài liệu không viết bằng tiếng Anh"
@@ -4399,13 +4210,13 @@ CI_PARITY_SONAR_SKIPPED:
   kind: check-finding
 
 HFS_CHECK_CACHE_UNWARMED:
-  title: "The pushed check cache is not the one a run on its tree writes"
-  title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"
-  meaning_vi: "`starci app check` (hook pre-push) chạy mọi họ kiểm tra theo diff với cache trong cây và phải ghi hoặc xóa tệp trong `.starcistacks/cache/`, hoặc cây còn tệp cache chưa commit: bản ghi đi kèm lần push không đủ ấm, nên CI sẽ phải kiểm tra lạnh và vượt ngân sách ESLint."
+  title: "The commit does not hold the check cache records this run wrote"
+  title_vi: "Commit chưa chứa các bản ghi cache kiểm tra mà lần chạy này vừa ghi (chỉ báo cáo)"
+  meaning_vi: "`starci app check` chạy mọi họ kiểm tra theo diff với cache trong cây, đã tính xong và ghi bản ghi vào `.starcistacks/cache/`, nhưng cây còn tệp cache chưa commit. Đây không phải lỗi của mã: lần chạy vẫn đúng và không đỏ vì nó (mức info, mã thoát không đổi). Chỉ lần chạy của hook pre-push (STARCI_PUSH_GATE=1) coi là lỗi, vì push mang bản ghi chưa commit thì CI phải kiểm tra lạnh và vượt ngân sách ESLint."
   causes_vi:
-    - "Sửa mã mà chưa chạy `starci app check` rồi commit cache"
-    - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nhưng chưa chạy lại một lần cho ấm"
-  nextStep_vi: "Commit `.starcistacks/cache/` đúng như lần chạy vừa để lại rồi push lại; không sửa tay thư mục cache."
+    - "Sửa mã rồi chạy `starci app check` nhưng chưa commit bản ghi vừa ghi"
+    - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nên mọi họ phải tính lại một lần"
+  nextStep_vi: "Không cần làm gì để lần chạy xanh. Để push, dùng `npx --no-install starci app push` (tự commit bản ghi rồi push); bộ gộp lane (`lane land`) cũng tự commit. Không sửa tay thư mục cache."
   owner: op-retry
   kind: check-finding
 
@@ -4705,16 +4516,6 @@ HFS_PACKAGE_MANAGER_MIXED:
   owner: other-op:backend.scaffold
   kind: check-finding
 
-HFS_PEER_INTEGRATION_MISSING:
-  title: "An app declares the runtime peer its driver integration needs"
-  title_vi: "Thiếu gói peer mà tích hợp driver cần khi chạy"
-  meaning_vi: "`package.json` ở gốc app phụ thuộc vào các gói của một cặp trong `knowledge/hfs/peer-integrations.yaml` (ví dụ `@nestjs/apollo` trên `@nestjs/platform-express` 11, tức Express 5) nhưng không khai báo gói `<requires>` trong dependencies, nên api không khởi động được."
-  causes_vi:
-    - "Vi phạm luật R111: npm không tự cài gói peer này, type-check và unit spec không nạp nó, nên lỗi chỉ lộ ra khi api khởi động (hai backend cũ thiếu `@as-integrations/express5` và api GraphQL không chạy được trên Express 5)."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: thêm gói `<requires>` vào dependencies của `package.json` ở gốc app; không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
-
 HFS_PLAINTEXT_SECRET:
   title: "Secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc`"
   title_vi: "Bí mật dạng rõ trong kho"
@@ -4725,101 +4526,15 @@ HFS_PLAINTEXT_SECRET:
   owner: owner
   kind: check-finding
 
-HFS_PROOF_COMMAND_FILE_MISSING:
-  title: "A proof command names only files the repository holds"
-  title_vi: "Lệnh chứng minh trỏ tới tệp không tồn tại"
-  meaning_vi: "Lệnh `requiresProof.<kind>.command` của hồ sơ `.starciwork` `<f>` chạy tệp `<path>` mà kho không có, nên không thể chạy đúng như đã viết."
+HFS_README_INVALID:
+  title: "README breaks its standard shape"
+  title_vi: "README không đúng khuôn chuẩn"
+  meaning_vi: "README.md của kho không đúng khuôn chuẩn. Thông báo của lỗi nêu đúng điểm sai: tiêu đề khác tên kho, thiếu dòng mô tả ngắn, thiếu hoặc sai thứ tự một mục chuẩn (Overview, Stack, Repository layout, Development, Work), mục Development chưa nêu đủ lệnh npm (các script do starci app sync quản lý; test chạy bằng npm test), mục Work chưa trỏ tới cây .starciwork của backend, có địa chỉ cục bộ hoặc mạng riêng, hoặc có huy hiệu không phải dịch vụ ngoài HTTPS đang chạy."
   causes_vi:
-    - "Vi phạm luật R105: lệnh chứng minh phải chạy được nguyên văn; tệp spec, script hay cấu hình mà nó nêu tên phải có trong kho (script đã xóa thì kế hoạch chứng minh phải được viết lại)."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: tạo tệp được nêu hoặc viết lại kế hoạch chứng minh (ví dụ thành một spec e2e trên world); không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
-
-HFS_README_BADGE_NOT_LIVE:
-  title: "README badge is not a live service"
-  title_vi: "Huy hiệu README không phải dịch vụ ngoài đang chạy"
-  meaning_vi: "Một huy hiệu trong README không trỏ tới dịch vụ ngoài HTTPS đang hoạt động."
-  causes_vi:
-    - "Dùng huy hiệu tĩnh hoặc địa chỉ nội bộ"
-    - "Địa chỉ huy hiệu không hợp lệ"
-  nextStep_vi: "Op docs.author thay bằng huy hiệu từ dịch vụ ngoài HTTPS thật."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_DESCRIPTION_INVALID:
-  title: "README description line invalid"
-  title_vi: "Dòng mô tả trong README chưa đúng"
-  meaning_vi: "README thiếu một dòng mô tả ngắn ngay dưới tên kho."
-  causes_vi:
-    - "Không có dòng mô tả dưới tiêu đề"
-    - "Mô tả dài nhiều dòng"
-  nextStep_vi: "Op docs.author thêm một dòng mô tả ngắn ngay dưới tiêu đề."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_DEVELOPMENT_INCOMPLETE:
-  title: "README Development section incomplete"
-  title_vi: "Mục Development trong README chưa đủ lệnh"
-  meaning_vi: "Mục Development chưa nêu đủ các lệnh cài đặt, typecheck, lint, build và test (các script do starci app sync quản lý; test chạy bằng npm test)."
-  causes_vi:
-    - "Quên một hoặc vài lệnh"
-    - "Viết bằng lệnh của trình quản lý khác"
-  nextStep_vi: "Op docs.author bổ sung đủ các lệnh npm còn thiếu."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_PRIVATE_URL:
-  title: "README links a private host"
-  title_vi: "README chứa địa chỉ nội bộ hoặc cục bộ"
-  meaning_vi: "README có địa chỉ trỏ tới máy cục bộ hoặc mạng riêng."
-  causes_vi:
-    - "Để nguyên địa chỉ localhost hoặc IP riêng"
-    - "Dán nhầm liên kết nội bộ"
-  nextStep_vi: "Op docs.author xóa hoặc thay bằng địa chỉ công khai."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_SECTION_MISSING:
-  title: "README lacks a standard section"
-  title_vi: "README thiếu một mục chuẩn"
-  meaning_vi: "README thiếu một trong các mục chuẩn: Overview, Stack, Repository layout, Development."
-  causes_vi:
-    - "Chưa viết mục đó"
-    - "Đặt sai cấp tiêu đề (không phải ##)"
-  nextStep_vi: "Op docs.author thêm mục còn thiếu bằng tiêu đề ## đúng tên."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_SECTION_ORDER:
-  title: "README sections out of order"
-  title_vi: "Các mục README sai thứ tự"
-  meaning_vi: "Các mục chuẩn của README không theo đúng thứ tự quy định."
-  causes_vi:
-    - "Đặt mục sau trước mục trước"
-    - "Chèn mục thêm làm xáo trộn thứ tự"
-  nextStep_vi: "Op docs.author sắp lại các mục theo thứ tự chuẩn."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_TITLE_INVALID:
-  title: "README title does not match repo name"
-  title_vi: "Tiêu đề README không khớp tên kho"
-  meaning_vi: "Dòng đầu README phải là # kèm tên kho nhưng đang khác."
-  causes_vi:
-    - "Tiêu đề đặt tên khác"
-    - "Kho đổi tên mà README chưa đổi"
-  nextStep_vi: "Op docs.author sửa dòng đầu thành # <tên kho>."
-  owner: other-op:docs.author
-  kind: check-finding
-
-HFS_README_WORK_POINTER_MISSING:
-  title: "README lacks Work pointer"
-  title_vi: "README thiếu chỉ dẫn tới cây Work"
-  meaning_vi: "README chưa chỉ tới cây .starciwork của kho backend."
-  causes_vi:
-    - "Chưa viết dòng trỏ tới .starciwork"
-    - "Chỉ dẫn viết sai nơi"
-  nextStep_vi: "Op docs.author thêm chỉ dẫn tới cây .starciwork của backend."
+    - "Tiêu đề, dòng mô tả hoặc thứ tự mục lệch khuôn"
+    - "Thiếu lệnh hoặc chỉ dẫn trong Development và Work"
+    - "Để nguyên địa chỉ localhost hoặc IP riêng, hoặc dùng huy hiệu tĩnh"
+  nextStep_vi: "Op docs.author sửa README.md theo đúng điều thông báo nêu."
   owner: other-op:docs.author
   kind: check-finding
 
@@ -5012,63 +4727,15 @@ HFS_SEED_PII:
   kind: check-finding
 
 HFS_SEEDS_SHAPE:
-  title: "Seed data lives in a seed level of .starcistacks and holds no custody"
-  title_vi: "Dữ liệu seed nằm ngoài cấp seed hoặc chứa custody"
-  meaning_vi: "Một tệp dưới `.starcistacks/seeds/` hoặc `.starcistacks/<env>/seeds/` không phải `seeds.yaml` và không nằm trong `sql/`, `data/`, `files/`; hoặc thuộc cấp seed của một môi trường không được khai báo; hoặc là custody (envelope `.enc`, khoá `.pem`/`.key`, tệp `.env`)."
+  title: "Seed data is misplaced or invalid"
+  title_vi: "Dữ liệu seed đặt sai chỗ hoặc không hợp lệ"
+  meaning_vi: "Dữ liệu seed của ứng dụng (R375) vi phạm khuôn của nó; thông báo của lỗi nêu đúng điểm sai. (1) Khuôn: một tệp dưới `.starcistacks/seeds/` hoặc `.starcistacks/<env>/seeds/` không phải `seeds.yaml` và không nằm trong `sql/`, `data/`, `files/`; hoặc thuộc cấp seed của một môi trường không được khai báo; hoặc là custody (envelope `.enc`, khoá `.pem`/`.key`, tệp `.env`). (2) Manifest: cấp seed có tệp nhưng không có `seeds.yaml`, manifest không đọc được hoặc sai schema starci/seeds@1, một mục trỏ tới đường dẫn không tồn tại, `after` nêu id không có hoặc tạo vòng, hay một tệp trong sql/, data/, files/ không thuộc mục nào. (3) DDL: một tệp SQL của mục sql có câu lệnh CREATE, ALTER, DROP, TRUNCATE, GRANT, REVOKE hoặc COMMENT: thay đổi schema hoặc quyền, việc chỉ migration được làm. (4) Schema dữ liệu: một tài liệu JSON hoặc YAML của mục data không qua được JSON schema mà mục đó nêu (`schema`, do app khai báo), hoặc schema đó không đọc được. (5) Dữ liệu thử: cấp seed dùng chung hoặc cấp của một môi trường không phải docker-compose có danh tính example.test hoặc giá trị, tên tệp bắt đầu bằng uat- hay test- ngoài mục test-account duy nhất mà môi trường đó khai báo. (6) Tham chiếu secret: một tài liệu seed có `{ \"secret\": \"<member>\" }` mà tên không có dạng seeds-<name>, hoặc môi trường của cấp đó (cấp dùng chung: mọi môi trường) không có `.starcistacks/<env>/secrets/<member>.enc.yaml`."
   causes_vi:
-    - "Vi phạm R375: dữ liệu seed chỉ nằm trong hai cấp seed của `.starcistacks/`, mỗi cấp là một manifest và các thư mục sql/, data/, files/."
+    - "Vi phạm R375: dữ liệu seed chỉ nằm trong hai cấp seed của `.starcistacks/`, mỗi cấp là một manifest (`seeds.yaml`, nơi khai báo thứ tự, loại, đích và chế độ once/upsert của mọi seed) và các thư mục sql/, data/, files/."
     - "Một secret được đặt cạnh seed thay vì niêm phong bằng sops trong `.starcistacks/<env>/secrets/`."
-  nextStep_vi: "Chuyển tệp vào thư mục loại của cấp seed (`starci app codemod seeds-layout` chuyển dữ liệu cũ); niêm phong secret bằng `starci app secret set --env <env>` và xoá bản rõ."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SEED_MANIFEST:
-  title: "Every seed file is an entry of its level's seeds.yaml"
-  title_vi: "Manifest seeds.yaml thiếu, sai hoặc không liệt kê tệp seed"
-  meaning_vi: "Cấp seed có tệp nhưng không có `seeds.yaml`, manifest không đọc được hoặc sai schema starci/seeds@1, một mục trỏ tới đường dẫn không tồn tại, `after` nêu id không có hoặc tạo vòng, hay một tệp trong sql/, data/, files/ không thuộc mục nào."
-  causes_vi:
-    - "Vi phạm R375: manifest là nơi khai báo thứ tự, loại, đích và chế độ (once, upsert) của mọi seed."
-  nextStep_vi: "Thêm hoặc sửa mục `{ id, kind, path, target, mode, after? }` trong `seeds.yaml` của cấp đó cho tệp được nêu."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SEED_DDL:
-  title: "A seed only writes rows: seed data is never a migration"
-  title_vi: "Seed chứa câu lệnh thay đổi schema"
-  meaning_vi: "Một tệp SQL của mục sql có câu lệnh CREATE, ALTER, DROP, TRUNCATE, GRANT, REVOKE hoặc COMMENT: thay đổi schema hoặc quyền, việc chỉ migration được làm."
-  causes_vi:
-    - "Vi phạm R375 và BE-PERSISTENCE-1: dữ liệu seed không bao giờ là migration, và migration là nơi duy nhất thay đổi schema."
-  nextStep_vi: "Chuyển câu lệnh schema thành một migration (lite: `db/migrations/<ts14>_<kebab>.sql`), để seed chỉ ghi dòng dữ liệu một cách idempotent (`on conflict do nothing` hoặc upsert)."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SEED_DATA_SCHEMA:
-  title: "A data seed validates against the schema its entry names"
-  title_vi: "Tài liệu seed không khớp schema đã khai báo"
-  meaning_vi: "Một tài liệu JSON hoặc YAML của mục data không qua được JSON schema mà mục đó nêu (`schema`, do app khai báo), hoặc schema đó không đọc được."
-  causes_vi:
-    - "Vi phạm R375: app sở hữu ý nghĩa và schema của dữ liệu, harness kiểm tra tài liệu trước khi lệnh của app nạp nó."
-  nextStep_vi: "Sửa tài liệu cho khớp schema, hoặc sửa đường dẫn `schema` của mục trỏ tới schema app khai báo."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SEED_TEST_DATA:
-  title: "A level production applies holds no test data"
-  title_vi: "Seed áp dụng cho production chứa dữ liệu thử"
-  meaning_vi: "Cấp seed dùng chung hoặc cấp của một môi trường không phải docker-compose có danh tính example.test hoặc giá trị, tên tệp bắt đầu bằng uat- hay test- ngoài mục test-account duy nhất mà môi trường đó khai báo."
-  causes_vi:
-    - "Vi phạm R375: dữ liệu thử (tài khoản mẫu, workspace mẫu) chỉ nằm trong cấp seed của môi trường dev."
-  nextStep_vi: "Chuyển dữ liệu thử vào `.starcistacks/dev/seeds/`, hoặc khai báo tài khoản thử duy nhất của production là một mục `kind: test-account` có `reason`; chỉ để dữ liệu ban đầu thật (gói, danh mục) ở cấp dùng chung."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SEED_SECRET_REF:
-  title: "A seed names a secret only as a sealed seeds-<name> member of its environment"
-  title_vi: "Tham chiếu secret của seed sai tên hoặc thiếu member niêm phong"
-  meaning_vi: "Một tài liệu seed có `{ \"secret\": \"<member>\" }` mà tên không có dạng seeds-<name>, hoặc môi trường của cấp đó (cấp dùng chung: mọi môi trường) không có `.starcistacks/<env>/secrets/<member>.enc.yaml`."
-  causes_vi:
-    - "Vi phạm R375: giá trị bí mật của seed nằm trong custody sops của môi trường, được bước seed mở trong bộ nhớ, không bao giờ nằm trong tệp seed."
-  nextStep_vi: "Niêm phong giá trị bằng `starci app secret set --env <env>` vào member seeds-<name> của môi trường đó và tham chiếu đúng tên."
+    - "Vi phạm BE-PERSISTENCE-1: dữ liệu seed không bao giờ là migration, và migration là nơi duy nhất thay đổi schema."
+    - "App sở hữu ý nghĩa và schema của dữ liệu, harness kiểm tra tài liệu trước khi lệnh của app nạp nó; dữ liệu thử chỉ nằm trong cấp seed của môi trường dev; giá trị bí mật của seed nằm trong custody sops của môi trường, được bước seed mở trong bộ nhớ."
+  nextStep_vi: "Khuôn: chuyển tệp vào thư mục loại của cấp seed (`starci app codemod seeds-layout` chuyển dữ liệu cũ); niêm phong secret bằng `starci app secret set --env <env>` và xoá bản rõ. Manifest: thêm hoặc sửa mục `{ id, kind, path, target, mode, after? }` trong `seeds.yaml` của cấp đó cho tệp được nêu. DDL: chuyển câu lệnh schema thành một migration (lite: `db/migrations/<ts14>_<kebab>.sql`), để seed chỉ ghi dòng dữ liệu một cách idempotent (`on conflict do nothing` hoặc upsert). Schema dữ liệu: sửa tài liệu cho khớp schema, hoặc sửa đường dẫn `schema` của mục trỏ tới schema app khai báo. Dữ liệu thử: chuyển vào `.starcistacks/dev/seeds/`, hoặc khai báo tài khoản thử duy nhất của production là một mục `kind: test-account` có `reason`; chỉ để dữ liệu ban đầu thật (gói, danh mục) ở cấp dùng chung. Tham chiếu secret: niêm phong giá trị bằng `starci app secret set --env <env>` vào member seeds-<name> của môi trường đó và tham chiếu đúng tên."
   owner: op-retry
   kind: check-finding
 
@@ -5103,16 +4770,6 @@ HFS_SIZE_GROWTH:
     - "Một tệp đang dưới hạn mức được thêm mã cho đến khi vượt hạn mức"
     - "Một tệp mới tạo dài hơn hạn mức, hoặc một tệp bị di chuyển sang đường dẫn mới nên bị coi là tệp mới"
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để tách phần mã mới (hoặc bớt phần cũ) sang tệp riêng đúng ô của nó, sao cho tệp không dài hơn phiên bản gốc và tệp mới nằm trong hạn mức."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SIZE_SOFT_BACKLOG:
-  title: "Source file above the soft size"
-  title_vi: "Tệp mã vượt cỡ mềm (chỉ báo cáo)"
-  meaning_vi: "Tệp mã nguồn dài hơn ngưỡng mềm của ruleParams.fileLines.soft. Đây là danh mục việc cần tách dần, chỉ báo cáo và không bao giờ làm bộ kiểm tra thất bại."
-  causes_vi:
-    - "Tệp tích tụ qua nhiều lần sửa mà chưa được tách"
-  nextStep_vi: "Không cần hành động ngay; khi sửa tệp này, tách theo trách nhiệm để không tăng thêm. Quy tắc tăng trưởng HFS_SIZE_GROWTH mới là chỗ chặn tệp vượt ngưỡng lớn thêm."
   owner: op-retry
   kind: check-finding
 
@@ -5610,94 +5267,6 @@ RELEASE_NOTES:
   owner: supervisor
   kind: check-finding
 
-RIGHTS_GIT_COMMIT:
-  title: "Raw git commit write refused"
-  title_vi: "Từ chối ghi commit git trực tiếp"
-  meaning_vi: "Agent đã gọi trực tiếp git commit, add, rm hoặc mv, nhưng mọi thay đổi lịch sử và vùng staged phải đi qua động từ runtime để quyền, bằng chứng và bước settle được giữ nhất quán."
-  causes_vi:
-    - "Agent tự stage hoặc commit thay vì để runtime tạo commit của phần việc đã qua cổng"
-    - "Agent dùng git rm hoặc git mv trực tiếp cho một thay đổi trong cây làm việc"
-  nextStep_vi: "Lệnh bị từ chối; dùng starci git commit, hoặc để nguyên thay đổi và báo cáo để runtime commit phần việc đã qua cổng khi settle."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_GIT_PUSH:
-  title: "Git push refused by role rights"
-  title_vi: "Quyền theo vai trò từ chối git push"
-  meaning_vi: "Worker, lead, Supervisor hoặc coordinator không được đẩy remote theo ý mình: remote chỉ di chuyển một lần trong mỗi bản phát hành, khi main và thẻ phát hành được đẩy cùng nhau; coordinator hoặc Supervisor chỉ được đẩy bản sao lưu bằng refspec tường minh vào refs/backup/*."
-  causes_vi:
-    - "Agent định đẩy main, một nhánh thường, mọi thẻ hoặc một refspec quá rộng"
-    - "Coordinator hoặc Supervisor đẩy bản sao lưu nhưng đích không nằm trong refs/backup/* hoặc không có refspec tường minh"
-  nextStep_vi: "Lệnh bị từ chối; để thay đổi đi qua starci release push, hoặc nếu là coordinator hay Supervisor thì dùng starci git backup với đích refs/backup/* tường minh."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_GIT_SYNC:
-  title: "Raw git synchronization write refused"
-  title_vi: "Từ chối lệnh git đồng bộ trực tiếp"
-  meaning_vi: "Agent đã gọi một lệnh git ghi lịch sử, ref, cấu hình hoặc cây làm việc ngoài commit, push và tag; các thao tác merge, rebase, pull, fetch, checkout, switch, reset, restore, clean, stash, worktree, branch và tương tự chỉ do runtime điều phối."
-  causes_vi:
-    - "Agent tự merge hoặc rebase main vào lane"
-    - "Agent tự đổi nhánh, reset, restore, clean, stash, sửa ref, cấu hình hoặc worktree"
-  nextStep_vi: "Lệnh bị từ chối; dùng starci git sync để cập nhật lane hoặc starci git land khi coordinator đưa thay đổi vào main."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_GIT_TAG:
-  title: "Git tag write refused"
-  title_vi: "Từ chối ghi thẻ git"
-  meaning_vi: "Thẻ là dấu của một bản phát hành nên chỉ release cut được tạo thẻ; agent không được tạo, di chuyển hoặc xóa thẻ, và dấu giữ chỗ không phải thẻ."
-  causes_vi:
-    - "Agent định tạo hoặc ký một thẻ phát hành"
-    - "Agent định di chuyển, ép ghi hoặc xóa thẻ, hoặc dùng thẻ làm dấu giữ chỗ"
-  nextStep_vi: "Lệnh bị từ chối; dùng starci release cut cho thẻ phát hành, còn dấu giữ chỗ dùng refs/backup/* hoặc refs/salvage/*."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_NPM_CI_UNLOCKED:
-  title: "Unlocked clean install refused"
-  title_vi: "Từ chối cài sạch khi chưa giữ khóa máy"
-  meaning_vi: "npm ci xóa và dựng lại node_modules nên là một lần chạy nặng; lệnh chỉ được chạy sau khi runtime đã lấy host lock cho đúng tác vụ."
-  causes_vi:
-    - "Agent gọi npm ci hoặc một biến thể clean install mà không có host lock"
-    - "Host lock đang do terminal khác giữ hoặc chủ khóa đã stale"
-  nextStep_vi: "Lệnh bị từ chối; dùng động từ starci của cổng hoặc đồng bộ ứng dụng để runtime lấy host lock rồi cài phụ thuộc, không chạy npm ci bằng tay."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_NPM_PUBLISH:
-  title: "Package publish refused"
-  title_vi: "Từ chối phát hành package"
-  meaning_vi: "Package chỉ được publish một lần trong mỗi bản phát hành và từ release commit, nên agent ở lane không được publish, unpublish, deprecate hoặc đổi dist-tag."
-  causes_vi:
-    - "Agent gọi npm, pnpm hoặc yarn publish"
-    - "Agent định unpublish, deprecate hoặc sửa dist-tag ngoài release cut"
-  nextStep_vi: "Lệnh bị từ chối; hoàn tất lane và để chủ chạy starci release cut từ release commit."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_OP_RUNTIME_WRITE:
-  title: "Op runtime write refused"
-  title_vi: "Từ chối op ghi vào runtime"
-  meaning_vi: "Op chỉ sửa ứng dụng trong worktree của workflow và không được ghi vào checkout .claude của runtime; lỗi của harness phải đi qua đường nâng cấp runtime."
-  causes_vi:
-    - "Op định sửa mã, cấu hình hoặc tri thức bên trong checkout .claude"
-    - "Op phát hiện lỗi harness rồi cố sửa ngay trong phần việc của ứng dụng"
-  nextStep_vi: "Lệnh bị từ chối; ghi lesson hoặc upgrade request trong báo cáo để đường owner hoặc supervisor self-upgrade xử lý."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_PROTECTED_ZONE:
-  title: "Protected-zone write refused"
-  title_vi: "Từ chối ghi vào vùng được bảo vệ"
-  meaning_vi: "Supervisor self-upgrade đã định sửa vùng được bảo vệ của runtime, nơi chỉ đường owner được thay đổi guard và quyền vai trò, release cut và git hook, trigger CI, chính sách test, host lock, rule catalog liên quan hoặc cài đặt quyền và model."
-  causes_vi:
-    - "Một self-upgrade sửa trực tiếp tệp nằm trong vùng được khai báo ở modules/kernel/protected-zone.yaml"
-    - "Một self-upgrade sửa mục rule hoặc failure code bảo vệ vùng đó"
-  nextStep_vi: "Lệnh bị từ chối; Supervisor nộp đề xuất cho owner, nêu thay đổi cần làm và lý do, để đường owner thực hiện."
-  owner: supervisor
-  kind: verb-refusal
-
 RIGHTS_PUSH_NOT_RELEASE:
   title: "Pre-push gate refused the push"
   title_vi: "Cổng pre-push từ chối lần đẩy"
@@ -5711,441 +5280,6 @@ RIGHTS_PUSH_NOT_RELEASE:
   owner: supervisor
   kind: verb-refusal
 
-RIGHTS_RAW_TOOL:
-  title: "Raw side-effecting tool refused"
-  title_vi: "Từ chối công cụ thô có tác động phụ"
-  meaning_vi: "Agent đã gọi trực tiếp một công cụ có tác động phụ trong khi runtime có động từ starci sở hữu thao tác đó; chính sách chỉ cho phép các lệnh chỉ đọc được khai báo một lần trong bảng quy tắc của command guard."
-  causes_vi:
-    - "Agent gọi npm run, npm test, npm install, node scripts, docker, supabase, gh, schtasks, shutdown, một test runner hoặc Orca mutation trực tiếp"
-    - "Agent gọi một chương trình chưa được khai báo trong bảng chính sách lệnh"
-  nextStep_vi: "Lệnh bị từ chối; dùng đúng starci <nhóm> <động từ> mà lời từ chối nêu, hoặc nhờ owner khi không có động từ được phép."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_RELEASE_CUT:
-  title: "Release cut refused"
-  title_vi: "Từ chối cắt bản phát hành"
-  meaning_vi: "Release cut gắn thẻ bản phát hành cho một commit đã đẩy và publish gói là quyết định phát hành của owner; worker, lead, Supervisor và coordinator không được tự khởi động chúng."
-  causes_vi:
-    - "Agent gọi starci release cut hoặc đường script tương đương"
-    - "Agent định publish bản phát hành mà chưa có phê duyệt của owner"
-  nextStep_vi: "Lệnh bị từ chối; đẩy main bằng starci release push, và báo để owner phê duyệt starci release cut hoặc publish."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_ROLE_DENIED:
-  title: "Action denied by role rights"
-  title_vi: "Quyền theo vai trò từ chối thao tác"
-  meaning_vi: "Command guard đã từ chối một thao tác vì vai trò của caller không sở hữu tác động đó; một bảng quy tắc duy nhất được PreToolUse guard và PATH shim cùng đọc."
-  causes_vi:
-    - "Agent gọi một lệnh ghi hoặc công cụ có tác động phụ ngoài quyền của vai trò"
-    - "Agent bỏ qua động từ starci sở hữu thao tác"
-  nextStep_vi: "Không chạy đường thô; dùng động từ starci được lời từ chối nêu hoặc báo lại cho vai trò sở hữu thao tác."
-  owner: op-retry
-  kind: verb-refusal
-
-RIGHTS_SUITE_RUN:
-  title: "Whole-suite run refused"
-  title_vi: "Từ chối chạy toàn bộ bộ kiểm thử"
-  meaning_vi: "Toàn bộ suite chỉ chạy một lần trong mỗi release hoặc theo yêu cầu trong unit.verify hay e2e.verify; một worker chỉ chạy tệp spec vừa thay đổi hoặc để op gate chọn phạm vi."
-  causes_vi:
-    - "Agent gọi npm test, một script test toàn bộ hoặc node --test trên cả cây tests"
-    - "Agent chạy suite ngoài CI và ngoài op verify được yêu cầu"
-  nextStep_vi: "Lệnh bị từ chối; chạy riêng tệp spec đã thay đổi, để op gate chọn spec liên quan, hoặc dùng unit.verify/e2e.verify khi owner hay mục tiêu yêu cầu."
-  owner: op-retry
-  kind: verb-refusal
-
-RT_ABSOLUTE_PATH:
-  title: "Hard-coded absolute host path"
-  title_vi: "Đường dẫn tuyệt đối của máy bị ghi cứng"
-  meaning_vi: "Một tệp được git theo dõi của runtime chứa đường dẫn tuyệt đối của máy chủ: đường dẫn có ổ đĩa (chữ cái ổ đĩa, dấu hai chấm và dấu gạch), đường dẫn hồ sơ người dùng (/Users/<tên>/, /home/<tên>/) hoặc đường dẫn AppData đã khai triển. Kho .claude dùng đường dẫn tương đối; đường dẫn ghi cứng chỉ chạy trên một máy và làm lộ tên người dùng."
-  causes_vi:
-    - "Một lane ghi đường dẫn máy của nó vào mã, tài liệu, tri thức, ví dụ hoặc dữ liệu thử"
-    - "Một spec dựng fixture từ ổ đĩa ghi cứng thay vì thư mục tạm của nó"
-  nextStep_vi: "Người giám sát đổi đường dẫn thành đường dẫn tương đối hoặc tên giữ chỗ (<runtime>/..., %LOCALAPPDATA% chưa khai triển), cho mã lấy đường dẫn từ gốc runtime, os.tmpdir(), cấu hình hoặc hàm gốc trạng thái, và cho spec dựng fixture từ thư mục tạm."
-  owner: supervisor
-  kind: check-finding
-
-RT_API_SHAPE:
-  title: "api folder breaks its shape"
-  title_vi: "Thư mục api sai hình dạng"
-  meaning_vi: "Một tệp lệnh trong scripts/api/<hệ thống>/ export nhiều hơn một hàm hoặc không export hàm mang tên của tệp, một tệp bên ngoài hệ thống import lib.mjs của hệ thống đó, một hệ thống api import hệ thống khác, hoặc một tệp lệnh không phải là id trong hợp đồng calls của hệ thống."
-  causes_vi:
-    - "Thêm hằng số hay hàm phụ vào một tệp lệnh"
-    - "Gọi thẳng trình chạy lib.mjs thay vì tệp lệnh"
-  nextStep_vi: "Người giám sát tách mỗi lệnh thành một tệp riêng mang tên lệnh, chuyển hằng dùng chung vào lib.mjs của hệ thống và để nơi gọi dùng tệp lệnh."
-  owner: supervisor
-  kind: check-finding
-
-RT_BASE_IMPURE:
-  title: "Base tier writes or reads the environment"
-  title_vi: "Tầng cơ sở ghi tệp hoặc đọc biến môi trường"
-  meaning_vi: "Một tệp của tầng cơ sở (engine nền tảng, scripts/lib) gọi một hàm ghi của node:fs (writeFileSync, rmSync, mkdirSync...) hoặc đọc process.env ngoài các điểm khai báo trong ruleParams.runtime.baseEnvSeams. Tầng cơ sở chỉ chứa hàm thuần."
-  causes_vi:
-    - "Một hàm tiện ích tự ghi tệp thay vì trả dữ liệu cho nơi gọi"
-    - "Đọc cấu hình từ biến môi trường bên trong thư viện"
-  nextStep_vi: "Người giám sát chuyển thao tác ghi vào chủ sở hữu của nó (scripts/api/fs, engine/db hoặc một module nghiệp vụ) và truyền giá trị môi trường vào dưới dạng tham số."
-  owner: supervisor
-  kind: check-finding
-
-RT_CITED_PATH_MISSING:
-  title: "Cited runtime path does not exist"
-  title_vi: "Đường dẫn được trích dẫn không tồn tại"
-  meaning_vi: "Văn bản đang dùng (modules ngoài lịch sử hợp đồng, docs, skills, knowledge, CONTEXT.md, README.md, CONTRIBUTING.md, init, tài liệu ui) trích dẫn một đường dẫn runtime không tồn tại."
-  causes_vi:
-    - "Di chuyển hay xóa tệp mà không cập nhật tài liệu"
-    - "Gõ sai đường dẫn trong tài liệu"
-  nextStep_vi: "Người giám sát sửa trích dẫn thành đường dẫn hiện tại hoặc xóa câu đó."
-  owner: supervisor
-  kind: check-finding
-
-RT_CLI_APP_ONLY_TEMPLATES:
-  title: "Managed app template invokes the wrong CLI"
-  title_vi: "Template ứng dụng gọi sai bề mặt CLI"
-  meaning_vi: "Template do StarCi quản lý hoặc bản sao runtime đã sinh gọi lệnh hfs cũ, test-stack cũ, hoặc một nhóm starci không phải app; repository sản phẩm chỉ được gọi starci app <verb>."
-  causes_vi:
-    - "Vi phạm luật R200: mọi hành động sản phẩm trong template phải đi qua CLI thống nhất starci app."
-  nextStep_vi: "Đổi lời gọi thành starci app <verb>, sinh lại các bản sao runtime và chạy lại kiểm tra."
-  owner: op-retry
-  kind: check-finding
-
-RT_CLI_CATALOG_DRIFT:
-  title: "Generated CLI catalog outputs drifted"
-  title_vi: "Các đầu ra catalog CLI sinh tự động bị lệch"
-  meaning_vi: "Một đầu ra sinh từ catalog của modules/cli/commands (packages/cli/src/catalog.generated.mjs, docs/cli.md, packages/cli/completions/*) khác với nội dung mà scripts/cli/gen-catalog.mjs sinh ra: thiếu, cũ, hoặc đã sửa tay."
-  causes_vi:
-    - "Sửa một file catalog trong modules/cli/commands mà quên chạy gen-catalog --write"
-    - "Sửa tay một đầu ra sinh tự động thay vì sửa catalog nguồn"
-  nextStep_vi: "Người giám sát chạy starci runtime gen-catalog --write rồi commit cả catalog lẫn các đầu ra; không sửa tay tệp đã sinh."
-  owner: supervisor
-  kind: check-finding
-
-RT_CLI_VERB_PARITY:
-  title: "CLI catalog and implementation disagree"
-  title_vi: "Catalog CLI và cài đặt không khớp nhau"
-  meaning_vi: "Catalog của modules/cli/commands và code lệch nhau: một verb của catalog không có handler (impl.script thiếu, không có verbs/<verb>.mjs, không có case trong cli.mjs) hoặc không có tài liệu; một verb module của kernel hoặc một case của cli.mjs không có file catalog; một --flag trong usage:/required của module verb hay trong api-boolean-flags.txt không nằm trong flags của catalog."
-  causes_vi:
-    - "Thêm một verb module trong scripts/kernel/verbs mà quên file modules/cli/commands/kernel/<verb>.yaml"
-    - "Đổi usage hoặc required của một verb mà không cập nhật flags của catalog"
-  nextStep_vi: "Người giám sát đồng bộ hai phía: thêm file catalog cho verb mới, sửa flags của catalog theo usage/required, hoặc xóa verb khỏi catalog khi handler đã bị xóa."
-  owner: supervisor
-  kind: check-finding
-
-RT_CONFIG_DEFAULT_TWICE:
-  title: "A documented default is restated outside its owner"
-  title_vi: "Một giá trị mặc định được khai báo lại ngoài tệp chủ"
-  meaning_vi: "Mỗi mặc định của cấu hình được viết một lần trong tệp chủ của nó: các leaf camelCase hay khóa lowercase của config.example.yaml, và các mặc định mà chủ sở hữu khai báo (DEFAULTS của scripts/machine/home.mjs cho supervisor và ngôn ngữ owner, engine/config.mjs cho connector/ask/UAT/spec/allocation, engine/orca-config.mjs cho độ sâu worker, scripts/reconciler/state.mjs cho mode của controller). Một literal fallback (??, ||, mặc định tham số, hay ternary kiểu language === 'en' ? 'en' : 'vi') ở tệp khác là bản chép lại; phía đọc gọi accessor của chủ (supervisorSettings(), configuredMode(), ownerLanguage()). Spec, test, runtime sinh ra, story và template HFS nằm ngoài luật."
-  causes_vi:
-    - "Viết ?? <literal> hay || <literal> cho một khóa đã có trong config.example.yaml thay vì gọi accessor"
-    - "Khai báo tham số mặc định bằng literal giá trị mà chủ sở hữu đã định"
-  nextStep_vi: "Người giám sát thay literal bằng accessor của chủ sở hữu (import DEFAULTS/supervisorSettings/ownerLanguage...) hoặc chuyển mặc định về tệp chủ rồi đọc qua nó."
-  owner: supervisor
-  kind: check-finding
-
-RT_CONTROL_CHARACTER:
-  title: "Raw control character in source"
-  title_vi: "Ký tự điều khiển thô trong mã nguồn"
-  meaning_vi: "Một tệp văn bản được git theo dõi (mjs, cjs, js, ts, tsx, yaml, md, json) chứa ký tự điều khiển thô (U+0000 đến U+001F trừ tab, LF, CR, và U+007F). NUL thô làm git và grep coi tệp là nhị phân; backspace thô trong biểu thức chính quy không còn nghĩa \\b như khi gõ."
-  causes_vi:
-    - "Một lần sửa bằng script ghi chuỗi \\b hoặc \\0 thành ký tự thật"
-  nextStep_vi: "Người giám sát thay ký tự đó bằng dạng thoát của nó (\\0, \\b, \\u001b) để tệp giữ đúng nghĩa ban đầu."
-  owner: supervisor
-  kind: check-finding
-
-RT_COVERAGE_CODE_UNROUTED:
-  title: "A machine finding routed to lint has no applicable plugin enforcer"
-  title_vi: "Mã lỗi chuyển sang lint thiếu bộ kiểm tra phù hợp"
-  meaning_vi: "Mã lỗi máy chuyển sang bề mặt lint nhưng plugin của profile và edition đó không đăng ký bộ kiểm tra phát mã này."
-  causes_vi:
-    - "Vi phạm R247: mã lỗi chỉ được xử lý bởi plugin của profile khác hoặc bộ kiểm tra chưa được đăng ký."
-  nextStep_vi: "Đăng ký bộ kiểm tra phát đúng mã trong plugin của profile và edition được định tuyến, rồi thêm spec chứng minh đường đi."
-  owner: op-retry
-  kind: check-finding
-
-RT_COVERAGE_EDITION_ASYMMETRY:
-  title: "An edition difference has no stated reason"
-  title_vi: "Khác biệt phiên bản thiếu lý do"
-  meaning_vi: "Luật, ô hoặc bộ kiểm tra khác nhau giữa lite và full nhưng chưa ghi lý do (editionWhy)."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Ghi editionWhy nêu lý do thật của khác biệt."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_GATE_LIE:
-  title: "A catalog gate claim has no corresponding command"
-  title_vi: "Cổng khai báo không có lệnh kiểm tra tương ứng"
-  meaning_vi: "Luật tuyên bố chạy ở một cổng nhưng lệnh thật của cổng không chạy bộ kiểm tra áp dụng."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Đối chiếu hook, cổng và workflow rồi sửa lệnh hoặc khai báo cho đúng."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_MATRIX:
-  title: "The HFS standard has a missing coverage link"
-  title_vi: "Chuẩn HFS thiếu mắt xích kiểm chứng"
-  meaning_vi: "Bảng bao phủ chưa nối đủ luật, bộ kiểm tra và bằng chứng cho từng phiên bản."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Sửa các phát hiện RT_COVERAGE trong báo cáo rồi chạy lại bộ kiểm tra."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_DOC:
-  title: "A rule has no documentation evidence"
-  title_vi: "Luật thiếu bằng chứng tài liệu"
-  meaning_vi: "Tài liệu được luật dẫn không tồn tại hoặc không giải thích mã lỗi trong phiên bản áp dụng."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Dẫn tài liệu thật và giải thích từng mã lỗi của luật."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_ENFORCER:
-  title: "A rule has no enforcer in an applicable edition"
-  title_vi: "Luật thiếu bộ kiểm tra trong phiên bản áp dụng"
-  meaning_vi: "Luật không có bộ kiểm tra đã tồn tại và chạy trong phiên bản được khai báo."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Xây dựng và đăng ký bộ kiểm tra đúng phiên bản của luật."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_EXAMPLE:
-  title: "A rule or slot has no example"
-  title_vi: "Luật hoặc ô thiếu ví dụ"
-  meaning_vi: "Không có tệp ví dụ đúng phiên bản thể hiện cấu trúc mà luật hoặc ô yêu cầu."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Thêm cấu trúc vào ví dụ đúng phiên bản và dẫn tệp thật trong danh mục."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_SPEC:
-  title: "A failure code has no edition-specific spec proof"
-  title_vi: "Mã lỗi thiếu đặc tả chứng minh theo phiên bản"
-  meaning_vi: "Mã lỗi chưa có đặc tả được khai báo với nhãn proves cho phiên bản áp dụng."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Thêm ca vi phạm và ca đạt, ghi nhãn proves: CODE@edition và dẫn tệp trong luật."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_TEMPLATE:
-  title: "A rule or slot has no template"
-  title_vi: "Luật hoặc ô thiếu mẫu chuẩn"
-  meaning_vi: "Luật hoặc ô bắt buộc chưa có mẫu hay đường dẫn scaffold thật trong phiên bản áp dụng."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Bổ sung mẫu đúng phiên bản và nối mẫu với ô hoặc luật."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_NO_WITNESS:
-  title: "A rule has no mutation witness"
-  title_vi: "Luật thiếu ca đột biến làm chứng"
-  meaning_vi: "Luật chưa có đột biến từ ví dụ đúng làm phát sinh mã lỗi hoặc lý do có ngày cho trường hợp không thể kích hoạt."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Thêm đột biến có mã lỗi mong đợi cho từng phiên bản hoặc ghi lý do không thể kích hoạt kèm ngày."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_PROOF_VACUOUS:
-  title: "A claimed coverage proof does not exercise its enforcer"
-  title_vi: "Bằng chứng kiểm thử không thực thi bộ kiểm tra"
-  meaning_vi: "Spec khai báo proves nhưng không có ca hợp lệ và vi phạm thực chất, hoặc dùng bằng chứng của một bộ kiểm tra cho bộ khác."
-  causes_vi:
-    - "Vi phạm R247: danh sách valid hoặc invalid rỗng, mã lỗi chỉ được nhắc tên, hoặc bộ kiểm tra chưa được gọi trong bằng chứng."
-  nextStep_vi: "Thêm ca hợp lệ và vi phạm cho từng edition, gọi đúng bộ kiểm tra và xác nhận kết quả bằng assertion."
-  owner: op-retry
-  kind: check-finding
-
-RT_COVERAGE_REQUIREMENT_UNLEDGERED:
-  title: "A hard documentation requirement is not ledgered"
-  title_vi: "Yêu cầu bắt buộc trong tài liệu chưa vào sổ"
-  meaning_vi: "Một câu yêu cầu bắt buộc không có mục sổ hợp lệ hoặc neo tài liệu được luật dẫn."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Đưa yêu cầu vào sổ cùng luật hoặc trạng thái có lý do và dẫn neo tài liệu."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_SCHEMA_NO_RECORD:
-  title: "A Work schema has no full-edition example record"
-  title_vi: "Schema Work thiếu bản ghi ví dụ full"
-  meaning_vi: "Một họ bản ghi Work chưa có bản ghi trong ví dụ full và chưa được đánh dấu là dữ liệu sinh."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Thêm bản ghi ví dụ theo schema hoặc khai báo generated cho họ dữ liệu sinh."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_SUPERSEDED_CITE:
-  title: "A citation uses a superseded ruling"
-  title_vi: "Trích dẫn dùng quyết định đã bị thay thế"
-  meaning_vi: "Tài liệu còn dẫn quyết định cũ mà thiếu quyết định kế tiếp trong cùng đoạn hoặc còn cách diễn đạt đã bị bỏ."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Đổi sang quyết định hiện hành hoặc nêu quyết định kế tiếp trong cùng đoạn."
-  owner: runtime-core
-  kind: check-finding
-
-RT_COVERAGE_SURFACE_UNMAPPED:
-  title: "A surface has no rule and slot mapping"
-  title_vi: "Bề mặt chưa nối với luật và ô"
-  meaning_vi: "Một ô theo phiên bản hoặc bề mặt khai báo chưa có luật và ô áp dụng, cũng chưa có lý do thiếu."
-  causes_vi:
-    - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Nối bề mặt với luật và ô đúng phiên bản hoặc ghi gap với lý do cụ thể."
-  owner: runtime-core
-  kind: check-finding
-
-RT_DOCUMENTED_DEFAULT_DRIFT:
-  title: "A documented default differs from the value the code reads"
-  title_vi: "Một giá trị mặc định được ghi trong tài liệu khác với giá trị mà code đọc"
-  meaning_vi: "Tài liệu nêu giá trị mặc định bằng cách dẫn khóa sở hữu nó (default <giá trị> = `<khóa>`); khóa là đường dẫn config.yaml (xác định qua hàm settings của bộ kiểm tra) hoặc <tệp yaml trong modules/>:<đường dẫn>. Giá trị ghi khác giá trị khóa đó thực sự cho, hoặc khóa không xác định được, là một phát hiện nêu tệp:dòng."
-  causes_vi:
-    - "Đổi mặc định trong code hoặc yaml mà không sửa số trong tài liệu"
-    - "Gõ sai khóa dẫn hoặc dẫn tới khóa đã bị đổi tên"
-  nextStep_vi: "Người giám sát sửa số trong tài liệu cho khớp giá trị của khóa, hoặc sửa khóa dẫn; không chép lại một số không dẫn khóa."
-  owner: supervisor
-  kind: check-finding
-
-RT_DOC_NO_OWNER:
-  title: "A document has no single ownership header"
-  title_vi: "Một tài liệu không có đúng một dòng sở hữu"
-  meaning_vi: "Một tệp docs/*.md không mở đầu bằng đúng một dòng sở hữu — \"Owner: <đường dẫn knowledge/ hoặc modules/ tồn tại>\" khi tài liệu giải thích một nguồn do máy sở hữu, hoặc \"Task: <một việc>\" với một tài liệu hướng dẫn — hoặc nó trùng một tài liệu khác: cùng một dòng Task, hoặc hai tiêu đề chung từ hai từ chủ đề trở lên trong khi ít nhất 30% câu của tài liệu ngắn hơn xuất hiện trong tài liệu kia. Một câu chuyện chỉ có một tài liệu; nguồn máy là luật và tài liệu chỉ đọc nó."
-  causes_vi:
-    - "Thêm một tài liệu mà quên dòng Owner:/Task: đầu tiên, hoặc Owner trỏ tới một đường dẫn không tồn tại hay ngoài knowledge/ và modules/"
-    - "Tách một tài liệu thành hai mà không gộp nội dung trùng hoặc không đổi dòng Task của một trong hai"
-  nextStep_vi: "Người giám sát thêm đúng một dòng sở hữu vào dòng đầu của tài liệu (một nguồn knowledge/ hoặc modules/ tồn tại, hoặc một Task duy nhất), hoặc gộp hai tài liệu trùng thành một rồi xóa tệp thừa, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_EDGE_CASE_REGISTRY:
-  title: "The edge-case registry is inconsistent"
-  title_vi: "Sổ tình huống biên không nhất quán"
-  meaning_vi: "Mỗi mục covered của modules/reconciler/edge-cases.yaml phải nêu một tệp spec và một quy tắc đều tồn tại; mỗi mục có họ, lần xảy ra thật và trạng thái hợp lệ."
-  causes_vi:
-    - "Mục covered thiếu spec hoặc quy tắc"
-    - "Spec hoặc quy tắc được đổi tên mà sổ không đổi theo"
-  nextStep_vi: "Người giám sát sửa mục cho đúng tệp, hoặc chuyển mục sang open kèm lý do."
-  owner: supervisor
-  kind: check-finding
-
-RT_EVENT_SPILL_BYPASS:
-  title: "A ledger event payload is spilled by hand"
-  title_vi: "Một payload sự kiện của sổ cái được tự chuyển sang blob"
-  meaning_vi: "Payload sự kiện lớn theo đầu vào (danh sách tệp, manifest, bản tóm tắt, báo cáo, lời phê bình, menu) chỉ đi vào kho blob qua một đường duy nhất là appendEvent: engine/db/event-compact.mjs giữ bản inline tối đa 16 KiB và toàn bộ payload sau events.payload_sha, người đọc giải qua engine/db/event-payload.mjs. Một tệp nguồn khác truyền payloadSha vào lệnh ghi, bắt lỗi payload quá lớn để tự chuyển, hoặc chèn thẳng vào bảng events là đi vòng."
-  causes_vi:
-    - "Người viết gặp STARCI_EVENT_PAYLOAD_TOO_LARGE rồi tự lưu blob và truyền payloadSha thay vì để appendEvent làm"
-  nextStep_vi: "Bỏ đoạn tự chuyển; gọi appendEvent với payload đầy đủ và đọc lại bằng eventPayloadOf."
-  owner: supervisor
-  kind: check-finding
-
-RT_EXAMPLE_COUPLING:
-  title: "Runtime source names a concrete example tree"
-  title_vi: "Mã nguồn runtime gọi tên một cây examples/ cụ thể"
-  meaning_vi: "Một tệp nguồn runtime được theo dõi (scripts/, engine/, packages/ trừ bản sao runtime đã sinh, ui/src, ui/api, hay một template quản lý dưới packages/hfs/templates/) viết literal examples/<name> — trỏ tới một thư mục ví dụ cụ thể thay vì một khai báo chung. Canon của runtime ship vào mọi sản phẩm, nên một đường dẫn ví dụ cứng chỉ đúng trên một checkout. Spec, test, lịch sử CHANGELOG và các bản ghi .starciwork nằm ngoài phạm vi; một lượt đọc runtime thật sự cần được khai báo một lần trong scripts/lib/example-refs.mjs và mọi nơi dùng gọi tên hằng đó."
-  causes_vi:
-    - "Một script hay gate đọc ví dụ của riêng một sản phẩm (ví dụ một tệp declaration đặt theo tên repo) lúc chạy, thay vì một mẫu chung hay tệp của repo đang được kiểm"
-    - "Comment, tài liệu hay chuỗi trong nguồn trích dẫn đường dẫn examples/<name> cụ thể thay vì nói examples/<app>"
-  nextStep_vi: "Người giám sát khái quát hóa chỗ đó (ví dụ examples/<app>, một mẫu template.*, hay một hằng trong scripts/lib/example-refs.mjs khi runtime thật sự đọc cây đó) hoặc trỏ tới repo đang được kiểm tra, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_EXTERNAL_OWNER:
-  title: "External system reached outside its owner"
-  title_vi: "Gọi hệ thống bên ngoài ngoài nơi sở hữu nó"
-  meaning_vi: "Trong mã nguồn runtime, một tệp import một module bên ngoài (node:child_process, node:http, node:sqlite...), gọi một hàm toàn cục (fetch) hoặc khởi chạy một chương trình (git, npm, orca, powershell, node...) mà ruleParams.runtime.infraOwners của knowledge/hfs/runtime-slots.yaml không giao cho thư mục của tệp đó. Chỉ scripts/api/<hệ thống>/ (và engine/db cho SQLite) được gọi ra bên ngoài."
-  causes_vi:
-    - "Gọi spawnSync/execFile hay fetch trực tiếp trong tầng nghiệp vụ hoặc trong scripts/lib"
-    - "Một tệp api của hệ thống này khởi chạy chương trình của hệ thống khác"
-  nextStep_vi: "Người giám sát chuyển lời gọi vào một tệp lệnh của scripts/api/<hệ thống>/ rồi gọi hàm đó, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_FACT_FALSE:
-  title: "A machine-evaluated fact is false, or prose contradicts it"
-  title_vi: "Một sự thật máy kiểm được là sai, hoặc văn bản mâu thuẫn với nó"
-  meaning_vi: "Một sự thật trong knowledge/hfs/facts.yaml không đúng với knowledge/hfs/slots.yaml (nguồn duy nhất của hình dạng sản phẩm), hoặc một dòng trong knowledge, docs hay README nói điều ngược lại, ví dụ 'không có package.json' cho một ứng dụng fe vốn có package.json riêng. Văn bản chép lại điều khẳng định bằng lời khác sẽ lệch dần khỏi slots.yaml."
-  causes_vi:
-    - "Sửa slots.yaml mà không sửa sự thật hoặc câu văn tương ứng"
-    - "Một tài liệu chép lại điều khẳng định của slot bằng lời riêng và lời đó cũ đi"
-  nextStep_vi: "Người giám sát xóa câu văn mâu thuẫn và thay bằng mã sự thật hoặc mã slot; nếu sự thật sai thì sửa slots.yaml hoặc facts.yaml, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_GENERATED_BLOCK_STALE:
-  title: "A generated README block or derived field differs from its source"
-  title_vi: "Khối README sinh tự động khác nguồn của nó"
-  meaning_vi: "Một khối giữa các dấu hfs:generated của knowledge/hfs/README.md (bản đồ ứng dụng, cây mã backend, ma trận tầng, cây mã frontend, danh mục luật) không bằng từng byte với bản dựng từ knowledge/hfs/slots.yaml và rules.yaml. Cùng cách đó, danh sách verification.automated của luật mẫu, slot của mục files: và mã code của mục why phải bằng đúng bản suy ra từ danh mục luật và slots.yaml. Sửa tay hoặc đổi nguồn mà không dựng lại làm văn bản nói khác nguồn."
-  causes_vi:
-    - "Sửa slots.yaml hoặc rules.yaml mà không chạy lại readme-blocks.mjs --write"
-    - "Sửa tay nội dung bên trong một khối sinh tự động"
-  nextStep_vi: "Người giám sát chạy starci runtime readme-blocks --write hoặc starci runtime derived-fields --write rồi commit, qua một lane đã land; không sửa tay bên trong khối."
-  owner: supervisor
-  kind: check-finding
-
-RT_GENERATED_DRIFT:
-  title: "Generated copy drifted"
-  title_vi: "Bản sao sinh tự động bị lệch"
-  meaning_vi: "Một bản sao sinh tự động trong packages/hfs/runtime, packages/eslint/be/runtime hoặc packages/eslint/fe/runtime, packages/eslint/grammar-core/runtime, packages/eslint/grammar-offset-pop/runtime khác với nội dung mà scripts/hfs/sync-runtime.mjs ghi ra từ nguồn duy nhất: thiếu, cũ, hoặc thừa tệp."
-  causes_vi:
-    - "Sửa một tệp nguồn được đóng gói mà quên chạy sync-runtime"
-    - "Sửa tay một tệp trong thư mục runtime/ của gói"
-  nextStep_vi: "Người giám sát chạy bước sinh bản sao runtime của kiểm tra (sync-runtime); các bản sao là kết quả sinh tự động đã gitignore nên không commit, và không sửa tay thư mục runtime/ của gói."
-  owner: supervisor
-  kind: check-finding
-
-RT_HELD_UNSURFACED:
-  title: "A runtime fault of the Supervisor or the owner reaches nobody"
-  title_vi: "Lỗi runtime giao cho Supervisor hoặc chủ sở hữu không đến được tay ai"
-  meaning_vi: "Một mã lỗi loại runtime-fault được giao cho Supervisor hoặc chủ sở hữu nhưng mục của nó không nêu cơ chế báo cho họ, hoặc cơ chế được nêu không có thật trong tệp được trỏ tới. Trạng thái bị giữ như vậy đứng im hàng giờ cho đến khi có người đọc mã nguồn."
-  causes_vi:
-    - "Thêm mã runtime-fault mới mà không khai báo surfacedBy"
-    - "surfacedAt trỏ tới tệp không mở Decision Item, không đặt đồng hồ SLA hoặc không nêu dòng digest như đã khai"
-    - "Mã trạng thái chưa có đường báo thì phải ghi surfacedBy open kèm mục đang mở trong sổ ca biên"
-  nextStep_vi: "Khai báo surfacedBy, surfacedAs và surfacedAt trong mục của mã (decision-item, sla-clock, incident, digest, notifier, caller hoặc open) và làm cho tệp được trỏ tới thật sự báo cho vai trò giữ mã; nếu chưa làm được thì ghi open và thêm mục open vào modules/reconciler/edge-cases.yaml nêu đúng lý do."
-  owner: supervisor
-  kind: check-finding
-
-RT_HOOK_SHAPE:
-  title: "App hook template breaks the gate model"
-  title_vi: "Template hook của app phá vỡ mô hình cổng"
-  meaning_vi: "Template hook của app không đúng R225: pre-commit chạy L0; pre-push gọi chính sách push dùng chung trong gói, không chạy build, test, typecheck hay lint."
-  causes_vi:
-    - "Thêm lại npm run typecheck hoặc test:affected vào pre-commit"
-    - "Đưa build, typecheck, lint hay test vào pre-push hoặc bỏ lời gọi chính sách push dùng chung"
-  nextStep_vi: "Khôi phục template theo R225 rồi chạy starci app sync --execute để tạo lại hook."
-  owner: supervisor
-  kind: check-finding
-
-RT_HOST_PATH_IN_TEMPLATE:
-  title: "A host drive path is hard-coded in source"
-  title_vi: "Một đường dẫn trên host bị viết cứng trong mã nguồn"
-  meaning_vi: "Một tệp nguồn runtime hay một template quản lý viết cứng một đường dẫn của máy host — một ổ đĩa Windows kiểu chữ cái kèm dấu hai chấm, một thư mục người dùng kiểu Users hay home, hay một đường AppData đã bung. Source và template ship sang mọi máy và mọi sản phẩm, nên đường dẫn phải tương đối, đi qua runtime root, os.tmpdir() hay một giá trị cấu hình."
-  causes_vi:
-    - "Sao chép một đường dẫn tuyệt đối từ máy phát triển vào một script, template hay fixture"
-    - "Một chuỗi gỡ lỗi hay ví dụ viết thẳng đường dẫn host thay vì biến môi trường hay đường tương đối"
-  nextStep_vi: "Người giám sát thay đường đó bằng đường tương đối, runtime root, os.tmpdir() hay một cấu hình đã khai báo, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_IDENTIFIER_UNDECLARED:
-  title: "A runtime module reads a name nothing declares"
-  title_vi: "Một module runtime đọc một tên mà không nơi nào khai báo"
-  meaning_vi: "Một định danh trong module ES của runtime (scripts/, engine/ trừ gói yaml của bên thứ ba, ui/api/, packages/cli/bin và src) không khớp với khai báo, import, tham số hay biến toàn cục Node nào của các phạm vi bao quanh. Một re-export (export {x} from './y.mjs') không gắn x vào phạm vi cục bộ; require, module, exports và __dirname không phải biến toàn cục của module; biến toàn cục của trình duyệt chỉ hợp lệ trong hàm được truyền cho page.evaluate. Dòng đó sẽ ném ReferenceError khi chạy tới."
-  causes_vi:
-    - "Tách một hàm ra khỏi vòng lặp hay closure nhưng biến cũ không được truyền sang"
-    - "Xóa import cùng với hàm dùng nó trong khi còn một chỗ khác đọc tên đó"
-    - "Dùng tên đã re-export từ module khác như thể nó là tên cục bộ"
-  nextStep_vi: "Người giám sát khai báo hoặc import tên đó, truyền nó qua tham số, hoặc xóa chỗ đọc; không thêm ngoại lệ hay che bằng typeof."
-  owner: supervisor
-  kind: check-finding
-
 RT_LOOSENING_STATE:
   title: "The tree holds a loosened gate"
   title_vi: "Cây mã đang giữ một cổng kiểm bị nới lỏng"
@@ -6158,171 +5292,6 @@ RT_LOOSENING_STATE:
   owner: owner
   kind: check-finding
 
-RT_NODE_MODULES_LINK:
-  title: "node_modules linked instead of installed"
-  title_vi: "node_modules được liên kết thay vì cài đặt"
-  meaning_vi: "Mã runtime tạo một junction hoặc symlink tới một thư mục node_modules (qua fs.symlinkSync, fs.promises.symlink, một hàm bọc chúng, hoặc một lệnh mklink /J, New-Item -ItemType Junction, ln -s được khởi chạy). Mỗi bản checkout phải tự cài phụ thuộc bằng npm ci thật từ bộ nhớ đệm; một liên kết vào node_modules của checkout khác bị lệnh xóa đệ quy hoặc npm đi xuyên qua và làm trống cây thật."
-  causes_vi:
-    - "Dùng chung node_modules của checkout chính cho một worktree tạm để tiết kiệm thời gian cài đặt"
-    - "Giữ lại đoạn mã cũ tạo junction cho land scratch hoặc staging"
-  nextStep_vi: "Người giám sát thay liên kết bằng npm ci thật qua scripts/api/npm/ci.mjs; chỉ giữ mã gỡ hoặc phát hiện liên kết đã có."
-  owner: supervisor
-  kind: check-finding
-
-RT_OP_JUDGE_UNDECLARED:
-  title: "An op does not declare who judges its product, or declares a judge the runtime does not provide"
-  title_vi: "Một op chưa khai báo ai chấm sản phẩm của nó, hoặc khai báo người chấm mà runtime không có"
-  meaning_vi: "Nguyên tắc P2: người làm không bao giờ tự chấm việc của mình. Hợp đồng của mỗi op (modules/ops/ops/<op>.yaml) có trường bắt buộc judge, danh sách ít nhất một người chấm: machine (phép đo độc lập mà runtime sở hữu và chạy lại lúc chốt, gọi tên trong modules/kernel/op-judges.yaml; tệp test do chính lượt làm viết thì không bao giờ tự nó là người chấm), critic (Critic độc lập, đúng cho những loại op mà bảng modules/kernel/critic.yaml đánh dấu covered), owner (chỉ nơi có cổng của chủ) hoặc next-leg (chặng sau có hợp đồng là duyệt sản phẩm này). Danh sách rỗng, thiếu trường, phép đo lạ, phép đo runtime không áp dụng cho op đó, Critic khai lệch bảng, owner không có cổng hoặc next-leg chưa đăng ký đều bị từ chối."
-  causes_vi:
-    - "Thêm một op mới mà chưa khai báo trường judge"
-    - "Khai báo một phép đo hoặc Critic mà runtime không chạy cho op đó, hoặc bảng của runtime đổi mà hợp đồng chưa đổi theo"
-  nextStep_vi: "Khai báo judge trong hợp đồng của op theo modules/kernel/op-judges.yaml, hoặc sửa bảng tương ứng của runtime cho khớp với hành vi thật."
-  owner: supervisor
-  kind: check-finding
-
-RT_PINNED_PATH_MOVED:
-  title: "Pinned path missing"
-  title_vi: "Đường dẫn được ghim không còn tồn tại"
-  meaning_vi: "Một đường dẫn được ghim (ruleParams.runtime.pinned: được lưu ngoài git trong hook, settings, tác vụ định kỳ, prompt) không còn tồn tại."
-  causes_vi:
-    - "Đổi tên một tệp mà hook hay tác vụ định kỳ đang trỏ tới"
-    - "Chuyển tệp khi các worker còn đang chạy"
-  nextStep_vi: "Người giám sát khôi phục đường dẫn."
-  owner: supervisor
-  kind: check-finding
-
-RT_PORT_RESTATED:
-  title: "A port literal is spelled outside its owner"
-  title_vi: "Một literal cổng được viết ngoài tệp chủ sở hữu"
-  meaning_vi: "Một cổng của runtime chỉ được viết literal một lần, trong tệp chủ của nó: port và devPort của UI nằm trong modules/models/runtimes.yaml (statusApp) và đọc qua ui/ports.mjs, host SonarQube nội bộ trong DEFAULT_HOST của scripts/gates/sonar-local.mjs. Một literal cổng ở vị trí cổng (authority scheme://host:NNNN, host:NNNN, gán *port*/PORT, lời gọi listen(NNNN)) trong một tệp không phải chủ sở hữu — hoặc cùng một literal không chủ trong từ hai tệp nguồn runtime — là một bản chép lại. Spec, test, bản runtime sinh ra, lịch sử hợp đồng, CHANGELOG, .starciwork và khai báo stack của sản phẩm nằm ngoài luật."
-  causes_vi:
-    - "Hard-code một port của runtime trong script hay tài liệu thay vì import từ tệp chủ"
-    - "Hai tệp nguồn cùng viết literal một port không chủ mà không khai báo hằng số chủ sở hữu"
-  nextStep_vi: "Người giám sát thay literal bằng import từ tệp chủ (ui/ports.mjs, sonar-local DEFAULT_HOST) hoặc khai báo một hằng số chủ duy nhất rồi cho mọi nơi khác tham chiếu."
-  owner: supervisor
-  kind: check-finding
-
-RT_PRODUCT_NAME_IN_SOURCE:
-  title: "A product name is written in runtime source"
-  title_vi: "Tên một sản phẩm xuất hiện trong mã nguồn runtime"
-  meaning_vi: "Một tệp nguồn runtime được theo dõi viết tên của một sản phẩm mà runtime từng ship kèm (danh sách đóng PRODUCT_NAMES trong scripts/lib/example-refs.mjs) hoặc một mã inc-<hash> có tiền tố là tên sản phẩm. Canon chạy trong mọi repo sản phẩm, nên một tên cứng trong source rò rỉ phán đoán của một sản phẩm sang mọi sản phẩm khác. Spec, test và lịch sử được giữ tên đó; mọi nơi khác phải nói chung chung hoặc qua hằng khai báo trong scripts/lib/example-refs.mjs."
-  causes_vi:
-    - "Một câu chuyện sự cố trong comment hay log viết thẳng tên sản phẩm (ví dụ workflow wf-<product>-… hay một ledger cụ thể) thay vì 'a product's …' hay <product>"
-    - "Một ánh xạ, alias hay fixture đặt theo tên sản phẩm được để trong source thay vì trong tệp khai báo chung"
-  nextStep_vi: "Người giám sát viết lại chỗ đó theo dạng chung (<product>, a product's …, acme cho một ví dụ) hoặc chuyển giá trị thật sự cần vào một hằng trong scripts/lib/example-refs.mjs, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_PROSE_COMMAND_UNKNOWN:
-  title: "Instruction text shows a starci command the CLI catalog does not have"
-  title_vi: "Văn bản hướng dẫn nêu một lệnh starci mà danh mục CLI không có"
-  meaning_vi: "Một lệnh `starci <nhóm> <verb>` trong đoạn mã, khối mã hay ví dụ yaml của skills/, docs/, README.md, CONTEXT.md, CONTRIBUTING.md hoặc modules/ nêu một verb không có trong modules/cli/commands, hoặc một cờ --flag mà verb đó và các cờ chung không nhận. Tác tử làm theo sẽ nhận lời từ chối thay vì kết quả. Danh mục CLI là sự thật; phát hiện nêu tệp:dòng và lệnh sai."
-  causes_vi:
-    - "Verb hoặc cờ bị gỡ hay đổi tên nhưng văn bản hướng dẫn vẫn nêu cách viết cũ"
-    - "Gõ sai tên verb hoặc cờ khi viết ví dụ"
-  nextStep_vi: "Người giám sát viết lại lệnh theo danh mục CLI (starci <nhóm> <verb> --help); nếu lệnh đã bị gỡ, thêm mục vào modules/kernel/removed-vocabulary.yaml và sửa mọi chỗ còn dạy nó."
-  owner: supervisor
-  kind: check-finding
-
-RT_PROSE_PATH_NO_SLOT:
-  title: "A path in prose that no slot owns"
-  title_vi: "Đường dẫn trong văn bản không thuộc slot nào"
-  meaning_vi: "Một đường dẫn sản phẩm (be/... hoặc fe/...) trong knowledge, docs hoặc README không được slot nào của knowledge/hfs/slots.yaml sở hữu và cũng không phải thư mục cha của một slot. Văn bản đã tự nghĩ ra một chỗ không có, hoặc giữ lại một chỗ mà slot không còn. Tên ứng dụng là tự do: tên ghi cứng phải là ứng dụng của ví dụ hoặc của starter, còn <tên> giữ chỗ thay cho mọi ứng dụng."
-  causes_vi:
-    - "Đổi hoặc xóa một slot mà văn bản vẫn nêu đường dẫn cũ"
-    - "Ghi tên ứng dụng theo vai trò (api, web) thay vì giữ chỗ"
-  nextStep_vi: "Người giám sát thay đường dẫn bằng mã slot, bằng <giữ chỗ> hoặc bằng tên ứng dụng của ví dụ, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_PROSE_RESTATES_SLOTS:
-  title: "Prose restates the slots"
-  title_vi: "Văn bản chép lại các slot"
-  meaning_vi: "Một khối mã hoặc một dòng trong knowledge, docs hoặc README nêu từ ba đường dẫn sản phẩm mà slot sở hữu trở lên, hoặc một câu liệt kê từ ba tên tệp gốc hay tệp của phía mà các slot khai báo. Bản chép lại cũ đi so với slots.yaml; chỉ khối sinh tự động giữa các dấu hfs:generated mới được phép sao chép."
-  causes_vi:
-    - "Chép cây thư mục hoặc danh sách tệp của slots.yaml vào văn bản"
-    - "Liệt kê các tệp cấu hình của gốc ứng dụng trong một câu"
-  nextStep_vi: "Người giám sát thay bản chép bằng mã slot (slot app.format-config...) hoặc bằng một khối sinh tự động, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_REMOVED_VOCABULARY:
-  title: "Instruction text spells a name the runtime refuses"
-  title_vi: "Văn bản hướng dẫn viết một tên mà runtime từ chối"
-  meaning_vi: "modules/kernel/removed-vocabulary.yaml là danh sách duy nhất các tên đã bị gỡ (khóa config, trường bias định tuyến, verb, cờ, mã, từ vựng), mỗi tên kèm thứ thay thế và bản phát hành đã gỡ nó. Một dòng trong skills/, docs/, README.md, CONTEXT.md, CONTRIBUTING.md, modules/ hoặc knowledge/ viết một tên trong danh sách mà không nằm trong CHANGELOG.md, không nằm trong chính danh sách và không mang dấu [removed-list] là dạy tác tử một cách viết mà runtime sẽ từ chối. Phát hiện nêu tệp:dòng, tên bị gỡ và cách viết thay thế."
-  causes_vi:
-    - "Một skill hay tài liệu còn dạy cách viết cũ sau khi runtime đổi"
-    - "Gỡ hoặc đổi tên một khóa, cờ, verb, trường hay mã mà không thêm mục vào danh sách tên đã gỡ"
-  nextStep_vi: "Người giám sát viết lại dòng theo cách thay thế mà phát hiện nêu; nếu dòng là danh sách các tên đã gỡ, đánh dấu [removed-list]; nếu tên mới bị gỡ, thêm mục vào modules/kernel/removed-vocabulary.yaml trong cùng commit."
-  owner: supervisor
-  kind: check-finding
-
-RT_REVISION_SCOPE:
-  title: "The revision-scope table does not match the runtime tree"
-  title_vi: "Bảng phạm vi bản sửa không khớp với cây runtime"
-  meaning_vi: "Một đường dẫn có trong cây không thuộc dòng nào của bảng phạm vi, bảng gọi tên vai trò hay hành động lạ, một tệp động cơ nạp bị liệt kê tay, tệp dựng lời nhắc khởi động của một ghế không khớp với bộ sinh, hoặc phép so sánh chỉ-sửa-lời-văn cho qua một thay đổi bỏ mục."
-  causes_vi:
-    - "Thêm một tệp hay thư mục mới mà chưa có dòng trong bảng"
-    - "Bộ sinh lời nhắc đọc thêm một tệp mà bảng seatBoot chưa ghi"
-  nextStep_vi: "Thêm dòng cho đường dẫn vào modules/kernel/revision-scope.yaml hoặc sửa seatBoot cho khớp bộ sinh."
-  owner: supervisor
-  kind: check-finding
-
-RT_ROLES_CONTRACT_DRIFT:
-  title: "A role surface differs from the roles contract"
-  title_vi: "Một bề mặt mô tả vai trò khác với hợp đồng vai trò"
-  meaning_vi: "Hợp đồng vai trò (modules/kernel/roles.yaml) là nơi duy nhất mô tả một vai trò. Một bề mặt Markdown mang khối sinh từ hợp đồng, một bề mặt yaml hoặc script dẫn id của vai trò, và không bề mặt nào dạy điều mà danh sách contradicts của vai trò cấm."
-  causes_vi:
-    - "Sửa hợp đồng mà không sinh lại các khối"
-    - "Viết lại một đoạn mô tả vai trò trong prompt hoặc tài liệu thay vì dẫn hợp đồng"
-  nextStep_vi: "Người giám sát chạy starci runtime check --only roles-contract -- --write, hoặc sửa câu mâu thuẫn theo hợp đồng."
-  owner: supervisor
-  kind: check-finding
-
-RT_ROOT_ADHOC:
-  title: "A root is resolved outside the root module"
-  title_vi: "Một thư mục gốc được tự phân giải ngoài mô-đun gốc"
-  meaning_vi: "Thư mục mà một thành phần đọc hoặc ghi chỉ được quyết định ở một mô-đun là scripts/lib/roots.mjs: cây runtime, thư mục trạng thái, thư mục tạm, thư mục nơi lệnh được gọi, tên thư mục Work và thứ tự thử hai cây cùng có thể giữ một bản ghi (cây làm việc trước, bản checkout chính sau). Tệp nguồn runtime tự viết process.cwd() hoặc literal tên thư mục Work là tự phân giải thư mục, và đã bốn lần trong hai ngày một thành phần đọc hay ghi nhầm cây vì vậy."
-  causes_vi:
-    - "Tệp mới nối đường dẫn từ process.cwd() hoặc từ literal .starciwork thay vì gọi mô-đun gốc"
-    - "Tệp đã có sẵn ở bản phát hành trước nhưng nay viết nhiều hơn số lần khi đó"
-  nextStep_vi: "Dùng invocationDir, workDirHolding, workRecordPath hoặc toolSearchDirs của scripts/lib/roots.mjs."
-  owner: supervisor
-  kind: check-finding
-
-RT_RULE_ID_UNKNOWN:
-  title: "A rule id that is not in the catalog"
-  title_vi: "Mã luật không có trong danh mục"
-  meaning_vi: "Một tệp được git theo dõi (tri thức, tài liệu, mã hoặc dữ liệu) nêu một mã luật R<số> mà knowledge/hfs/rules.yaml không có, hoặc một mã luật đã nghỉ hưu mà chỉ tệp lịch sử (CHANGELOG) mới được nêu. Mã luật ma làm người đọc và máy trỏ tới một luật không tồn tại."
-  causes_vi:
-    - "Một luật bị xóa hoặc đánh số lại mà các chỗ trích dẫn không được sửa theo"
-    - "Gõ nhầm mã luật"
-  nextStep_vi: "Người giám sát đổi trích dẫn sang luật hiện có của danh mục hoặc bỏ mã, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_RULE_UNCITED:
-  title: "A catalog rule no pattern topic cites"
-  title_vi: "Một luật của danh mục mà không chủ đề pattern nào trích dẫn"
-  meaning_vi: "Một luật của knowledge/hfs/rules.yaml không được nêu trong hfsRules của bất kỳ chủ đề nào dưới knowledge/patterns/** và cũng không mang scope: runtime. Luật của sản phẩm tồn tại để được dạy; một luật không được trích dẫn là luật mà một lane không bao giờ đọc."
-  causes_vi:
-    - "Thêm một luật vào danh mục mà không trích dẫn nó từ chủ đề dạy nó"
-    - "Một luật chỉ quản trị chính kho runtime mà thiếu scope: runtime"
-  nextStep_vi: "Người giám sát thêm mã luật vào hfsRules của chủ đề knowledge/patterns dạy nó, hoặc đánh dấu luật scope: runtime khi nó chỉ quản trị kho runtime, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_RULING_STALE_CITE:
-  title: "A live statement cites a ruling or a decision date instead of a rule"
-  title_vi: "Nội dung hiện hành dẫn một quyết định hoặc ngày quyết định thay vì một luật"
-  meaning_vi: "Văn bản, chú thích, dữ liệu luật hoặc thông báo in ra dẫn một quyết định của chủ sở hữu, một sổ quyết định hoặc ngày của nó. Mỗi luật được viết như nó đang có hiệu lực và chỉ được dẫn bằng id luật."
-  causes_vi:
-    - "Một câu còn ghi lại lịch sử quyết định thay vì luật hiện hành"
-    - "Một trích dẫn dùng id quyết định hoặc ngày thay vì id luật"
-  nextStep_vi: "Viết lại câu thành luật ở thì hiện tại và dẫn id luật (R<n>, CONTRIB-<n> hoặc id tiêu đề trong contexts); lịch sử nằm trong git và CHANGELOG."
-  owner: supervisor
-  kind: check-finding
-
 RT_SECRET_TRACKED:
   title: "A secret is tracked in the public runtime repository"
   title_vi: "Một bí mật được theo dõi trong repository runtime công khai"
@@ -6332,84 +5301,6 @@ RT_SECRET_TRACKED:
     - "Tệp bí mật bị gitignore sót nên bị git add"
   nextStep_vi: "git rm tệp, thêm tên biến vào secret.env.example và danh mục env, owner đặt giá trị vào secret.env; bản mã hóa đã nằm trong lịch sử git chỉ mất khi xoay (rotate) bí mật."
   owner: owner
-  kind: check-finding
-
-RT_SLOT_ID_SHAPE:
-  title: "A slot id breaks the manifest's declared grammar"
-  title_vi: "Một slot id vi phạm ngữ pháp mà manifest khai báo"
-  meaning_vi: "Một slot id đi theo ngữ pháp mà chính manifest khai báo: các đoạn lowercase kebab ngăn bằng dấu chấm, đoạn đầu thuộc naming.prefixes của knowledge/hfs/slots.yaml (profiles của runtime-slots.yaml), <side>.app.<kind> chỉ một kind trong appKinds.<side>, và mọi id sâu hơn mở rộng một id đã khai báo — qua trường parent tường minh, hoặc một family mà ít nhất hai slot cùng dùng; một id sâu lẻ loi tự bịa ra family. Từ vựng suffix không chứa cặp đồng nghĩa: suffixes của một profile không trùng bannedSuffixes, không cặp nào trong naming.refusedPairs sống ở cả hai vế, và naming.sameConceptPairs (step + saga-step) là ngoại lệ duy nhất — sống ở cả hai vế hoặc bị bỏ."
-  causes_vi:
-    - "Đặt một slot id mới không bắt đầu bằng prefix khai báo hay không kebab-case"
-    - "Tạo một id sâu không mở rộng slot nào đã khai báo và family chỉ có một thành viên"
-    - "Thêm một suffix đồng nghĩa với một suffix đã có mà không khai báo cặp đó trong naming"
-  nextStep_vi: "Người giám sát sửa id theo ngữ pháp (đổi tên, đặt parent, hay khai báo prefix/family trong naming của manifest) hoặc đưa từ trùng nghĩa về bannedSuffixes / khai báo cặp trong naming.sameConceptPairs/refusedPairs."
-  owner: supervisor
-  kind: check-finding
-
-RT_SOURCE_NAME:
-  title: "Runtime source name breaks the convention"
-  title_vi: "Tên tệp nguồn runtime sai quy ước"
-  meaning_vi: "Một tệp nguồn của runtime không đặt tên kebab-case, mang tên dùng một lần (_*, tmp-*, fix-*, *-backfill, migrate-*, *.bak*), hoặc trùng tên với một tệp khác trong cùng tầng (trừ lib.mjs và index.mjs)."
-  causes_vi:
-    - "Để lại một script dùng một lần trong cây nguồn"
-    - "Hai module ở hai thư mục cùng tầng mang cùng một tên"
-  nextStep_vi: "Người giám sát đổi tên tệp (bằng script di chuyển để import được viết lại) hoặc xóa script dùng một lần."
-  owner: supervisor
-  kind: check-finding
-
-RT_SPEC_PLACEMENT:
-  title: "Runtime spec out of place"
-  title_vi: "Spec của runtime đặt sai chỗ"
-  meaning_vi: "Một spec của runtime không nằm ở tests/<khu vực>/<module>[.<chủ đề>].spec.mjs, mã dùng chung cho spec không nằm ở tests/helpers/, hoặc một tệp trong packages dùng hậu tố .test. thay vì .spec."
-  causes_vi:
-    - "Spec để phẳng ngay trong tests/"
-    - "Tệp dùng chung có tiền tố _ ở gốc tests/"
-  nextStep_vi: "Người giám sát chuyển tệp vào đúng thư mục bằng script di chuyển (rh-move.mjs) để import được viết lại, qua lane của chunk C7."
-  owner: supervisor
-  kind: check-finding
-
-RT_STORAGE_UNDECLARED:
-  title: "A text column of a store has no storage class"
-  title_vi: "Một cột văn bản của kho dữ liệu chưa có lớp lưu trữ"
-  meaning_vi: "Nội dung nằm thành tệp trong kho blob dưới thư mục trạng thái runtime còn hàng trong cơ sở dữ liệu chỉ giữ tham chiếu (sha) và các giá trị nhỏ dùng để truy vấn. Mọi cột văn bản của sổ cái sản phẩm và machine.sqlite phải được khai báo trong modules/schemas/storage-convention.yaml với một lớp: scalar, bounded, reference, spill hoặc migrate. Một cột chưa khai báo, một khai báo trỏ vào cột không còn, một lớp lạ, hoặc lớp migrate không khớp danh sách migrations là đi vòng quy ước."
-  causes_vi:
-    - "Thêm bảng hoặc cột văn bản mới mà không khai báo lớp"
-    - "Cột bị đổi tên hoặc xóa nhưng khai báo vẫn còn"
-  nextStep_vi: "Khai báo cột trong modules/schemas/storage-convention.yaml: nội dung dùng reference (lưu blob, giữ sha), giá trị nhỏ dùng scalar hoặc bounded."
-  owner: supervisor
-  kind: check-finding
-
-RT_SYNTAX_INVALID:
-  title: "Tracked JavaScript has invalid syntax"
-  title_vi: "Tệp JavaScript được theo dõi có cú pháp không hợp lệ"
-  meaning_vi: "Một tệp .mjs, .cjs hoặc .js được git theo dõi không thể được trình phân tích cú pháp JavaScript của TypeScript đọc. Luật áp dụng cả tests/ và nguồn packages/, trừ các gốc được sinh và cây đầu ra build của bên thứ ba. Một tệp không phân tích được không thể chạy tin cậy dù kiểm tra Node trong các thư mục runtime vẫn xanh."
-  causes_vi:
-    - "Biểu thức chính quy chứa xuống dòng thô, hoặc chuỗi hay template chưa đóng"
-    - "Thiếu dấu ngoặc nhọn, ngoặc tròn hoặc ngoặc vuông đóng"
-  nextStep_vi: "Người giám sát sửa cú pháp tại dòng được báo và chạy lại cổng runtime; không bỏ qua tệp hoặc thêm ngoại lệ."
-  owner: supervisor
-  kind: check-finding
-
-RT_TIER_DIRECTION:
-  title: "Runtime import against the tier direction"
-  title_vi: "Import ngược chiều tầng của runtime"
-  meaning_vi: "Một import tương đối giữa hai chủ sở hữu trong runtime đi từ một tầng tới một tầng không nằm trong mayImport của tầng đó (tiers.runtime trong knowledge/hfs/runtime-slots.yaml), ví dụ kernel import supervisor hay scripts/lib import một miền nghiệp vụ."
-  causes_vi:
-    - "Một dịch vụ dùng chung nằm ở tầng cao hơn nơi dùng nó"
-    - "Thư viện cơ sở import mã nghiệp vụ"
-  nextStep_vi: "Người giám sát chuyển phần dùng chung xuống tầng được phép (machine, lib) hoặc đảo chiều phụ thuộc, qua một lane đã land."
-  owner: supervisor
-  kind: check-finding
-
-RT_VERSION_RESTATED:
-  title: "A pinned version is spelled outside canon-pins.yaml"
-  title_vi: "Một phiên bản ghim được viết ngoài canon-pins.yaml"
-  meaning_vi: "knowledge/hfs/canon-pins.yaml viết phiên bản của mọi gói @starci và mọi phụ thuộc được ghim đúng một lần; package.json là nơi cài đặt khai báo và lockfile là kết quả resolve. Một literal semver bằng pin — hay specifier name@x.y.z nhắc tới nó — ở bất cứ đâu khác là bản chép lại, trừ các khóa binding mà refresher sở hữu và ghi đè tại chỗ (canon.version của code-pattern bindings do check-canon-pins giữ; provenance.version và identity.version của grammar snapshot do grammar-knowledge.mjs ghi lại). Manifest, lockfile, changelog, lịch sử hợp đồng, spec, test, runtime sinh ra và .starciwork nằm ngoài luật."
-  causes_vi:
-    - "Viết số phiên bản của một pin trong prose hay YAML thay vì nhắc tới tên pin"
-    - "Chép specifier name@x.y.z vào tài liệu hay mẫu scaffold"
-  nextStep_vi: "Người giám sát viết lại theo tên pin (\"the pinned @starci/grammar\", \"knowledge/hfs/canon-pins.yaml\") hoặc để refresher ghi qua khóa binding đã khai báo — không bao giờ viết literal."
-  owner: supervisor
   kind: check-finding
 
 SCAN_SMELL:
@@ -6451,54 +5342,13 @@ SEALED_FILE_IN_WORK:
 # --- HFS rule catalog (knowledge/hfs/rules.yaml): one code per rule, from R01 up ---
 
 STACKS_LOCAL_CONFIG_INVALID:
-  title: "The local block of a docker-compose environment is not coherent"
-  title_vi: "Khối local của môi trường docker-compose không nhất quán"
-  meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
+  title: "The dev environment declaration of an app (local block, runnable dev environment, base port layout) is not coherent"
+  title_vi: "Khai báo môi trường dev của ứng dụng (khối local, môi trường dev chạy được, bố cục cổng theo cổng gốc) không nhất quán"
+  meaning_vi: "Môi trường docker-compose của ứng dụng không khai báo đúng: environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback; ứng dụng không có environment nào chạy docker-compose với khối local nên starci app stack up --env dev không có gì để chạy; hoặc khi đã khai báo basePort, cổng của một tiến trình native hay của một dịch vụ compose có vai trò (db = basePort + 90, mail + 91, mailui + 92, storage + 93, storage-console + 94) lệch khỏi bảng vai trò của PROJECT-STACKS-10, hay một tệp compose publish cổng host bằng số cố định thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\". Thông báo của finding nêu đường dẫn khóa, điều được mong đợi và điều tìm thấy."
   causes_vi:
-    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
-  nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_DEV_UNDECLARED:
-  title: "A lite app declares no runnable dev environment"
-  title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
-  meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
-  causes_vi:
-    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
-  nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_RUNBOOK_DOCKER_COMMAND:
-  title: "A dev runbook carries a docker command or omits the one-command start"
-  title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
-  meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
-  causes_vi:
-    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
-  nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_BASE_PORT_ROLE:
-  title: "A native process port departs from the role table of the project base port"
-  title_vi: "Cổng của tiến trình native lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng cổng của một tiến trình native không đúng bảng vai trò: front end chính = basePort, api = basePort + 1, AI gateway = basePort + 2, các tiến trình native còn lại từ basePort + 3 (basePort + 2 khi không có gateway) đến basePort + 79. Dải basePort + 80 đến basePort + 99 thuộc các dịch vụ compose (STACKS_COMPOSE_PORT_ROLE)."
-  causes_vi:
-    - "Vi phạm R389: cổng được đặt tay thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng."
-    - "Tên tiến trình không thuộc đúng vai trò (web, app, console là front end; api, core là api; gateway là AI gateway), nên bị xếp vào nhóm còn lại."
-  nextStep_vi: "Đặt lại cổng trong environments.<env>.local.ports theo đúng bảng vai trò của basePort (PROJECT-STACKS-10), cập nhật các nơi dùng ${port.<tên>}, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_COMPOSE_PORT_ROLE:
-  title: "A compose service port departs from the role table of the project base port"
-  title_vi: "Cổng của dịch vụ compose lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng một cổng compose có vai trò trong bảng lại không đúng chỗ: cơ sở dữ liệu (cổng mà local.database chỉ tới) = basePort + 90, SMTP của mail = basePort + 91, giao diện web của mail = basePort + 92, API S3 của object storage = basePort + 93, console của nó = basePort + 94."
-  causes_vi:
-    - "Vi phạm R389: cổng compose được đặt cố định (54322, 1025, 8025, 9000) thay vì suy ra từ cổng gốc, nên hai ứng dụng chạy cạnh nhau sẽ trùng cổng."
-    - "Ứng dụng được tạo trước khi bảng vai trò có phần compose và chưa chạy bản nâng cấp của starci app sync."
-  nextStep_vi: "Chạy starci app sync --execute: nó dời db, mail và mailui về cổng suy ra và thêm dịch vụ storage; hoặc sửa tay environments.<env>.local.ports theo bảng của PROJECT-STACKS-10, rồi chạy lại starci app check."
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng; môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+    - "Vi phạm R389: cổng được đặt tay hoặc viết thẳng vào tệp compose thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng; ứng dụng được tạo trước khi bảng vai trò có phần compose; tên tiến trình không thuộc đúng vai trò nên bị xếp vào nhóm còn lại."
+  nextStep_vi: "Sửa đúng trường nêu trong thông báo: đường dẫn environments.<env>.local, khai báo environments.dev với runtime docker-compose, composeFiles và khối local, đặt lại cổng trong environments.<env>.local.ports theo bảng vai trò của basePort và đổi dòng ports của dịch vụ compose thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\" (hoặc chạy starci app sync --execute để dời db, mail, mailui về cổng suy ra), rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
 
@@ -6532,16 +5382,6 @@ STACK_BASE_PORT_OVERLAP:
   owner: supervisor
   kind: check-finding
 
-STACKS_COMPOSE_PORT_LITERAL:
-  title: "A compose file of a dev environment with a base port publishes a literal host port"
-  title_vi: "File compose của môi trường dev có cổng gốc lại publish một cổng host cố định"
-  meaning_vi: "Môi trường khai báo basePort nhưng một dịch vụ trong file compose publish cổng host bằng số cố định (ví dụ \"127.0.0.1:3080:3080\") thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", nên cổng đó không đi theo cổng gốc và hai ứng dụng có thể trùng."
-  causes_vi:
-    - "Vi phạm R389: cổng được viết thẳng vào file compose thay vì khai báo trong environments.<env>.local.ports."
-  nextStep_vi: "Khai báo cổng trong environments.<env>.local.ports theo bảng vai trò của basePort (PROJECT-STACKS-10), đổi dòng ports của dịch vụ thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_BASE_PORT_UNDECLARED:
   title: "A dev environment with native processes declares no project base port"
   title_vi: "Môi trường dev có tiến trình native nhưng chưa khai báo cổng gốc dự án"
@@ -6563,68 +5403,15 @@ STACKS_DEPLOY_CONFIG_INVALID:
   owner: op-retry
   kind: check-finding
 
-STACKS_DNS_UNDECLARED:
-  title: "An ingress host has no DNS ownership receipt"
-  title_vi: "Host của ingress thiếu khai báo chủ sở hữu và bằng chứng DNS"
-  meaning_vi: "Một host được ingress sử dụng không có bản ghi dns với host, owner và receipt đầy đủ trong khai báo môi trường."
+STACKS_INGRESS_INVALID:
+  title: "The ingress, DNS or TLS declaration of a Swarm environment is incomplete or inconsistent"
+  title_vi: "Khai báo ingress, DNS hoặc TLS của môi trường Swarm thiếu hoặc không nhất quán"
+  meaning_vi: "Môi trường Swarm không có đúng một ingress được khai báo và định tuyến: thiếu ingress.component hoặc ingress.hosts (hay khối external, shared-edge hợp lệ), component ingress không tồn tại hoặc không dùng image Traefik/Caddy ghim bằng digest, có ingress thứ hai hoặc ingress tự render bên cạnh ingress ngoài; hoặc một host công khai thiếu bản ghi dns (host, owner, receipt), thiếu tls.owner và tls.receipt, hoặc không có tuyến trong mô hình ingress (một host viết tay trong stack file của shared edge cũng tính). Thông báo của finding nêu đường dẫn khóa và điều còn thiếu."
   causes_vi:
-    - "Vi phạm R266: điều kiện DNS chỉ tồn tại ngoài kho mã hoặc chưa có người chịu trách nhiệm rõ ràng."
-  nextStep_vi: "Thêm bản ghi dns cho từng host, nêu chủ sở hữu và tham chiếu bằng chứng DNS; việc thay đổi DNS vẫn do chủ sở hữu thực hiện."
+    - "Vi phạm R275 và R266: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn, hai ingress tạo hai chủ sở hữu định tuyến và cổng công khai, danh sách host và tuyến thực tế không khớp, và điều kiện DNS hoặc TLS chỉ tồn tại ngoài kho mã."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: khai báo đúng một ingress (component role ingress với Traefik hoặc Caddy ghim digest, hoặc ingress.external, hoặc shared-edge với routes), thêm tuyến cho từng host đã khai báo, thêm bản ghi dns cho từng host cùng tls.owner và tls.receipt; việc đổi DNS vẫn do chủ sở hữu thực hiện."
   owner: op-retry
   kind: check-finding
-
-STACKS_HEALTHCHECK_MISSING:
-  title: "A runnable Swarm service has no healthcheck"
-  title_vi: "Dịch vụ Swarm đang chạy thiếu healthcheck"
-  meaning_vi: "Mô hình Swarm thiếu healthcheck hoạt động cho dịch vụ chạy liên tục hoặc đã tắt healthcheck của dịch vụ đó."
-  causes_vi:
-    - "Vi phạm R266: trạng thái container chạy chưa chứng minh được tín hiệu sức khỏe cần để cập nhật và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo healthcheck có lệnh thực sự kiểm tra dịch vụ; tách tín hiệu sống và sẵn sàng theo trách nhiệm của ứng dụng."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_HOST_UNROUTED:
-  title: "A declared ingress host has no rendered route"
-  title_vi: "Host được khai báo chưa có tuyến trong mô hình ingress"
-  meaning_vi: "Danh sách ingress.hosts chứa host mà cấu hình Traefik hoặc Caddy đã render không định tuyến."
-  causes_vi:
-    - "Vi phạm R266: danh sách host và tuyến thực tế không khớp, nên khai báo chưa chứng minh được cửa vào của ứng dụng."
-  nextStep_vi: "Thêm tuyến cho host trong cấu hình ingress được theo dõi hoặc bỏ host không còn dùng, rồi render lại mô hình."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNDECLARED:
-  title: "A Swarm environment has no declared ingress"
-  title_vi: "Môi trường Swarm chưa khai báo ingress"
-  meaning_vi: "Môi trường chưa có ingress.component và danh sách ingress.hosts hợp lệ để xác định cửa vào của ứng dụng."
-  causes_vi:
-    - "Vi phạm R275: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn."
-  nextStep_vi: "Khai báo một ingress component và danh sách host của nó; dùng Traefik hoặc Caddy được ghim bằng digest."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNKNOWN:
-  title: "The declared ingress is unknown or unsupported"
-  title_vi: "Ingress được khai báo không tồn tại hoặc chưa được hỗ trợ"
-  meaning_vi: "Component ingress không được chọn, sai role, thiếu trong mô hình hoặc không dùng image Traefik hay Caddy được ghim bằng digest."
-  causes_vi:
-    - "Vi phạm R275: tên component hoặc image của cửa vào không khớp hợp đồng ingress được hỗ trợ."
-  nextStep_vi: "Chọn component có role ingress hiện diện trong mô hình và ghim image Traefik hoặc Caddy bằng digest đầy đủ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_LITE_REDIS_PERSISTENCE:
-  title: "The declared lite Redis is not one persisted, non-evicting stack service"
-  title_vi: "Redis đã khai báo của lite không phải một dịch vụ duy nhất có AOF và không evict"
-  meaning_vi: "hfs.json sides.be.backing khai báo redis nhưng stack lite không chạy đúng một dịch vụ Redis; hoặc dịch vụ Redis không chạy với --appendonly yes, không mount một named volume ghi được tại /data, hay đặt --maxmemory-policy khác noeviction. Job của hàng đợi nằm trong Redis nên khởi động lại hoặc evict sẽ làm mất chúng."
-  causes_vi:
-    - "Vi phạm R276 (R212): Redis đã khai báo không được render trong stack, hoặc được render nhiều lần."
-    - "Lệnh redis-server thiếu --appendonly yes, hoặc đặt maxmemory-policy evict khóa (allkeys-lru, volatile-ttl...)."
-    - "Dịch vụ Redis không mount named volume vào /data, hoặc mount chỉ đọc, hoặc volume không được định nghĩa trong mô hình."
-  nextStep_vi: "Render đúng một dịch vụ Redis, chạy redis-server với --appendonly yes, giữ maxmemory-policy noeviction (mặc định; khóa cache đặt TTL) và mount một named volume ghi được tại /data, khai báo volume đó trong mô hình và trong components.redis.volumes."
-  owner: op-retry
-  kind: check-finding
-  cutoverTolerant: true
 
 STACKS_LITE_SELFHOSTED_DB:
   title: "A lite deployment runs PostgreSQL, MongoDB, Qdrant or undeclared Redis"
@@ -6648,13 +5435,13 @@ STACKS_MODEL_UNAVAILABLE:
   owner: op-retry
   kind: check-finding
 
-STACKS_PLACEMENT_MISSING:
-  title: "A stateful Swarm service has no placement constraint"
-  title_vi: "Dịch vụ Swarm có trạng thái thiếu ràng buộc vị trí chạy"
-  meaning_vi: "Dịch vụ có trạng thái hoặc volume bền vững không khai báo deploy.placement.constraints trong mô hình đã render."
+STACKS_SERVICE_POLICY_MISSING:
+  title: "A Swarm service lacks a required runtime policy (placement, healthcheck or update policy)"
+  title_vi: "Dịch vụ Swarm thiếu chính sách chạy bắt buộc (vị trí chạy, healthcheck hoặc chính sách cập nhật)"
+  meaning_vi: "Mô hình Swarm đã render của một dịch vụ thiếu một trong ba chính sách bắt buộc: deploy.placement.constraints cho dịch vụ có trạng thái hoặc volume bền vững; healthcheck thật sự kiểm tra được dịch vụ chạy liên tục; deploy.update_config (order, failure_action rollback, monitor dương), rollback_config và restart_policy. Thông báo của finding nêu đường dẫn khóa và chính sách còn thiếu."
   causes_vi:
-    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu của component."
-  nextStep_vi: "Thêm ràng buộc placement phù hợp chủ sở hữu volume và nêu rõ giới hạn phục hồi khi node hoặc đĩa bị mất."
+    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu (placement); trạng thái container chạy chưa chứng minh được sức khỏe cần để cập nhật và phục hồi (healthcheck); triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi (chính sách cập nhật)."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: thêm ràng buộc placement phù hợp chủ sở hữu volume, healthcheck có lệnh thực sự kiểm tra dịch vụ, hoặc update_config, rollback_config và restart_policy của dịch vụ, rồi render lại mô hình."
   owner: op-retry
   kind: check-finding
 
@@ -6665,16 +5452,6 @@ STACKS_PORT_PUBLISHED:
   causes_vi:
     - "Vi phạm R266: API, worker hoặc dịch vụ dữ liệu có cửa truy cập trực tiếp vượt qua ingress đã khai báo."
   nextStep_vi: "Gỡ ports khỏi dịch vụ nội bộ và định tuyến lưu lượng công khai qua ingress được môi trường khai báo."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_REALTIME_SCALED:
-  title: "A realtime API with several replicas runs the in-process hub"
-  title_vi: "API Realtime nhiều replica đang chạy hub trong tiến trình"
-  meaning_vi: "App API có composition chứa feature be.feature.realtime.* và dịch vụ Swarm chạy nhiều hơn một replica, nhưng REALTIME_HUB không chọn hub dùng chung (postgres hoặc redis) hoặc không được khai báo. Hub memory chỉ phục vụ một tiến trình nên tin đẩy ở replica này không tới client đang nghe ở replica khác."
-  causes_vi:
-    - "Vi phạm R266: deploy.replicas lớn hơn 1 nhưng hub realtime là hub memory của bản chạy một replica và của test."
-  nextStep_vi: "Khai báo REALTIME_HUB=postgres trong environment của API (hoặc redis), hoặc ghim deploy.replicas: 1 khi chỉ chạy một replica; xem BE-REALTIME-7 trong knowledge/patterns/be/realtime.yaml."
   owner: op-retry
   kind: check-finding
 
@@ -6695,16 +5472,6 @@ STACKS_SEALED_MEMBER_PENDING:
   causes_vi:
     - "Khai báo member và quyền cấp được đưa vào trước khi chủ dự án niêm phong khoá (ví dụ khoá của dịch vụ dùng chung embeddings)"
   nextStep_vi: "Niêm phong khoá: starci vps service grant <id> --service <tên> --app . --env <env> --execute (khoá của dịch vụ dùng chung) hoặc starci app secret set --env <env> <member> <KEY>; bản render sau sẽ cấp khoá cho service."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SECOND_INGRESS:
-  title: "A Swarm environment selects more than one ingress"
-  title_vi: "Môi trường Swarm chọn nhiều hơn một ingress"
-  meaning_vi: "Tập component được chọn hoặc mô hình đã render chứa ingress thứ hai bên cạnh ingress của môi trường."
-  causes_vi:
-    - "Vi phạm R266: hai ingress tạo hai chủ sở hữu định tuyến, TLS hoặc cổng công khai trong cùng môi trường."
-  nextStep_vi: "Giữ đúng một ingress trong môi trường và mô hình; chuyển mọi host cùng quyền công bố cổng sang component đó."
   owner: op-retry
   kind: check-finding
 
@@ -6735,46 +5502,6 @@ STACKS_SECRET_UNVERSIONED:
   causes_vi:
     - "Vi phạm R266: tên secret có thể bị tái sử dụng khi xoay khóa hoặc khai báo không khớp secret của engine."
   nextStep_vi: "Khai báo runtimeName và version dương khớp hậu tố -v<version>; dùng đúng tên đó trong mô hình, đổi quyền của consumer rồi mới thu hồi phiên bản cũ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_DB_UNSUPPORTED:
-  title: "A lite sidecar requires an unsupported database adapter"
-  title_vi: "Sidecar của lite yêu cầu adapter cơ sở dữ liệu không được hỗ trợ"
-  meaning_vi: "Sidecar của lite khai báo hoặc cấu hình database khác SQLite, bao gồm PostgreSQL, Redis và MongoDB."
-  causes_vi:
-    - "Vi phạm R276: sidecar kéo thêm backing bị cấm vào topology lite thay vì dùng SQLite trên volume bền vững."
-  nextStep_vi: "Chọn chế độ SQLite được sidecar hỗ trợ và volume được khai báo; bỏ sidecar nếu nó bắt buộc dùng backing không được lite hỗ trợ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_VOLUME_UNDECLARED:
-  title: "A lite SQLite sidecar has no declared persistent volume"
-  title_vi: "Sidecar SQLite của lite thiếu volume bền vững được khai báo"
-  meaning_vi: "Sidecar dùng SQLite nhưng chưa khai báo database.volume, chưa liệt kê volume đó trong component hoặc chưa định nghĩa và mount volume trong mô hình."
-  causes_vi:
-    - "Vi phạm R276: tệp cơ sở dữ liệu sidecar không gắn với volume có chủ sở hữu rõ ràng và có thể mất khi tạo lại container."
-  nextStep_vi: "Khai báo database.provider: sqlite, database.volume và components.<id>.volumes, rồi định nghĩa và mount đúng named volume trong mô hình."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_TLS_UNDECLARED:
-  title: "A Swarm environment has no TLS ownership receipt"
-  title_vi: "Môi trường Swarm thiếu chủ sở hữu và bằng chứng TLS"
-  meaning_vi: "Môi trường có ingress nhưng chưa khai báo tls.owner và tls.receipt cho việc cấp chứng chỉ cùng nơi lưu giữ bền vững."
-  causes_vi:
-    - "Vi phạm R266: quyền cấp hoặc phục hồi chứng chỉ chưa có chủ sở hữu và bằng chứng được khai báo."
-  nextStep_vi: "Khai báo chủ sở hữu TLS và tham chiếu bằng chứng cấp, lưu giữ chứng chỉ; giữ thao tác của chủ sở hữu là điều kiện triển khai rõ ràng."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_UPDATE_POLICY_MISSING:
-  title: "A Swarm service has no explicit rollout and recovery policy"
-  title_vi: "Dịch vụ Swarm thiếu chính sách cập nhật và phục hồi rõ ràng"
-  meaning_vi: "Dịch vụ chạy liên tục thiếu chính sách deploy.update_config, rollback_config hoặc restart_policy cần cho vòng đời triển khai."
-  causes_vi:
-    - "Vi phạm R266: triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo chính sách cập nhật, rollback và restart của từng dịch vụ trong mô hình, rồi kiểm tra cùng các tín hiệu sức khỏe."
   owner: op-retry
   kind: check-finding
 
@@ -7201,14 +5928,6 @@ STACKS_IMAGE_BASE_UNPINNED:
     - "Vi phạm R374: mọi image nền phải ghim digest."
   nextStep_vi: "Ghim FROM bằng name@sha256:<digest>."
 
-STACKS_IMAGE_BASE_NOT_FORK:
-  title: "A service image folder does not build on the harness fork image"
-  title_vi: "Thư mục image của dịch vụ không dựng trên image fork của harness"
-  meaning_vi: "Harness sở hữu image fork StarCi cho dịch vụ này (images/sources.json) nhưng giai đoạn cuối của Dockerfile không FROM image đó."
-  causes_vi:
-    - "Vi phạm R374: dịch vụ tùy biến phải dựng trên image fork do harness ghim."
-  nextStep_vi: "Đặt FROM <repository fork>@sha256:<digest> ở giai đoạn cuối."
-
 STACKS_IMAGE_ENV_DIVERGES:
   title: "A service with an image folder runs a third-party image in an environment"
   title_vi: "Dịch vụ có thư mục image chạy image bên thứ ba ở một môi trường"
@@ -7250,16 +5969,6 @@ HFS_PACKAGE_SLOTS_INVALID:
     - "Vi phạm R382: khóa lạ, id trùng, path ngoài src/, coverage none không có lý do, hoặc lint không phải be/fe."
     - "Vi phạm R382: manifest nêu một thư mục không phải root package, hoặc package vừa có slots.yaml vừa được khai trong manifest."
   nextStep_vi: "Sửa phần packages của ext/manifest.json theo đúng khuôn rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-HFS_PACKAGE_SLOTS_MOVED:
-  title: "A package still declares its slots in its own slots.yaml"
-  title_vi: "Một package vẫn khai slot trong slots.yaml riêng"
-  meaning_vi: "Slot của một root package do dự án khai trong ext/manifest.json (packages[\"packages/<name>\"]). packages/<name>/slots.yaml chỉ còn được đọc trong minor này, kèm cảnh báo."
-  causes_vi:
-    - "Vi phạm R382: package còn slots.yaml và manifest của dự án chưa khai package đó."
-  nextStep_vi: "Chuyển nội dung slots.yaml vào ext/manifest.json dưới packages[\"packages/<name>\"] (cùng khóa, dạng JSON) rồi xóa slots.yaml."
   owner: op-retry
   kind: check-finding
 
@@ -7321,16 +6030,6 @@ BE_REST_ERROR_SHAPE:
   causes_vi:
     - "Vi phạm R396: thiếu ErrorDto hoặc thiếu @ApiDefaultResponse({ type: ErrorDto })."
   nextStep_vi: "Khai ErrorDto (code, message bắt buộc) và @ApiDefaultResponse({ type: ErrorDto }) trên controller, chạy npm run contract:emit và commit."
-  owner: op-retry
-  kind: check-finding
-
-BE_REST_PAGINATION:
-  title: "A REST list is not a cursor page"
-  title_vi: "Danh sách REST không phân trang theo con trỏ"
-  meaning_vi: "Một GET không trả mảng trần: danh sách là schema có items (mảng) và nextCursor, đọc bằng tham số query cursor và limit."
-  causes_vi:
-    - "Vi phạm R396: GET trả mảng trần, hoặc trang thiếu nextCursor, cursor hay limit."
-  nextStep_vi: "Trả DTO trang { items, nextCursor } và nhận @Query cursor, limit; chạy npm run contract:emit và commit."
   owner: op-retry
   kind: check-finding
 
@@ -7403,56 +6102,6 @@ HFS_NIVOOS_PACKAGE_CHECK:
   nextStep_vi: "Chạy `npm run build` trong packages/<tên>/ rồi commit seed; nếu CLI chưa cài, thêm `nivoos` vào devDependencies của gói và chạy npm install."
   owner: op-retry
   kind: check-finding
-HFS_DESKTOP_UNDECLARED:
-  title: "A desktop file exists but the desktop app is not declared"
-  title_vi: "Có tệp của ứng dụng desktop nhưng hfs.json chưa khai báo"
-  meaning_vi: "Một tệp được git theo dõi dưới desktop/ hoặc workflow .github/workflows/desktop-release.yml tồn tại, nhưng hfs.json không có sides.desktop, nên không có khai báo nào làm nguồn cho vỏ Tauri."
-  causes_vi:
-    - "Vi phạm R444: ứng dụng desktop là một phía được khai báo; thư mục desktop/ và workflow phát hành của nó chỉ tồn tại khi hfs.json khai báo sides.desktop (PROJECT-DESKTOP-1)."
-    - "Khai báo bị xoá hoặc thư mục được chép từ dự án khác."
-  nextStep_vi: "Thêm sides.desktop vào hfs.json (`starci app desktop init` làm việc này), hoặc xoá desktop/ và workflow desktop-release.yml."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_FILE_MISSING:
-  title: "The desktop app lacks an icon or its lock file"
-  title_vi: "Ứng dụng desktop thiếu biểu tượng hoặc tệp khoá"
-  meaning_vi: "Ứng dụng desktop đã khai báo nhưng thiếu một biểu tượng trong desktop/src-tauri/icons/ (bản dựng đóng gói chúng), hoặc thiếu Cargo.lock (chỉ là cảnh báo)."
-  causes_vi:
-    - "Vi phạm R444: bản dựng cài đặt cần đủ bộ biểu tượng `tauri icon` sinh ra, và Cargo.lock phải được theo dõi để bản phát hành dựng đúng các phụ thuộc đã thử (PROJECT-DESKTOP-1)."
-    - "Biểu tượng chưa được sinh, hoặc bị .gitignore chặn; Cargo.lock chưa được tạo vì chưa dựng lần nào."
-  nextStep_vi: "Chạy `tauri icon <ảnh-1024px.png>` trong desktop/src-tauri rồi commit icons/; chạy `starci app desktop build` một lần và commit Cargo.lock."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_CONFIG:
-  title: "tauri.conf.json differs from the desktop declaration"
-  title_vi: "tauri.conf.json khác khai báo desktop"
-  meaning_vi: "Cấu hình Tauri không nói đúng điều hfs.json khai báo: định danh, tên sản phẩm, nguồn phiên bản (package.json của ứng dụng web), scheme deep link, khoá và endpoint của updater, origin dev, hoặc cửa sổ duy nhất do Rust tạo."
-  causes_vi:
-    - "Vi phạm R444: tauri.conf.json được dựng từ sides.desktop và số phiên bản của bộ cài, của updater và của ứng dụng web là một (PROJECT-DESKTOP-1)."
-    - "Tệp được sửa tay thay vì sửa khai báo."
-  nextStep_vi: "Sửa sides.desktop trong hfs.json rồi chạy `npx starci app sync --execute`; đừng sửa tauri.conf.json."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_SECURITY:
-  title: "The desktop shell's isolation is loosened"
-  title_vi: "Sự cô lập của vỏ desktop bị nới lỏng"
-  meaning_vi: "Cấu hình hoặc capability làm lộ API Tauri cho trang từ xa: withGlobalTauri bật, công tắc dangerous*, CSP rỗng hoặc chứa unsafe-eval/ký tự đại diện, updater qua http thường, hoặc capability cấp IPC cho origin từ xa dạng ký tự đại diện hay http thường."
-  causes_vi:
-    - "Vi phạm R444: vỏ chỉ tải ứng dụng web đã triển khai và trang đó không được gọi vỏ; mọi nới lỏng đều mở đường cho mã lạ chạy với danh tính ứng dụng (PROJECT-DESKTOP-1)."
-    - "Một capability được thêm để thử rồi quên gỡ."
-  nextStep_vi: "Gỡ công tắc hoặc capability đó; nếu trang cần gọi vỏ, nêu origin https cụ thể của ứng dụng thay cho ký tự đại diện."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_SIGNING_KEY:
-  title: "A signing key or certificate is tracked"
-  title_vi: "Khoá hoặc chứng chỉ ký được git theo dõi"
-  meaning_vi: "Một chứng chỉ ký (.p12, .pfx), kho khoá hoặc khoá riêng minisign là tệp được theo dõi, hoặc một bí mật ký được ghi thẳng vào tệp dưới desktop/."
-  causes_vi:
-    - "Vi phạm R444: khoá updater và thông tin Apple là bí mật CI (TAURI_SIGNING_PRIVATE_KEY, APPLE_*), không bao giờ là tệp trong kho (PROJECT-DESKTOP-1)."
-    - "Khoá vừa sinh bằng `tauri signer generate` được lưu nhầm trong cây làm việc."
-  nextStep_vi: "Xoá tệp khỏi kho và khỏi lịch sử, coi khoá đã lộ và sinh khoá mới; đặt giá trị bằng `starci app ci secret set <TÊN> --execute`."
-  owner: op-retry
-  kind: check-finding
 STACKS_SIDES_UNDECLARED:
   title: "The stack declaration states no sides"
   title_vi: "Khai báo stack chưa nêu các phía của dự án"
@@ -7481,97 +6130,41 @@ STACKS_COMPONENT_SIDE:
   owner: op-retry
   kind: check-finding
 HFS_DATA_IN_CODE:
-  title: "A code project tracks a seed copy document"
-  title_vi: "Dự án mã nguồn đang chứa tài liệu của bản sao dữ liệu"
-  meaning_vi: "Kho mã nguồn theo dõi một manifest bản sao (schema starci/data-manifest@1), một tệp trong cây data/, blobs/, index/ cạnh manifest đó, hoặc một phong bì sops chế độ binary (*.sops.json có thành viên data). Dữ liệu chỉ nằm trong kho bản sao <tên>-seed-standard hoặc <tên>-seed-backup-<env>."
+  title: "A code project tracks seed copy data or depends on a copy repository"
+  title_vi: "Dự án mã nguồn chứa dữ liệu của bản sao hoặc phụ thuộc vào kho bản sao"
+  meaning_vi: "Kho mã nguồn theo dõi một manifest bản sao (schema starci/data-manifest@1), một tệp trong cây data/, blobs/, index/ cạnh manifest đó, hoặc một phong bì sops chế độ binary (*.sops.json có thành viên data); hoặc package.json (dependencies, workspaces), .gitmodules hay tsconfig/jsconfig nêu tên kho kết thúc bằng -seed-standard hoặc -seed-backup-<env>. Dữ liệu chỉ nằm trong kho bản sao <tên>-seed-standard hoặc <tên>-seed-backup-<env>, và mã nguồn không được phụ thuộc vào nội dung bản sao."
   causes_vi:
     - "Vi phạm R400: một bản xuất dữ liệu được commit vào kho mã nguồn (PROJECT-STACKS-13)."
-  nextStep_vi: "Chuyển tệp sang kho bản sao qua driver dữ liệu, rồi xoá nó khỏi dự án mã nguồn; fixture của test dùng dữ liệu tổng hợp."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_DEPENDENCY:
-  title: "A code project depends on a seed copy repository"
-  title_vi: "Dự án mã nguồn phụ thuộc vào kho bản sao dữ liệu"
-  meaning_vi: "package.json (dependencies, workspaces), .gitmodules hoặc tsconfig/jsconfig nêu tên kho kết thúc bằng -seed-standard hoặc -seed-backup-<env>; mã nguồn không được phụ thuộc vào nội dung bản sao."
-  causes_vi:
     - "Vi phạm R400: kho bản sao được thêm làm package, submodule, workspace hoặc đường dẫn import (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tham chiếu đó; dữ liệu vào ứng dụng qua bước seed của bring-up hoặc một lệnh sync tường minh."
+  nextStep_vi: "Chuyển tệp sang kho bản sao qua driver dữ liệu, rồi xoá nó khỏi dự án mã nguồn; fixture của test dùng dữ liệu tổng hợp. Với phụ thuộc: xoá tham chiếu đó; dữ liệu vào ứng dụng qua bước seed của bring-up hoặc một lệnh sync tường minh."
   owner: op-retry
   kind: check-finding
-HFS_DATA_UNSEALED:
-  title: "A file of a seed-backup copy is not sealed"
-  title_vi: "Tệp của bản sao seed-backup chưa được niêm phong"
-  meaning_vi: "Mọi tệp trong data/, blobs/, index/ của seed-backup là phong bì sops chế độ binary (*.sops.json, age) gửi tới recipients của môi trường; tệp này không phải."
+
+HFS_DATA_COPY_INVALID:
+  title: "A seed copy repository breaks its sealing, manifest or size law"
+  title_vi: "Kho bản sao dữ liệu vi phạm luật niêm phong, manifest hoặc kích thước"
+  meaning_vi: "Trong kho bản sao (không có hfs.json, manifest.json gốc có schema starci/data-manifest@1), thông báo của lỗi nêu đúng điểm sai. Niêm phong: mọi tệp trong data/, blobs/, index/ của seed-backup phải là phong bì sops chế độ binary (*.sops.json, age) gửi tới recipients của môi trường; seed-standard là bản rõ, không chứa phong bì sops, tệp *.sops.json hoặc *.enc.yaml, manifest không khai sealing. Manifest: manifest.json phải liệt kê đúng các tệp trong data/, blobs/, index/ (tên có đuôi .sops.json khi sealing là sops-age) và purpose phải khớp tên format (<tên>-seed-standard@N hoặc <tên>-seed-backup-<env>@N). Kích thước: không tệp dữ liệu hoặc tệp raw/ nào của bản sao git vượt 4 MiB, và tổng các tệp dữ liệu cùng raw/ tối đa 500 MiB; vượt mức này bộ dữ liệu đã lớn hơn git."
   causes_vi:
-    - "Vi phạm R400: một tệp rõ được stage vào kho seed-backup (PROJECT-STACKS-13)."
-  nextStep_vi: "Bỏ stage tệp và để driver dữ liệu ghi bản sao (niêm phong cùng lúc), rồi commit lại."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_STANDARD_SEALED:
-  title: "A seed-standard copy holds a sealed file"
-  title_vi: "Bản sao seed-standard chứa tệp niêm phong"
-  meaning_vi: "Seed-standard là bản rõ, dễ đọc và so sánh, không chứa bí mật: không có phong bì sops, tệp *.sops.json hoặc *.enc.yaml, manifest không khai sealing."
-  causes_vi:
-    - "Vi phạm R400: một bí mật hoặc tệp niêm phong được đưa vào kho seed-standard (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tệp niêm phong khỏi kho; bí mật của dự án nằm trong kho lưu giữ của stack (PROJECT-STACKS-5)."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_MANIFEST_DRIFT:
-  title: "The copy manifest and its data files disagree"
-  title_vi: "manifest.json của bản sao lệch với các tệp dữ liệu"
-  meaning_vi: "manifest.json phải liệt kê đúng các tệp trong data/, blobs/, index/ (tên có đuôi .sops.json khi sealing là sops-age), purpose phải khớp tên format (<tên>-seed-standard@N hoặc <tên>-seed-backup-<env>@N)."
-  causes_vi:
+    - "Vi phạm R400: một tệp rõ được stage vào kho seed-backup, hoặc một bí mật hay tệp niêm phong được đưa vào kho seed-standard (PROJECT-STACKS-13)."
     - "Vi phạm R400: một tệp được thêm hoặc xoá mà manifest không đổi theo, hoặc manifest được sửa tay (PROJECT-STACKS-13)."
-  nextStep_vi: "Chạy lại driver dữ liệu để ghi manifest và tệp cùng lúc, không sửa tay."
+    - "Vi phạm R400: một shard hoặc chunk quá lớn, hoặc snapshot vượt trần (PROJECT-STACKS-13, PROJECT-STACKS-14)."
+  nextStep_vi: "Niêm phong: bỏ stage tệp và để driver dữ liệu ghi bản sao (niêm phong cùng lúc), rồi commit lại; với seed-standard thì xoá tệp niêm phong khỏi kho, bí mật của dự án nằm trong kho lưu giữ của stack (PROJECT-STACKS-5). Manifest: chạy lại driver dữ liệu để ghi manifest và tệp cùng lúc, không sửa tay. Kích thước: ghi lại qua driver dữ liệu với shard nhỏ hơn; nếu cả bộ vượt 500 MiB thì khai báo driver s3 cho bộ dữ liệu đó trong application-stacks.yaml."
   owner: op-retry
   kind: check-finding
-HFS_DATA_FILE_SIZE:
-  title: "A data file of a git copy is over 4 MiB"
-  title_vi: "Tệp dữ liệu của bản sao git vượt 4 MiB"
-  meaning_vi: "Không tệp dữ liệu nào của bản sao git được vượt 4 MiB."
-  causes_vi:
-    - "Vi phạm R400: một shard hoặc chunk quá lớn (PROJECT-STACKS-13)."
-  nextStep_vi: "Ghi lại qua driver dữ liệu với shard nhỏ hơn."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_CAP:
-  title: "A git copy holds more than 500 MiB"
-  title_vi: "Bản sao git chứa quá 500 MiB"
-  meaning_vi: "Tổng các tệp dữ liệu của một bản sao git tối đa 500 MiB; vượt mức này bộ dữ liệu đã lớn hơn git."
-  causes_vi:
-    - "Vi phạm R400: snapshot vượt trần (PROJECT-STACKS-13, PROJECT-STACKS-14)."
-  nextStep_vi: "Khai báo driver s3 cho bộ dữ liệu đó trong application-stacks.yaml."
-  owner: op-retry
-  kind: check-finding
+
 HFS_DATA_ADAPTER_DRIFT:
-  title: "A seed-standard's output is not what its adapter writes from raw/"
-  title_vi: "Đầu ra của seed-standard không khớp với những gì adapter ghi từ raw/"
-  meaning_vi: "Trong kho seed-standard có adapter/, manifest.json, data/, blobs/ và index/ đã commit phải trùng từng byte với đầu ra của node adapter/main.ts chạy trên raw/ (theo index). Adapter không chạy được, hai lần chạy cho kết quả khác nhau (adapter không tất định), một tệp đầu ra lệch, thiếu hoặc thừa so với commit, hoặc adapter/ có thay đổi chưa stage đều bị từ chối."
+  title: "A seed-standard's adapter is unguarded or its output is not what the adapter writes from raw/"
+  title_vi: "Adapter của seed-standard thiếu lớp bảo vệ hoặc đầu ra không khớp với những gì adapter ghi từ raw/"
+  meaning_vi: "Trong kho seed-standard có adapter/ (R434), thông báo của lỗi nêu đúng điểm sai. Đầu ra: manifest.json, data/, blobs/ và index/ đã commit phải trùng từng byte với đầu ra của node adapter/main.ts chạy trên raw/ (theo index); adapter không chạy được, hai lần chạy cho kết quả khác nhau (adapter không tất định), một tệp đầu ra lệch, thiếu hoặc thừa so với commit, hoặc adapter/ có thay đổi chưa stage đều bị từ chối. Lớp bảo vệ: kho phải theo dõi adapter/main.ts, adapter/package.json, hook .githooks/pre-commit và workflow .github/workflows/seed-standard.yml; hook và workflow đều chạy starci app check --staged để kiểm lại adapter trước mỗi commit và trên CI."
   causes_vi:
     - "Vi phạm R434: data/ bị sửa tay trong kho có adapter, hoặc raw/ được commit mà không chạy lại adapter (PROJECT-STACKS-13)."
     - "Adapter dùng đồng hồ, id ngẫu nhiên hoặc thứ tự hệ thống tệp nên mỗi lần chạy ra kết quả khác."
     - "Chưa cài phụ thuộc của adapter (npm ci --prefix adapter)."
-  nextStep_vi: "Sửa raw/ (hoặc adapter/), chạy lại node adapter/main.ts từ gốc kho rồi stage cả đầu ra; không sửa tay data/. Adapter phải tất định: không đồng hồ, không id ngẫu nhiên."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_ADAPTER_UNGUARDED:
-  title: "An adapter repository lacks its entry, package, commit hook or CI workflow"
-  title_vi: "Kho có adapter thiếu entry, package, hook commit hoặc workflow CI"
-  meaning_vi: "Kho seed-standard có adapter/ phải theo dõi adapter/main.ts, adapter/package.json, hook .githooks/pre-commit và workflow .github/workflows/seed-standard.yml; hook và workflow đều chạy starci app check --staged để kiểm lại adapter trước mỗi commit và trên CI."
-  causes_vi:
     - "Vi phạm R434: kho được dựng tay, thiếu phần mà starci data standard init --adapter viết (PROJECT-STACKS-13)."
-  nextStep_vi: "Chạy starci data standard init --adapter trong kho để viết các tệp còn thiếu, rồi commit chúng."
+  nextStep_vi: "Đầu ra: sửa raw/ (hoặc adapter/), chạy lại node adapter/main.ts từ gốc kho rồi stage cả đầu ra; không sửa tay data/. Adapter phải tất định: không đồng hồ, không id ngẫu nhiên. Lớp bảo vệ: chạy starci data standard init --adapter trong kho để viết các tệp còn thiếu, rồi commit chúng."
   owner: op-retry
   kind: check-finding
-HFS_DATA_SECOND_LOADER:
-  title: "An app reads a seed-standard by a path other than the bring-up seed step"
-  title_vi: "Ứng dụng đọc seed-standard qua đường khác ngoài bước seed của bring-up"
-  meaning_vi: "Seed-standard chỉ vào ứng dụng qua bước seed của bring-up, tại commit mà data.sets ghim. Một dòng chạy git clone/pull/fetch trên kho -seed-standard, một lệnh kiểu content sync, hoặc một biến môi trường nêu kho -seed-standard (hay tên chứa SEED_STANDARD) là đường nạp thứ hai và bị từ chối."
-  causes_vi:
-    - "Vi phạm R435: script hoặc mã nguồn tự kéo nội dung từ kho seed-standard (PROJECT-STACKS-13)."
-  nextStep_vi: "Khai báo seed-standard trong data.sets của .starcistacks/application-stacks.yaml (ghim commit) và xoá đường nạp đó; bring-up nạp chuẩn bằng upsert theo khoá tự nhiên."
-  owner: op-retry
-  kind: check-finding
+
 STACK_SEED_ADAPTER_DRIFT:
   title: "The seed step refused a pinned seed-standard whose adapter output drifts"
   title_vi: "Bước seed từ chối seed-standard đã ghim có đầu ra adapter bị lệch"
@@ -7618,7 +6211,7 @@ STACK_SEED_STORE_COMMAND:
   title_vi: "Kho mà seed-standard nạp vào không có cửa seed"
   meaning_vi: "Chuẩn được áp dụng qua cửa seed của ứng dụng: adapter.command của từng kho trong data.stores, phục vụ kho qua giao thức starci/data-entries@1 (serveStore của @starci/seed). Kho không khai lệnh đó, hoặc không được khai trong data.stores, thì chuẩn không có đường vào."
   causes_vi:
-    - "data.stores thiếu adapter.command cho kho mà một seed-standard nạp (R426 DATA_STORE_ADAPTER)."
+    - "data.stores thiếu adapter.command cho kho mà một seed-standard nạp (R426 DATA_STORE_INVALID)."
     - "Chuẩn nạp một kho mà data.stores không khai."
   nextStep_vi: "Thêm vào ứng dụng một lệnh phục vụ kho bằng serveStore và khai argv của nó ở adapter.command của kho, rồi chạy lại bring-up."
   owner: op-retry
@@ -7633,60 +6226,30 @@ STACK_SEED_DOOR_REFUSED:
   nextStep_vi: "Chạy lệnh của kho với import trên một bản sao dev để xem mã từ chối, sửa cửa của ứng dụng hoặc nội dung chuẩn, rồi chạy lại bring-up."
   owner: op-retry
   kind: verb-refusal
-DATA_STORE_UNDECLARED:
-  title: "A stateful component is neither a store nor derived"
-  title_vi: "Thành phần có trạng thái chưa là kho dữ liệu cũng chưa là derived"
-  meaning_vi: "Mọi thành phần có trạng thái (hoặc backing đã khai) là component của một store hoặc của một mục derived trong khối data; store hoặc derived không được nêu thành phần không có."
+DATA_STORE_INVALID:
+  title: "The data stores of the stack declaration are incomplete or invalid"
+  title_vi: "Khai báo kho dữ liệu của stack thiếu hoặc không hợp lệ"
+  meaning_vi: "Khối data của application-stacks.yaml (R426, PROJECT-STACKS-14) vi phạm; thông báo của lỗi nêu đúng điểm sai. Mọi thành phần có trạng thái (hoặc backing đã khai) là component của một store hoặc của một mục derived; store hoặc derived không được nêu thành phần không có. Store cần id duy nhất, kind là database hoặc storage, level là logical hoặc physical. adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter; store của một bộ seed-backup, hay store mà một seed-standard nạp, còn khai adapter.command (lệnh của ứng dụng phục vụ store qua starci/data-entries@1). Mục derived nêu from là một store đã khai và rebuild không rỗng."
   causes_vi:
     - "Vi phạm R426: thiếu khai báo data.stores hoặc data.derived (PROJECT-STACKS-14)."
-  nextStep_vi: "Khai báo store kèm adapter, hoặc khai thành phần là derived từ một store và cách dựng lại."
+    - "Vi phạm R426: id, kind hoặc level của store sai, hoặc đường dẫn adapter thiếu, không được theo dõi, hoặc không có lớp implements StoreAdapter (PROJECT-STACKS-14)."
+    - "Vi phạm R426: mục derived thiếu nguồn hoặc cách dựng lại (PROJECT-STACKS-14)."
+  nextStep_vi: "Khai store kèm adapter, hoặc khai thành phần là derived từ một store và cách dựng lại; sửa id, kind, level của store (kind mới là thay đổi của harness); trỏ adapter.module tới tệp chứa lớp implements StoreAdapter; sửa from thành store đã khai và ghi cách dựng lại thành phần."
   owner: op-retry
   kind: check-finding
-DATA_STORE_KIND:
-  title: "A data store has no id, a twin id or a kind outside the list"
-  title_vi: "Kho dữ liệu thiếu id, trùng id hoặc kind ngoài danh sách đóng"
-  meaning_vi: "Store cần id duy nhất, kind là database hoặc storage, level là logical hoặc physical."
+
+DATA_SET_INVALID:
+  title: "A data set of the stack declaration is invalid"
+  title_vi: "Bộ dữ liệu trong khai báo stack không hợp lệ"
+  meaning_vi: "Một mục data.sets của application-stacks.yaml (R427, PROJECT-STACKS-14) vi phạm; thông báo của lỗi nêu đúng điểm sai. Mỗi mục có id duy nhất, purpose seed-standard hoặc seed-backup, stores nêu store đã khai, environments nêu môi trường stack đã khai. Mỗi to[].driver là git hoặc s3; đích git nêu repository. Mỗi seed-standard có commit là 40 ký tự hex. force và commit chỉ thuộc seed-standard, everyMinutes và maxAgeMinutes chỉ thuộc seed-backup. Không mục seeds.yaml nào (mọi cấp) và không tài liệu nào chúng nêu được nhắc tới kho -seed-backup: backup chỉ được đồng bộ tường minh vào cùng môi trường. completeness là ext:<id> của một check trong ext/manifest.json."
   causes_vi:
-    - "Vi phạm R426 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa id, kind, level của store; kind mới là thay đổi của harness."
+    - "Vi phạm R427: id, purpose, stores, environments hoặc driver của bộ dữ liệu sai (PROJECT-STACKS-14)."
+    - "Vi phạm R427: seed-standard chưa ghim commit, hoặc force, commit, everyMinutes, maxAgeMinutes đặt sai loại bộ dữ liệu (PROJECT-STACKS-13)."
+    - "Vi phạm R427: seed của bring-up nạp kho seed-backup, hoặc completeness không nêu check mở rộng đã khai (PROJECT-STACKS-13)."
+  nextStep_vi: "Sửa id, purpose, stores, environments hoặc driver của bộ dữ liệu (driver mới là thay đổi của harness); ghi commit đã duyệt của kho seed-standard; chuyển hoặc xoá trường đặt sai loại; xoá tham chiếu kho seed-backup khỏi seeds và dùng sync tường minh để khôi phục; khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
-DATA_STORE_ADAPTER:
-  title: "A data store has no adapter source file"
-  title_vi: "Kho dữ liệu thiếu tệp adapter"
-  meaning_vi: "adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter; store của một bộ seed-backup còn khai adapter.command (lệnh của ứng dụng phục vụ store qua starci/data-entries@1)."
-  causes_vi:
-    - "Vi phạm R426: đường dẫn thiếu, không được theo dõi, hoặc không có lớp implements StoreAdapter (PROJECT-STACKS-14)."
-  nextStep_vi: "Trỏ adapter.module tới tệp chứa lớp implements StoreAdapter."
-  owner: op-retry
-  kind: check-finding
-DATA_DERIVED_SOURCE:
-  title: "A derived component has no declared source or rebuild"
-  title_vi: "Thành phần derived thiếu nguồn hoặc cách dựng lại"
-  meaning_vi: "Mục derived nêu from là một store đã khai và rebuild không rỗng."
-  causes_vi:
-    - "Vi phạm R426 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa from thành store đã khai và ghi cách dựng lại thành phần."
-  owner: op-retry
-  kind: check-finding
-DATA_PURPOSE:
-  title: "A data set has no valid purpose, stores or environments"
-  title_vi: "Bộ dữ liệu thiếu purpose, stores hoặc environments hợp lệ"
-  meaning_vi: "Mỗi mục data.sets có id duy nhất, purpose seed-standard hoặc seed-backup, stores nêu store đã khai, environments nêu môi trường stack đã khai."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa id, purpose, stores hoặc environments của bộ dữ liệu."
-  owner: op-retry
-  kind: check-finding
-DATA_DRIVER_KIND:
-  title: "A copy destination has no valid driver"
-  title_vi: "Đích của bản sao thiếu driver hợp lệ"
-  meaning_vi: "Mỗi to[].driver là git hoặc s3; đích git nêu repository."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa driver; driver mới là thay đổi của harness."
-  owner: op-retry
-  kind: check-finding
+
 DATA_COPY_NAME:
   title: "A copy repository name breaks the naming law"
   title_vi: "Tên kho bản sao sai quy ước"
@@ -7696,51 +6259,6 @@ DATA_COPY_NAME:
   nextStep_vi: "Đổi tên kho theo quy ước."
   owner: op-retry
   kind: check-finding
-DATA_SEED_UNPINNED:
-  title: "A seed-standard is not pinned by commit"
-  title_vi: "Seed-standard chưa được ghim bằng commit"
-  meaning_vi: "Mỗi seed-standard có commit là 40 ký tự hex."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Ghi commit đã duyệt của kho seed-standard."
-  owner: op-retry
-  kind: check-finding
-DATA_FORCE_MISPLACED:
-  title: "force, commit or everyMinutes is on the wrong kind of set"
-  title_vi: "force, commit hoặc everyMinutes đặt sai loại bộ dữ liệu"
-  meaning_vi: "force và commit chỉ thuộc seed-standard, everyMinutes chỉ thuộc seed-backup."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Chuyển hoặc xoá trường đó."
-  owner: op-retry
-  kind: check-finding
-DATA_BACKUP_LOADED:
-  title: "A bring-up seed loads a seed-backup repository"
-  title_vi: "Seed của bring-up nạp kho seed-backup"
-  meaning_vi: "Không mục seeds.yaml nào (mọi cấp) và không tài liệu nào chúng nêu được nhắc tới kho -seed-backup: backup chỉ được đồng bộ tường minh vào cùng môi trường."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tham chiếu khỏi seeds; dùng sync tường minh để khôi phục."
-  owner: op-retry
-  kind: check-finding
-DATA_EXTENSION_UNDECLARED:
-  title: "A data set completeness names no declared extension check"
-  title_vi: "completeness của bộ dữ liệu không nêu check mở rộng đã khai"
-  meaning_vi: "completeness là ext:<id> của một check trong ext/manifest.json."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Khai check trong ext/manifest.json hoặc sửa completeness."
-  owner: op-retry
-  kind: check-finding
-STORAGE_PUBLIC_ROUTE_MISSING:
-  title: "A dev object store has no public route on the dev tunnel"
-  title_vi: "Kho đối tượng của môi trường dev chưa có route công khai trên tunnel dev"
-  meaning_vi: "Môi trường dev có công bố địa chỉ công khai và chạy kho đối tượng (S3) nhưng không có tunnel.routes nào trỏ tới cổng S3 của kho: liên kết tới tệp sẽ là địa chỉ loopback, trình duyệt khác máy và nhà cung cấp không mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Thêm một mục vào local.tunnel.routes có port là cổng S3 của kho (không phải cổng console), rồi chạy starci app stack up --env <env> --execute để tạo ingress rule và bản ghi DNS."
-  owner: op-retry
-  kind: check-finding
 STORAGE_PUBLIC_ROUTE_CONSOLE:
   title: "A tunnel route reaches the admin console of an object store"
   title_vi: "Một route của tunnel trỏ vào console quản trị của kho đối tượng"
@@ -7748,15 +6266,6 @@ STORAGE_PUBLIC_ROUTE_CONSOLE:
   causes_vi:
     - "Vi phạm R428 (PROJECT-STACKS-15)."
   nextStep_vi: "Xoá route đó, hoặc trỏ nó tới cổng S3 của kho."
-  owner: op-retry
-  kind: check-finding
-STORAGE_PUBLIC_LINK_INTERNAL:
-  title: "An object-store link would use an internal host"
-  title_vi: "Liên kết tới kho đối tượng sẽ dùng địa chỉ nội bộ"
-  meaning_vi: "Tiến trình đặt STORAGE_ENDPOINT (địa chỉ nội bộ để ghi) nhưng không đặt STORAGE_PUBLIC_URL, hoặc đặt nó thành loopback, localhost, tên container hay host không có route tunnel tới kho: liên kết app dựng ra không ai mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Đặt STORAGE_PUBLIC_URL thành https://<host của route tunnel tới kho>; dữ liệu lưu chỉ giữ bucket và key."
   owner: op-retry
   kind: check-finding
 STACK_LOCAL_TUNNEL_CERT:
@@ -7843,51 +6352,16 @@ HFS_BRAND_INVALID:
   owner: op-retry
   kind: check-finding
 
-HFS_BRAND_MISSING:
-  title: "An app with prompt files has the brand sheet they are made from"
-  title_vi: "App có tệp prompt ảnh thì phải có tờ thương hiệu để tạo prompt"
-  meaning_vi: "Có tệp statics/**/*.prompt.yaml nhưng app không có .starcistacks/brand/illustration.yaml đọc được."
+HFS_BRAND_PROMPT_INVALID:
+  title: "A prompt file is not made from the brand sheet's current base prompt"
+  title_vi: "Tệp prompt ảnh không được tạo từ base prompt hiện hành của tờ thương hiệu"
+  meaning_vi: "Một tệp statics/**/*.prompt.yaml (R437, PROJECT-BRAND-1, PROJECT-BRAND-2) không khớp tờ thương hiệu; thông báo của lỗi nêu đúng điểm sai. Thiếu tờ: có tệp prompt nhưng app không có .starcistacks/brand/illustration.yaml đọc được (hay media.yaml). Cũ: tệp không ghi basePrompt.version, hoặc ghi một phiên bản khác phiên bản hiện hành của base nó nêu. Thiếu phần: tệp không phải YAML, thiếu subject, hoặc prompt không bắt đầu bằng basePrompt.text hiện hành. Base lạ: basePrompt.name (mặc định illustration) không có trong .starcistacks/brand/illustration.yaml (base illustration) lẫn .starcistacks/brand/media.yaml (bases)."
   causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-1, PROJECT-BRAND-2): ảnh AI phải được prompt từ basePrompt của thư mục brand, nếu không mỗi ảnh một phong cách."
-    - "App có từ trước khi có thư mục brand, hoặc thư mục bị xoá."
-  nextStep_vi: "Tạo .starcistacks/brand/ từ bản khởi tạo của starci app scaffold (templates/app/skeleton*/.starcistacks/brand/), điền thương hiệu rồi tạo lại prompt của các ảnh. `--env local` chỉ liệt kê, `--env prod` chặn."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-HFS_BRAND_PROMPT_STALE:
-  title: "A prompt file records the current basePrompt version"
-  title_vi: "Tệp prompt ảnh ghi đúng phiên bản basePrompt hiện hành"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml không ghi basePrompt.version, hoặc ghi một phiên bản khác phiên bản trong .starcistacks/brand/illustration.yaml."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): basePrompt đã đổi (version tăng) sau khi ảnh được tạo, nên ảnh mang phong cách cũ."
-    - "Tệp prompt viết tay, quên ghi basePrompt.version."
+    - "Vi phạm R437 (PROJECT-BRAND-1, PROJECT-BRAND-2): ảnh AI phải được prompt từ basePrompt của thư mục brand, nếu không mỗi ảnh một phong cách; app có từ trước khi có thư mục brand, hoặc thư mục bị xoá."
+    - "basePrompt đã đổi (version tăng) sau khi ảnh được tạo, nên ảnh mang phong cách cũ; hoặc tệp prompt viết tay, quên ghi basePrompt.version."
+    - "Prompt phải là basePrompt.text rồi đến subject, không viết từ trí nhớ; gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
     - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Dựng lại prompt = basePrompt.text + subject, tạo lại ảnh, ghi basePrompt.version hiện hành và để người duyệt (approvedBy) duyệt lại."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-HFS_BRAND_PROMPT_INCOMPLETE:
-  title: "A prompt file holds a subject and a prompt that starts with the base text"
-  title_vi: "Tệp prompt ảnh có subject và prompt mở đầu bằng khối basePrompt"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml không phải YAML, thiếu subject, hoặc prompt của nó không bắt đầu bằng basePrompt.text hiện hành."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): prompt phải là basePrompt.text rồi đến subject, không viết từ trí nhớ."
-    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Ghi subject (một vật, tối đa một chi tiết nhấn) và đặt prompt = basePrompt.text + subject."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-HFS_BRAND_BASE_UNKNOWN:
-  title: "A prompt file names a base the brand sheet defines"
-  title_vi: "Tệp prompt ảnh chỉ tên một base mà tờ thương hiệu có định nghĩa"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml ghi basePrompt.name (mặc định illustration) không có trong .starcistacks/brand/illustration.yaml (base illustration) lẫn .starcistacks/brand/media.yaml (bases)."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): mỗi prompt phải bắt đầu bằng đúng một base có tên và phiên bản, nếu không phong cách của media không còn một nguồn."
-    - "Gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
-    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } })."
+  nextStep_vi: "Thiếu tờ: tạo .starcistacks/brand/ từ bản khởi tạo của starci app scaffold (templates/app/skeleton*/.starcistacks/brand/), điền thương hiệu rồi tạo lại prompt của các ảnh. Cũ: dựng lại prompt = basePrompt.text + subject, tạo lại ảnh, ghi basePrompt.version hiện hành và để người duyệt (approvedBy) duyệt lại. Thiếu phần: ghi subject (một vật, tối đa một chi tiết nhấn) và đặt prompt = basePrompt.text + subject. Base lạ: sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } }). `--env local` chỉ liệt kê, `--env prod` chặn."
   owner: op-retry
   kind: check-finding
   localOnly: true
@@ -7919,33 +6393,6 @@ HFS_STATICS_FILE_SIZE:
   nextStep_vi: "Nén hoặc đổi kích thước ảnh; video dài không thuộc repo."
   owner: op-retry
   kind: check-finding
-HFS_STATICS_TREE_SIZE:
-  title: "statics/ holds more than 256 MiB"
-  title_vi: "statics/ vượt 256 MiB"
-  meaning_vi: "statics/ được nhúng vào image storage nên tổng không được vượt 256 MiB."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Bỏ bớt hoặc nén; media của người dùng nằm trong object storage, không trong git."
-  owner: op-retry
-  kind: check-finding
-HFS_STATICS_PROMPT_ORPHAN:
-  title: "A prompt sidecar has no image beside it"
-  title_vi: "Tệp prompt không có ảnh cùng tên bên cạnh"
-  meaning_vi: "<tên>.prompt.yaml là prompt của một ảnh <tên>.<đuôi media> cùng thư mục."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Xoá tệp prompt hoặc thêm ảnh tương ứng."
-  owner: op-retry
-  kind: check-finding
-HFS_STATICS_PROMPT_SCHEMA:
-  title: "A prompt sidecar is not a YAML mapping with a prompt"
-  title_vi: "Tệp prompt không phải YAML mapping có trường prompt"
-  meaning_vi: "Tệp prompt phải parse được thành mapping và có `prompt` là chuỗi không rỗng; subject và phiên bản basePrompt do R436 kiểm."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Sửa YAML của tệp prompt."
-  owner: op-retry
-  kind: check-finding
 HFS_STATIC_ASSET_OUTSIDE_STATICS:
   title: "A media file sits beside the code instead of in statics/"
   title_vi: "Tệp media nằm cạnh mã thay vì trong statics/"
@@ -7965,31 +6412,13 @@ STACK_STORAGE_MISSING:
   owner: op-retry
   kind: check-finding
   cutoverTolerant: true
-STACK_STORAGE_UNUSED:
-  title: "A storage service is declared and nothing needs it"
-  title_vi: "Có service storage nhưng không cần dùng (cảnh báo)"
-  meaning_vi: "Không có statics/ (ngoài .gitkeep) và back end không dùng storage thì không cần MinIO."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Gỡ service storage hoặc thêm statics hay phần dùng storage."
-  owner: op-retry
-  kind: check-finding
-STACK_STORAGE_IMAGE_UNUSED:
-  title: "statics/ holds media and the storage service does not build the storage image"
-  title_vi: "statics/ có media nhưng service storage không build image storage"
-  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
-  owner: op-retry
-  kind: check-finding
 STACK_STORAGE_IMAGE_SHAPE:
-  title: "The storage service does not have the shape of the storage image"
-  title_vi: "Service storage sai hình dạng của image storage"
-  meaning_vi: "Service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}."
+  title: "The storage service does not build the storage image or does not have its shape"
+  title_vi: "Service storage không build image storage hoặc sai hình dạng của image đó"
+  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API: khi statics/ có media, service storage của dev phải build .starcistacks/images/storage/Dockerfile; service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}. Thông báo của finding nêu điều còn thiếu."
   causes_vi:
     - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn."
+  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn, hoặc cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
   owner: op-retry
   kind: check-finding
 

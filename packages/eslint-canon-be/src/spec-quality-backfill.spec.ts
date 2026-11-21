@@ -14,9 +14,7 @@ import {
 } from "./e2e-flow.ts"
 import {
     e2eAssertsPersistedState,
-    noApiShapedE2eFilename,
     noCallOnlySpec,
-    noMarkerModelStub,
     noModelCallInE2e,
 } from "./testing.ts"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
@@ -27,7 +25,6 @@ const tester = canonRuleTester({
 const typed = typedTester()
 const UNIT = at("src/modules/domain/order/order.service.spec.ts")
 const FLOW = at("src/tests/e2e/checkout/project-purchase.e2e-spec.ts")
-const MODEL = at("src/tests/fixtures/model.ts")
 
 for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
@@ -129,18 +126,6 @@ for (const edition of ['lite'] as const) {
         })
     })
 
-    test(`R48 ${edition} accepts a business-flow filename and rejects an API-shaped filename`, () => {
-        tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
-            valid: [{ filename: FLOW, settings, code: "it('records payment', () => { expect(payment.status).toBe('paid') })" }],
-            invalid: [{
-                filename: at("src/tests/e2e/checkout/checkout-queries.e2e-spec.ts"),
-                settings,
-                code: "it('records payment', () => { expect(payment.status).toBe('paid') })",
-                errors: [{ messageId: "apiShaped" }],
-            }],
-        })
-    })
-
     test(`R48 ${edition} accepts a result assertion and rejects a call-only spec`, () => {
         tester.run("no-call-only-spec", noCallOnlySpec, {
             valid: [{
@@ -153,22 +138,6 @@ for (const edition of ['lite'] as const) {
                 settings,
                 code: "it('charges the order', () => { expect(payments.charge).toHaveBeenCalledWith(5000) })",
                 errors: [{ messageId: "callOnly" }],
-            }],
-        })
-    })
-
-    test(`R48 ${edition} accepts a parseable model payload and rejects a marker stub`, () => {
-        tester.run("no-marker-model-stub", noMarkerModelStub, {
-            valid: [{
-                filename: MODEL,
-                settings,
-                code: "model.run = jest.fn().mockResolvedValue({ text: JSON.stringify({ answer: 'approved' }) })",
-            }],
-            invalid: [{
-                filename: MODEL,
-                settings,
-                code: "model.run = jest.fn().mockResolvedValue('stubbed')",
-                errors: [{ messageId: "marker" }],
             }],
         })
     })

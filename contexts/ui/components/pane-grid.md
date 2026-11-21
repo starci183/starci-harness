@@ -45,7 +45,7 @@ Choice `pane-grid.choose.band`: which `PaneSection` a band of a pane is.
 | --- | --- | --- | --- |
 | head | a title or identity row centred in a shared grid row | `PaneSection align="center"` holding a `PaneHeader` (`back` where a phone shows the pane alone, `headingLevel={1}` on the pane that holds the page's subject) | `DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT` |
 | fixed | a search field, a filter row, a meter, a composer, a hint line | `PaneSection`, one per band; its own children are spaced by `gap` | lint `starci-grammar/no-pane-section-padding` |
-| list | a list or table that takes the rest of the height and scrolls | `PaneSection grow` holding the `ListBox`, or `scroll` when the band is its own scroll owner | lint `starci-fe/no-list-panel-padding` |
+| list | a list or table that takes the rest of the height and scrolls | `PaneSection grow` holding the `ListBox`, or `scroll` when the band is its own scroll owner |
 | thread | a log or conversation that scrolls beside a pinned composer | `PaneSection scroll={{ label, role: "log", tone: "background", scrollRef }}` | `OVERFLOW-4`, `OVERFLOW-5` |
 | chips | one row of chips or tabs that scrolls horizontally and reaches both pane edges | `PaneSection bleed="inline"` | judgement |
 | stack | blocks under one heading in a side or detail pane | `PaneSection gap="section"` | judgement |
@@ -127,7 +127,7 @@ PADDING-3 and PADDING-4 by contact ([../presentation.md](../presentation.md) Spa
 GAP-3 between sections, OVERFLOW-4 and OVERFLOW-5 for a scroll pane or section, LAYOUT-1, RESPONSIVE-2 names the owner
 of the breakpoints (the grid's own width). Lint: `starci-grammar/pane-grid-children` (R345),
 `starci-grammar/pane-children` (R346), `starci-grammar/no-pane-section-padding` (R347),
-`starci-grammar/pane-grid-page` (R348), `starci-fe/no-hand-built-panes` (R349), `starci-fe/no-list-panel-padding`.
+`starci-grammar/pane-grid-page` (R348), `starci-fe/no-hand-built-panes` (R349).
 
 ## Pane head slot (0.37.5)
 `Pane head={{ title, description?, onClose?, closeLabel? }}` draws a sticky one-row head for an aside or detail pane: the title, a muted sublabel and a small close icon button at the end. It is the first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the head-row mode (row / lone / none) and `--grammar-pane-head-size` apply, and it stays at the top while the body scrolls.

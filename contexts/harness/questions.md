@@ -48,7 +48,7 @@
    tests in R97?
 21. **Finding codes with no rule.** The back-end and stack patterns name codes no rule of
    [hfs/rules.yaml](../hfs/rules.yaml) lists among its failure codes (`BE_APP_MODULE_LIST_INLINE`, `BE_REST_ROUTE_UNDECLARED`,
-   `BE_WEBHOOK_INBOX_KEY`, `STACKS_REALTIME_SCALED` and several `DB_*`). Give each a rule, or drop it from the patterns?
+   `BE_WEBHOOK_INBOX_KEY` and several `DB_*`). Give each a rule, or drop it from the patterns?
 22. **Correlation ids in lite.** BE-LOGGING-4 (a correlation id on every producer, HTTP call and job) applies only to an app
    that declares the `logging` pattern, and the lite reference declares none. Does a lite app declare `logging`, or stay
    without correlation ids?

@@ -15,9 +15,9 @@ import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { attribute, attributeValue, calleeName, leadingTextOf, stringOf } from "./lib/ast.ts"
 import { variableOf } from "./lib/bindings.ts"
 import { forbiddingConcern } from "./lib/fe-stack.ts"
-import { hfsOf, requiredRoot } from "./lib/hfs.ts"
+import { hfsOf } from "./lib/hfs.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
-import { baseName, classOf, classifyImport, fileOf, inSlot, roleOfFile, slotOfFile } from "./lib/scope.ts"
+import { classifyImport, inSlot, roleOfFile, slotOfFile } from "./lib/scope.ts"
 
 /** Another i18n stack: a second place that decides which language a reader sees (one the fe-stack catalog forbids by name is fe-stack-import's finding). */
 const OTHER_I18N = /^(?:react-i18next|i18next|next-i18next|react-intl|next-translate|typesafe-i18n|rosetta)(?:\/.*)?$|^@lingui\/.+$/
@@ -41,64 +41,7 @@ const hasId = (declaration: Node | null | undefined): declaration is Node =>
 
 // -- FE-NEXT-1 -------------------------------------------------------------------------------------
 
-/** Next 16 names the request interceptor `proxy.ts`; `middleware.ts` is forbidden. */
-export const noMiddlewareFile = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "`middleware.ts` is forbidden: the request interceptor is `proxy.ts` and exports `proxy`." },
-    schema: [],
-    messages: {
-      file:
-        "`{{name}}` is not the request interceptor file: Next 16 reads `proxy.ts`. Rename the file and export the handler as `proxy`.",
-      export:
-        "The handler in `proxy.ts` is exported as `middleware`, but Next 16 reads `proxy`. Export it as `proxy`.",
-    },
-  },
-  create(context) {
-    const file = fileOf(context)
-    // `middleware.ts` has a slot of its own (`fe.source-root-middleware`, forbidden); the interceptor is the `proxy` role of `fe.source-root-pinned`.
-    if (inSlot(context, "fe.source-root-middleware")) {
-      return { Program: (node: TSESTree.Program) => context.report({ node, messageId: "file", data: { name: baseName(file) } }) }
-    }
-    if (!inSlot(context, "fe.source-root-pinned") || roleOfFile(context) !== "proxy") return {}
-    const check = (node: TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration): void => {
-      const names: (string | undefined)[] = []
-      const declaration = node.declaration
-      if (hasId(declaration)) names.push(declaredName(declaration))
-      if (declaration && declaration.type === "VariableDeclaration") {
-        for (const d of declaration.declarations) if (d.id.type === "Identifier") names.push(d.id.name)
-      }
-      for (const specifier of node.type === "ExportNamedDeclaration" ? node.specifiers : []) names.push(identifierName(specifier.exported))
-      if (names.includes("middleware")) context.report({ node, messageId: "export" })
-    }
-    return { ExportNamedDeclaration: check, ExportDefaultDeclaration: check }
-  },
-})
-
 // -- FE-NEXT-2 -------------------------------------------------------------------------------------
-
-/** The locale segment is `[locale]`. */
-export const localeSegmentIsLocale = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "The locale route segment is `[locale]`, never `[lang]`." },
-    schema: [],
-    messages: {
-      segment:
-        "This file sits under a `[{{name}}]` segment. The one locale pattern is `[locale]` (next-intl, default `vi`, `localePrefix: \"as-needed\"`); a second spelling means a second routing table.",
-    },
-  },
-  create(context) {
-    // A route folder is a segment of slot `fe.route`; the locale one is `[locale]`, never another spelling.
-    if (!inSlot(context, "fe.route")) return {}
-    const hfs = hfsOf(context)
-    const file = fileOf(context)
-    const below = hfs.relative(file).slice(requiredRoot(classOf(context)).length + 1).split("/")
-    const name = below.slice(0, -1).map((segment) => /^\[(lang|lng|language|i18n)\]$/.exec(segment)).find(Boolean)?.[1]
-    if (!name) return {}
-    return { Program: (node: TSESTree.Program) => context.report({ node, messageId: "segment", data: { name } }) }
-  },
-})
 
 // -- FE-NEXT-3 -------------------------------------------------------------------------------------
 
@@ -452,8 +395,6 @@ export const i18nStackInOneModule = defineRule({
 
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = {
-  "no-middleware-file": noMiddlewareFile,
-  "locale-segment-is-locale": localeSegmentIsLocale,
   "no-second-i18n-stack": noSecondI18nStack,
   "html-lang-from-locale": htmlLangFromLocale,
   "page-exports-metadata": pageExportsMetadata,

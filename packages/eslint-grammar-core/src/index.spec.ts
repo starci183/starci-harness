@@ -141,22 +141,6 @@ test("only core and offset-pop are families; any other id, starci and starci-cor
   }
 })
 
-test("the family config reports a concrete status-tone violation through its public namespace", () => {
-  const block = only(coreGrammarConfig({ hfs: fixtureHfs({ ...FE_DECLARATION, grammar: "core" }) }))
-  const linter = new Linter()
-  const config: Linter.Config = {
-    ...block,
-    files: ["**/*.tsx"],
-    languageOptions: { ...block.languageOptions, parserOptions: { ecmaFeatures: { jsx: true } } },
-    rules: { "starci-grammar/status-text-uses-soft-foreground": block.rules?.["starci-grammar/status-text-uses-soft-foreground"] },
-  }
-  const source = (tone: string): string => `import { Text } from "@starci/grammar/common"; const view = <Text className="${tone}">Saved</Text>`
-  assert.deepEqual(linter.verify(source("bg-success-soft text-success-soft-foreground"), [config], { filename: "panel.tsx" }), [])
-  assert.deepEqual(linter.verify(source("text-success"), [config], { filename: "panel.tsx" }), [])
-  const findings = linter.verify(source("bg-success-soft text-success"), [config], { filename: "panel.tsx" })
-  assert.deepEqual(findings.map(({ ruleId, severity }) => ({ ruleId, severity })), [{ ruleId: "starci-grammar/status-text-uses-soft-foreground", severity: 2 }])
-})
-
 test("the counting cohort is closed: the type-roles rule alone runs at warn, until its entry is deleted", () => {
   assert.deepEqual(Object.keys(COUNTING), ["starci-grammar/no-raw-type-size"])
   assert.deepEqual(COUNTING["starci-grammar/no-raw-type-size"]?.law, "TYPE-ROLES")

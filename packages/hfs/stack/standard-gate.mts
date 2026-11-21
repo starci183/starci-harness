@@ -5,7 +5,7 @@
 // that cannot be read, is refused STACK_SEED_ADAPTER_DRIFT and nothing of the seed step applies. A verified pin is recorded in the seed
 // receipts (scope `standard`, the set's id, the commit as its hash), so each pin is verified once: the same commit is never judged twice.
 // The loader of standard-load.mts then applies each verified pin through the app's seed doors. This is the one path a standard takes into an
-// app: the app reads no standard by any other way (R435, rules/data-loaders.mts).
+// app: the app reads no standard by any other way (R435).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

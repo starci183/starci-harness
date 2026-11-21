@@ -28,10 +28,8 @@ output:
   base:
     summary: {type: string, summary: "what the tests prove"}
     files: {type: "string[]", summary: "the test files you wrote"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the testing rules the tests follow, from the back-end test topics (never the shared files)"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the tests prove"}
 checks:
-  base: [paths-only, rules-cited]
+  base: [paths-only]
   behavioural: true
 ---
 Write only tests. A test that fails because the code is wrong stays red and the result says so; never change product

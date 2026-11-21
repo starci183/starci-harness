@@ -1,7 +1,7 @@
 // R395 (rules/gallery.mts, scripts/hfs/gallery.mts, scripts/hfs/gallery-explain.mts): every app source repository carries the screenshot gallery - a managed Vite app
-// at gallery/ that serves on local.basePort + 50, pins vite and keeps its shots out of git - and every page of it (gallery/pages/<area>/<page>/) carries an explain.md
+// at gallery/ that serves on local.basePort + 50, - and every page of it (gallery/pages/<area>/<page>/) carries a screen.yaml or explain.md
 // that says why each region is drawn that way. A scaffold writes it, `starci app sync` adds it to an existing app, the dev stack starts it next to web and api, and the
-// gate names each way it can be missing and each page or region that is not explained.
+// gate names each way it can be missing and each page that is not explained.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,9 +14,8 @@ import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { galleryParams, galleryPort, declaredBasePort, galleryLocale, galleryTexts, declaredDefaultLocale, GALLERY_LABELS, declaredGalleryHosts, galleryAllowedHosts } from '../runtime/scripts/hfs/gallery.mjs';
-import { appGalleryFindings, galleryScreens, GALLERY_FILES, ignoresShots } from '../runtime/scripts/hfs/rules/gallery.mjs';
+import { appGalleryFindings, galleryScreens, GALLERY_FILES } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { hasOptionsSection, parseExplain, missingFrontMatter, linkTargets, flowList, SHOT_FILES } from '../runtime/scripts/hfs/gallery-explain.mjs';
-import { judgedForEnv, localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
 import { A15_CODES, FINDERS } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { loadLocalConfig, withGallery } from '../stack/local-config.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
@@ -40,7 +39,6 @@ function starter(t: TestContext, edition: string): string {
 const at = (root: string, ...parts: string[]): string => path.join(root, ...parts);
 const read = (root: string, file: string): string => fs.readFileSync(at(root, ...file.split('/')), 'utf8');
 const findings = (root: string, all: string[] = [], edition = 'lite') => appGalleryFindings({ repoRoot: root, repo: { kind: 'app', edition } as never, isRoot: true, all });
-const SHOT = 'gallery/pages/inbox/today/1440.png';
 
 test('the manifest carries the gallery values once: the folder, the dev script, the +50 offset, a pinned vite, and the slots that own the files', () => {
   assert.deepEqual({ ...PARAMS }, { dir: 'gallery', devScript: 'dev', portOffset: 50, vite: '6.3.5', pages: 'gallery/pages', ignoredShots: 'pages/**/*.png' });
@@ -55,10 +53,10 @@ test('the manifest carries the gallery values once: the folder, the dev script, 
   assert.equal(galleryPort(null, PARAMS), null);
 });
 
-const EXPLAIN_CODES = ['HFS_APP_GALLERY_EXPLAIN_MISSING', 'HFS_APP_GALLERY_REGION_INCOMPLETE', 'HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_APP_GALLERY_FRONT_MATTER', 'HFS_APP_GALLERY_SCREEN_FILE', 'HFS_APP_GALLERY_LINKS'];
+const EXPLAIN_CODES = ['HFS_APP_GALLERY_EXPLAIN_MISSING', 'HFS_APP_GALLERY_FRONT_MATTER', 'HFS_APP_GALLERY_SCREEN_FILE', 'HFS_APP_GALLERY_LINKS'];
 
-test('the rule is wired: its ten codes ship with the check and its finder runs', () => {
-  for (const code of ['HFS_APP_GALLERY_MISSING', 'HFS_APP_GALLERY_SCRIPT', 'HFS_APP_GALLERY_VITE_UNPINNED', 'HFS_APP_GALLERY_SHOTS_TRACKED', ...EXPLAIN_CODES]) assert.ok(A15_CODES.includes(code), code);
+test('the rule is wired: its codes ship with the check and its finder runs', () => {
+  for (const code of ['HFS_APP_GALLERY_MISSING', ...EXPLAIN_CODES]) assert.ok(A15_CODES.includes(code), code);
   assert.ok(FINDERS.includes(appGalleryFindings));
 });
 
@@ -130,79 +128,11 @@ test('one missing managed file is named', (t) => {
   assert.match(missing?.message ?? '', /missing gallery\/vite\.config\.js/u);
 });
 
-test('a dev script off base + 50, without --strictPort or absent is HFS_APP_GALLERY_SCRIPT', (t) => {
-  const root = starter(t, 'lite');
-  const file = at(root, 'gallery', 'package.json');
-  const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const base = scaffoldBasePort('demo');
-  const withScript = (script: string | undefined) => {
-    const scripts = { ...pkg.scripts, dev: script };
-    if (script === undefined) delete scripts.dev;
-    fs.writeFileSync(file, JSON.stringify({ ...pkg, scripts }));
-    return findings(root);
-  };
-  const wrongPort = withScript(`vite --port ${base + 51} --strictPort`);
-  assert.deepEqual(wrongPort.map((finding) => finding.code), ['HFS_APP_GALLERY_SCRIPT']);
-  assert.match(wrongPort[0]?.message ?? '', new RegExp(`serves on ${base + 51}, not ${base + 50} \\(local\\.basePort \\+ 50\\)`, 'u'));
-  assert.match(withScript(`vite --port ${base + 50}`)[0]?.message ?? '', /lacks --strictPort/u);
-  assert.match(withScript('vite')[0]?.message ?? '', /names no --port/u);
-  assert.match(withScript(undefined)[0]?.message ?? '', /declares no "dev" script/u);
-  assert.deepEqual(withScript(`vite --port=${base + 50} --strictPort`), [], '--port=N is the same flag');
-});
-
-test('vite must be an exact version: a range, a tag or none is HFS_APP_GALLERY_VITE_UNPINNED', (t) => {
-  const root = starter(t, 'lite');
-  const file = at(root, 'gallery', 'package.json');
-  const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const withVite = (vite: string | undefined) => {
-    fs.writeFileSync(file, JSON.stringify({ ...pkg, devDependencies: vite === undefined ? {} : { vite } }));
-    return findings(root);
-  };
-  for (const loose of ['^6.3.5', '~6.3.5', '6', '6.x', 'latest', '>=6']) {
-    const [finding, ...rest] = withVite(loose);
-    assert.equal(finding?.code, 'HFS_APP_GALLERY_VITE_UNPINNED', loose);
-    assert.match(finding?.message ?? '', /not an exact version/u);
-    assert.equal(rest.length, 0);
-  }
-  assert.match(withVite(undefined)[0]?.message ?? '', /not a devDependency/u);
-  assert.deepEqual(withVite('7.0.0-beta.1'), [], 'an exact prerelease is still a pin');
-});
-
-test('shots that are not ignored, or are tracked, are HFS_APP_GALLERY_SHOTS_TRACKED', (t) => {
-  const root = starter(t, 'lite');
-  const ignore = at(root, '.gitignore');
-  const original = fs.readFileSync(ignore, 'utf8');
-  fs.writeFileSync(ignore, original.replace('gallery/pages/**/*.png\n', ''));
-  const open = findings(root);
-  assert.deepEqual(open.map((finding) => finding.code), ['HFS_APP_GALLERY_SHOTS_TRACKED']);
-  assert.match(open[0]?.message ?? '', /gallery\/pages\/\*\*\/\*\.png is not git-ignored/u);
-  fs.writeFileSync(ignore, original);
-  const tracked = findings(root, [SHOT, 'gallery/pages/inbox/today/390.png', 'gallery/pages/inbox/today/explain.md']);
-  assert.deepEqual(tracked.map((finding) => finding.code), ['HFS_APP_GALLERY_SHOTS_TRACKED']);
-  assert.equal(tracked[0]?.path, SHOT);
-  assert.match(tracked[0]?.message ?? '', /2 screenshot PNGs are tracked/u);
-});
-
-test('the reference layout passes too: a gallery/.gitignore that ignores the shots instead of the root block', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-gallery-ignore-'));
-  try {
-    for (const text of ['pages/**/*.png\n', '/pages/**/*.png\n', 'node_modules\ndist\npages/**/*.png\n']) assert.equal(ignoresShots(text, PARAMS, true), true, text);
-    for (const text of ['gallery/pages/**/*.png\n', '/gallery/pages/**/*.png\n', '**/*.png\n']) assert.equal(ignoresShots(text, PARAMS, false), true, text);
-    for (const text of ['# pages/**/*.png\n', '!pages/**/*.png\n', 'pages/*.jpg\n', 'pages/\n', 'gallery/pages/\n', 'dist\n', '']) assert.equal(ignoresShots(text, PARAMS, true), false, text);
-    assert.equal(ignoresShots('pages/**/*.png\n', PARAMS, false), false, 'a nested pattern does nothing in the root file');
-    assert.equal(ignoresShots('gallery/pages/\n', PARAMS, false), false, 'ignoring the whole pages folder would hide the explain.md files too');
-    assert.equal(ignoresShots(null, PARAMS, false), false);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
-});
-
 test('an app that declares no basePort cannot get a gallery port: the gate asks for the base, never guesses', (t) => {
   const root = starter(t, 'lite');
   const stack = at(root, '.starcistacks', 'application-stacks.yaml');
   fs.writeFileSync(stack, read(root, '.starcistacks/application-stacks.yaml').replace(/^\s+basePort: \d+\n/mu, ''));
   assert.equal(declaredBasePort(parseYaml(read(root, '.starcistacks/application-stacks.yaml'))), null);
-  const [finding] = findings(root);
-  assert.equal(finding?.code, 'HFS_APP_GALLERY_SCRIPT');
-  assert.match(finding?.message ?? '', /declares no local\.basePort/u);
   fs.rmSync(at(root, 'gallery'), { recursive: true });
   assert.match(findings(root)[0]?.message ?? '', /declare environments\.dev\.local\.basePort/u);
 });
@@ -460,37 +390,6 @@ test('a screen folder with shots and no explain.md is HFS_APP_GALLERY_EXPLAIN_MI
   assert.deepEqual(findings(root, [], 'full'), []);
 });
 
-test('a region without Vì sao or Grammar is HFS_APP_GALLERY_REGION_INCOMPLETE, and so is a file with no region', (t) => {
-  const root = starter(t, 'lite');
-  const meta = '---\ntitle: T\nroute: /r\narea: inbox\n---\n';
-  page(root, 'inbox', 'today', ['1440.png'], `${meta}## Header\nVì sao: because\nLuật: l\n## Body\nGrammar: \`Card\`\n## Footer\nLuật: only\n`);
-  const [finding, ...rest] = findings(root);
-  assert.equal(finding?.code, 'HFS_APP_GALLERY_REGION_INCOMPLETE');
-  assert.equal(finding?.level, 'error');
-  assert.match(finding?.message ?? '', /3 regions of gallery\/pages\/inbox\/today\/explain\.md lack a value: Header lacks Grammar; Body lacks Vì sao; Footer lacks Vì sao and Grammar/u);
-  assert.deepEqual(rest, []);
-  page(root, 'inbox', 'today', [], `${meta}Just prose, no region.\n`);
-  const none = findings(root);
-  assert.deepEqual(codes(none), ['HFS_APP_GALLERY_REGION_INCOMPLETE']);
-  assert.match(none[0]?.message ?? '', /has no "## <region name>"/u);
-  page(root, 'inbox', 'today', [], `${meta}## Header\nVì sao: because\nGrammar: \`Page\`\n`);
-  assert.deepEqual(findings(root), []);
-});
-
-test('CHƯA RÕ and SAI are a bug the author has not fixed: they block in --env prod and are only reported in --env local', (t) => {
-  const root = starter(t, 'lite');
-  page(root, 'inbox', 'today', ['1440.png'], '---\ntitle: T\nroute: /r\narea: inbox\n---\n## Header\nVì sao: CHƯA RÕ\nGrammar: `Page`\n## Body\nVì sao: SAI: it is a card\nGrammar: `Card`\n## Fine\nVì sao: l\nGrammar: `X`\n');
-  const [finding, ...rest] = findings(root);
-  assert.equal(finding?.code, 'HFS_APP_GALLERY_REGION_UNCLEAR');
-  assert.match(finding?.message ?? '', /2 regions of .* say CHƯA RÕ or SAI \("Header", "Body"\)/u);
-  assert.deepEqual(rest, []);
-  assert.ok(localOnlyCodes().has('HFS_APP_GALLERY_REGION_UNCLEAR'), 'the catalog marks the code localOnly');
-  assert.equal(localOnlyCodes().has('HFS_APP_GALLERY_EXPLAIN_MISSING'), false, 'a missing explain.md blocks everywhere');
-  assert.equal(localOnlyCodes().has('HFS_APP_GALLERY_REGION_INCOMPLETE'), false);
-  assert.equal(judgedForEnv([finding!], 'local')[0]?.report, true, 'local: reported, not blocking');
-  assert.equal(judgedForEnv([finding!], 'prod')[0]?.report, undefined, 'prod: blocking');
-});
-
 test('a front matter that lacks title, route or area, or names another area than its folder, is a warning', (t) => {
   const root = starter(t, 'lite');
   const body = '## Header\nVì sao: because\nGrammar: `Page`\n';
@@ -507,8 +406,8 @@ test('a front matter that lacks title, route or area, or names another area than
 
 test('the explanation is judged from the tracked explain.md even when CI has no shots, and a scoped run skips pages outside its scope', (t) => {
   const root = starter(t, 'lite');
-  page(root, 'inbox', 'today', [], '---\ntitle: T\nroute: /r\narea: inbox\n---\n## Header\nVì sao: CHƯA RÕ\nGrammar: `Page`\n');
-  assert.deepEqual(codes(findings(root)), ['HFS_APP_GALLERY_REGION_UNCLEAR']);
+  page(root, 'inbox', 'today', [], '---\ntitle: T\n---\n## Header\nVì sao: because\nGrammar: `Page`\n');
+  assert.deepEqual(codes(findings(root)), ['HFS_APP_GALLERY_FRONT_MATTER']);
   const scoped = appGalleryFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true, inScope: (file) => !file.includes('/inbox/') });
   assert.deepEqual(scoped, []);
 });

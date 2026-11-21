@@ -2,12 +2,13 @@
 // `illustration.yaml`, whose `basePrompt: { version, text }` every prompt of an image starts with; each image under `statics/` has a sibling `<name>.prompt.yaml` that records the
 // `basePrompt.version` it was prompted with and its `subject`. The findings:
 //   HFS_BRAND_INVALID            `.starcistacks/brand/illustration.yaml` is not YAML or its `basePrompt` is not `{ version: <positive integer>, text: <non-empty> }` (an error);
-//   HFS_BRAND_MISSING            a `statics/**/*.prompt.yaml` exists and the app has no readable `.starcistacks/brand/illustration.yaml` to prompt from;
-//   HFS_BRAND_PROMPT_STALE       a prompt file records no `basePrompt.version`, or one other than the current: the image was made from an older brand prompt and is made again;
-//   HFS_BRAND_PROMPT_INCOMPLETE  a prompt file is not YAML, has no `subject`, or its `prompt` does not start with the current basePrompt text;
-//   HFS_BRAND_BASE_UNKNOWN       a prompt file names (`basePrompt.name`, default `illustration`) a base that neither illustration.yaml nor `.starcistacks/brand/media.yaml` (`bases: { <name>: { version, text } }`) defines.
+//   HFS_BRAND_PROMPT_INVALID     the prompt-file code; its message names which of these it is:
+//     - a `statics/**/*.prompt.yaml` exists and the app has no readable `.starcistacks/brand/illustration.yaml` to prompt from;
+//     - a prompt file records no `basePrompt.version`, or one other than the current: the image was made from an older brand prompt and is made again;
+//     - a prompt file is not YAML, has no `subject`, or its `prompt` does not start with the current basePrompt text;
+//     - a prompt file names (`basePrompt.name`, default `illustration`) a base that neither illustration.yaml nor `.starcistacks/brand/media.yaml` (`bases: { <name>: { version, text } }`) defines.
 // A prompt file is judged against the base it names, by that base's version and text; a media.yaml that is not that shape is HFS_BRAND_INVALID too (a base inside it is never judged then).
-// The prompt-file codes are localOnly: a warning in `--env local` (a brand prompt moves while images are redrawn), an error in `--env prod`. The prompt files are read from the work tree, since the
+// The prompt-file code is localOnly: a warning in `--env local` (a brand prompt moves while images are redrawn), an error in `--env prod`. The prompt files are read from the work tree, since the
 // images they sit beside may be seeded and never tracked.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -122,25 +123,25 @@ export function brandFindings({ repoRoot, repo, isRoot }: { repoRoot: string; re
   if (mediaParsed !== null && mediaParsed.bases === null) findings.push(found('HFS_BRAND_INVALID', BRAND_MEDIA_FILE, `${BRAND_MEDIA_FILE} ${mediaParsed.problem as string}: it holds \`bases: { <name>: { version: <integer from 1>, text: <the block every prompt of that name starts with> } }\` ${RULE}`));
   const files = promptFiles(repoRoot);
   if (files.length === 0) return findings;
-  if (sheet === null && media === null) return [...findings, found('HFS_BRAND_MISSING', BRAND_ILLUSTRATION_FILE, `${files.length} prompt file${files.length === 1 ? '' : 's'} under ${STATICS_DIR}/ (first: ${files[0] as string}) and no ${BRAND_ILLUSTRATION_FILE}: write the brand folder (\`starci app scaffold\` writes the starter, contexts/project/brand.md PROJECT-BRAND-1), then prompt the images again from its basePrompt ${RULE}`, local)];
+  if (sheet === null && media === null) return [...findings, found('HFS_BRAND_PROMPT_INVALID', BRAND_ILLUSTRATION_FILE, `${files.length} prompt file${files.length === 1 ? '' : 's'} under ${STATICS_DIR}/ (first: ${files[0] as string}) and no ${BRAND_ILLUSTRATION_FILE}: write the brand folder (\`starci app scaffold\` writes the starter, contexts/project/brand.md PROJECT-BRAND-1), then prompt the images again from its basePrompt ${RULE}`, local)];
   const known = new Map<string, BasePrompt>(mediaParsed?.bases ?? []);
   if (parsed?.base) known.set(DEFAULT_BASE, parsed.base);
   for (const file of files) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
     const read = readPrompt(text);
-    if ('error' in read) { findings.push(found('HFS_BRAND_PROMPT_INCOMPLETE', file, `${file} ${read.error}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local)); continue; }
+    if ('error' in read) { findings.push(found('HFS_BRAND_PROMPT_INVALID', file, `${file} ${read.error}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local)); continue; }
     const { name } = read;
     const base = typeof name === 'string' ? known.get(name) : undefined;
     if (base === undefined) {
       // A base that lives in a sheet that is itself invalid is that sheet's finding, not this file's.
       const invalidOwner = name === DEFAULT_BASE ? parsed !== null && parsed.base === null : mediaParsed !== null && mediaParsed.bases === null;
-      if (!invalidOwner) findings.push(found('HFS_BRAND_BASE_UNKNOWN', file, `${file} names the base ${JSON.stringify(name)}, which neither ${BRAND_ILLUSTRATION_FILE} (the base \`${DEFAULT_BASE}\`) nor ${BRAND_MEDIA_FILE} defines (known: ${[...known.keys()].join(', ') || 'none'}): name a defined base in \`basePrompt.name\` or add it to ${BRAND_MEDIA_FILE} ${RULE}`, local));
+      if (!invalidOwner) findings.push(found('HFS_BRAND_PROMPT_INVALID', file, `${file} names the base ${JSON.stringify(name)}, which neither ${BRAND_ILLUSTRATION_FILE} (the base \`${DEFAULT_BASE}\`) nor ${BRAND_MEDIA_FILE} defines (known: ${[...known.keys()].join(', ') || 'none'}): name a defined base in \`basePrompt.name\` or add it to ${BRAND_MEDIA_FILE} ${RULE}`, local));
       continue;
     }
     const { stale, incomplete } = promptProblems(read.record, base);
-    if (stale !== null) findings.push(found('HFS_BRAND_PROMPT_STALE', file, `${file} ${stale}: the image was prompted from another version of the base \`${name as string}\`; build its prompt again as that base's text plus its subject, generate it again and record the version ${RULE}`, local));
-    if (incomplete !== null) findings.push(found('HFS_BRAND_PROMPT_INCOMPLETE', file, `${file} ${incomplete}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local));
+    if (stale !== null) findings.push(found('HFS_BRAND_PROMPT_INVALID', file, `${file} ${stale}: the image was prompted from another version of the base \`${name as string}\`; build its prompt again as that base's text plus its subject, generate it again and record the version ${RULE}`, local));
+    if (incomplete !== null) findings.push(found('HFS_BRAND_PROMPT_INVALID', file, `${file} ${incomplete}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local));
   }
   return findings;
 }

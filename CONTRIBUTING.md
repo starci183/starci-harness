@@ -2,7 +2,7 @@
 
 These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `contexts/`, `packages/`, `skills/`
 and the root documents. Read [contexts/README.md](contexts/README.md) first. Each rule is a heading with a stable id (`CONTRIB-<n>`), so
-a task on the harness itself cites the ids it applied in its `rulesApplied`.
+a task can name the ids it applied.
 
 ## Setup and the checks you run
 
@@ -97,16 +97,16 @@ harness for that concept, then:
 Appended cases contradict silently: a reader takes the first sentence and never meets the second, and the tree grows
 without becoming truer. Held by review.
 
-### CONTRIB-7 Feedback hardens
+### CONTRIB-7 Feedback is fixed at its root
 
-Owner feedback and owner decisions become the rule rewritten in its owning file, a check, or a code change. There is
+Owner feedback and owner decisions become a code change that removes the cause, or the rule rewritten in its owning
+file. Never a check written for that one case ([CONTRIB-10](#contrib-10-general-checks-only)). There is
 one rule book, `contexts/` and this file: a decision is written once, as the rule that holds now, and never logged a
 second time, attributed or dated. A rule cites other rules by their ids, never a ruling, a decision log or a date, and a
 CHANGELOG entry says what changed, never which ruling asked for it. A question that awaits the owner is one entry of
 [contexts/harness/questions.md](contexts/harness/questions.md) until it is answered. It never becomes a case note
 beside a rule or a "lessons" section. No design document sits beside the owners: plans, phases and history live in git,
-not in a file. `starci contexts anatomy` refuses a ruling citation in contexts/, policy/ and the packages' source and
-knowledge (ANATOMY_RULING_HISTORY).
+not in a file.
 
 ### CONTRIB-8 Claims execute
 
@@ -118,9 +118,19 @@ code or remove the claim.
 `ops/` and `policy/` hold declarative YAML (and the op files' front matter) the CLI validates; a key no code reads is
 deleted. Numbers live there once and are never repeated in prose.
 
-### CONTRIB-10 Gates before rules
+### CONTRIB-10 General checks only
 
-Prefer a check that refuses the mistake over a sentence that forbids it; a rule with no gate says it is held by review.
+Checks are general. A one-off mistake gets no check: fix its root cause (an
+API or generator change that removes the choice, or the fix in the owning component) or rewrite the general rule in its
+one place. A new check, lint rule, finding code or refusal needs all of:
+
+1. a broad bug class, stated without naming one app, file, component or literal;
+2. evidence that it recurred in more than one place or app;
+3. no existing general check that can be widened to cover it;
+4. the owner's sign-off, recorded in the commit.
+
+Widen an existing check before adding a code. A rule with no gate is held by review, and that is a complete state, not a
+debt.
 
 ## Code rules
 
@@ -230,8 +240,7 @@ re-run (of the failed jobs) publishes only what is still missing. The plan is re
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
 at another version than the sibling's folder holds at that commit (a same-minor range `~x.y.z` is met by any patch of it), or at a
-version that is neither on npm nor due in the same run, and when `@starci/grammar` is due at a patch while its diff since the
-version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family takes
+version that is neither on npm nor due in the same run. The Grammar family takes
 a same-minor range in the canon pins: a Grammar patch publishes the three family packages alone, and a minor raises the
 range in `@starci/hfs` and releases the whole family ([contexts/grammars/contributing.md](contexts/grammars/contributing.md) "Patch or
 minor"). A raised version npm does not serve is published whatever its content, even with an empty diff, because the stack pins name it and an immutable registry needs it; `unchanged` never appears in the plan. A stack pin of a package at a version npm does not serve and this run does not publish refuses `RELEASE_PIN_UNPUBLISHED`. A package the plan publishes, or one a stack pin names at the version its folder holds, whose

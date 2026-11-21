@@ -1,8 +1,8 @@
 # The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and
 # the enforcers that judge it. The law states what must hold; the reason lives in the pattern that cites the rule
 # (contexts/code/<side>/*.md), the value in its owner (hfs/slots.yaml ruleParams or budgets, stack/pins.yaml,
-# the grammar package). An enforcer marked `status: planned` is owed: `starci contexts anatomy` lists the rules judged only
-# by planned enforcers, and the status is removed the day the check ships.
+# the grammar package). An enforcer marked `status: planned` is not built yet: `starci contexts anatomy` lists the rules judged only
+# by planned enforcers. A rule held by review is complete; nothing is owed, and a check is added only under CONTRIB-10.
 schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)
@@ -45,14 +45,7 @@ rules:
       - HFS_ROOT_ENTRY_MISSING
       - HFS_APPS_REQUIRED
       - HFS_APP_LAYOUT_INVALID
-      - HFS_README_TITLE_INVALID
-      - HFS_README_DESCRIPTION_INVALID
-      - HFS_README_SECTION_MISSING
-      - HFS_README_SECTION_ORDER
-      - HFS_README_DEVELOPMENT_INCOMPLETE
-      - HFS_README_WORK_POINTER_MISSING
-      - HFS_README_PRIVATE_URL
-      - HFS_README_BADGE_NOT_LIVE
+      - HFS_README_INVALID
     enforcers:
       - {kind: hfs, id: slot-required-missing}
       - {kind: machine, id: required-files}
@@ -175,7 +168,6 @@ rules:
     law: An over-budget file does not grow, and a new file stays within its budget (hfs/slots.yaml).
     failureCodes:
       - HFS_SIZE_GROWTH
-      - HFS_SIZE_SOFT_BACKLOG
     enforcers:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
@@ -452,9 +444,7 @@ rules:
       - {kind: eslint-be, id: no-sleep-in-flow}
       - {kind: eslint-be, id: no-wiring-in-flow-spec}
       - {kind: eslint-be, id: e2e-asserts-persisted-state}
-      - {kind: eslint-be, id: no-api-shaped-e2e-filename}
       - {kind: eslint-be, id: no-call-only-spec}
-      - {kind: eslint-be, id: no-marker-model-stub}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
       - {kind: eslint-be, id: spec-builds-with-testing-module}
@@ -532,7 +522,6 @@ rules:
       - FE_ROUTE_CLIENT_HOOK
       - FE_ROUTE_DEFAULT_EXPORT
     enforcers:
-      - {kind: eslint-fe, id: no-middleware-file}
       - {kind: eslint-fe, id: page-exports-metadata}
       - {kind: eslint-fe, id: route-files-thin}
       - {kind: eslint-fe, id: route-adapter}
@@ -592,7 +581,6 @@ rules:
       - FE_I18N_NAVIGATION
       - FE_I18N_FORMATTER
     enforcers:
-      - {kind: eslint-fe, id: locale-segment-is-locale}
       - {kind: eslint-fe, id: no-second-i18n-stack}
       - {kind: eslint-fe, id: i18n-stack-in-one-module}
       - {kind: eslint-fe, id: navigation-from-intl}
@@ -619,9 +607,7 @@ rules:
       - {kind: stylelint, id: raw-brand-value}
       - {kind: stylelint, id: no-apply-raw}
       - {kind: stylelint, id: no-important}
-      - {kind: stylelint, id: no-self-reference}
       - {kind: stylelint, id: globals-shape}
-      - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
       - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
@@ -633,7 +619,6 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
     law: Product tiers compose the selected Grammar renderers for form controls, images and structural elements and never reproduce them with raw HTML.
@@ -868,8 +853,6 @@ rules:
       - {kind: eslint-be, id: require-enum-member-jsdoc}
       - {kind: eslint-be, id: no-non-ascii-source}
       - {kind: eslint-be, id: no-restated-name-jsdoc}
-      - {kind: eslint-be, id: no-bare-verb-export}
-      - {kind: eslint-be, id: no-vendor-module-factory-name}
       - {kind: eslint-be, id: no-version-in-name}
       - {kind: eslint-be, id: no-const-enum}
       - {kind: eslint-be, id: no-inline-object-type}
@@ -898,7 +881,6 @@ rules:
       - {kind: eslint-fe, id: require-export-jsdoc}
       - {kind: eslint-fe, id: no-emoji-in-source}
       - {kind: eslint-fe, id: no-vietnamese-in-source}
-      - {kind: eslint-fe, id: no-shell-tier}
       - {kind: eslint-fe, id: source-tier-marker-matches-folder}
       - {kind: eslint-fe, id: surface-folder-two-files-only}
       - {kind: eslint-fe, id: route-tree-holds-routes-only}
@@ -909,7 +891,6 @@ rules:
       - {kind: eslint-fe, id: monorepo-tier-belongs-to-its-side}
       - {kind: eslint-fe, id: prefer-arrow-export}
       - {kind: eslint-fe, id: handler-on-prefix}
-      - {kind: eslint-fe, id: no-second-language-in-path}
       - {kind: eslint-fe, id: no-direct-const-alias}
       - {kind: eslint-fe, id: frontend-source-layout}
   - id: R92
@@ -1041,13 +1022,6 @@ rules:
       - HFS_LINT_SUPPRESSION_FILE
     enforcers:
       - {kind: hfs, id: lint-suppression}
-  - id: R105
-    code: HFS_PROOF_COMMAND_FILE_MISSING
-    law: Every repository file a `.starciwork` proof command names exists.
-    failureCodes:
-      - HFS_PROOF_COMMAND_FILE_MISSING
-    enforcers:
-      - {kind: hfs, id: proof-command-files}
   - id: R106
     code: FE_I18N_KEYS
     law: "Front-end catalogs and source agree both ways: every literal key read through `next-intl` exists in every locale, and no catalog key is unread."
@@ -1083,13 +1057,6 @@ rules:
       - FE_PROPS_MUTABLE
     enforcers:
       - {kind: eslint-fe, id: props-fields-readonly}
-  - id: R111
-    code: HFS_PEER_INTEGRATION_MISSING
-    law: An app declares the runtime peer every driver integration pair of contexts/stack/pins.yaml#peers requires.
-    failureCodes:
-      - HFS_PEER_INTEGRATION_MISSING
-    enforcers:
-      - {kind: hfs, id: peer-integrations}
   - id: R113
     code: FE_GRAPHQL_CONTRACT
     law: Every GraphQL operation a front end keeps in a `.graphql` file validates against the back-end contract snapshot that declares its root field.
@@ -1161,7 +1128,6 @@ rules:
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
-      - {kind: hfs, id: cli-command-names}
   - id: R150
     code: BE_CLI_OWNER
     law: "`nest-commander` is imported only by the cli apps and their feature roots, and no back-end source parses command-line arguments itself."
@@ -1290,34 +1256,6 @@ rules:
       - BE_SERVICE_ISOLATION
     enforcers:
       - {kind: eslint-be, id: service-isolation}
-  - id: R169
-    code: BE_SAGA_STEP_COMPENSATION
-    law: A declared saga is one folder whose orchestrator imports every step and every compensation; a compensation (the optional declared undo, pressed by a person and run as a forward step) has the step of the same name, and a step needs none.
-    failureCodes:
-      - BE_SAGA_STEP_COMPENSATION
-    enforcers:
-      - {kind: hfs, id: saga-step-compensation}
-  - id: R170
-    code: BE_SAGA_STATE_VERSIONED
-    law: Every saga orchestrator has a versioned state type moved only through the fenced store of `platform/saga`.
-    failureCodes:
-      - BE_SAGA_STATE_VERSIONED
-    enforcers:
-      - {kind: hfs, id: saga-state-versioned}
-  - id: R171
-    code: BE_SAGA_EVENT_CONTRACT
-    law: A saga step and its compensation each name an event declared in a vendored contract, and the compensation's event declares what it compensates.
-    failureCodes:
-      - BE_SAGA_EVENT_CONTRACT
-    enforcers:
-      - {kind: hfs, id: saga-event-contract}
-  - id: R172
-    code: BE_SAGA_CONSUMER_DEDUPE
-    law: A saga consumer passes the delivery's `eventId` to the command it dispatches.
-    failureCodes:
-      - BE_SAGA_CONSUMER_DEDUPE
-    enforcers:
-      - {kind: hfs, id: saga-consumer-dedupe}
   - id: R174
     code: BE_CONTEXT_OWNER
     law: Each `hfs.json` connection is a bounded context owned by one api or worker app; an app composes only its own contexts, and the migrate and cli apps compose all.
@@ -1525,8 +1463,6 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
-      - {kind: eslint-be, id: no-line-separator-literal}
-      - {kind: eslint-fe, id: no-line-separator-literal}
       - {kind: eslint-be, id: no-bidirectional-character}
       - {kind: eslint-fe, id: no-bidirectional-character}
       - {kind: eslint-be, id: no-duplicate-import}
@@ -1555,7 +1491,6 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
-      - {kind: eslint-fe, id: swr-extension-from-package}
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
@@ -1579,7 +1514,6 @@ rules:
       - ENV_DUPLICATE
       - ENV_PUBLIC_SEALED
       - ENV_EXAMPLE_DRIFT
-      - ENV_KEY_ENVIRONMENT_NAMED
     enforcers:
       - {kind: hfs, id: env-parity}
   - id: R249
@@ -1734,14 +1668,7 @@ rules:
       - STACKS_SECRET_UNVERSIONED
       - STACKS_SECRET_ENV_LITERAL
       - STACKS_PORT_PUBLISHED
-      - STACKS_SECOND_INGRESS
-      - STACKS_DNS_UNDECLARED
-      - STACKS_HOST_UNROUTED
-      - STACKS_TLS_UNDECLARED
-      - STACKS_PLACEMENT_MISSING
-      - STACKS_HEALTHCHECK_MISSING
-      - STACKS_UPDATE_POLICY_MISSING
-      - STACKS_REALTIME_SCALED
+      - STACKS_SERVICE_POLICY_MISSING
     enforcers:
       - {kind: hfs, id: stacks-swarm}
       - {kind: hfs, id: stacks-second-ingress}
@@ -1781,11 +1708,10 @@ rules:
       - {kind: hfs, id: supply-chain}
   - id: R270
     code: HFS_DOC_PATH_MISSING
-    law: Documentation cites only existing paths, scripts, CLI verbs, declared environment keys and catalog rule ids.
+    law: Documentation cites only existing paths, scripts, CLI verbs and catalog rule ids.
     failureCodes:
       - HFS_DOC_PATH_MISSING
       - HFS_DOC_COMMAND_UNKNOWN
-      - HFS_DOC_ENV_UNKNOWN
       - HFS_DOC_RULE_UNKNOWN
     enforcers:
       - {kind: hfs, id: doc-fresh}
@@ -1812,21 +1738,17 @@ rules:
     enforcers:
       - {kind: hfs, id: coverage-below}
   - id: R275
-    code: STACKS_INGRESS_UNDECLARED
-    law: Every Swarm environment declares one ingress component with a digest-pinned supported ingress image and its hosts.
+    code: STACKS_INGRESS_INVALID
+    law: Every Swarm environment declares one ingress component with a digest-pinned supported ingress image and its hosts, never a second ingress; each public host declares its DNS owner and receipt, the environment its TLS owner and receipt, and every declared host is routed by the ingress (STACKS_INGRESS_INVALID).
     failureCodes:
-      - STACKS_INGRESS_UNDECLARED
-      - STACKS_INGRESS_UNKNOWN
+      - STACKS_INGRESS_INVALID
     enforcers:
       - {kind: hfs, id: stacks-ingress}
   - id: R276
     code: STACKS_LITE_SELFHOSTED_DB
-    law: Lite runs no self-hosted database or vector store, runs Redis only when declared and then durably, and its sidecars keep their own storage on a declared volume.
+    law: Lite runs no self-hosted database or vector store, and runs Redis only when declared; that a declared Redis runs durably (one service, AOF on a named volume, no eviction) and that its sidecars keep their own storage on a declared volume is held by review, not by a check.
     failureCodes:
       - STACKS_LITE_SELFHOSTED_DB
-      - STACKS_SIDECAR_VOLUME_UNDECLARED
-      - STACKS_SIDECAR_DB_UNSUPPORTED
-      - STACKS_LITE_REDIS_PERSISTENCE
     enforcers:
       - {kind: hfs, id: stacks-backing}
   - id: R277
@@ -1885,13 +1807,6 @@ rules:
       - HFS_ASSET_KIND
     enforcers:
       - {kind: hfs, id: assets}
-  - id: R283
-    code: HFS_APP_LEXICON
-    law: Source and documentation use no word `hfs.json` `lexicon.removed` declares.
-    failureCodes:
-      - HFS_APP_LEXICON
-    enforcers:
-      - {kind: hfs, id: lexicon}
   - id: R284
     code: BE_LITE_PROOF_LANE_MISSING
     law: A lite back end proves every declared pattern through integration specs titled `<pattern>/<scenario>`.
@@ -1927,7 +1842,6 @@ rules:
     failureCodes:
       - FE_STACK_UNLISTED
       - FE_STACK_CORE_MISSING
-      - FE_STACK_FAMILY_LINT_MISSING
     enforcers:
       - {kind: hfs, id: fe-stack-allowlist}
   - id: R289
@@ -1945,8 +1859,7 @@ rules:
     law: "`PublicReason` is exactly Health, AuthHandshake, SignedWebhook and CatalogRead, and other access uses its own credential guard."
     failureCodes:
       - BE_PUBLIC_REASON_CLOSED
-    enforcers:
-      - {kind: eslint-be, id: public-reason-closed}
+    enforcers: []
   - id: R291
     code: HFS_FUNCTION_BUDGET
     law: Every function, method or arrow body stays within the function line budget (ruleParams.common.functionLines).
@@ -2084,8 +1997,7 @@ rules:
     law: The selected Grammar shell owns the fixed application frame with independent navigation and content scroll, and the application layout never recreates it.
     failureCodes:
       - FE_APP_SHELL_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: app-shell-frame}
+    enforcers: []
   - id: R314
     code: FE_NAVBAR_CONTROL_SIZE
     law: Navbar controls share one height and icons one size per region from the selected Grammar scale.
@@ -2098,22 +2010,19 @@ rules:
     law: Navbar controls appear in the order language, theme, notifications and account, each supplied by the selected Grammar.
     failureCodes:
       - FE_NAVBAR_CLUSTER
-    enforcers:
-      - {kind: eslint-grammar-core, id: navbar-cluster}
+    enforcers: []
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
     law: An application keeps the selected Grammar shell's navigation model across viewports; the only bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places), and a hand-made bottom tab bar or a BottomNav anywhere else is refused.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
+    enforcers: []
   - id: R317
     code: FE_NAVBAR_CREATE
     law: Create actions live on the page that owns them, never in the global navbar.
     failureCodes:
       - FE_NAVBAR_CREATE
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-navbar-create}
+    enforcers: []
   - id: R318
     code: FE_NESTED_VARIANT
     law: Apps compose the Grammar with layout-only CSS; paint and surface edges belong to the Grammar, and app styles never target Grammar internals.
@@ -2123,10 +2032,7 @@ rules:
       - FE_GRAMMAR_LAYOUT_ONLY
       - FE_DIVIDER_FULL_BLEED
     enforcers:
-      - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: divider-full-bleed}
-      - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
   - id: R319
     code: FE_BUTTON_INTENT
@@ -2161,8 +2067,7 @@ rules:
     law: The label of a status chip (a Badge, with or without its dot) starts with an uppercase letter, so every chip of an app reads in one vocabulary.
     failureCodes:
       - FE_CHIP_LABEL_CASE
-    enforcers:
-      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    enforcers: []
   - id: R323
     code: FE_PAGE_HEADER_HAND_ROLLED
     law: A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator.
@@ -2263,20 +2168,12 @@ rules:
     enforcers:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
-  - id: R337
-    code: HFS_AUTH_COOKIE_DOMAIN_MISSING
-    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
-    failureCodes:
-      - HFS_AUTH_COOKIE_DOMAIN_MISSING
-    enforcers:
-      - {kind: hfs, id: stacks-auth-cookie-domain}
   - id: R338
     code: FE_GENERATED_ART_OUTSIDE_FRAME
     law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
     failureCodes:
       - FE_GENERATED_ART_OUTSIDE_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    enforcers: []
   - id: R339
     code: FE_MASCOT_ASSET_SLOT_MISSING
     law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.
@@ -2308,7 +2205,7 @@ rules:
 
   - id: R343
     code: HFS_CHECK_CACHE_FORGED
-    law: An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes, refused at the pre-push hook as HFS_CHECK_CACHE_UNWARMED (a cache that run had to change, or uncommitted cache files; the pristine first commit, a root commit that carries no cache as `starci app scaffold` records it, pushes no record and is not refused) or HFS_CHECK_CACHE_UNPORTABLE (a host whose fingerprint is not portable), and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read.
+    law: An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes; a run that wrote records its commit does not hold reports HFS_CHECK_CACHE_UNWARMED as info (never red), and only the pre-push hook's run (STARCI_PUSH_GATE=1) refuses the push for it, which `starci app push` and the lander avoid by committing the records first (the pristine first commit, a root commit that carries no cache as `starci app scaffold` records it, pushes no record and is not refused) and refuses a host whose fingerprint is not portable as HFS_CHECK_CACHE_UNPORTABLE, and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read.
     failureCodes:
       - HFS_CHECK_CACHE_FORGED
       - HFS_CHECK_CACHE_STALE
@@ -2324,8 +2221,7 @@ rules:
     law: An app's ai-router gateway has one client key, `STARCI_AI_KEY`, and no admin token; `integrations/ai` reads exactly that secret name, and the gateway's custody owner passes no `adminToken`.
     failureCodes:
       - BE_AI_VIRTUAL_KEY
-    enforcers:
-      - {kind: eslint-be, id: ai-virtual-key-name}
+    enforcers: []
   - id: R345
     code: FE_PANE_GRID_CHILD_NOT_PANE
     law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
@@ -2393,8 +2289,7 @@ rules:
     law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are Tabs kind=\"filter\"."
     failureCodes:
       - FE_TAG_GROUP_SELECTION
-    enforcers:
-      - {kind: eslint-fe, id: no-selectable-tag-group}
+    enforcers: []
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD
@@ -2447,15 +2342,6 @@ rules:
       - FE_RENDER_PROP_ACROSS_SERVER
     enforcers:
       - {kind: machine, id: render-prop-across-server}
-  - id: R362
-    code: FE_GRAMMAR_TIER_STATE
-    law: "In the Grammar package a leaf and a composite hold no useState, useReducer or effect, and a component's own props and its ReactNode slots stay inside its tier's budget (leaf 8, branch 12, composite 12, frame 10 props; 3 slots). Both run as counting rules: their findings are the tier refactor list."
-    failureCodes:
-      - FE_GRAMMAR_TIER_STATE
-      - FE_GRAMMAR_PROP_BUDGET
-    enforcers:
-      - {kind: grammar-lint, id: tier-state}
-      - {kind: grammar-lint, id: prop-budget}
   - id: R363
     code: FE_GRAMMAR_LITERAL
     law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."
@@ -2506,23 +2392,14 @@ rules:
     law: Every docker-compose environment declares a coherent `local` block under the dev verbs' own normalization, and a lite app declares one such dev environment, so `starci app stack up --env dev` has something to run.
     failureCodes:
       - STACKS_LOCAL_CONFIG_INVALID
-      - STACKS_DEV_UNDECLARED
-    enforcers:
-      - {kind: hfs, id: stacks-local}
-  - id: R373
-    code: STACKS_RUNBOOK_DOCKER_COMMAND
-    law: The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker build, run, compose or stack deploy command.
-    failureCodes:
-      - STACKS_RUNBOOK_DOCKER_COMMAND
     enforcers:
       - {kind: hfs, id: stacks-local}
   - id: R374
     code: STACKS_CODE_BIND_MOUNT
-    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's StarCi fork image for that service when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
+    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned; when the harness owns a StarCi fork image for that service the final stage is FROM it, held by review), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
     failureCodes:
       - STACKS_CODE_BIND_MOUNT
       - STACKS_IMAGE_BASE_UNPINNED
-      - STACKS_IMAGE_BASE_NOT_FORK
       - STACKS_IMAGE_ENV_DIVERGES
     enforcers:
       - {kind: hfs, id: stacks-service-images}
@@ -2531,20 +2408,8 @@ rules:
     law: Seed data lives only in the seed levels of `.starcistacks/`, where `seeds/` is applied in every environment first and `<env>/seeds/` in the one environment the stack declaration names `<env>`; each level is a `seeds.yaml` manifest (schema starci/seeds@1) whose entries list every file of its `sql/`, `data/` and `files/` folders; a seed is never a migration (no statement that creates, alters, drops, truncates, grants, revokes or comments on an object), never custody, a data document validates against the schema its entry names, a level a production environment applies holds no test data but the one test account an environment declares (a test-account entry with its reason), and a document names a secret only as a reference to a sealed seeds-<name> member of its environment.
     failureCodes:
       - HFS_SEEDS_SHAPE
-      - HFS_SEED_MANIFEST
-      - HFS_SEED_DDL
-      - HFS_SEED_DATA_SCHEMA
-      - HFS_SEED_TEST_DATA
-      - HFS_SEED_SECRET_REF
     enforcers:
       - {kind: hfs, id: seeds-shape}
-  - id: R376
-    code: HFS_BOOT_LOGGER_SILENCED
-    law: "A back-end app root boots loudly: its `be/apps/<app>/src/main.ts` never hands Nest `logger: false` (NestFactory or nest-commander's CommandFactory), so a provider a module needs and the root does not compose, or any other bootstrap failure, is printed on stderr and exits non-zero instead of ending every boot or CLI command silently; the main passes the app's logger and an error handler that prints and exits non-zero."
-    failureCodes:
-      - HFS_BOOT_LOGGER_SILENCED
-    enforcers:
-      - {kind: hfs, id: boot-logger}
   - id: R377
     code: BE_FLOW_FAILURE_SWALLOWED
     law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."
@@ -2589,7 +2454,6 @@ rules:
       - HFS_PACKAGE_SLOT_MISSING
       - HFS_PACKAGE_SLOT_DISALLOWED
       - HFS_PACKAGE_SLOTS_INVALID
-      - HFS_PACKAGE_SLOTS_MOVED
     enforcers:
       - {kind: hfs, id: package-slots}
   - id: R383
@@ -2656,12 +2520,9 @@ rules:
     enforcers:
       - {kind: hfs, id: script-one-off, status: planned}
   - id: R389
-    code: STACKS_BASE_PORT_ROLE
-    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port. An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, the scaffold refuses a named base (taking the next free hundred otherwise) and stack up refuses to start, when another registered project's hundred or declared ports overlap it; the local app check reports it as a warning."
+    code: STACKS_BASE_PORT_UNDECLARED
+    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port (a departure is STACKS_LOCAL_CONFIG_INVALID). An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, the scaffold refuses a named base (taking the next free hundred otherwise) and stack up refuses to start, when another registered project's hundred or declared ports overlap it; the local app check reports it as a warning."
     failureCodes:
-      - STACKS_BASE_PORT_ROLE
-      - STACKS_COMPOSE_PORT_ROLE
-      - STACKS_COMPOSE_PORT_LITERAL
       - STACKS_BASE_PORT_UNDECLARED
       - HFS_SCAFFOLD_BASE_PORT_TAKEN
       - STACK_LOCAL_BASE_PORT_TAKEN
@@ -2705,21 +2566,15 @@ rules:
       - {kind: hfs, id: dead-letter-repeat}
   - id: R395
     code: HFS_APP_GALLERY_MISSING
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist,, (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI`, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json`, and a change to a screen's source (its `page.tsx` and the `features/pages/<Name>/` folders it imports) in the commits since the base that leaves its `explain.md` untouched (`HFS_APP_GALLERY_EXPLAIN_STALE`; both the last two are warnings in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
     failureCodes:
       - HFS_APP_GALLERY_MISSING
-      - HFS_APP_GALLERY_SCRIPT
-      - HFS_APP_GALLERY_VITE_UNPINNED
-      - HFS_APP_GALLERY_SHOTS_TRACKED
       - HFS_APP_GALLERY_EXPLAIN_MISSING
-      - HFS_APP_GALLERY_REGION_INCOMPLETE
-      - HFS_APP_GALLERY_REGION_UNCLEAR
       - HFS_APP_GALLERY_FRONT_MATTER
       - HFS_APP_GALLERY_SCREEN_FILE
       - HFS_APP_GALLERY_LINKS
       - HFS_APP_GALLERY_ROUTE_MISSING
       - HFS_APP_GALLERY_ROUTE_AMBIGUOUS
-      - HFS_APP_GALLERY_EXPLAIN_STALE
       - HFS_APP_GALLERY_SCREEN_INVALID
       - UI_AUDIT_MISSING
       - UI_AUDIT_STALE
@@ -2748,7 +2603,6 @@ rules:
       - BE_REST_OPERATION_ID
       - BE_REST_UNTYPED
       - BE_REST_ERROR_SHAPE
-      - BE_REST_PAGINATION
       - BE_REST_SECURITY
     enforcers:
       - {kind: hfs, id: rest-contract}
@@ -2779,15 +2633,10 @@ rules:
       - {kind: hfs, id: project-sides}
   - id: R400
     code: HFS_DATA_IN_CODE
-    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path: HFS_DATA_DEPENDENCY); the commit hook refuses in a copy repository an unsealed backup file (HFS_DATA_UNSEALED), a sealed file in a standard (HFS_DATA_STANDARD_SEALED), a manifest that disagrees with the tracked data files or its format name (HFS_DATA_MANIFEST_DRIFT), a data file over 4 MiB (HFS_DATA_FILE_SIZE) and a snapshot over 500 MiB, which needs the s3 driver (HFS_DATA_CAP)."
+    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path); the commit hook refuses in a copy repository an unsealed backup file, a sealed file in a standard, a manifest that disagrees with the tracked data files or its format name, a data file over 4 MiB and a snapshot over 500 MiB, which needs the s3 driver."
     failureCodes:
       - HFS_DATA_IN_CODE
-      - HFS_DATA_DEPENDENCY
-      - HFS_DATA_UNSEALED
-      - HFS_DATA_STANDARD_SEALED
-      - HFS_DATA_MANIFEST_DRIFT
-      - HFS_DATA_FILE_SIZE
-      - HFS_DATA_CAP
+      - HFS_DATA_COPY_INVALID
     enforcers:
       - {kind: hfs, id: data-copies}
   - id: R401
@@ -2819,35 +2668,25 @@ rules:
     enforcers:
       - {kind: eslint-be, id: job-progress-shape}
   - id: R426
-    code: DATA_STORE_UNDECLARED
-    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (or a factory whose declared return type is `StoreAdapter`) and, for a store of a seed-backup set or a store a seed-standard without a project `completeness` fills, an `adapter.command` argv of the app command that serves it over starci/data-entries@1, the door `starci app data` and the bring-up's seed step reach it through (DATA_STORE_ADAPTER); a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (DATA_DERIVED_SOURCE; `from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
+    code: DATA_STORE_INVALID
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration; a store has a kind of the closed list (database, storage) and a level logical or physical, an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (or a factory whose declared return type is `StoreAdapter`) and, for a store of a seed-backup set or a store a seed-standard without a project `completeness` fills, an `adapter.command` argv of the app command that serves it over starci/data-entries@1, the door `starci app data` and the bring-up's seed step reach it through; a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (`from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
     failureCodes:
-      - DATA_STORE_UNDECLARED
-      - DATA_STORE_KIND
-      - DATA_STORE_ADAPTER
-      - DATA_DERIVED_SOURCE
+      - DATA_STORE_INVALID
     enforcers:
       - {kind: hfs, id: data-stores}
   - id: R427
-    code: DATA_PURPOSE
-    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
+    code: DATA_SET_INVALID
+    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments, a destination whose driver is git or s3, a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit`, `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup; `completeness` is `ext:<id>` of a check of ext/manifest.json; no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository."
     failureCodes:
-      - DATA_PURPOSE
-      - DATA_DRIVER_KIND
+      - DATA_SET_INVALID
       - DATA_COPY_NAME
-      - DATA_SEED_UNPINNED
-      - DATA_FORCE_MISPLACED
-      - DATA_BACKUP_LOADED
-      - DATA_EXTENSION_UNDECLARED
     enforcers:
       - {kind: hfs, id: data-sets}
   - id: R428
-    code: STORAGE_PUBLIC_ROUTE_MISSING
-    law: "A dev environment that publishes anything (it declares `local.tunnel`, or a process whose environment holds a public https origin) and runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) routes its S3 API port on the dev tunnel: a `tunnel.routes[]` entry whose port is the store's port (STORAGE_PUBLIC_ROUTE_MISSING), never one that reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE); every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name (STORAGE_PUBLIC_LINK_INTERNAL). Stored data holds a bucket and a key, never a host (held by review and the app's specs); `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here. A process that sets the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) in such an environment sets one that starts with `https://<the host of a route to the store>/`, otherwise STORAGE_PUBLIC_LINK_INTERNAL."
+    code: STORAGE_PUBLIC_ROUTE_CONSOLE
+    law: "A dev environment that runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) publishes its S3 API port only: no `tunnel.routes[]` entry reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE). The rest of PROJECT-STACKS-15 is a convention held by review and the app's specs: a `tunnel.routes[]` entry whose port is the store's S3 port; every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name; the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) of a process in an environment with a tunnel starts with `https://<the host of a route to the store>/`; stored data holds a bucket and a key, never a host. `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here."
     failureCodes:
-      - STORAGE_PUBLIC_ROUTE_MISSING
       - STORAGE_PUBLIC_ROUTE_CONSOLE
-      - STORAGE_PUBLIC_LINK_INTERNAL
     enforcers:
       - {kind: hfs, id: stacks-storage-public}
   - id: R429
@@ -2892,26 +2731,23 @@ rules:
       - {kind: hfs, id: concept-conventions}
   - id: R434
     code: HFS_DATA_ADAPTER_DRIFT
-    law: "A seed-standard repository may keep what people author in `raw/` (plain, never sealed, sized and capped like the data files by R400) and an `adapter/` whose `convert(rawDir)` turns it into entries written through the git driver of @starci/seed (`renderStandard`, `runStandardAdapter`); its committed manifest.json, data/, blobs/ and index/ are then, byte for byte, what `node adapter/main.ts` writes from raw/: the copy repository's commit hook and CI (`starci app check --staged`) run the adapter twice over raw/ as the index holds it and refuse a run that fails, two runs that differ (a non-deterministic adapter), an output file that differs from, is missing from or is absent in the commit (a hand edit of data/, or raw/ committed without its output), and an adapter/ the index does not hold as it stands (HFS_DATA_ADAPTER_DRIFT); an adapter repository tracks adapter/main.ts, adapter/package.json, the hook .githooks/pre-commit and the workflow .github/workflows/seed-standard.yml, each of the last two running `starci app check --staged` (HFS_DATA_ADAPTER_UNGUARDED; `starci data standard init --adapter` writes them); the bring-up's seed step verifies each pinned seed-standard of the environment once per pin before any entry applies, running the same check on the pinned commit, and refuses a pin whose adapter output drifts or that cannot be read (STACK_SEED_ADAPTER_DRIFT)."
+    law: "A seed-standard repository may keep what people author in `raw/` (plain, never sealed, sized and capped like the data files by R400) and an `adapter/` whose `convert(rawDir)` turns it into entries written through the git driver of @starci/seed (`renderStandard`, `runStandardAdapter`); its committed manifest.json, data/, blobs/ and index/ are then, byte for byte, what `node adapter/main.ts` writes from raw/: the copy repository's commit hook and CI (`starci app check --staged`) run the adapter twice over raw/ as the index holds it and refuse a run that fails, two runs that differ (a non-deterministic adapter), an output file that differs from, is missing from or is absent in the commit (a hand edit of data/, or raw/ committed without its output), and an adapter/ the index does not hold as it stands (HFS_DATA_ADAPTER_DRIFT); an adapter repository tracks adapter/main.ts, adapter/package.json, the hook .githooks/pre-commit and the workflow .github/workflows/seed-standard.yml, each of the last two running `starci app check --staged` (`starci data standard init --adapter` writes them); the bring-up's seed step verifies each pinned seed-standard of the environment once per pin before any entry applies, running the same check on the pinned commit, and refuses a pin whose adapter output drifts or that cannot be read (STACK_SEED_ADAPTER_DRIFT)."
     failureCodes:
       - HFS_DATA_ADAPTER_DRIFT
-      - HFS_DATA_ADAPTER_UNGUARDED
       - STACK_SEED_ADAPTER_DRIFT
       - STACK_SEED_ADAPTER_INSTALL
     enforcers:
       - {kind: hfs, id: data-adapter}
       - {kind: hfs, id: standard-gate}
   - id: R435
-    code: HFS_DATA_SECOND_LOADER
-    law: "A seed-standard reaches an app by one path, the bring-up's seed step over the commit `data.sets` pins: no tracked text file of an app (source, scripts, package.json, workflows, compose, env and stack files; ext/, .starciwork, Markdown, lock files and the check cache aside) runs git clone, pull, fetch, archive, submodule, sparse-checkout or remote add on a `-seed-standard` repository (kind git), declares a content-sync command (a package.json script or a quoted command name `content|standard` + `sync|pull|fetch|import|load`, or a script that names a `-seed-standard` repository: kind command) or assigns an environment variable a value naming a `-seed-standard` repository or a name holding SEED_STANDARD (kind env) (HFS_DATA_SECOND_LOADER). That path is the loader of the seed step: after the R434 gate it reads each pin at its commit through `pinRepository` and the git driver (an unreadable pin is STACK_SEED_STANDARD_UNREADABLE, a copy that is no healthy plain standard or fills a store its set does not list is STACK_SEED_STANDARD_SCHEMA), applies it through each store's `adapter.command` over starci/data-entries@1 (a store with none is STACK_SEED_STORE_COMMAND), a dry run through every door first and then an upsert by natural key (a door that fails or refuses a key is STACK_SEED_DOOR_REFUSED), and writes one receipt per standard and commit only once every store applied; a receipt skips the pin, a changed pin is reported DATA_STANDARD_CHANGED and applies only with the set's `force: true`, once per commit; a set with a project `completeness` is left to the project. Known gap: the check reads one line at a time, so a repository name held in a variable and cloned on another line is held by review."
+    code: STACK_SEED_STANDARD_UNREADABLE
+    law: "A seed-standard reaches an app by one path, the bring-up's seed step over the commit `data.sets` pins; no app, whatever its source, scripts, workflows or environment, clones, pulls or fetches a `-seed-standard` repository, declares a content-sync command for one or names one in an environment variable (review holds this convention, no check guesses at the ways around it). That path is the loader of the seed step: after the R434 gate it reads each pin at its commit through `pinRepository` and the git driver (an unreadable pin is STACK_SEED_STANDARD_UNREADABLE, a copy that is no healthy plain standard or fills a store its set does not list is STACK_SEED_STANDARD_SCHEMA), applies it through each store's `adapter.command` over starci/data-entries@1 (a store with none is STACK_SEED_STORE_COMMAND), a dry run through every door first and then an upsert by natural key (a door that fails or refuses a key is STACK_SEED_DOOR_REFUSED), and writes one receipt per standard and commit only once every store applied; a receipt skips the pin, a changed pin is reported DATA_STANDARD_CHANGED and applies only with the set's `force: true`, once per commit; a set with a project `completeness` is left to the project."
     failureCodes:
-      - HFS_DATA_SECOND_LOADER
       - STACK_SEED_STANDARD_UNREADABLE
       - STACK_SEED_STANDARD_SCHEMA
       - STACK_SEED_STORE_COMMAND
       - STACK_SEED_DOOR_REFUSED
     enforcers:
-      - {kind: hfs, id: data-loaders}
       - {kind: hfs, id: standard-load}
   - id: R436
     code: HFS_NIVOOS_PACKAGE_MISSING
@@ -2925,25 +2761,19 @@ rules:
       - {kind: hfs, id: nivoos-package-check}
   - id: R437
     code: HFS_BRAND_INVALID
-    law: "An app that keeps AI-generated images prompts them from its brand sheet: `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version: <integer from 1>, text }`, the block every image prompt starts with, and every `statics/**/*.prompt.yaml` records the `basePrompt.version` it was built from, a `subject` and a `prompt` that starts with the current base text; a brand sheet whose basePrompt is not that shape (HFS_BRAND_INVALID, an error), a prompt file in an app with no illustration.yaml (HFS_BRAND_MISSING), a prompt file whose recorded version is absent or not the current one (HFS_BRAND_PROMPT_STALE) and a prompt file with no subject, not YAML or whose prompt does not start with the base text (HFS_BRAND_PROMPT_INCOMPLETE) fail; the last three are a warning in `--env local` and an error in `--env prod`. A named media base lives in the optional `.starcistacks/brand/media.yaml` as `bases: { <lowercase-kebab-name>: { version: <integer from 1>, text } }` (`illustration` is reserved: it is the basePrompt of illustration.yaml, read as the base named `illustration`); a prompt file names its base in `basePrompt.name` (default `illustration`) and is judged against that base's version and text, a media.yaml not of that shape is HFS_BRAND_INVALID too, and a prompt file naming a base neither file defines fails HFS_BRAND_BASE_UNKNOWN (a warning in `--env local`, an error in `--env prod`). `starci app scaffold` writes the starter folder once (brand.md, illustration.md, illustration.yaml, media.md, media.yaml, references/) and `starci app sync` never overwrites it (PROJECT-BRAND-1, PROJECT-BRAND-2)."
+    law: "An app that keeps AI-generated images prompts them from its brand sheet: `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version: <integer from 1>, text }`, the block every image prompt starts with, and every `statics/**/*.prompt.yaml` records the `basePrompt.version` it was built from, a `subject` and a `prompt` that starts with the current base text; a brand sheet whose basePrompt is not that shape (HFS_BRAND_INVALID, an error), a prompt file in an app with no illustration.yaml, a prompt file whose recorded version is absent or not the current one and a prompt file with no subject, not YAML or whose prompt does not start with the base text fail HFS_BRAND_PROMPT_INVALID; the prompt findings are a warning in `--env local` and an error in `--env prod`. A named media base lives in the optional `.starcistacks/brand/media.yaml` as `bases: { <lowercase-kebab-name>: { version: <integer from 1>, text } }` (`illustration` is reserved: it is the basePrompt of illustration.yaml, read as the base named `illustration`); a prompt file names its base in `basePrompt.name` (default `illustration`) and is judged against that base's version and text, a media.yaml not of that shape is HFS_BRAND_INVALID too, and a prompt file naming a base neither file defines fails HFS_BRAND_PROMPT_INVALID (a warning in `--env local`, an error in `--env prod`). `starci app scaffold` writes the starter folder once (brand.md, illustration.md, illustration.yaml, media.md, media.yaml, references/) and `starci app sync` never overwrites it (PROJECT-BRAND-1, PROJECT-BRAND-2)."
     failureCodes:
       - HFS_BRAND_INVALID
-      - HFS_BRAND_MISSING
-      - HFS_BRAND_PROMPT_STALE
-      - HFS_BRAND_PROMPT_INCOMPLETE
-      - HFS_BRAND_BASE_UNKNOWN
+      - HFS_BRAND_PROMPT_INVALID
     enforcers:
       - {kind: hfs, id: brand}
   - id: R438
     code: HFS_STATICS_FILE_KIND
-    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND, HFS_STATICS_PROMPT_ORPHAN for a sidecar with no image of that name, HFS_STATICS_PROMPT_SCHEMA for one that is not a YAML mapping with a non-empty `prompt`); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE), and the tree above 256 MiB an error (HFS_STATICS_TREE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
+    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
     failureCodes:
       - HFS_STATICS_FILE_KIND
       - HFS_STATICS_KEY
       - HFS_STATICS_FILE_SIZE
-      - HFS_STATICS_TREE_SIZE
-      - HFS_STATICS_PROMPT_ORPHAN
-      - HFS_STATICS_PROMPT_SCHEMA
     enforcers:
       - {kind: hfs, id: statics-shape}
   - id: R439
@@ -2955,11 +2785,9 @@ rules:
       - {kind: hfs, id: statics-outside}
   - id: R440
     code: STACK_STORAGE_MISSING
-    law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is a warning (STACK_STORAGE_UNUSED). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, STACK_STORAGE_IMAGE_UNUSED; a service that builds it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
+    law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is an object store nothing uses: remove it (held by review, not by a check). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, or a service that builds it does not have the shape, STACK_STORAGE_IMAGE_SHAPE: it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
     failureCodes:
       - STACK_STORAGE_MISSING
-      - STACK_STORAGE_UNUSED
-      - STACK_STORAGE_IMAGE_UNUSED
       - STACK_STORAGE_IMAGE_SHAPE
     enforcers:
       - {kind: hfs, id: storage-image}
@@ -2970,24 +2798,6 @@ rules:
       - FE_RAW_MEDIA_ELEMENT
     enforcers:
       - {kind: eslint-grammar-core, id: no-raw-media}
-  - id: R443
-    code: FE_ERROR_PAGE_NOT_EMPTY_STATE
-    law: "The not-found, error and global-error pages of a web app (the boundaries R53 requires) draw the Grammar's one empty state: the source they reach, through the app's own files and the composites of its workspace ui package, holds an EmptyNotice of scope page with an illustration, so they are never hand-rolled from other components. An app edits their words and art; it never replaces the empty state."
-    failureCodes:
-      - FE_ERROR_PAGE_NOT_EMPTY_STATE
-    enforcers:
-      - {kind: hfs, id: error-pages}
-  - id: R444
-    code: HFS_DESKTOP_UNDECLARED
-    law: "The desktop app a project declares (hfs.json `sides.desktop`: `app` the fe app it wraps, `name`, a reverse-DNS `identifier` that does not end in `.app`, the https `origin` the shell loads, optional `devOrigin`, `allowedOrigins`, deep link `schemes`, `targets` (macos, windows, linux) and an `updater` `{ pubkey, endpoint }`; it needs the fe side) is a Tauri v2 remote-origin shell at `desktop/` and agrees with its tree and its config, each way: a tracked file of `desktop/` or the release workflow without the declaration is HFS_DESKTOP_UNDECLARED; a declared app tracks the icons `tauri icon` writes (and its Cargo.lock, a warning) or is HFS_DESKTOP_FILE_MISSING; `desktop/src-tauri/tauri.conf.json` says what the declaration says (identifier, product name, the version read from the app's package.json, deep link schemes, the updater key and endpoint, no window in the config) or is HFS_DESKTOP_CONFIG; the shell's isolation holds, with no global Tauri API, no dangerous* switch, a CSP without unsafe-eval or a wildcard, an updater over https and no capability that hands the IPC to a wildcard or plain-http remote origin, or it is HFS_DESKTOP_SECURITY; and no signing certificate, key store or private key is a tracked file and no signing secret is written into `desktop/`, or it is HFS_DESKTOP_SIGNING_KEY. The Tauri config, the Cargo manifest, the Rust of the shell, the bundled page and the release workflow are rendered from the declaration by `starci app sync` (slots `app.desktop-config`, `app.ci-desktop-release`, HFS_MANAGED_FILE_DRIFT); the signing secrets the workflow reads are names of `ci.secrets` (CI_DECLARATION_DRIFT) and are never committed."
-    failureCodes:
-      - HFS_DESKTOP_UNDECLARED
-      - HFS_DESKTOP_FILE_MISSING
-      - HFS_DESKTOP_CONFIG
-      - HFS_DESKTOP_SECURITY
-      - HFS_DESKTOP_SIGNING_KEY
-    enforcers:
-      - {kind: hfs, id: desktop}
   - id: R445
     code: FE_BRAND_NOT_ONE
     law: "The colours of a product live in ONE brand token file: the web apps of a front end hold exactly one `modules/brand/brand.css`, which every global stylesheet imports (a colour literal elsewhere is R61's lint, which also refuses a named colour and a Tailwind arbitrary or palette colour), and the canvas holds none of its own: `.starcistacks/canvas/tokens.css` is generated from the brand file by `canvas-tokens.mjs`, and no generator under `.starcistacks/canvas/gen/` (the claude-design `gen/kit/` aside) writes a colour literal."
@@ -3007,7 +2817,7 @@ rules:
       - {kind: hfs, id: globals-one}
   - id: R447
     code: FE_STATE_PAGE_NOT_SHARED
-    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state (R443)."
+    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state."
     failureCodes:
       - FE_STATE_PAGE_NOT_SHARED
       - FE_STATE_PAGE_GROUP_MISSING

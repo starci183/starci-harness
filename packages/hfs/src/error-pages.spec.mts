@@ -1,11 +1,10 @@
-// proves: FE_ERROR_PAGE_NOT_EMPTY_STATE
-// proves: FE_ERROR_PAGE_NOT_EMPTY_STATE
+// The boundary helpers of rules/error-pages.mts that state-pages.mts (R447) reads: the closure of a boundary file and the page empty state it draws.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { drawsPageEmptyState, errorPageFindings } from '../runtime/scripts/hfs/rules/error-pages.mjs';
+import { BOUNDARY, closure, drawsPageEmptyState } from '../runtime/scripts/hfs/rules/error-pages.mjs';
 
 const EMPTY = `import { EmptyNotice } from "@starci/grammar/common"
 export const Notice = () => <EmptyNotice scope="page" message="m" media={{ illustration: { staticsKey: "illustrations/errors/not-found.webp" } }} actionLabel="Home" actionHref="/" />
@@ -21,72 +20,30 @@ function repoOf(tree: Record<string, string>): { root: string; files: string[] }
   return { root, files: Object.keys(tree) };
 }
 
-const LITE_OK = {
-  'apps/web/src/app/[locale]/not-found.tsx': 'import { AppNotFoundPage } from "@/features/pages/AppNotFoundPage"\nexport default () => <AppNotFoundPage />\n',
-  'apps/web/src/app/[locale]/error.tsx': 'import { AppErrorPage } from "@/features/pages/AppErrorPage"\nexport default () => <AppErrorPage />\n',
-  'apps/web/src/app/global-error.tsx': 'import { AppGlobalErrorPage } from "@/features/pages/AppGlobalErrorPage"\nexport default () => <AppGlobalErrorPage />\n',
-  'apps/web/src/features/pages/AppNotFoundPage/index.tsx': 'import { NotFoundNotice } from "@/components/composites/NotFoundNotice"\nexport const AppNotFoundPage = () => <NotFoundNotice />\n',
-  'apps/web/src/features/pages/AppErrorPage/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const AppErrorPage = () => <ErrorNotice />\n',
-  'apps/web/src/features/pages/AppGlobalErrorPage/index.tsx': 'import { GlobalErrorNotice } from "@/components/frames/GlobalErrorNotice"\nexport const AppGlobalErrorPage = () => <GlobalErrorNotice />\n',
-  'apps/web/src/components/composites/NotFoundNotice/index.tsx': EMPTY,
-  'apps/web/src/components/composites/ErrorNotice/index.tsx': EMPTY,
-  'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': EMPTY,
+const drawn = (tree: Record<string, string>, boundary: string): boolean => {
+  const { root, files } = repoOf(tree);
+  const appRoot = (BOUNDARY.exec(boundary)?.groups?.app ?? '').replace(/\/$/u, '');
+  const uiFiles = files.filter((file) => /^packages\/[^/]+-ui\/src\/.+\.tsx$/u.test(file));
+  return drawsPageEmptyState(closure(boundary, appRoot, new Set(files), uiFiles, root).map((member) => fs.readFileSync(path.join(root, member), 'utf8')));
 };
 
-for (const edition of ['lite'] as const) {
-  test(`FE_ERROR_PAGE_NOT_EMPTY_STATE ${edition}: the template chain (route, feature page, composite) draws the page empty state`, () => {
-    const { root, files } = repoOf(LITE_OK);
-    assert.deepEqual(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe', edition } }), []);
-  });
-
-  test(`FE_ERROR_PAGE_NOT_EMPTY_STATE ${edition}: a hand-rolled page, and an empty state without its page scope or art, are refused`, () => {
-    const { root, files } = repoOf({
-      ...LITE_OK,
-      'apps/web/src/components/composites/NotFoundNotice/index.tsx': 'import { Page, Link } from "@starci/grammar/common"\nexport const NotFoundNotice = () => <Page header={{ title: "x" }}><Link href="/">Home</Link></Page>\n',
-      'apps/web/src/components/composites/ErrorNotice/index.tsx': 'import { EmptyNotice } from "@starci/grammar/common"\nexport const ErrorNotice = () => <EmptyNotice message="m" />\n',
-    });
-    const findings = errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe', edition } });
-    assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [
-      ['FE_ERROR_PAGE_NOT_EMPTY_STATE', 'apps/web/src/app/[locale]/error.tsx'],
-      ['FE_ERROR_PAGE_NOT_EMPTY_STATE', 'apps/web/src/app/[locale]/not-found.tsx'],
-    ]);
-    assert.equal(findings[0]?.level, 'error');
-    assert.match(findings[0]?.message ?? '', /R443/u);
-  });
-}
-
-test('the closure follows an import of the workspace ui package by the name it imports', () => {
-  const { root, files } = repoOf({
-    'apps/app/src/app/[locale]/not-found.tsx': 'import { AppNotFoundPage } from "@/features/pages/AppNotFoundPage"\nexport default () => <AppNotFoundPage />\n',
+test('the closure follows the app files and an import of the workspace ui package by the name it imports', () => {
+  const boundary = 'apps/app/src/app/[locale]/not-found.tsx';
+  assert.equal(drawn({
+    [boundary]: 'import { AppNotFoundPage } from "@/features/pages/AppNotFoundPage"\nexport default () => <AppNotFoundPage />\n',
     'apps/app/src/features/pages/AppNotFoundPage/index.tsx': 'import { NotFoundNotice } from "@shop/ui"\nexport const AppNotFoundPage = () => <NotFoundNotice />\n',
     'packages/shop-ui/src/composites/NotFoundNotice/index.tsx': EMPTY.replace('export const Notice', 'export const NotFoundNotice'),
-  });
-  assert.deepEqual(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe' } }), []);
-  const hand = repoOf({
-    'apps/app/src/app/[locale]/not-found.tsx': 'import { Alert } from "@starci/grammar/common"\nexport default () => <Alert title="x" tone="negative" />\n',
-  });
-  assert.equal(errorPageFindings({ files: hand.files, repoRoot: hand.root, repo: { profile: 'fe' } }).length, 1);
+  }, boundary), true);
+  assert.equal(drawn({ [boundary]: 'import { Alert } from "@starci/grammar/common"\nexport default () => <Alert title="x" tone="negative" />\n' }, boundary), false);
 });
 
-test('the rule judges a front end only, never the app root, and inScope narrows the files', () => {
-  const { root, files } = repoOf({ 'apps/web/src/app/global-error.tsx': 'export default () => <html />\n' });
-  assert.equal(errorPageFindings({ files, repoRoot: root, repo: { profile: 'be' } }).length, 0);
-  assert.equal(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe' }, isRoot: true }).length, 0);
-  assert.equal(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe' }, inScope: () => false }).length, 0);
-  assert.equal(errorPageFindings({ files, repoRoot: root, repo: { profile: 'fe' } }).length, 1);
+test('a boundary held by a route group directly under [locale] is a boundary like the one at [locale]', () => {
+  assert.ok(BOUNDARY.test('apps/web/src/app/[locale]/(pages)/error.tsx'));
+  assert.ok(BOUNDARY.test('apps/web/src/app/global-error.tsx'));
 });
 
 test('drawsPageEmptyState reads the element, not the file: scope page and an illustration must belong to one EmptyNotice', () => {
   assert.equal(drawsPageEmptyState([EMPTY]), true);
   assert.equal(drawsPageEmptyState(['<EmptyNotice scope="region" message="m" />', 'const illustration = 1; const scope = "page"']), false);
   assert.equal(drawsPageEmptyState(['<G.EmptyNotice scope="page" media={{ illustration: { src } }} message="m"></G.EmptyNotice>']), true);
-});
-
-test('a locale error boundary held by a route group directly under [locale] is judged like the one at [locale]', () => {
-  const { 'apps/web/src/app/[locale]/error.tsx': error = '', ...rest } = LITE_OK;
-  const grouped = { ...rest, 'apps/web/src/app/[locale]/(pages)/error.tsx': error };
-  const clean = repoOf(grouped);
-  assert.deepEqual(errorPageFindings({ files: clean.files, repoRoot: clean.root, repo: { profile: 'fe' } }), []);
-  const bad = repoOf({ ...grouped, 'apps/web/src/components/composites/ErrorNotice/index.tsx': 'export const ErrorNotice = () => null\n' });
-  assert.deepEqual(errorPageFindings({ files: bad.files, repoRoot: bad.root, repo: { profile: 'fe' } }).map((finding) => finding.path), ['apps/web/src/app/[locale]/(pages)/error.tsx']);
 });

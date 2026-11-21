@@ -233,7 +233,7 @@ export const prepareWorkspace = async (root: string, options: RunOptions): Promi
     for (const folder of lockfileFolders(root)) {
         const dir = join(root, folder)
         if (lstatSync(join(dir, "node_modules"), { throwIfNoEntry: false }) === undefined) continue
-        const given = await installCheckout(dir, root, options)
+        const given = await installCheckout(dir, options)
         if (given === undefined) continue
         installs.push({ package: folder, step: "install", command: `install of ${folder}`, status: given.status, reason: given.detail.split("\n").filter((line) => line.trim() !== "").join("; "), output: given.detail })
         if (given.status === "red") return installs

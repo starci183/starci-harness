@@ -51,7 +51,7 @@ and says so in its docblock. No version in a name (`placeOrderV2`), no bare verb
 
 Why: the public name tells a caller what the unit promises, and versioned names accumulate forks.
 
-Enforced by: `no-version-in-name`, `no-bare-verb-export` (R89).
+Enforced by: `no-version-in-name` (R89).
 
 ## BE-NAMING-7 Type names carry their layer
 

@@ -20,7 +20,7 @@ export type MessageBubbleGroupPosition = "single" | "first" | "middle" | "last"
 
 /**
  * `incoming`: someone else wrote it (start side, the FLAT surface: `--surface` with its foreground, no border, no shadow, on the thread's `--background`).
- * `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). Law DNA-COMMON-CHAT-SURFACES; the app never restyles a face (lint `message-surfaces`).
+ * `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). Law DNA-COMMON-CHAT-SURFACES; the app never restyles a face.
  */
 export type MessageBubbleSide = "incoming" | "outgoing"
 

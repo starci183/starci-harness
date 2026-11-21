@@ -30,7 +30,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06
-    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05, R444
+    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
   - `dependabot.yml` — **app.dependabot** required · R05, R269
 - `.dockerignore` — **app.dockerignore** required · R05
@@ -52,8 +52,8 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `<name>/` — **app.packages** optional · R25
   - `<package>/` — **app.nivoos-package** optional · R436
 - `desktop/`
-  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05, R444
-  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444
+  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05
+  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381, R06, R103, R402
 - `.starciwork/` — **app.starciwork** optional · R07, R09, R449
@@ -109,10 +109,10 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
       - `messages/` — **be.feature.messages** optional · [be/messages](../code/be/messages.md) · R78
     - `{api/,jobs/,reactors/,saga/}<feature>/application/` — **be.feature.application** required · [be/api](../code/be/api.md), [be/error](../code/be/error.md), [be/idempotency](../code/be/idempotency.md), [be/injection](../code/be/injection.md) · R29, R37, R87
       - `support/` — **be.feature.application.support** optional · R29, R28
-    - `saga/<saga>/` — **be.feature.saga** opt-in · [be/saga](../code/be/saga.md), [be/services](../code/be/services.md) · R156, R28, R31, R169, R170, R171
-      - `steps/` — **be.feature.saga.steps** opt-in · [be/saga](../code/be/saga.md) · R169, R171
-      - `compensations/` — **be.feature.saga.compensations** opt-in · [be/saga](../code/be/saga.md) · R169, R171
-    - `{api/,reactors/,saga/}<feature>/transport/message/` — **be.transport.message** opt-in · [be/api-auth](../code/be/api-auth.md), [be/background](../code/be/background.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R46, R172
+    - `saga/<saga>/` — **be.feature.saga** opt-in · [be/saga](../code/be/saga.md), [be/services](../code/be/services.md) · R156, R28, R31
+      - `steps/` — **be.feature.saga.steps** opt-in · [be/saga](../code/be/saga.md)
+      - `compensations/` — **be.feature.saga.compensations** opt-in · [be/saga](../code/be/saga.md)
+    - `{api/,reactors/,saga/}<feature>/transport/message/` — **be.transport.message** opt-in · [be/api-auth](../code/be/api-auth.md), [be/background](../code/be/background.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R46
     - `webhooks/<provider>/` — **be.feature.webhooks** opt-in · [be/webhooks](../code/be/webhooks.md) · R156, R28, R31
       - `transport/http/` — **be.feature.webhooks.http** opt-in · [be/webhooks](../code/be/webhooks.md) · R182, R183, R41, R42
         - `dto/` — **be.feature.webhooks.dto** opt-in · [be/webhooks](../code/be/webhooks.md) · R42

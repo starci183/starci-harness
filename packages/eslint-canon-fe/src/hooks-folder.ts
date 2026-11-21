@@ -35,7 +35,6 @@ import { hfsOf } from "./lib/hfs.ts"
 import { walk } from "./lib/ast.ts"
 import { functionOf, isFn, unwrap, variableOf, type Variable } from "./lib/bindings.ts"
 import { baseName, classOf, fileOf, inSlot } from "./lib/scope.ts"
-import { rules as swrFamilyRules } from "./swr-family.ts"
 
 /** Names that mark a hook. */
 const isHookName = (name: string): boolean => /^use[A-Z0-9]/.test(name)
@@ -296,8 +295,6 @@ export const hooksFolderHoldsHooksOnly = defineRule({
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = {
   "hooks-folder-holds-hooks-only": hooksFolderHoldsHooksOnly,
-  // Forward the family enforcers for the catalog's source-only CONTRIBUTIONS discovery.
-  ...swrFamilyRules,
 }
 
 /** Every rule is an error. */

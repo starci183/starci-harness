@@ -100,7 +100,7 @@ test('compose ports with a role sit on their slot: db base+90, mail base+91, mai
   assert.deepEqual(composePorts(onSlots.config!).map((entry) => [entry.name, entry.role]), [['db', 'db'], ['mail', 'mail'], ['mailui', 'mailui'], ['storage', 'storage'], ['storage-console', 'storage-console']]);
   const fixed = block({ web: 3100 }, { basePort: 3100, containers: { db: 54322, mail: 1025, mailui: 8025, storage: 59000, 'storage-console': 59001 } });
   const text = basePortProblems(fixed.config!);
-  assert.deepEqual(text.map((problem) => problem.code), Array(5).fill('STACKS_COMPOSE_PORT_ROLE'));
+  assert.deepEqual(text.map((problem) => problem.code), Array(5).fill('STACKS_LOCAL_CONFIG_INVALID'));
   assert.deepEqual(text.map((problem) => `${problem.at} ${problem.message}`), [
     'ports.db is the db compose port: basePort + 90 = 3190, not 54322',
     'ports.mail is the mail compose port: basePort + 91 = 3191, not 1025',
@@ -165,14 +165,14 @@ function app(t: { after: (fn: () => void) => void }, local: string, project = 'd
 const findings = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app' } as never, isRoot: true });
 const processesBlock = (ports: string, processes: string[], base = ''): string => `${base}      ports: {cache: 56379, ${ports}}\n      services: [{name: db, wait: healthy}]\n      processes:\n${processes.map((name) => `        - {name: ${name}, argv: [node, ${name}.js], port: ${name}}\n`).join('')}`;
 
-test('R389 a layout that follows the role table raises nothing; one off it is STACKS_BASE_PORT_ROLE, an error naming the port', (t) => {
+test('R389 a layout that follows the role table raises nothing; one off it is STACKS_LOCAL_CONFIG_INVALID, an error naming the port', (t) => {
   assert.deepEqual(findings(app(t, processesBlock('web: 3100, api: 3101, gateway: 3102, mcp: 3103, landing: 3104', ['web', 'api', 'gateway', 'mcp', 'landing'], '      basePort: 3100\n'))), []);
   const off = findings(app(t, processesBlock('web: 3100, api: 3102', ['web', 'api'], '      basePort: 3100\n')));
-  assert.deepEqual(off.map((finding) => [finding.code, finding.level]), [['STACKS_BASE_PORT_ROLE', 'error']]);
+  assert.deepEqual(off.map((finding) => [finding.code, finding.level]), [['STACKS_LOCAL_CONFIG_INVALID', 'error']]);
   assert.match(off[0]?.message ?? '', /environments\.dev\.local\.processes\.api: is the api: basePort \+ 1 = 3101, not 3102 \(basePort 3100/u);
 });
 
-test('R389 pass and fail fixtures of the compose ports: on their slots and published from local.ports raises nothing; off a slot is STACKS_COMPOSE_PORT_ROLE, a literal publish STACKS_COMPOSE_PORT_LITERAL', (t) => {
+test('R389 pass and fail fixtures of the compose ports: on their slots and published from local.ports raises nothing; off a slot, or a literal publish, is STACKS_LOCAL_CONFIG_INVALID', (t) => {
   const compose = (root: string, text: string): void => fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose', 'compose.yaml'), text);
   const lawful = app(t, '      basePort: 3100\n      ports: {web: 3100, mail: 3191, mailui: 3192, storage: 3193, storage-console: 3194}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n');
   compose(lawful, 'services:\n  db:\n    image: postgres\n  storage:\n    image: minio\n    ports:\n      - "127.0.0.1:${STACK_PORT_STORAGE}:9000"\n');
@@ -180,7 +180,7 @@ test('R389 pass and fail fixtures of the compose ports: on their slots and publi
   const fixed = app(t, '      basePort: 3100\n      ports: {web: 3100, mail: 1025, mailui: 8025}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n');
   compose(fixed, 'services:\n  db:\n    image: postgres\n  edge:\n    image: caddy\n    ports:\n      - "127.0.0.1:3080:3080"\n');
   const found = findings(fixed);
-  assert.deepEqual(found.map((finding) => [finding.code, finding.level]), [['STACKS_COMPOSE_PORT_ROLE', 'error'], ['STACKS_COMPOSE_PORT_ROLE', 'error'], ['STACKS_COMPOSE_PORT_LITERAL', 'error']]);
+  assert.deepEqual(found.map((finding) => [finding.code, finding.level]), [['STACKS_LOCAL_CONFIG_INVALID', 'error'], ['STACKS_LOCAL_CONFIG_INVALID', 'error'], ['STACKS_LOCAL_CONFIG_INVALID', 'error']]);
   assert.match(found[0]?.message ?? '', /environments\.dev\.local\.ports\.mail: is the mail compose port: basePort \+ 91 = 3191, not 1025 \(basePort 3100/u);
   assert.match(found[2]?.message ?? '', /services\.edge\.ports publishes "127\.0\.0\.1:3080:3080", a literal host port the base port cannot move/u);
   assert.equal(found[2]?.path, '.starcistacks/dev/infra/compose/compose.yaml');

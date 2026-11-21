@@ -1,9 +1,5 @@
 // proves: STACK_STORAGE_MISSING
 // proves: STACK_STORAGE_MISSING
-// proves: STACK_STORAGE_UNUSED
-// proves: STACK_STORAGE_UNUSED
-// proves: STACK_STORAGE_IMAGE_UNUSED
-// proves: STACK_STORAGE_IMAGE_UNUSED
 // proves: STACK_STORAGE_IMAGE_SHAPE
 // proves: STACK_STORAGE_IMAGE_SHAPE
 // R440 and the storage condition (rules/storage-image.mts, scripts/lib/storage-need.mts): a project ships its own MinIO when it has statics/ or its back end needs storage.
@@ -56,15 +52,9 @@ test('the condition: statics/ besides the starter, the storage package, a storag
     assert.deepEqual(judge({ stack: bare, service: null }), []);
   });
 
-  test(`STACK_STORAGE_UNUSED is a storage service nothing needs, a warning`, () => {
-    const unneeded = stack([{ member: 'db', key: 'POSTGRES_PASSWORD' }]);
-    assert.deepEqual(judge({ stack: unneeded, staticsFiles: ['statics/.gitkeep'] }), ['STACK_STORAGE_UNUSED:warning']);
-    assert.deepEqual(judge({ stack: unneeded, staticsFiles: ['statics/art/a.png'] }), []);
-  });
-
-  test(`STACK_STORAGE_IMAGE_UNUSED is statics media with a storage service that does not build the override`, () => {
+  test(`STACK_STORAGE_IMAGE_SHAPE is also statics media with a storage service that does not build the override`, () => {
     const stock = { image: 'ghcr.io/starci183/minio:RELEASE.2025-10-15T17-29-55Z-starci.1@sha256:ec6d' };
-    assert.deepEqual(judge({ staticsFiles: ['statics/art/a.png'], service: stock }), ['STACK_STORAGE_IMAGE_UNUSED:error']);
+    assert.deepEqual(judge({ staticsFiles: ['statics/art/a.png'], service: stock }), ['STACK_STORAGE_IMAGE_SHAPE:error']);
     assert.deepEqual(judge({ staticsFiles: ['statics/.gitkeep'], service: stock }), []);
   });
 
@@ -87,6 +77,4 @@ test('lite production: the deploy builds the storage image when the project need
   assert.deepEqual(judge({ stack: needing({ api: { app: 'api' } }), staticsFiles: ['statics/art/a.png'] }), ['STACK_STORAGE_MISSING:error']);
   assert.deepEqual(judge({ stack: needing({ api: { app: 'api' }, storage: { app: 'storage' } }), staticsFiles: ['statics/art/a.png'] }), []);
   assert.deepEqual(judge({ stack: needing({ storage: { app: 'minio' } }), staticsFiles: ['statics/art/a.png'] }), ['STACK_STORAGE_IMAGE_SHAPE:error']);
-  const unneeded = stack([{ member: 'db' }], { images: { storage: { app: 'storage' } } });
-  assert.deepEqual(judge({ stack: unneeded, service: null }), ['STACK_STORAGE_UNUSED:warning', 'STACK_STORAGE_UNUSED:warning']);
 });

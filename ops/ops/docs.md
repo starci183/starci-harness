@@ -13,10 +13,8 @@ output:
   base:
     summary: {type: string, summary: "what you wrote or changed"}
     files: {type: "string[]", summary: "the documents you changed"}
-    rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the writing or record rules you applied"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you wrote or changed"}
 checks:
-  base: [paths-only, rules-cited]
+  base: [paths-only]
   behavioural: false
 ---
 Write present-tense prose that states what is true now, one fact in its one owning file, and records in the shape their

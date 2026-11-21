@@ -6,7 +6,6 @@
 #              Each gives its reason, and cites the rule it applies (`rule: <rule id>`) when a rule of contexts/ decides it.
 #              A repaint with no reason here reverts to the HeroUI default; `status: proposed` marks an override that awaits
 #              the owner (../harness/questions.md).
-# Pinned by sha256 in pins.yaml (README.md#pin).
 schema: starci/vendor-wrappers@1
 wrappers:
   - { file: core/branch/OtpInput/index.tsx, wraps: [InputOTP, Label] }

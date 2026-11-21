@@ -11,7 +11,7 @@ Choice `image.choose.element`: which component draws a picture. The first row th
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| character | the art is the product's generated character | [mascot](mascot.md) | R338 `generated-art-in-mascot-or-media-frame` |
+| character | the art is the product's generated character | [mascot](mascot.md) | R338 |
 | decorative | the art adds no fact the words beside it do not state: hero art, a backdrop, an empty state's picture | [illustration](illustration.md) | R442 `no-raw-media` |
 | content | the picture itself is the information: a product photo, a screenshot, a chart exported as a picture, a person's upload | `Image` with a non-empty `alt` | `alt` required by type |
 | moving | the media plays | [video](video.md) | R442 `no-raw-media` |
@@ -64,7 +64,7 @@ screen's picture takes `loading="eager"`.
   state), the renditions, the caption and the zoom labels, the `StaticsProvider` base URL.
 
 ## Rules
-A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R442), `starci-grammar/generated-art-in-mascot-or-media-frame` (R338).
+A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R442) (R338).
 
 ## Eager pictures and the fetch priority (0.48.0)
 `loading="eager"` paints with its bytes, before the page hydrates: no shimmer is drawn over it and it is never held at opacity 0 waiting for script (`DNA-COMMON-IMAGE-EAGER-PAINTS`), so an app needs no global CSS to show its hero early. `fetchPriority` (`high` | `low` | `auto`) is the `fetchpriority` hint: `high` for the one picture that is the page's largest paint, `low` for an eager picture that can wait. A lazy picture keeps its shimmer and fade. Story `Surfaces/Figures, rows, bands and pages (0.48.0)` (ImageEagerPaint).

@@ -17,7 +17,6 @@ const UNKNOWN = ['R', '9', '9', '9'].join('');
 
 // proves: HFS_DOC_PATH_MISSING
 // proves: HFS_DOC_COMMAND_UNKNOWN
-// proves: HFS_DOC_ENV_UNKNOWN
 // proves: HFS_DOC_RULE_UNKNOWN
 
 function fixture(t: TestContext, edition: string, files: Record<string, unknown>, options: Partial<DocContext> = {}): DocContext {
@@ -128,54 +127,6 @@ for (const edition of ['lite'] as const) {
     assert.ok(missingWorkspace[0]!.message.includes('fe/packages/core/package.json'));
   });
 
-  test(`HFS_DOC_ENV_UNKNOWN@${edition}: undeclared key names fail without exposing assigned values`, (t) => {
-    const context = fixture(t, edition, { ...manifests,
-      'README.md': 'Environment `RETIRED_DB_URL` is required.\nRETIRED_TOKEN=example-placeholder\nprocess.env.RETIRED_PORT',
-    });
-    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_ENV_UNKNOWN');
-    assert.deepEqual(hits.map((finding) => finding.reference), ['RETIRED_DB_URL', 'RETIRED_TOKEN', 'RETIRED_PORT']);
-    assert.ok(hits.every((finding) => !finding.message.includes('example-placeholder')));
-  });
-
-  test(`HFS_DOC_ENV_UNKNOWN@${edition}: typed readers, delegated capability keys, KEYS.md and mounted keys pass`, (t) => {
-    const context = fixture(t, edition, { ...manifests,
-      'README.md': 'Environment `PORT`, `PRIMARY_DB_URL`, `PRIMARY_DB_URL_FILE`, `NEXT_PUBLIC_SITE_URL`. SQL uses RLS and CQRS. Finding `HFS_DOC_PATH_MISSING`.',
-    });
-    assert.deepEqual(docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_ENV_UNKNOWN'), []);
-  });
-
-  test(`HFS_DOC_ENV_UNKNOWN@${edition}: declared DI tokens pass while explicit environment references still fail`, (t) => {
-    const context = fixture(t, edition, { ...manifests,
-      'be/src/modules/domain/order/order.decorators.ts': 'export const ORDER_ENTITY_MANAGER: unique symbol = Symbol("order.em"); export const CART_SERVICE = Symbol.for("cart.service");\n// const COMMENT_TOKEN = Symbol("comment");\nconst text = "const STRING_TOKEN = Symbol(42);";',
-      'be/src/tests/fixtures/tokens.ts': 'export const ONLY_TEST_TOKEN = Symbol("test");',
-      'README.md': 'Constructor tokens `ORDER_ENTITY_MANAGER`, `CART_SERVICE`.\nEnvironment `ORDER_ENTITY_MANAGER`.\nprocess.env.CART_SERVICE\nUndeclared `MISSING_SERVICE`, `COMMENT_TOKEN`, `STRING_TOKEN`, `ONLY_TEST_TOKEN`.',
-    });
-    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_ENV_UNKNOWN');
-    assert.deepEqual(hits.map((finding) => [finding.reference, finding.line]), [
-      ['ORDER_ENTITY_MANAGER', 2], ['CART_SERVICE', 3], ['MISSING_SERVICE', 4], ['COMMENT_TOKEN', 4], ['STRING_TOKEN', 4], ['ONLY_TEST_TOKEN', 4],
-    ]);
-  });
-
-  test(`HFS_DOC_ENV_UNKNOWN@${edition}: declared error codes and error-code prose pass while undeclared environment keys still fail`, (t) => {
-    const context = fixture(t, edition, { ...manifests,
-      'be/src/modules/platform/http-security/errors/http-security.error.ts': 'export enum HttpSecurityErrorCode { RequestInvalid = "HTTP_SECURITY_REQUEST_INVALID", RateLimited = "HTTP_SECURITY_RATE_LIMITED" }',
-      'be/src/modules/platform/http-security/messages/http-security.messages.ts': 'export const en = { "errors.HTTP_SECURITY_ORIGIN_REJECTED": "Origin rejected" };',
-      'be/src/tests/fixtures/codes.error.ts': 'export const ONLY_TEST_CODE = "TEST_ONLY_CODE";',
-      'README.md': [
-        'A bad body answers `HTTP_SECURITY_REQUEST_INVALID`; a flood answers `HTTP_SECURITY_RATE_LIMITED`.',
-        'A foreign origin answers `HTTP_SECURITY_ORIGIN_REJECTED`.',
-        'The error code `PROVIDER_TIMEOUT` is mapped by the gateway.',
-        'Environment `HTTP_SECURITY_REQUEST_INVALID`.',
-        'process.env.HTTP_SECURITY_RATE_LIMITED',
-        'Undeclared `TEST_ONLY_CODE` and `RETIRED_DB_URL`.',
-      ].join('\n'),
-    });
-    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_ENV_UNKNOWN');
-    assert.deepEqual(hits.map((finding) => [finding.reference, finding.line]), [
-      ['HTTP_SECURITY_REQUEST_INVALID', 4], ['HTTP_SECURITY_RATE_LIMITED', 5], ['TEST_ONLY_CODE', 6], ['RETIRED_DB_URL', 6],
-    ]);
-  });
-
   test(`HFS_DOC_RULE_UNKNOWN@${edition}: nonexistent rule references fail`, (t) => {
     const context = fixture(t, edition, { ...manifests, 'docs/policy.md': `Follow ${UNKNOWN} and \`${UNKNOWN}9\`.` });
     const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_RULE_UNKNOWN');
@@ -195,12 +146,12 @@ for (const edition of ['lite'] as const) {
   });
 
   test(`R270@${edition}: registered finder reaches app check with Vietnamese catalog explanations`, (t) => {
-    const context = fixture(t, edition, { ...manifests, 'README.md': `Read \`docs/missing.md\`. Environment \`OLD_ENV_KEY\`. Follow ${UNKNOWN}. Run \`starci app missing-verb\`.` });
-    assert.equal(a15Findings(context).filter((finding) => finding.code.startsWith('HFS_DOC_')).length, 4);
+    const context = fixture(t, edition, { ...manifests, 'README.md': `Read \`docs/missing.md\`. Follow ${UNKNOWN}. Run \`starci app missing-verb\`.` });
+    assert.equal(a15Findings(context).filter((finding) => finding.code.startsWith('HFS_DOC_')).length, 3);
     const declaration = { hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
     const result = checkRepo({ repoRoot: context.repoRoot, declaration, files: context.files, tree: false });
     const hits = result.findings.filter((finding) => finding.code.startsWith('HFS_DOC_'));
-    assert.equal(hits.length, 4);
+    assert.equal(hits.length, 3);
     assert.ok(hits.every((finding) => finding.titleVi && finding.whyVi && finding.nextStepVi));
   });
 

@@ -27,8 +27,7 @@ Why: one fixed shape per app leaves no undeclared home for a helper, so nothing 
 - When a file such as `config.ts` or `i18n/request.ts` sits in the source root → move it into its module and point
   `next.config.ts` at the new path.
 
-Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree-holds-routes-only`), R54
-(`no-middleware-file`), R94 (machine `fe-slot-allows`).
+Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree-holds-routes-only`), R54, R94 (machine `fe-slot-allows`).
 
 ## FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts`
 
@@ -67,8 +66,7 @@ The `loading.tsx` and `error.tsx` of the locale may sit in a route group directl
 and every unknown address is a soft 404 with the default title. The shape is `app/[locale]/(pages)/{page,loading,error}.tsx`
 (with every page of the app beside them), `app/[locale]/[...rest]/page.tsx` calling `notFound()`, and
 `app/[locale]/not-found.tsx` exporting its `generateMetadata`, the last two outside the group. A `loading.tsx` still at
-`[locale]` is accepted and reported as info with this move; once a group holds the boundaries, the catch-all and the
-metadata of `not-found.tsx` are required (`FE_ERROR_BOUNDARY_MISSING`, R53).
+`[locale]` is accepted and reported as info with this move.
 
 Why: without a boundary a render error blanks the page and a slow segment shows nothing.
 

@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
-import { ruleIdsIn } from "../../harness/contract.js"
 import { choiceIds, headingAnchors, isAnchorId, linkFragments, parseHeading, slug } from "./anchors-parse.js"
 import type { LinkFragment } from "./anchors-parse.js"
 import { repeatingFiles } from "./index-render.js"
@@ -22,8 +21,6 @@ export interface Chunk {
     readonly anchor: string
     /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */
     readonly aliases: readonly string[]
-    /** True when the rules-cited trace accepts `anchor` from the file that holds it. */
-    readonly citable: boolean
     readonly path: string
     readonly line: number
     readonly scope: SearchScope
@@ -138,7 +135,7 @@ const renderedSlugsOf = (path: string, sections: readonly Section[]): string[] =
 }
 
 /** The chunk of the text before a file's first heading (its front matter included), named `<path>#top`. */
-const topChunk = (path: string, text: string, anchor: string): Chunk => ({ anchor, aliases: [], citable: false, path, line: 1, scope: scopeOf(path), title: path, text })
+const topChunk = (path: string, text: string, anchor: string): Chunk => ({ anchor, aliases: [], path, line: 1, scope: scopeOf(path), title: path, text })
 
 /** The chunk of one heading's section: its anchor and the Choice ids its body declares, under the headings above it. */
 const headingChunk = (path: string, section: Section, text: string, fallback: string, parents: readonly string[]): Chunk => {
@@ -146,7 +143,6 @@ const headingChunk = (path: string, section: Section, text: string, fallback: st
     return {
         anchor: named.anchor,
         aliases: [...new Set([...named.aliases, ...choiceIds(text)])],
-        citable: ruleIdsIn(`# ${section.raw}`).has(named.anchor),
         path,
         line: section.line,
         scope: scopeOf(path),
@@ -216,10 +212,10 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
 }
 
 /** A yaml cut's anchor: a rule id stands alone (isAnchorId); a record key (`button-group`) or a key is qualified by the file. */
-const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[]; readonly citable: boolean } => {
-    if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [], citable: false }
+const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[] } => {
+    if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [] }
     const qualified = `${path}#${cut.key}.${cut.id}`
-    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
+    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified] } : { anchor: qualified, aliases: [] }
 }
 
 const COMMENT = /^(\s*)#/

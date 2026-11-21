@@ -1,8 +1,6 @@
-// R276: an app runs exactly its own PostgreSQL (the db component, the image its managed .starcistacks/images/db/Dockerfile builds) with pgvector, admits only the backing services hfs.json declares,
-// and runs a declared Redis as one service with AOF fsynced at least every second on a named volume and no eviction
-// (R212); sidecar SQLite persists on declared named volumes.
+// R276: an app runs exactly its own PostgreSQL (the db component, the image its managed .starcistacks/images/db/Dockerfile builds) with pgvector, and admits only the backing services hfs.json declares.
+// (A declared Redis running as one AOF service on a named volume, and sidecar SQLite persisting on declared named volumes, stay conventions held by review.)
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
-import { composeEntries } from '../../lib/compose-values.mjs';
 import { repositoryOf } from '../../lib/stack-services.mjs';
 import { loadSlotManifest } from '../slots.mjs';
 import { readJson } from './read.mjs';
@@ -10,17 +8,6 @@ import { stacksDeploymentFindings } from './stacks-runtime.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 const DATABASE_IMAGE = /^(?:postgres(?:ql)?|postgresql-repmgr|mongo(?:db)?|mongodb-community-server)$/i;
-const APPEND_ONLY = /(?:^|\s)--appendonly\s+yes(?:\s|$)/;
-const EVICTION_POLICY = /(?:^|\s)--maxmemory-policy\s+(\S+)/;
-const FSYNC_POLICY = /(?:^|\s)--appendfsync\s+(\S+)/;
-const BOUNDED_FSYNC = new Set(['everysec', 'always']);
-const REDIS_DATA_DIR = '/data';
-const DATABASE_ADAPTER_KEYS = new Set(['db_type', 'database_type', 'db_provider', 'database_provider', 'db_client', 'database_client', 'db_adapter', 'database_adapter']);
-const SQLITE_ADAPTERS = new Set(['sqlite', 'sqlite3', 'better-sqlite3', 'sql.js']);
-const DATABASE_URL_KEY = /DB|DATABASE|POSTGRES|REDIS|MONGO/i;
-const NON_SQLITE_URL = /^(?:postgres(?:ql)?|rediss?|mongo(?:db)?(?:\+srv)?|mysql|mariadb|mssql|sqlserver|cockroachdb):/i;
-const SQLITE_URL = /^sqlite(?:3)?:/i;
-const NAMED_VOLUME = /^[a-z0-9][a-z0-9_.-]*$/i;
 const mapping = (value: Parsed) => plain(value) ? value : {};
 const present = (value: unknown): value is string => typeof value === 'string' && Boolean(value.trim());
 
@@ -54,117 +41,12 @@ function imageIssues(components: Parsed, services: Parsed, { catalog, declared }
   return errors;
 }
 
-const commandText = (service: Parsed) => (Array.isArray(service?.command) ? service.command.map(String).join(' ') : String(service?.command ?? ''));
-
-function persistentDataMount(entry: Parsed, volumes: Parsed) {
-  if (typeof entry === 'string') {
-    const [name, target, options = ''] = entry.split(':');
-    return NAMED_VOLUME.test(name!) && Object.hasOwn(volumes, name!) && target === REDIS_DATA_DIR && !options.split(',').includes('ro');
-  }
-  return plain(entry) && entry.type === 'volume' && Object.hasOwn(volumes, entry.source) && entry.target === REDIS_DATA_DIR && entry.read_only !== true;
-}
-
-/**
- * AOF on a writable named volume at the data directory, fsynced at least every second (everysec, the Redis default, or always),
- * and no eviction policy but noeviction (the Redis default).
- */
-function persisted(service: Parsed, volumes: Parsed) {
-  const command = commandText(service);
-  const policy = EVICTION_POLICY.exec(command)?.[1]!.replaceAll(/["']/g, '');
-  const fsync = FSYNC_POLICY.exec(command)?.[1]!.replaceAll(/["']/g, '');
-  return APPEND_ONLY.test(command) && (policy === undefined || policy === 'noeviction') && (fsync === undefined || BOUNDED_FSYNC.has(fsync))
-    && (Array.isArray(service.volumes) ? service.volumes : []).some((entry: Parsed) => persistentDataMount(entry, volumes));
-}
-
-/** Queue jobs live in Redis, so a declared Redis runs as exactly one stack service that persists every job and evicts none. */
-function redisPersistenceIssues(services: Parsed, volumes: Parsed, { catalog, declared }: { catalog: Parsed; declared: Parsed }) {
-  if (!declared.has('redis')) return [];
-  const redis = Object.entries<Parsed>(services).filter(([, service]) => serviceOfImage(catalog, service?.image) === 'redis');
-  if (redis.length !== 1) return [{ code: 'STACKS_LITE_REDIS_PERSISTENCE', at: 'services',
-    message: `hfs.json sides.be.backing declares redis, so the stack runs exactly one Redis service; it runs ${redis.length}` }];
-  return redis.filter(([, service]) => !persisted(service, volumes))
-    .map(([id]) => ({ code: 'STACKS_LITE_REDIS_PERSISTENCE', at: `services.${id}`,
-      message: `the Redis runs redis-server --appendonly yes with appendfsync everysec (the default) or always, a writable named volume mounted at ${REDIS_DATA_DIR} and maxmemory-policy noeviction (the default), so queue jobs survive a restart and are never evicted` }));
-}
-
-function unsupportedAdapter(service: Parsed) {
-  for (const [key, value] of composeEntries(service?.environment, { stringsOnly: true })) {
-    const adapterKey = DATABASE_ADAPTER_KEYS.has(key.toLowerCase());
-    if (adapterKey && !SQLITE_ADAPTERS.has(String(value).trim().toLowerCase())) return true;
-    if (DATABASE_URL_KEY.test(key) && typeof value === 'string' && NON_SQLITE_URL.test(value.trim())) return true;
-  }
-  return false;
-}
-
-function sqliteAdapter(service: Parsed) {
-  return composeEntries(service?.environment, { stringsOnly: true }).some(([key, value]: Parsed) => {
-    const adapter = String(value).trim().toLowerCase();
-    return DATABASE_ADAPTER_KEYS.has(key.toLowerCase()) && SQLITE_ADAPTERS.has(adapter)
-      || DATABASE_URL_KEY.test(key) && SQLITE_URL.test(adapter);
-  });
-}
-
-function renderedAdapterIssues(components: Parsed, services: Parsed) {
-  const errors = [];
-  for (const [id, service] of Object.entries<Parsed>(services)) {
-    const component = mapping(components[id]);
-    if (component.role !== 'sidecar' && component.database === undefined) continue;
-    if (!unsupportedAdapter(service)) continue;
-    errors.push({ code: 'STACKS_SIDECAR_DB_UNSUPPORTED', at: `services.${id}.environment`,
-      message: 'rendered sidecar database adapter configuration must use SQLite; Postgres, Redis and Mongo dependencies are forbidden' });
-  }
-  return errors;
-}
-
-function writableVolume(entry: Parsed, source: Parsed) {
-  if (typeof entry === 'string') {
-    const [name, target, options = ''] = entry.split(':');
-    return name === source && present(target) && target!.startsWith('/') && !options.split(',').includes('ro');
-  }
-  return plain(entry) && entry.type === 'volume' && entry.source === source && present(entry.target) && entry.target.startsWith('/') && entry.read_only !== true;
-}
-
-function sqliteVolumeIssue({ id, component, database, services, bindings, volumes }: { id: string; component: Parsed; database: Parsed; services: Parsed; bindings: Parsed; volumes: Parsed }) {
-  const declared = Array.isArray(component.volumes) && component.volumes.includes(database.volume);
-  const active = Object.hasOwn(bindings, id) || Object.hasOwn(services, id);
-  const mounts = Array.isArray(services[id]?.volumes) ? services[id].volumes : [];
-  const mounted = Object.hasOwn(volumes, database.volume) && mounts.some((entry: Parsed) => writableVolume(entry, database.volume));
-  if (present(database.volume) && NAMED_VOLUME.test(database.volume) && declared && (!active || mounted)) return [];
-  return [{ code: 'STACKS_SIDECAR_VOLUME_UNDECLARED', at: `components.${id}.database.volume`,
-    message: 'a SQLite sidecar needs a declared persistent component volume, a top-level rendered named volume and a writable mount' }];
-}
-
-function sidecarIssues({ components, services, bindings, volumes }: { components: Parsed; services: Parsed; bindings: Parsed; volumes: Parsed }) {
-  const errors = [];
-  for (const [id, entry] of Object.entries<Parsed>(components)) {
-    const component = mapping(entry);
-    if (component.database === undefined) {
-      if (component.role === 'sidecar' && sqliteAdapter(services[id]))
-        errors.push(...sqliteVolumeIssue({ id, component, database: {}, services, bindings, volumes }));
-      continue;
-    }
-    const database = mapping(component.database);
-    if (database.provider !== 'sqlite') {
-      errors.push({ code: 'STACKS_SIDECAR_DB_UNSUPPORTED', at: `components.${id}.database.provider`,
-        message: 'a sidecar that needs a database must use SQLite on a declared persistent volume' });
-      continue;
-    }
-    errors.push(...sqliteVolumeIssue({ id, component, database, services, bindings, volumes }));
-  }
-  return errors;
-}
-
 /** The backing contract of a docker-swarm environment. */
 export function backingIssues({ doc, environment, spec = doc?.environments?.[environment], model, repo, repoRoot }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed; repo: Repo; repoRoot?: string }) {
   if (spec?.runtime !== 'docker-swarm') return [];
-  const components = mapping(doc?.components), services = mapping(model?.services), volumes = mapping(model?.volumes);
+  const components = mapping(doc?.components), services = mapping(model?.services);
   const backing = { catalog: mapping(loadSlotManifest().ruleParams?.be?.backing), declared: declaredBacking(repo, repoRoot) };
-  return [
-    ...imageIssues(components, services, backing),
-    ...redisPersistenceIssues(services, volumes, backing),
-    ...renderedAdapterIssues(components, services),
-    ...sidecarIssues({ components, services, bindings: mapping(spec.components), volumes }),
-  ];
+  return imageIssues(components, services, backing);
 }
 
 /** HFS finder over tracked rendered models; unavailable evidence is reported by R267. */

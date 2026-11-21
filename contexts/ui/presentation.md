@@ -71,7 +71,7 @@ Padding (inline and block chosen apart):
   carries no padding of its own. Lint: `starci-grammar/no-pane-section-padding`.
 - **P2 Inline belongs to the container, block to the item.** Every box in one container starts at the same content
   edge (a search field, the first tab label, the selected row, a meter, a chip); the text inside a box keeps the box's
-  own padding. Block padding is the density of each band. Lint: `starci-fe/no-list-panel-padding`.
+  own padding. Block padding is the density of each band.
 - **P3 Nesting steps down.** 32/24/12 → 16 or 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
   surface inside a surface. The card's 16 is the one intentional step between the shared edge and the content, and the
   card-inset step is used for nothing else.
@@ -120,8 +120,7 @@ Padding and gap together:
   children closer than the container's siblings); a card or tile grid is closer still, its siblings 8 apart under a heading
   12 above.
 - **R2 Touching panes take 0 and a divider; floating cards take the grid step of their kind.** The two never mix.
-- **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
-  `starci-fe/divider-full-bleed`.
+- **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider.
 
 Margin:
 
@@ -192,7 +191,7 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | --- | --- |
 | grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
-| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
 
 An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
 and of every utility left for a person).
@@ -317,9 +316,9 @@ Choice `tone.choose.pair`: which token a status tone x paints with. The first ro
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| on-tint | the content sits on a background of the tone: a tint, a tinted tile, a tinted band | the pair `x-soft` (the ground) with `x-soft-foreground` (the content) | lint `starci-grammar/status-text-uses-soft-foreground`; story `status-pair--bare-marks` |
+| on-tint | the content sits on a background of the tone: a tint, a tinted tile, a tinted band | the pair `x-soft` (the ground) with `x-soft-foreground` (the content) | story `status-pair--bare-marks` |
 | solid | the content sits on a solid fill of the tone | the fill `x` with `x-foreground` | judgement |
-| alone | a mark stands alone: no background of the tone behind it (a bare glyph, a count, a title on the page or on a neutral surface) | `x` itself | lint `starci-grammar/status-text-uses-soft-foreground` |
+| alone | a mark stands alone: no background of the tone behind it (a bare glyph, a count, a title on the page or on a neutral surface) | `x` itself | judgement |
 | accent | the accent painted as text, on the page or on its tint | `--accent` alone; on its tint `--accent-soft-foreground` | judgement |
 
 The app sets the values of `x`, `x-soft` and `x-foreground` in its own CSS and no gate judges them;
@@ -358,7 +357,7 @@ the background alike; the app never passes a field variant (the prop types have 
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
 | BOUNDARY-6 | a card | every card, on every ground (the page, a canvas pane, an overlay), is white at the card radius with a 1px `border` edge and no shadow; a whole-action card fills `surface-secondary` on hover and `default` on press. One depth: a surface never stands in a surface, so no edge is doubled. The overlay (a `Dialog`, `Drawer`, `Popover`) is the one layer with a shadow (`--overlay-shadow`). `DNA-CORE-EDGE-TOP` |
-| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look: plain rows on the surface, divided by hairlines (n-1), the rows indented under the section title (list body only, 0.48.0), each a band with px-4 and p-4 where it touches the list's edge (the first row's top, the last row's bottom) or p-3 where it touches a divider, the divider and the hover fill running from the title's edge to the list's end (so longer than the text), no border around the list, no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself (`layout="settings"` keeps the rows flush with the title, with a control at the end). A row of a list or a table hovers `surface-secondary` (the original hover, never a scale or a transform); a selected row is `default` grey with a 2px accent bar on its start edge, as the sidebar's current item. A list is never a card, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-card-list`, `starci-grammar/surface-in-surface`; `DNA-COMMON-LIST-ONE-LOOK` |
+| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look: plain rows on the surface, divided by hairlines (n-1), the rows indented under the section title (list body only, 0.48.0), each a band with px-4 and p-4 where it touches the list's edge (the first row's top, the last row's bottom) or p-3 where it touches a divider, the divider and the hover fill running from the title's edge to the list's end (so longer than the text), no border around the list, no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself (`layout="settings"` keeps the rows flush with the title, with a control at the end). A row of a list or a table hovers `surface-secondary` (the original hover, never a scale or a transform); a selected row is `default` grey with a 2px accent bar on its start edge, as the sidebar's current item. A list is never a card, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface`; `DNA-COMMON-LIST-ONE-LOOK` |
 
 Elevation is the family's (contract: the card's edge).
 

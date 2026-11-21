@@ -25,7 +25,7 @@ interface AnatomyData {
     readonly dangling: readonly string[]
     readonly firstDifference: number | null
     readonly files: readonly GeneratedFile[]
-    /** The completeness gaps that make the dry run red: a slot rule code with no rule, a rule with no enforcer, a knowledge finding. */
+    /** The completeness gaps that make the dry run red: a slot rule code with no rule, an enforcer of an undeclared kind, a knowledge finding. */
     readonly gaps: readonly Gap[]
     /** The rules judged only by planned enforcers: listed, never red. */
     readonly planned: readonly PlannedRule[]
@@ -104,7 +104,7 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
  * the whole anatomy), the contexts index (`project/index.md`, every file of the tree, which a Kernel opens instead of the
  * whole tree) and the section indexes of SECTIONED_DOCS (index-render.ts: each large document a seat loads by its index). Its
  * dry run (the default) exits 1 when any of them differs from the generator, or when a slot names a rule code no rule carries
- * or a rule names no enforcer (anatomy-gate.ts), and lists the rules judged only by planned enforcers; `--execute` rewrites them; `--slice` prints one slice. Runtime only.
+ * or a rule names an enforcer of an undeclared kind (anatomy-gate.ts), and lists the rules judged only by planned enforcers (information, never red); `--execute` rewrites them; `--slice` prints one slice. Runtime only.
  */
 export const contextsAnatomyVerb = defineVerb({
     path: ["contexts", "anatomy"],

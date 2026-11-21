@@ -31,11 +31,9 @@ output:
     verdict: {type: string, summary: "passed when the diff meets its contracts and records and every screen matches the board and the grammar, else failed"}
     findings: {type: array, summary: "one entry per finding: {file, line, screen, state, rule, record, problem, screenshot}, the keys that apply"}
     screens: {type: "string[]", summary: "the gallery screens the pass covered: every screen the change reaches, empty for a code-only scope"}
-    rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the rules a finding breaks"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you read the diff against"}
     citeGrades: {type: array, minItems: 0, summary: "one entry per cite the contract hands you (the author's): {cite, grade: followed | violated | not-applicable, evidence: one line}"}
 checks:
-  base: [paths-only, result-passed, rules-cited, anchors-cited]
+  base: [paths-only, result-passed, anchors-cited]
   behavioural: false
 ---
 One review per change, by a provider that wrote none of it (`independentOf`). Change nothing in the product: the build that made the

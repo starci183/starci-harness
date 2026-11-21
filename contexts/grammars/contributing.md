@@ -55,8 +55,8 @@ Choice `tier.choose.component`: which tier a component belongs to. The first row
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | `starci-grammar/tier-props`; imports by R26 `FE_GRAMMAR_TIER_DIRECTION`, the folder stamp by `FE_GRAMMAR_TIER_STAMP` |
 | composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | `starci-grammar/tier-props`; the same R26 checks |
-| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
-| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isLoading` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
+| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props` |
+| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isLoading` | a string or none: `LabelChild` | `starci-grammar/tier-props` |
 | block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
 
 A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
@@ -77,7 +77,7 @@ frame's, so overlays need no exception.
 ## Props
 
 - **Data before slots, slots before children.** A typed field if the content has a shape, a named slot if it does not, `children` only on a frame.
-- **A budget, counted by lint (R362 `prop-budget`).** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
+- **A budget.** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
   parity do not count. Over budget means two components.
 - **No look props.** No `variant`, `className`, `style`, colour, radius or size in pixels. A look is resolved from intent, context or kind.
 - **Illegal states do not compile.** Use a discriminated union, and make a field required when the look depends on it, as `empty` on a list.
@@ -150,10 +150,7 @@ it. A minor moves the range, and with it the whole family. Which one a change is
   (`deps publish-local` warns `PUBLISH_LOCAL_PEER_LINE` on the first and refuses `PUBLISH_LOCAL_PEER_ORPHAN` on an hfs no Grammar
   release installs beside).
 
-The release judges it: `starci release push` and CI's publish plan refuse a patch bump of `@starci/grammar` whose diff since the version
-npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, `cli/src/core/release/grammar-bump.ts`). The judge reads source
-lines, so it can over-ask for a minor and never lets one through as a patch; a false alarm is answered with the minor it asks for. The
-three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
+No release check judges it; the author does. The three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
 
 ## Codemods
 

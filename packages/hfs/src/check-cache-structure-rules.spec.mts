@@ -18,7 +18,7 @@ for (const scope of ['', 'be', 'fe'] as const) {
     const scopeRoot = scope === '' ? root : path.join(root, scope);
     const prefix = scope === '' ? '' : `${scope}/`;
     const tracked = trackedFiles(root).filter((file) => (scope === '' ? !file.startsWith('be/') && !file.startsWith('fe/') : file.startsWith(prefix))).map((file) => file.slice(prefix.length));
-    const rules = perFileRules({ repoRoot: scopeRoot, repo, resolver: scoped, inScope: () => true, isRoot: scope === '' });
+    const rules = perFileRules({ repoRoot: scopeRoot, repo, resolver: scoped, inScope: () => true });
     const render = (findings: readonly object[]): string[] => findings.map((finding) => JSON.stringify(finding, Object.keys(finding).sort())).sort();
     let judged = 0;
     for (const rule of rules) {
@@ -43,7 +43,7 @@ for (const scope of ['', 'be', 'fe'] as const) {
 test('the README\'s secret findings do read the manifest beside it, and the rule declares it', (t) => {
   const root = appRepo(t, RULE_FILES);
   const declaration = readRepoDeclaration(loadSlotManifest(), root);
-  const rule = perFileRules({ repoRoot: root, repo: declaration, resolver: createSlotResolver(loadSlotManifest(), declaration), inScope: () => true, isRoot: true }).find((each) => each.id === 'secret')!;
+  const rule = perFileRules({ repoRoot: root, repo: declaration, resolver: createSlotResolver(loadSlotManifest(), declaration), inScope: () => true }).find((each) => each.id === 'secret')!;
   const { accessed } = recordFs(root, () => rule.run(['docs/README.md']));
   assert.ok(filesOf(accessed).has('docs/.starcistacks/application-stacks.yaml'));
   assert.deepEqual(rule.deps?.('docs/README.md'), ['docs/.starcistacks/application-stacks.yaml']);

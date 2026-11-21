@@ -60,12 +60,9 @@ approvedBy: <the person who approved the image>
 The gate (R437, enforcer `brand`, owner `@starci/hfs` `runtime/scripts/hfs/rules/brand.mts`) judges the prompt files it finds under `statics/`:
 
 - `HFS_BRAND_INVALID` (an error): `.starcistacks/brand/illustration.yaml` is not YAML, or its `basePrompt` is not `{ version: <integer from 1>, text: <non-empty> }`; or `.starcistacks/brand/media.yaml` is not YAML, or its `bases` is not a non-empty map of lowercase kebab-case names (other than `illustration`) to `{ version: <integer from 1>, text: <non-empty> }`.
-- `HFS_BRAND_MISSING`: a `statics/**/*.prompt.yaml` exists and the app has neither `.starcistacks/brand/illustration.yaml` nor `media.yaml` to prompt from.
-- `HFS_BRAND_PROMPT_STALE`: a prompt file records no `basePrompt.version`, or one other than the current version of the base it names.
-- `HFS_BRAND_PROMPT_INCOMPLETE`: a prompt file is not YAML, has no `subject`, or its `prompt` does not start with the current text of the base it names.
-- `HFS_BRAND_BASE_UNKNOWN`: a prompt file names a `basePrompt.name` (the default is `illustration`) that neither `illustration.yaml` nor `media.yaml` defines.
+- `HFS_BRAND_PROMPT_INVALID`: a `statics/**/*.prompt.yaml` exists and the app has neither `.starcistacks/brand/illustration.yaml` nor `media.yaml` to prompt from; or a prompt file records no `basePrompt.version`, or one other than the current version of the base it names; or it is not YAML, has no `subject`, or its `prompt` does not start with the current text of the base it names; or it names a `basePrompt.name` (the default is `illustration`) that neither `illustration.yaml` nor `media.yaml` defines. The message says which.
 
-A prompt file is judged against the base it names, by that base's version and text. The last four are a warning in `--env local` (the brand prompt moves while images are redrawn) and an error in `--env prod`, the same
+A prompt file is judged against the base it names, by that base's version and text. `HFS_BRAND_PROMPT_INVALID` is a warning in `--env local` (the brand prompt moves while images are redrawn) and an error in `--env prod`, the same
 pattern as the gallery rules ([gallery.md](gallery.md) PROJECT-GALLERY-1). An app with no prompt file has no finding.
 
 ## PROJECT-BRAND-3 A design or image brief reads the brand folder first

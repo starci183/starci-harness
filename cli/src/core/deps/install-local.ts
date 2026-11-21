@@ -10,7 +10,6 @@ import { localReferences, NPMJS_FLAGS } from "./local-refs.js"
 import { lockedHere, lockedPackages, withoutLocked } from "./lockfile.js"
 import { installFlags, latestLocal, PORT, registryAnswers, registryUrl, registryVersions } from "./local-registry.js"
 import { npmCopy } from "./npm-copy.js"
-import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 import { appNpm, assertNpm, packageName, readManifest, workingPins } from "./packages.js"
 
 /** The file an app's install of local packages is recorded in: the untracked tool cache of this checkout (slot `app.tool-cache`, beside the check journal), since the pins it changed are this checkout's files and a lite app holds no `.starciwork`. */
@@ -145,7 +144,6 @@ interface InstallLocalData {
     readonly registry: string
     readonly installed: readonly { readonly name: string; readonly version: string }[]
     readonly restored: readonly string[]
-    readonly overlayCleared: boolean
     readonly record: string | undefined
 }
 
@@ -173,7 +171,7 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     const plan = await planInstall(root, versions, before)
     const lines = versions.map((one) => `${one.name}@${one.version}`)
     if (!execute) {
-        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} (plan only, add --execute)`, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
+        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} (plan only, add --execute)`, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
     }
     const names = versions.map((one) => one.name)
     const lockText = readFileSync(join(root, LOCKFILE_NAME), "utf8")
@@ -197,7 +195,7 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     const kept = (before?.packages ?? []).filter((entry) => !plan.packages.some((one) => one.name === entry.name))
     writeInstallRecord(root, { schema: "starci/deps-install-local@1", registry: registryUrl(port), packages: [...kept, ...plan.packages].toSorted((left, right) => left.name.localeCompare(right.name)) })
     return {
-        data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: installRecordFile(root) },
+        data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], record: installRecordFile(root) },
         message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and package-lock.json name them, and ${installRecordFile(root)} records what they replaced`, ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null), RESTORE_STEP].join("\n"),
     }
 }
@@ -226,18 +224,16 @@ const lockfileReferences = (root: string): string[] => {
     return existsSync(file) ? localReferences(LOCKFILE_NAME, readFileSync(file, "utf8")).map((one) => `${LOCKFILE_NAME}:${String(one.line)}`) : []
 }
 
-/** Puts the app back on npm-served versions: the recorded pins, then npm's own install of them; the removed overlay's record goes too. */
+/** Puts the app back on npm-served versions: the recorded pins, then npm's own install of them. */
 export const restoreLocal = async (root: string): Promise<{ readonly data: InstallLocalData; readonly message: string }> => {
-    const overlayCleared = clearOverlayRecord(root)
     const record = readInstallRecord(root)
     const lines: string[] = []
     const restored: string[] = []
     if (record === undefined) {
         const stale = lockfileReferences(root)
         if (stale.length > 0) throw new Refusal("INSTALL_LOCAL_NO_RECORD", `no install-local record here, but ${stale.slice(0, 3).join(", ")} names a registry on this machine; restore the files with git checkout -- package.json package-lock.json (and each workspace package.json), then npm ci`)
-        if (overlayCleared) await appNpm(root, ["ci", "--no-audit", "--no-fund"], "npm ci")
-        lines.push(overlayCleared ? "cleared the record of the removed overlay and ran npm ci: every @starci package resolves from npm" : "nothing to restore: no package is installed from the local registry")
-        return { data: { mode: "restore", registry: "", installed: [], restored, overlayCleared, record: undefined }, message: lines.join("\n") }
+        lines.push("nothing to restore: no package is installed from the local registry")
+        return { data: { mode: "restore", registry: "", installed: [], restored, record: undefined }, message: lines.join("\n") }
     }
     const reverted = revertedTexts(root, record)
     const originals = new Map([...reverted.texts.keys()].map((file) => [file, readFileSync(join(root, file), "utf8")]))
@@ -257,8 +253,8 @@ export const restoreLocal = async (root: string): Promise<{ readonly data: Insta
     if (foreign.length > 0) throw new Refusal("INSTALL_LOCAL_RESTORE_INCOMPLETE", `the restored lockfile still holds builds that are not npm's: ${foreign.slice(0, 3).join("; ")}; fix those pins to versions npm serves and run the restore again`)
     rmSync(installRecordFile(root), { force: true })
     restored.push(...record.packages.map((one) => one.name))
-    lines.push(`restored ${restored.join(", ")} to the pins ${installRecordFile(root)} recorded, reinstalled from npm; package-lock.json holds npm's resolved and integrity again`, ...(overlayCleared ? ["cleared the record of the removed overlay"] : []), ...reverted.skipped.map((one) => `warning: ${one}`))
-    return { data: { mode: "restore", registry: "", installed: [], restored, overlayCleared, record: undefined }, message: lines.join("\n") }
+    lines.push(`restored ${restored.join(", ")} to the pins ${installRecordFile(root)} recorded, reinstalled from npm; package-lock.json holds npm's resolved and integrity again`, ...reverted.skipped.map((one) => `warning: ${one}`))
+    return { data: { mode: "restore", registry: "", installed: [], restored, record: undefined }, message: lines.join("\n") }
 }
 
 /**
@@ -280,7 +276,7 @@ export const depsInstallLocalVerb = defineVerb({
     flags: {
         packages: { kind: "rest", summary: "the packages (grammar or @starci/grammar; starci-harness for the CLI), each with an optional @<version> the registry lists; default the version published last" },
         execute: { kind: "boolean", summary: "change the pins and install (default: print the plan only)" },
-        restore: { kind: "boolean", summary: "put the recorded npm pins back and install them from npmjs, dropping every lock entry resolved on this machine; also clears a record of the removed overlay" },
+        restore: { kind: "boolean", summary: "put the recorded npm pins back and install them from npmjs, dropping every lock entry resolved on this machine" },
     },
     run: async (context, flags) => {
         const port = PORT
@@ -289,7 +285,6 @@ export const depsInstallLocalVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         assertNpm(root)
         if (flags.restore) return restoreLocal(root)
-        refuseRecordedOverlay(root)
         return installLocal(root, flags.packages.map(parseRequested), port, flags.execute)
     },
 })

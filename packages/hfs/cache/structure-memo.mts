@@ -1,6 +1,6 @@
 // structure-memo.mts - the result cache of the content rules of the structure pass (`--gate hfs`, `--gate secrets`). The rules of the pass used to run over every tracked
 // file on every run. Two kinds are now reused (contexts/project/check-cache.md "Which step reuses what"):
-//   - a per-file rule (`FileRule`: plaintext secrets, bypass markers, soft size): one record per file, `file-rules`, keyed on the file's content hash, the hashes of the
+//   - a per-file rule (`FileRule`: plaintext secrets, bypass markers): one record per file, `file-rules`, keyed on the file's content hash, the hashes of the
 //     other files the rule declares it reads (`deps`) and the names of the rules; it holds each rule's findings for the file. The cache folder is the only place a verdict is kept.
 //   - a cross-file rule (`memoKeyed`: the documentation freshness): one record per scope, `rule:<id>`, keyed on the exact set of files the rule read through `readText` /
 //     `readJson` (recorded when it ran, each with the hash it had then) and on the digest of the tracked path list, which every such rule derives its file sets from.

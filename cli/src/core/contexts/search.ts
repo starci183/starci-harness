@@ -19,9 +19,6 @@ const SNIPPET_CHARS = 280
 const EVAL_DEPTH = 10
 const EVAL_RECALL_AT = 5
 
-// A letter outside ASCII marks a question in another language (Vietnamese diacritics, other scripts); ids and names are ASCII.
-const NON_ENGLISH_LETTER = /(?!\p{ASCII})\p{L}/u
-
 /** Why an agent missed a rule the tree holds (contexts/README.md "When a rule was missed"). */
 const MISS_CAUSES = ["not-looked-up", "ranked-low", "not-in-core", "no-enforcer", "brief-paraphrase"] as const
 
@@ -169,16 +166,13 @@ const evalFile = (cwd: string, flag: string | undefined): string => {
 /** `contexts search <question>`: the ranked hits of the question and its other phrasings. */
 const searchIndex = async (index: ReturnType<typeof indexOrRefuse>, flags: { readonly question: string | undefined; readonly also: readonly string[]; readonly scope: string | undefined; readonly limit: string | undefined; readonly lexical: boolean }): Promise<VerbResult<SearchData>> => {
     if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or none, to judge the index, or --eval)")
-    if ([flags.question, ...flags.also].some((phrasing) => NON_ENGLISH_LETTER.test(phrasing))) {
-        throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
-    }
     const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical, also: flags.also })
     const asked = 1 + flags.also.length
     const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
     const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
     const body = ranking.hits.map((hit, at) => {
         const askedSuffix = asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`
-        return `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
+        return `${String(at + 1)}. ${hit.anchor}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
     })
     return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
 }
@@ -223,7 +217,7 @@ const rebuild = async (context: VerbContext, flags: { readonly cwd: string | und
  * files, policy/, the starci skill and the harness documents (each a Markdown section or a yaml entry) for a question, by BM25
  * fused with local embeddings when the index carries them, and prints each hit's anchor first, then its file, line, score and
  * text: the anchor is what a worker cites, and `contexts anchor <anchor>` resolves it. The tree is English, so a question in
- * another language is refused with the hint to translate it first. With no question it judges the index (its dry run): exit 1
+ * another language ranks on whatever it shares with the tree (rule ids, names). With no question it judges the index (its dry run): exit 1
  * when the built index does not match the tree's files (it names the files that changed), and `--execute` rebuilds it as the
  * build does (search-build.ts); `--eval` measures recall@5 and MRR and fails under the eval's floor.
  */

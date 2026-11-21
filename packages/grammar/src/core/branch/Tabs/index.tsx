@@ -23,7 +23,7 @@ export type TabItem = {
     readonly label: string
     readonly leading?: ReactNode
     /**
-     * How many items the view holds, drawn as a 12px chip after the label (0.36.0), never as "· N" text in the label (lint `tab-count-chip`). Neutral (grey)
+     * How many items the view holds, drawn as a 12px chip after the label (0.36.0), never as "· N" text in the label. Neutral (grey)
      * for an ordinary quantity. Page tabs (layers 1 and 2) hide the chip when it is `0`; filter tabs inside a table or list show a grey `0`. Leave it out while
      * the count is unknown.
      */

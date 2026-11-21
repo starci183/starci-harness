@@ -20,14 +20,13 @@ carries it into the store and of the checks that hold both. The brand the images
   image copies the folder.
 - **Cache: change the key when the art changes.** Keys are not content-hashed and no `Cache-Control` is set. A redrawn image gets a new key
   (`customers-v2.png`), and the code that shows it changes with it. There is no hash mechanism.
-- **Sizes**: a file above 2 MiB is a warning, above 10 MiB an error; the folder above 256 MiB is an error.
+- **Sizes**: a file above 2 MiB is a warning, above 10 MiB an error; the folder above 256 MiB is too much for the storage image to carry (no check judges the total).
 - `.gitattributes` marks `statics/** binary` and the prompt files `text eol=lf`.
 
 Why: one folder is the one place media is authored, so it can be sized, named and reviewed, and the store has one thing to load. A name is a URL and a
 key held in data for years, so it is fixed in shape on the first day.
 
-Enforced by: R438 (`statics-shape`: `HFS_STATICS_FILE_KIND`, `HFS_STATICS_KEY`, `HFS_STATICS_FILE_SIZE`, `HFS_STATICS_TREE_SIZE`, `HFS_STATICS_PROMPT_ORPHAN`,
-`HFS_STATICS_PROMPT_SCHEMA`); the folder's place by the slot manifest (`HFS_ROOT_ENTRY_FORBIDDEN`).
+Enforced by: R438 (`statics-shape`: `HFS_STATICS_FILE_KIND`, `HFS_STATICS_KEY`, `HFS_STATICS_FILE_SIZE`); the folder's place by the slot manifest (`HFS_ROOT_ENTRY_FORBIDDEN`).
 
 ## PROJECT-STATICS-2 The storage image and its condition
 
@@ -65,7 +64,7 @@ Why: statics must exist in the store the app reads, on a fresh machine and after
 the project's own (so an app reads one origin for statics and for its uploads). A harness loader would be a second path into the store; the image
 entrypoint is the only one.
 
-Enforced by: R440 (`storage-image`: `STACK_STORAGE_MISSING`, `STACK_STORAGE_UNUSED`, `STACK_STORAGE_IMAGE_UNUSED`, `STACK_STORAGE_IMAGE_SHAPE`),
+Enforced by: R440 (`storage-image`: `STACK_STORAGE_MISSING`, `STACK_STORAGE_IMAGE_SHAPE`),
 `HFS_MANAGED_FILE_DRIFT` for the two managed files, `packages/hfs/src/dev-storage.spec.mts` for the pin.
 
 ## PROJECT-STATICS-3 Media lives in statics, never beside the code
@@ -86,7 +85,7 @@ The front end reads one public base, `NEXT_PUBLIC_STATICS_URL` (the gallery: `VI
 declared it is `https://<the storage route host>/<project>-dev/statics` (R428, PROJECT-STACKS-15). The env owner module of the front end reads it once
 (an exported reader the first image adds, since an unused export is dead code, `HFS_UNUSED_EXPORT`) and hands it to the Grammar statics provider with the staticsKey; the starter's `next.config` derives `images.remotePatterns` from its origin and path. Code and data hold keys only, never a URL.
 
-Enforced by: R428 (`STORAGE_PUBLIC_LINK_INTERNAL` for a statics base that is not a storage route host), R49 for the env module.
+Enforced by: R49 for the env module; the host of the statics base is held by review.
 
 ## PROJECT-STATICS-5 Production: the same image
 

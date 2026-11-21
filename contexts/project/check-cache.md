@@ -27,8 +27,8 @@ For a lane, a lead, an app session and CI alike:
    package carries no source digest ([The fingerprint](#the-fingerprint)). `--env local` lists them marked `LOCAL, REPORT ONLY`, never red, writes no
    cache for an unportable install, and ends `gate: green for local (not pushable)` when only they remain. `--env prod` blocks them like every
    other finding: the cache is portable and warm and every pin is served by npm.
-2. Commit the cache as the run left it, with the code it judged. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
-3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and `starci app release gate` run `--env prod`. **Push with `npx --no-install starci app push [git push args]`: one round.** The hook cannot add a commit to a push under way, so a plain `git push` of a tree whose cache a real run changes is refused (`HFS_CHECK_CACHE_UNWARMED`) after the run wrote the records, and costs a commit and a second push (a third when the commit moved a record). `app push` runs that same `app check --env prod` first, commits the records it wrote as their own commit (`chore(cache): warm the check cache for <sha>`, never an amend, the commit hook runs), repeats the run until it writes nothing (three runs at most) and then runs `git push`, whose hook finds a warm cache. It refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`: the records would describe files the push does not carry) and a check red for any reason other than the cache, and it never bypasses a hook; the plain `git push` still works and is still judged by the hook. Push, and let
+2. The cache records a run writes are committed with the code it judged, by `starci app push` and the lander, never by hand and never to turn a run green: a run whose only complaint is that its commit lacks the records it just wrote (`HFS_CHECK_CACHE_UNWARMED`) is green, the finding is info. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
+3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and `starci app release gate` run `--env prod`. **Push with `npx --no-install starci app push [git push args]`: one round.** The hook cannot add a commit to a push under way, so a plain `git push` of a tree whose cache a real run changes is refused by the hook, whose run alone (`STARCI_PUSH_GATE=1`) makes `HFS_CHECK_CACHE_UNWARMED` an error, after the run wrote the records, and costs a commit and a second push (a third when the commit moved a record). `app push` runs that same `app check --env prod` first, commits the records it wrote as their own commit (`chore(cache): warm the check cache for <sha>`, never an amend, the commit hook runs), repeats the run until it writes nothing (three runs at most) and then runs `git push`, whose hook finds a warm cache. It refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`: the records would describe files the push does not carry) and a check red for any reason other than the cache, and it never bypasses a hook; the plain `git push` still works and is still judged by the hook. Push, and let
    CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
 4. A bug in `app check` itself (a false finding, wrong env, a path the gate breaks) is fixed in the harness, never worked
    around in the app.
@@ -154,8 +154,8 @@ The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) pr
 sharded the way `ci.yml` is, so it fits the CI time of a large app: a matrix of jobs, one per family the cache holds records of (`hfs`, `secrets`, `format`, `db`,
 `wiring`, `types`, `test`, `build`) and the `lint` family once per side (`be`, `fe`, `packages`), each running
 `starci app check --env prod --fresh --gate <family> [--side <side>]` (`ciVerifyShards` of `packages/hfs/sync/ci-commands.mts`, the sides the lint matrix of `ci.yml` names). A job
-recomputes its family from scratch and fails when the committed records are not the ones it produced (`HFS_CHECK_CACHE_UNWARMED`; the job also asserts that
-`git status` shows the cache folder unchanged); the `verdict` job is green only when every shard is. A job's timeout is `timeoutVerify`, the largest of the lint, test and build
+recomputes its family from scratch and fails when the committed records are not the ones it produced (the job asserts that
+`git status` shows the cache folder unchanged; `app check` itself reports the difference as the info finding `HFS_CHECK_CACHE_UNWARMED`); the `verdict` job is green only when every shard is. A job's timeout is `timeoutVerify`, the largest of the lint, test and build
 timeouts of `ci.jobs`. The audit and the Sonar scan keep no record and are not shards. The unit run is one job (`--gate test --fresh`): its records and its coverage threshold are
 judged whole there, so the sharded unit run of `ci.yml` and its merge job (`--coverage-from`) have no counterpart; the test job is the longest one. The workflow runs every night on the
 default branch and on `workflow_dispatch` on any branch, for that branch's head (concurrency is per ref, so a dispatch on `dev` never waits for the night run of `main`).
@@ -313,7 +313,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 |---|---|---|---|---|
 | tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest | `fingerprint.jsonl` (the parts) |
 | managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files | none |
-| plaintext secrets (R06 and the custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths; `hfs.json` or the hfs that runs | `check/hfs/`, the secrets findings in `check/secrets/` |
+| plaintext secrets (R06 and the custody L17: `--gate secrets` and `--gate hfs`) and bypass markers (R303) | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths; `hfs.json` or the hfs that runs | `check/hfs/`, the secrets findings in `check/secrets/` |
 | documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list outside the cache folder and the TypeScript version are the same | any change to a file it read; a tracked path outside the cache folder added or removed | `check/hfs/` |
 | recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths | `check/hfs/` |
 | slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below | `check/hfs/` (their findings, for new / known / fixed) |
@@ -364,7 +364,7 @@ git ignores that lies under no `__generated__` folder; a tracked file is never a
 
 ### Machine-local records
 
-Two checkouts of one commit write byte-identical committed records, whatever each built or fetched: the push gate (`HFS_CHECK_CACHE_UNWARMED`)
+Two checkouts of one commit write byte-identical committed records, whatever each built or fetched: the push gate (`HFS_CHECK_CACHE_UNWARMED` in the hook's run)
 compares the committed cache with what a run on the pushed tree writes, and a record keyed on anything else never converges. A verdict whose key
 holds a moving remote ref or untracked build output is therefore *machine-local*: the database rules and the database migration step (keyed on the
 merge-base with `origin/main`), the nivoos package checks (`origin/dev` and the built tools) and a project check that names `refs`. A run keeps
@@ -647,9 +647,17 @@ a record whose key matches the tree and whose findings differ from the inherited
 missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact only where review and CI already
 judged it, so a hand edit can cost time but never pass a file. Enforcement:
 forged fails the run; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
-whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
-`HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget (the pristine first commit, which carries no cache, is the one push it lets through); and a red
+whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`, an error in the hook's run alone and info in every other run;
+`HFS_CHECK_CACHE_UNPORTABLE`, an error everywhere; `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget (the pristine first commit, which carries no cache, is the one push it lets through); and a red
 or unreadable cache verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a newer green one, or one green for the release's sha, clears it.
+
+**Unwarmed is a fact about the commit, not a verdict on the code.** `HFS_CHECK_CACHE_UNWARMED` says the run computed what it had no valid record for and wrote it, and
+the commit does not hold those records yet. It is info in every run, exit code unaffected, so a lane, a developer or CI whose only complaint it is is green. It cannot
+hide a skipped check: it is raised only after a whole run, which computes every family it holds no valid record for, and the integrity codes are separate and unchanged
+(`HFS_CHECK_CACHE_FORGED` fails, `_STALE` and `_MISSING` warn in CI, `_UNPORTABLE` and `_FILE_TOO_LARGE` fail). CI trusts a committed record only at the trusted base and
+re-runs whatever has none, so a record that was written but never committed is simply recomputed in CI, slower but correct; the nightly verify (`cache-verify.yml`)
+is the proof that the committed records are the ones a fresh run writes. The one place a cold cache costs something is the push, so the managed pre-push hook exports
+`STARCI_PUSH_GATE=1` and only its run makes the finding an error; `starci app push` and the lander commit the records before that hook runs.
 
 ## Edge cases
 

@@ -15,18 +15,16 @@ import {
   monorepoTierBelongsToItsSide,
   noHelperFolderInComponents,
   noRuntimeNamespace,
-  noShellTier,
   routeSlotFixedName,
   routeTreeHoldsRoutesOnly,
   sourceTierMarkerMatchesFolder,
   surfaceFolderTwoFilesOnly,
 } from "./file-layout.ts"
-import { handlerOnPrefix, noDirectConstAlias, preferArrowExport, rules as namingRules } from "./naming.ts"
+import { handlerOnPrefix, noDirectConstAlias, preferArrowExport } from "./naming.ts"
 import { rules as graphRules } from "./project-graph.ts"
 
-const secondLanguageInPath = namingRules["no-second-language-in-path"]
 const frontendSourceLayout = graphRules["frontend-source-layout"]
-assert.ok(secondLanguageInPath && frontendSourceLayout, "the R91 rules are published")
+assert.ok(frontendSourceLayout, "the R91 rules are published")
 
 const LEAF = at("apps/web/src/components/leaves/Text/index.tsx")
 const BRANCH = at("apps/web/src/components/branches/ModalBranch/index.tsx")
@@ -51,10 +49,6 @@ for (const edition of ['lite'] as const) {
     tester.run("no-vietnamese-in-source", noVietnameseInSource, {
       valid: [{ filename: LEAF, code: 'const message = "Deadline passed"' }],
       invalid: [{ filename: LEAF, code: 'const message = "h\u1ea1n cu\u1ed1i"', errors: [{ messageId: "vietnamese" }] }],
-    })
-    tester.run("no-shell-tier", noShellTier, {
-      valid: [{ filename: BRANCH, code: "export const ModalBranch = () => null" }],
-      invalid: [{ filename: at("apps/web/src/components/shells/ModalShell/index.tsx"), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] }],
     })
     tester.run("source-tier-marker-matches-folder", sourceTierMarkerMatchesFolder, {
       valid: [{ filename: BRANCH, code: "export const meta = { shape: 'branch' } as const" }],
@@ -95,10 +89,6 @@ for (const edition of ['lite'] as const) {
     tester.run("handler-on-prefix", handlerOnPrefix, {
       valid: ["const onSubmit = () => submit()"],
       invalid: [{ code: "const handleSubmit = () => submit()", errors: [{ messageId: "handle" }] }],
-    })
-    tester.run("no-second-language-in-path", secondLanguageInPath, {
-      valid: [{ filename: at("apps/web/src/app/[locale]/sign-in/page.tsx"), code: "export const value = 1" }],
-      invalid: [{ filename: at("apps/web/src/app/[locale]/dang-nhap/page.tsx"), code: "export const value = 1", errors: [{ messageId: "path" }] }],
     })
     tester.run("no-direct-const-alias", noDirectConstAlias, {
       valid: ["const value = source + 1"],

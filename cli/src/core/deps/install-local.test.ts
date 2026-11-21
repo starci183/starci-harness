@@ -1,15 +1,13 @@
-// The app side of the local registry: the argument forms, the pin edits an install and its restore make, and the refusal of the removed overlay.
+// The app side of the local registry: the argument forms, the pin edits an install and its restore make.
 // Real files in a scratch folder with the state base pointed at a temp folder; built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { projectDir } from "../../harness/ledger.js"
 import { captureGitSync } from "../../shared/git.js"
 import { grammarCodemodHint, installRecordFile, parseRequested, readInstallRecord, withPin, writeInstallRecord } from "./install-local.js"
 import { isHarnessPackage, packageName, pinsOf, parseManifest } from "./packages.js"
-import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 
 void test("a package argument is a name, scoped or not, with an optional version", () => {
     assert.deepEqual(parseRequested("grammar"), { name: "@starci/grammar", version: undefined })
@@ -35,7 +33,7 @@ void test("an override an install added is removed again, with the emptied overr
 })
 
 const scratch = (t: { after: (fn: () => void) => void }): string => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "starci-overlay-")))
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "starci-install-local-")))
     const before = process.env.STARCI_LOCAL_ROOT
     process.env.STARCI_LOCAL_ROOT = join(base, "state")
     t.after(() => {
@@ -48,21 +46,6 @@ const scratch = (t: { after: (fn: () => void) => void }): string => {
     assert.equal(captureGitSync(["init", "-q", "-b", "main", root], base).exitCode, 0)
     return root
 }
-
-void test("a project that still records the removed overlay is refused with one message that names the registry flow; restore clears the record", (t) => {
-    const root = scratch(t)
-    refuseRecordedOverlay(root)
-    writeFileSync(join(projectDir(root), "deps-local.json"), '{"schema":"starci/deps-local@1","packages":[]}\n')
-    assert.throws(
-        () => {
-            refuseRecordedOverlay(root)
-        },
-        (error: unknown) => error instanceof Error && "code" in error && error.code === "DEPS_OVERLAY_REMOVED" && error.message.includes("deps install-local --restore") && error.message.includes("deps publish-local --execute"),
-    )
-    assert.equal(clearOverlayRecord(root), true)
-    refuseRecordedOverlay(root)
-    assert.equal(clearOverlayRecord(root), false)
-})
 
 void test("the CLI's own unscoped name resolves: the packages of the harness are the @starci scope and starci-harness", () => {
     assert.equal(packageName("starci-harness"), "starci-harness")

@@ -5,7 +5,7 @@ import { captureNpm, captureTool } from "../../shared/exec.js"
 import { captureGit, currentBranch, repositoryRoot, trackedChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { withHeavySlot } from "../../harness/heavy.js"
-import { CACHE_RULE, blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
+import { blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
 import type { LaneFinding } from "../../harness/land-queue.js"
 import { loadSlotRules, slotRoot, withSlot } from "../../harness/slots.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
@@ -17,7 +17,7 @@ const INSTALL_MARK = join("node_modules", ".starci-lane-gate-lock")
 /** A file whose change in the merge means node_modules no longer matches the tree. */
 const INSTALL_INPUT = /(?:^|\/)package(?:-lock)?\.json$/
 
-/** How the gate ended: green except the cache, red with findings, out of memory (nobody's fault), or no readable verdict. */
+/** How the gate ended: green, red with findings, out of memory (nobody's fault), or no readable verdict. */
 export type GateVerdict = "green" | "red" | "oom" | "no-verdict"
 
 /** What one `lane gate` did, step by step. */
@@ -74,12 +74,12 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
 /**
  * `starci lane gate [lane]`: the local gate a lane runs before it lands (contexts/authority/lanes.md). It merges the base ref
  * (origin/dev), installs under an npm slot when the merge changed a manifest or lockfile, runs codegen (and build:modules after an
- * install), then, under a gate slot, the app's own `app check --env prod` (green except the cache) or, with --push, `app push origin
+ * install), then, under a gate slot, the app's own `app check --env prod` (an unwarmed cache is info, never red) or, with --push, `app push origin
  * HEAD:<branch>`, which commits the cache records and pushes once. --ready registers the pushed sha with the batch lander.
  */
 export const laneGateVerb = defineVerb({
     path: ["lane", "gate"],
-    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green except the cache), or --push app push, and --ready register with the batch lander",
+    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green on its findings alone; the cache records it wrote are not a finding), or --push app push, and --ready register with the batch lander",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/lane-gate@1",
@@ -141,13 +141,13 @@ export const laneGateVerb = defineVerb({
             if (!pushed) findings = [{ code: "LANE_GATE_PUSH", path: "", message: `${run.stdout}\n${run.stderr}`.trim().split("\n").slice(-5).join(" ").slice(0, 600) }]
         } else {
             const all = blockingFindings(run.stdout)
-            findings = (all ?? []).filter((finding) => finding.code !== CACHE_RULE)
+            findings = all ?? []
             verdict = oom || findings.some((finding) => isOutOfMemory(undefined, finding.message)) ? "oom" : all === undefined || (run.exitCode !== 0 && all.length === 0) ? "no-verdict" : findings.length === 0 ? "green" : "red"
         }
         const ready = flags.ready && pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
         const data: LaneGate = { lane, branch, merged, installed, prepared, mode, exitCode: run.exitCode, verdict, findings, pushed, ready }
         const lines = [
-            `${lane}: ${mode} ${verdict}${mode === "check" && verdict === "green" ? " (except the cache: commit it as the run left it, or use --push)" : ""}`,
+            `${lane}: ${mode} ${verdict}${mode === "check" && verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
             ...findings.slice(0, 20).map((finding) => `  ${finding.code} ${finding.path} ${finding.message.split("\n")[0] ?? ""}`.trimEnd()),
             ...(ready === null ? [] : [`ready: monitor ${ready.status}`]),
         ]

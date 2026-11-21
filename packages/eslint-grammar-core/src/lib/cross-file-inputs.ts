@@ -34,9 +34,8 @@ export interface CrossFileInput {
 
 /** Every disk read of this canon's rules beyond the import graph. */
 export const crossFileInputs: readonly CrossFileInput[] = [
-  // the header an app shell imports is followed into the workspace packages by their manifests and entries
-  { rule: "app-shell-frame", kind: "content", relativeTo: "side", globs: ["packages/*/package.json", "packages/*/src/**/*.{ts,tsx}"], appliesTo: ["**/*.{ts,tsx}"], reader: "lib/app-shell-owner-source.ts" },
-  { rule: "navbar-cluster", kind: "content", relativeTo: "side", globs: ["packages/*/package.json", "packages/*/src/**/*.{ts,tsx}"], appliesTo: ["**/*.{ts,tsx}"], reader: "lib/app-shell-owner-source.ts" },
+  // the header or block a page owner imports is followed into the workspace packages by their manifests and entries
+  { rule: "route-page-is-one-page", kind: "content", relativeTo: "side", globs: ["packages/*/package.json", "packages/*/src/**/*.{ts,tsx}"], appliesTo: ["**/*.{ts,tsx}"], reader: "lib/app-shell-owner-source.ts" },
   // a page owner is judged by the route files of its app that mount it and the layouts above them
   { rule: "page-tabs-in-header", kind: "content", relativeTo: "side", globs: ["**/src/app/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   { rule: "page-tabs-in-header", kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },

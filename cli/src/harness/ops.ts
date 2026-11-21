@@ -42,24 +42,6 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
         expect: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
     }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
-    // The read trace: each id the result cites under `key` must be named by one of `files` (resolved by resolveChecks); a
-    // `work` key may also cite a Work record that one of its files or `named` (the Work ids and paths the inputs name) points at.
-    z.object({
-        kind: z.literal("cited"),
-        trace: z
-            .array(
-                z.strictObject({
-                    key: z.string().min(1),
-                    minItems: z.number().int().min(0),
-                    files: z.array(z.string().min(1)),
-                    cites: z.enum(["context", "work"]).optional(),
-                    named: z.array(z.string().min(1)).optional(),
-                }),
-            )
-            .optional(),
-        // The harness checkout whose contexts pages own the rule ids, so a red trace names the page the task was not handed.
-        harness: z.string().min(1).optional(),
-    }),
     // The anchor cites (harness/cite.ts): every id resolves, a UI change cites a Choose anchor per Grammar family, grades hold.
     // resolveChecks fills the rest from the contract; the preset names the kind alone.
     z.object({
@@ -86,7 +68,7 @@ export type TrustTier = "T0" | "T1" | "T2"
 
 /** The trust tier of a check, by its kind alone, so no preset or contract can declare a claim to be an observation. */
 export const trustTier = (kind: string): TrustTier => {
-    return kind === "json" || kind === "cited" ? "T2" : "T0"
+    return kind === "json" ? "T2" : "T0"
 }
 
 /** The kinds a check written out in a contract proves behaviour with: each runs, or reads, what the harness observed. */
@@ -108,9 +90,7 @@ export type CheckEntry = z.output<typeof checkEntrySchema>
 export type CheckArgs = Readonly<Record<string, z.infer<typeof argValueSchema>>>
 
 /**
- * What one output key must hold. `minItems` bounds an array; `when: work` asks for the key only of a work-driven task (its
- * context names a file under `.starciwork`); `cites` makes it a read trace whose ids the `cited` check finds in the context
- * files (`context`: any of them, `work`: the Work files). A bare type is the short form.
+ * What one output key must hold. `minItems` bounds an array. A bare type is the short form.
  */
 export const outputSpecSchema = z.union([
     outputTypeSchema.transform((type) => ({ type })),
@@ -118,8 +98,6 @@ export const outputSpecSchema = z.union([
         type: outputTypeSchema,
         summary: z.string().min(1).optional(),
         minItems: z.number().int().min(0).optional(),
-        when: z.literal("work").optional(),
-        cites: z.enum(["context", "work"]).optional(),
     }),
 ])
 
@@ -147,7 +125,7 @@ const contextEntrySchema = z.union([
     z.strictObject({
         file: z.string().min(1),
         when: z.record(keyNameSchema, z.union([z.string().min(1), z.array(z.string().min(1)).min(1)])).optional(),
-        // shared: read by every task of the label for orientation; naming its ids proves no reading, so a read trace never cites them.
+        // shared: read by every task of the label for orientation, and its brief line says it is background.
         shared: z.literal(true).optional(),
     }),
 ])
@@ -158,7 +136,7 @@ export type ContextEntry = z.infer<typeof contextEntrySchema>
 /** The path of a context entry. */
 export const entryFile = (entry: ContextEntry): string => (typeof entry === "string" ? entry : entry.file)
 
-/** Whether a context entry is shared: read by every task of the label, so its ids are no read trace. */
+/** Whether a context entry is shared: read by every task of the label for orientation. */
 export const entryShared = (entry: ContextEntry): boolean => typeof entry !== "string" && entry.shared === true
 
 /** Whether a context entry applies to a contract with these input values. */
@@ -220,9 +198,6 @@ export const OPS_README = "README.md"
 /** The heading of the README section every brief starts with. */
 export const WORKER_PROCEDURE = "## The worker procedure"
 
-/** The preset that verifies the read trace; an op whose output cites must carry it, and only such an op. */
-export const CITED_PRESET = "rules-cited"
-
 /** The ops/ folder: STARCI_OPS_DIR, else ops/ beside the CLI package (published copy), else the repository's ops/ above it. */
 export const locateOps = (): string => {
     const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
@@ -278,10 +253,6 @@ const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): O
         if (!("preset" in entry) || ("args" in entry && entry.args !== undefined)) continue
         const unfilled = (presets[entry.preset]?.args ?? []).filter((arg) => !known.has(arg))
         if (unfilled.length > 0) throw invalid(file, `checks.base names ${entry.preset}, whose arguments ${unfilled.join(", ")} no input of input.base gives`)
-    }
-    const cites = Object.values(op.output.base).some((spec) => "cites" in spec && spec.cites !== undefined)
-    if (cites !== named.includes(CITED_PRESET)) {
-        throw invalid(file, cites ? `output.base cites rules, so checks.base must carry ${CITED_PRESET}` : `checks.base carries ${CITED_PRESET} but no output.base key cites`)
     }
     const procedure = (match[2] ?? "").trim()
     if (procedure === "") throw invalid(file, "its body (the label's procedure) is empty")

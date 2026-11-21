@@ -23,12 +23,10 @@ output:
     files: {type: "string[]", summary: "the script and evidence files you wrote"}
     verdict: {type: string, summary: "passed when every screen matches its direction and the grammar, else failed"}
     findings: {type: array, summary: "one entry per drift: {screen, state, expected, observed, screenshot, rule}"}
-    rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the ui and grammar rules a finding breaks"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you audited against (the brand)"}
     cites: {type: "string[]", minItems: 0, summary: "the anchor ids you judged by beyond the handed ones: Choose anchors (<family>.choose[.<term>]), DNA and rule ids"}
     citeGrades: {type: array, minItems: 0, summary: "one entry per cite the contract hands you (the author's): {cite, grade: followed | violated | not-applicable, evidence: one line}"}
 checks:
-  base: [paths-only, result-passed, rules-cited, anchors-cited]
+  base: [paths-only, result-passed, anchors-cited]
   behavioural: false
 ---
 Write a short Playwright script that opens each screen the contract names in every state it names and saves a screenshot per

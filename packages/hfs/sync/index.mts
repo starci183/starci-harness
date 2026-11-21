@@ -40,7 +40,7 @@ import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { NESTED_LOCK_STEP, nestedLockDrift, nestedLockFix, npmResolveLock, type NestedLockResult } from './nested-lock.mjs';
 import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
-import { HARNESS_CHECK_COPIES, environmentKeyNotices, harnessCheckScriptEdits, looseCheckNotices } from './harness-checks.mjs';
+import { HARNESS_CHECK_COPIES, harnessCheckScriptEdits, looseCheckNotices } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, MC, RETIRED_DB_DOCKERFILE, STORAGE_DOCKERFILE, STORAGE_IMAGE_APP } from '../db/image.mjs';
@@ -677,7 +677,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
     nivoosSeedIgnore: scope === APP_SCOPE ? nivoosSeedIgnore(app).join(LINE) : '',
-    // The desktop app (hfs.json sides.desktop, R444): the Tauri config, the shell's Rust, the release matrix and the ignore lines; all empty without it.
+    // The desktop app (hfs.json sides.desktop): the Tauri config, the shell's Rust, the release matrix and the ignore lines; all empty without it.
     ...desktopVariables(app, HEADER(scope)),
     sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
@@ -956,7 +956,7 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }
   // A check the app keeps outside ext/checks/ is named with the declaration to add, never moved (harness-checks.mts looseCheckNotices).
-  return { edits: [...edits.values()], notices: [...services.notices, ...looseCheckNotices(root), ...environmentKeyNotices(root)] };
+  return { edits: [...edits.values()], notices: [...services.notices, ...looseCheckNotices(root)] };
 }
 
 /** `starci app sync [--execute] [--cwd <dir>]` at the app root: the dry run reports drift, --execute writes; returns 0 clean, 1 drift, 2 usage. */

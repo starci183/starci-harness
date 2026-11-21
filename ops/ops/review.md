@@ -20,11 +20,9 @@ output:
     files: {type: "string[]", summary: "the files you wrote, if any"}
     verdict: {type: string, summary: "passed when the diff meets its contracts and records, else failed"}
     findings: {type: array, summary: "one entry per finding: {file, line, rule, record, problem}"}
-    rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the rules a finding breaks"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you read the diff against"}
     citeGrades: {type: array, minItems: 0, summary: "one entry per cite the contract hands you (the author's): {cite, grade: followed | violated | not-applicable, evidence: one line}"}
 checks:
-  base: [paths-only, result-passed, rules-cited, anchors-cited]
+  base: [paths-only, result-passed, anchors-cited]
   behavioural: false
 ---
 Read `git diff <since>..HEAD` of the paths the contract names against the contracts and Work records in your context and

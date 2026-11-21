@@ -13,7 +13,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: The change you want. Prefer a machine check or a verb over a written rule (CONTRIBUTING.md, CONTRIB-10).
+      description: The change you want. Name the problem and the root cause; a new check needs the conditions of CONTRIBUTING.md CONTRIB-10.
     validations:
       required: true
   - type: textarea

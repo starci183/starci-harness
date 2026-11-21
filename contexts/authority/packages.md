@@ -65,9 +65,7 @@ The flow, in order:
 5. CI publishes the release to npm ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the app's verification. The
    app pins the version npm serves, which is the version it already pinned for the local build.
 
-It is no publication: nothing in the registry reaches npm. A project whose state folder still records a package overlay
-(`deps-local.json`) is refused `DEPS_OVERLAY_REMOVED` by `deps install-local`, `deps check` and the install a check gives its
-checkout; `starci deps install-local --restore` clears that record and runs `npm ci`.
+It is no publication: nothing in the registry reaches npm.
 
 ### An app's own packages
 
@@ -87,7 +85,7 @@ the package's `typecheck`, its literal lint and `build` (`npm test` runs exactly
 (`eslint.config.ts`, `stylelint.config.ts`): a component or stylesheet holds no hardcoded colour, radius, type size, shadow,
 motion, opacity or off-scale spacing, and reads a token or a ramp of `src/common/ramps.css`. It adds no spec suite or test helper;
 it runs no Storybook plays and no DNA measurement locally; it bumps and re-pins only `@starci/grammar`. The plays and the DNA gate are
-CI's ([ci.md](ci.md)), and a defect is fixed in the component and hardens the rule it broke. Apps on the Grammar keep no
+CI's ([ci.md](ci.md)), and a defect is fixed in the component, and the rule changes only if the rule was wrong. Apps on the Grammar keep no
 front-end tests either (`SHARED-TEST-1`).
 
 Other packages keep their specs ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-2): a rule change is written with the

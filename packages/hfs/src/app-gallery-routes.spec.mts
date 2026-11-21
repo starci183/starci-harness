@@ -1,6 +1,6 @@
-// R395 coverage and change coupling (rules/gallery.mts routeFindings, rules/gallery-coupling.mts, gallery-routes.mts; contexts/project/gallery.md PROJECT-GALLERY-4, PROJECT-GALLERY-5):
+// R395 coverage and change coupling (rules/gallery.mts routeFindings, rules/gallery-coupling.mts, gallery-routes.mts; contexts/project/gallery.md PROJECT-GALLERY-4):
 // every `page.tsx` route of the front end has a gallery screen whose explain.md `route` matches it (or a reasoned exclusion in gallery/routes.json), judged from the explain.md
-// files alone, and a change to a screen's source touches its explain.md. Both findings are `local`: report-only in `--env local`, errors in `--env prod`.
+// files alone. The finding is `local`: report-only in `--env local`, errors in `--env prod`.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,9 +12,8 @@ import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp, starterDeclaration } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
-import { runWorkHygiene } from '../sync/hygiene.mjs';
 import { appGalleryFindings } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { galleryStaleFindings, changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
+import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { feRoutes, importedFeatures, pageRoute, routeExclusions, routeKey } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { judgedForEnv, localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
 import { A15_CODES } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
@@ -69,9 +68,9 @@ test('routes.json: an absent file has no exclusion; a reason is required; a bad 
   assert.equal(routeExclusions('nope').problem, 'is not JSON');
 });
 
-test('the rule is wired: ROUTE_MISSING ships with the check, both new codes are localOnly and the slot of routes.json is declared', () => {
+test('the rule is wired: ROUTE_MISSING ships with the check, the code is localOnly and the slot of routes.json is declared', () => {
   assert.ok(A15_CODES.includes('HFS_APP_GALLERY_ROUTE_MISSING'));
-  for (const code of ['HFS_APP_GALLERY_ROUTE_MISSING', 'HFS_APP_GALLERY_EXPLAIN_STALE']) assert.ok(localOnlyCodes().has(code), code);
+  assert.ok(localOnlyCodes().has('HFS_APP_GALLERY_ROUTE_MISSING'));
   const slots = new Map(loadSlotManifest().slots.map((slot) => [slot.id, slot]));
   assert.equal(slots.get('app.gallery-routes')?.path, 'gallery/routes.json');
   assert.equal(slots.get('app.gallery-routes')?.tracked, 'tracked');
@@ -134,47 +133,6 @@ test('an app with no front end has no routes to cover', (t) => {
   assert.deepEqual(findings(root), []);
 });
 
-/** A lite app with one routed screen: its page imports AgentProfilePage, the screen is gallery/pages/agents/profile (and a state variant of it). */
-function screenApp(t: TestContext): string {
-  const root = starter(t, 'lite');
-  write(root, DETAIL, PAGE_TEXT('AgentProfilePage'));
-  write(root, `${FEATURE}/index.tsx`, 'export const AgentProfilePage = () => null\n');
-  write(root, `${FEATURE}/component.tsx`, 'export const x = 1\n');
-  write(root, 'fe/apps/web/src/components/blocks/Other/index.tsx', 'export const Other = 1\n');
-  write(root, 'gallery/pages/agents/profile/explain.md', explain('/workspaces/[workspaceId]/agents/[agentKey]'));
-  write(root, 'gallery/pages/agents/profile-open/explain.md', explain('/workspaces/[workspaceId]/agents/[agentKey]'));
-  return root;
-}
-const stale = (root: string, ...changed: string[]) => galleryStaleFindings({ repoRoot: root, changed });
-const PROFILE = 'gallery/pages/agents/profile/explain.md';
-
-test('a change to a screen page or feature folder without its explain.md is HFS_APP_GALLERY_EXPLAIN_STALE; touching any explain.md of the route settles it', (t) => {
-  const root = screenApp(t);
-  assert.deepEqual(stale(root), [], 'no change, no finding');
-  const [page] = stale(root, DETAIL);
-  assert.equal(page?.code, 'HFS_APP_GALLERY_EXPLAIN_STALE');
-  assert.equal(page?.path, DETAIL);
-  assert.equal(page?.['local'], true);
-  assert.match(page?.message ?? '', /the screen of \/workspaces\/\[workspaceId\]\/agents\/\[agentKey\] changed .* and gallery\/pages\/agents\/profile\/explain\.md did not/u);
-  assert.equal(judgedForEnv([page!], 'local')[0]?.report, true);
-  assert.equal(judgedForEnv([page!], 'prod')[0]?.report, undefined);
-  assert.deepEqual(codes(stale(root, `${FEATURE}/component.tsx`, `${FEATURE}/index.tsx`)), ['HFS_APP_GALLERY_EXPLAIN_STALE'], 'one finding per route, naming every source');
-  assert.deepEqual(stale(root, `${FEATURE}/component.tsx`, PROFILE), []);
-  assert.deepEqual(stale(root, DETAIL, 'gallery/pages/agents/profile-open/explain.md'), [], 'any screen of the route counts');
-  assert.deepEqual(stale(root, 'fe/apps/web/src/components/blocks/Other/index.tsx', 'README.md', 'gallery/pages/agents/profile/1440.png'), [], 'a file the screen does not draw with is not its source');
-});
-
-test('an excluded route, a route with no screen and a repository that is not an app have nothing to keep current', (t) => {
-  const root = screenApp(t);
-  write(root, 'gallery/routes.json', JSON.stringify({ exclude: [{ route: '/workspaces/[workspaceId]/agents/[agentKey]', reason: 'a redirect' }] }));
-  assert.deepEqual(stale(root, DETAIL), []);
-  fs.rmSync(at(root, 'gallery', 'routes.json'));
-  fs.rmSync(at(root, 'gallery', 'pages', 'agents'), { recursive: true });
-  assert.deepEqual(stale(root, DETAIL), [], 'the missing screen is HFS_APP_GALLERY_ROUTE_MISSING, once');
-  write(root, 'hfs.json', '{}');
-  assert.deepEqual(stale(root, DETAIL), []);
-});
-
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 const git = (cwd: string, ...args: string[]): string => {
   const run = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv, windowsHide: true });
@@ -182,7 +140,7 @@ const git = (cwd: string, ...args: string[]): string => {
   return run.stdout;
 };
 
-test('the staged guard lists a screen changed without its explain.md and never blocks the commit; the range since the base names every changed file', async (t) => {
+test('the range since the base names every changed file, a missing base none', (t) => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-gallery-coupling-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q', '-b', 'main');
@@ -190,24 +148,15 @@ test('the staged guard lists a screen changed without its explain.md and never b
   git(root, 'config', 'user.name', 'n');
   git(root, 'config', 'commit.gpgsign', 'false');
   write(root, 'hfs.json', `${JSON.stringify(starterDeclaration('fixture', undefined), null, 2)}\n`);
-  write(root, DETAIL, PAGE_TEXT('AgentProfilePage'));
   write(root, `${FEATURE}/index.tsx`, 'export const AgentProfilePage = () => null\n');
-  write(root, PROFILE, explain('/workspaces/[workspaceId]/agents/[agentKey]'));
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', 'one');
   const base = git(root, 'rev-parse', 'HEAD').trim();
   write(root, `${FEATURE}/index.tsx`, 'export const AgentProfilePage = () => 1\n');
   git(root, 'add', '-A');
-  const lines: string[] = [];
-  assert.equal(await runWorkHygiene({ cwd: root, out: (line) => lines.push(line) }), 0, lines.join('\n'));
-  assert.ok(lines.some((line) => line.startsWith('report HFS_APP_GALLERY_EXPLAIN_STALE ') && line.includes(`${FEATURE}/index.tsx`)), lines.join('\n'));
-  assert.match(lines.at(-1) ?? '', /1 gallery report\(s\)/u);
   git(root, 'commit', '-q', '-m', 'two');
   assert.deepEqual(changedSince(root, base), [`${FEATURE}/index.tsx`]);
   assert.deepEqual(changedSince(root, null), []);
-  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: root, changed: changedSince(root, base) })), ['HFS_APP_GALLERY_EXPLAIN_STALE']);
-  write(root, PROFILE, `${explain('/workspaces/[workspaceId]/agents/[agentKey]')}\n`);
-  assert.deepEqual(galleryStaleFindings({ repoRoot: root, changed: changedSince(root, base) }), [], 'the work tree counts: the explain.md edited since the base settles it');
 });
 
 // ---- routes keyed by app: two apps serving "/" (a landing and the product) stay apart
@@ -227,20 +176,9 @@ function twoAppsServingRoot(t: TestContext, webApp?: string): string {
 test('two apps serving "/" are two routes: a change in one app\'s page marks only that app\'s screen, and a screen naming no app is ambiguous', (t) => {
   const root = twoAppsServingRoot(t, 'web');
   assert.deepEqual([...new Set(feRoutes(root).filter((route) => route.route === '/').map((route) => route.key))].sort(), ['landing:/', 'web:/']);
-  const landing = galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`] });
-  assert.deepEqual(codes(landing), ['HFS_APP_GALLERY_EXPLAIN_STALE']);
-  assert.match(landing[0]?.message ?? '', /gallery\/pages\/site\/landing\/explain\.md/u, "the landing's screen is the one asked to change");
-  assert.doesNotMatch(landing[0]?.message ?? '', /learn\/home/u, "the product's screen, whose code is untouched, is not");
-  const web = galleryStaleFindings({ repoRoot: root, changed: [`${HOME_WEB}/index.tsx`] });
-  assert.match(web[0]?.message ?? '', /gallery\/pages\/learn\/home\/explain\.md/u);
-  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`, 'gallery/pages/site/landing/explain.md'] })), [], 'the landing screen changed with its code');
   assert.deepEqual(findings(root).filter((finding) => finding.code === 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS' && /learn\/home|site\/landing/u.test(finding.message)), [], 'a screen that names its app is never ambiguous');
   const ambiguous = twoAppsServingRoot(t);
   const [first] = findings(ambiguous).filter((finding) => finding.code === 'HFS_APP_GALLERY_ROUTE_AMBIGUOUS' && /learn\/home/u.test(finding.message));
   assert.match(first?.message ?? '', /gallery\/pages\/learn\/home\/explain\.md|learn\/home/u);
   assert.match(first?.message ?? '', /landing and web|web and landing/u);
-  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: ambiguous, changed: [`${HOME_LANDING}/index.tsx`] })), ['HFS_APP_GALLERY_EXPLAIN_STALE'], 'the app is never guessed: the landing change asks the landing screen only');
-  write(root, 'gallery/routes.json', JSON.stringify({ exclude: [{ route: '/', app: 'landing', reason: 'the landing is drawn elsewhere' }] }));
-  assert.deepEqual(codes(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_LANDING}/index.tsx`] })), [], 'an exclusion with an app excludes that app\'s route only');
-  assert.match(galleryStaleFindings({ repoRoot: root, changed: [`${HOME_WEB}/index.tsx`] })[0]?.message ?? '', /learn\/home/u);
 });

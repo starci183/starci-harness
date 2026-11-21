@@ -93,17 +93,17 @@ function checkReadmeHeadings(state: PresentationState, lines: string[]): Heading
   const { root, runtime, tree } = state;
   const name = runtime ? 'StarCi' : repositoryName(root);
   if ((lines[0] ?? '').trim().toLowerCase() !== `# ${name}`.toLowerCase())
-    addFinding(state, 'HFS_README_TITLE_INVALID', 'README.md', `README.md must start with # ${name}.`);
+    addFinding(state, 'HFS_README_INVALID', 'README.md', `README.md must start with # ${name}.`);
   const description = lines.slice(1).find(line => line.trim());
   if (!description || /^\s*(?:#|!\[|\[!\[)/u.test(description) || description.trim().length > 240)
-    addFinding(state, 'HFS_README_DESCRIPTION_INVALID', 'README.md', 'Place one concise description line directly below the repository name.');
+    addFinding(state, 'HFS_README_INVALID', 'README.md', 'Place one concise description line directly below the repository name.');
   const headings = lines.map((line, index) => ({ name: README_HEADING.exec(line)?.[1], index })).filter((item): item is Heading => Boolean(item.name));
   const required = [...README_SECTIONS, ...(tree.hasDir('.starciwork') ? ['Work'] : [])];
   let previous = -1;
   for (const section of required) {
     const found = headings.find(item => item.name === section);
-    if (!found) addFinding(state, 'HFS_README_SECTION_MISSING', 'README.md', `README.md requires a ## ${section} section.`);
-    else if (found.index <= previous) addFinding(state, 'HFS_README_SECTION_ORDER', 'README.md', `## ${section} must follow the preceding standard section.`, found.index + 1);
+    if (!found) addFinding(state, 'HFS_README_INVALID', 'README.md', `README.md requires a ## ${section} section.`);
+    else if (found.index <= previous) addFinding(state, 'HFS_README_INVALID', 'README.md', `## ${section} must follow the preceding standard section.`, found.index + 1);
     else previous = found.index;
   }
   return headings;
@@ -115,7 +115,7 @@ function checkReadmeDevelopment(state: PresentationState, lines: string[], headi
   const scripts = DEVELOPMENT_SCRIPTS.filter(name => managedScriptNames(state.profile).has(name));
   const commands = [/npm (?:ci|install)/u, ...scripts.map(scriptCommand)];
   if (commands.some(command => !command.test(development))) {
-    addFinding(state, 'HFS_README_DEVELOPMENT_INCOMPLETE', 'README.md', 'Development must show npm install and the managed script commands: '
+    addFinding(state, 'HFS_README_INVALID', 'README.md', 'Development must show npm install and the managed script commands: '
       + scripts.map(name => (name === 'test' ? 'npm test' : `npm run ${name}`)).join(', ') + '.');
   }
 }
@@ -123,13 +123,13 @@ function checkReadmeDevelopment(state: PresentationState, lines: string[], headi
 function checkReadmeWorkPointer(state: PresentationState, lines: string[], headings: Heading[]): void {
   if (state.tree.hasDir('.starciwork') && headings.some(item => item.name === 'Work') &&
       !/\.starciwork\b/u.test(readmeSectionBody(lines, headings, 'Work')))
-    addFinding(state, 'HFS_README_WORK_POINTER_MISSING', 'README.md', 'Work must point at the backend .starciwork tree.');
+    addFinding(state, 'HFS_README_INVALID', 'README.md', 'Work must point at the backend .starciwork tree.');
 }
 
 function inspectReadmeUrl(state: PresentationState, value: string, line: number): void {
   try {
     if (privateHost(new URL(value).hostname))
-      addFinding(state, 'HFS_README_PRIVATE_URL', 'README.md', `README URL ${value} points at a local or private host.`, line);
+      addFinding(state, 'HFS_README_INVALID', 'README.md', `README URL ${value} points at a local or private host.`, line);
   } catch { /* Malformed URLs are outside this presentation rule. */ }
 }
 
@@ -150,8 +150,8 @@ function inspectBadgeTarget(state: PresentationState, alt: string, rawTarget: st
     const url = new URL(target);
     if (url.protocol !== 'https:' || privateHost(url.hostname) ||
         /^(?:img\.shields\.io|badgen\.net)$/iu.test(url.hostname) && url.pathname.startsWith('/badge/'))
-      addFinding(state, 'HFS_README_BADGE_NOT_LIVE', 'README.md', `Badge ${target} must represent a live external HTTPS service.`, line);
-  } catch { addFinding(state, 'HFS_README_BADGE_NOT_LIVE', 'README.md', `Badge ${target} must use a live external HTTPS service.`, line); }
+      addFinding(state, 'HFS_README_INVALID', 'README.md', `Badge ${target} must represent a live external HTTPS service.`, line);
+  } catch { addFinding(state, 'HFS_README_INVALID', 'README.md', `Badge ${target} must use a live external HTTPS service.`, line); }
 }
 
 function inspectReadmeLine(state: PresentationState, line: string, index: number, scan: { fenced: boolean }): void {

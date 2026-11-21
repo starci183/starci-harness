@@ -14,8 +14,8 @@
 //                                            the universal canon and the explicitly selected Grammar-family canon.
 //                                            The results are committed in .starcistacks/cache/ (cache/, contexts/project/check-cache.md): a run with no selector
 //                                            runs every family diff-only against the cache (reusing every valid record and recomputing what a change or a moved pin
-//                                            invalidated), the CI-parity families (build, audit) and CI's coverage step, writes what it judged back, and refuses a
-//                                            tree whose committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED), a host
+//                                            invalidated), the CI-parity families (build, audit) and CI's coverage step, writes what it judged back, and reports a
+//                                            tree whose committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED: info, an error only in the pre-push hook's run, STARCI_PUSH_GATE=1), a host
 //                                            that cannot write a portable cache (HFS_CHECK_CACHE_UNPORTABLE) or a cache file too large to push: every push carries warm
 //                                            records. A missing cache or a fingerprint change selects full automatically. Repeat --gate to select gates (a selector runs
 //                                            those gates alone, with no parity and no cache verdict); sonar and codecov select the same combined baseline predictions, not
@@ -128,7 +128,7 @@ import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
-import { changedSince, DESIGN_CHANGE_UNAPPROVED, EXPLAIN_STALE, galleryDesignChangeFindings, galleryStaleFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
+import { changedSince, DESIGN_CHANGE_UNAPPROVED, galleryDesignChangeFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
@@ -748,15 +748,13 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
-  // A screen's source changed without its explain.md (PROJECT-GALLERY-5): judged over the commits since the base, the index and the work tree of a whole run; report-only in `--env local`, an error in `--env prod`.
+  // The commits since the base, the index and the work tree of a whole run are the judged set of the gallery coupling.
   if (whole && session !== undefined && selected.has('hfs')) {
     const landing = landingBase(repoRoot, io.env, profile.branch);
     const galleryBase = landing.base;
     const galleryChanged = changedSince(repoRoot, galleryBase);
     // the base is stated, so a lane and the lander (whose gate is a merge of the lane into origin/dev) can be compared: both judge the diff from the merge-base with origin/dev
     lines.push(`  gallery coupling: judged ${galleryChanged.length} file(s) changed since ${galleryBase === null ? 'no base (a root commit)' : galleryBase.slice(0, 10)}, ${landing.source}`);
-    const stale = galleryStaleFindings({ repoRoot, changed: galleryChanged });
-    if (stale.length > 0) extra.push(...withWhy(stale as Dynamic[], readWhy(skillRoot, [EXPLAIN_STALE])));
     // A screen's source changed without an approved canvas page (PROJECT-GALLERY-7): the same judged set, a canvas-managed screen only.
     const unapproved = galleryDesignChangeFindings({ repoRoot, changed: galleryChanged, base: galleryBase });
     if (unapproved.length > 0) extra.push(...withWhy(unapproved as Dynamic[], readWhy(skillRoot, [DESIGN_CHANGE_UNAPPROVED])));
@@ -779,9 +777,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
-  // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
+  // The cache verdict of a whole run: an unwarmed cache is report-only here and an error only in the pre-push hook's run (STARCI_PUSH_GATE=1, cache/freshness.mts); unportable and too large stay errors.
   if (whole && session !== undefined && flushed !== undefined) {
-    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, localRegistry: session.fingerprint.localRegistry, written: flushed.written, removed: flushed.removed });
+    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, localRegistry: session.fingerprint.localRegistry, pushGate: io.env.STARCI_PUSH_GATE === '1', written: flushed.written, removed: flushed.removed });
     verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message, ...(refusal.local === true ? { local: true } : {}) })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
   }
   const checked = proof();

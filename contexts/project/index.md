@@ -6,7 +6,7 @@ Every file of `contexts/` with its size, the first sentence it opens with, its s
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
 - [README.md](../README.md) · 22 KB — Read this file first, in this repository or in any app the harness drives.
-  - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
+  - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback is fixed at its root · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 10 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
@@ -107,7 +107,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-DATA-SWR One SWR hook per operation, and it returns the feature's data · FE-DATA-KEY A key carries every identity that changes the answer · FE-DATA-COMMAND A user-started write runs through a domain command hook · FE-STATE-1 Each kind of state has one owner · FE-STORAGE Browser storage goes through `modules/storage`
 - [code/fe/error.md](../code/fe/error.md) · 2 KB — How a front-end failure is represented and where it goes: a read failure becomes a region status (README), a command failure a field error or a toast, a render failure a boundary ...
   - sections: FE-ERROR-2 A failure is kept, typed and never folded into empty data · FE-ERROR-3 Hard stops where silence would be wrong · FE-ERROR-4 Server text never becomes the reason a user reads
-- [code/fe/folder.md](../code/fe/folder.md) · 9 KB — Which directory and which file a piece of front-end code gets.
+- [code/fe/folder.md](../code/fe/folder.md) · 8 KB — Which directory and which file a piece of front-end code gets.
   - sections: FE-FOLDER-1 Every source file sits in its tier folder · FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts` · FE-FOLDER-3 `hooks/` holds hooks; everything else is a module · FE-FOLDER-4 Every app has its boundary files · FE-APPS-1 One independent app per audience · FE-PACKAGES-1 A shared package builds to `dist` and exports named symbols · FE-PACKAGES-2 A shared package draws only with the grammar · FE-PACKAGES-3 One version of every dependency, from the declared stack
   - ids: fe.source-root-pinned, source-layout
 - [code/fe/form.md](../code/fe/form.md) · 2 KB — How a form is validated and submitted, and how the outcome of a write reaches the user.
@@ -153,7 +153,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 183 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUTTON-GROUND-CONTRAST, DNA-COMMON-BUTTON-ONE-LINE and 270 more
-- [grammars/contributing.md](../grammars/contributing.md) · 15 KB — How a component enters `@starci/grammar`, or a prop enters a component.
+- [grammars/contributing.md](../grammars/contributing.md) · 14 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
@@ -165,24 +165,24 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: Self-healing
 - [harness/managed-vps.md](../harness/managed-vps.md) · 17 KB — The harness manages the owner's fleet of VPS servers from the harness host: it brings each server to one policy, watches its health, opens its doors under the owner's domain and ...
   - sections: Machines and roles · Clean boxes only · Two layers · Why the inventory is gitignored · The server and backup recipients are public and tracked · Keys, never passwords · The verbs · Remote BuildKit · Doors under the owner's domain · Who may run what
-- [harness/presence-audit.md](../harness/presence-audit.md) · 12 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
+- [harness/presence-audit.md](../harness/presence-audit.md) · 11 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
   - sections: hfs rules · contexts laws · Not added
 - [harness/questions.md](../harness/questions.md) · 9 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 9 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 5 KB
   - sections: Where state lives · How a project is found
-- [hfs/README.md](../hfs/README.md) · 19 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
+- [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 20 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 41 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 185 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R113, R12 and 315 more
-- [hfs/slots.yaml](../hfs/slots.yaml) · 108 KB — The HFS slot manifest: what may exist in an app repository and where.
+- [hfs/rules.yaml](../hfs/rules.yaml) · 173 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13, R14 and 302 more
+- [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-desktop-release, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy and 163 more
 - [project/README.md](../project/README.md) · 16 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 50 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 7 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander
@@ -190,16 +190,16 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
 - [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as an app, the business package its agents run from, and the seed standard that gives a ...
   - sections: PROJECT-BUSINESS-1 A business is one repository: an app, its nivoos package and its seed standard
-- [project/check-cache.md](../project/check-cache.md) · 78 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
+- [project/check-cache.md](../project/check-cache.md) · 79 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
   - ids: Machine-local
-- [project/cicd.md](../project/cicd.md) · 50 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/cicd.md](../project/cicd.md) · 49 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Dev and prod · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/desktop.md](../project/desktop.md) · 12 KB — A project that offers its web app as an installable program (macOS, Windows, Linux) declares a desktop app.
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
 - [project/edition.md](../project/edition.md) · 14 KB — What the one app edition runs beyond the shared project model (README.md): the code structure, the front-end standard, the queue (BullMQ on Redis) and the three realtime doors are ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Resetting the chain to one baseline · Read with
-- [project/gallery.md](../project/gallery.md) · 48 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
+- [project/gallery.md](../project/gallery.md) · 47 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
   - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval · PROJECT-GALLERY-7 A UI change goes board first, then code, then the gallery, then one review · PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes · PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar
   - ids: customers/import, customers/list
 - [project/lint.md](../project/lint.md) · 33 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
@@ -317,12 +317,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/situations.md](../ui/situations.md) · 22 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
-  - sections: The vendor reference is generated, not kept here · Pin
+  - sections: The vendor reference is generated, not kept here
 - [vendor/heroui.md](../vendor/heroui.md) · 11 KB — HeroUI v3 is a set of compound components over React Aria: each component is a root plus named parts, the behaviour and accessibility come from React Aria, and the paint is vendor ...
   - sections: Button · ColorSwatch · ButtonGroup · ToggleButtonGroup · Tabs · Chip · Input · Select · Card · Modal · Dropdown · Table · Alert · Avatar · Small members · How sizes align
 - [vendor/parity.yaml](../vendor/parity.yaml) · 9 KB — What a grammar must keep of HeroUI and what it may change.
   - ids: accordion, alert, alert-dialog, avatar, avatar-group, badge, breadcrumbs, button, button-group, calendar, card, checkbox, chip, close-button, color-swatch, combo-box, date-field, date-picker, date-range-picker, disclosure, drawer, dropdown, fieldset, form and 34 more
-- [vendor/pins.yaml](../vendor/pins.yaml) · 1 KB — The digests the parity gate compares against: a pinned file that changes is red until its new sha256 is recorded here, in the commit that changes it, so the change shows in review.
-  - ids: knowledge-gates.ts, sha256
 - [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 12 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
-  - ids: data-slot, sha256
+  - ids: data-slot

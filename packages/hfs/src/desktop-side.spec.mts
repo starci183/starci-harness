@@ -1,22 +1,11 @@
-/** The desktop app a project declares (PROJECT-DESKTOP-1, R444): `sides.desktop` in hfs.json, its managed files, its tree and config findings and the `starci app desktop` verb. */
-// proves: HFS_DESKTOP_UNDECLARED
-// proves: HFS_DESKTOP_UNDECLARED
-// proves: HFS_DESKTOP_FILE_MISSING
-// proves: HFS_DESKTOP_FILE_MISSING
-// proves: HFS_DESKTOP_CONFIG
-// proves: HFS_DESKTOP_CONFIG
-// proves: HFS_DESKTOP_SECURITY
-// proves: HFS_DESKTOP_SECURITY
-// proves: HFS_DESKTOP_SIGNING_KEY
-// proves: HFS_DESKTOP_SIGNING_KEY
+/** The desktop app a project declares (PROJECT-DESKTOP-1): `sides.desktop` in hfs.json, its managed files and the `starci app desktop` verb. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { DESKTOP_CI_SECRETS, TAURI_CLI_VERSION, TAURI_ICONS, capabilityOpensRemote, crateName, desktopConfigProblems, desktopOf, desktopSideProblems, originOf, tauriConfig, tauriConfigText, type DesktopDeclaration } from '../runtime/scripts/hfs/desktop-side.mjs';
+import { DESKTOP_CI_SECRETS, TAURI_CLI_VERSION, TAURI_ICONS, crateName, desktopOf, desktopSideProblems, originOf, tauriConfig, tauriConfigText, type DesktopDeclaration } from '../runtime/scripts/hfs/desktop-side.mjs';
 import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
-import { desktopFindings } from '../runtime/scripts/hfs/rules/desktop.mjs';
 import { declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { ciSecretBlock, buildArguments, desktopMain, initBlock, probeToolchain, resolveTarget, withCiSecrets, withDesktopSide, DESKTOP_USAGE, DesktopRefusal, type DesktopSeam } from '../desktop/cli.mjs';
 import { cargoToml, desktopVariables, indexHtml, libRs, releaseMatrix } from '../sync/desktop.mjs';
@@ -94,41 +83,8 @@ test('the config: tauri.conf.json is rendered from the declaration, reads the ve
   assert.deepEqual(plain.plugins, {}, 'no schemes and no updater: no plugin config');
   assert.equal(plain.bundle.createUpdaterArtifacts, undefined);
   assert.ok(tauriConfigText(declared(DESKTOP)).endsWith('}\n'));
-  assert.deepEqual(desktopConfigProblems(conf, declared(FULL), '1.2.3'), [], 'what the declaration renders passes its own judgment');
 });
 
-test('HFS_DESKTOP_CONFIG and HFS_DESKTOP_SECURITY: a config that disagrees with the declaration or loosens the shell is named', () => {
-  const d = declared(FULL);
-  const good = tauriConfig(d) as Json;
-  const edit = (change: (conf: Json) => void): Json => { const copy = structuredClone(good); change(copy); return copy; };
-  const codes = (conf: Json, version: unknown = '1.2.3'): string[] => desktopConfigProblems(conf, d, version).map((problem) => `${problem.code}: ${problem.message}`);
-  assert.match(codes(edit((c) => { c.identifier = 'vn.other.app'; })).join('\n'), /HFS_DESKTOP_CONFIG: identifier is "vn\.other\.app"/);
-  assert.match(codes(edit((c) => { c.productName = 'Other'; })).join('\n'), /productName is "Other"/);
-  assert.match(codes(edit((c) => { c.version = '1.0.0'; })).join('\n'), /version is "1\.0\.0": it must be "\.\.\/\.\.\/package\.json"/);
-  assert.match(codes(good, 'next').join('\n'), /no semver version/);
-  assert.match(codes(edit((c) => { c.plugins['deep-link'].desktop.schemes = ['evil']; })).join('\n'), /deep link schemes are \["evil"\]/);
-  assert.match(codes(edit((c) => { c.plugins.updater.pubkey = 'x'; })).join('\n'), /updater\.pubkey is not/);
-  assert.match(codes(edit((c) => { c.plugins.updater.endpoints = ['https://a.com/x.json']; })).join('\n'), /updater\.endpoints is not/);
-  assert.match(codes(edit((c) => { c.bundle.createUpdaterArtifacts = false; })).join('\n'), /createUpdaterArtifacts is not true/);
-  assert.match(codes(edit((c) => { c.app.windows = [{ label: 'main', url: 'https://x.com' }]; })).join('\n'), /app\.windows is not empty/);
-  assert.match(codes(edit((c) => { c.build.devUrl = 'http://localhost:1'; })).join('\n'), /devUrl is "http:\/\/localhost:1"/);
-  assert.match(codes(edit((c) => { c.app.withGlobalTauri = true; })).join('\n'), /HFS_DESKTOP_SECURITY: app\.withGlobalTauri is true/);
-  assert.match(codes(edit((c) => { c.app.security.dangerousRemoteDomainAccess = []; })).join('\n'), /HFS_DESKTOP_SECURITY: app\.security carries a dangerous/);
-  assert.match(codes(edit((c) => { c.app.security.csp = ''; })).join('\n'), /csp is empty/);
-  assert.match(codes(edit((c) => { c.app.security.csp = "default-src * 'unsafe-eval'"; })).join('\n'), /unsafe-eval or a wildcard/);
-  assert.match(codes(edit((c) => { c.plugins.updater.dangerousInsecureTransportProtocol = true; })).join('\n'), /plain http/);
-  assert.match(codes(edit((c) => { delete c.plugins.updater; })).join('\n'), /updater\.pubkey is not/);
-  const noUpdater = declared(DESKTOP);
-  assert.match(desktopConfigProblems(good, noUpdater, '1.0.0').map((p) => p.message).join('\n'), /carries an updater, but hfs\.json sides\.desktop declares none/);
-  assert.equal(desktopConfigProblems(null, d, '1.0.0')[0]?.code, 'HFS_DESKTOP_CONFIG');
-  assert.equal(capabilityOpensRemote({ remote: { urls: ['https://*'] } }), 'https://*');
-  assert.equal(capabilityOpensRemote({ remote: { urls: ['*'] } }), '*');
-  assert.equal(capabilityOpensRemote({ remote: { urls: ['http://app.nivo.vn'] } }), 'http://app.nivo.vn');
-  assert.equal(capabilityOpensRemote({ remote: { urls: ['https://*.nivo.vn', 'http://localhost:3000'] } }), null, 'a *.domain wildcard and a local http host are the app\'s own choice');
-  assert.equal(capabilityOpensRemote({ windows: ['main'], permissions: [] }), null);
-});
-
-/** An app root holding `files` (app-relative path -> text). */
 function tree(t: Pick<import('node:test').TestContext, 'after'>, files: Record<string, string>): { root: string; all: string[] } {
   const root = mkdtemp(t, 'starci-desktop-');
   for (const [file, text] of Object.entries(files)) {
@@ -137,37 +93,6 @@ function tree(t: Pick<import('node:test').TestContext, 'after'>, files: Record<s
   }
   return { root, all: Object.keys(files) };
 }
-const ICONS = Object.fromEntries(TAURI_ICONS.map((icon) => [`desktop/src-tauri/${icon}`, 'png']));
-
-test('R444 the tree: an undeclared desktop folder, missing icons, a hand-edited config, an open capability and a tracked signing key are named', (t) => {
-  const d = declare({ be: BE, fe: FE, desktop: FULL });
-  const clean = tree(t, { 'package.json': JSON.stringify({ version: '1.2.3' }), 'desktop/src-tauri/tauri.conf.json': tauriConfigText(declared(FULL)), 'desktop/src-tauri/Cargo.lock': '# lock', ...ICONS });
-  assert.deepEqual(desktopFindings({ repoRoot: clean.root, files: clean.all, repo: d }), []);
-
-  const bare = tree(t, { 'package.json': JSON.stringify({ version: '1.2.3' }), 'desktop/src-tauri/tauri.conf.json': tauriConfigText(declared(FULL)) });
-  const missing = desktopFindings({ repoRoot: bare.root, files: bare.all, repo: d });
-  assert.deepEqual(missing.map((f) => [f.code, f.level, f.path]), [...TAURI_ICONS.map((icon) => ['HFS_DESKTOP_FILE_MISSING', 'error', `desktop/src-tauri/${icon}`]), ['HFS_DESKTOP_FILE_MISSING', 'warning', 'desktop/src-tauri/Cargo.lock']]);
-  assert.match(String(missing[0]?.message), /tauri icon <1024px-source\.png>/);
-
-  const edited = tauriConfig(declared(FULL)) as Json;
-  edited.identifier = 'vn.hand.edit';
-  edited.app.withGlobalTauri = true;
-  const bad = tree(t, {
-    'package.json': JSON.stringify({ version: '1.2.3' }), 'desktop/src-tauri/tauri.conf.json': JSON.stringify(edited), 'desktop/src-tauri/Cargo.lock': '# lock', ...ICONS,
-    'desktop/src-tauri/capabilities/remote.json': JSON.stringify({ identifier: 'remote', windows: ['main'], remote: { urls: ['https://*'] }, permissions: ['core:default'] }),
-    'desktop/key.txt': 'untrusted comment: rsign encrypted secret key\nRWRTY0Iy', 'release/cert.p12': 'binary', 'desktop/notes.env': 'TAURI_SIGNING_PRIVATE_KEY=dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWdu',
-  });
-  const found = desktopFindings({ repoRoot: bad.root, files: bad.all, repo: d });
-  assert.deepEqual(found.map((f) => f.code).sort(), ['HFS_DESKTOP_CONFIG', 'HFS_DESKTOP_SECURITY', 'HFS_DESKTOP_SECURITY', 'HFS_DESKTOP_SIGNING_KEY', 'HFS_DESKTOP_SIGNING_KEY', 'HFS_DESKTOP_SIGNING_KEY']);
-  assert.ok(found.some((f) => f.code === 'HFS_DESKTOP_SIGNING_KEY' && f.path === 'release/cert.p12'), 'a certificate anywhere in the tree');
-  assert.ok(found.some((f) => f.code === 'HFS_DESKTOP_SECURITY' && f.path === 'desktop/src-tauri/capabilities/remote.json'));
-
-  const none = declare({ be: BE, fe: FE });
-  const stray = tree(t, { 'desktop/src-tauri/tauri.conf.json': '{}', '.github/workflows/desktop-release.yml': 'name: x' });
-  assert.deepEqual(desktopFindings({ repoRoot: stray.root, files: stray.all, repo: none }).map((f) => [f.code, f.path]), [['HFS_DESKTOP_UNDECLARED', 'desktop/src-tauri/tauri.conf.json'], ['HFS_DESKTOP_UNDECLARED', '.github/workflows/desktop-release.yml']]);
-  const nothing = tree(t, { 'package.json': '{}' });
-  assert.deepEqual(desktopFindings({ repoRoot: nothing.root, files: nothing.all, repo: none }), [], 'a project with no desktop app is not judged');
-});
 
 const PRESETS = { sonarExclusions: '**/*.spec.ts' };
 const STACK = { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' };

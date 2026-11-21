@@ -7,16 +7,6 @@ export interface WhyEntry {
 }
 
 export const why: Record<string, WhyEntry> = {
-  "app-shell-frame": {
-    code: "FE_APP_SHELL_FRAME",
-    en: "The app frame must use Grammar WorkspaceShell with its fixed viewport.",
-    fix: "Compose WorkspaceShell viewport=\"fixed\" and supply its header, navigation and primary slots.",
-  },
-  "chip-label-starts-uppercase": {
-    code: "FE_CHIP_LABEL_CASE",
-    en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
-    fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
-  },
   "tabs-switch-zone": {
     code: "FE_TABS_SWITCH_ZONE",
     en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `action` of a `Section` and not the value of a row `control`.",
@@ -37,11 +27,6 @@ export const why: Record<string, WhyEntry> = {
     en: "A `DescriptionList` or `DisclosureList` in `<file>` stands with no `Section` or `SurfaceCard` around it.",
     fix: "Key-value and disclosure rows stand flat in a `Section` (`<Section title ...><DescriptionList isDivided items={...} /></Section>`) or, as the facts of ONE object, in the body of that object's `SurfaceCard`; a plain list of rows is `Section kind=\"list\"`, flat.",
   },
-  "surface-card-list": {
-    code: "FE_SURFACE_CARD_LIST",
-    en: "A `SurfaceCard kind=\"list\"` in `<file>`: the list card was removed in the Grammar family 0.43.0, a list is never a card.",
-    fix: "Write the list as `<Section kind=\"list\" title items empty />` with `ListRow` rows: flat rows on the surface, divided by hairlines, aligned with the title. `label` becomes `title`, `labelEnd` becomes `action`, a filter or search goes in the list's `filter`, and `layout=\"keyValue\" | \"suggestions\"` stays on the Section.",
-  },
   "no-card-lead-description": {
     code: "FE_NO_CARD_LEAD_DESCRIPTION",
     en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
@@ -56,11 +41,6 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_SECTION_HEAD_ACTION",
     en: "The `Section` head `action` in `<file>` holds a Button that is not a neutral small text Button, or more than one command.",
     fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end: a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info `IconButton`, or a text `Button intent=\"neutral\" size=\"sm\"` (no icon, never the commit).",
-  },
-  "tab-count-chip": {
-    code: "FE_TAB_COUNT_CHIP",
-    en: "A tab label in `<file>` carries its count as text (\"label \u00b7 N\").",
-    fix: "Give the tab item `count: N`; the tab draws a 12px chip, grey for a quantity. Add `isAttention: true` only when the number is work waiting for the owner (to handle, to approve, an error): that chip is pink.",
   },
   "card-one-content": {
     code: "FE_CARD_ONE_CONTENT",
@@ -107,11 +87,6 @@ export const why: Record<string, WhyEntry> = {
     en: "A Grammar layout element in `<file>` (Stack, Cluster, PaneSection, Section, Grid, Form, Fieldset) stands directly inside another whose gap role is not wider: the child's gap is not at least one step closer than its container's.",
     fix: "Step the child down one role (region -> section -> row -> inline -> identity), or step the parent up. Section is always row and Grid and Form fix their own role: do not nest them where the parent is as close. A field stack of controls inside a Form or Fieldset is exempt.",
   },
-  "generated-art-in-mascot-or-media-frame": {
-    code: "FE_GENERATED_ART_OUTSIDE_FRAME",
-    en: "Generated art (a `.webp` or `.png` under `/images/`) in `<file>` is drawn outside Grammar's `Mascot` and `MediaFrame`, so it takes whatever box the page gives it.",
-    fix: "Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero), or frame a scene or illustration in `<MediaFrame assetSlot>`.",
-  },
   "mascot-asset-slot-required": {
     code: "FE_MASCOT_ASSET_SLOT_MISSING",
     en: "A `Mascot` in `<file>` names no `assetSlot`, so nothing ties the art it draws to the asset workflow's request.",
@@ -122,20 +97,10 @@ export const why: Record<string, WhyEntry> = {
     en: "A raw `<img>`, `<video>` or `<picture>` in `<file>`: it reserves no ratio, loads at once and carries none of the Grammar's alt, rendition, caption, track or stream contract.",
     fix: "Use `Image` (a picture with content: `alt` is required, `ratio`, `renditions` and `sizes`, `caption`, `zoom`), `Illustration` (decorative art: `compact` for art direction) or `Video` (`sources` of MP4, WebM, HLS or DASH, `poster`, `tracks`); a `staticsKey` names an asset of the app's statics.",
   },
-  "navbar-cluster": {
-    code: "FE_NAVBAR_CLUSTER",
-    en: "Navbar action component kinds or order differ from the app-shell canon.",
-    fix: "Compose Language IconButton, theme Switch, notification IconButton and account AvatarButton in that order.",
-  },
   "navbar-control-size": {
     code: "FE_NAVBAR_CONTROL_SIZE",
     en: "A navbar control does not use Grammar's shared control height.",
     fix: "Give every visible bar control the shared height: Button and IconButton at md (the default), Switch kind=\"toggle\" (never compact), the other controls size=\"control\".",
-  },
-  "no-navbar-create": {
-    code: "FE_NAVBAR_CREATE",
-    en: "A create action is composed into the global navbar.",
-    fix: "Move the create action to the page that owns it.",
   },
   "no-raw-structural-element": {
     code: "FE_NATIVE_FORM_CONTROL",
@@ -212,11 +177,6 @@ export const why: Record<string, WhyEntry> = {
     en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard: a card never stands inside a card (a Pane surface, Dialog, Drawer or Popover hosts cards, bordered, since 0.37.5).",
     fix: "Give the content to the outer card's own body; a list, a table or figures inside it stand flat in a `Section` (`Section kind=\"list\"`, `Section kind=\"figures\"`).",
   },
-  "no-shell-bottom-tabs": {
-    code: "FE_APP_SHELL_BOTTOM_TABS",
-    en: "A hand-made bottom tab bar, or a BottomNav outside WorkspaceShell compactNavigation, replaces the required mobile sidebar drawer.",
-    fix: "Use WorkspaceShell navigationDrawer and Sidebar presentation=\"drawer\", or the Grammar BottomNav as the compactNavigation of the WorkspaceShell.",
-  },
   "surface-in-surface": {
     code: "FE_SURFACE_IN_SURFACE",
     en: "A hand-made row list (a Stack, ul, ol or div whose rows are divided by `Divider`) in `<file>` stands inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail.",
@@ -227,30 +187,15 @@ export const why: Record<string, WhyEntry> = {
     en: "A `SurfaceCard` in `<file>` holds only a collection, a form or a placeholder (a `DataTable`, a `Section`, a `DescriptionList`, a `DisclosureList`, a `Form` or a lone field, an `EmptyNotice`, `Markdown`, a chart): a card is one object.",
     fix: "Drop the card and stand the content flat: a table is `<Section title ...><DataTable .../></Section>`, a list `Section kind=\"list\"`, facts `<Section title ...><DescriptionList isDivided items={...} /></Section>`, disclosures `<Section title ...><DisclosureList .../></Section>`, a form or field `<Section title ...><Form .../></Section>`, an empty state an `EmptyNotice` on its own, markdown or a chart a `Section`. A card keeps an object's name and facts beside a control; a sign-in form with no page around it keeps `measure=\"formCompact\"`.",
   },
-  "data-table-surface": {
-    code: "FE_DATA_TABLE_SURFACE",
-    en: "A `DataTable` in `<file>` carries a `surface` prop: it was removed in the Grammar family 0.45.0, a table has one flat look.",
-    fix: "Delete the `surface` attribute (the rule fixes it in place) and put the table under its `Section`: `<Section title ...><DataTable .../></Section>`.",
-  },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
     en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, or a SectionHeader or Heading as a second title.",
     fix: "Rows are a `Section kind=\"list\"` (never a card), key figures `Section kind=\"figures\"`, a band of commands at the card's foot is `actions`, a filter or search row the `filter` of a `Section`; the card's title is its `label`, a second subject its own `Section`.",
   },
-  "status-text-uses-soft-foreground": {
-    code: "FE_STYLE_TOKEN_ONLY",
-    en: "`<file>` colours status content against the status pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone (e.g. `bg-success-soft text-success`), or a mark with no tint behind it paints with the soft foreground (e.g. `text-success-soft-foreground` alone).",
-    fix: "Content on a background of the tone takes the pair: `bg-<tone>-soft` with `text-<tone>-soft-foreground`. A mark that stands alone, with no background of the tone, takes the tone itself: `text-<tone>`. A solid fill takes `bg-<tone>` with `text-<tone>-foreground`.",
-  },
   "button-arrow": {
     code: "FE_BUTTON_ARROW",
     en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
     fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
-  },
-  "button-icon-primary-only": {
-    code: "FE_BUTTON_ICON_PRIMARY_ONLY",
-    en: "A Button in `<file>` sets `startGlyph` or `startContent` but is not the primary (`intent=\"commit\"`): it has another intent, none, or one computed; or it is `size=\"sm\"`, which never carries an icon, not even the primary.",
-    fix: "Only the primary Button (the CTA) carries a leading icon. Remove the icon from a neutral, alternative, dismiss or destructive Button, a suggestion pill, a row action or any `size=\"sm\"` Button (the primary carries an icon at `md` or `lg` only); a Button that leads somewhere keeps `endArrow`.",
   },
   "layout-two-axis": {
     code: "FE_LAYOUT_TWO_AXIS",
@@ -281,15 +226,5 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_ROW_TITLE_LINK",
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
-  },
-  "message-surfaces": {
-    code: "FE_MESSAGE_SURFACES",
-    en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, a chat thread asked for the surface tone, or a chat frame (`Pane content=\"chat\"`, a Pane holding a log thread) given `surface`.",
-    fix: "Remove the override: the chat frame (head, thread, composer) is `--background` (`Pane content=\"chat\"`, no `surface`, DNA-COMMON-CHAT-FRAME), others' messages outlined (the 1px `--border` edge, no fill), your own `--accent` (DNA-COMMON-CHAT-SURFACES); a message card's replies are `Section kind=\"list\" layout=\"suggestions\"`.",
-  },
-  "suggestion-buttons": {
-    code: "FE_SUGGESTION_BUTTONS",
-    en: "A Link row, a ChoiceChips, a ChoiceButtons or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
-    fix: "Suggestions and quick replies are one pattern: a `Cluster gap=\"inline\"` (with `label`) of neutral `Button size=\"sm\"` (a pill).",
   },
 }

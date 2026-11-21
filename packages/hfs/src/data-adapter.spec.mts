@@ -1,11 +1,6 @@
 /** A seed-standard with raw/ and an adapter/ is the adapter's output, byte for byte (PROJECT-STACKS-13, R434): the commit hook and CI judge the index, the bring-up's seed step judges the pinned commit. */
 // proves: HFS_DATA_ADAPTER_DRIFT
-// proves: HFS_DATA_ADAPTER_DRIFT
-// proves: HFS_DATA_ADAPTER_UNGUARDED
-// proves: HFS_DATA_ADAPTER_UNGUARDED
 // proves: STACK_SEED_ADAPTER_DRIFT
-// proves: STACK_SEED_ADAPTER_DRIFT
-// proves: STACK_SEED_ADAPTER_INSTALL
 // proves: STACK_SEED_ADAPTER_INSTALL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -126,10 +121,10 @@ test('R434 with R400 over raw/: a sealed file in raw/ and an oversize raw/ file 
   fs.writeFileSync(path.join(root, 'raw/credentials.enc.yaml'), 'token: ENC[AES256_GCM,data:AA==,type:str]\nsops:\n  age: []\n');
   fs.writeFileSync(path.join(root, 'raw/huge.bin'), Buffer.alloc(4 * 1024 * 1024 + 1));
   git(root, 'add', '-A');
-  assert.deepEqual(guard(root).sort(), ['HFS_DATA_FILE_SIZE raw/huge.bin', 'HFS_DATA_STANDARD_SEALED raw/credentials.enc.yaml']);
+  assert.deepEqual(guard(root).sort(), ['HFS_DATA_COPY_INVALID raw/credentials.enc.yaml', 'HFS_DATA_COPY_INVALID raw/huge.bin']);
 });
 
-test('R434 HFS_DATA_ADAPTER_UNGUARDED: an adapter repository keeps its entry, its package, the hook and the CI workflow, each running the guard', () => {
+test('R434 HFS_DATA_ADAPTER_DRIFT: an adapter repository keeps its entry, its package, the hook and the CI workflow, each running the guard', () => {
   const files = ['adapter/main.ts', 'adapter/package.json', STANDARD_HOOK, STANDARD_WORKFLOW, 'raw/a.md'];
   const texts: Record<string, string> = { [STANDARD_HOOK]: HOOK, [STANDARD_WORKFLOW]: WORKFLOW };
   const read = (file: string): string | null => texts[file] ?? null;
@@ -137,7 +132,7 @@ test('R434 HFS_DATA_ADAPTER_UNGUARDED: an adapter repository keeps its entry, it
   assert.deepEqual(adapterGuardFindings({ files: ['raw/a.md', 'manifest.json'], read }), [], 'a standard without adapter/ is judged by R400 alone');
   const bare = adapterGuardFindings({ files: ['adapter/convert.ts'], read });
   assert.deepEqual(bare.map((finding) => finding.path), ['adapter/main.ts', 'adapter/package.json', STANDARD_HOOK, STANDARD_WORKFLOW]);
-  assert.ok(bare.every((finding) => finding.code === 'HFS_DATA_ADAPTER_UNGUARDED'));
+  assert.ok(bare.every((finding) => finding.code === 'HFS_DATA_ADAPTER_DRIFT'));
   const silent = adapterGuardFindings({ files, read: (file) => (file === STANDARD_HOOK ? '#!/bin/sh\nexit 0\n' : read(file)) });
   assert.deepEqual(silent.map((finding) => finding.path), [STANDARD_HOOK]);
   assert.match(silent[0]?.message ?? '', /does not run `starci app check --staged`/u);
