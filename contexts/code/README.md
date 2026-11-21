@@ -7,8 +7,7 @@ Every rule of this tree has one form: a heading that opens with its stable id an
 (`## SHARED-TYPING-2 ...`, `## FE-FUNCTION-2 ...`, `## BE-PERSISTENCE-5 ...`), the body that makes it concrete, a
 `Why:` line and an `Enforced by:` line naming the enforcer (a lint rule id with the HFS rule of
 [hfs/rules.yaml](../hfs/rules.yaml) it belongs to, a gate, or "review only"). A rule cites the HFS rule instead of
-restating what it flags, and cites another rule's id instead of restating its law. The heading id is what a task's
-`rulesApplied` cites and what `starci contexts search` marks citable.
+restating what it flags, and cites another rule's id instead of restating its law. The heading id is what a task names and what `starci contexts search` prints.
 
 A side topic's front matter lists the slots it teaches (`slots`; `files` for scaffolded trees in be), which is how an
 agent and the anatomy generator map a slot to its topics. Shared topics apply to every slot and carry none. A fact

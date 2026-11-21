@@ -41,12 +41,11 @@ op's budget). It is the few pages the seat cannot act without plus an index of w
 generated section index (`*-sections.md`, beside the document it indexes: every section with its anchor, size and opening
 sentence) in place of a document too large to load whole. The second layer is looked up on demand. A section an index lists
 opens with `starci contexts anchor <anchor>`. A worker's brief lists its rule pages: each code topic owning a rule over a
-path under its allowPaths, opened at the sections a written file needs and citable, outside the budget. Any other question
+path under its allowPaths, opened at the sections a written file needs, outside the budget. Any other question
 mid-task goes to `starci contexts search "<question>" [--scope ui,code,...]`, asked in English since the tree is English (a
-question in another language is translated first, keeping rule ids and names as written; the verb refuses it otherwise with
-`SEARCH_QUERY_NOT_ENGLISH`), which ranks the sections of this tree, the op files, `policy/` and the harness documents and
-prints each hit's id, file, line and text, the way "Looking a rule up" below says. Open the hit's file before you rely on it. A hit marked citable carries a rule id; `rulesApplied` may cite it only when that file is among the task's context files (its rule pages included, and
-a section index standing for its source), since the rules-cited check reads ids from those files alone.
+question in another language is best translated first, keeping rule ids and names as written; the verb searches it as given),
+which ranks the sections of this tree, the op files, `policy/` and the harness documents and
+prints each hit's id, file, line and text, the way "Looking a rule up" below says. Open the hit's file before you rely on it.
 
 ### Looking a rule up
 
@@ -208,7 +207,7 @@ specific to contexts:
 1. **Cite the code owner.** A value code owns (a token, a size, a lint rule, a component) is named by its owner
    (`owner: @starci/grammar src/common/spacing.ts`), never restated. A rule cites other rules by their rule ids and never
    a decision of the owner by its id, a decision log or a date: the rule says what holds now, and its history lives in git and the
-   CHANGELOGs (`contexts anatomy` refuses it, ANATOMY_RULING_HISTORY).
+   CHANGELOGs.
 2. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
    product's `.starciwork`. The law for every source of the harness is [harness/rules.md](harness/rules.md) rule 9.
 3. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose

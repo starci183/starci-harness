@@ -150,10 +150,7 @@ it. A minor moves the range, and with it the whole family. Which one a change is
   (`deps publish-local` warns `PUBLISH_LOCAL_PEER_LINE` on the first and refuses `PUBLISH_LOCAL_PEER_ORPHAN` on an hfs no Grammar
   release installs beside).
 
-The release judges it: `starci release push` and CI's publish plan refuse a patch bump of `@starci/grammar` whose diff since the version
-npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, `cli/src/core/release/grammar-bump.ts`). The judge reads source
-lines, so it can over-ask for a minor and never lets one through as a patch; a false alarm is answered with the minor it asks for. The
-three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
+No release check judges it; the author does. The three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
 
 ## Render proof
 

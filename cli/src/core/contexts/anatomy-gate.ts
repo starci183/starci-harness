@@ -5,7 +5,7 @@ import { z } from "zod"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
-import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeRulingHistory, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
+import { judgeRuleDocs } from "./knowledge-gates.js"
 import type { KnowledgeFinding } from "./knowledge-gates.js"
 
 /** The finding code of each gap. */
@@ -14,13 +14,6 @@ export const GAP_CODES = {
     "enforcer-kind-unknown": "ANATOMY_ENFORCER_KIND_UNKNOWN",
     "law-path-unresolved": "ANATOMY_LAW_PATH_UNRESOLVED",
     "rule-no-doc": "ANATOMY_RULE_NO_DOC",
-    "removed-vocabulary-used": "ANATOMY_REMOVED_VOCABULARY_USED",
-    "wrapper-stale": "ANATOMY_WRAPPER_STALE",
-    "wrapper-undeclared": "ANATOMY_WRAPPER_UNDECLARED",
-    "wrapper-wraps-drift": "ANATOMY_WRAPPER_WRAPS_DRIFT",
-    "wrapper-pin-drift": "ANATOMY_WRAPPER_PIN_DRIFT",
-    "wrapper-rule-unknown": "ANATOMY_WRAPPER_RULE_UNKNOWN",
-    "ruling-history": "ANATOMY_RULING_HISTORY",
 } as const
 type GapKind = keyof typeof GAP_CODES
 
@@ -107,10 +100,8 @@ const unresolvedPath = (knowledge: string, cited: string): string | undefined =>
 
 /**
  * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every enforcer a rule names is of
- * a declared kind and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed
- * spelling is written as code there, vendor/wrappers.yaml matches the Grammar source and its pin, and no governed file cites
- * decision history instead of the rule (ANATOMY_RULING_HISTORY). A rule may name no enforcer (it is held by review); a rule whose
- * every enforcer is `status: planned` is not a gap either: it is listed in `planned`.
+ * a declared kind and every path its law cites resolves, and every rule is named by a page of the living knowledge. A rule may name no
+ * enforcer (it is held by review); a rule whose every enforcer is `status: planned` is not a gap either: it is listed in `planned`.
  */
 export const judgeAnatomy = (knowledge: string): GateVerdict => {
     const catalog = readParsed(join(knowledge, "hfs", "rules.yaml"), catalogSchema)
@@ -131,7 +122,7 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
             if (why !== undefined) red.push(gap("law-path-unresolved", rule.id, `${rule.id}'s law cites ${cited}, which ${why}`))
         }
     }
-    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir()), ...judgeRulingHistory(join(knowledge, ".."))]
+    const knowledgeFindings: KnowledgeFinding[] = judgeRuleDocs(knowledge)
     red.push(...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail)))
     return { red, planned }
 }

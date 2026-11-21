@@ -18,7 +18,6 @@ export const INDEX_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", ".
 const chunkSchema = z.object({
     anchor: z.string(),
     aliases: z.array(z.string()).readonly(),
-    citable: z.boolean(),
     path: z.string(),
     line: z.number(),
     scope: z.enum(SEARCH_SCOPES),
@@ -164,7 +163,6 @@ export interface SearchHit {
     /** The anchor to cite, first: `contexts anchor <anchor>` resolves it. */
     readonly anchor: string
     readonly aliases: readonly string[]
-    readonly citable: boolean
     readonly path: string
     readonly line: number
     readonly scope: SearchScope

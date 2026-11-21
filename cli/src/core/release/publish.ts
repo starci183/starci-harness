@@ -16,7 +16,6 @@ import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
 import { FOLLOW_FILES } from "./affected.js"
-import { GRAMMAR_PACKAGE, judgeGrammarBump } from "./grammar-bump.js"
 import { meetsPin } from "./pin-range.js"
 import { peerSkews } from "./peer-range.js"
 import { stackPinVersions, unservedPins } from "./pin-served.js"
@@ -269,8 +268,6 @@ export const judgePlan = async (root: string, packages: readonly WorkspacePackag
     if (skewed.length > 0) throw new Refusal("RELEASE_PEER_RANGE_EXCLUDES_PIN", `a peer range excludes the version an app installs: ${skewed.join("; ")}; raise the peer range in the commit that raises the pin, or the pin to a version the peer admits`)
     if (unserved.length > 0) throw new Refusal("RELEASE_PIN_UNPUBLISHED", `${STACK_PINS} pins ${unserved.join(", ")}: npm does not serve it and this run does not publish it, so an app cannot install the pinned set; pin the version the package folder holds, or the one npm serves`)
     if (base !== undefined) await judgeBumped(rows, root, base)
-    // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (contexts/grammars/contributing.md "Patch or minor").
-    await judgeGrammarBump(root, rows.find((row) => row.package === GRAMMAR_PACKAGE))
     return rows
 }
 

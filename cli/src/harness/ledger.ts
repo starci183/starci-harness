@@ -447,16 +447,6 @@ export const priorDir = (root: string): string => join(projectDir(root), "prior"
 /** The command file an owner's write through `starci ui` becomes (a ruling by its decision id, a goal by its cmdId), kept in the project's state folder. */
 export const ownerCommandPath = (root: string, name: string): string => join(projectDir(root), "owner-commands", `${name}.json`)
 
-/**
- * The record of the removed local package overlay (`deps-local.json` of the project's state folder), when the host registry
- * knows the repository and one is still there; undefined otherwise. Creates nothing.
- */
-export const overlayRecordPath = (root: string): string | undefined => {
-    const id = findLedgerId(root)
-    const file = id === undefined ? undefined : join(dirname(ledgerFile(id)), "deps-local.json")
-    return file !== undefined && existsSync(file) ? file : undefined
-}
-
 /** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
 export const ledgerPath = (root: string): string | undefined => {
     const id = findLedgerId(root)

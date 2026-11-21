@@ -22,17 +22,3 @@ export const SECTIONED_DOCS: readonly SectionedDoc[] = [
     { source: "contexts/grammars/contract.md", index: "grammars/contract-sections.md", title: "Grammar contract sections", owns: "the reasoning behind each entry of the grammar contract every grammar implements", scope: "grammars" },
 ]
 
-
-/**
- * The source a section index stands for, when `path` (absolute or relative, either separator) is one: the same path with the
- * index's place under contexts/ replaced by its source. A task whose context lists the index may open any of its sections, so
- * the ids of the source are citable from it (harness/contract.ts and harness/run-checks.ts read them).
- */
-export const sectionedSource = (path: string): string | undefined => {
-    const normal = path.replaceAll("\\", "/")
-    for (const doc of SECTIONED_DOCS) {
-        const index = `contexts/${doc.index}`
-        if (normal === index || normal.endsWith(`/${index}`)) return normal.slice(0, normal.length - index.length) + doc.source
-    }
-    return undefined
-}

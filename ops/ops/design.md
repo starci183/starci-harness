@@ -25,11 +25,9 @@ output:
     files: {type: "string[]", summary: "the repository paths you changed: gallery/board/board.yaml and the section modules"}
     sections: {type: "string[]", minItems: 1, summary: "the section ids (<area>/<screen>) this revision drew or changed"}
     needsApi: {type: "string[]", summary: "every \"cần API\" operation the board marks, for the build slices"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the gallery, ui and grammar rules the board follows"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the board follows (the brand, the concepts)"}
     cites: {type: "string[]", minItems: 1, summary: "the anchor ids you decided by: the Choose anchor (<family>.choose[.<term>]) of every component family the board composes, plus the DNA and rule ids you applied"}
 checks:
-  base: [check-run-green, paths-only, rules-cited, anchors-cited]
+  base: [check-run-green, paths-only, anchors-cited]
   behavioural: false
 ---
 Draw the app's board as [PROJECT-GALLERY-9](../../contexts/project/gallery.md#project-gallery-9-one-design-board-per-app-drawn-once-from-the-grammar)

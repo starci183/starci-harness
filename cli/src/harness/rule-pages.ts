@@ -1,8 +1,7 @@
-import { existsSync, globSync, readFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { join, posix } from "node:path"
 import { presenceIn, readSlotCatalog, topicsOfSlot } from "../core/contexts/anatomy-render.js"
 import type { Slot, SlotCatalog } from "../core/contexts/anatomy-render.js"
-import { isRuleId } from "./contract.js"
 
 /**
  * The rule pages of a task's paths: the contexts pages that own a rule governing a path the task may write. The catalog is
@@ -198,24 +197,3 @@ export const rulePagesOf = (harnessRoot: string, allowPaths: readonly string[]):
     }
     return [...pages].sort((left, right) => Number(left > right) - Number(left < right))
 }
-
-const owners = new Map<string, ReadonlyMap<string, string>>()
-
-/** The page each rule id is defined on: the first contexts page with a heading that opens with the id (`## BE-CLI-2 ...`). */
-const ownersOf = (harnessRoot: string): ReadonlyMap<string, string> => {
-    const known = owners.get(harnessRoot)
-    if (known !== undefined) return known
-    const found = new Map<string, string>()
-    const files = existsSync(join(harnessRoot, CONTEXTS)) ? globSync(`${CONTEXTS}/**/*.md`, { cwd: harnessRoot }).map((file) => file.replaceAll("\\", "/")) : []
-    for (const file of files.sort((left, right) => Number(left > right) - Number(left < right))) {
-        for (const line of readFileSync(join(harnessRoot, file), "utf8").split(/\r?\n/)) {
-            const first = /^ {0,3}#{1,6}\s+([A-Za-z0-9._-]+)/.exec(line)?.[1]
-            if (first !== undefined && isRuleId(first) && !found.has(first)) found.set(first, file)
-        }
-    }
-    owners.set(harnessRoot, found)
-    return found
-}
-
-/** The contexts page that owns rule `id` (harness-relative), or undefined when no page defines it. */
-export const ruleOwnerOf = (harnessRoot: string, id: string): string | undefined => ownersOf(harnessRoot).get(id)

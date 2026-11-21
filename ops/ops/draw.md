@@ -22,11 +22,9 @@ output:
     summary: {type: string, summary: "the direction you drew and the choices it settles"}
     files: {type: "string[]", summary: "the repository paths you changed"}
     direction: {type: string, summary: "the direction file you wrote, under allowPaths"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the ui and grammar rules the direction follows"}
-    workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the direction follows (the brand)"}
     cites: {type: "string[]", minItems: 1, summary: "the anchor ids you decided by: the Choose anchor (<family>.choose[.<term>]) of every component family the direction composes, plus the DNA and rule ids you applied"}
 checks:
-  base: [paths-only, rules-cited, anchors-cited]
+  base: [paths-only, anchors-cited]
   behavioural: false
 ---
 Draw the screen the contract describes as one static HTML file under its allowPaths, composed only of the grammar's
