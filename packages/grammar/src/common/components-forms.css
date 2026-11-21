@@ -560,21 +560,33 @@
 
     /*
      * THE SWITCH ROW (0.37.5): with a label the switch is ONE row. The text (label 14 / weight 500, description 12 muted) fills the start, the control sits at the end
-     * edge centred vertically, and the whole row is the hit target (the root is the vendor label). A switch with a hidden label is the bare control.
+     * edge centred vertically, and the whole row is the hit target. 0.54.1: the press target is the vendor's `Switch.Content`, the `<label>` around the hidden input,
+     * and the drawn track lives INSIDE it, so the row is that label. A switch with a hidden label is the bare control: its label holds only the out-of-flow
+     * screen-reader label and the track, so the press box is exactly the drawn track (no hit layer, no size change).
      */
     [data-component="Switch"][data-grammar-switch-labelled="true"] {
-        display: flex;
+        inline-size: 100%;
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="true"] > .starci-core-switch-content {
+        /* !important: the vendor `.switch__content` is an inline-flex with a 12px gap. */
+        display: flex !important;
         flex-direction: row;
         inline-size: 100%;
         align-items: center;
         justify-content: space-between;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-row-gap) !important;
     }
 
     [data-component="Switch"][data-grammar-switch-labelled="false"] {
         display: inline-flex;
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="false"] > .starci-core-switch-content {
+        display: inline-flex !important;
+        gap: 0 !important;
     }
 
     .starci-core-switch-text {
@@ -600,7 +612,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    [data-component="Switch"][data-grammar-switch-labelled="true"] > .starci-core-choice-control {
+    [data-component="Switch"][data-grammar-switch-labelled="true"] .starci-core-switch-content > .starci-core-choice-control {
         margin-inline-start: auto;
     }
 

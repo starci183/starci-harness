@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.54.1 - 2026-11-21
+
+- No rule changed: versioned with @starci/grammar 0.54.1 (the Switch track is its press target).
+
 ## 0.54.0 - 2026-11-21
 
 - Added: `no-raw-type-size` (TYPE-ROLES, `FE_RAW_TYPE_SIZE`). It reports a Tailwind text-size utility (`text-xs` to `text-2xl` and up, `text-[13px]`), a `fontSize` and a CSS `font-size` in a string in app source, and points to `<Text role>` or `starci-type-<role>`. It is the family's first counting rule (`COUNTING`): a warning until both apps migrate. Delete its entry to make it blocking.

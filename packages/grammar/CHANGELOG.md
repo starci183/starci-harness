@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.54.1 - 2026-11-21
+
+- No codemod needed: no app-facing API changed.
+- Fixed (`Switch`, live bug): a Switch toggles on a press of its drawn track. Since HeroUI 3.2.6, `Switch.Content` is React Aria's SwitchButton, the `<label>` around the visually hidden input, and Grammar drew the track BESIDE it. A labelled switch toggled only on its text; a hidden-label switch (`isLabelHidden`, a compact cell of a permission matrix) had a pressable label holding only its screen-reader label, so it had no pressable box and toggled on nothing: not a click on its track, not Playwright `check()`, not focus and Space. The track is now drawn inside that label. With a label the label is the whole row (text, then the track at the end); with a hidden label it holds the out-of-flow screen-reader label and the track, so the press box is exactly the drawn track (compact 32x18, toggle 72x40). No hit layer is added and no size changes; `role="switch"` and its checked state are unchanged and the hidden label still names it. A bare switch's optional description and error now stand under the track, outside the press target.
+- Checked, already fine: Checkbox (and each CheckboxGroup option), each Radio of RadioGroup and the DataTable selection checkbox draw their control inside the pressable label; the ChoiceChips and ChoiceButtons toggles, IconButton and Button toggles are the pressable button itself; the DropdownMenu switch mark is decorative (`aria-hidden`, inert) and its menu item is the press target.
+- Proof: the `Controls/Choice press target` story plays a compact hidden-label switch matrix, a bare toggle, labelled rows, a checkbox and a radio at 1440 and 390: a click on the track, the hit at the centre of the press box (what `check()` presses) and focus plus Space each toggle, and the hidden-label press box equals the drawn track with no pseudo-element reaching past it.
+
 ## 0.54.0 - 2026-11-21
 
 - codemod: v0540 (`starci app codemod v0540`, or `starci app codemod --from <installed> --to 0.54.0`). It moves Tailwind text-size utilities onto `starci-type-<role>` and `<Text size isStrong mono>` onto `<Text role>`, and it marks what it cannot decide with `TODO(type-role)`.

@@ -100,26 +100,45 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, k
         {...(isSelected === undefined ? defaultSelected === undefined ? {} : { defaultSelected } : { isSelected })}
         {...(onSelectedChange === undefined ? {} : { onChange: onSelectedChange })}
     >
-        <HeroSwitch.Content className="starci-core-switch-text" data-grammar-choice-target="true">
-            <FieldLabel isHidden={field.isLabelHidden === true}>{field.label}</FieldLabel>
-            <FieldDescription>{field.description}</FieldDescription>
-            <FieldErrorText>{field.errorMessage}</FieldErrorText>
-        </HeroSwitch.Content>
-        <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
-            <HeroSwitch.Thumb data-grammar-switch-thumb="true">
-                {thumbIcon === undefined ? null : (
-                    <HeroSwitch.Icon>
-                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
-                        {selectedThumbIcon === undefined ? null : (
-                            <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
-                        )}
-                    </HeroSwitch.Icon>
+        {/*
+          * The press target is the drawn control (0.54.1): `Switch.Content` is React Aria's SwitchButton, the `<label>` around the visually
+          * hidden input, so the track is drawn INSIDE it. With a label it is the whole row (text, then the track); with a hidden label it
+          * holds only the screen-reader label (out of flow) and the track, so its box is exactly the track. 0.54.0 drew the track beside
+          * the label, and a hidden-label switch had no pressable box at all.
+          */}
+        <HeroSwitch.Content className="starci-core-switch-content" data-grammar-choice-target="true">
+            {field.isLabelHidden === true
+                ? <FieldLabel isHidden>{field.label}</FieldLabel>
+                : (
+                    <span className="starci-core-switch-text">
+                        <FieldLabel>{field.label}</FieldLabel>
+                        <FieldDescription>{field.description}</FieldDescription>
+                        <FieldErrorText>{field.errorMessage}</FieldErrorText>
+                    </span>
                 )}
-            </HeroSwitch.Thumb>
-        </HeroSwitch.Control>
+            <SwitchTrack look={look} thumbIcon={thumbIcon} selectedThumbIcon={selectedThumbIcon} />
+        </HeroSwitch.Content>
+        {/* A bare control's description and error stand under it, outside the press target, so the target stays the track. */}
+        {field.isLabelHidden === true ? <FieldDescription>{field.description}</FieldDescription> : null}
+        {field.isLabelHidden === true ? <FieldErrorText>{field.errorMessage}</FieldErrorText> : null}
     </HeroSwitch>
     )
 }
+
+const SwitchTrack = ({ look, thumbIcon, selectedThumbIcon }: { readonly look: SwitchSize | "compact"; readonly thumbIcon: IconSource | undefined; readonly selectedThumbIcon: IconSource | undefined }) => (
+    <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
+        <HeroSwitch.Thumb data-grammar-switch-thumb="true">
+            {thumbIcon === undefined ? null : (
+                <HeroSwitch.Icon>
+                    <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
+                    {selectedThumbIcon === undefined ? null : (
+                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
+                    )}
+                </HeroSwitch.Icon>
+            )}
+        </HeroSwitch.Thumb>
+    </HeroSwitch.Control>
+)
 
 /**
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
