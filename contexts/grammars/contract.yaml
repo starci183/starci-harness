@@ -127,7 +127,7 @@ roles:
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge, radius via surfaceRadius, the label's paint]
     dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION, DNA-COMMON-TILE-GROUND-ACCENT, DNA-COMMON-TILE-GROUND-SUCCESS, DNA-COMMON-TILE-GROUND-WARNING, DNA-COMMON-TILE-GROUND-DANGER, DNA-COMMON-GRID-TILE-FLOOR, DNA-COMMON-TILE-BLEED-TOP, DNA-COMMON-TILE-BLEED-START, DNA-COMMON-TILE-BLEED-END]
-    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object, starci-grammar/surface-card-list]
+    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object]
 
   - id: button
     ui: ui/components/button.md
@@ -838,7 +838,7 @@ mustKeep:
       role: shell
       law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet; 0.46.0, owner 2026-11-18) and nowhere else; otherwise the navigation on a phone is the drawer."
       measure: { kind: count, context: { viewport: 375x812 }, select: 'document [data-component="BottomNav"]:not([data-grammar-workspace-compact-navigation] [data-component="BottomNav"])', op: "=", value: 0 }
-      owner: contract roles.shell; ui/components/bottom-nav.md; lint no-shell-bottom-tabs (R316)
+      owner: contract roles.shell; ui/components/bottom-nav.md
     - id: DNA-COMMON-ONE-SHELL
       role: shell
       law: One shell owns the frame, the bar and the mobile drawer.

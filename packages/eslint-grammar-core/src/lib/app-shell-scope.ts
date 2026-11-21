@@ -1,10 +1,9 @@
 /** Structural app-shell ownership, distinct from generic flow-based site chrome. */
 import type { TSESTree } from "@typescript-eslint/types"
-import { walk } from "@starci/eslint-canon-fe/lib/ast.mjs"
 import { kindOfFile, roleOfFile } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { grammarName, propOf, textProp } from "./app-shell.ts"
 import { visitVisible } from "./app-shell-visible.ts"
-import type { Node, ReaderContext, SourceView } from "./types.ts"
+import type { Node, ReaderContext } from "./types.ts"
 
 /** A workspace identity or a sidebar/navigation slot identifies an application shell structurally. */
 export const isAppShell = (context: ReaderContext, opening: TSESTree.JSXOpeningElement): boolean => {
@@ -50,24 +49,6 @@ export const ownsAppFrame = (context: ReaderContext, node: TSESTree.JSXOpeningEl
   let sidebar = false
   visitVisible(context, rendered, (_opening, name) => { if (name === "Sidebar") sidebar = true })
   return sidebar
-}
-
-const APP_BAR_CACHE = new WeakMap<SourceView, Set<TSESTree.JSXOpeningElement>>()
-
-/** Every visible opening hosted by a structurally identified app shell in this source file. */
-export const appBarOpenings = (context: ReaderContext): Set<TSESTree.JSXOpeningElement> => {
-  const source = context.sourceCode
-  const cached = APP_BAR_CACHE.get(source)
-  if (cached) return cached
-  const openings = new Set<TSESTree.JSXOpeningElement>()
-  walk(source, source.ast, (node) => {
-    if (node.type !== "JSXOpeningElement" || !isAppShell(context, node)) return
-    for (const slot of ["header", "compactHeader"]) {
-      visitVisible(context, propOf(context, node, slot).value, (opening) => { openings.add(opening) })
-    }
-  })
-  APP_BAR_CACHE.set(source, openings)
-  return openings
 }
 
 /** Grammar bars are app bars unless an explicit generic flow shell establishes site-chrome ownership. */

@@ -151,8 +151,7 @@ motion; it keeps the variant names, so the emphasis ladder means the same in eve
 refusing duplicate activation. `isLoading` remains unresolved content, not an action's progress.
 
 A button's glyph says one thing. Only the primary button (`intent="commit"`, the CTA) carries a leading icon:
-neutral, alternative, dismiss and destructive buttons, suggestion pills and row actions are text only, which the types and lint
-`button-icon-primary-only` enforce; `IconButton` is unaffected. `endArrow` (any intent; the arrow is not an icon under that rule) marks a button that leads somewhere (a page, a tab, a next step): the grammar's
+neutral, alternative, dismiss and destructive buttons, suggestion pills and row actions are text only, which the types enforce; `IconButton` is unaffected. `endArrow` (any intent) marks a button that leads somewhere (a page, a tab, a next step): the grammar's
 `arrow-end` glyph ends the label, slides one step toward the reading end on hover and focus (still under reduced motion) and
 mirrors right to left. `startGlyph` (a named glyph, among them `plus` and `upload`), on the primary only, marks one that does something. A button
 never takes both, which the types refuse, and a typed arrow in the label or an arrow passed through `endContent` is refused
@@ -272,7 +271,7 @@ The title link and any row command or menu are separate targets, never nested. A
 `onAction`, `href`, `chevron`, or `onRowAction` on a table) is itself the one pressable and its title is plain text, never a
 `Link` (lint `row-title-link`); a table's pressable row takes the pointer cursor and the secondary hover fill, and its row
 commands stay separate presses. A list has one look wherever it stands, flat rows divided by hairlines and aligned with the title ([ui/presentation](../ui/presentation.md#boundary)
-BOUNDARY-7; lint `surface-card-list`, `surface-in-surface`). Loading shows the same rows at rest and
+BOUNDARY-7; lint `surface-in-surface`). Loading shows the same rows at rest and
 removes the title link.
 
 ### Link

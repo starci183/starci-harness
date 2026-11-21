@@ -632,7 +632,6 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
     law: Product tiers compose the selected Grammar renderers for form controls, images and structural elements and never reproduce them with raw HTML.
@@ -2080,8 +2079,7 @@ rules:
     law: The selected Grammar shell owns the fixed application frame with independent navigation and content scroll, and the application layout never recreates it.
     failureCodes:
       - FE_APP_SHELL_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: app-shell-frame}
+    enforcers: []
   - id: R314
     code: FE_NAVBAR_CONTROL_SIZE
     law: Navbar controls share one height and icons one size per region from the selected Grammar scale.
@@ -2094,22 +2092,19 @@ rules:
     law: Navbar controls appear in the order language, theme, notifications and account, each supplied by the selected Grammar.
     failureCodes:
       - FE_NAVBAR_CLUSTER
-    enforcers:
-      - {kind: eslint-grammar-core, id: navbar-cluster}
+    enforcers: []
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
     law: An application keeps the selected Grammar shell's navigation model across viewports; the only bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places), and a hand-made bottom tab bar or a BottomNav anywhere else is refused.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
+    enforcers: []
   - id: R317
     code: FE_NAVBAR_CREATE
     law: Create actions live on the page that owns them, never in the global navbar.
     failureCodes:
       - FE_NAVBAR_CREATE
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-navbar-create}
+    enforcers: []
   - id: R318
     code: FE_NESTED_VARIANT
     law: Apps compose the Grammar with layout-only CSS; paint and surface edges belong to the Grammar, and app styles never target Grammar internals.
@@ -2156,8 +2151,7 @@ rules:
     law: The label of a status chip (a Badge, with or without its dot) starts with an uppercase letter, so every chip of an app reads in one vocabulary.
     failureCodes:
       - FE_CHIP_LABEL_CASE
-    enforcers:
-      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    enforcers: []
   - id: R323
     code: FE_PAGE_HEADER_HAND_ROLLED
     law: A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator.

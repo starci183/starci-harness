@@ -19,7 +19,7 @@ a fork, and a defect shimmed in one app stays in the grammar for every other.
 Enforced by: R93 (`grammar-entry`, `vendor-primitive-has-named-owner`), R321 (`no-grammar-shim`), R62
 (`no-native-form-control`, `no-native-img`; grammar `no-raw-structural-element`), R319 (`button-intent-required`,
 `single-commit-per-render`, `destructive-confirm-in-dialog`, `no-commit-in-collection-item`),
-R320 (`control-height`), R313-R317 (grammar `app-shell-frame` and the navbar laws), R318.
+R320 (`control-height`), R313-R317 (grammar `navbar-control-size`), R318.
 
 ## FE-CSS-1 App CSS is layout only
 

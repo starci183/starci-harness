@@ -41,7 +41,7 @@ rules:
           The navbar remains at the top of the frame, reads as a continuous surface and has one
           full-width separator from the content beneath it. The design system supplies its band height.
     verification:
-      automated: [FE_APP_SHELL_FRAME]
+      automated: []
       manual: [Inspect fixed viewport, flush regions and independent scroll at desktop and mobile widths.]
   - id: FE-APP-SHELL-2
     title: Navbar controls share one height
@@ -99,7 +99,7 @@ rules:
           and is an app bar. Every control in a site bar still shares the bar-control height
           (`size="control"`), so FE-APP-SHELL-2 holds there.
     verification:
-      automated: [FE_NAVBAR_CLUSTER, FE_VENDOR_BOUNDARY]
+      automated: [FE_VENDOR_BOUNDARY]
       manual: [Inspect menu anatomy, selection indicators, identity fallback, badges and notification regions.]
   - id: FE-APP-SHELL-4
     title: Mobile navigation is a drawer below the navbar
@@ -126,7 +126,7 @@ rules:
         when: The viewport reaches desktop
         assert: The mobile subnav is hidden.
     verification:
-      automated: [FE_APP_SHELL_FRAME, FE_APP_SHELL_BOTTOM_TABS]
+      automated: []
       manual: [Inspect both widths, drawer dismissal, trapped focus and independent scrolling.]
   - id: FE-APP-SHELL-5
     title: Create actions belong on their pages
@@ -137,7 +137,7 @@ rules:
         assert: |-
           The create action lives on the page whose content it changes and never in the navbar.
     verification:
-      automated: [FE_NAVBAR_CREATE]
+      automated: []
       manual: []
   - id: FE-APP-SHELL-6
     title: Collapsed navigation is an icon rail

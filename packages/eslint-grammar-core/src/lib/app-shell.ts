@@ -158,23 +158,3 @@ export const textProp = (context: ReaderContext, opening: TSESTree.JSXOpeningEle
   return prop.known ? stringOf(realNode(resolveLocal(context, prop.value))) : null
 }
 
-/** The source spelling is semantic evidence for an icon or action whose translated label is dynamic. */
-export const semanticText = (context: ReaderContext, opening: TSESTree.JSXOpeningElement): string => {
-  const values = ["source", "icon", "label", "aria-label", "id", ...ACTION_PROPS].map((name) => {
-    const prop = propOf(context, opening, name)
-    return prop.value ? context.sourceCode.getText(prop.value) : ""
-  })
-  return values.join(" ")
-}
-
-/** The right-cluster role and the Grammar kind that must draw it. */
-export const clusterRole = (context: ReaderContext, opening: TSESTree.JSXOpeningElement, name: string | null): string | null => {
-  if (name === "Switch") return "theme"
-  if (name === "AvatarButton") return "account"
-  const text = semanticText(context, opening)
-  if (/language|locale|translate/i.test(text)) return "language"
-  if (/notification|bell/i.test(text)) return "notifications"
-  if (/account|avatar|profile/i.test(text)) return "account"
-  if (/theme|darkmode|color.?mode/i.test(text)) return "theme"
-  return null
-}

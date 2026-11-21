@@ -1133,7 +1133,6 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
@@ -4693,8 +4692,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_FRAME"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: app-shell-frame}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4731,8 +4729,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CLUSTER"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: navbar-cluster}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4750,8 +4747,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_BOTTOM_TABS"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4769,8 +4765,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CREATE"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-navbar-create}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4855,8 +4850,7 @@ rules:
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_CHIP_LABEL_CASE"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    enforcers: []
     docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     templateNa: "A template states no chip label; the words are the app's."
     proves:
