@@ -1883,13 +1883,6 @@ rules:
       - HFS_ASSET_KIND
     enforcers:
       - {kind: hfs, id: assets}
-  - id: R283
-    code: HFS_APP_LEXICON
-    law: Source and documentation use no word `hfs.json` `lexicon.removed` declares.
-    failureCodes:
-      - HFS_APP_LEXICON
-    enforcers:
-      - {kind: hfs, id: lexicon}
   - id: R284
     code: BE_LITE_PROOF_LANE_MISSING
     law: A lite back end proves every declared pattern through integration specs titled `<pattern>/<scenario>`.

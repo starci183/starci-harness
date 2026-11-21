@@ -127,7 +127,6 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R275 | one ingress | Declare one ingress component with a digest-pinned image and its hosts per Swarm environment. |
 | R276 | lite has no self-hosted store | Use the managed database; declare Redis only when needed, durably, on a declared volume. |
 | R282 | the repository stays small | Keep assets inside the `be.assets` budget and allowlist; never track model weights or datasets. |
-| R283 | removed words stay removed | Replace the word `hfs.json` `lexicon.removed` lists with its replacement. |
 | R293 | deploy tooling has one owner | Call the canon stack verbs instead of re-implementing them in scripts or workflows. |
 | R294 | deploy config is coherent | Fix the environment's deploy block until the stack verbs normalise it against the real tree. |
 | R372 | dev environment is runnable | Declare `environments.dev` as docker-compose with a `local` block the dev verbs normalise; a lite app has one. |

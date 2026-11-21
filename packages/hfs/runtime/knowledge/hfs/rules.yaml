@@ -4235,22 +4235,6 @@ rules:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
     witness:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
-  - id: R283
-    code: "HFS_APP_LEXICON"
-    law: "An app's source and documentation use the current product vocabulary: a word declared in hfs.json lexicon.removed is refused as a whole word or identifier segment, in both editions."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_APP_LEXICON"]
-    enforcers:
-      - {kind: hfs, id: lexicon, at: scripts/hfs/rules/lexicon.mjs}
-    docs: [docs/quality-bar.md#r283]
-    templateNa: "Removed product vocabulary is application-specific hfs.json content; there is no canonical product lexicon to scaffold."
-    proves:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
-    witness:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
   - id: R284
     code: "BE_LITE_PROOF_LANE_MISSING"
     law: "A lite back end declaring event-bus, queue, webhooks, realtime, fenced-job, projection, saga or idempotency proves each declared pattern through integration specs under src/tests/integration: runnable tests carry titles `<pattern>/<scenario>: ...` for every required scenario of that pattern. A missing integration lane is refused; missing scenario proofs use R155's BE_PATTERN_SPEC_MISSING. Full-edition pattern proof behavior is unchanged."

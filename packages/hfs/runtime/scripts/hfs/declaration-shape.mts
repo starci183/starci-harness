@@ -143,16 +143,6 @@ function declarationSideProblems(side: Parsed, value: Parsed, names: Parsed): st
   return bad;
 }
 
-/** Product vocabulary is a declaration, never a switch for a rule. */
-function lexiconBlockProblems(lexicon: Parsed): string[] {
-  if (lexicon === undefined) return [];
-  if (!isPlainObject(lexicon)) return ['lexicon must be an object'];
-  const bad: string[] = [];
-  for (const key of Object.keys(lexicon)) if (key !== 'removed') bad.push(`lexicon has unknown key ${key}`);
-  if (isBadUniqueList(lexicon.removed, (word: Parsed) => typeof word === 'string' && word.trim().length > 0)) bad.push('lexicon.removed must be a unique list of nonempty words');
-  return bad;
-}
-
 /** Front-end error reporting remains optional. */
 function observeBlockProblems(observe: Parsed): string[] {
   if (observe === undefined) return [];
@@ -173,13 +163,13 @@ function publishesProblems(publishes: Parsed): string[] {
   return [];
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe', 'publishes']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'observe', 'publishes']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
   const bad: string[] = [];
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' || key === 'checks' ? `unknown key ${key}: a project adds its own laws and checks in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json` : `unknown key ${key}`);
-  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe), ...publishesProblems(declaration.publishes));
+  bad.push(...dbBlockProblems(declaration.db), ...observeBlockProblems(declaration.observe), ...publishesProblems(declaration.publishes));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository of the sides it declares) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
   const sides = sidesProblems(declaration.sides);

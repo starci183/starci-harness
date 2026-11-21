@@ -3685,16 +3685,6 @@ HFS_APP_LAYOUT_INVALID:
   owner: other-op:backend.scaffold
   kind: check-finding
 
-HFS_APP_LEXICON:
-  title: "App source or documentation uses a removed product word"
-  title_vi: "Mã hoặc tài liệu dùng từ sản phẩm đã bỏ"
-  meaning_vi: "Tệp nguồn hoặc tài liệu dùng từ nằm trong hfs.json lexicon.removed, kể cả trong tên định danh, chú thích và nội dung giao diện."
-  causes_vi:
-    - "Đổi thuật ngữ sản phẩm nhưng chưa cập nhật toàn bộ mã và tài liệu."
-  nextStep_vi: "Thay từ đã bỏ bằng thuật ngữ sản phẩm hiện hành tại đường dẫn và dòng được báo."
-  owner: op-retry
-  kind: check-finding
-
 HFS_APP_WORKFLOW_TRIGGER:
   title: "App workflow trigger outside R251"
   title_vi: "Workflow ứng dụng có sự kiện khởi chạy không hợp lệ"
