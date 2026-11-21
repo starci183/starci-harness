@@ -43,8 +43,8 @@ sentence) in place of a document too large to load whole. The second layer is lo
 opens with `starci contexts anchor <anchor>`. A worker's brief lists its rule pages: each code topic owning a rule over a
 path under its allowPaths, opened at the sections a written file needs, outside the budget. Any other question
 mid-task goes to `starci contexts search "<question>" [--scope ui,code,...]`, asked in English since the tree is English (a
-question in another language is translated first, keeping rule ids and names as written; the verb refuses it otherwise with
-`SEARCH_QUERY_NOT_ENGLISH`), which ranks the sections of this tree, the op files, `policy/` and the harness documents and
+question in another language is best translated first, keeping rule ids and names as written; the verb searches it as given),
+which ranks the sections of this tree, the op files, `policy/` and the harness documents and
 prints each hit's id, file, line and text, the way "Looking a rule up" below says. Open the hit's file before you rely on it.
 
 ### Looking a rule up
