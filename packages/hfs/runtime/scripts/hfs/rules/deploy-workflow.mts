@@ -3,7 +3,8 @@
 // (a deployment caller) holds permissions, concurrency and the environment name it passes. A pull_request run reads and never binds an environment.
 // ci.yml starts on a push of main, the release candidates and the branches the stack declaration gives a branch profile (readBranchProfiles), nothing else.
 // An environment declared deploy.custody ci-key (a private repository without Environments) is the one unbound read of SOPS_AGE_KEY: stack-deploy.yml
-// alone, behind its release-tag steps, may leave that name without an environment and read the repository's CI key (unboundFindings).
+// alone (and images.yml's sealed job), behind the release-tag steps, may leave that name without an environment and read the repository's CI key
+// (unboundFindings); ci.yml passes it to stack-deploy.yml by `secrets: inherit` (ciKeyCaller).
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
@@ -205,37 +206,59 @@ function unboundNames(environment: Parsed): string[] | null {
   return match ? [...match[1]!.matchAll(/'([a-z][a-z0-9-]*)'/g)].map((name) => name[1]!) : null;
 }
 const isStackDeploy = (file: string) => /(^|\/)stack-deploy\.ya?ml$/.test(file);
+const isImages = (file: string) => /(^|\/)images\.ya?ml$/.test(file);
+/** The sealed image job of images.yml: under a ci-key release environment it binds none and names that environment with `--env <name>`. */
+const SEALED_IMAGE_JOB = 'image-sealed';
 const RELEASE_REF_GUARD = /^\[\[\s*"\$GITHUB_REF"\s*==\s*refs\/tags\/v\*\s*\]\]\s*\|\|\s*exit\s+1$/;
 const TAG_IS_VERSION = /process\.env\.GITHUB_REF_NAME\s*!==\s*'v'\s*\+\s*version\)\s*process\.exit\(1\)/;
 const readsSecret = (value: Parsed) => strings(value).some((text: string) => /\$\{\{[^}]*\bsecrets\b/.test(text));
 /**
- * The release-tag steps run before the job reads any secret: an unconditional `[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1` (a dispatch from a
- * branch fails there) and the check that the tag is the package version; neither the job's nor the workflow's env reads a secret.
+ * The release-tag steps run before the job reads any secret: a line `[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1` in a step that runs whenever the
+ * job does (no condition, or the job's own) and does not continue on error, so a run from a branch fails there, and the check that the tag is the
+ * package version; neither the job's nor the workflow's env reads a secret.
  */
 function releaseGuarded(job: Parsed, doc: Parsed): boolean {
   if (readsSecret(doc.env) || readsSecret(job.env)) return false;
   const steps = activeSteps(job);
   const first = steps.findIndex((step: Parsed) => readsSecret({ env: step.env, with: step.with, run: step.run }));
   const before = first === -1 ? steps : steps.slice(0, first);
-  const run = (step: Parsed) => (nonempty(step.run) ? executable(step.run).trim() : '');
-  return before.some((step: Parsed) => step.if === undefined && step['continue-on-error'] === undefined && RELEASE_REF_GUARD.test(run(step)))
+  const run = (step: Parsed) => (nonempty(step.run) ? executable(step.run) : '');
+  const always = (step: Parsed) => (step.if === undefined || (job.if !== undefined && String(step.if).trim() === String(job.if).trim())) && step['continue-on-error'] === undefined;
+  return before.some((step: Parsed) => always(step) && run(step).split('\n').some((line: string) => RELEASE_REF_GUARD.test(line.trim())))
     && before.some((step: Parsed) => TAG_IS_VERSION.test(run(step)));
 }
 /**
- * A job whose binding leaves names without an environment reads the repository's SOPS_AGE_KEY for them (the app's CI key, PROJECT-STACKS-7):
- * accepted only in stack-deploy.yml, behind its release-tag steps, for names the declaration gives deploy.custody ci-key. Null when the job's
- * binding is not that one; the other checks judge it then.
+ * The names a job leaves without an environment and the one place that may: stack-deploy.yml's ci-key binding, or images.yml's sealed job with
+ * no binding, which names its environment with --env. Null for any other job; the other checks judge it then.
+ */
+function unboundOf(name: string, job: Parsed, file: string): { names: string[]; allowed: boolean; where: string } | null {
+  const bound = unboundNames(job.environment);
+  if (bound) return { names: bound, allowed: isStackDeploy(file), where: 'only stack-deploy.yml may leave a name unbound' };
+  if (job.environment !== undefined || name !== SEALED_IMAGE_JOB || !isImages(file)) return null;
+  const names: string[] = [...new Set<string>(scripts(job).flatMap((script: string) => [...script.matchAll(/--env\s+([a-z][a-z0-9-]*)/g)].map((match) => match[1]!)))];
+  return names.length ? { names, allowed: true, where: '' } : null;
+}
+/**
+ * A job that leaves names without an environment reads the repository's SOPS_AGE_KEY for them (the app's CI key, PROJECT-STACKS-7): accepted only
+ * in stack-deploy.yml and images.yml's sealed job, behind the release-tag steps, for names the declaration gives deploy.custody ci-key.
  */
 function unboundFindings(name: string, job: Parsed, doc: Parsed, file: string, ciKey: ReadonlySet<string>, refuse: Parsed) {
-  const names = unboundNames(job.environment);
-  if (!names) return null;
+  const unbound = unboundOf(name, job, file);
+  if (!unbound) return null;
+  const { names, allowed, where } = unbound;
   const undeclared = names.filter((entry) => !ciKey.has(entry));
-  if (isStackDeploy(file) && releaseGuarded(job, doc) && undeclared.length === 0) return [];
-  const why = !isStackDeploy(file) ? 'only stack-deploy.yml may leave a name unbound'
+  if (allowed && releaseGuarded(job, doc) && undeclared.length === 0) return [];
+  const why = !allowed ? where
     : undeclared.length ? `${undeclared.join(', ')} ${undeclared.length === 1 ? 'is' : 'are'} not declared deploy.custody ci-key in .starcistacks/application-stacks.yaml`
       : 'its first steps must be the release-tag guard ([[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1) and the check that the tag is the package version, before any secret is read';
   return [refuse(DEPLOY, `job ${name} leaves ${names.join(', ')} without an environment and so reads the repository's SOPS_AGE_KEY; ${why}`)];
 }
+
+/**
+ * A deployment caller of ci.yml that hands a ci-key environment to stack-deploy.yml passes the repository's secrets on (`secrets: inherit`), the only
+ * way a called workflow whose job binds no Environment reads the repository's SOPS_AGE_KEY; every other inheritance stays refused.
+ */
+const ciKeyCaller = (job: Parsed, ciKey: ReadonlySet<string>) => job.uses === './.github/workflows/stack-deploy.yml' && job.secrets === 'inherit' && record(job.with) && ciKey.has(String(job.with.environment));
 
 function deploymentJobFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed, file: string, ciKey: ReadonlySet<string>) {
   if (localCall(job)) return callerFindings(name, job, doc, refuse);
@@ -276,7 +299,7 @@ function deploymentFindings(doc: Parsed, file: string, refuse: Parsed, ciKey: Re
   if (!deployment.length) findings.push(refuse(DEPLOY, 'the deploy workflow must declare a deployment job'));
   for (const [name, job] of deployment) findings.push(...deploymentJobFindings(name, job, doc, refuse, file, ciKey));
   // The secrets and dotenv writes are judged where the deploy runs: the workflow-level env and the deployment jobs, not a check job beside them (the Sonar token of ci.yml).
-  const judged = { env: doc.env, jobs: Object.fromEntries(deployment) };
+  const judged = { env: doc.env, jobs: Object.fromEntries(deployment.map(([name, job]) => [name, ciKeyCaller(job, ciKey) ? { ...job, secrets: undefined } : job])) };
   for (const problem of secretProblems(judged)) findings.push(refuse(DEPLOY, problem));
   if (writesDotenv(judged)) findings.push(refuse(DEPLOY, 'deploy workflows must never write dotenv files or use env_file blobs; materialize sealed custody'));
   return findings;

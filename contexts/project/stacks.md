@@ -197,7 +197,8 @@ image, so any digest-pinned supported reverse proxy serves.
   break-glass workflow opens the members with it and seals them again to the new server key and the backup. The server key
   is never copied into a repository: `--backup` is refused, and its break-glass backup lives only in the harness repository's
   break-glass environment. An app's CI opens the members with its own CI key, a recipient of the environment whose private half
-  is that repository's Actions secret SOPS_AGE_KEY. `--restore github --execute` dispatches the managed
+  is that repository's Actions secret SOPS_AGE_KEY. `--restore github --execute` is legacy: it serves only an old Environment
+  backup, which nothing writes any more. It dispatches the managed
   `.github/workflows/stack-key-restore.yml` with the recorded `serverRecipient`, which writes the GitHub Environment `<env>`'s
   SOPS_AGE_KEY to the server over the deploy's CI ssh key only when its public key is that recipient (umask 077, mode 600,
   never echoed, never over an existing identity); it notes a repository-level SOPS_AGE_KEY (`gh api

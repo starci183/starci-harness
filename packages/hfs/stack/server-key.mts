@@ -9,7 +9,8 @@
 //              file as <identity>.retired-<UTC stamp> until the owner deletes it, then the old recipient leaves the rule.
 //   --backup   refused: the server key is never copied into a repository. Its break-glass backup lives only in the harness
 //              repository's break-glass environment; an app's CI reads its own CI key (a recipient of the environment) instead.
-//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes the GitHub Environment <env>'s
+//   --restore github  legacy, for an old Environment backup only (nothing writes one any more): dispatches the managed
+//              .github/workflows/stack-key-restore.yml, which writes the GitHub Environment <env>'s
 //              SOPS_AGE_KEY to the server only when its public key is the recorded deploy.remote.serverRecipient.
 // The restore notes when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment reads it.
 // The server is reached only through the deploy's own transport (remote.mts withRunner): the same host, user and key source.

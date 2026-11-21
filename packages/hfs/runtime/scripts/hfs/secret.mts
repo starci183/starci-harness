@@ -144,7 +144,7 @@ export function secretUsage(verb: string): string {
   if (verb === "migrate") return "--env <env> <slug> [--to <slug>] [--into-existing] [--execute]";
   if (verb === "split") return "--env <env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[--env <env>]";
-  if (verb === "server-key") return "--env <env> [--rotate | --restore github] [--execute]";
+  if (verb === "server-key") return "--env <env> [--rotate | --restore github (legacy: an old Environment backup only)] [--execute]";
   if (verb === "list") return "--env <env> [--ext <target>]";
   return "--env <env>";
 }
@@ -343,7 +343,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | set|unset|list --env <env> --ext <target> [<KEY> ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --restore github] [--execute]",
+        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | set|unset|list --env <env> --ext <target> [<KEY> ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --restore github (legacy: an old Environment backup only)] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
