@@ -61,3 +61,17 @@ test('the deploy config normalises auto, approval and platforms with the default
   const problems = read({ auto: 'yes', approval: 'owner', platforms: ['linux/amd64', 'linux/amd64'] }).problems.map((problem) => problem.at);
   assert.deepEqual(problems.sort(), ['deploy.approval', 'deploy.auto', 'deploy.platforms']);
 });
+
+test('deploy.custody is environment (default) or ci-key, and ci-key has no required reviewers', () => {
+  assert.deepEqual(judge('deploy', { custody: 'ci-key' }), []);
+  assert.deepEqual(judge('deploy', { custody: 'environment', approval: 'reviewers' }), []);
+  assert.notDeepEqual(judge('deploy', { custody: 'repository' }), [], 'custody is environment or ci-key');
+  const read = (block: Record<string, unknown>) => normalizeDeploy(block, { project: 'shop', probe: { exists: () => false, services: new Set(), members: new Set() } });
+  assert.equal(read({}).config?.custody, 'environment');
+  const ciKey = read({ custody: 'ci-key' });
+  assert.deepEqual([ciKey.problems, ciKey.config?.custody], [[], 'ci-key']);
+  const reviewed = read({ custody: 'ci-key', approval: 'reviewers' }).problems;
+  assert.deepEqual(reviewed.map((problem) => problem.at), ['deploy.custody']);
+  assert.match(reviewed[0]?.message ?? '', /ci-key binds no GitHub Environment, so it has no required reviewers/u);
+  assert.deepEqual(read({ custody: 'repository' }).problems.map((problem) => problem.at), ['deploy.custody']);
+});

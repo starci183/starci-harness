@@ -2,6 +2,8 @@
 // A release deploys through the reusable stack-deploy.yml: its jobs hold the environment, the age key and the transport; the job of ci.yml that calls it
 // (a deployment caller) holds permissions, concurrency and the environment name it passes. A pull_request run reads and never binds an environment.
 // ci.yml starts on a push of main, the release candidates and the branches the stack declaration gives a branch profile (readBranchProfiles), nothing else.
+// An environment declared deploy.custody ci-key (a private repository without Environments) is the one unbound read of SOPS_AGE_KEY: stack-deploy.yml
+// alone, behind its release-tag steps, may leave that name without an environment and read the repository's CI key (unboundFindings).
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
@@ -195,10 +197,52 @@ function callerFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed) 
   return findings;
 }
 
-function deploymentJobFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed) {
+/** The binding stack-deploy.yml renders when an environment is declared ci-key: the name itself, or '' (no Environment) for each ci-key name it lists. */
+const CI_KEY_BINDING = /^\$\{\{\s*\(\s*(inputs\.environment != '[a-z][a-z0-9-]*'(?:\s*&&\s*inputs\.environment != '[a-z][a-z0-9-]*')*)\s*\)\s*&&\s*inputs\.environment\s*\|\|\s*''\s*\}\}$/;
+/** The names a job leaves without an environment through that binding, or null when its binding is not that one. */
+function unboundNames(environment: Parsed): string[] | null {
+  const match = typeof environment === 'string' ? environment.trim().match(CI_KEY_BINDING) : null;
+  return match ? [...match[1]!.matchAll(/'([a-z][a-z0-9-]*)'/g)].map((name) => name[1]!) : null;
+}
+const isStackDeploy = (file: string) => /(^|\/)stack-deploy\.ya?ml$/.test(file);
+const RELEASE_REF_GUARD = /^\[\[\s*"\$GITHUB_REF"\s*==\s*refs\/tags\/v\*\s*\]\]\s*\|\|\s*exit\s+1$/;
+const TAG_IS_VERSION = /process\.env\.GITHUB_REF_NAME\s*!==\s*'v'\s*\+\s*version\)\s*process\.exit\(1\)/;
+const readsSecret = (value: Parsed) => strings(value).some((text: string) => /\$\{\{[^}]*\bsecrets\b/.test(text));
+/**
+ * The release-tag steps run before the job reads any secret: an unconditional `[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1` (a dispatch from a
+ * branch fails there) and the check that the tag is the package version; neither the job's nor the workflow's env reads a secret.
+ */
+function releaseGuarded(job: Parsed, doc: Parsed): boolean {
+  if (readsSecret(doc.env) || readsSecret(job.env)) return false;
+  const steps = activeSteps(job);
+  const first = steps.findIndex((step: Parsed) => readsSecret({ env: step.env, with: step.with, run: step.run }));
+  const before = first === -1 ? steps : steps.slice(0, first);
+  const run = (step: Parsed) => (nonempty(step.run) ? executable(step.run).trim() : '');
+  return before.some((step: Parsed) => step.if === undefined && step['continue-on-error'] === undefined && RELEASE_REF_GUARD.test(run(step)))
+    && before.some((step: Parsed) => TAG_IS_VERSION.test(run(step)));
+}
+/**
+ * A job whose binding leaves names without an environment reads the repository's SOPS_AGE_KEY for them (the app's CI key, PROJECT-STACKS-7):
+ * accepted only in stack-deploy.yml, behind its release-tag steps, for names the declaration gives deploy.custody ci-key. Null when the job's
+ * binding is not that one; the other checks judge it then.
+ */
+function unboundFindings(name: string, job: Parsed, doc: Parsed, file: string, ciKey: ReadonlySet<string>, refuse: Parsed) {
+  const names = unboundNames(job.environment);
+  if (!names) return null;
+  const undeclared = names.filter((entry) => !ciKey.has(entry));
+  if (isStackDeploy(file) && releaseGuarded(job, doc) && undeclared.length === 0) return [];
+  const why = !isStackDeploy(file) ? 'only stack-deploy.yml may leave a name unbound'
+    : undeclared.length ? `${undeclared.join(', ')} ${undeclared.length === 1 ? 'is' : 'are'} not declared deploy.custody ci-key in .starcistacks/application-stacks.yaml`
+      : 'its first steps must be the release-tag guard ([[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1) and the check that the tag is the package version, before any secret is read';
+  return [refuse(DEPLOY, `job ${name} leaves ${names.join(', ')} without an environment and so reads the repository's SOPS_AGE_KEY; ${why}`)];
+}
+
+function deploymentJobFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed, file: string, ciKey: ReadonlySet<string>) {
   if (localCall(job)) return callerFindings(name, job, doc, refuse);
   const findings = [];
-  if (!validEnvironment(job.environment)) findings.push(refuse(DEPLOY, `job ${name} must declare its protected environment`));
+  const unbound = unboundFindings(name, job, doc, file, ciKey, refuse);
+  if (unbound) findings.push(...unbound);
+  else if (!validEnvironment(job.environment)) findings.push(refuse(DEPLOY, `job ${name} must declare its protected environment`));
   if (!validPermissions(job.permissions ?? doc.permissions)) findings.push(refuse(DEPLOY, `job ${name} must declare permissions at job or workflow scope`));
   if (!validConcurrency(job.concurrency ?? doc.concurrency)) findings.push(refuse(DEPLOY, `job ${name} must declare concurrency at job or workflow scope`));
   if (!hasAgeIdentity(job, doc) && !scripts(job).some(materializeCommand)) findings.push(refuse(DEPLOY, `job ${name} must inject SOPS_AGE_KEY or run starci app secret materialize`));
@@ -213,23 +257,24 @@ const readsAgeKey = (value: Parsed) => strings(value).some((text: string) => AGE
  * SOPS_AGE_KEY is the environment's server identity (PROJECT-STACKS-5/7); unbound, it would read a repository secret of that name.
  * Disabled steps do not count. A deployment job is judged by deploymentJobFindings, which already requires its environment.
  */
-function ageKeyJobFindings(doc: Parsed, file: string, refuse: Parsed) {
+function ageKeyJobFindings(doc: Parsed, file: string, refuse: Parsed, ciKey: ReadonlySet<string>) {
   const deployment = new Set(deploymentJobs(doc, file).map(([name]) => name));
   const workflowWide = readsAgeKey(doc.env);
   const jobs = record(doc.jobs) ? Object.entries<Parsed>(doc.jobs).filter(([, job]) => record(job)) : [];
   return jobs
-    .filter(([name, job]) => !deployment.has(name) && !validEnvironment(job.environment))
+    .filter(([name, job]) => !deployment.has(name) && (unboundNames(job.environment) !== null || !validEnvironment(job.environment)))
     .filter(([, job]) => workflowWide || readsAgeKey({ env: job.env, with: job.with, secrets: job.secrets, steps: activeSteps(job).map((step: Parsed) => ({ env: step.env, with: step.with, run: nonempty(step.run) ? executable(step.run) : undefined })) }))
-    .map(([name]) => refuse(DEPLOY, `job ${name} reads secrets.SOPS_AGE_KEY without an environment; bind it to the GitHub Environment whose members it opens (environment: <env>), which holds that environment's server key`));
+    .flatMap(([name, job]) => unboundFindings(name, job, doc, file, ciKey, refuse)
+      ?? [refuse(DEPLOY, `job ${name} reads secrets.SOPS_AGE_KEY without an environment; bind it to the GitHub Environment whose members it opens (environment: <env>), which holds that environment's server key`)]);
 }
 
-function deploymentFindings(doc: Parsed, file: string, refuse: Parsed) {
+function deploymentFindings(doc: Parsed, file: string, refuse: Parsed, ciKey: ReadonlySet<string>) {
   const deployment = deploymentJobs(doc, file);
   const named = deployName(file) || deployName(String(doc.name ?? ''));
   if (!deployment.length && !named) return [];
   const findings = [];
   if (!deployment.length) findings.push(refuse(DEPLOY, 'the deploy workflow must declare a deployment job'));
-  for (const [name, job] of deployment) findings.push(...deploymentJobFindings(name, job, doc, refuse));
+  for (const [name, job] of deployment) findings.push(...deploymentJobFindings(name, job, doc, refuse, file, ciKey));
   // The secrets and dotenv writes are judged where the deploy runs: the workflow-level env and the deployment jobs, not a check job beside them (the Sonar token of ci.yml).
   const judged = { env: doc.env, jobs: Object.fromEntries(deployment) };
   for (const problem of secretProblems(judged)) findings.push(refuse(DEPLOY, problem));
@@ -277,15 +322,22 @@ function toolFindings(doc: Parsed, refuse: Parsed) {
   return findings;
 }
 
-function perWorkflow({ path: file, text }: { path: string; text: string }, profiles: readonly string[] = []) {
+function perWorkflow({ path: file, text }: { path: string; text: string }, profiles: readonly string[] = [], ciKey: ReadonlySet<string> = new Set()) {
   const refuse = (code: string, message: string) => found(code, file, `${code} ${file}: ${message}`);
   const doc = parseWorkflow(text);
   if (!record(doc)) return [refuse(TRIGGER, 'the workflow must be valid YAML with a release-only on block'), ...(deployName(file) ? [refuse(DEPLOY, 'the deploy workflow must be valid YAML')] : [])];
-  return [...triggerFindings(doc, refuse, file, profiles), ...deploymentFindings(doc, file, refuse), ...ageKeyJobFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
+  return [...triggerFindings(doc, refuse, file, profiles), ...deploymentFindings(doc, file, refuse, ciKey), ...ageKeyJobFindings(doc, file, refuse, ciKey), ...toolFindings(doc, refuse)];
 }
 
 /** Synchronous R251 findings over the tracked workflows of an app. */
 export function deployWorkflowFindings(ctx: Parsed) {
-  const profiles = Object.keys(readBranchProfiles(findStackDeclaration(ctx.repoRoot).doc).profiles);
-  return appWorkflowFindings(ctx, (workflow: { path: string; text: string }) => perWorkflow(workflow, profiles));
+  const declaration = findStackDeclaration(ctx.repoRoot).doc;
+  const profiles = Object.keys(readBranchProfiles(declaration).profiles);
+  return appWorkflowFindings(ctx, (workflow: { path: string; text: string }) => perWorkflow(workflow, profiles, ciKeyEnvironments(declaration)));
+}
+
+/** The environments the stack declaration gives deploy.custody ci-key. */
+function ciKeyEnvironments(declaration: Parsed): ReadonlySet<string> {
+  const environments = record(declaration) && record(declaration.environments) ? Object.entries<Parsed>(declaration.environments) : [];
+  return new Set(environments.filter(([, environment]) => record(environment) && record(environment.deploy) && environment.deploy.custody === 'ci-key').map(([name]) => name));
 }

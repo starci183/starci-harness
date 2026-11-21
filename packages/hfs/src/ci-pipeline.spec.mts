@@ -180,6 +180,42 @@ for (const edition of ['lite'] as const) {
     assert.match(String(deploy.jobs.deploy.steps.find((step: Doc) => step.name === 'CI run of the commit').run), /no green CI run of this commit/u);
   });
 
+  test(`a ci-key environment dispatches by choice, binds no Environment for its name, reads the repository's CI key and pause, and R251 accepts it only so`, (t) => {
+    const stack: DeclaredStack = { ...TWO, environments: [environment('staging'), { ...environment('production'), custody: 'ci-key' }] };
+    const workflows = rendered(edition, stack);
+    const text = workflows['stack-deploy']!;
+    const deploy: Doc = parseWorkflow(text);
+    const input = deploy.on.workflow_dispatch.inputs.environment;
+    assert.deepEqual([input.type, input.options], ['choice', ['staging', 'production']], 'a Free repository has no environment list');
+    for (const id of ['deploy', 'rollback']) {
+      assert.equal(deploy.jobs[id].environment, "${{ (inputs.environment != 'production') && inputs.environment || '' }}", 'staging binds its Environment, production none');
+      const guard = deploy.jobs[id].steps.findIndex((step: Doc) => step.run === '[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1');
+      const key = deploy.jobs[id].steps.findIndex((step: Doc) => JSON.stringify(step).includes('secrets.SOPS_AGE_KEY'));
+      assert.ok(guard >= 0 && guard < key, `${id}: the release-tag guard runs before the key is read`);
+    }
+    const brake = deploy.jobs.deploy.steps.find((step: Doc) => step.id === 'pause');
+    assert.equal(brake.env.PAUSED, "${{ (inputs.environment == 'production' && (vars.STARCI_DEPLOY_PAUSED_PRODUCTION || 'false')) || vars.STARCI_DEPLOY_PAUSED }}");
+    assert.deepEqual([...new Set([...text.matchAll(/secrets\.([A-Z_]+)/gu)].map((match) => match[1]))], ['SOPS_AGE_KEY'], 'the CI key, under its one name');
+    assert.doesNotMatch(text, /SOPS_AGE_KEY_|secrets\[/u, 'no per-environment key and no dynamic secret');
+    assert.notEqual(text, rendered(edition, TWO)['stack-deploy'], 'only a ci-key environment changes the render');
+
+    const declaration = (custody: string) => `environments:\n  staging:\n    deploy: {}\n  production:\n    deploy:\n      custody: ${custody}\n`;
+    const judge = (texts: Record<string, string>, custody = 'ci-key') => {
+      const root = tree(t, texts);
+      fs.mkdirSync(path.join(root, '.starcistacks'), { recursive: true });
+      fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), declaration(custody));
+      return deployWorkflowFindings({ repoRoot: root, files: files(texts), repo: { kind: 'app', edition }, isRoot: true, read: reader(texts) }).filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW').map((finding) => finding.message);
+    };
+    assert.deepEqual(judge(workflows), []);
+    const unguarded = text.replaceAll(`      - name: require release tag\n        shell: bash\n        run: '[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1'\n`, '');
+    assert.notEqual(unguarded, text);
+    const without = judge({ ...workflows, 'stack-deploy': unguarded });
+    assert.equal(without.length, 2, without.join('\n'));
+    assert.match(without[0]!, /job deploy leaves production without an environment and so reads the repository's SOPS_AGE_KEY; its first steps must be the release-tag guard/u);
+    assert.match(judge(workflows, 'environment').join('\n'), /leaves production without an environment .*production is not declared deploy\.custody ci-key/u);
+    assert.match(judge({ ...workflows, 'api-deploy': text }).join('\n'), /api-deploy\.yml: job deploy leaves production without an environment .*only stack-deploy\.yml may leave a name unbound/u);
+  });
+
   test(`the rendered pipeline passes the rules that judge an app, and is prettier-stable`, (t) => {
     const workflows = rendered(edition, TWO);
     const root = tree(t, workflows);
@@ -280,5 +316,7 @@ test('the declaration projects deploy.auto, approval, platforms, ci.imageCache a
     { name: 'production', auto: false, approval: 'reviewers', platforms: ['linux/amd64'] },
   ]);
   assert.equal(stack.images.find((image) => image.service === 'api')?.sealed, true);
+  const ciKey = declaredStack({ environments: { production: { deploy: { custody: 'ci-key' } }, staging: { deploy: { custody: 'environment' } } } });
+  assert.deepEqual(ciKey.environments?.map((environment) => environment.custody), ['ci-key', undefined], 'custody is carried only when it is ci-key');
   assert.equal(declaredStack({}).imageCache, 'gha');
 });

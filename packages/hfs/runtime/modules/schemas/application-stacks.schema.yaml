@@ -974,6 +974,16 @@ $defs:
           private repositories cannot set them), which the owner configures on the environment.
         enum: [none, reviewers]
         default: none
+      custody:
+        description: >-
+          Where the deploy jobs of stack-deploy.yml find the key that opens this environment's members. environment (default): the jobs are bound to the GitHub
+          Environment of this name and read its SOPS_AGE_KEY. ci-key: for a private repository on a plan without Environments (Free); the jobs bind no Environment
+          and read the repository secret SOPS_AGE_KEY, the app's own CI key (a recipient of the environment, never the server key), which any workflow on any ref
+          of the repository can read. The guard is then the workflow allow-list, the release-tag check of the job (a v* tag that is the package version) and R251,
+          which allows the unbound read only in stack-deploy.yml: the exposure the tag deploy already has with that key, weaker than an Environment's deployment-ref
+          policy. approval reviewers needs environment; under ci-key the pause is the repository variable STARCI_DEPLOY_PAUSED_<ENV> (the name upper-cased, - as _).
+        enum: [environment, ci-key]
+        default: environment
       platforms:
         description: >-
           The platforms the images are built for. Default [linux/amd64], the architecture of the VPS; add linux/arm64 only when an environment declares a node of that architecture

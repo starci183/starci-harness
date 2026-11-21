@@ -1,4 +1,4 @@
-// server-key.mts - `starci app secret server-key --env <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
+// server-key.mts - `starci app secret server-key --env <env> [--rotate | --restore github] [--execute]`: the deploy
 // server's own age identity, made ON the server and never leaving it, and the environment sealed to it
 // (contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
@@ -7,13 +7,11 @@
 //              updatekeys: the owner identity opens the data key only, no value is decrypted).
 //   --rotate   a new identity is staged at <identity>.next, the members are wrapped to it, the server swaps it in keeping the old
 //              file as <identity>.retired-<UTC stamp> until the owner deletes it, then the old recipient leaves the rule.
-//   --backup github   the identity streams from the server's ssh stdout into `gh secret set SOPS_AGE_KEY --env <env>` of the
-//              app's origin repository: the protected GitHub Environment <env> holds it as SOPS_AGE_KEY, the secret every CI job
-//              bound to <env> (environment: <env>) reads to open that environment's members; never printed, held or written locally.
-//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes that secret back to the server
-//              only when its public key is the recorded deploy.remote.serverRecipient.
-// Both GitHub actions warn when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment
-// reads it, and the owner key never belongs in GitHub.
+//   --backup   refused: the server key is never copied into a repository. Its break-glass backup lives only in the harness
+//              repository's break-glass environment; an app's CI reads its own CI key (a recipient of the environment) instead.
+//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes the GitHub Environment <env>'s
+//              SOPS_AGE_KEY to the server only when its public key is the recorded deploy.remote.serverRecipient.
+// The restore notes when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment reads it.
 // The server is reached only through the deploy's own transport (remote.mts withRunner): the same host, user and key source.
 // Every effect is a dry run until --execute.
 import path from 'node:path';
@@ -43,14 +41,12 @@ export interface GithubPort {
 /** The collaborators the specs inject. */
 export interface ServerKeyDeps extends RunnerDeps {
   github?: GithubPort;
-  ghCommand?: { command: string; args: string[] };
 }
 
 /** The action a server-key call performs. */
 export interface ServerKeyOptions {
   execute?: boolean | undefined;
   rotate?: boolean | undefined;
-  backup?: string | undefined;
   restore?: string | undefined;
 }
 
@@ -159,10 +155,6 @@ export function swapIdentityScript(file: string, retired: string): string {
     '"$k" -y "$f"',
   ].join('\n');
 }
-
-/** The one remote command that streams `file` to stdout as root; only --backup github runs it, into the stdin of gh. */
-export const streamIdentityCommand = (file: string): string =>
-  `if [ "$(id -u)" -eq 0 ]; then cat -- ${shellQuote(file)}; else sudo -n cat -- ${shellQuote(file)}; fi`;
 
 /** The single public recipient a server script printed; anything else is refused without echoing a byte of it. */
 function recipientOf(result: ScriptResult, what: string): string {
@@ -306,7 +298,7 @@ export function releaseTagsRuleset(gh: GithubPort, repo: string): boolean {
 }
 
 /**
- * The GitHub Environment that holds the backup, refused unless it exists in the app's origin repository and is protected. Protected is one of:
+ * The GitHub Environment the restore reads, refused unless it exists in the app's origin repository and is protected. Protected is one of:
  * required reviewers; deployment branches limited to main; or deployment refs limited to the release tags `v*` (tag policies only) while an
  * active tag ruleset forbids making, moving or deleting a release tag (releaseTagsRuleset). Names what is missing.
  */
@@ -335,7 +327,8 @@ export function protectedEnvironment(gh: GithubPort, env: string): string {
 
 /**
  * The warning lines about a repository-level SOPS_AGE_KEY of `repo`, read by name only (gh api repos/<repo>/actions/secrets): a job
- * bound to no Environment, or to one without its own SOPS_AGE_KEY, reads that one. Empty when the repository holds none.
+ * bound to no Environment, or to one without its own SOPS_AGE_KEY, reads that one (the app's CI key under deploy.custody ci-key, never
+ * the server key, so the restore refuses it). Empty when the repository holds none.
  */
 export function repositoryKeyWarnings(gh: GithubPort, repo: string): string[] {
   let names: (string | undefined)[];
@@ -345,26 +338,11 @@ export function repositoryKeyWarnings(gh: GithubPort, repo: string): string[] {
     return [`warning: the repository secret names of ${repo} cannot be read (gh api repos/${repo}/actions/secrets needs admin access); make sure the repository holds no ${BACKUP_SECRET} of its own`];
   }
   if (!names.includes(BACKUP_SECRET)) return [];
-  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. Once every environment holds its server key (server-key --env <env> --backup github --execute), delete it: gh secret delete ${BACKUP_SECRET} --repo ${repo}. The owner key never belongs in GitHub.`];
+  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. It may only be the app's CI key (deploy.custody ci-key), never the server key or the owner key.`];
 }
 
-async function backupKey(ctx: StackContext, config: DeployConfig, { execute }: ServerKeyOptions, deps: ServerKeyDeps): Promise<ActionResult> {
-  const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
-  const repo = protectedEnvironment(gh, config.env);
-  const warnings = repositoryKeyWarnings(gh, repo);
-  const sinkArgs = ['secret', 'set', BACKUP_SECRET, '--env', config.env, '--repo', repo];
-  const plan = `stream ${SERVER_AGE_IDENTITY} from the server's ssh stdout into gh ${sinkArgs.join(' ')} (the ${config.env} Environment's ${BACKUP_SECRET}, which every job bound to ${config.env} reads; never printed, held or written locally)`;
-  const data = { env: config.env, repo, secret: BACKUP_SECRET, repositorySecret: warnings.length > 0, execute };
-  if (!execute) return { ok: true, lines: [`dry run: would ${plan} (--execute)`, ...warnings], data };
-  return withRunner(ctx, config, {}, deps, async (run, notes): Promise<ActionResult> => {
-    const source = run.argv(streamIdentityCommand(SERVER_AGE_IDENTITY));
-    const sink = deps.ghCommand ?? { command: 'gh', args: [] };
-    const piped = await ctx.pipe(source, { command: sink.command, args: [...sink.args, ...sinkArgs], env: ctx.env, cwd: config.repoRoot });
-    if (piped.source !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `the server could not stream ${SERVER_AGE_IDENTITY} (exit ${piped.source}); nothing was stored`);
-    if (piped.sink !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `gh secret set ${BACKUP_SECRET} failed (exit ${piped.sink}): ${piped.stderr}`);
-    return { ok: true, lines: [...notes, `stored the server identity of ${config.env} as the secret ${BACKUP_SECRET} of the GitHub Environment ${config.env} of ${repo}`, ...warnings], data };
-  });
-}
+/** Why --backup is refused: the server key never leaves the server for an app repository. */
+export const NO_REPOSITORY_BACKUP = 'the server key is never copied into a repository; its break-glass backup lives only in the harness repository\'s break-glass environment';
 
 async function restoreKey(ctx: StackContext, config: DeployConfig, { execute }: ServerKeyOptions, deps: ServerKeyDeps): Promise<ActionResult> {
   const recipient = config.remote.serverRecipient;
@@ -381,18 +359,15 @@ async function restoreKey(ctx: StackContext, config: DeployConfig, { execute }: 
 }
 
 /**
- * Runs one server-key action. `options`: { execute, rotate, backup, restore };
- * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mts), ghCommand ({ command, args } the pipe's sink) }.
+ * Runs one server-key action. `options`: { execute, rotate, restore } (a --backup is refused by the parser: NO_REPOSITORY_BACKUP);
+ * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mts) }.
  */
 export async function serverKey(ctx: StackContext, env: string, options: ServerKeyOptions, deps: ServerKeyDeps = {}): Promise<ActionResult> {
   const config = loadDeployConfig({ repoRoot: ctx.cwd, env });
   declaredRemote(ctx.cwd, env);
-  const named: [string, string | undefined][] = [['backup', options.backup], ['restore', options.restore]];
-  for (const [flag, value] of named)
-    if (value !== undefined && value !== 'github') throw refusal('STACK_USAGE', `--${flag} takes github`);
-  if ([options.rotate === true, options.backup !== undefined, options.restore !== undefined].filter(Boolean).length > 1)
-    throw refusal('STACK_USAGE', '--rotate, --backup and --restore are separate actions; pass one');
-  if (options.backup) return backupKey(ctx, config, options, deps);
+  if (options.restore !== undefined && options.restore !== 'github') throw refusal('STACK_USAGE', '--restore takes github');
+  if (options.rotate === true && options.restore !== undefined)
+    throw refusal('STACK_USAGE', '--rotate and --restore are separate actions; pass one');
   if (options.restore) return restoreKey(ctx, config, options, deps);
   if (options.rotate) return rotateKey(ctx, config, options, deps);
   return ensureKey(ctx, config, options, deps);

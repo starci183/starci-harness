@@ -84,6 +84,8 @@ export interface DeployBlock {
   auto: boolean;
   /** deploy.approval: none, or reviewers set on the GitHub Environment. */
   approval: 'none' | 'reviewers';
+  /** deploy.custody: environment (the deploy jobs bind the GitHub Environment), or ci-key (unbound, the repository's CI key). */
+  custody: 'environment' | 'ci-key';
   /** deploy.platforms: the platforms the images are built for (default linux/amd64). */
   platforms: string[];
   verify: { http: HttpCheck[]; exec: ExecCheck[] };

@@ -26,8 +26,8 @@ type ParseYaml = (text: string) => Declaration;
 
 /** One image of the declaration: the service, its app, whether it carries build arguments and whether those open a sealed member. */
 export interface StackImage { service: string; app: string; buildArgs: boolean; sealed?: boolean }
-/** One environment that deploys: the deploy.auto, deploy.approval and deploy.platforms keys of its deploy block. */
-export interface DeployEnvironment { name: string; auto: boolean; approval: 'none' | 'reviewers'; platforms: string[] }
+/** One environment that deploys: the deploy.auto, deploy.approval and deploy.platforms keys of its deploy block, and deploy.custody when it is ci-key (absent: environment). */
+export interface DeployEnvironment { name: string; auto: boolean; approval: 'none' | 'reviewers'; platforms: string[]; custody?: 'ci-key' }
 /** What the managed workflows render from the declaration. `environments` are the deploying ones in declared order; `imageCache` is ci.imageCache. */
 export interface DeclaredStack { images: StackImage[]; passEnv: string[]; imageEnvironments?: Record<string, string[]>; environments?: DeployEnvironment[]; imageCache?: 'gha' | 'registry'; /** ci.imageBuilder: `remote` builds through the server's rootless BuildKit (falling back to the runner), `runner` (default) on the runner alone. */ imageBuilder?: ImageBuilder; /** `local.basePort` of the dev environment (R389); null when none is declared. */ basePort?: number | null; /** The public hosts `local.tunnel.routes[]` named `gallery` declare (PROJECT-GALLERY-1 item 4); empty when none. */ galleryHosts?: string[] }
 
@@ -83,14 +83,14 @@ function imageEnvironments(declaration: Declaration): Record<string, string[]> {
     .map(([name, environment]) => [name, environmentImages(environment).map(image => image.app)]));
 }
 
-/** The environments that carry a deploy block, in declared order, with the auto, approval and platforms keys (defaults: manual, no reviewers, linux/amd64). */
+/** The environments that carry a deploy block, in declared order, with the auto, approval, platforms and custody keys (defaults: manual, no reviewers, linux/amd64, environment). */
 function deployEnvironments(declaration: Declaration): DeployEnvironment[] {
   return Object.entries(record(declaration?.environments) ? declaration.environments : {})
     .filter(([name, environment]) => NAME.test(name) && record((environment as Declaration)?.deploy))
     .map(([name, environment]) => {
       const deploy = (environment as Declaration).deploy;
       const platforms = Array.isArray(deploy.platforms) ? deploy.platforms.filter((value: unknown): value is string => typeof value === 'string' && PLATFORM.test(value)) : [];
-      return { name, auto: deploy.auto === true, approval: deploy.approval === 'reviewers' ? 'reviewers' : 'none', platforms: platforms.length ? platforms : DEFAULT_PLATFORMS } as DeployEnvironment;
+      return { name, auto: deploy.auto === true, approval: deploy.approval === 'reviewers' ? 'reviewers' : 'none', platforms: platforms.length ? platforms : DEFAULT_PLATFORMS, ...(deploy.custody === 'ci-key' ? { custody: 'ci-key' } : {}) } as DeployEnvironment;
     });
 }
 
@@ -374,6 +374,34 @@ function ciDeployVariables(stack: DeclaredStack, collected: boolean): Record<str
   return { ciDeployJobs: jobs.length ? `\n${jobs.join('\n\n')}\n` : '' };
 }
 
+/** The repository variable that pauses the automatic deploy of a ci-key environment: STARCI_DEPLOY_PAUSED_<ENV>, the name upper-cased, - as _. */
+export const pausedVariable = (name: string): string => `STARCI_DEPLOY_PAUSED_${name.toUpperCase().replaceAll('-', '_')}`;
+
+/**
+ * The custody blocks of stack-deploy.yml. With every environment in environment custody they are the text of the template as it was: the dispatch
+ * input is `type: environment`, each job binds `environment: ${{ inputs.environment }}` and the pause reads the Environment variable. With one
+ * environment in ci-key custody (a private repository on a plan without Environments):
+ *   stackDispatchEnvironment   `choice` with the declared names as options (such a repository has no environment list)
+ *   stackJobEnvironment        the binding: the name itself, or '' for a ci-key name, so that job binds no Environment and reads the repository
+ *                              secret SOPS_AGE_KEY (the app's CI key)
+ *   stackPausedVariable        the pause: STARCI_DEPLOY_PAUSED_<ENV> of the repository for a ci-key name ('false' when unset), else the Environment's
+ */
+function custodyVariables(environments: readonly DeployEnvironment[]): Record<string, string> {
+  const ciKey = environments.filter(environment => environment.custody === 'ci-key').map(environment => environment.name);
+  if (!ciKey.length) return {
+    stackDispatchEnvironment: 'environment',
+    stackJobEnvironment: block(['environment: ${{ inputs.environment }}'], '    '),
+    stackPausedVariable: '${{ vars.STARCI_DEPLOY_PAUSED }}',
+  };
+  const unbound = ciKey.map(name => `inputs.environment != '${name}'`).join(' && ');
+  const paused = ciKey.map(name => `(inputs.environment == '${name}' && (vars.${pausedVariable(name)} || 'false'))`).join(' || ');
+  return {
+    stackDispatchEnvironment: `choice${block(['options:', ...environments.map(environment => `  - ${environment.name}`)], ' '.repeat(8))}`,
+    stackJobEnvironment: block([`environment: \${{ (${unbound}) && inputs.environment || '' }}`], '    '),
+    stackPausedVariable: `\${{ ${paused} || vars.STARCI_DEPLOY_PAUSED }}`,
+  };
+}
+
 /** The release environment: the sole image environment, or production when several deploy images. */
 function releaseEnvironment(environments: Record<string, string[]>): string {
   const names = Object.keys(environments);
@@ -390,6 +418,7 @@ function releaseEnvironment(environments: Record<string, string[]>): string {
  *   imageJobs, imageWorkflowOutputs   the build and collect jobs and the output of images.yml
  *   ciImageSecrets   with ci.imageBuilder remote: `secrets: inherit` on the images call of ci.yml, so images.yml reads the builder secrets
  *   ciDeployJobs     the deploy jobs of ci.yml (one per environment with deploy.auto)
+ *   stackDispatchEnvironment, stackJobEnvironment, stackPausedVariable   the custody of the environments (custodyVariables)
  * `apps` are the apps images.yml builds, each with its Dockerfile (the sync module knows the layout).
  */
 export function stackWorkflowVariables({ images = [], passEnv = [], imageEnvironments: environments = {}, environments: deploying = [], imageCache = 'gha', imageBuilder = 'runner' }: DeclaredStack, project: string, apps: readonly ImageApp[] = [], nodeMajor = '22'): Record<string, string> {
@@ -404,6 +433,7 @@ export function stackWorkflowVariables({ images = [], passEnv = [], imageEnviron
     imageEnvironment: releaseEnvironment(environments),
     ...image,
     ...ciDeployVariables(stack, image.imagesCollected === 'true'),
+    ...custodyVariables(deploying),
     stackGuard: guard,
     stackImageList: images.map(entry => `${entry.service} ${entry.app}`).join('\n          '),
     stackImageEnv: block(images.map(entry => `${envName(entry.service)}: \${{ steps.images.outputs.${entry.service} }}`), ' '.repeat(10)),

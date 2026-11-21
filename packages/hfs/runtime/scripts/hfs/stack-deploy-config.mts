@@ -61,6 +61,8 @@ export interface DeployConfig {
   auto: boolean;
   /** deploy.approval: none, or reviewers set on the GitHub Environment. */
   approval: 'none' | 'reviewers';
+  /** deploy.custody: environment (the jobs bind the GitHub Environment and read its SOPS_AGE_KEY), or ci-key (unbound, the repository's CI key). */
+  custody: 'environment' | 'ci-key';
   /** deploy.platforms: the platforms the images are built for (default linux/amd64). */
   platforms: string[];
   verify: VerifyConfig;
@@ -123,7 +125,7 @@ const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
 const UPPER_ENV = KEY;
 
 const FIELDS = {
-  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom', 'dbUpgrade'],
+  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'custody', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom', 'dbUpgrade'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   image: ['app', 'buildArgs', 'runtimePublicEnv'],
   buildArgs: ['values', 'sealed'],
@@ -151,6 +153,14 @@ const FIELDS = {
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 
 const APPROVALS = ['none', 'reviewers'];
+const CUSTODIES = ['environment', 'ci-key'];
+
+/** `deploy.custody`, default environment; required reviewers live on a GitHub Environment, so ci-key refuses approval reviewers. */
+function custody(c: Collector, value: unknown, approval: string): DeployConfig['custody'] {
+  const chosen = choice(c, 'deploy.custody', value, CUSTODIES, 'environment') as DeployConfig['custody'];
+  if (chosen === 'ci-key' && approval === 'reviewers') c.problem('deploy.custody', 'ci-key binds no GitHub Environment, so it has no required reviewers: use approval none, or custody environment');
+  return chosen;
+}
 const PLATFORMS = ['linux/amd64', 'linux/arm64'];
 
 function flag(c: Collector, at: string, value: unknown, fallback: boolean): boolean {
@@ -568,6 +578,7 @@ export function normalizeDeploy(block: Block, { project, probe }: { project: str
     passEnv: block.passEnv === undefined ? [] : stringList(c, 'deploy.passEnv', block.passEnv, KEY),
     auto: flag(c, 'deploy.auto', block.auto, false),
     approval: choice(c, 'deploy.approval', block.approval, APPROVALS, 'none') as DeployConfig['approval'],
+    custody: custody(c, block.custody, block.approval),
     platforms: platforms(c, block.platforms),
     verify: verify(c, block.verify, services),
     jobs: jobs(c, block.jobs, services),

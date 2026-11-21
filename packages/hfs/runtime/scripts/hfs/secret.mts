@@ -30,7 +30,7 @@ import { verifySecrets } from "./rules/env-value-shape.mjs";
 import { type Prompt, type StdinPort, setValues } from "./secret-prompt.mjs";
 import { stackContext } from "../../../stack/context.mjs";
 import { StackError } from "../../../stack/errors.mjs";
-import { serverKey } from "../../../stack/server-key.mjs";
+import { NO_REPOSITORY_BACKUP, serverKey } from "../../../stack/server-key.mjs";
 import { seedDevCustody } from "./secret-dev-init.mjs";
 import { listTargetKeys, resolveSecretTarget, setTargetValues, unsetTargetKey, validateTargetKey } from "./secret-ext.mjs";
 
@@ -44,7 +44,7 @@ const MOVE_VERBS = new Set(["migrate", "split"]);
 /** The flags the parser reads: repeatable lists, single values and booleans (optionsFor refuses each outside the actions that take it). */
 export const SECRET_FLAGS = Object.freeze({
   list: ["--add", "--remove", "--from-file", "--group"],
-  value: ["--cwd", "--env", "--ext", "--generate", "--to", "--group-file", "--backup", "--restore"],
+  value: ["--cwd", "--env", "--ext", "--generate", "--to", "--group-file", "--restore"],
   boolean: ["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"],
 });
 const LIST_FLAGS = SECRET_FLAGS.list;
@@ -63,7 +63,6 @@ interface SecretOptions {
   generate?: string;
   to?: string;
   "group-file"?: string;
-  backup?: string;
   restore?: string;
   "to-file"?: boolean;
   reveal?: boolean;
@@ -125,7 +124,8 @@ function parse(argv: string[]): SecretOptions {
       if (inline !== undefined && !["true", "false"].includes(inline))
         throw new SecretError(`${flag} expects true or false`);
       store[flag.slice(2)] = inline !== "false";
-    } else if (arg.startsWith("--"))
+    } else if (flag === "--backup") throw new SecretError(`--backup is refused: ${NO_REPOSITORY_BACKUP}`);
+    else if (arg.startsWith("--"))
       throw new SecretError(`unknown flag ${arg}`);
     else opts.positional.push(arg);
   }
@@ -144,7 +144,7 @@ export function secretUsage(verb: string): string {
   if (verb === "migrate") return "--env <env> <slug> [--to <slug>] [--into-existing] [--execute]";
   if (verb === "split") return "--env <env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[--env <env>]";
-  if (verb === "server-key") return "--env <env> [--rotate | --backup github | --restore github] [--execute]";
+  if (verb === "server-key") return "--env <env> [--rotate | --restore github] [--execute]";
   if (verb === "list") return "--env <env> [--ext <target>]";
   return "--env <env>";
 }
@@ -154,8 +154,8 @@ function editOptionsFor(verb: string, opts: SecretOptions): void {
     throw new SecretError("--execute is only valid for init --env, unset, rename, remove, recipients, migrate, split and server-key");
   if (opts.execute !== undefined && verb === "recipients" && !opts.add && !opts.remove)
     throw new SecretError("--execute is only valid for recipients with --add or --remove");
-  if ((opts.rotate !== undefined || opts.backup !== undefined || opts.restore !== undefined) && verb !== "server-key")
-    throw new SecretError("--rotate, --backup and --restore are only valid for server-key");
+  if ((opts.rotate !== undefined || opts.restore !== undefined) && verb !== "server-key")
+    throw new SecretError("--rotate and --restore are only valid for server-key");
   if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
   if ((opts.group || opts["group-file"] !== undefined) && verb !== "split") throw new SecretError("--group and --group-file are only valid for split");
   if (opts["into-existing"] !== undefined && !MOVE_VERBS.has(verb)) throw new SecretError("--into-existing is only valid for migrate and split");
@@ -305,7 +305,7 @@ async function serverKeyVerb(
   const ctx = stackContext({ cwd: repoRoot, env, stdout, stderr, openSops: open, ...serverKeyIo.io });
   try {
     const result = await serverKey(ctx, environment, {
-      execute: opts.execute === true, rotate: opts.rotate === true, backup: opts.backup, restore: opts.restore,
+      execute: opts.execute === true, rotate: opts.rotate === true, restore: opts.restore,
     }, serverKeyIo.deps ?? {});
     for (const line of result.lines) stdout(`${line}\n`);
     return result.ok ? 0 : 1;
@@ -343,7 +343,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | set|unset|list --env <env> --ext <target> [<KEY> ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --backup github | --restore github] [--execute]",
+        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | set|unset|list --env <env> --ext <target> [<KEY> ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --restore github] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);

@@ -9,11 +9,17 @@
 #                     and the contract migrations; a failure redeploys the previous accepted release
 # operation redeploy  the same, although the accepted release already runs this commit
 # operation rollback  redeploys a stored release; "release" is 16 lowercase hex characters, empty means the previous accepted release
-# The environment names a GitHub environment whose deployment refs are restricted to the tags v* and that holds:
+# The environment's deploy.custody says where the key is.
+# custody environment (default): the environment names a GitHub environment whose deployment refs are restricted to the tags v* and that holds:
 #   vars    STARCI_DEPLOY_PAUSED (true stops the automatic deploy of that environment without a code change; a manual run still works), and a
 #           variable named in deploy.passEnv when the stack interpolates one
-#   secrets SOPS_AGE_KEY (that environment's server identity, stored there by starci app secret server-key --env <env> --backup github --execute;
-#           the jobs are bound to the environment, so they read it and never a repository secret of that name)
+#   secrets SOPS_AGE_KEY (a key the environment's members are sealed to; the jobs are bound to the environment, so they read it and never a
+#           repository secret of that name)
+# custody ci-key (a private repository on a plan without Environments): the dispatch offers the declared environments as a choice, the jobs
+#   bind no Environment for that name and read the repository secret SOPS_AGE_KEY, the app's own CI key (a recipient of the environment, never
+#   the server key); the pause is the repository variable STARCI_DEPLOY_PAUSED_<ENV>. Any workflow on any ref can read a repository secret, so
+#   the guard is the workflow allow-list, the release-tag steps below (a v* tag that is the package version) and R251, which allows the unbound
+#   read only here: the exposure the tag deploy already has with that key, and weaker than an Environment's deployment-ref policy.
 # The transport is sealed: the CI deploy key, the pinned host keys and the host are the member vps-ci under .starcistacks/<env>/secrets, opened with
 # the server identity (a key of its own, never the owner's, authorised on the manager with a forced command). Nothing else is a secret: the images
 # are read with the workflow token. Inputs reach scripts only through env. The log of a public repository is public: no step prints a host or a path.
@@ -23,7 +29,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: GitHub environment holding the server identity and the sealed custody under .starcistacks
+        description: The environment of .starcistacks to deploy; under deploy.custody environment, the GitHub environment holding its key
         required: true
         type: string
       operation:
@@ -54,9 +60,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: GitHub environment holding the server identity and the sealed custody under .starcistacks
+        description: The environment of .starcistacks to deploy; under deploy.custody environment, the GitHub environment holding its key
         required: true
-        type: environment
+        type: {{stackDispatchEnvironment}}
       operation:
         description: Deploy the release of this tag, deploy it again, or roll back to a stored release
         required: true
@@ -78,8 +84,7 @@ permissions:
 jobs:
   deploy:
     if: ${{ inputs.operation != 'rollback' }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest{{stackJobEnvironment}}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -99,7 +104,7 @@ jobs:
         shell: bash
         env:
           AUTO: ${{ inputs.auto }}
-          PAUSED: ${{ vars.STARCI_DEPLOY_PAUSED }}
+          PAUSED: {{stackPausedVariable}}
         run: |
           if [[ "$AUTO" == true && "$PAUSED" == true ]]; then
             echo "paused=true" >> "$GITHUB_OUTPUT"
@@ -198,8 +203,7 @@ jobs:
 
   rollback:
     if: ${{ inputs.operation == 'rollback' }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest{{stackJobEnvironment}}
     timeout-minutes: 30
     permissions:
       contents: read

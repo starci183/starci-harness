@@ -353,8 +353,9 @@ by itself (`decryptionIdentity`, the one lookup every decrypt of a member uses: 
 looked and the one line that fixes it. `audit [--env <env>]` names every deviation and exits 1; `migrate --env <env> <member> [--to
 <provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mts`). `server-key --env <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
-owner key, `--rotate` replaces it, `--backup github` stores it as the SOPS_AGE_KEY of the GitHub Environment `<env>` that
-every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mts`). No output carries a value
+owner key, `--rotate` replaces it, `--backup` is refused (the server key is never copied into a repository; its break-glass
+backup lives only in the harness repository's break-glass environment), and `--restore github` writes the GitHub Environment
+`<env>`'s SOPS_AGE_KEY back to the server (`stack/server-key.mts`). No output carries a value
 except `get --reveal`.
 
 ## Sonar
