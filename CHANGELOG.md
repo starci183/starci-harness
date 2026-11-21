@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.192 - 2026-11-21
 
+- Changed: the CLI requires @starci/hfs@6.17.6, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Fixed (t192, live on sv-hk-1): the monitor stack names its own components by the full swarm name (`tasks.{{stack}}_<component>`, `{{stack}}_<component>`) in prometheus.yml, Alloy, the Grafana datasources, Alertmanager and the probe jobs, and every monitor and shared-service (embeddings) service sets `dns_search: ["."]`, so the host's search domain and its wildcard never resolve a target to the public IP; `vps add --roles` keeps config.yaml in the harness home (STARCI_LOCAL_ROOT, STARCI_OPS_DIR's checkout, the working folder's home, the built checkout), never a published package, and refuses when none is found; the import reads `user` and `sshPort` from the inventory file and refuses a remote machine whose user is unknown.
 - Added: the Grammar codemods behind `starci app codemod`. A codemod is named after the Grammar version that needs it (`v0540` for 0.54.0) and loaded from the app's installed Grammar: `starci app codemod --list`, `starci app codemod v0540 [--execute]`, `starci app codemod --from <installed> --to <target>`. `starci deps install-local` prints the `--from`/`--to` line when it moves an app's Grammar, and never runs it.
 - Changed: the Grammar family is 0.54.0 (the type roles, `<Text role>`, `starci-type-<role>`, the counting rule `starci-grammar/no-raw-type-size`).
