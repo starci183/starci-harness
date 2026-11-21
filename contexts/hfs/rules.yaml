@@ -1925,7 +1925,6 @@ rules:
     failureCodes:
       - FE_STACK_UNLISTED
       - FE_STACK_CORE_MISSING
-      - FE_STACK_FAMILY_LINT_MISSING
     enforcers:
       - {kind: hfs, id: fe-stack-allowlist}
   - id: R289

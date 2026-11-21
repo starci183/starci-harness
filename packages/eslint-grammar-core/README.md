@@ -44,8 +44,7 @@ only the namespace changes from `starci-fe/` to `starci-grammar/`: `app-shell-fr
 
 1. Set `sides.fe.grammar` to `core` in `hfs.json`; no family is inferred.
 2. Install this package at its canon-pins version beside `@starci/eslint-canon-fe` 9 in the app
-   root `devDependencies`. `starci app check` refuses canon-fe 9 without it
-   (`FE_STACK_FAMILY_LINT_MISSING`), so the rules cannot be lost silently.
+   root `devDependencies`; without it the Grammar component rules do not run.
 3. Compose the universal factory first and this one second, with the same HFS view (the block
    above). `starci app sync` renders that managed `fe/eslint.config.mjs`.
 4. Rename references to the moved rules from `starci-fe/` to `starci-grammar/`.

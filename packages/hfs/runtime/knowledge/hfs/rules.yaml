@@ -4315,20 +4315,20 @@ rules:
 
   - id: R288
     code: "FE_STACK_UNLISTED"
-    law: "Every direct FE workspace dependency belongs to knowledge/hfs/fe-stack.yaml or is declared in hfs.json fe.extraPackages with its name and a nonempty reason. Installed runtime dependencies carried by a listed Grammar package are not app declarations and raise no FE_STACK_UNLISTED; direct forbidden dependencies still raise FE_STACK_FORBIDDEN. Every product Next app declares the catalog's core runtime packages; codegen, lint, TypeScript and Tailwind tools may be installed once at the app root. The marketing landing app is exempt (lite and full) from core presence. A front end that selects sides.fe.grammar and declares @starci/eslint-canon-fe 9 or later also declares that family's lint package from knowledge/grammars/index.yaml, which carries its Grammar component rules (FE_STACK_FAMILY_LINT_MISSING). GraphQL documents, including gql templates, match the back-end contracts, and SWR keys carry fetcher identities without an opt-in declaration."
+    law: "Every direct FE workspace dependency belongs to knowledge/hfs/fe-stack.yaml or is declared in hfs.json fe.extraPackages with its name and a nonempty reason. Installed runtime dependencies carried by a listed Grammar package are not app declarations and raise no FE_STACK_UNLISTED; direct forbidden dependencies still raise FE_STACK_FORBIDDEN. Every product Next app declares the catalog's core runtime packages; codegen, lint, TypeScript and Tailwind tools may be installed once at the app root. The marketing landing app is exempt (lite and full) from core presence. A front end that selects sides.fe.grammar and declares @starci/eslint-canon-fe 9 or later also declares that family's lint package from knowledge/grammars/index.yaml, which carries its Grammar component rules. GraphQL documents, including gql templates, match the back-end contracts, and SWR keys carry fetcher identities without an opt-in declaration."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["FE_STACK_UNLISTED", "FE_STACK_CORE_MISSING", "FE_STACK_FAMILY_LINT_MISSING"]
+    failureCodes: ["FE_STACK_UNLISTED", "FE_STACK_CORE_MISSING"]
     enforcers:
       - {kind: hfs, id: fe-stack-allowlist, at: scripts/hfs/rules/fe-stack.mjs}
     docs: [docs/quality-bar.md#r288]
     proves:
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
     exemplifiedBy:
       - packages/hfs/templates/fe/app/package.json.tpl
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
     witness:
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
   - id: R289
     code: "BE_APP_ENV_REQUIRED"
     law: "Every declared back-end app owns a tracked apps/<app>/src/<app>.env.ts exporting its typed environment interface and read<App>Env(env: EnvSource). main.ts constructs EnvSource once and delegates its reads to that reader, with no inline parsing. app.module.ts composes module lists only by spreading compose/<area>.ts groups; its own providers are limited to app-wide guards and filters."

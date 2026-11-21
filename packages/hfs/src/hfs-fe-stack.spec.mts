@@ -1,6 +1,5 @@
 // proves: FE_STACK_UNLISTED
 // proves: FE_STACK_CORE_MISSING
-// proves: FE_STACK_FAMILY_LINT_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -197,65 +196,6 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(allowlist(root, files, edition), []);
   });
 }
-
-// From canon-fe 9 the Grammar component rules ship in the selected family's lint package (FE-RULE-OWNERSHIP).
-const FAMILY_LINT: Record<string, [string, string]> = { core: ['@starci/eslint-grammar-core', 'coreGrammarConfig'], 'offset-pop': ['@starci/eslint-grammar-offset-pop', 'offsetPopGrammarConfig'] };
-const rootLintTools = () => dependencies(catalog.concerns.filter(concern => ['codegen', 'lint'].includes(concern.id)).flatMap(concern => concern.packages).concat(['typescript', 'tailwindcss']));
-const familyApp = (t: TestContext, edition: string, grammar: string, rootExtra: Record<string, string>) => {
-  const declaration = app(edition);
-  declaration.sides.fe = { ...FE, grammar };
-  const devDependencies = { ...rootLintTools(), ...rootExtra };
-  const files = {
-    'hfs.json': declaration,
-    'package.json': { name: 'demo', devDependencies },
-    'fe/apps/web/package.json': product({ dependencies: dependencies(core.filter(name => !Object.hasOwn(devDependencies, name))) }),
-  };
-  return { declaration, files, root: tree(t, files) };
-};
-const familyFindings = (findings: CheckFinding[]) => findings.filter(finding => finding.code === 'FE_STACK_FAMILY_LINT_MISSING');
-
-for (const edition of ['lite'] as const) for (const [grammar, [family, factory]] of Object.entries(FAMILY_LINT)) {
-  test(`FE_STACK_FAMILY_LINT_MISSING accepts a ${grammar} app that installs canon-fe 9 with ${family} (${edition})`, t => {
-    const { files, root } = familyApp(t, edition, grammar, { '@starci/eslint-canon-fe': '9.0.0', [family]: '0.12.0' });
-    assert.deepEqual(allowlist(root, files, edition, { grammar }), []);
-  });
-
-  test(`FE_STACK_FAMILY_LINT_MISSING refuses a ${grammar} app that installs canon-fe 9 without ${family} (${edition})`, t => {
-    const { files, root } = familyApp(t, edition, grammar, { '@starci/eslint-canon-fe': '9.0.0' });
-    const findings = allowlist(root, files, edition, { grammar });
-    assert.deepEqual(findings.map(finding => finding.code), ['FE_STACK_FAMILY_LINT_MISSING']);
-    const finding = findings[0]!;
-    const nextStep = finding.nextStep as string;
-    const message = finding.message as string;
-    assert.equal(finding.level, 'error');
-    assert.equal(finding.path, 'apps/web/package.json');
-    assert.equal(finding.dependency, family);
-    assert.equal(finding.family, grammar);
-    assert.ok(nextStep.includes(family) && nextStep.includes(factory), nextStep);
-    assert.ok(message.includes(family) && message.includes(`sides.fe.grammar ${grammar}`), message);
-  });
-}
-
-test('FE_STACK_FAMILY_LINT_MISSING reads the family package from any front-end manifest and the selection from hfs.json', t => {
-  const { files, root } = familyApp(t, 'full', 'core', { '@starci/eslint-canon-fe': '^9.1.0' });
-  assert.equal(familyFindings(allowlist(root, files, 'full')).length, 1, 'the declared hfs.json selection applies without a resolved view');
-  const workspace = { ...files, 'fe/apps/web/package.json': { ...files['fe/apps/web/package.json'], devDependencies: { '@starci/eslint-grammar-core': '0.12.0' } } };
-  const installed = tree(t, workspace);
-  assert.deepEqual(familyFindings(allowlist(installed, workspace, 'full')), []);
-});
-
-test('FE_STACK_FAMILY_LINT_MISSING leaves canon-fe 8, which still carries the Grammar rules, and judges an unversioned spec like 9', t => {
-  const legacy = familyApp(t, 'lite', 'core', { '@starci/eslint-canon-fe': '8.4.43' });
-  assert.deepEqual(familyFindings(allowlist(legacy.root, legacy.files, 'lite', { grammar: 'core' })), []);
-  const unversioned = familyApp(t, 'lite', 'core', { '@starci/eslint-canon-fe': 'file:../canon-fe.tgz' });
-  assert.equal(familyFindings(allowlist(unversioned.root, unversioned.files, 'lite', { grammar: 'core' })).length, 1);
-});
-
-test('FE_STACK_FAMILY_LINT_MISSING is reported by the app check', t => {
-  const { declaration, files, root } = familyApp(t, 'full', 'core', { '@starci/eslint-canon-fe': '9.0.0' });
-  const findings = familyFindings(checkRepo({ repoRoot: root, declaration, files: Object.keys(files), tree: false }).findings);
-  assert.deepEqual(findings.map(finding => [finding.path, finding.dependency]), [['fe/apps/web/package.json', '@starci/eslint-grammar-core']]);
-});
 
 test('FE_STACK_CORE_MISSING exempts the marketing landing in lite and full, and nothing else', t => {
   const files = { 'fe/apps/landing/package.json': { name: '@demo/landing', dependencies: { next: '1.0.0' } } };

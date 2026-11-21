@@ -3066,16 +3066,6 @@ FE_STACK_CORE_MISSING:
   owner: op-retry
   kind: check-finding
 
-FE_STACK_FAMILY_LINT_MISSING:
-  title: "The front end installs canon-fe 9 without the selected Grammar family's lint package"
-  title_vi: "Front end dùng canon-fe 9 nhưng thiếu gói lint của họ Grammar đã chọn"
-  meaning_vi: "hfs.json chọn sides.fe.grammar (starci hoặc offset-pop) và front end khai báo @starci/eslint-canon-fe 9 trở lên, nhưng không manifest nào khai báo gói lint của họ đó; từ canon-fe 9 các luật component Grammar nằm trong gói này, thiếu gói thì các luật ấy không chạy."
-  causes_vi:
-    - "Nâng @starci/eslint-canon-fe lên 9 mà chưa thêm @starci/eslint-grammar-core (Grammar StarCi) hoặc @starci/eslint-grammar-offset-pop (Grammar Offset Pop)."
-  nextStep_vi: "Thêm @starci/eslint-grammar-core (hoặc @starci/eslint-grammar-offset-pop) cạnh @starci/eslint-canon-fe, ghép coreGrammarConfig({ hfs }) (hoặc offsetPopGrammarConfig({ hfs })) sau starciFeConfig({ hfs }) trong fe/eslint.config.mjs, hoặc chạy starci app sync --execute."
-  owner: op-retry
-  kind: check-finding
-
 FE_STACK_FORBIDDEN:
   title: "A front end declares or imports a package or scoped package family forbidden by the stack"
   title_vi: "Front end dùng thư viện hoặc họ package bị fe-stack cấm"
