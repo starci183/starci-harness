@@ -212,7 +212,7 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 - `DataTable` has one flat look and is never a card: the column labels 12 / 500 muted over a `--border` line, hairline (`--separator`) rows, no fill, radius, shadow or outer edge; `footer` takes a `Pagination` with its `summary`. A table stands under its `Section`: `<Section title count filter={…}><DataTable … footer={<Pagination … />} /></Section>`. A selected row is `--default` with a 2px accent bar on its start edge.
 - A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
 - The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat panes are full.
-- Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0. Lint: `tab-count-chip`.
+- Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0.
 
 ## Family scope and the overlay portal rule
 
@@ -263,8 +263,7 @@ transparent ground with no plate. Below 48rem a square step drops one step (lg t
 below 64rem unless `visibility="always"` keeps it, as the lg box. It is decorative by default (`alt=""` hides it from
 assistive technology; a non-empty `alt` names it) and takes the asset-slot props of `Image` and `MediaFrame`
 (`assetSlot`, `assetSha256`, `assetPrompt`); the grammar lint requires `assetSlot`
-(`starci-grammar/mascot-asset-slot-required`) and refuses generated art under `/images/` outside `Mascot` or
-`MediaFrame` (`starci-grammar/generated-art-in-mascot-or-media-frame`).
+(`starci-grammar/mascot-asset-slot-required`).
 
 ```tsx
 <Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
@@ -440,8 +439,7 @@ DescriptionList, Disclosure, ListBox, LogoStack, MermaidDiagram, MessageStatus, 
 
 **The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
-`ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is refused (lint
-`suggestion-buttons`). `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
+`ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
 
 A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
 the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
@@ -687,12 +685,11 @@ scale; lint `table-cell-type` and `same-line-size` allow only 14 and 12.
 **The button-icon rule.** Only the PRIMARY Button (`intent="commit"`, the CTA) carries a leading icon: it shows what it does at
 its start (`startGlyph`, e.g. `plus`, `upload`, `send`, `pencil`, or the app's `startContent`). Neutral, alternative, dismiss and
 destructive Buttons, suggestion pills and row actions are text only; the Button type refuses a start icon on any other intent
-(`EmptyNotice actionStartContent` needs the default `commit` action, `Alert` draws `action.icon` on its primary action only) and lint
-`button-icon-primary-only` reads the cases a type cannot see. `IconButton` (icon only, named by its label) is unaffected. A Button
+(`EmptyNotice actionStartContent` needs the default `commit` action, `Alert` draws `action.icon` on its primary action only). `IconButton` (icon only, named by its label) is unaffected. A Button
 that leads somewhere, of any intent, ends with Grammar's arrow (`endArrow`; the arrow is not an icon under this rule), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
 Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of neutral sm Buttons is the one
-suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or passed through `endContent` is refused
+suggestion pattern. An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
 
 **The layout law (report or workspace).** A page is one of two frames, declared by `Page chrome` (no extra prop). A REPORT page
@@ -720,13 +717,11 @@ A `sm` Button never carries an icon. The second tab layer is `Page header.subTab
 **A card is one object.** `SurfaceCard` is a `tile` or a `body` card for one object (a customer, an agent, a plan, a message, an
 approval), with an optional `actions` band at its foot: white, a 1px `--border` edge, no shadow, on every ground. A collection is never
 in a card: a table, list, set of facts, strip of figures or chart stands flat under a `Section` (its `title`, its `filter` row and one muted
-`caption`). Lint `card-is-object` refuses a card around a lone collection, form or placeholder; lint `data-table-surface` removes `surface`
-from a `DataTable`.
+`caption`). Lint `card-is-object` refuses a card around a lone collection, form or placeholder; a `DataTable` has no `surface` prop.
 
 **One look for a list** (0.43.0, owner 2026-11-17). A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
 canvas, a card body, a drawer or dialog, a pane band, a rail): plain rows on the surface, divided by hairlines, the rows aligned
-with the section title, with no frame, fill, radius or shadow. A list is never a card: `SurfaceCard` has no `list` kind (lint
-`surface-card-list`), and cards stay for real objects. A hand-made row list (blocks divided by `Divider`) is refused (lint
+with the section title, with no frame, fill, radius or shadow. A list is never a card: `SurfaceCard` has no `list` kind, and cards stay for real objects. A hand-made row list (blocks divided by `Divider`) is refused (lint
 `surface-in-surface`).
 
 **The proximity law** (owner, 2026-11-09). Inside any container, its children stand at least one step closer than the
