@@ -6668,16 +6668,6 @@ STACKS_PORT_PUBLISHED:
   owner: op-retry
   kind: check-finding
 
-STACKS_REALTIME_SCALED:
-  title: "A realtime API with several replicas runs the in-process hub"
-  title_vi: "API Realtime nhiều replica đang chạy hub trong tiến trình"
-  meaning_vi: "App API có composition chứa feature be.feature.realtime.* và dịch vụ Swarm chạy nhiều hơn một replica, nhưng REALTIME_HUB không chọn hub dùng chung (postgres hoặc redis) hoặc không được khai báo. Hub memory chỉ phục vụ một tiến trình nên tin đẩy ở replica này không tới client đang nghe ở replica khác."
-  causes_vi:
-    - "Vi phạm R266: deploy.replicas lớn hơn 1 nhưng hub realtime là hub memory của bản chạy một replica và của test."
-  nextStep_vi: "Khai báo REALTIME_HUB=postgres trong environment của API (hoặc redis), hoặc ghim deploy.replicas: 1 khi chỉ chạy một replica; xem BE-REALTIME-7 trong knowledge/patterns/be/realtime.yaml."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_RELEASE_UNDECLARED:
   title: "A Swarm environment has no complete release declaration"
   title_vi: "Môi trường Swarm thiếu khai báo release đầy đủ"

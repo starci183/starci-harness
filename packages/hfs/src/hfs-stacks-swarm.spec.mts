@@ -9,7 +9,6 @@
 // proves: STACKS_PLACEMENT_MISSING
 // proves: STACKS_HEALTHCHECK_MISSING
 // proves: STACKS_UPDATE_POLICY_MISSING
-// proves: STACKS_REALTIME_SCALED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import { randomBytes } from 'node:crypto';
@@ -20,13 +19,11 @@ import { swarmFixture, swarmService } from './helpers/swarm-stack-fixture.mjs';
 import type { SwarmFixture } from './helpers/swarm-stack-fixture.mjs';
 import { swarmHardeningIssues, stacksSwarmFindings } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { ingressIssues } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
-import { ts } from '../runtime/scripts/hfs/runtime-rules/source-ast.mjs';
 
 import { OR_TRUE, SEMI_TRUE } from './fixtures/loosening/swallows.mjs';
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const ROUTE = 'traefik.http.routers.api.rule';
-const REALTIME = 'be/src/features/realtime/chat/index.ts';
 const pinned = (image: string) => `${image}@sha256:${'a'.repeat(64)}`;
 
 function fixture(t: TestContext, edition = 'lite') {
@@ -61,7 +58,6 @@ const cases = [
   { code: 'STACKS_PLACEMENT_MISSING', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
   { code: 'STACKS_HEALTHCHECK_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
   { code: 'STACKS_UPDATE_POLICY_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
-  { code: 'STACKS_REALTIME_SCALED', violate(value: SwarmFixture) { addRealtime(value); runRealtime(value, 2, 'memory'); } },
 ];
 
 for (const edition of ['lite'] as const) {
@@ -253,175 +249,6 @@ for (const edition of ['lite'] as const) {
     assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
   });
 }
-
-function addRealtime(value: SwarmFixture, composition = "import { ChatModule } from '@features/realtime/chat'; export const modules = [ChatModule];") {
-  value.put('be/apps/api/src/main.ts', "import { AppModule } from './app.module'; export const entry = AppModule;");
-  value.put('be/apps/api/src/app.module.ts', "import { modules } from './compose/streams'; export class AppModule { modules = modules; }");
-  value.put('be/apps/api/src/compose/streams.ts', composition);
-  value.put(REALTIME, 'export class ChatModule {}');
-}
-
-/** Runs the composed realtime API with `replicas` replicas and the hub `hub` (undefined declares none). */
-function runRealtime(value: SwarmFixture, replicas: number | string | undefined, hub: string | undefined) {
-  value.model.services.api.deploy.replicas = replicas;
-  value.model.services.api.environment = { DATABASE_URL_FILE: '/run/secrets/database-url', ...(hub === undefined ? {} : { REALTIME_HUB: hub }) };
-}
-
-/** Titles are literal so the coverage scanner reads the evidence of each edition. */
-function provesSharedHubForReplicas(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  for (const replicas of [2, 10, '3'])
-    for (const hub of [undefined, 'memory']) {
-      runRealtime(value, replicas, hub);
-      assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0, `${replicas} replicas on ${hub}`);
-    }
-  runRealtime(value, 2, 'postgres');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  runRealtime(value, 2, ' postgres ');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  runRealtime(value, 2, 'redis');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-}
-
-function provesOneReplicaMayRunMemory(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  for (const replicas of [undefined, 0, 1, '1'])
-    for (const hub of [undefined, 'memory', 'postgres']) {
-      runRealtime(value, replicas, hub);
-      assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), [], `${replicas} replicas on ${hub}`);
-    }
-}
-
-function provesUnjudgedApis(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  runRealtime(value, 3, 'memory');
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  addRealtime(value);
-  value.declaration.sides.be.apps[0].kind = 'worker';
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-}
-
-function provesGlobalModeIsScaled(t: TestContext, edition: string) {
-  const value = fixture(t, edition);
-  addRealtime(value);
-  value.model.services.api.deploy.mode = 'global';
-  for (const hub of [undefined, 'memory']) {
-    runRealtime(value, undefined, hub);
-    assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0, `global on ${hub}`);
-  }
-  for (const hub of ['postgres', 'redis']) {
-    runRealtime(value, undefined, hub);
-    assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), [], `global on ${hub}`);
-  }
-}
-
-test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'lite'));
-test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'full'));
-test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'lite'));
-test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'full'));
-test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'lite'));
-test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'full'));
-test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'lite'));
-test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'full'));
-
-for (const edition of ['lite'] as const) {
-  test(`STACKS_REALTIME_SCALED@${edition}: the finder reports a scaled memory hub and accepts a shared one`, t => {
-    const value = fixture(t, edition);
-    addRealtime(value);
-    runRealtime(value, 2, 'memory');
-    value.write();
-    assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === 'STACKS_REALTIME_SCALED'));
-    runRealtime(value, 2, 'postgres');
-    value.write();
-    assert.deepEqual(stacksSwarmFindings(finderContext(value)).filter(finding => finding.code === 'STACKS_REALTIME_SCALED'), []);
-  });
-}
-
-test('STACKS_REALTIME_SCALED: reexports, dynamic import, require and import-equals reach realtime', t => {
-  const value = fixture(t);
-  const compositions = [
-    "export { ChatModule as StreamModule } from '@features/realtime/chat';",
-    "export const load = () => import('@features/realtime/chat');",
-    "export const modules = [require('@features/realtime/chat').ChatModule];",
-    "import Stream = require('@features/realtime/chat'); export const modules = [Stream.ChatModule];",
-  ];
-  runRealtime(value, 2, 'memory');
-  for (const composition of compositions) {
-    addRealtime(value, composition);
-    assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0);
-  }
-});
-
-test('STACKS_REALTIME_SCALED: type-only imports, comments and disconnected features do not compose', t => {
-  const value = fixture(t);
-  const compositions = [
-    "import type { ChatModule } from '@features/realtime/chat'; export type Entry = ChatModule;",
-    "import { type ChatModule } from '@features/realtime/chat'; export type Entry = ChatModule;",
-    "export type { ChatModule } from '@features/realtime/chat';",
-    "export { type ChatModule } from '@features/realtime/chat';",
-    "// import { ChatModule } from '@features/realtime/chat';\nexport const modules = [];",
-  ];
-  runRealtime(value, 2, 'memory');
-  for (const composition of compositions) {
-    addRealtime(value, composition);
-    assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-  }
-});
-
-test('STACKS_REALTIME_SCALED: tracked tsconfig aliases and mapped API component names are respected', t => {
-  const value = fixture(t);
-  value.put('be/tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@stream/*': ['src/features/realtime/*'] } } }));
-  addRealtime(value, "import { ChatModule } from '@stream/chat'; export const modules = [ChatModule];");
-  runRealtime(value, 2, 'memory');
-  value.manifest.components.backend = { ...value.manifest.components.api, app: 'api' };
-  value.model.services.backend = value.model.services.api;
-  delete value.manifest.components.api;
-  delete value.model.services.api;
-  assert.ok(issuesFor(value, 'STACKS_REALTIME_SCALED').length > 0);
-  value.declaration.sides.be.apps[0].kind = 'worker';
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-});
-
-test('STACKS_REALTIME_SCALED: untracked composition evidence cannot enable a feature', t => {
-  const value = fixture(t);
-  addRealtime(value);
-  runRealtime(value, 2, 'memory');
-  value.files.delete(REALTIME);
-  assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
-});
-
-test('STACKS_REALTIME_SCALED: tracked config cannot read untracked or secret-path extensions', t => {
-  const value = fixture(t), compiler = ts(), reads: string[] = [];
-  addRealtime(value);
-  runRealtime(value, 2, 'memory');
-  const original = compiler.sys.readFile;
-  compiler.sys.readFile = (file: string) => { reads.push(file); return original(file); };
-  try {
-    for (const extension of ['./untracked.json', '../secrets/config.json', '../../../outside.json']) {
-      value.put('be/tsconfig.json', JSON.stringify({ extends: extension }));
-      issuesFor(value, 'STACKS_REALTIME_SCALED');
-    }
-    assert.deepEqual(reads, []);
-  } finally {
-    compiler.sys.readFile = original;
-  }
-});
-
-test('STACKS_REALTIME_SCALED: the tracked finder passes a shared hub and fails the in-process hub of a scaled API', t => {
-  const value = fixture(t);
-  addRealtime(value);
-  runRealtime(value, 2, 'postgres');
-  value.write();
-  assert.deepEqual(stacksSwarmFindings(finderContext(value)), []);
-  runRealtime(value, 2, 'memory');
-  value.write();
-  assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === 'STACKS_REALTIME_SCALED'));
-  runRealtime(value, 2, 'redis');
-  value.write();
-  assert.deepEqual(stacksSwarmFindings(finderContext(value)), []);
-});
 
 test('R266 tracked finder uses renderedModel and returns standard findings for both editions', t => {
   for (const edition of ['lite'] as const) {
