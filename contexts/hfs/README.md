@@ -60,7 +60,7 @@ law names the parameter instead of its value.
 
 A rule is a law that a machine can decide; one that needs judgement is a pattern rule reviewed by an agent. Each
 entry names its enforcers by kind (`eslint-be`, `eslint-fe`, `eslint-grammar-core`, `stylelint`, `machine`,
-`hfs`, `sonar`). Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
+`hfs`, `sonar`). A rule may name no enforcer: it is then held by review, and an enforcer marked `status: planned` is a note, not a debt. Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
 StarCi runtime repository itself are harness policy, not app knowledge, and are not in this catalog.
 
 ## The harness's own shape
