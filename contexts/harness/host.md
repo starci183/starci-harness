@@ -82,6 +82,93 @@ embeddings-gate cloudflared-embeddings` from the one process `host up` uses (the
 `starci host install host-doctor --execute`. A throwaway project for a proof sets `STARCI_HOST_PROJECT` **and** a free
 `STARCI_PORT_EMBEDDINGS` in the service's `start.env` of the ops folder it runs with (a repair that recreates would otherwise ask for the live port), and never runs a tunnel connector with the live tunnel's token.
 
+## Roles and machines
+
+The owner's words (2026-11-21): "gõ cli starci cái là dựng lun chứ k phải hỏi lại" (one command brings a host up, no question asked);
+"phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái này là push xài chung" (the machines live in a local config.yaml, because the
+repository is pushed and shared); "tùy vps có vps kiểu [k3s, starci{sonar,embed,buildkit,...}, monitor(prom, portainer, grafana,...},...)
+chia thành các hạng mục 1 vps có thể có 1 hoặc N hạng mục để host, tối thiểu 1 cái ví dụ k3s để host services" (a machine hosts one or more
+roles, at least one).
+
+### Roles
+
+[ops/host-roles.yaml](../../ops/host-roles.yaml) is the generic catalog, pushed, with no address, user, port or account id:
+
+| Role | Services (`<role>.<service>`, on by default unless marked off) |
+| --- | --- |
+| `app-host` | runs the app stacks; `engine: swarm` (built), `k3s` declared for a later train |
+| `starci` | `embed` (the embedding model behind its gate), `buildkit` (off; rootless, lane t190-buildkit), `sonar` (off), `registry` (off) |
+| `monitor` | `prometheus`, `grafana`, `loki`, `alertmanager`, `exporters`, `portainer` |
+| `edge` | `traefik` |
+| `dev` | `orca`, `docker` (the machine `local` only) |
+
+Each service says, per placement (`on.local` for this harness host, `on.remote` for a managed server), its `kind` (`swarm-stack` or
+`host-compose`), the deployer it already had (`via`: the ops/host.yaml services of this machine, `vps service|monitor|ui|edge up` of a
+server, or a host-compose adapter), its images pinned by digest (pins of contexts/stack/pins.yaml where they exist; specs hold them equal
+to the deployers' own files), its limits, its health probe, the secret names it needs (the values stay in the sealed stores) and its network
+and endpoint. Nothing runs differently because of the catalog: the host stack still runs from ops/host/stack/, the VPS embeddings from
+ops/vps/services/embeddings/. BuildKit's entry (`starci.buildkit`, `host-compose`, project `buildkit`) is reserved: lane t190-buildkit
+builds its definition (ops/vps/services/buildkit/) and registers its adapter (render, up, down, ping) in `cli/src/harness/host-compose.ts`;
+until then it reads `unbuilt` (`HOST_SERVICE_UNBUILT`) and nothing is deployed for it.
+
+### Machines
+
+A machine is an entry of **config.yaml** in the shared state base (`<main checkout>/.runtime/config.yaml`, or `STARCI_LOCAL_ROOT`),
+written only by the CLI and never pushed. `local` (this host) is always present, with roles `starci` (sonar, registry, embed with its
+tunnel) and `dev`, until the owner changes it.
+
+| Verb | Does |
+| --- | --- |
+| `starci vps add <name> --host <addr> --user <u> [--port <p>] [--ssh-key <path>] --roles <r1,r2,...>` | registers a machine, no question asked; `--import <ops/vps/servers/<id>.yaml>` (or the inventory file of the same name, when it exists and no `--host` is given) takes its address and keeps its sealed login |
+| `starci vps set <name> --roles +starci.sonar,-starci.embed` | `app-host,starci` replaces the roles, `+monitor`/`-edge` adds or removes one, `+role.service`/`-role.service` turns one service on or off against its role's default; `--host`, `--user`, `--port`, `--ssh-key` change the login |
+| `starci vps list` · `vps show <name>` · `vps remove <name>` | list the machines (and the fleet's health), show one with the services its roles turn on, forget one (the server is untouched; `local` stays) |
+
+config.yaml keeps the key's path, never the key. A machine that is no inventory file logs in with that key as its user, its host key pinned
+by the user's own `~/.ssh/known_hosts` (StrictHostKeyChecking stays on). The keys a deploy generates (an embeddings gate key, Grafana's admin
+password) are sealed to the owner key in `<shared state>/machines/<name>.enc.yaml`, or in the managed server's `<id>.enc.yaml`. Every vps verb
+takes a config.yaml machine as a managed server.
+
+### `host up|status|doctor --host <name>`
+
+- **`host status --host <name>`** reads every service the machine's roles turn on: `running` (its stack or compose project runs), `adopted`
+  (it runs under another name, found by its image), `partial` (a monitoring stack that runs without a component), `missing`, `unsupported`
+  (no placement for this kind of machine), `unbuilt` (a host-compose service whose definition is not built yet), each with its drift (a
+  running image that is not the pin). A server is read with one read-only probe over its login. `--json` `data.endpoints` lists, per served
+  model, every machine's endpoint in the order a router tries them (`starci.embed`: `local` at https://embed.starci.org/v1 first, then each
+  server's `http://embeddings-gate:8080/v1`): the list the apps' ai-router profile is made from.
+- **`host up --host <name>`** plans the union; **`--execute`** brings it up. A service already running is kept; one running under another
+  name (traefik and portainer on sv-hk-1) is ADOPTED: recorded in config.yaml (`adopted`) and checked, never redeployed or restarted, its drift
+  reported only. A missing one goes to its deployer (the generated keys sealed from the key model), then `host up` waits for its health and,
+  when it never turns healthy, rolls it back (`docker stack rm`, `compose down`, or a stop of the ops/host.yaml services; volumes stay;
+  `--no-rollback` keeps it for inspection). A monitoring stack that runs without a component is kept as it is (adding one is the owner's
+  `vps monitor up --with`). App stacks are never touched. One writer per host: a local lock and a lock on the server itself
+  (`/run/starci-host-up.lock`), `HOST_BUSY` naming the holder. An unreachable server is never deployed blind (`HOST_UNREACHABLE`).
+- **`host doctor --host <name>`** makes one real call per running service: an embed vector of the pinned dimensions, the Grafana login
+  page, the SonarQube status API, the registry ping, the BuildKit ping hook, each Swarm service at its replicas. Then, for every served model,
+  the same fixed text is embedded on every machine serving it: equal dimensions and a cosine of at least the catalog's `minCosine` (0.999),
+  else `HOST_EMBED_MISMATCH` (mixed vectors would corrupt every app's search).
+- `starci host up --stack starci` (and `host status`, `host doctor --stack starci --fix --execute`, the scheduled self-heal) work as they
+  did: `--host local` is the role-driven view of the same ops/host.yaml services.
+
+### What an app needs
+
+An app environment declares the host services it needs in its `.starcistacks/application-stacks.yaml`, beside its shared-service opt-in:
+
+```yaml
+environments:
+  production:
+    hostServices:
+      # machine: sv-hk-1          # default: the server its deploy.remote.serverRecipient belongs to (ops/vps/recipients.yaml), else local
+      needs:
+        starci.embed: [local, sv-hk-1]   # the owner's PC first, the VPS as fallback; [] is the landing machine alone
+```
+
+`starci app check --env prod` (every environment that declares it) and `starci app stack deploy` (its environment) judge it against this
+host's config.yaml: `HOST_SERVICE_MISSING` when no machine of a need's list hosts the service (an approved deploy refusal), `HOST_ROLE_MISSING`
+when the server it lands on lacks `app-host`, `HOST_MACHINE_UNKNOWN` when config.yaml does not know it. A host with no config.yaml (a CI
+runner) says the judgement was skipped: the machines are the owner host's, never the repository's. The schema is
+`$defs.environment.hostServices` of @starci/hfs `application-stacks.schema.yaml`; the render ignores the block.
+
 ## Host services
 
 A host service is a model or server the host runs once for every app of every environment, published through the host stack
@@ -91,10 +178,12 @@ of [ops/host.yaml](../../ops/host.yaml) whose check is its doctor and verify row
 
 ### embeddings
 
-The host's GPU embedding model, `qwen3-embedding:8b`, served at `https://embed.starci.org`.
+The host's GPU embedding model, served at `https://embed.starci.org`: `starci.embed` of the machine `local`. The pinned model is
+`qwen3-embedding:4b` at its native 2560 dimensions, with no truncation, manifest `df5bd2e3c74c…` (ops/host-roles.yaml), the same on every
+machine (the owner: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc."). `qwen3-embedding:8b` stays pulled until the apps move.
 
 - **Where it runs.** The model runs in the host's native Ollama on `127.0.0.1:11434` (service `embeddings`, up when
-  `/api/tags` names the model), never in a container: the native install reaches the GPU today, Docker Desktop's GPU
+  `/api/tags` lists the pinned model, at any position), never in a container: the native install reaches the GPU today, Docker Desktop's GPU
   passthrough on Windows and WSL is fragile, and the model is already pulled there. The harness never changes that install or
   its models. In front of it the stack runs two containers from [embeddings.yaml](../../ops/host/stack/embeddings.yaml):
   the gate `embeddings-gate` (Caddy, [embeddings.Caddyfile](../../ops/host/stack/embeddings.Caddyfile)), which reaches Ollama at
@@ -121,11 +210,15 @@ The host's GPU embedding model, `qwen3-embedding:8b`, served at `https://embed.s
 - **How an app consumes it.** The owner copies the token into the app's own custody, never into a file of the app's tree:
   `starci app secret set --env <env> <member> LOCAL_AI_API_KEY --from-host EMBEDDINGS_API_KEY` seals it without printing it
   ([cli/README.md](../../cli/README.md) "Host secrets"), and a process that needs the value outside the app's runtime reads it
-  with `starci app secret get --env <env> <member> LOCAL_AI_API_KEY --to-file` only. The app declares a `@starci/ai-router`
-  provider of `kind: "local"` with `baseUrl: "https://embed.starci.org/v1"`, its key `{ ref: "LOCAL_AI_API_KEY" }`, and the
-  model `localModel("qwen3-embedding:8b", { dimensions: 1024 })`: the model's 4096 numbers are cut to 1024 by Matryoshka
-  truncation and L2-normalized (`truncate: "mrl"`, the ai-router README "Embedding dimensions"), the size a pgvector index
-  takes. Through `poolFromEnv` the same comes from `LOCAL_AI_BASE_URL=https://embed.starci.org/v1` and `LOCAL_AI_API_KEY`.
+  with `starci app secret get --env <env> <member> LOCAL_AI_API_KEY --to-file` only. The app declares one `@starci/ai-router` embeddings
+  profile with the providers `host status --host local --json` lists in `data.endpoints["starci.embed"]`, in that order: the PC
+  (`https://embed.starci.org/v1`, a short timeout of about 1.5 s for a query, longer for batch indexing) and the VPS gate
+  (`http://embeddings-gate:8080/v1` on the network `starci-embeddings`) as the fallback ("fallback lẫn vps lẫn máy thầy nếu máy thầy k mở thì
+  về vps!"), both serving `qwen3-embedding:4b` at 2560 dimensions, no `truncate`. pgvector cannot HNSW-index a `vector` above 2000
+  dimensions, so the app's columns become `halfvec(2560)` (the app's own work). The environment declares
+  `hostServices.needs: {starci.embed: [local, sv-hk-1]}` ("What an app needs" above).
+- **Data note.** A staging or production text sent to the PC travels over the Cloudflare tunnel with the gate key; the owner accepts this
+  because the PC is his own machine.
 
 ## Dependencies through a link
 

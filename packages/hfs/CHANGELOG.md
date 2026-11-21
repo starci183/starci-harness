@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (train 190, lane hosts)
+
+- Added (`application-stacks.schema.yaml` `$defs.environment.hostServices`): the host services an environment needs (`needs: {starci.embed: [local, sv-hk-1]}`, an optional landing `machine`), judged by the starci CLI against the owner host's config.yaml (contexts/harness/host.md "What an app needs"); the render ignores it. Spec: `src/hfs-stacks-host-services-schema.spec.mts`.
+- Changed: the shared embeddings opt-in describes `qwen3-embedding:4b` at 2560 dimensions.
+
 ## 6.17.4 - 2026-11-21
 
 - Fixed (`starci app check`, the build and audit parity families): the run asked the failure-code catalog for CI_PARITY_STEP_FAILED only, so a host without Docker, whose database step is the warning CI_PARITY_DB_SKIPPED, ended in HFS_MANIFEST_INVALID ("has no failure-code catalog entry loaded"). It now asks for every code the parity steps reported. Found by StarCi Next.
