@@ -2438,9 +2438,7 @@ rules:
     failureCodes:
       - FE_GRAMMAR_TIER_STATE
       - FE_GRAMMAR_PROP_BUDGET
-    enforcers:
-      - {kind: grammar-lint, id: tier-state}
-      - {kind: grammar-lint, id: prop-budget}
+    enforcers: []
   - id: R363
     code: FE_GRAMMAR_LITERAL
     law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."

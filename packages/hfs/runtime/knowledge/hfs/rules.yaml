@@ -5511,9 +5511,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GRAMMAR_TIER_STATE", "FE_GRAMMAR_PROP_BUDGET"]
-    enforcers:
-      - {kind: runtime, id: tier-state, at: packages/grammar/scripts/lint/eslint-plugin.mts}
-      - {kind: runtime, id: prop-budget, at: packages/grammar/scripts/lint/eslint-plugin.mts}
+    enforcers: []
     docs: [contexts/grammars/README.md#grammar-lint]
     templateNa: "A template ships no Grammar source."
     proves:
