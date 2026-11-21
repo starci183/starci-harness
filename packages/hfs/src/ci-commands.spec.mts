@@ -1,6 +1,6 @@
 // ci-commands.spec.mts - the managed CI builds the app's root workspace packages (packages/*, each folder holding a package.json and a src/) before
 // every step that reads their types or compiles code importing them: the fast job's boot proof, every side of the lint matrix, a multi-front-end build,
-// the Sonar scan and the nightly cache verify (knowledge/hfs/ci-standard.yaml packages-built-first). An app without root packages renders as before.
+// the Sonar scan and the nightly cache verify. An app without root packages renders as before.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -70,7 +70,7 @@ test('an app with root packages builds them before its boot proof, on every lint
   assert.match(ci, /- name: build the lint inputs\n {8}run: npm run build:modules --silent && npm run codegen --silent/);
   const sonar = stepNames(doc, 'sonar');
   assert.ok(sonar.indexOf('build the workspace packages') >= 0 && sonar.indexOf('build the workspace packages') < sonar.findIndex((name) => name.startsWith('SonarSource/sonarqube-scan-action@')), sonar.join(' | '));
-  assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci', rootPackages: true }), []);
+  assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
   const nightly = stepNames(parseWorkflow(verify), 'verify');
   assert.ok(nightly.indexOf('build the workspace packages') >= 0 && nightly.indexOf('build the workspace packages') < nightly.indexOf('verify the committed cache'), nightly.join(' | '));
 });

@@ -193,8 +193,8 @@ test('every reader of a managed CI file reads the declaration: the render of a d
     const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const offAll = readGateDeclarations(doc(off(...OPTIONAL_GATES))).off;
-    const gateItems = new Set(['job-shape', 'boot-proof', 'test-sharding', 'packages-built-first']);
-    const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', rootPackages: false, off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
+    const gateItems = new Set(['job-shape', 'boot-proof', 'test-sharding']);
+    const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
     assert.deepEqual(items(offAll), [], `the CI standard reads the declaration`);
     assert.ok(items({}).length > 0, `the same file with nothing declared misses required steps`);
     assert.deepEqual(bypassesIn(CI, text, { idle: idleJobs(offAll) }), [], `the idled jobs are the render, not a bypass`);

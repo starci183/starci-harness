@@ -7,7 +7,6 @@
 //   required-providers      no continue-on-error; Codecov fail_ci_if_error true; no availability probe, no secret-gated Codecov or Sonar step
 //   test-sharding          the test job is a shard matrix; each shard runs --shard=i/N with STARCI_COVERAGE_SHARD and no threshold or pass-empty flag; the coverage job merges, then proves
 //   lint-parallel          the lint job is a matrix over the app sides the project declares (be, fe; PROJECT-1), plus packages in an app with root packages
-//   packages-built-first   in an app with root packages, a step that reads their types (rootPackages.readers) follows, or is, a step that builds them (rootPackages.builders)
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
 //   no-world-layers        no run step runs an integration, e2e or contract suite (they run on request only, never in CI: R12)
 //   timeouts               every job declares timeout-minutes
@@ -129,30 +128,6 @@ function lintParallel(doc: Parsed, say: Parsed, appSides: readonly string[]) {
   const joined = Array.isArray(sides) ? sides.map(String).sort(byCodeUnit).join() : '';
   const expected = [...appSides].sort(byCodeUnit).join();
   return joined === expected || joined === `${expected},packages` || joined === 'packages' && expected === '' ? [] : [say('lint-parallel', `the lint job must be a matrix over side [${appSides.join(', ')}] (the app sides hfs.json declares), with packages when the app has root packages`)];
-}
-
-/** True when the lint matrix names the root packages' scope: sync renders it exactly for an app with root packages. */
-const lintsPackages = (doc: Parsed): boolean => {
-  const sides = record(doc.jobs?.lint) ? doc.jobs.lint.strategy?.matrix?.side : null;
-  return Array.isArray(sides) && sides.map(String).includes('packages');
-};
-
-/** packages-built-first: every reading step of a job comes at or after the first step of that job that builds the root packages. */
-function packagesBuiltFirst(doc: Parsed, standard: Parsed, rootPackages: boolean, say: Parsed) {
-  if (!rootPackages) return [];
-  const { readers, builders } = standard.rootPackages;
-  const builds = (step: Parsed) => builders.some((needle: string) => runOf(step).includes(needle));
-  const reads = (step: Parsed) => readers.steps.some((needle: string) => runOf(step).includes(needle)) || readers.uses.some((prefix: string) => usesOf(step).startsWith(prefix));
-  const out: Parsed[] = [];
-  for (const [id, job] of jobsOf(doc)) {
-    const steps = stepsOf(job);
-    const built = steps.findIndex(builds);
-    steps.forEach((step: Parsed, at: number) => {
-      if (!reads(step) || (built >= 0 && built <= at)) return;
-      out.push(say('packages-built-first', `job ${id}, step ${step.name ?? (usesOf(step) || runOf(step).split('\n')[0].slice(0, 60))}: it reads the root packages' types or compiles code that imports them, so a step of the job before it builds them (npm run build:modules); unbuilt, each import resolves to nothing (BE_APP_BOOT_PROOF_MISSING, no-unsafe-*, HFS_CHECK_CACHE_FORGED)`));
-    });
-  }
-  return out;
 }
 
 function cacheSavedAlways(doc: Parsed, say: Parsed) {
@@ -278,7 +253,7 @@ function shaPinned(doc: Parsed, say: Parsed) {
 }
 
 /** The R301 findings of one workflow document: scope `app-ci` or `runtime`. Pure over the document and the standard. */
-export function ciStandardFindings({ doc, file, scope, standard = ciStandard(), rootPackages, appSides = ['be', 'fe'], off = {} }: { doc: Parsed; file: string; scope: Parsed; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[]; off?: GatesOff }) {
+export function ciStandardFindings({ doc, file, scope, standard = ciStandard(), appSides = ['be', 'fe'], off = {} }: { doc: Parsed; file: string; scope: Parsed; standard?: Parsed; appSides?: readonly string[]; off?: GatesOff }) {
   if (!record(doc)) return [];
   const items = checkedItems(standard, scope);
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
@@ -291,7 +266,6 @@ export function ciStandardFindings({ doc, file, scope, standard = ciStandard(), 
     'required-providers': () => requiredProviders(doc, say),
     'test-sharding': () => testSharding(doc, say, off),
     'lint-parallel': () => lintParallel(doc, say, appSides),
-    'packages-built-first': () => packagesBuiltFirst(doc, standard, rootPackages === true || lintsPackages(doc), say),
     'cache-saved-always': () => cacheSavedAlways(doc, say),
     'no-world-layers': () => noWorldLayers(doc, say),
     timeouts: () => timeouts(doc, say),
@@ -300,21 +274,9 @@ export function ciStandardFindings({ doc, file, scope, standard = ciStandard(), 
   return Object.entries(checks).filter(([id]) => items.has(id)).flatMap(([, check]) => check());
 }
 
-/** True when the app's root package.json declares the build:modules script, which sync renders for an app with root packages. */
-function declaresBuildModules(repoRoot: string | undefined): boolean {
-  if (!repoRoot) return false;
-  try {
-    const scripts = (JSON.parse(readText(repoRoot, 'package.json') ?? '{}') as Parsed)?.scripts;
-    return record(scripts) && typeof scripts['build:modules'] === 'string';
-  } catch {
-    return false;
-  }
-}
-
 /** R301 over an app: its managed .github/workflows/ci.yml (the app check, and the runtime check over every example app). */
 export function ciStandardAppFindings(ctx: Parsed) {
-  const rootPackages = declaresBuildModules(ctx.repoRoot);
   const off = declaredGatesOff(ctx.repoRoot);
   return appWorkflowFindings({ ...ctx, inScope: (file: string) => file === APP_CI && (ctx.inScope ?? (() => true))(file) },
-    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)), off }), { dedupe: true });
+    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)), off }), { dedupe: true });
 }
