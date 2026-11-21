@@ -488,9 +488,7 @@ rules:
         - STACKS_DNS_UNDECLARED
         - STACKS_HOST_UNROUTED
         - STACKS_TLS_UNDECLARED
-        - STACKS_PLACEMENT_MISSING
-        - STACKS_HEALTHCHECK_MISSING
-        - STACKS_UPDATE_POLICY_MISSING
+        - STACKS_SERVICE_POLICY_MISSING
         - BE_PATTERN_SPEC_MISSING
       manual:
         - Confirm the ingress holds no sticky-session declaration for the api, and that polling is off in the socket.io client configuration.

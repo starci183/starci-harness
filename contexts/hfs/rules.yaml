@@ -1738,9 +1738,7 @@ rules:
       - STACKS_DNS_UNDECLARED
       - STACKS_HOST_UNROUTED
       - STACKS_TLS_UNDECLARED
-      - STACKS_PLACEMENT_MISSING
-      - STACKS_HEALTHCHECK_MISSING
-      - STACKS_UPDATE_POLICY_MISSING
+      - STACKS_SERVICE_POLICY_MISSING
     enforcers:
       - {kind: hfs, id: stacks-swarm}
       - {kind: hfs, id: stacks-second-ingress}

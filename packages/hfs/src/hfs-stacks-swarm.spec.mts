@@ -6,9 +6,7 @@
 // proves: STACKS_DNS_UNDECLARED
 // proves: STACKS_HOST_UNROUTED
 // proves: STACKS_TLS_UNDECLARED
-// proves: STACKS_PLACEMENT_MISSING
-// proves: STACKS_HEALTHCHECK_MISSING
-// proves: STACKS_UPDATE_POLICY_MISSING
+// proves: STACKS_SERVICE_POLICY_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import { randomBytes } from 'node:crypto';
@@ -44,7 +42,13 @@ function fixture(t: TestContext, edition = 'lite') {
 
 const inputFor = (value: SwarmFixture) => ({ doc: value.manifest, spec: value.manifest.environments.production,
   model: value.model, environment: 'production', repo: value.declaration, repoRoot: value.root, files: [...value.files] });
-const issuesFor = (value: SwarmFixture, code: string) => swarmHardeningIssues(inputFor(value)).filter(issue => issue.code === code);
+/** One finding code carries several detections; a detection is named CODE/part and told apart by its message. */
+const PARTS: Record<string, string> = { placement: 'placement constraints', healthcheck: 'healthcheck', update: 'update order' };
+const detects = (name: string, item: { code: string; message: string }) => {
+  const [code, part] = name.split('/');
+  return item.code === code && (part === undefined || item.message.includes(PARTS[part] ?? part));
+};
+const issuesFor = (value: SwarmFixture, name: string) => swarmHardeningIssues(inputFor(value)).filter(issue => detects(name, issue));
 const finderContext = (value: SwarmFixture) => ({ repoRoot: value.root, files: [...value.files], repo: value.declaration, isRoot: true });
 
 const cases = [
@@ -55,9 +59,9 @@ const cases = [
   { code: 'STACKS_DNS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
   { code: 'STACKS_HOST_UNROUTED', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
   { code: 'STACKS_TLS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
-  { code: 'STACKS_PLACEMENT_MISSING', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
-  { code: 'STACKS_HEALTHCHECK_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
-  { code: 'STACKS_UPDATE_POLICY_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/placement', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/healthcheck', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
+  { code: 'STACKS_SERVICE_POLICY_MISSING/update', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
 ];
 
 for (const edition of ['lite'] as const) {
@@ -73,7 +77,7 @@ for (const edition of ['lite'] as const) {
       violate(value);
       assert.ok(issuesFor(value, code).length > 0);
       value.write();
-      assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => finding.code === code));
+      assert.ok(stacksSwarmFindings(finderContext(value)).some(finding => detects(code, finding)));
     });
   }
 
@@ -204,20 +208,20 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`STACKS_PLACEMENT_MISSING@${edition}: stateful components and persistent volumes pin a node`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/placement@${edition}: stateful components and persistent volumes pin a node`, t => {
     const value = fixture(t, edition), service = value.model.services.api;
     value.manifest.components.api.stateful = true;
-    assert.ok(issuesFor(value, 'STACKS_PLACEMENT_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement').length > 0);
     service.deploy.placement = { constraints: ['node.labels.storage == app'] };
-    assert.deepEqual(issuesFor(value, 'STACKS_PLACEMENT_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement'), []);
     delete value.manifest.components.api.stateful;
     service.volumes = [{ type: 'volume', source: 'app-data', target: '/data' }];
-    assert.deepEqual(issuesFor(value, 'STACKS_PLACEMENT_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement'), []);
     service.deploy.placement.constraints = [''];
-    assert.ok(issuesFor(value, 'STACKS_PLACEMENT_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/placement').length > 0);
   });
 
-  test(`STACKS_HEALTHCHECK_MISSING@${edition}: disabled, empty and always successful probes fail`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/healthcheck@${edition}: disabled, empty and always successful probes fail`, t => {
     const value = fixture(t, edition), service = value.model.services.api;
     const healthchecks = [{ disable: true, test: ['CMD', 'curl', '-f', '/live'] }, { test: ['NONE'] },
       { test: [] }, { test: ['CMD-SHELL', 'true'] }, { test: ['CMD-SHELL', 'exit 0'] },
@@ -225,28 +229,28 @@ for (const edition of ['lite'] as const) {
       { test: ['CMD-SHELL', 'false; exit 0'] }, { test: ['CMD-SHELL', `curl -f http://localhost/live${SEMI_TRUE}`] }];
     for (const healthcheck of healthchecks) {
       service.healthcheck = healthcheck;
-      assert.ok(issuesFor(value, 'STACKS_HEALTHCHECK_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/healthcheck').length > 0);
     }
     service.healthcheck = { test: ['CMD', 'curl', '-f', 'http://localhost/health/live'] };
-    assert.deepEqual(issuesFor(value, 'STACKS_HEALTHCHECK_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/healthcheck'), []);
   });
 
-  test(`STACKS_UPDATE_POLICY_MISSING@${edition}: update, rollback and restart contracts are mandatory`, t => {
+  test(`STACKS_SERVICE_POLICY_MISSING/update@${edition}: update, rollback and restart contracts are mandatory`, t => {
     const value = fixture(t, edition), deploy = value.model.services.api.deploy;
     const valid = structuredClone(deploy);
     for (const key of ['update_config', 'rollback_config', 'restart_policy']) {
       delete deploy[key];
-      assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
       Object.assign(deploy, structuredClone(valid));
     }
     for (const monitor of ['0s', '30', '-1s', '30s garbage', 0, Number.POSITIVE_INFINITY]) {
       deploy.update_config.monitor = monitor;
-      assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
     }
     deploy.update_config.monitor = '1m30s';
-    assert.deepEqual(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update'), []);
     deploy.update_config.failure_action = 'pause';
-    assert.ok(issuesFor(value, 'STACKS_UPDATE_POLICY_MISSING').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_SERVICE_POLICY_MISSING/update').length > 0);
   });
 }
 
@@ -261,7 +265,7 @@ test('R266 tracked finder uses renderedModel and returns standard findings for b
     delete rendered.services.api.healthcheck;
     value.put(renderedFile, JSON.stringify(rendered));
     const findings = stacksSwarmFindings(finderContext(value));
-    assert.ok(findings.some(finding => finding.code === 'STACKS_HEALTHCHECK_MISSING'));
+    assert.ok(findings.some(finding => detects('STACKS_SERVICE_POLICY_MISSING/healthcheck', finding)));
     for (const finding of findings) {
       assert.equal(finding.level, 'error');
       assert.equal(finding.path, renderedFile);

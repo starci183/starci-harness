@@ -260,7 +260,7 @@ function placementIssues(id: string, component: Parsed, service: Parsed, add: Pa
   if (!stateful) return;
   const constraints = list(service.deploy?.placement?.constraints);
   if (!constraints.length || !constraints.every(present))
-    add('STACKS_PLACEMENT_MISSING', `services.${id}.deploy.placement`, 'Stateful services and persistent volumes must declare node placement constraints');
+    add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.deploy.placement`, 'Stateful services and persistent volumes must declare node placement constraints');
 }
 
 function healthCommand(test: Parsed) {
@@ -302,7 +302,7 @@ function updatePolicyIssues(id: string, service: Parsed, add: Parsed) {
   const rollbackValid = Object.keys(mapping(deploy.rollback_config)).length > 0;
   const restartValid = ['none', 'any', 'on-failure'].includes(deploy.restart_policy?.condition);
   if (!updateValid || !rollbackValid || !restartValid)
-    add('STACKS_UPDATE_POLICY_MISSING', `services.${id}.deploy`, 'Declare update order, failure_action: rollback, a positive monitor, rollback_config and restart_policy');
+    add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.deploy`, 'Declare update order, failure_action: rollback, a positive monitor, rollback_config and restart_policy');
 }
 
 /** Machine issues shared by the HFS finder and the rendered-model gate; no secret contents are read or returned. */
@@ -316,7 +316,7 @@ export function swarmHardeningIssues(input: Parsed) {
     publishedPortIssues(id, service, normalized.spec, add);
     placementIssues(id, component, service, add);
     if (!nontrivialHealthcheck(mapping(service.healthcheck)))
-      add('STACKS_HEALTHCHECK_MISSING', `services.${id}.healthcheck`, 'Every Swarm service needs an enabled healthcheck that can fail when its process is unhealthy');
+      add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.healthcheck`, 'Every Swarm service needs an enabled healthcheck that can fail when its process is unhealthy');
     updatePolicyIssues(id, service, add);
   }
   publicRoutingIssues(normalized, add);

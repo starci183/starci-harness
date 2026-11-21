@@ -6563,16 +6563,6 @@ STACKS_DNS_UNDECLARED:
   owner: op-retry
   kind: check-finding
 
-STACKS_HEALTHCHECK_MISSING:
-  title: "A runnable Swarm service has no healthcheck"
-  title_vi: "Dịch vụ Swarm đang chạy thiếu healthcheck"
-  meaning_vi: "Mô hình Swarm thiếu healthcheck hoạt động cho dịch vụ chạy liên tục hoặc đã tắt healthcheck của dịch vụ đó."
-  causes_vi:
-    - "Vi phạm R266: trạng thái container chạy chưa chứng minh được tín hiệu sức khỏe cần để cập nhật và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo healthcheck có lệnh thực sự kiểm tra dịch vụ; tách tín hiệu sống và sẵn sàng theo trách nhiệm của ứng dụng."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_HOST_UNROUTED:
   title: "A declared ingress host has no rendered route"
   title_vi: "Host được khai báo chưa có tuyến trong mô hình ingress"
@@ -6625,13 +6615,13 @@ STACKS_MODEL_UNAVAILABLE:
   owner: op-retry
   kind: check-finding
 
-STACKS_PLACEMENT_MISSING:
-  title: "A stateful Swarm service has no placement constraint"
-  title_vi: "Dịch vụ Swarm có trạng thái thiếu ràng buộc vị trí chạy"
-  meaning_vi: "Dịch vụ có trạng thái hoặc volume bền vững không khai báo deploy.placement.constraints trong mô hình đã render."
+STACKS_SERVICE_POLICY_MISSING:
+  title: "A Swarm service lacks a required runtime policy (placement, healthcheck or update policy)"
+  title_vi: "Dịch vụ Swarm thiếu chính sách chạy bắt buộc (vị trí chạy, healthcheck hoặc chính sách cập nhật)"
+  meaning_vi: "Mô hình Swarm đã render của một dịch vụ thiếu một trong ba chính sách bắt buộc: deploy.placement.constraints cho dịch vụ có trạng thái hoặc volume bền vững; healthcheck thật sự kiểm tra được dịch vụ chạy liên tục; deploy.update_config (order, failure_action rollback, monitor dương), rollback_config và restart_policy. Thông báo của finding nêu đường dẫn khóa và chính sách còn thiếu."
   causes_vi:
-    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu của component."
-  nextStep_vi: "Thêm ràng buộc placement phù hợp chủ sở hữu volume và nêu rõ giới hạn phục hồi khi node hoặc đĩa bị mất."
+    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu (placement); trạng thái container chạy chưa chứng minh được sức khỏe cần để cập nhật và phục hồi (healthcheck); triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi (chính sách cập nhật)."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: thêm ràng buộc placement phù hợp chủ sở hữu volume, healthcheck có lệnh thực sự kiểm tra dịch vụ, hoặc update_config, rollback_config và restart_policy của dịch vụ, rồi render lại mô hình."
   owner: op-retry
   kind: check-finding
 
@@ -6712,16 +6702,6 @@ STACKS_TLS_UNDECLARED:
   causes_vi:
     - "Vi phạm R266: quyền cấp hoặc phục hồi chứng chỉ chưa có chủ sở hữu và bằng chứng được khai báo."
   nextStep_vi: "Khai báo chủ sở hữu TLS và tham chiếu bằng chứng cấp, lưu giữ chứng chỉ; giữ thao tác của chủ sở hữu là điều kiện triển khai rõ ràng."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_UPDATE_POLICY_MISSING:
-  title: "A Swarm service has no explicit rollout and recovery policy"
-  title_vi: "Dịch vụ Swarm thiếu chính sách cập nhật và phục hồi rõ ràng"
-  meaning_vi: "Dịch vụ chạy liên tục thiếu chính sách deploy.update_config, rollback_config hoặc restart_policy cần cho vòng đời triển khai."
-  causes_vi:
-    - "Vi phạm R266: triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo chính sách cập nhật, rollback và restart của từng dịch vụ trong mô hình, rồi kiểm tra cùng các tín hiệu sức khỏe."
   owner: op-retry
   kind: check-finding
 
