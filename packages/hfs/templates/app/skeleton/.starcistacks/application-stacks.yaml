@@ -104,8 +104,10 @@ environments:
         - {name: codegen, argv: [npm, run, codegen, --silent], heavy: build}
       processes:
         - name: api
+          # The watcher runs only with `stack up --watch` (live coding); a plain up, `stack restart` and `starci dev sync` build and serve the built api.
           argv: [npx, ts-node-dev, --respawn, --transpile-only, --debounce, "1000", --watch, "src,apps", -r, tsconfig-paths/register, apps/api/src/main.ts]
           cwd: be
+          serve: {build: {argv: [npm, run, build:be], cwd: .}, argv: [node, dist/apps/api/src/main.js]}
           port: api
           files: [GOOGLE_CLIENT_SECRET, AUTH_JWT_PRIVATE_KEY, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]
           env:
@@ -128,9 +130,12 @@ environments:
             STORAGE_BUCKET: {{project}}-dev
           health: {url: "http://localhost:${port.api}/health/live"}
         - name: web
+          # next dev only with `stack up --watch`; otherwise next build, then next start on the built app.
           argv: [npm, run, dev:fe]
+          serve: {build: {argv: [npm, run, build:fe]}, argv: [npm, run, start:web]}
           port: web
           env:
+            PORT: "${port.web}"
             NEXT_PUBLIC_SITE_URL: "http://localhost:${port.web}"
             NEXT_PUBLIC_API_URL: "http://localhost:${port.api}"
             NEXT_PUBLIC_GRAPHQL_URL: "http://localhost:${port.api}/graphql"

@@ -130,6 +130,7 @@ import { ticketOpenVerb } from "./core/ticket/open.js"
 import { ticketShowVerb } from "./core/ticket/show.js"
 import { ticketTakeVerb } from "./core/ticket/take.js"
 import { laneLandVerb } from "./core/lane/land.js"
+import { devSyncVerb } from "./core/dev/sync.js"
 import { laneRemoveVerb } from "./core/lane/remove.js"
 import { laneReadyVerb } from "./core/lane/ready.js"
 import { laneStatusVerb } from "./core/lane/status.js"
@@ -293,6 +294,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     laneWithdrawVerb,
     laneStatusVerb,
     laneLandVerb,
+    devSyncVerb,
     laneGateVerb,
     slotTakeVerb,
     slotReleaseVerb,

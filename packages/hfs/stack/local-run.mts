@@ -16,7 +16,7 @@ import { tcpOpen } from './local-ports.mjs';
 import type { PeerBase } from './local-peers.mjs';
 import { logFile, stateDirectory } from './local-state.mjs';
 import { expandPorts } from '../runtime/scripts/hfs/stack-local-config.mjs';
-import type { HttpProbe, LocalCommand } from '../runtime/scripts/hfs/stack-local-config.mjs';
+import type { HttpProbe, LocalCommand, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
 /** The seams a spec replaces besides the context's own. */
 export interface LocalDeps extends HostDeps {
@@ -146,6 +146,27 @@ export function databaseUrl(local: LocalConfig, custody: Custody, role: 'owner' 
 }
 
 const launcher = (ctx: Pick<StackContext, 'platform'>, argv: readonly string[]): [string, string[]] => launch(ctx.platform, argv[0] ?? '', argv.slice(1));
+
+/**
+ * How a native process runs: `serve` (the default) builds the code of the checkout once and runs the built artifact, never a watcher, so
+ * a merge on dev never hot-reloads a half-written tree; `watch` runs the process's own `argv` (next dev, ts-node-dev), the explicit opt-in
+ * for live coding (`stack up --watch`, `stack restart --watch`). A process that declares no `serve` runs its `argv` in both modes.
+ */
+export type ProcessMode = 'serve' | 'watch';
+
+/** The mode a process actually runs in: `serve` only when it declares a built mode. */
+export const modeOf = (run: LocalProcess, mode: ProcessMode): ProcessMode => (mode === 'serve' && run.serve !== null ? 'serve' : 'watch');
+
+/** The command a process is launched with in `mode`: its `serve.argv` (from `serve.cwd`, else its own cwd), or its own argv. */
+export const launchedCommand = (run: LocalProcess, mode: ProcessMode): LocalProcess =>
+  modeOf(run, mode) === 'serve' && run.serve !== null ? { ...run, argv: run.serve.argv, cwd: run.serve.cwd ?? run.cwd } : run;
+
+/** The build of a process in serve mode (heavy class build, from `serve.build.cwd`, else the process's cwd), or null when it has none. */
+export const buildCommand = (run: LocalProcess, mode: ProcessMode): LocalCommand | null => {
+  const build = modeOf(run, mode) === 'serve' ? run.serve?.build ?? null : null;
+  if (build === null) return null;
+  return { name: `${run.name}-build`, argv: build.argv, cwd: build.cwd ?? run.cwd, heavy: 'build', skipIfExists: null, env: run.env, files: [], after: 'migrate' };
+};
 
 /** Runs one setup or seed command to its end, through the governor when its class is heavy. A non-zero exit is a failure naming the command and its first error line. */
 export async function runCommand(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): Promise<void> {

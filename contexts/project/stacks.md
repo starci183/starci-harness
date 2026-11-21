@@ -304,6 +304,14 @@ custody, runs the setup (install, codegen), starts the compose services under th
 MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; the store is built from the managed `.starcistacks/images/storage/Dockerfile` and loads the repo-owned `statics/` into its bucket, [statics.md](statics.md) PROJECT-STATICS-2) with `docker compose up --build` (a changed build input rebuilds, cached otherwise) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack, and runs right after `db migrate`, before the seed levels and the loader of the pinned seed-standards, whose doors write into the tables it creates), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
+**A native process runs built, not watched.** A process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`: `up` and `restart`
+run its `build` (the governor's build class, with the process's non-secret env and no custody file) and then its `serve.argv`, the built
+artifact (`next start`, `node dist/...`), so code merged on dev is never hot-reloaded half written. The process's own `argv` (`next dev`,
+`ts-node-dev`) runs only with `--watch`, the explicit opt-in for live coding; a process without `serve` runs its `argv` either way. `starci app
+stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends only those processes (only the ones this environment started),
+builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
+hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
+process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.

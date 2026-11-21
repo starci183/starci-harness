@@ -47,7 +47,7 @@ export function withGallery(config: LocalBlock, repoRoot: string): LocalBlock {
     ...config,
     ports: { ...config.ports, gallery: port },
     setup: [...config.setup, { name: 'gallery-install', argv: ['npm', 'install', '--no-audit', '--no-fund'], cwd: params.dir, ...command, heavy: 'install', skipIfExists: 'node_modules' }],
-    processes: [...config.processes, { name: 'gallery', argv: ['npm', 'run', params.devScript], cwd: params.dir, ...command, port: 'gallery', health: { name: 'gallery', url, method: 'GET', status: 200, contains: null } }],
+    processes: [...config.processes, { name: 'gallery', argv: ['npm', 'run', params.devScript], cwd: params.dir, ...command, port: 'gallery', health: { name: 'gallery', url, method: 'GET', status: 200, contains: null }, serve: null }],
     ready: [...config.ready, { name: 'gallery-live', url, method: 'GET', status: 200, contains: null }],
     origins: [...config.origins, { name: 'gallery', url }],
   };

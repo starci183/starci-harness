@@ -58,6 +58,10 @@ rule; every other page links to it.
    and runs again, at most `OOM_RETRIES` more times; a round that still runs out of memory parks its lanes (`parked`, with the
    evidence in `reason`), never rejects them, and each registers again once the host has RAM. A push whose check ran out of memory, or a batch whose
    install, codegen or module build ran out of memory, waits for the same RAM before the next batch; its lanes stay ready.
+7. When this machine's local settings turn it on (`devSync.afterLand` in `.runtime/local-settings.json`, git-ignored, off by
+   default), a landed batch is followed by `starci dev sync --execute` on the app's main dev checkout, debounced over consecutive
+   batches: it fast-forwards that checkout, installs, and rebuilds and restarts only the changed api or web of the running dev stack
+   ([cicd.md](cicd.md) "Dev and prod"). A refused or failed sync is logged and never stops the lander.
 
 **Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
 `LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder

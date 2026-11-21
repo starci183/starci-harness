@@ -7,7 +7,7 @@ import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
 
 /** What the environment recorded about itself. */
 export interface LocalRecord {
-  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string }>;
+  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string; /** serve (built) or watch (hot reload); absent in a record written before the built mode. */ mode?: 'serve' | 'watch' }>;
   ports: Record<string, number>;
   receipts: {
     migrate?: { at: string; digest: string };

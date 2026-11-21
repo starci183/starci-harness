@@ -35,3 +35,45 @@ checkout's path and the project root on explicitly.
 - An app's branches, `main` and `dev`: [contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-1; the `dev` branch profile: [contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2.
 - The host environment (Windows shims, Devin's `ACP_BACKEND`, `robocopy`, PowerShell encodings):
   [contexts/harness/host.md](contexts/harness/host.md).
+
+## Dev and prod: two flows that never wait for each other
+
+The owner's rules, in his words:
+
+> ".claude nói rõ tách biệt quy trình dev (đưa lên cloudflare) và prod riêng biệt ko đợi nhau. npm cũng vào local và dev server mở thẳng lun"
+
+> "prod tối cũng dc, tập trung dev cho thầy trc!!!"
+
+> "dev thì chạy trên nhánh dev, code xong cứ merge vào dev, mở server local ra test (build từ code dev hiện tại và chạy để tránh hot-reload), trong quá trình làm có thể upgrade grammars,hfs,... nhưng mà đơn giản là publish local nên dev trơn tru. và cứ từ từ đưa lên .claude các bản vá, đưa lên code, check kĩ, build docker, app check,.. để dần dần lên prod sau dev"
+
+In short: dev and prod are separate pipelines. Dev is the fast path and comes first: finished work merges into `dev` and
+the owner tests it on the running dev server at once. Prod is the slow, careful path and may run later (in the evening
+is fine). Neither one waits for the other, and neither moves the other's checkout.
+
+**Dev (fast, first).** Lanes -> the batch lander (`starci lane land`) -> the `dev` branch -> the app's main dev checkout
+-> the dev stack, exposed through its Cloudflare tunnel.
+
+1. A lane gates and registers (`starci lane gate --push --ready`); the lander merges the ready lanes, runs one
+   `app check --env prod` and pushes `dev` ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-2).
+2. `starci dev sync --execute` in the app's main dev checkout fast-forwards it to `origin/dev`, runs `npm ci`, installs
+   each `--local <pkg>` from the local npm registry, then **builds** the api and the web from that code and runs the
+   built artifacts (`next start`, `node dist/...`; never `next dev`, `ts-node-dev` or another watcher). It restarts only
+   the changed side, waits for its health (over the tunnel hostname when one routes it) and keeps the database, the
+   storage and the tunnel up. It prints any local overlay in effect. A plain `dev sync` (no `--local`) puts every
+   `@starci` package back to its registry version, so an overlay never outlives a sync that does not name it again.
+   It is a dry run until `--execute`.
+3. When this machine's local settings turn it on (`devSync.afterLand: true` in `.runtime/local-settings.json`,
+   git-ignored, off by default), the lander runs that sync on its own once a batch lands. Consecutive batches are
+   debounced into one sync.
+4. Harness packages (Grammar, hfs, ...) reach dev through the local registry and never wait for npm:
+   `starci deps publish-local --execute --package <pkg>` in the harness checkout, then `starci dev sync --local <pkg> --execute`
+   (or `starci deps install-local <pkg> --execute`) in the app. Before a commit, `deps install-local --restore` (or a
+   plain `dev sync`) puts the npm pins back.
+5. Hot reload is opt-in, for live coding only: `starci app stack up --env dev --execute --watch`.
+
+**Prod (slow, careful, after dev).** Harness fixes go to npm first (`starci release push` / `release publish` on the
+harness), then the app code is pushed, fully checked, its docker images built, `app check --env prod`, staging, the tag,
+CI, prod. The release is cut from a fixed sha with `starci release cut --from <sha> --execute`, in its own temporary
+worktree that is removed afterwards. The dev checkout never moves for prod work, and prod never waits for dev to go quiet.
+
+The full design: [contexts/project/cicd.md](contexts/project/cicd.md) "Dev and prod".
