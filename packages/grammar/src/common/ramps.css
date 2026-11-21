@@ -152,6 +152,18 @@
         --grammar-switch-compact-height: 1.125rem;
         --grammar-switch-compact-thumb: 0.875rem;
         --grammar-switch-compact-inset: calc(var(--grammar-hairline) * 2);
+        /* The toggle Switch track: 72 wide at the control height (the Switch's `control` size). */
+        --grammar-switch-toggle-width: 4.5rem;
+        /* The Skeleton box shapes (0.52.2): a sm Button's height, a button's default width, a bare box's default height. */
+        --grammar-skeleton-button-sm-height: 2rem;
+        --grammar-skeleton-button-width: 6rem;
+        --grammar-skeleton-box-height: 1rem;
+        /* What a Skeleton box shape reads when its caller names no size (the caller's width and height are set on the element itself). */
+        --starci-core-skeleton-width: 100%;
+        --starci-core-skeleton-height: var(--grammar-skeleton-box-height);
+        --starci-core-skeleton-button-width: var(--grammar-skeleton-button-width);
+        /* Expandable clamp: the lines a folded text shows (the element sets its own). */
+        --starci-core-expandable-lines: 3;
         /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);

@@ -2684,7 +2684,6 @@
         border: 0;
         background: none;
         font: inherit;
-        font-weight: var(--grammar-weight-medium, 500);
         text-align: start;
     }
 
@@ -2702,8 +2701,8 @@
         display: -webkit-box;
         overflow: hidden;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: var(--starci-core-expandable-lines, 3);
-        line-clamp: var(--starci-core-expandable-lines, 3);
+        -webkit-line-clamp: var(--starci-core-expandable-lines);
+        line-clamp: var(--starci-core-expandable-lines);
     }
 
     .starci-core-expandable-details {

@@ -1,5 +1,5 @@
 import { Skeleton as HeroSkeleton, skeletonVariants } from "@heroui/react"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
 
 /**
@@ -32,15 +32,6 @@ export type SkeletonProps = NoChildren & {
     readonly kind?: "compact" | "toggle"
 }
 
-/** The fixed geometry of each named box shape; `box` takes the caller's. */
-const BOX_OF = {
-    field: { height: "2.5rem", radius: "md" },
-    "button-sm": { height: "2rem", radius: "full" },
-    "button-md": { height: "2.5rem", radius: "full" },
-    "switch-compact": { width: "2rem", height: "1.125rem", radius: "full" },
-    "switch-toggle": { width: "4.5rem", height: "2.5rem", radius: "full" },
-} as const
-
 const clampLines = (lines: number) => Math.min(12, Math.max(1, Math.floor(Number.isFinite(lines) ? lines : 1)))
 
 /**
@@ -52,21 +43,24 @@ const clampLines = (lines: number) => Math.min(12, Math.max(1, Math.floor(Number
  */
 export const Skeleton = ({ shape = "text", lines = 1, ratio = "landscape", size = "md", width, height, radius, kind = "compact" }: SkeletonProps) => {
     if (shape === "box" || shape === "field" || shape === "button" || shape === "switch") {
-        const named = shape === "field" ? BOX_OF.field : shape === "button" ? BOX_OF[size === "sm" ? "button-sm" : "button-md"] : shape === "switch" ? BOX_OF[kind === "toggle" ? "switch-toggle" : "switch-compact"] : undefined
-        const boxWidth = shape === "switch" ? (named as { width: string }).width : width ?? (shape === "button" ? "6rem" : "100%")
-        const boxHeight = named?.height ?? height ?? "1rem"
-        const boxRadius = named?.radius ?? radius ?? "md"
+        // the geometry of the named shapes is the stylesheet's (ramps.css); a caller's width and height ride on custom properties, never a literal here
+        const sized = {
+            ...(width === undefined ? {} : { [shape === "button" ? "--starci-core-skeleton-button-width" : "--starci-core-skeleton-width"]: width }),
+            ...(height === undefined ? {} : { "--starci-core-skeleton-height": height }),
+        }
         return (
             <HeroSkeleton
                 animationType="shimmer"
                 data-tier="leaf"
                 data-component="Skeleton"
                 data-shape={shape}
-                data-radius={boxRadius}
+                {...(shape === "box" ? { "data-radius": radius ?? "md" } : {})}
+                {...(shape === "button" ? { "data-size": size === "sm" ? "sm" : "md" } : {})}
+                {...(shape === "switch" ? { "data-kind": kind } : {})}
                 aria-hidden="true"
                 data-contract="STATE-2 MOTION-2"
                 className="starci-core-skeleton"
-                style={{ inlineSize: boxWidth, blockSize: boxHeight, maxInlineSize: "100%" }}
+                style={sized as CSSProperties}
             />
         )
     }
