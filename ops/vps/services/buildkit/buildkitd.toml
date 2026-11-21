@@ -1,0 +1,17 @@
+# buildkitd of the rootless remote BuildKit (ops/vps/services/buildkit/service.yaml); mounted read-only at /etc/buildkit/buildkitd.toml.
+# The one listener is the Unix socket in the host folder; no TCP address, no debug address.
+[grpc]
+  address = ["unix://{{socket.path}}"]
+
+[worker.oci]
+  enabled = true
+  rootless = true
+  snapshotter = "auto"
+  max-parallelism = {{limits.parallelism}}
+  gc = true
+  reservedSpace = "{{storage.reserved}}"
+  maxUsedSpace = "{{storage.maxUsed}}"
+  minFreeSpace = "{{storage.minFree}}"
+
+[worker.containerd]
+  enabled = false

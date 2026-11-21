@@ -83,6 +83,46 @@ stdin (`cli/src/harness/vps/ssh.ts`, the pattern of @starci/hfs `stack/remote.mt
 | `vps cloudflare set-token --account <id>`, `cloudflare status` | the owner's Cloudflare API token, masked, verified, sealed |
 | `vps grant <id> --app <path> --env <env>` | a deploy user with a key made here, sealed into the app through `starci app secret set` |
 | `vps revoke <id> --app <path> --env <env>` | removes that deploy user; the app's sealed key stops working |
+| `vps build-key add\|list\|remove <id> --repo <owner>/<name>` | the keys of the remote BuildKit's ssh user `starci-build` (below): `add` mints an ed25519 key here, installs its public half as one gated line, and sets the private half as the repository's Actions secret `STARCI_BUILDER_SSH_KEY` (with `STARCI_BUILDER_HOST` and `STARCI_BUILDER_KNOWN_HOSTS`) through `gh secret set` on stdin, never printed; `remove` takes the line and the secrets away |
+
+## Remote BuildKit
+
+The owner's decision "A" (2026-11-21): a remote BuildKit on sv-hk-1 that CI and dev build through. **Rootless only** (the
+coordinator's hard line, 2026-11-21): `moby/buildkit:<pin>-rootless` as uid 1000, never `privileged: true` (a privileged container is
+root on the prod host), never the Docker socket, never host PID, IPC or network. If the kernel cannot run it rootless, the step stops with
+the exact reason; there is no privileged fallback, that would be an owner decision.
+
+- **The service** is the self-contained folder [ops/vps/services/buildkit](../../ops/vps/services/buildkit/): `service.yaml` (the
+  catalog entry: role `starci`, service `buildkit`, kind `host-compose`), `compose.yaml` and `buildkitd.toml`. The image is pinned by
+  digest in `contexts/stack/pins.yaml` `images.buildkit`; `buildctl` of the same release is pinned by its tarball's sha256 in
+  `service.yaml`. `cli/src/harness/vps/buildkit.ts` renders and plans it; the host roles deploy it with `buildkitUpPlan`, roll it back
+  with `buildkitDownPlan` and check it with `buildkitDoctorScript` + `readBuildkitDoctor`.
+- **Host compose, not a Swarm stack**: rootless buildkitd needs `seccomp=unconfined` and `apparmor=unconfined` (BuildKit's
+  docs/rootless.md), which a Swarm service cannot take. It runs `--oci-worker-no-process-sandbox`, so `/proc` stays masked
+  (`systempaths=unconfined` is refused). `cpus` 6, `mem_limit` 8G and `pids_limit` sit under the box's app reserve (ops/vps.yaml
+  `services.capacity`, `judgeBuildkitCapacity`); the cache lives on its own volume with `maxUsedSpace` 100GB (the successor of
+  keepStorage). The render refuses privileged, an engine socket, host namespaces, added capabilities or devices, published ports, a
+  root user and missing limits (BUILDKIT_RENDER_UNSAFE). Rollback is `docker compose -p starci-buildkit down`: no app stack is touched
+  and the cache volume stays.
+- **The preflight** reads the kernel first: `user.max_user_namespaces`, `kernel.unprivileged_userns_clone` and, on Ubuntu 24.04 and
+  later, `kernel.apparmor_restrict_unprivileged_userns` (it must be 0 for rootlesskit; changing it is a host security setting, so the
+  step stops and names it).
+- **Transport: ssh, no open port.** buildkitd listens only on `/run/starci-buildkit/buildkitd.sock` (the folder made at every boot by
+  systemd-tmpfiles, a default ACL giving the group `starci-build` the socket). Clients use BuildKit's ssh helper, which runs
+  `buildctl dial-stdio` on the server as the user `starci-build`: not in the docker group (it can never reach the Docker socket or a
+  prod container), password locked, its `authorized_keys` owned by root. Every line there is
+  `restrict,command="/usr/local/bin/starci-build-gate",no-pty,no-port-forwarding,...` and the gate admits exactly `buildctl dial-stdio`
+  to that socket, nothing else. `starci vps build-key` alone manages the lines, one per repository; `vps grant` never touches them.
+- **CI**: an app opts in with `ci.imageBuilder: remote` in `.starcistacks/application-stacks.yaml` (default `runner`, so every other app
+  renders unchanged). Each image job then writes the repository's key and pinned known_hosts, runs `docker buildx create --name
+  starci-remote --driver remote ssh://starci-build@<host>` and bootstraps it within 60 s; on any failure it prints
+  `remote builder unreachable, building on the runner` and the hosted runner's builder builds. The cache stays as declared. A
+  build for another architecture than linux/amd64 stays on the runner.
+- **Dev**: `starci app stack build --env <env> --builder-host <ssh destination> [--push] --execute` (or `STARCI_BUILDER_HOST`) creates
+  or reuses the same `starci-remote` builder from this machine and builds there; `--load` brings the images back over the connection,
+  `--push` goes from the builder to ghcr with the operator's docker credentials forwarded per build, so nothing is stored on the
+  server. The destination is an ssh alias or host this machine reaches with its own key; resolving a machine name of config.yaml to it
+  belongs to the host roles.
 
 ## Doors under the owner's domain
 

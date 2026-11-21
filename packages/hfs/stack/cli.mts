@@ -67,6 +67,7 @@ export interface Flags {
   reason?: string;
   remote?: string;
   'ci-run'?: string;
+  'builder-host'?: string;
 }
 
 /** What each OPTIONS entry reads. */
@@ -85,7 +86,7 @@ export type Action = (typeof ACTIONS)[number];
 export const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
 
 export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start', '--redeploy', '--data-acknowledged', '--print-authorized-keys', '--print-gate', '--adopt', '--verify', '--renamed-from']);
-export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run', '--public-key', '--from', '--to', '--old-image']);
+export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run', '--public-key', '--from', '--to', '--old-image', '--builder-host']);
 export const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
 /** `--ssh-cmd` replaces the configured alias for an action whose module (or the Docker transport) reaches the manager over SSH. */
 const SSH: string[] = ['--ssh-cmd'];
@@ -110,7 +111,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   task: ['--execute', ...SSH],
   ingress: ['--execute', ...SSH],
   retire: ['--project', '--execute', ...SSH],
-  build: ['--push', '--execute'],
+  build: ['--push', '--execute', '--builder-host'],
   accept: ['--release', '--execute', '--retry', '--db-url-env', ...SSH],
   status: [...SSH],
   'ci-key': ['--public-key', '--print-authorized-keys', '--print-gate'],
@@ -202,7 +203,7 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   prune: ({ flags, cwd }) => ({ keepFiles: (flags.keep ?? []).map((file) => path.resolve(cwd, file)), execute: flags.execute === true }),
   backup: ({ flags }) => ({ swarmState: flags['swarm-state'] === true, execute: flags.execute === true }),
   ingress: ({ flags, positional }) => ({ action: positional[0], execute: flags.execute === true, args: positional.slice(1) }),
-  build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true }),
+  build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true, builderHost: flags['builder-host'] }),
   accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry'), dbUrlEnv: flags['db-url-env'] }),
   status: () => ({}),
   'ci-key': ({ flags, cwd }) => ({ publicKey: flags['public-key'] ? path.resolve(cwd, flags['public-key']) : null, printAuthorizedKeys: flags['print-authorized-keys'] === true, printGate: flags['print-gate'] === true }),

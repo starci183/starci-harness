@@ -1,0 +1,63 @@
+# The remote BuildKit of a managed VPS that CI and dev build through (owner decision "A", 2026-11-21): one rootless buildkitd per server,
+# a host-level docker compose project (not a Swarm stack: buildkitd needs seccomp and AppArmor unconfined, which a Swarm service cannot
+# take). Read by cli/src/harness/vps/buildkit.ts; the host roles catalog deploys it as the `buildkit` service of the `starci` role
+# (kind host-compose). contexts/harness/managed-vps.md "Remote BuildKit".
+#
+# ROOTLESS ONLY (coordinator's hard line, 2026-11-21): moby/buildkit:<pin>-rootless as uid 1000, never `privileged`, never the Docker
+# socket, never host PID, IPC or network. The render refuses any of those (BUILDKIT_RENDER_UNSAFE), and the preflight stops with the exact
+# reason when the kernel cannot run it rootless; there is no privileged fallback (that would be an owner decision).
+#
+# The folder is self-contained: this file, compose.yaml and buildkitd.toml. The image digest is contexts/stack/pins.yaml images.buildkit;
+# buildctl (the host binary sshd runs for `buildctl dial-stdio`) is the same release, pinned here by the sha256 of its release tarball.
+# Tokens in `{{...}}` of the two templates are filled from this file: {{image}}, {{project}}, {{daemon.uid}}, {{socket.dir}},
+# {{socket.path}}, {{limits.cpus}}, {{limits.memory}}, {{limits.pids}}, {{limits.parallelism}}, {{storage.volume}},
+# {{storage.reserved}}, {{storage.maxUsed}}, {{storage.minFree}}.
+schema: starci/host-compose-service@1
+name: buildkit
+kind: host-compose
+role: starci
+purpose: "one rootless BuildKit per server that the images workflow and `starci app stack build --builder-host` build through, reached over ssh only"
+# The compose project and the folder its two files are written to on the host. Rollback is `docker compose -p <project> down` of this
+# project alone: it touches no app stack and keeps the cache volume.
+project: starci-buildkit
+dir: /opt/starci/services/buildkit
+image: {image: moby/buildkit, pin: buildkit}
+buildctl:
+  version: v0.34.2
+  path: /usr/local/bin/buildctl
+  # sha256 of buildkit-<version>.linux-<arch>.tar.gz of the GitHub release (the asset digests GitHub publishes, read 2026-11-21).
+  sha256:
+    amd64: b9f18b8e37eb450e9e5df03117045237cdd12d3c4a0034ffeeaa857852a15e13
+    arm64: a4ad483a33b2f1544c5ccce1c5956c559e1a6e84b8bf6cedd847d695885237a3
+# The user the rootless image runs as (its /etc/subuid is for uid 1000); in-container root of rootlesskit is this uid on the host.
+daemon:
+  uid: 1000
+# The one way in: a Unix socket in a host folder, no TCP port. The folder belongs to the daemon's uid and the group below; a default ACL
+# gives the group read and write on the socket buildkitd re-creates at every start (systemd-tmpfiles makes the folder at boot).
+socket:
+  dir: /run/starci-buildkit
+  path: /run/starci-buildkit/buildkitd.sock
+  group: starci-build
+# The ssh user clients reach the socket as: NOT in the docker group (it can never reach the Docker socket or a prod container), password
+# locked, its authorized_keys owned by root and managed only by `starci vps build-key` (never `vps grant`). Every line is forced to the
+# gate, which admits exactly `buildctl dial-stdio`.
+access:
+  user: starci-build
+  home: /var/lib/starci-build
+  gate: /usr/local/bin/starci-build-gate
+  # The client's builder name (docker buildx) in CI and on a dev machine.
+  builder: starci-remote
+# Under the box's app reserve (ops/vps.yaml services.capacity: keepMemory 4G, keepCpus 2): the capacity check refuses a box where these
+# limits and the reserve do not fit together.
+limits:
+  cpus: "6.00"
+  memory: 8G
+  pids: 8192
+  parallelism: 4
+# The build cache lives on its own named volume. maxUsed is the cap the GC prunes down to (the successor of keepStorage since BuildKit
+# 0.17); reserved is never pruned; minFree is the free disk the GC keeps on the volume's filesystem.
+storage:
+  volume: starci-buildkit-state
+  reserved: 10GB
+  maxUsed: 100GB
+  minFree: 20GB

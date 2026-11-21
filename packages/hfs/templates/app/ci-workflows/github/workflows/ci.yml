@@ -202,7 +202,7 @@ jobs:
     uses: ./.github/workflows/images.yml
     with:
       push: ${{ needs.plan.outputs.push == 'true' }}
-      release: ${{ needs.plan.outputs.release == 'true' }}
+      release: ${{ needs.plan.outputs.release == 'true' }}{{ciImageSecrets}}
 
   verdict:
     needs: [plan, fast, lint, test, coverage, build, images{{verdictSonarNeed}}]

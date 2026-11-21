@@ -21,6 +21,7 @@ export type StepSecret =
     | "MONITOR_GLITCHTIP_DB_PASSWORD"
     | "MONITOR_GLITCHTIP_SECRET_KEY"
     | "SERVICE_KEY"
+    | "BUILD_PUBLIC_KEY"
 
 /** One step of a plan. */
 export interface PlanStep {

@@ -1,0 +1,41 @@
+# The rootless BuildKit of a managed VPS, a host-level compose project (ops/vps/services/buildkit/service.yaml). Written to the service's
+# dir on the host by `host up` (cli/src/harness/vps/buildkit.ts renderBuildkit); the render refuses privileged, the Docker socket, host
+# PID/IPC/network, added capabilities or devices, a root user and missing limits (BUILDKIT_RENDER_UNSAFE).
+name: {{project}}
+services:
+  buildkitd:
+    image: {{image}}
+    restart: unless-stopped
+    user: "{{daemon.uid}}:{{daemon.uid}}"
+    # --oci-worker-no-process-sandbox keeps /proc masked (no systempaths=unconfined); seccomp and AppArmor unconfined are what rootlesskit
+    # needs to create its user namespace and mount inside a container (BuildKit docs/rootless.md).
+    command: ["--config", "/etc/buildkit/buildkitd.toml", "--oci-worker-no-process-sandbox"]
+    security_opt: ["seccomp=unconfined", "apparmor=unconfined"]
+    cpus: "{{limits.cpus}}"
+    mem_limit: {{limits.memory}}
+    memswap_limit: {{limits.memory}}
+    pids_limit: {{limits.pids}}
+    volumes:
+      - type: bind
+        source: {{socket.dir}}
+        target: {{socket.dir}}
+        bind: {create_host_path: false}
+      - type: volume
+        source: state
+        target: /home/user/.local/share/buildkit
+      - type: bind
+        source: ./buildkitd.toml
+        target: /etc/buildkit/buildkitd.toml
+        read_only: true
+    healthcheck:
+      test: ["CMD", "buildctl", "--addr", "unix://{{socket.path}}", "debug", "workers"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+volumes:
+  state:
+    name: {{storage.volume}}

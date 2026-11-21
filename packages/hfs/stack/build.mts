@@ -3,6 +3,10 @@
 // `--image <service>=<registry/name@sha256:digest>` lines ready for `stack deploy`. It refuses a dirty tree and a HEAD that carries no release tag
 // (the images must come from the released commit). It never reads registry credentials: pushing uses the operator's own `docker login`.
 // The image name is `<registry host>/<owner>/<project>-<app>:<full sha>`, the owner being the GitHub owner of `origin` (ghcr.io only).
+// With --builder-host <host> (or STARCI_BUILDER_HOST) the images build through the remote rootless BuildKit of that managed VPS (the buildx builder
+// `starci-remote`, driver remote, ssh://starci-build@<host>): `--load` brings each image back over the connection, `--push` goes from the builder to the
+// registry with the operator's own docker credentials forwarded per build, so nothing is stored on the server. <host> is an ssh destination this machine
+// reaches with its own key (an ~/.ssh/config alias, or host[:port]); the host roles' config.yaml lookup resolves a machine name to it (the seam).
 // With deploy.registry.visibility `public` (the default) every image is scanned for secret material BEFORE it is pushed (image-scan.mts: the layers of
 // a public package are public), and after the push the real visibility of the package is checked with an ANONYMOUS manifest fetch of the pushed
 // digest; a package that is still private is reported with the one owner step that changes it (GitHub has no API for that) and the run fails.
@@ -18,6 +22,7 @@ import type { ActionResult } from './remote.mjs';
 import { requireAgeIdentity } from './sealed.mjs';
 import { scanImage } from './image-scan.mjs';
 import type { ImageScan } from './image-scan.mjs';
+import { REMOTE_BUILDER } from './remote-builder.mjs';
 
 /** One image to build. */
 interface PlanItem { service: string; app: string; dockerfile: string; ref: string; hasBuildArgs: boolean }
@@ -29,6 +34,9 @@ interface ImageOutcome { ok: boolean; digest?: string | null; lines: string[] }
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u;
 const GITHUB_REMOTE = /github\.com[:/]([A-Za-z0-9._-]+)\/[A-Za-z0-9._-]+?(?:\.git)?$/u;
 const BUILD_ARG = /^([A-Z][A-Z0-9_]*)=(.*)$/u;
+/** An ssh destination for the remote builder: an alias or a host name or address, with an optional port. */
+const BUILDER_HOST = /^[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?$/u;
+
 const SIDES = ['be', 'fe'];
 const MAX_HITS_SHOWN = 20;
 const MANIFEST_TYPES = ['application/vnd.oci.image.index.v1+json', 'application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.list.v2+json', 'application/vnd.docker.distribution.manifest.v2+json'];
@@ -86,9 +94,34 @@ function plan(config: DeployConfig, { sha, owner }: { sha: string; owner: string
   }));
 }
 
-function buildOne(ctx: StackContext, config: DeployConfig, item: PlanItem, args: BuildArgPairs, push: boolean): { ok: false; error: string } | { ok: true; digest: string | null } {
+/** The buildx endpoint of the remote builder on `host` (`host` or `host:port`). */
+export function remoteBuilderEndpoint(host: string): string {
+  if (!BUILDER_HOST.test(host)) throw refusal('STACK_BUILD_BUILDER_HOST', `--builder-host takes an ssh destination (an alias or a host, with an optional :port); ${host} is not one`);
+  return `ssh://${REMOTE_BUILDER.user}@${host}`;
+}
+
+/**
+ * Creates (or re-creates, when it points elsewhere) the local buildx builder `starci-remote` for `endpoint` and bootstraps it under a timeout: a real
+ * `buildctl dial-stdio` through the server's gate. An unreachable builder is a refusal (the operator asked for it); nothing was built.
+ */
+export function ensureRemoteBuilder(ctx: StackContext, config: DeployConfig, endpoint: string): string {
+  const name = REMOTE_BUILDER.builder;
+  const bootstrapMs = REMOTE_BUILDER.bootstrapSeconds * 1000;
+  const known = tool(ctx, 'docker', ['buildx', 'inspect', name], { cwd: config.repoRoot });
+  const same = known.status === 0 && String(known.stdout).split(/\r?\n/u).some((line) => /^\s*Endpoint:\s*/u.test(line) && line.trim().endsWith(endpoint));
+  if (known.status === 0 && !same) tool(ctx, 'docker', ['buildx', 'rm', name], { cwd: config.repoRoot });
+  if (!same) {
+    const created = tool(ctx, 'docker', ['buildx', 'create', '--name', name, '--driver', 'remote', endpoint], { cwd: config.repoRoot });
+    if (created.status !== 0) throw refusal('STACK_BUILD_REMOTE_UNREACHABLE', `docker buildx create ${name} failed: ${firstLine(created.stderr) || 'refused'}; nothing was built`);
+  }
+  const boot = tool(ctx, 'docker', ['buildx', 'inspect', '--bootstrap', name], { cwd: config.repoRoot, timeout: bootstrapMs });
+  if (boot.status !== 0) throw refusal('STACK_BUILD_REMOTE_UNREACHABLE', `the remote builder ${endpoint} did not answer (${firstLine(boot.stderr) || `no answer within ${bootstrapMs / 1000} s`}); nothing was built (drop --builder-host to build on this machine)`);
+  return name;
+}
+
+function buildOne(ctx: StackContext, config: DeployConfig, item: PlanItem, args: BuildArgPairs, push: boolean, builder: string | null): { ok: false; error: string } | { ok: true; digest: string | null } {
   const metadata = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'stack-build-')), 'metadata.json');
-  const argv = ['buildx', 'build', '--platform', 'linux/amd64', '--provenance=false', '--file', item.dockerfile, '--tag', item.ref, '--metadata-file', metadata,
+  const argv = ['buildx', 'build', ...(builder ? ['--builder', builder] : []), '--platform', 'linux/amd64', '--provenance=false', '--file', item.dockerfile, '--tag', item.ref, '--metadata-file', metadata,
     ...args.flatMap(([key, value]) => ['--build-arg', `${key}=${value}`]), push ? '--push' : '--load', '.'];
   const run = tool(ctx, 'docker', argv, { cwd: config.repoRoot });
   let digest: string | null = null;
@@ -113,9 +146,9 @@ function scanRefusal(item: PlanItem, scan: ImageScan): string[] {
 }
 
 /** One image: built (and pushed in the same step when private); built, scanned and only then pushed when public. Returns { ok, digest, lines }. */
-function processImage(ctx: StackContext, config: DeployConfig, item: PlanItem, args: BuildArgPairs, { push }: { push: boolean }): ImageOutcome {
+function processImage(ctx: StackContext, config: DeployConfig, item: PlanItem, args: BuildArgPairs, { push, builder }: { push: boolean; builder: string | null }): ImageOutcome {
   const isPublic = config.registry.visibility === 'public';
-  const built = buildOne(ctx, config, item, args, push && !isPublic);
+  const built = buildOne(ctx, config, item, args, push && !isPublic, builder);
   if (!built.ok) return { ok: false, lines: [`build of ${item.service} FAILED: ${built.error}`] };
   if (!isPublic) return { ok: true, digest: built.digest, lines: [] };
   const scan = scanImage(ctx, item.ref, { allowedArgs: args.map(([key]) => key) });
@@ -165,20 +198,24 @@ async function checkVisibility(ctx: StackContext, config: DeployConfig, images: 
 }
 
 /** `build`: dry run unless execute; pushing needs --push as well. */
-export async function buildImages(ctx: StackContext, config: DeployConfig, { push = false, execute = false }: { push?: boolean; execute?: boolean } = {}): Promise<ActionResult> {
+export async function buildImages(ctx: StackContext, config: DeployConfig, { push = false, execute = false, builderHost }: { push?: boolean; execute?: boolean; builderHost?: string | undefined } = {}): Promise<ActionResult> {
   if (Object.keys(config.images).length === 0) throw refusal('STACK_BUILD_NO_IMAGES', 'the deploy block declares no images');
   if (config.registry.host !== 'ghcr.io') throw refusal('STACK_BUILD_REGISTRY', `build supports ghcr.io only (deploy.registry.host is ${config.registry.host})`);
   const release = checkout(ctx, config);
   const items = plan(config, { sha: release.sha, owner: ownerOf(ctx, config) });
+  const host = builderHost ?? (ctx.env.STARCI_BUILDER_HOST || undefined);
+  const endpoint = host === undefined ? null : remoteBuilderEndpoint(host);
   const lines = [`release ${release.tag} at ${release.sha.slice(0, 12)}: ${items.length} image(s), registry ${config.registry.host} (${config.registry.visibility})`, ...items.map((item) => `  ${item.service}: ${item.dockerfile} -> ${item.ref}`)];
+  lines.push(endpoint ? `builder: the remote BuildKit ${endpoint} (buildx ${REMOTE_BUILDER.builder})` : 'builder: this machine\'s docker buildx');
   if (!execute) {
     const scan = config.registry.visibility === 'public' ? ', scan for secret material' : '';
     return { ok: true, lines: [...lines, `dry run: would build${scan}${push ? ' and push' : ' (local only, no digest without --push)'}; nothing was built`], data: { tag: release.tag, images: {} } };
   }
   if (items.some((item) => config.images[item.service]?.buildArgs.sealed !== null)) requireAgeIdentity(ctx, config, 'build');
+  const builder = endpoint ? ensureRemoteBuilder(ctx, config, endpoint) : null;
   const images: Record<string, string> = {};
   for (const item of items) {
-    const outcome = processImage(ctx, config, item, await argsOf(ctx, config, item.app, item.hasBuildArgs), { push });
+    const outcome = processImage(ctx, config, item, await argsOf(ctx, config, item.app, item.hasBuildArgs), { push, builder });
     lines.push(...outcome.lines);
     if (!outcome.ok) return { ok: false, lines, data: { tag: release.tag, images } };
     if (push && !outcome.digest) return { ok: false, lines: [...lines, `${item.service} was pushed but docker reported no digest`], data: { tag: release.tag, images } };

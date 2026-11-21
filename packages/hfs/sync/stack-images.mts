@@ -11,6 +11,7 @@ import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { DECLARATION } from './sonar-key.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { declaredBasePort, declaredGalleryHosts } from '../runtime/scripts/hfs/gallery.mjs';
+import { BUILDER_SECRETS, REMOTE_BUILDER, RUNNER_FALLBACK } from '../stack/remote-builder.mjs';
 
 const NAME = /^[a-z][a-z0-9-]*$/u;
 const KEY = /^[A-Z][A-Z0-9_]*$/u;
@@ -27,7 +28,10 @@ export interface StackImage { service: string; app: string; buildArgs: boolean; 
 /** One environment that deploys: the deploy.auto, deploy.approval and deploy.platforms keys of its deploy block. */
 export interface DeployEnvironment { name: string; auto: boolean; approval: 'none' | 'reviewers'; platforms: string[] }
 /** What the managed workflows render from the declaration. `environments` are the deploying ones in declared order; `imageCache` is ci.imageCache. */
-export interface DeclaredStack { images: StackImage[]; passEnv: string[]; imageEnvironments?: Record<string, string[]>; environments?: DeployEnvironment[]; imageCache?: 'gha' | 'registry'; /** `local.basePort` of the dev environment (R389); null when none is declared. */ basePort?: number | null; /** The public hosts `local.tunnel.routes[]` named `gallery` declare (PROJECT-GALLERY-1 item 4); empty when none. */ galleryHosts?: string[] }
+export interface DeclaredStack { images: StackImage[]; passEnv: string[]; imageEnvironments?: Record<string, string[]>; environments?: DeployEnvironment[]; imageCache?: 'gha' | 'registry'; /** ci.imageBuilder: `remote` builds through the server's rootless BuildKit (falling back to the runner), `runner` (default) on the runner alone. */ imageBuilder?: ImageBuilder; /** `local.basePort` of the dev environment (R389); null when none is declared. */ basePort?: number | null; /** The public hosts `local.tunnel.routes[]` named `gallery` declare (PROJECT-GALLERY-1 item 4); empty when none. */ galleryHosts?: string[] }
+
+/** Where the images job builds: on the hosted runner (default) or through the remote BuildKit of a managed VPS, with the runner as fallback. */
+export type ImageBuilder = 'runner' | 'remote';
 
 const record = (value: unknown): value is Record<string, any> => value !== null && typeof value === 'object' && !Array.isArray(value); // reason: a YAML mapping
 const hasBuildArgs = (args: unknown): boolean => record(args) && (Object.keys(record(args.values) ? args.values : {}).length > 0 || record(args.sealed));
@@ -102,7 +106,7 @@ export function readDeclaredStack(root: string, { parseYaml = bundledParseYaml a
 /** Parsed declarations share the exact image, environment and pass-env projection used by sync. */
 export function declaredStack(declaration: Declaration): DeclaredStack {
   const cache = declaration?.ci?.imageCache;
-  return { images: declaredStackImages(declaration), passEnv: declaredPassEnv(declaration), imageEnvironments: imageEnvironments(declaration), environments: deployEnvironments(declaration), imageCache: cache === 'registry' ? 'registry' : 'gha', basePort: declaredBasePort(declaration), galleryHosts: declaredGalleryHosts(declaration) };
+  return { images: declaredStackImages(declaration), passEnv: declaredPassEnv(declaration), imageEnvironments: imageEnvironments(declaration), environments: deployEnvironments(declaration), imageCache: cache === 'registry' ? 'registry' : 'gha', imageBuilder: declaration?.ci?.imageBuilder === 'remote' ? 'remote' : 'runner', basePort: declaredBasePort(declaration), galleryHosts: declaredGalleryHosts(declaration) };
 }
 
 const envName = (service: string): string => `IMAGE_${service.toUpperCase().replaceAll('-', '_')}`;
@@ -154,10 +158,54 @@ function imageCacheLines(cache: 'gha' | 'registry'): string[] {
   return ['cache-from: type=gha,scope=${{ matrix.name }}', 'cache-to: type=gha,scope=${{ matrix.name }},mode=max'];
 }
 
-interface ImageJobOptions { project: string; nodeMajor: string; environment: string; platforms: readonly string[]; cache: 'gha' | 'registry' }
+interface ImageJobOptions { project: string; nodeMajor: string; environment: string; platforms: readonly string[]; cache: 'gha' | 'registry'; remote: boolean }
+
+
+/**
+ * The step that tries the remote builder: the per-repository key and the pinned known_hosts from the repository secrets, an ssh alias, then
+ * `docker buildx create --driver remote ssh://starci-build@<alias>` and a bootstrap under a timeout (a real `buildctl dial-stdio` through the
+ * server's gate). Any failure removes the builder, prints RUNNER_FALLBACK with the reason and leaves `remote=false`, so the runner's builder
+ * builds instead. Nothing it prints names the host.
+ */
+function remoteBuilderSteps(): string[] {
+  const { user, builder, alias, bootstrapSeconds } = REMOTE_BUILDER;
+  return [
+    '- name: remote builder',
+    '  id: builder',
+    '  shell: bash',
+    '  env:',
+    '    BUILDER_KEY: ${{ secrets.STARCI_BUILDER_SSH_KEY }}',
+    '    BUILDER_HOST: ${{ secrets.STARCI_BUILDER_HOST }}',
+    '    BUILDER_KNOWN_HOSTS: ${{ secrets.STARCI_BUILDER_KNOWN_HOSTS }}',
+    '  run: |',
+    '    set +e -uo pipefail',
+    // No -e: every failure below ends in runner(), which removes a half-made builder and hands the build to the runner's own builder.
+    `    runner() { echo "::notice::${RUNNER_FALLBACK} ($1)"; docker buildx rm ${builder} >/dev/null 2>&1; echo "remote=false" >> "$GITHUB_OUTPUT"; exit 0; }`,
+    '    [[ -n "$BUILDER_KEY" && -n "$BUILDER_HOST" && -n "$BUILDER_KNOWN_HOSTS" ]] || runner "the builder secrets are not set"',
+    '    host="${BUILDER_HOST%:*}"; port=22; if [[ "$BUILDER_HOST" == *:* ]]; then port="${BUILDER_HOST##*:}"; fi',
+    '    install -d -m 700 ~/.ssh',
+    `    printf '%s\\n' "$BUILDER_KEY" > ~/.ssh/${alias} && chmod 600 ~/.ssh/${alias}`,
+    `    printf '%s\\n' "$BUILDER_KNOWN_HOSTS" >> ~/.ssh/known_hosts`,
+    `    printf 'Host ${alias}\\n  HostName %s\\n  Port %s\\n  User ${user}\\n  IdentityFile ~/.ssh/${alias}\\n  IdentitiesOnly yes\\n  StrictHostKeyChecking yes\\n  BatchMode yes\\n  ConnectTimeout 10\\n' "$host" "$port" >> ~/.ssh/config`,
+    `    docker buildx create --name ${builder} --driver remote --use ssh://${user}@${alias} >/dev/null 2>&1 || runner "docker buildx create failed"`,
+    `    timeout ${bootstrapSeconds} docker buildx inspect --bootstrap ${builder} >/dev/null 2>&1 || runner "no answer within ${bootstrapSeconds} s"`,
+    `    echo "building through the remote builder ${builder}"`,
+    '    echo "remote=true" >> "$GITHUB_OUTPUT"',
+  ];
+}
+
+/** The last step when the remote builder was tried: the builder and the key go, whatever the build did. */
+function remoteBuilderCleanup(): string[] {
+  return [
+    '- name: remove the remote builder',
+    "  if: ${{ always() && steps.builder.outputs.remote == 'true' }}",
+    '  shell: bash',
+    `  run: if docker buildx inspect ${REMOTE_BUILDER.builder} >/dev/null 2>&1; then docker buildx rm ${REMOTE_BUILDER.builder}; fi; rm -f ~/.ssh/${REMOTE_BUILDER.alias}`,
+  ];
+}
 
 /** One build job of images.yml: `image` builds with public values and no environment, `image-sealed` opens the sealed build values of the release environment. */
-function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { project, nodeMajor, environment, platforms, cache }: ImageJobOptions): string {
+function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { project, nodeMajor, environment, platforms, cache, remote }: ImageJobOptions): string {
   const sealed = id === 'image-sealed';
   const qemu = platforms.some(platform => platform !== 'linux/amd64');
   const head = [
@@ -185,7 +233,7 @@ function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { p
     '    owner="${GITHUB_REPOSITORY_OWNER,,}"',
     `    echo "repo=ghcr.io/\${owner}/${project}-\${{ matrix.name }}" >> "$GITHUB_OUTPUT"`,
     ...(qemu ? [`- uses: ${SETUP_QEMU}`] : []),
-    `- uses: ${SETUP_BUILDX}`,
+    ...(remote ? [...remoteBuilderSteps(), `- uses: ${SETUP_BUILDX}`, "  if: ${{ steps.builder.outputs.remote != 'true' }}"] : [`- uses: ${SETUP_BUILDX}`]),
     `- uses: ${DOCKER_LOGIN}`,
     '  if: ${{ inputs.push }}',
     '  with:', '    registry: ghcr.io', '    username: ${{ github.actor }}', '    password: ${{ github.token }}',
@@ -221,6 +269,7 @@ function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { p
     '  env:',
     '    REPO: ${{ steps.names.outputs.repo }}',
     '  run: docker buildx imagetools create --tag "$REPO:$GITHUB_REF_NAME" "$REPO:sha-$GITHUB_SHA"',
+    ...(remote ? remoteBuilderCleanup() : []),
   ];
   return lines([...head, ...steps.map(step => `    ${step}`)], '  ');
 }
@@ -270,7 +319,10 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
   const plans = imagePlans(apps, stack);
   const publicPlans = plans.filter(plan => !plan.sealed);
   const sealedPlans = plans.filter(plan => plan.sealed);
-  const options: ImageJobOptions = { project, nodeMajor, environment, platforms: platformsOf(stack.environments ?? []), cache: stack.imageCache ?? 'gha' };
+  const platforms = platformsOf(stack.environments ?? []);
+  // The remote builder is the server's own architecture, amd64; a multi-architecture build stays on the runner with QEMU.
+  const remote = stack.imageBuilder === 'remote' && platforms.every(platform => platform === 'linux/amd64');
+  const options: ImageJobOptions = { project, nodeMajor, environment, platforms, cache: stack.imageCache ?? 'gha', remote };
   const jobs = [...(publicPlans.length ? ['image'] : []), ...(sealedPlans.length ? ['image-sealed'] : [])];
   const collect = plans.some(plan => plan.deployed) && jobs.length > 0;
   return {
@@ -280,6 +332,9 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
       ...(collect ? [collectJob(plans, jobs, project)] : []),
     ].join('\n\n'),
     imageWorkflowOutputs: collect ? lines(['outputs:', '  refs:', '    description: JSON object, service -> repository@sha256:digest of the images this run pushed', '    value: ${{ jobs.collect.outputs.refs }}'], '    ') : '',
+    // The builder secrets reach the reusable workflow by inheritance: declaring them under workflow_call.secrets would hide the release
+    // environment's own SOPS_AGE_KEY from the sealed job's expressions.
+    ciImageSecrets: remote && jobs.length > 0 ? block(['secrets: inherit'], '    ') : '',
     imagesCollected: collect ? 'true' : '',
   };
 }
@@ -321,16 +376,17 @@ function releaseEnvironment(environments: Record<string, string[]>): string {
  *   stackImageArgs   the `--image "<service>=$IMAGE_<SERVICE>" \` continuation lines of the deploy command
  *   stackPassEnv     the env entries of the deploy step for the declared host variables (vars.<NAME>)
  *   imageJobs, imageWorkflowOutputs   the build and collect jobs and the output of images.yml
+ *   ciImageSecrets   with ci.imageBuilder remote: `secrets: inherit` on the images call of ci.yml, so images.yml reads the builder secrets
  *   ciDeployJobs     the deploy jobs of ci.yml (one per environment with deploy.auto)
  * `apps` are the apps images.yml builds, each with its Dockerfile (the sync module knows the layout).
  */
-export function stackWorkflowVariables({ images = [], passEnv = [], imageEnvironments: environments = {}, environments: deploying = [], imageCache = 'gha' }: DeclaredStack, project: string, apps: readonly ImageApp[] = [], nodeMajor = '22'): Record<string, string> {
+export function stackWorkflowVariables({ images = [], passEnv = [], imageEnvironments: environments = {}, environments: deploying = [], imageCache = 'gha', imageBuilder = 'runner' }: DeclaredStack, project: string, apps: readonly ImageApp[] = [], nodeMajor = '22'): Record<string, string> {
   const guard = images.length ? '' : block([
     '- name: require a declared image',
     '  shell: bash',
     `  run: 'echo "::error::${NO_IMAGES_MESSAGE}"; exit 1'`,
   ]);
-  const stack: DeclaredStack = { images, passEnv, imageEnvironments: environments, environments: deploying, imageCache };
+  const stack: DeclaredStack = { images, passEnv, imageEnvironments: environments, environments: deploying, imageCache, imageBuilder };
   const image = imageWorkflowVariables(stack, project, apps, nodeMajor, releaseEnvironment(environments));
   return {
     imageEnvironment: releaseEnvironment(environments),

@@ -118,6 +118,9 @@ with the job's `GITHUB_TOKEN` and `packages: write`):
   the index digest and each platform's;
 - cache `type=gha,scope=<image>,mode=max` per image ([buildx gha]), and `type=registry,ref=<repo>:buildcache,mode=max` when
   the manifest says `ci.imageCache: registry` (several large Next.js images can exceed the repository's Actions cache);
+- the builder is the hosted runner's own, unless the manifest says `ci.imageBuilder: remote`: then each image job first tries the
+  rootless BuildKit of a managed VPS over ssh with the repository secrets `starci vps build-key add` sets, and builds on the runner
+  when they are absent or it does not answer within 60 s ([harness/managed-vps.md](../harness/managed-vps.md#remote-buildkit));
 - the job's outputs are `<service>=<repo>@sha256:<digest>` per image, the only form the deploy accepts.
 
 Pushing before the checks are green is deliberate (the owner's order: build, push, all pass, deploy): an image under

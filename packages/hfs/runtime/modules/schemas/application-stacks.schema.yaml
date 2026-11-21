@@ -445,6 +445,14 @@ $defs:
           beside the image in the registry, for images large enough to be evicted from the 10 GB Actions cache).
         enum: [gha, registry]
         default: gha
+      imageBuilder:
+        description: >-
+          Where the images job builds: runner (default, the GitHub-hosted runner's own builder) or remote (the rootless BuildKit of a managed VPS,
+          reached over ssh with the repository secrets STARCI_BUILDER_SSH_KEY, STARCI_BUILDER_HOST and STARCI_BUILDER_KNOWN_HOSTS that
+          `starci vps build-key add` sets; when they are absent or the builder does not answer, the job builds on the runner). A build for
+          another architecture than linux/amd64 stays on the runner.
+        enum: [runner, remote]
+        default: runner
       jobs:
         description: >-
           Per-job settings of the managed CI (the CI standard, knowledge/hfs/ci-standard.yaml defaults): timeoutMinutes per job and the number of unit-run shards.
