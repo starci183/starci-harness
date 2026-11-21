@@ -1489,11 +1489,6 @@ slots:
       - HFS_PLAINTEXT_SECRET
       - HFS_IDENTITY_CUSTODY
       - HFS_SEEDS_SHAPE
-      - HFS_SEED_MANIFEST
-      - HFS_SEED_DDL
-      - HFS_SEED_DATA_SCHEMA
-      - HFS_SEED_TEST_DATA
-      - HFS_SEED_SECRET_REF
       - HFS_SEED_PII
   - id: app.sops
     profiles:

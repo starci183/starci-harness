@@ -1,6 +1,4 @@
-// proves: HFS_SEEDS_SHAPE HFS_SEED_MANIFEST HFS_SEED_DDL
-// proves: HFS_SEED_DATA_SCHEMA HFS_SEED_TEST_DATA
-// proves: HFS_SEED_SECRET_REF
+// proves: HFS_SEEDS_SHAPE
 // The seed data of an app lives in the seed levels of .starcistacks (R375): the shared seeds/ and <env>/seeds/ of a declared environment, each a
 // seeds.yaml manifest (starci/seeds@1) listing every file of its sql/, data/ and files/; no custody, no schema statement (seed data is never a
 // migration), data that validates against its declared schema, no test data where production applies; a plaintext secret is R06's, and the
@@ -101,7 +99,7 @@ test('HFS_SEEDS_SHAPE: a loose seed, a level of an undeclared environment and cu
   assert.match(list.find((item) => item.path.endsWith('old.sql'))?.message ?? '', /starci app codemod seeds-layout/u);
 });
 
-test('HFS_SEED_MANIFEST: a level without a manifest, a missing path, an unlisted file, an unknown after, a cycle and a bad field', (t) => {
+test('HFS_SEEDS_SHAPE: a level without a manifest, a missing path, an unlisted file, an unknown after, a cycle and a bad field', (t) => {
   const list = judge(t, {
     '.starcistacks/application-stacks.yaml': DECLARATION,
     '.starcistacks/production/seeds/sql/plans.sql': 'select 1;\n',
@@ -115,7 +113,7 @@ test('HFS_SEED_MANIFEST: a level without a manifest, a missing path, an unlisted
     '.starcistacks/seeds/sql/b.sql': 'select 1;\n',
     '.starcistacks/seeds/sql/unlisted.sql': 'select 1;\n',
   });
-  const messages = list.filter((item) => item.code === 'HFS_SEED_MANIFEST').map((item) => item.message).join('\n');
+  const messages = list.filter((item) => item.code === 'HFS_SEEDS_SHAPE').map((item) => item.message).join('\n');
   for (const expected of [/production\/seeds holds seed files but no seeds\.yaml/u, /sql\/gone\.sql does not exist in the level/u, /unlisted\.sql is listed by no entry/u, /nope is no entry of this level or the shared level/u, /form a cycle/u, /\.mode: must be one of once, upsert/u, /\.extra: is not a field of the seed entry block/u, /\.target: must be the argv list/u, /\.path: data\/x\.json does not exist/u, /\.schema: must name the JSON schema/u]) assert.match(messages, expected);
 });
 
@@ -168,21 +166,21 @@ test('the apply order is manifest order with each entry after the ones it names,
   assert.match(before, /^[0-9a-f]{64}$/u);
 });
 
-test('HFS_SEED_DDL: a sql entry that changes the schema or its grants is refused at the line of the statement, inside a DO block too', (t) => {
+test('HFS_SEEDS_SHAPE: a sql entry that changes the schema or its grants is refused at the line of the statement, inside a DO block too', (t) => {
   const sql = ["insert into plans (code) values ('free');", 'create table public.extra (id uuid);', 'ALTER TABLE public.plans ADD COLUMN x int;', 'grant select on public.plans to app_be;', 'do $$ begin drop table public.old; end $$;', 'truncate public.notes;', ''].join('\n');
   const list = judge(t, { ...VALID, '.starcistacks/seeds/sql/010-plans.sql': sql });
-  assert.deepEqual(list.map((item) => [item.code, item.line]), [['HFS_SEED_DDL', 2], ['HFS_SEED_DDL', 3], ['HFS_SEED_DDL', 4], ['HFS_SEED_DDL', 5], ['HFS_SEED_DDL', 6]]);
+  assert.deepEqual(list.map((item) => [item.code, item.line]), [['HFS_SEEDS_SHAPE', 2], ['HFS_SEEDS_SHAPE', 3], ['HFS_SEEDS_SHAPE', 4], ['HFS_SEEDS_SHAPE', 5], ['HFS_SEEDS_SHAPE', 6]]);
   assert.match(list[1]?.message ?? '', /runs ALTER, a schema change; seed data is never a migration/u);
 });
 
-test('HFS_SEED_DATA_SCHEMA: a document off its schema, one that does not parse, and a schema that cannot be read', (t) => {
+test('HFS_SEEDS_SHAPE: a document off its schema, one that does not parse, and a schema that cannot be read', (t) => {
   const off = judge(t, { ...VALID, '.starcistacks/seeds/data/modules/sales.json': '{"name": "sales"}\n', '.starcistacks/seeds/data/modules/chatbot.yaml': 'id: [\n' });
-  assert.deepEqual(codes(off), ['HFS_SEED_DATA_SCHEMA .starcistacks/seeds/data/modules/chatbot.yaml', 'HFS_SEED_DATA_SCHEMA .starcistacks/seeds/data/modules/sales.json']);
+  assert.deepEqual(codes(off), ['HFS_SEEDS_SHAPE .starcistacks/seeds/data/modules/chatbot.yaml', 'HFS_SEEDS_SHAPE .starcistacks/seeds/data/modules/sales.json']);
   const unread = judge(t, { ...VALID, 'be/schemas/module.schema.json': '{ not' });
-  assert.deepEqual(codes(unread), ['HFS_SEED_DATA_SCHEMA .starcistacks/seeds/seeds.yaml']);
+  assert.deepEqual(codes(unread), ['HFS_SEEDS_SHAPE .starcistacks/seeds/seeds.yaml']);
 });
 
-test('HFS_SEED_TEST_DATA: test markers in the shared level or a production level, never in a docker-compose level', (t) => {
+test('HFS_SEEDS_SHAPE: test markers in the shared level or a production level, never in a docker-compose level', (t) => {
   const list = judge(t, {
     ...VALID,
     '.starcistacks/seeds/sql/010-plans.sql': "insert into users (email) values ('owner@example.test');\n",
@@ -190,7 +188,7 @@ test('HFS_SEED_TEST_DATA: test markers in the shared level or a production level
     '.starcistacks/production/seeds/files/brand/test-logo.png': 'png',
     '.starcistacks/production/seeds/data/ws.json': '{"id": "uat-workspace"}\n',
   });
-  assert.deepEqual(codes(list), ['HFS_SEED_TEST_DATA .starcistacks/production/seeds/data/ws.json', 'HFS_SEED_TEST_DATA .starcistacks/production/seeds/files/brand/test-logo.png', 'HFS_SEED_TEST_DATA .starcistacks/seeds/sql/010-plans.sql']);
+  assert.deepEqual(codes(list), ['HFS_SEEDS_SHAPE .starcistacks/production/seeds/data/ws.json', 'HFS_SEEDS_SHAPE .starcistacks/production/seeds/files/brand/test-logo.png', 'HFS_SEEDS_SHAPE .starcistacks/seeds/sql/010-plans.sql']);
 });
 
 test('HFS_SEED_PII scans the SQL and the JSON and YAML data of the levels, and seed literals skip a document that does not parse', (t) => {
@@ -283,14 +281,14 @@ test('a production level declares one test account: its test identity and its se
   assert.deepEqual(judge(t, { ...VALID, ...ACCOUNT }), []);
 });
 
-test('HFS_SEED_SECRET_REF: a reference to no seeds-<name> member, or to a member the environment does not seal; the shared level needs every environment', (t) => {
+test('HFS_SEEDS_SHAPE: a reference to no seeds-<name> member, or to a member the environment does not seal; the shared level needs every environment', (t) => {
   const list = judge(t, {
     ...VALID, ...ACCOUNT,
     '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'a@example.test', password: { secret: 'owner-password' }, chatChannel: { secret: 'seeds-test-gone' } }),
     '.starcistacks/seeds/data/modules/sales.json': JSON.stringify({ id: 'sales', key: { secret: 'seeds-catalogue' } }),
     '.starcistacks/dev/secrets/seeds-catalogue.enc.yaml': sealedMember(['TOKEN']),
   });
-  assert.deepEqual(list.map((item) => `${item.code} ${item.message}`).filter((line) => line.startsWith('HFS_SEED_SECRET_REF')).map((line) => line.replace(/^.*? references /u, '')).sort(), [
+  assert.deepEqual(list.map((item) => `${item.code} ${item.message}`).filter((line) => line.startsWith('HFS_SEEDS_SHAPE') && / references /u.test(line)).map((line) => line.replace(/^.*? references /u, '')).sort(), [
     'seeds-catalogue, which .starcistacks/production/secrets/seeds-catalogue.enc.yaml does not hold; seal it with starci app secret set --env production',
     'seeds-test-gone, which .starcistacks/production/secrets/seeds-test-gone.enc.yaml does not hold; seal it with starci app secret set --env production',
     'the secret owner-password; a seed references a sealed member named seeds-<name> of its environment',
@@ -299,12 +297,12 @@ test('HFS_SEED_SECRET_REF: a reference to no seeds-<name> member, or to a member
 
 test('a secret reference reads as its sealed keys for the schema, so a document off its schema still fails and a member without keys is empty', (t) => {
   const off = judge(t, { ...VALID, ...ACCOUNT, '.starcistacks/production/secrets/seeds-test-owner.enc.yaml': '{ not json' });
-  assert.deepEqual(codes(off), ['HFS_SEED_DATA_SCHEMA .starcistacks/production/seeds/data/demo-account.json']);
+  assert.deepEqual(codes(off), ['HFS_SEEDS_SHAPE .starcistacks/production/seeds/data/demo-account.json']);
 });
 
 test('the test account is no free pass: a marker in another production entry stays refused, and the shared level and a second account are refused', (t) => {
   const elsewhere = judge(t, { ...VALID, ...ACCOUNT, '.starcistacks/production/seeds/files/brand/test-banner.png': 'png' });
-  assert.deepEqual(codes(elsewhere), ['HFS_SEED_TEST_DATA .starcistacks/production/seeds/files/brand/test-banner.png']);
+  assert.deepEqual(codes(elsewhere), ['HFS_SEEDS_SHAPE .starcistacks/production/seeds/files/brand/test-banner.png']);
   const twice = normalizeSeeds({ schema: 'starci/seeds@1', entries: [
     { id: 'a', kind: 'test-account', path: 'data/a.json', target: ['x'], schema: 's.json', mode: 'once', reason: 'one' },
     { id: 'b', kind: 'test-account', path: 'data/b.json', target: ['x'], schema: 's.json', mode: 'once' },

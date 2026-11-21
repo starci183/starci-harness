@@ -16,6 +16,7 @@
 ## Unreleased (jc8, code families)
 
 - Changed (owner 2026-11-21, one fact per code): the eight README codes HFS_README_BADGE_NOT_LIVE, HFS_README_DESCRIPTION_INVALID, HFS_README_DEVELOPMENT_INCOMPLETE, HFS_README_PRIVATE_URL, HFS_README_SECTION_MISSING, HFS_README_SECTION_ORDER, HFS_README_TITLE_INVALID and HFS_README_WORK_POINTER_MISSING are one code, HFS_README_INVALID. Detection is unchanged and every finding keeps its message (it names the title, section, command, URL or badge at fault). There is no code alias: a record or note that cites an old code reads the new one.
+- Changed (R375): the six seed codes HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA and HFS_SEED_SECRET_REF are one code, HFS_SEEDS_SHAPE; the message names the file, the line and which seed law it breaks. Detection is unchanged. HFS_SEED_PII (database-config, R259) is a different rule and keeps its code. No code alias exists: HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA and HFS_SEED_SECRET_REF now read HFS_SEEDS_SHAPE.
 
 ## 6.17.4 - 2026-11-21
 

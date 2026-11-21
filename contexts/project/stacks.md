@@ -588,8 +588,7 @@ convergence (so a data command is the new release's), its app commands and probe
 names every entry, each applied unless its receipt holds; a dry run runs no probe. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
 the environment's for a manual run.
 
-Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`,
-`HFS_SEED_SECRET_REF`), R06
+Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`), R06
 (a plaintext secret on any tracked line), R259 (`HFS_SEED_PII` over the SQL and the JSON and YAML data), R332 (no SQL under `db/` but
 migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
