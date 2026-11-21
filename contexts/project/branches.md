@@ -36,7 +36,7 @@ rule; every other page links to it.
 ## PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander
 
 1. A lane never pushes `dev` and never holds the dev lock. It merges `origin/dev` into its branch, runs its own
-   `starci app check --env prod` until it is green except `HFS_CHECK_CACHE_UNWARMED`, commits the cache as the run left it, pushes
+   `starci app check --env prod` until it is green (the records the run wrote are left for `starci app push` to commit; `HFS_CHECK_CACHE_UNWARMED` is info), pushes
    its branch and registers that sha with `starci lane ready`; `starci lane gate --push --ready` runs those steps under the
    machine-wide slots ([authority/lanes.md](../authority/lanes.md)). A registration replaces the lane's earlier one.
 2. One lander per lanes folder (`starci lane land`, the folder from `--dir` or `STARCI_LANES_DIR`) takes every ready lane at
@@ -44,7 +44,7 @@ rule; every other page links to it.
    whom it met: a batch-mate (it stays ready for the next batch) or `origin/dev` (it merges, re-gates and registers again). A
    conflict in `.starcistacks/cache` alone is no conflict: the batch keeps its own records and its gate rewrites what it re-checks.
 3. The batch runs `npm ci` when the lockfile is not the one its `node_modules` came from, then codegen and `build:modules`, then
-   one `app check --env prod` with the app's own pinned CLI. Green except the cache, `app push origin HEAD:dev` commits the cache
+   one `app check --env prod` with the app's own pinned CLI. Green, `app push origin HEAD:dev` commits the cache records the run wrote
    and pushes, and every lane in the batch is landed at that commit.
 4. Red, each blocking finding is mapped to the lanes whose diff against the base names its file (the path itself, else a file its
    message cites, else a file under the folder it names). Those lanes are rejected with their findings and the gate runs once more
