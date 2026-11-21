@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-alpha.193 - 2026-11-21
 
 - Fixed (t193, live on sv-hk-1): `host up --host <name>` planned `keep` for an owned running service whose published config changed (the monitor stack's full swarm names and dns_search), so the fix was never deployed. It now compares the files each deployer would write (`vps monitor|service|ui|edge up`, the host-compose adapter) with the server's, read-only, and plans `update (config drift: <files>)` for an owned service with config drift or moved pinned images; `--execute` runs that deployer's normal up with the health wait and a `docker service rollback`. An adopted service (traefik, portainer) is never compared or redeployed, its drift reported only. `host status` and `host doctor --host` list the drift as findings.
 

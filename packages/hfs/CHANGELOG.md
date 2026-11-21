@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.17.7 - 2026-11-21
+
+- Changed (canon pins): the Grammar family is 0.54.1 (the Switch track is its own press target) and @starci/gallery 0.1.19.
+
 ## 6.17.6 - 2026-11-21
 
 - Removed (the junk-check cleanup, owner 2026-11-21: "mấy cái check này làm gì? sao lại check vô case đặc thù thế làm nặng lint? trò check cái gì hợp lý k dc à!!!!"): 41 hfs finding codes and 72 dead runtime codes that guarded one-off cases, the rules-cited and check-premise gates and ANATOMY_RULE_NO_ENFORCER. CONTRIB-7 and CONTRIB-10 are rewritten: a check is added only for a broad recurring class a machine can decide, and feedback closes as a root fix or declined (`starci ticket close <id> --kind feedback --target-kind root-fix|declined`). Old codes stop without an alias; the mappings are in the release notes.
