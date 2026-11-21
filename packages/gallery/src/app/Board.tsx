@@ -74,7 +74,7 @@ function StateRow({ section, state, heights, labels }: StateRowProps): ReactElem
     }
     return (
         <div className="sg-db-state">
-            <Text size="sm" tone="muted">{fill(labels.boardState, { state })}</Text>
+            <Text role="body" tone="muted">{fill(labels.boardState, { state })}</Text>
             <div ref={ref} className="sg-db-frames" style={{ gap: GAP * scale }}>
                 {BOARD_WIDTHS.map(frame)}
             </div>
@@ -129,7 +129,7 @@ export function Board({ board, model, labels, onOpen }: BoardProps): ReactElemen
     ].filter((fact): fact is string => fact !== null)
     return (
         <div className="sg-db">
-            <Text size="sm" tone="muted">{facts.join(" · ")}</Text>
+            <Text role="body" tone="muted">{facts.join(" · ")}</Text>
             {board.sections.length === 0 ? <Text tone="muted">{labels.boardEmpty}</Text> : null}
             {areas.map((area) => (
                 <div key={area} className="sg-db-area">

@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { Linter } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { rules as commonRules, why as commonWhy } from "@starci/eslint-grammar-core"
+import { COUNTING, rules as commonRules, why as commonWhy } from "@starci/eslint-grammar-core"
 import plugin, { offsetPopGrammarConfig, offsetPopGrammarPackagesConfig, rules, why } from "./index.ts"
 
 test("Offset Pop shares the authoritative Common checks and finding metadata", () => {
@@ -44,11 +44,11 @@ type FactoryInput = Parameters<typeof offsetPopGrammarConfig>[0]
 type RefusedInput = { readonly hfs: Omit<FactoryInput["hfs"], "grammar"> & { readonly grammar: string } }
 const refused = (input: RefusedInput): FactoryInput => input as FactoryInput
 
-test("Offset Pop flat config attaches every inherited rule at error without an override door", () => {
+test("Offset Pop flat config attaches every inherited rule at error without an override door, a counting rule at warn until its entry is deleted", () => {
   const hfs: FactoryInput["hfs"] = { profile: "fe", grammar: "offset-pop", repoRoot: process.cwd(), slotOf: () => null }
   const config = offsetPopGrammarConfig({ hfs })
   const attached = new Map<string, unknown>(config.flatMap((entry) => Object.entries(entry.rules ?? {})))
-  for (const rule of Object.keys(rules)) assert.equal(attached.get(`starci-grammar/${rule}`), "error")
+  for (const rule of Object.keys(rules)) assert.equal(attached.get(`starci-grammar/${rule}`), `starci-grammar/${rule}` in COUNTING ? "warn" : "error", rule)
   assert.ok(config.some((entry) => entry.plugins?.["starci-grammar"] === plugin))
   assert.ok(config.some((entry) => entry.linterOptions?.noInlineConfig === true))
   for (const other of ["core", "starci", "starci-core", "heritage"]) {

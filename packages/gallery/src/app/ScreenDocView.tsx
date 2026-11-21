@@ -21,7 +21,7 @@ function Row({ term, children }: { readonly term: string; readonly children: Rea
     return (
         <div className="sg-row">
             <dt>
-                <Text size="xs" tone="muted" isStrong>
+                <Text role="label.group">
                     {term}
                 </Text>
             </dt>
@@ -36,7 +36,7 @@ const whyProblem = (section: ScreenSection): "missing" | "unclear" | null => (se
 function SectionRows({ section, labels }: { readonly section: ScreenSection; readonly labels: Labels }): ReactElement {
     const problem = whyProblem(section)
     const text = (value: string): ReactElement => (
-        <Text size="sm">
+        <Text role="body">
             <Inline text={value} />
         </Text>
     )
@@ -66,7 +66,7 @@ function SectionRows({ section, labels }: { readonly section: ScreenSection; rea
                         {section.states.map(([name, value]) => (
                             <span key={name} className="sg-state-chip">
                                 <Badge tone={value === null ? "muted" : "accent"}>{name}</Badge>
-                                {value === null ? null : <Text size="xs">{value}</Text>}
+                                {value === null ? null : <Text role="caption">{value}</Text>}
                             </span>
                         ))}
                     </div>
@@ -96,21 +96,21 @@ function AuditTable({ audit, labels }: { readonly audit: ScreenAudit; readonly l
         <div className="sg-explain-body">
             {audit.escalate === null ? null : <Alert tone="negative" title={labels.needsOwner} description={audit.escalate} />}
             <div className="sg-chips">
-                <Text size="sm">{`${labels.auditBuilder}: ${audit.builder}`}</Text>
-                <Text size="sm">{`${labels.auditAuditor}: ${audit.auditor}`}</Text>
+                <Text role="body">{`${labels.auditBuilder}: ${audit.builder}`}</Text>
+                <Text role="body">{`${labels.auditAuditor}: ${audit.auditor}`}</Text>
             </div>
             <div className="sg-audit-scroll">
                 <table className="sg-audit">
                     <thead>
                         <tr>
                             <th scope="col">
-                                <Text size="xs" tone="muted" isStrong>
+                                <Text role="label.group">
                                     {labels.auditLens}
                                 </Text>
                             </th>
                             {audit.rounds.map((round) => (
                                 <th key={round.n} scope="col">
-                                    <Text size="xs" tone="muted" isStrong>
+                                    <Text role="label.group">
                                         {fill(labels.auditRound, { n: round.n })}
                                     </Text>
                                 </th>
@@ -121,7 +121,7 @@ function AuditTable({ audit, labels }: { readonly audit: ScreenAudit; readonly l
                         {LENSES.map((lens) => (
                             <tr key={lens}>
                                 <th scope="row">
-                                    <Text size="sm">{lensLabel(labels, lens)}</Text>
+                                    <Text role="body">{lensLabel(labels, lens)}</Text>
                                 </th>
                                 {audit.rounds.map((round) => {
                                     const cell = round.lenses[lens]
@@ -142,7 +142,7 @@ function AuditTable({ audit, labels }: { readonly audit: ScreenAudit; readonly l
                         <Row key={`${String(round.n)}-${lens}`} term={`${fill(labels.auditRound, { n: round.n })} · ${lensLabel(labels, lens)}`}>
                             <div className="sg-chips">
                                 <Badge tone={VERDICT_TONE[cell.verdict]}>{verdictLabel(labels, cell.verdict)}</Badge>
-                                <Text size="sm">{cell.notes}</Text>
+                                <Text role="body">{cell.notes}</Text>
                             </div>
                         </Row>
                     ))}
@@ -159,7 +159,7 @@ export function ScreenDocView({ doc, screen, labels }: { readonly doc: ScreenDoc
             {screen.auditFlag === null ? null : <Badge tone="danger">{flagLabel(labels, screen.auditFlag)}</Badge>}
             {doc.summary === "" ? null : (
                 <Section title={labels.summary}>
-                    <Text size="sm">
+                    <Text role="body">
                         <Inline text={doc.summary} />
                     </Text>
                 </Section>
@@ -169,7 +169,7 @@ export function ScreenDocView({ doc, screen, labels }: { readonly doc: ScreenDoc
                     <ul className="sg-code">
                         {doc.code.map((file) => (
                             <li key={file}>
-                                <Text size="xs" tone="muted" mono>
+                                <Text role="code" tone="muted">
                                     {file}
                                 </Text>
                             </li>
@@ -198,11 +198,11 @@ export function ScreenDocView({ doc, screen, labels }: { readonly doc: ScreenDoc
                         {doc.considered.map((entry) => (
                             <Row key={entry.option} term={entry.chosen ? labels.chosen : labels.rejected}>
                                 <div className="sg-option">
-                                    <Text size="sm" isStrong={entry.chosen}>
+                                    <Text role={entry.chosen ? "label.item" : "body"}>
                                         {entry.option}
                                     </Text>
                                     {entry.why === "" ? null : (
-                                        <Text size="xs" tone="muted">
+                                        <Text role="caption">
                                             {entry.why}
                                         </Text>
                                     )}

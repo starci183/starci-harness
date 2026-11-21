@@ -11,13 +11,13 @@ export function FlowMap({ model, labels, onOpen }: { readonly model: Model; read
     const step = (id: string) => {
         const screen = model.screens[id]
         return screen === undefined ? (
-            <Text key={id} tone="muted" mono>
+            <Text key={id} role="code" tone="muted">
                 {id}
             </Text>
         ) : (
             <button key={id} type="button" className="sg-step" onClick={() => { onOpen(id) }}>
-                <Text size="sm" isStrong>{cap(screen.title)}</Text>
-                <Text size="xs" tone="muted" mono>{id}</Text>
+                <Text role="label.item">{cap(screen.title)}</Text>
+                <Text role="code" tone="muted">{id}</Text>
             </button>
         )
     }

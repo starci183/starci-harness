@@ -152,7 +152,7 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
                 <div className="sg-columns" data-columns={columns}>
                     <figure>
                         <figcaption>
-                            <Text size="xs" tone="muted" isStrong>
+                            <Text role="label.group">
                                 {designTitle}
                             </Text>
                         </figcaption>
@@ -160,7 +160,7 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
                     </figure>
                     <figure>
                         <figcaption>
-                            <Text size="xs" tone="muted" isStrong>
+                            <Text role="label.group">
                                 {labels.shot}
                             </Text>
                         </figcaption>
@@ -173,7 +173,7 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
             {mode === "design" ? (
                 <figure className="sg-single">
                     <figcaption>
-                        <Text size="xs" tone="muted" isStrong>
+                        <Text role="label.group">
                             {designTitle}
                         </Text>
                     </figcaption>
@@ -208,7 +208,7 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
             {mode === "shot" ? (
                 <figure className="sg-single" style={width === "390" ? { maxWidth: PHONE_STAGE } : undefined}>
                     <figcaption>
-                        <Text size="xs" tone="muted" isStrong>
+                        <Text role="label.group">
                             {labels.shot}
                         </Text>
                     </figcaption>

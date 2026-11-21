@@ -19,7 +19,7 @@ export function Legend({ labels }: { readonly labels: Labels }): ReactElement {
                 {ROWS.map((status) => (
                     <li key={status}>
                         <StatusDot tone={dotTone(status)} aria-label={statusLabel(labels, status)} />
-                        <Text size="sm">{statusLabel(labels, status)}</Text>
+                        <Text role="body">{statusLabel(labels, status)}</Text>
                     </li>
                 ))}
             </ul>

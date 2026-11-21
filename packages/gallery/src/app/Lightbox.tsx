@@ -82,7 +82,7 @@ export function Lightbox({ screen, kind, width, labels, onClose }: LightboxProps
                     <Button intent="neutral" size="sm" isDisabled={step === 0} onPress={() => { clamp(step - 1) }}>
                         {labels.zoomOut}
                     </Button>
-                    <Text size="sm" tabular>{`${String(Math.round(zoom * 100))}%`}</Text>
+                    <Text role="body" tabular>{`${String(Math.round(zoom * 100))}%`}</Text>
                     <Button intent="neutral" size="sm" isDisabled={step === STEPS.length - 1} onPress={() => { clamp(step + 1) }}>
                         {labels.zoomIn}
                     </Button>

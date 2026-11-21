@@ -12,7 +12,7 @@ import test from "node:test"
 import ts from "typescript"
 import { TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
 import { CODEMODS, codemodId, codemodsBetween } from "../index.mts"
-import { MARK, ROLES, mapClassList, roleClass, runV0540, transformSource, v0540Markdown } from "./index.mts"
+import { MARK, ROLES, mapClassList, roleClass, runV0540, sourceRoots, transformSource, v0540Markdown } from "./index.mts"
 
 const FIXTURES = fileURLToPath(new URL("./fixtures/", import.meta.url))
 const read = (side: "before" | "after", name: string): string => readFileSync(join(FIXTURES, side, name), "utf8")
@@ -76,4 +76,13 @@ test("codemods are named after their Grammar version and run in version order be
     assert.deepEqual(codemodsBetween("0.52.3", "0.54.0").map((c) => c.id), ["v0540"])
     assert.deepEqual(codemodsBetween("0.54.0", "0.55.0").map((c) => c.id), [])
     assert.deepEqual(codemodsBetween("0.53.0", "0.53.9").map((c) => c.id), [])
+})
+
+test("the source folders are every app and package src on either layout, the app's gallery workspace and a package's own src", (t) => {
+    const root = mkdtempSync(join(tmpdir(), "v0540-roots-"))
+    t.after(() => {
+        rmSync(root, { recursive: true, force: true })
+    })
+    for (const dir of ["src", "gallery/src", "fe/apps/web/src", "packages/ui/src", "fe/apps/docs"]) mkdirSync(join(root, dir), { recursive: true })
+    assert.deepEqual(sourceRoots(root).map((dir) => dir.slice(root.length + 1).replaceAll("\\", "/")).sort(), ["fe/apps/web/src", "gallery/src", "packages/ui/src", "src"])
 })

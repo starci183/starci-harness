@@ -72,7 +72,7 @@ export function App(): ReactElement {
                     <div className="sg-brand">
                         <div className="sg-title">
                             <Heading level={1}>{fill(labels.title, { app: data.app })}</Heading>
-                            <Text size="xs" tone="muted" tabular>
+                            <Text role="caption" tabular>
                                 {model.counts.hidden > 0 ? `${summary()} · ${fill(labels.hidden, { n: model.counts.hidden })}` : summary()}
                             </Text>
                         </div>
@@ -126,7 +126,7 @@ export function App(): ReactElement {
                             ) : null}
                             {hasDesign && hasShot ? null : (
                                 <div className="sg-reason">
-                                    <Text size="sm" tone="muted">
+                                    <Text role="body" tone="muted">
                                         {hasDesign ? labels.reasonNoShot : labels.reasonNoDesign}
                                     </Text>
                                     </div>

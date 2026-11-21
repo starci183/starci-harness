@@ -323,9 +323,10 @@ const walk = (dir: string, out: string[]): void => {
     }
 }
 
-/** The front-end source folders of an app checkout: `src` of every app and workspace package, on either layout (root or `fe/`). */
+/** The front-end source folders of an app checkout: `src` of every app and workspace package, on either layout (root or `fe/`), the app's gallery workspace, and a package's own `src`. */
 export function sourceRoots(root: string): string[] {
     const roots: string[] = []
+    for (const own of [join(root, "src"), join(root, "gallery", "src")]) if (existsSync(own) && statSync(own).isDirectory()) roots.push(own)
     for (const base of [root, join(root, "fe")]) {
         for (const group of ["apps", "packages"]) {
             const dir = join(base, group)

@@ -34,12 +34,12 @@ function Rows({ region, labels }: { readonly region: Region; readonly labels: La
                 return value === undefined || value === "" ? null : (
                     <div key={field} className="sg-row">
                         <dt>
-                            <Text size="xs" tone="muted" isStrong>
+                            <Text role="label.group">
                                 {field}
                             </Text>
                         </dt>
                         <dd>
-                            <Text size="sm">
+                            <Text role="body">
                                 <Inline text={value} />
                             </Text>
                         </dd>
@@ -68,17 +68,17 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                     <Badge isDot tone={TONE[screen.status]}>
                         {statusLabel(labels, screen.status, screen.designStatus, screen.pending)}
                     </Badge>
-                    <Text size="xs" tone="muted" mono>
+                    <Text role="code" tone="muted">
                         {screen.id}
                     </Text>
                 </div>
                 {screen.status === "unrecorded" || screen.status === "codedOnly" ? (
-                    <Text size="sm" tone="muted">
+                    <Text role="body" tone="muted">
                         {labels.unrecordedHint}
                     </Text>
                 ) : null}
                 {screen.route === null ? null : (
-                    <Text size="sm" tone="muted" mono>
+                    <Text role="code" tone="muted">
                         {`${labels.route}: ${screen.route}`}
                     </Text>
                 )}
@@ -105,13 +105,13 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                             <div key={index} className="sg-row">
                                 {row.label === null ? null : (
                                     <dt>
-                                        <Text size="xs" tone="muted" isStrong>
+                                        <Text role="label.group">
                                             {row.label}
                                         </Text>
                                     </dt>
                                 )}
                                 <dd>
-                                    <Text size="sm">
+                                    <Text role="body">
                                         <Inline text={row.text} />
                                     </Text>
                                 </dd>
