@@ -155,7 +155,7 @@ test('CI: a declared-off gate renders as one echo line that says so, a job whose
     assert.match(ci.jobs.verdict.steps[0].run, /expect lint idle/u);
     // The off gates are skipped jobs, and a skipped need skips every job after it: the release deploy (NIVO v0.0.8) must not hang on them.
     assert.equal(ci.jobs['deploy-production'].if, "${{ !cancelled() && needs.plan.outputs.release == 'true' && needs.verdict.result == 'success' }}");
-    assert.match(ci.jobs.verdict.steps[0].run, /deploy: skipped because the verdict failed/u);
+    assert.match(ci.jobs.verdict.steps[0].run, /deploy: blocked, because the verdict failed/u);
     assert.match(ci.jobs.plan.steps.find((step: Doc) => step.id === 'plan').run, /gate lint: off \(declared:/u);
   }
 });
