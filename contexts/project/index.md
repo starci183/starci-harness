@@ -5,7 +5,7 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 22 KB — Read this file first, in this repository or in any app the harness drives.
+- [README.md](../README.md) · 21 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 10 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
@@ -153,7 +153,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 183 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUTTON-GROUND-CONTRAST, DNA-COMMON-BUTTON-ONE-LINE and 271 more
-- [grammars/contributing.md](../grammars/contributing.md) · 15 KB — How a component enters `@starci/grammar`, or a prop enters a component.
+- [grammars/contributing.md](../grammars/contributing.md) · 14 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
@@ -317,12 +317,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/situations.md](../ui/situations.md) · 22 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
-  - sections: The vendor reference is generated, not kept here · Pin
+  - sections: The vendor reference is generated, not kept here
 - [vendor/heroui.md](../vendor/heroui.md) · 11 KB — HeroUI v3 is a set of compound components over React Aria: each component is a root plus named parts, the behaviour and accessibility come from React Aria, and the paint is vendor ...
   - sections: Button · ColorSwatch · ButtonGroup · ToggleButtonGroup · Tabs · Chip · Input · Select · Card · Modal · Dropdown · Table · Alert · Avatar · Small members · How sizes align
 - [vendor/parity.yaml](../vendor/parity.yaml) · 9 KB — What a grammar must keep of HeroUI and what it may change.
   - ids: accordion, alert, alert-dialog, avatar, avatar-group, badge, breadcrumbs, button, button-group, calendar, card, checkbox, chip, close-button, color-swatch, combo-box, date-field, date-picker, date-range-picker, disclosure, drawer, dropdown, fieldset, form and 34 more
-- [vendor/pins.yaml](../vendor/pins.yaml) · 1 KB — The digests the parity gate compares against: a pinned file that changes is red until its new sha256 is recorded here, in the commit that changes it, so the change shows in review.
-  - ids: knowledge-gates.ts, sha256
 - [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 12 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
-  - ids: data-slot, sha256
+  - ids: data-slot
