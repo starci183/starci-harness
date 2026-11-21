@@ -15,7 +15,6 @@ import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-
  *   - an `endContent` that is an arrow: an element named `Arrow*` or `ChevronRight*`, or any element whose `source` / `glyph` / `name`
  *     is such an identifier or a string that names `arrow`, `chevron-right` or `chevron-end`;
  *   - `endArrow` together with `startGlyph` or `startContent` (the Button type refuses it as well).
- * The button-icon law (`button-icon-primary-only`) lives beside it: only a primary Button (`intent="commit"`) carries `startGlyph` or `startContent`.
  * `Button` takes the label as its children only, so no string label prop exists to read. `IconButton` has no label to type an arrow
  * in and no `endArrow`; `TextAction` takes `endContent` but not `endArrow`, so neither is judged.
  */
