@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
-import { found, readText } from './read.mjs';
+import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
 import { isPlainObject as record } from '../../../engine/plain-object.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';

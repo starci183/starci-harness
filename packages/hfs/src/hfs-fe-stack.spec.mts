@@ -7,7 +7,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { feStackAllowlistFindings } from '../runtime/scripts/hfs/rules/fe-stack.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
