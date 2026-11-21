@@ -189,7 +189,7 @@ images:
 # vendor repository for, by OS family; the one place it is raised.
 hosts:
   docker-ce: {version: 29.9.3, why: "Docker Engine of every managed VPS (docker-ce, docker-ce-cli and containerd.io from download.docker.com), the engine Docker Desktop of the harness host runs too"}
-# Runtime peers a driver needs and npm does not install for it (R111): an app whose root package.json depends on every
+# Runtime peers a driver needs and npm does not install for it: an app whose root package.json depends on every
 # package of `when` (at `major` when named) also declares `requires`. A missing peer passes the type check and the unit
 # specs and fails only when the app boots, so an entry is added the day such a boot failure is found.
 peers:
