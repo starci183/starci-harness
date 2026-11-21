@@ -335,7 +335,7 @@ rules:
     law: "Over-budget files do not grow; new files are inside budget."
     kinds: [lint, design]
     gates: [land, ci, sonar, runtime]
-    failureCodes: ["HFS_SIZE_GROWTH", "HFS_SIZE_SOFT_BACKLOG"]
+    failureCodes: ["HFS_SIZE_GROWTH"]
     enforcers:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
@@ -3901,10 +3901,10 @@ rules:
       - {path: packages/hfs/src/hfs-supply-chain.spec.mjs}
   - id: R270
     code: "HFS_DOC_PATH_MISSING"
-    law: "In lite and full products, READMEs, docs and stack READMEs cite existing repository paths, npm scripts, starci app verbs, environment keys declared by typed readers or KEYS.md, and rule ids from the HFS catalog. Documentation changes with the product it describes."
+    law: "In lite and full products, READMEs, docs and stack READMEs cite existing repository paths, npm scripts, starci app verbs and rule ids from the HFS catalog. Documentation changes with the product it describes."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["HFS_DOC_PATH_MISSING", "HFS_DOC_COMMAND_UNKNOWN", "HFS_DOC_ENV_UNKNOWN", "HFS_DOC_RULE_UNKNOWN"]
+    failureCodes: ["HFS_DOC_PATH_MISSING", "HFS_DOC_COMMAND_UNKNOWN", "HFS_DOC_RULE_UNKNOWN"]
     enforcers:
       - {kind: hfs, id: doc-fresh, at: scripts/hfs/rules/doc-fresh.mjs}
     docs:

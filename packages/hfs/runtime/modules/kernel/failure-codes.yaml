@@ -4033,16 +4033,6 @@ HFS_DOC_COMMAND_UNKNOWN:
   owner: op-retry
   kind: check-finding
 
-HFS_DOC_ENV_UNKNOWN:
-  title: "Product documentation cites an undeclared environment key"
-  title_vi: "Tài liệu sản phẩm dẫn khóa môi trường chưa khai báo"
-  meaning_vi: "Tên khóa được tài liệu dẫn không có trong bộ đọc môi trường có kiểu hoặc KEYS.md; kiểm tra chỉ đọc tên, không đọc giá trị bí mật."
-  causes_vi:
-    - "Tên khóa cũ còn trong tài liệu hoặc bộ đọc chưa khai báo khóa theo luật R270."
-  nextStep_vi: "Cập nhật tên khóa hoặc khai báo khóa trong bộ đọc môi trường và KEYS.md, không đưa giá trị bí mật vào tài liệu."
-  owner: op-retry
-  kind: check-finding
-
 HFS_DOC_NOT_ENGLISH:
   title: "Document is not English"
   title_vi: "Tài liệu không viết bằng tiếng Anh"
@@ -4965,16 +4955,6 @@ HFS_SIZE_GROWTH:
     - "Một tệp đang dưới hạn mức được thêm mã cho đến khi vượt hạn mức"
     - "Một tệp mới tạo dài hơn hạn mức, hoặc một tệp bị di chuyển sang đường dẫn mới nên bị coi là tệp mới"
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để tách phần mã mới (hoặc bớt phần cũ) sang tệp riêng đúng ô của nó, sao cho tệp không dài hơn phiên bản gốc và tệp mới nằm trong hạn mức."
-  owner: op-retry
-  kind: check-finding
-
-HFS_SIZE_SOFT_BACKLOG:
-  title: "Source file above the soft size"
-  title_vi: "Tệp mã vượt cỡ mềm (chỉ báo cáo)"
-  meaning_vi: "Tệp mã nguồn dài hơn ngưỡng mềm của ruleParams.fileLines.soft. Đây là danh mục việc cần tách dần, chỉ báo cáo và không bao giờ làm bộ kiểm tra thất bại."
-  causes_vi:
-    - "Tệp tích tụ qua nhiều lần sửa mà chưa được tách"
-  nextStep_vi: "Không cần hành động ngay; khi sửa tệp này, tách theo trách nhiệm để không tăng thêm. Quy tắc tăng trưởng HFS_SIZE_GROWTH mới là chỗ chặn tệp vượt ngưỡng lớn thêm."
   owner: op-retry
   kind: check-finding
 

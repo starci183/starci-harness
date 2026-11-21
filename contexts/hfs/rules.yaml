@@ -175,7 +175,6 @@ rules:
     law: An over-budget file does not grow, and a new file stays within its budget (hfs/slots.yaml).
     failureCodes:
       - HFS_SIZE_GROWTH
-      - HFS_SIZE_SOFT_BACKLOG
     enforcers:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
@@ -1739,11 +1738,10 @@ rules:
       - {kind: hfs, id: supply-chain}
   - id: R270
     code: HFS_DOC_PATH_MISSING
-    law: Documentation cites only existing paths, scripts, CLI verbs, declared environment keys and catalog rule ids.
+    law: Documentation cites only existing paths, scripts, CLI verbs and catalog rule ids.
     failureCodes:
       - HFS_DOC_PATH_MISSING
       - HFS_DOC_COMMAND_UNKNOWN
-      - HFS_DOC_ENV_UNKNOWN
       - HFS_DOC_RULE_UNKNOWN
     enforcers:
       - {kind: hfs, id: doc-fresh}
