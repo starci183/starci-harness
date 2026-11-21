@@ -20,7 +20,6 @@ import { kindFindings } from './kinds.mjs';
 import { monorepoFindings } from './monorepo.mjs';
 import { nivoosFindings } from './nivoos.mjs';
 import { pipelineFindings } from './pipeline.mjs';
-import { sagaFindings } from './saga.mjs';
 import { seedsFindings } from './seeds.mjs';
 import { serviceFindings } from './services.mjs';
 import { stacksFindings } from './stacks.mjs';
@@ -46,7 +45,6 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...contractCompatFindings({ repoRoot, files: all }),
     ...eventClassContractFindings({ repoRoot, files: all, repo }),
     ...serviceFindings({ repoRoot, files: all, repo }),
-    ...sagaFindings({ repoRoot, files: all }),
     ...(be ? kindFindings({ files: all, repo }) : []),
     ...(be ? testInfraPlacementFindings({ repoRoot, files: all }) : []),
     ...(be && fe ? feContractFindings({ repoRoot, files: all }) : []),

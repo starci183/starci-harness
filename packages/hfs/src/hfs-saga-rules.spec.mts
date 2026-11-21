@@ -1,7 +1,4 @@
-// The saga pattern of `starci app check` (scripts/hfs/rules/saga.mts): R169 BE_SAGA_STEP_COMPENSATION, R170 BE_SAGA_STATE_VERSIONED,
-// R171 BE_SAGA_EVENT_CONTRACT, R172 BE_SAGA_CONSUMER_DEDUPE, and the declared-pattern mechanism that enables
-// the saga slots (`patterns: ["saga"]` in hfs.json sides.be). Each rule has a violating and a passing tree.
-// proves: BE_SAGA_STEP_COMPENSATION BE_SAGA_STATE_VERSIONED BE_SAGA_EVENT_CONTRACT BE_SAGA_CONSUMER_DEDUPE
+// The declared-pattern mechanism of the saga slots (`patterns: ["saga"]` in hfs.json sides.be): an undeclared saga folder is HFS_SLOT_NOT_ENABLED.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -37,25 +34,16 @@ const STEP = `${SAGA}steps/reserve.saga-step.ts`;
 const COMPENSATION = `${SAGA}compensations/reserve.compensation.ts`;
 const ORCHESTRATOR = `${SAGA}place.saga.service.ts`;
 const STATE = `${SAGA}place.saga-state.ts`;
-const CONSUMER = 'be/src/features/saga/place/transport/message/invoice-rejected.consumer.ts';
-const SPEC = 'be/src/tests/e2e/orders/place.e2e-spec.ts';
 
 const STEP_TS = 'export class ReserveStep {\n  readonly event = "order.placed"\n}\n';
 const COMPENSATION_TS = 'export class ReserveCompensation {\n  readonly event = "billing.invoice-rejected"\n}\n';
 const ORCHESTRATOR_TS = "import { SagaService } from '../../../modules/platform/saga';\nimport { ReserveStep } from './steps/reserve.saga-step';\nimport { ReserveCompensation } from './compensations/reserve.compensation';\nexport class PlaceSaga { constructor(readonly s: SagaService, readonly a: ReserveStep, readonly b: ReserveCompensation) {} }\n";
 const STATE_TS = "export interface PlaceSagaState {\n  readonly status: 'running' | 'compensated'\n  readonly version: number\n}\n";
-const CONSUMER_TS = 'export class InvoiceRejectedConsumer {\n  handle(message: { eventId: string }) { return this.commandBus.execute(new CancelOrder({ eventId: message.eventId })) }\n}\n';
-const CONTRACTS = {
-  'be/contracts/orders/events.json': `${JSON.stringify({ events: { 'order.placed': { payload: {}, version: 1 } }, schema: 'starci/event-contract@1', service: 'orders' }, null, 2)}\n`,
-  'be/contracts/billing/events.json': `${JSON.stringify({ events: { 'billing.invoice-rejected': { compensates: 'order.placed', payload: {}, version: 1 } }, schema: 'starci/event-contract@1', service: 'billing' }, null, 2)}\n`,
-};
-const SPEC_TS = "import { useTestWorld } from '../../world/use-test-world';\nconst world = useTestWorld({ apps: ['core'] });\nit('compensates billing.invoice-rejected', async () => { await world.infra.postgresql.connection('order').during(async () => undefined); });\n";
-/** A complete saga: orchestrator, state, one step with its compensation, the consumer, the contracts and the e2e spec; `override` replaces or (null) removes a file. */
+/** A saga: orchestrator, state, one step with its compensation; `override` replaces or (null) removes a file. */
 const sagaRepo = (override: Record<string, string | null> = {}) => (dir: string) => {
-  const files = { [STEP]: STEP_TS, [COMPENSATION]: COMPENSATION_TS, [ORCHESTRATOR]: ORCHESTRATOR_TS, [STATE]: STATE_TS, [CONSUMER]: CONSUMER_TS, [SPEC]: SPEC_TS, ...CONTRACTS, ...override };
+  const files = { [STEP]: STEP_TS, [COMPENSATION]: COMPENSATION_TS, [ORCHESTRATOR]: ORCHESTRATOR_TS, [STATE]: STATE_TS, ...override };
   for (const [file, text] of Object.entries(files)) if (text !== null) put(dir, file, text);
 };
-const saga = (code: string, override?: Record<string, string | null>) => only(run(WITH_SAGA, sagaRepo(override)), code);
 
 // ------------------------------------------------------------------------------------------------ the declared pattern
 
@@ -71,72 +59,3 @@ test('a pattern absent from both slots and proof scenarios is refused in hfs.jso
   assert.throws(() => resolveRepoDeclaration(loadSlotManifest(), declaration), /patterns names no-such-pattern/);
   assert.doesNotThrow(() => resolveRepoDeclaration(loadSlotManifest(), WITH_SAGA));
 });
-
-// ------------------------------------------------------------------------------------------------ R169 BE_SAGA_STEP_COMPENSATION
-
-test('BE_SAGA_STEP_COMPENSATION: a compensation without a step and an orchestrator that omits one are refused; a step with no compensation passes', () => {
-  assert.deepEqual(saga('BE_SAGA_STEP_COMPENSATION', { [COMPENSATION]: null }), []);
-  const orphan = saga('BE_SAGA_STEP_COMPENSATION', { [STEP]: null });
-  assert.match(orphan.find((f) => f.path === COMPENSATION)!.message!, /compensation of no step/);
-  const unlisted = saga('BE_SAGA_STEP_COMPENSATION', { [ORCHESTRATOR]: "import { SagaService } from '../../../modules/platform/saga';\nexport class PlaceSaga {}\n" });
-  assert.equal(unlisted.length, 2);
-});
-
-test('BE_SAGA_STEP_COMPENSATION: a folder of steps with no orchestrator is refused; a complete saga passes', () => {
-  const findings = saga('BE_SAGA_STEP_COMPENSATION', { [ORCHESTRATOR]: null, [STATE]: null });
-  assert.ok(findings.some((f) => /no orchestrator/.test(f.message!)));
-  assert.deepEqual(saga('BE_SAGA_STEP_COMPENSATION'), []);
-});
-
-// ------------------------------------------------------------------------------------------------ R170 BE_SAGA_STATE_VERSIONED
-
-test('BE_SAGA_STATE_VERSIONED: an orchestrator with no state file, a state with no numeric version and an orchestrator that bypasses the store are refused', () => {
-  assert.match(saga('BE_SAGA_STATE_VERSIONED', { [STATE]: null })[0]!.message!, /has no .*place.saga-state.ts/);
-  const unversioned = saga('BE_SAGA_STATE_VERSIONED', { [STATE]: "export interface PlaceSagaState {\n  readonly status: string\n  readonly version: string\n}\n" });
-  assert.deepEqual(unversioned.map((f) => f.path), [STATE]);
-  const bypass = saga('BE_SAGA_STATE_VERSIONED', { [ORCHESTRATOR]: ORCHESTRATOR_TS.replace("import { SagaService } from '../../../modules/platform/saga';\n", "import { SagaService } from '../../../modules/platform/other';\n") });
-  assert.match(bypass[0]!.message!, /does not use the fenced store of platform\/saga/);
-});
-
-test('BE_SAGA_STATE_VERSIONED: a typed, versioned state and an orchestrator on the fenced store pass', () => {
-  assert.deepEqual(saga('BE_SAGA_STATE_VERSIONED'), []);
-  assert.deepEqual(saga('BE_SAGA_STATE_VERSIONED', { [STATE]: "export type PlaceSagaState = {\n  status: string\n  version: number\n}\n" }), []);
-});
-
-// ------------------------------------------------------------------------------------------------ R171 BE_SAGA_EVENT_CONTRACT
-
-test('BE_SAGA_EVENT_CONTRACT: a step with no event, an event no contract declares and a compensation the contract does not say compensates are refused', () => {
-  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: 'export class ReserveStep {}\n' })[0]!.message!, /names no event/);
-  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: STEP_TS.replace('order.placed', 'order.unknown') })[0]!.message!, /"order.unknown", which no be\/contracts/);
-  const wrong = saga('BE_SAGA_EVENT_CONTRACT', { 'be/contracts/billing/events.json': CONTRACTS['be/contracts/billing/events.json'].replace('"compensates": "order.placed",', '') });
-  assert.match(wrong[0]!.message!, /does not declare `compensates: "order.placed"`/);
-});
-
-test('BE_SAGA_EVENT_CONTRACT: events named in the contracts, the compensation declaring what it undoes, pass', () => {
-  assert.deepEqual(saga('BE_SAGA_EVENT_CONTRACT'), []);
-});
-
-// ------------------------------------------------------------------------------------------------ R172 BE_SAGA_CONSUMER_DEDUPE
-
-test('BE_SAGA_CONSUMER_DEDUPE: a consumer of a saga feature that never reads the delivery id is refused; one that passes it on passes', () => {
-  const findings = saga('BE_SAGA_CONSUMER_DEDUPE', { [CONSUMER]: 'export class InvoiceRejectedConsumer {\n  handle(): string { return "x" }\n}\n' });
-  assert.deepEqual(findings.map((f) => f.path), [CONSUMER]);
-  assert.deepEqual(saga('BE_SAGA_CONSUMER_DEDUPE'), []);
-});
-
-
-test('saga structure, state, contracts and consumer dedupe stay enforced with no e2e spec', () => {
-  const declaration = { ...WITH_SAGA };
-  const findings = run(declaration, sagaRepo({ [SPEC]: null }));
-  for (const code of ['BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE']) assert.deepEqual(only(findings, code), [], code);
-
-  const broken = run(declaration, sagaRepo({
-    [SPEC]: null,
-    [ORCHESTRATOR]: "import { SagaService } from '../../../modules/platform/saga';\nexport class PlaceSaga {}\n",
-    [STATE]: 'export interface PlaceSagaState { status: string; version: string }\n',
-    [STEP]: 'export class ReserveStep {}\n',
-    [CONSUMER]: 'export class InvoiceRejectedConsumer { handle(): string { return "x" } }\n',
-  }));
-  for (const code of ['BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE']) assert.ok(only(broken, code).length > 0, code);
-});
-

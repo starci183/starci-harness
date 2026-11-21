@@ -1276,34 +1276,6 @@ rules:
       - BE_SERVICE_ISOLATION
     enforcers:
       - {kind: eslint-be, id: service-isolation}
-  - id: R169
-    code: BE_SAGA_STEP_COMPENSATION
-    law: A declared saga is one folder whose orchestrator imports every step and every compensation; a compensation (the optional declared undo, pressed by a person and run as a forward step) has the step of the same name, and a step needs none.
-    failureCodes:
-      - BE_SAGA_STEP_COMPENSATION
-    enforcers:
-      - {kind: hfs, id: saga-step-compensation}
-  - id: R170
-    code: BE_SAGA_STATE_VERSIONED
-    law: Every saga orchestrator has a versioned state type moved only through the fenced store of `platform/saga`.
-    failureCodes:
-      - BE_SAGA_STATE_VERSIONED
-    enforcers:
-      - {kind: hfs, id: saga-state-versioned}
-  - id: R171
-    code: BE_SAGA_EVENT_CONTRACT
-    law: A saga step and its compensation each name an event declared in a vendored contract, and the compensation's event declares what it compensates.
-    failureCodes:
-      - BE_SAGA_EVENT_CONTRACT
-    enforcers:
-      - {kind: hfs, id: saga-event-contract}
-  - id: R172
-    code: BE_SAGA_CONSUMER_DEDUPE
-    law: A saga consumer passes the delivery's `eventId` to the command it dispatches.
-    failureCodes:
-      - BE_SAGA_CONSUMER_DEDUPE
-    enforcers:
-      - {kind: hfs, id: saga-consumer-dedupe}
   - id: R174
     code: BE_CONTEXT_OWNER
     law: Each `hfs.json` connection is a bounded context owned by one api or worker app; an app composes only its own contexts, and the migrate and cli apps compose all.

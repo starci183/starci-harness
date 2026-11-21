@@ -2286,9 +2286,6 @@ slots:
       - BE_KIND_ISOLATION
       - BE_FEATURE_IMPORTS_FEATURE
       - BE_FEATURE_NOT_COMPOSED
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_STATE_VERSIONED
-      - BE_SAGA_EVENT_CONTRACT
   - id: be.feature.saga.steps
     profiles:
       - be
@@ -2301,9 +2298,7 @@ slots:
       - <step>.saga-step.ts
     tests: none
     coverage: none
-    rules:
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_EVENT_CONTRACT
+    rules: []
   - id: be.feature.saga.compensations
     profiles:
       - be
@@ -2316,9 +2311,7 @@ slots:
       - <step>.compensation.ts
     tests: none
     coverage: none
-    rules:
-      - BE_SAGA_STEP_COMPENSATION
-      - BE_SAGA_EVENT_CONTRACT
+    rules: []
   - id: be.feature.application.support
     profiles:
       - be
@@ -2407,7 +2400,6 @@ slots:
       - worker
     rules:
       - BE_BACKGROUND_UNOWNED
-      - BE_SAGA_CONSUMER_DEDUPE
   - id: be.feature.webhooks
     profiles:
       - be

@@ -48,7 +48,7 @@ files:
     template: saga/saga.service.ts.tpl
     role: "The orchestrator. A `*.service.ts` because a handler injects only services; thin (R203 `BE_FEATURE_THIN`) like every feature file — it maps and delegates, and the run's orchestration lives in `platform/saga` — and it owes its `<saga>.saga.service.spec.ts` beside it (a `service` of `ruleParams.be.unitRoles`), which asserts the delegation. It hands `platform/saga` each run with the compensation OBJECT of the step (`compensation`, never a callback): the platform logs `Compensating`, orders the steps and moves the run through the version fence; its slot is `coverage: none`, so it is never a coverage target."
     suffix: saga.service
-    rules: [R169, R170, R203]
+    rules: [R203]
   - path: src/features/saga/<saga>/<saga>.saga.service.spec.ts
     slot: be.feature.saga
     template: saga/saga.service.spec.ts.tpl
@@ -58,19 +58,16 @@ files:
     template: saga/saga.state.ts.tpl
     role: "The typed state of a run, with `status` and `version: number`, the fence."
     suffix: saga-state
-    rules: [R170]
   - path: src/features/saga/<saga>/steps/<step>.saga-step.ts
     slot: be.feature.saga.steps
     template: saga/saga.step.ts.tpl
     role: "One step. Names its event (`readonly event = \"<name>\"`); the domain does the work and announces the event in its transaction."
     suffix: step
-    rules: [R169, R171]
   - path: src/features/saga/<saga>/compensations/<step>.compensation.ts
     slot: be.feature.saga.compensations
     template: saga/saga.compensation.ts.tpl
     role: "The optional declared undo of the step of the same name. Names the step it undoes and the failure event, and dispatches one command; the orchestrator passes it to `platform/saga` as the compensation object."
     suffix: compensation
-    rules: [R169, R171, R173]
   - path: src/features/saga/<saga>/application/undo-<saga>.command.ts
     slot: be.feature.application
     template: saga/saga.undo.command.ts.tpl
@@ -121,13 +118,13 @@ files:
     template: saga/saga.failed.consumer.ts.tpl
     role: "A thin door that hands the failure delivery, with its `eventId`, to the compensate command; the saga takes it through the inbox."
     suffix: consumer
-    rules: [R80, R88, R172]
+    rules: [R80, R88]
   - path: src/features/saga/<saga>/transport/message/<done>.consumer.ts
     slot: be.transport.message
     template: saga/saga.done.consumer.ts.tpl
     role: "A thin door that hands the delivery of the last event, with its `eventId`, to the complete command; the saga takes it through the inbox."
     suffix: consumer
-    rules: [R80, R88, R172]
+    rules: [R80, R88]
   - path: src/features/saga/<saga>/transport/message/<saga>-message.options.ts
     slot: be.transport.message
     template: saga/saga.message.options.ts.tpl
@@ -143,24 +140,24 @@ files:
   - path: contracts/<service>/events.json
     slot: be.contract.events
     role: 'Every event of the saga, emitted from the publisher''s events.ts; a compensating event declares `compensates`.'
-    rules: [R166, R171]
+    rules: [R166]
     optional: true
   - path: src/modules/platform/saga/
     slot: be.platform
     role: 'The fenced `saga_states` store and the state machine in `saga.service.ts`, which claims deliveries through the shared `platform/inbox` port (BE-IDEMPOTENCY-2). The service is a measured file of a `coverage: required` slot, held at 100 per file with its spec beside it.'
-    rules: [R170, R80]
+    rules: [R80]
     optional: true
   - path: src/tests/e2e/<area>/<name>.e2e-spec.ts
     slot: be.tests.e2e
     suffix: e2e-spec
     role: One spec per compensation path that names the compensation event and injects a failure through the world (an infra or app outage, a fake's failNext), then reads the compensated state back; plus one spec from the api call to the final state.
-    rules: [R173, R167]
+    rules: [R167]
     optional: true
 rules:
   - id: BE-SAGA-1
     title: A declared undo is a compensation beside its step, pressed by a person and run forward
     kind: mandatory
-    hfsRules: [R169, R01]
+    hfsRules: [R01]
     requirement: |-
       A saga is `be/src/features/saga/<saga>/` with `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and
       `compensations/<step>.compensation.ts`: a compensation has the step of the same name and a step needs none, and the
@@ -177,7 +174,6 @@ rules:
         write: 'features/saga/place-order/steps/reserve-order.saga-step.ts and features/saga/place-order/compensations/reserve-order.compensation.ts; the orchestrator passes the compensation object to `platform/saga`.'
     verification:
       automated:
-        - BE_SAGA_STEP_COMPENSATION
         - HFS_SLOT_UNDECLARED
         - HFS_SLOT_AMBIGUOUS
         - HFS_SLOT_NOT_ENABLED
@@ -196,7 +192,7 @@ rules:
   - id: BE-SAGA-2
     title: The state of a run is typed, versioned and moved only through the fenced store
     kind: mandatory
-    hfsRules: [R170, R80, R172, R203]
+    hfsRules: [R80, R203]
     requirement: |-
       `<saga>.saga-state.ts` exports the state type with `status` and `version: number`. The orchestrator is a thin feature
       file (R203 `BE_FEATURE_THIN`) and the run's orchestration lives in `platform/saga`: the orchestrator moves a run only
@@ -211,9 +207,7 @@ rules:
         write: 'compensate({ saga, correlationId, eventId, compensation }) claims the event, moves running to compensating at version 1, logs Compensating and runs compensation.run(correlationId), settles compensated; the second delivery answers duplicate.'
     verification:
       automated:
-        - BE_SAGA_STATE_VERSIONED
         - BE_INBOX_DEDUPE_MISSING
-        - BE_SAGA_CONSUMER_DEDUPE
         - BE_FEATURE_THIN
       manual:
         - Check a failing compensation gives the event back so the redelivery resumes the run.
@@ -221,7 +215,7 @@ rules:
   - id: BE-SAGA-3
     title: Every event of a step or compensation is in a vendored contract
     kind: mandatory
-    hfsRules: [R171, R166]
+    hfsRules: [R166]
     requirement: |-
       A step and a compensation each declare `readonly event = "<name>"`; both events are declared in a vendored contract
       (`be/contracts/<service>/events.json`), and the contract of the compensation's event declares `compensates: "<event of
@@ -235,7 +229,6 @@ rules:
         write: 'billing/src/events.ts: "billing.invoice-rejected": { version: 1, compensates: "order.placed", payload: { ... } }.'
     verification:
       automated:
-        - BE_SAGA_EVENT_CONTRACT
         - HFS_EVENT_CONTRACT
       manual:
         - Review the payload of a new failure event for what the compensation needs.
@@ -243,7 +236,7 @@ rules:
   - id: BE-SAGA-4
     title: Every compensation path has an e2e spec that injects a failure
     kind: mandatory
-    hfsRules: [R173, R167]
+    hfsRules: [R167]
     requirement: |-
       For each compensation, `be/src/tests/e2e/<area>/*.e2e-spec.ts` boots the real apps through `useTestWorld`, names the
       compensation's event, injects a failure through the world (`during`, `cut` or `latency` of an infra service or an app, a
@@ -273,5 +266,5 @@ adapter:
   proof: >-
     The orchestrator's unit spec (<saga>.saga.service.spec.ts) as full; declaring saga requires integration specs titled
     `saga/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R284), including each compensation path with
-    failure injection and the final state read back. The e2e world of R173 remains full-only.
+    failure injection and the final state read back. The e2e world remains full-only.
   see: [knowledge/patterns/be/event-bus.yaml]

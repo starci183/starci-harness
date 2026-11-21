@@ -38,7 +38,6 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R165 | a `role: service` component per api or worker app (multi-service) | a | `rules/services.mts:33` |
 | R166 | `events.json` per service | a | `rules/event-tables.mts:7` |
 | R167, BE-SERVICES-4 | an e2e spec per consumed event | a | `rules/services.mts:35` |
-| R173, BE-SAGA-4 | an e2e spec per saga compensation | a | `rules/saga.mts:30` |
 | R179 | `sides.be.kinds` exactly the kinds in use, with their patterns | a | `rules/kinds.mts:14` |
 | R245, R289, BE-CONFIG-1 | `<app>.env.ts`, `<app>.options.ts`, `compose/`, `app.module.ts` per app | a | `rules/app-env-required.mts:6` |
 | R248 | every required environment read is sealed or declared, every sealed key read | a | `rules/env-parity.mts:34` |

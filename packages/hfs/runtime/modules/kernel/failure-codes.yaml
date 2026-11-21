@@ -1320,46 +1320,6 @@ BE_RETURN_TYPE:
   owner: op-retry
   kind: check-finding
 
-BE_SAGA_CONSUMER_DEDUPE:
-  title: "A saga consumer passes the delivery id on"
-  title_vi: "Consumer của saga không chuyển id lần giao đi tiếp"
-  meaning_vi: "Một `transport/message/<event>.consumer.ts` của feature có saga không đọc `message.eventId` để đưa vào lệnh nó gửi."
-  causes_vi:
-    - "Vi phạm luật R172: saga nhận mọi sự kiện qua inbox (R80), nên consumer phải chuyển khoá chống trùng (id lần giao) cho lệnh."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đưa `message.eventId` vào yêu cầu của lệnh để saga claim qua inbox."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_EVENT_CONTRACT:
-  title: "Every event of a saga step and compensation is in a vendored contract"
-  title_vi: "Sự kiện của bước saga không nằm trong hợp đồng hoặc bù trừ không khớp"
-  meaning_vi: "Một bước hoặc bù trừ không khai `readonly event = \"<tên>\"`, sự kiện đó không có trong `be/contracts/<service>/events.json`, hoặc hợp đồng của sự kiện bù trừ không khai `compensates` đúng sự kiện của bước cùng tên."
-  causes_vi:
-    - "Vi phạm luật R171: mọi sự kiện của saga nằm trong hợp đồng đã vendor, và sự kiện thất bại của một bù trừ nói rõ nó hoàn tác sự kiện của bước nào."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: khai sự kiện trong `events.ts` của bên phát (có `compensates`), chạy `starci app emit`, và ghi tên sự kiện vào bước/bù trừ."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_STATE_VERSIONED:
-  title: "The persisted state of a saga run carries a version and goes through the fenced store"
-  title_vi: "Trạng thái saga không có phiên bản hoặc không đi qua kho có rào"
-  meaning_vi: "Orchestrator không có `<saga>.saga-state.ts`, kiểu trạng thái xuất ra không khai `status` và `version: number`, hoặc orchestrator không dùng kho có rào của `platform/saga`."
-  causes_vi:
-    - "Vi phạm luật R170: trạng thái một lần chạy saga được lưu cùng phiên bản (rào), mọi chuyển trạng thái nêu phiên bản đã đọc, nên một lần giao lại \"xác sống\" không thể chuyển hai lần."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: khai kiểu trạng thái có `status` và `version`, và chuyển trạng thái qua `SagaService` của `platform/saga`."
-  owner: op-retry
-  kind: check-finding
-
-BE_SAGA_STEP_COMPENSATION:
-  title: "Every saga compensation has its step and the orchestrator lists them"
-  title_vi: "Bù trừ saga không có bước tương ứng hoặc orchestrator không liệt kê đủ"
-  meaning_vi: "Một bù trừ `saga/compensations/<step>.compensation.ts` không có `saga/steps/<step>.step.ts`, thư mục saga không có orchestrator `<saga>.saga.ts`, hoặc orchestrator không import đủ mọi bước và mọi bù trừ của thư mục."
-  causes_vi:
-    - "Vi phạm luật R169: bù trừ là phép hoàn tác tuỳ chọn của một bước, do một người bấm và chạy như một bước tiến; nó phải có bước cùng tên, và orchestrator liệt kê tất cả nên không có bước nào chạy mà không ai thấy."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt bù trừ cạnh bước cùng tên (hoặc xoá bù trừ mồ côi) và import mọi bước và bù trừ trong orchestrator; không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
-
 BE_SCHEMA_AUTHORITY:
   title: "Schema defined at runtime"
   title_vi: "Schema được định nghĩa lúc chạy"
