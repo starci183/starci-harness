@@ -3,6 +3,7 @@ import { dirname, join } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
+import { LOCAL, machineSealedFile, readMachines } from "../machines.js"
 import { locateOps } from "../ops.js"
 
 /** A server id: the file name of its inventory entry and the label of its DNS names. */
@@ -104,6 +105,11 @@ export interface ManagedServer extends VpsServer {
     readonly ingressMode: IngressMode
     /** The sealed file of its keys, present or not. */
     readonly sealedFile: string
+    /**
+     * A machine of config.yaml (harness/machines.ts) that is no file of the inventory logs in with its own key file as its user, the host keys
+     * read from the user's known_hosts; an inventory server logs in with its sealed login instead.
+     */
+    readonly login?: { readonly user: string; readonly keyFile: string }
 }
 
 const readYaml = (file: string): unknown => {
@@ -144,13 +150,53 @@ export const parseServer = (policy: VpsPolicy, raw: unknown, file: string, dir: 
     return { ...server, family: osFamily, firewallKind: server.firewall ?? policy.bootstrap.firewall.byFamily[osFamily], ingressMode: server.ingress?.mode ?? policy.ingress.defaultMode, sealedFile: join(dir, `${server.id}.enc.yaml`) }
 }
 
-/** The ids of the inventory: every `<id>.yaml` of its folder but the example and the sealed files. */
-export const serverIds = (policy: VpsPolicy, dir: string): string[] => {
+/** The ids of the inventory files: every `<id>.yaml` of its folder but the example and the sealed files. */
+const fileIds = (policy: VpsPolicy, dir: string): string[] => {
     if (!existsSync(dir)) return []
     return readdirSync(dir)
         .filter((name) => name.endsWith(".yaml") && !name.endsWith(".enc.yaml") && name !== policy.inventory.example)
         .map((name) => name.slice(0, -".yaml".length))
-        .sort((left, right) => left.localeCompare(right))
+}
+
+/** The servers config.yaml adds (contexts/harness/host.md "Machines"): every machine but `local` with a host, that no inventory file names. */
+const machineIds = (files: readonly string[]): string[] =>
+    Object.entries(readMachines().doc.machines)
+        .filter(([name, machine]) => name !== LOCAL && machine.host !== undefined && !files.includes(name) && (machine.server === undefined || !files.includes(machine.server)))
+        .map(([name]) => name)
+
+/** The ids of the inventory: every `<id>.yaml` of its folder but the example and the sealed files, and every server config.yaml adds. */
+export const serverIds = (policy: VpsPolicy, dir: string): string[] => {
+    const files = fileIds(policy, dir)
+    return [...files, ...machineIds(files)].sort((left, right) => left.localeCompare(right))
+}
+
+/**
+ * A machine of config.yaml as a managed server: its host, port, os and login from config.yaml, the policy's defaults for the rest, and its keys
+ * sealed in <state>/machines/<name>.enc.yaml. A machine imported from an inventory file is that file's server.
+ */
+const machineServer = (policy: VpsPolicy, id: string, dir: string): ManagedServer | undefined => {
+    const machine = readMachines().doc.machines[id]
+    if (machine === undefined || id === LOCAL || machine.host === undefined) return undefined
+    if (machine.server !== undefined && machine.server !== id && existsSync(join(dir, `${machine.server}.yaml`))) return parseServer(policy, readYaml(join(dir, `${machine.server}.yaml`)), join(dir, `${machine.server}.yaml`), dir)
+    const os = machine.os ?? "ubuntu"
+    const osFamily = policy.osFamilies[os]
+    if (osFamily === undefined) throw new Refusal("VPS_SERVER_INVALID", `config.yaml machine ${id}: os ${os} is no OS ops/vps.yaml osFamilies knows (${Object.keys(policy.osFamilies).join(", ")})`)
+    return {
+        schema: "starci/vps-server@1",
+        id,
+        host: machine.host,
+        sshPort: machine.port ?? 22,
+        os,
+        provider: "config.yaml",
+        panel: { kind: "none", url: null },
+        swarm: { role: "manager" },
+        projects: [],
+        family: osFamily,
+        firewallKind: policy.bootstrap.firewall.byFamily[osFamily],
+        ingressMode: policy.ingress.defaultMode,
+        sealedFile: machineSealedFile(id),
+        ...(machine.user !== undefined && machine.sshKey !== undefined ? { login: { user: machine.user, keyFile: machine.sshKey } } : {}),
+    }
 }
 
 /** Loads one server of the inventory; an unknown id is refused naming the known ones. */
@@ -159,6 +205,8 @@ export const loadServer = (policy: VpsPolicy, id: string, dir: string = inventor
     const file = join(dir, `${id}.yaml`)
     if (`${id}.yaml` === policy.inventory.example) throw new Refusal("VPS_SERVER_UNKNOWN", `${id} is the placeholder example of ${dir}, no server`)
     if (!existsSync(file)) {
+        const machine = machineServer(policy, id, dir)
+        if (machine !== undefined) return machine
         const known = serverIds(policy, dir)
         throw new Refusal("VPS_SERVER_UNKNOWN", `no server ${id} in ${dir}${known.length === 0 ? " (the inventory is empty: `starci vps add <id>` adds one)" : `; the servers are ${known.join(", ")}`}`)
     }
