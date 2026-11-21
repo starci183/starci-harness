@@ -133,21 +133,19 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 
 ## PROJECT-GALLERY-5 A screen's explanation changes with its source
 
-1. **The rule.** A change to a screen's source that leaves that screen's `explain.md` untouched is `HFS_APP_GALLERY_EXPLAIN_STALE`.
+1. **The convention.** A change to a screen's source is followed by a change to that screen's `screen.yaml` (or `explain.md`); no check judges it.
    The source of a screen is best-effort mapped: the route's `page.tsx` and every file under the feature folder `features/pages/<Name>/`
    the page imports (a thin page imports exactly one feature; a component a feature takes from `components/` is not followed). A
-   route with several screen folders is current when any of their `explain.md` files is touched.
+   route with several screen folders is current when any of their screen files is touched.
 2. **What is judged.** `starci app check` (a whole run) judges the files the commits since the base, the index and the work tree
    change. On a branch other than `main` and `dev` the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/dev`, else with
    `origin/main`, so a lane's own check judges the whole diff the batch lander's gate judges (the lane merged into `origin/dev`); on `main`, on `dev`
    or when none of those refs is behind `HEAD` it is the lint ratchet's base (`origin/<branch>`, else `HEAD^`). The same base serves
    `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7) and the UI Audit (PROJECT-GALLERY-8), and the run prints it
    (`gallery coupling: judged N file(s) changed since <sha>, <why>`). A lane's own `origin/<lane>` is never the base: once the lane is pushed it
-   equals `HEAD` and the base would fall to `HEAD^`, the last commit alone. The pre-commit guard (`starci app check --staged`) lists the same finding for the staged files and never blocks
+   equals `HEAD` and the base would fall to `HEAD^`, the last commit alone. The pre-commit guard (`starci app check --staged`) lists `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` for the staged files and never blocks
    the commit.
-3. **Severity.** A warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4. An excluded route and a route
-   with no screen have nothing to keep current (the second is `HFS_APP_GALLERY_ROUTE_MISSING`).
-4. **Keeping it current.** Re-read each region of the screen against the new source, rewrite the `Vì sao`, `Luật` and `Grammar` lines
+3. **Keeping it current.** An excluded route and a route with no screen have nothing to keep current (the second is `HFS_APP_GALLERY_ROUTE_MISSING`). Re-read each region of the screen against the new source, rewrite the `Vì sao`, `Luật` and `Grammar` lines
    that changed (a fix that changes no visible region still opens `explain.md` and confirms it), and re-shoot the shots (PROJECT-GALLERY-1).
 
 ## PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval
@@ -242,23 +240,13 @@ the gate judges.
 **Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, `gallery-routes.mts` and `gallery-design.mts`, values from `ruleParams.gallery`):
 
 - `HFS_APP_GALLERY_MISSING`: no `gallery/`, or one of its managed files is absent.
-- `HFS_APP_GALLERY_SCRIPT`: `gallery/package.json` has no `dev` script of the form `vite --port <base + 50> --strictPort`, or the
-  app declares no `local.basePort` to derive the port from.
-- `HFS_APP_GALLERY_VITE_UNPINNED`: `vite` is absent or not an exact version.
-- `HFS_APP_GALLERY_SHOTS_TRACKED`: `gallery/pages/**/*.png` is not git-ignored, or a shot PNG is tracked.
 - `HFS_APP_GALLERY_SCREEN_FILE`: a screen folder holds a file or folder other than the three shots, `explain.md` and `links.json`
   (`before/` included), or a file sits outside a screen folder.
 - `HFS_APP_GALLERY_EXPLAIN_MISSING`: a screen folder holds shots (in the work tree: the PNGs are never tracked) and no `explain.md`.
-- `HFS_APP_GALLERY_REGION_INCOMPLETE`: an `explain.md` has no region, or a region lacks a `Vì sao` or a `Grammar` value.
-- `HFS_APP_GALLERY_REGION_UNCLEAR`: a region says `CHƯA RÕ` or `SAI`. It is a warning in `--env local` (reported, not blocking, so a
-  round in progress can name what it has not fixed yet) and an error in `--env prod` (the push hook, CI, the release gate;
-  [check-cache.md](check-cache.md) owns the two environments, and the code is `localOnly` in the failure catalog).
 - `HFS_APP_GALLERY_LINKS`: a `links.json`, `flows.json` or `routes.json` is not the shape above, or names a screen folder or a route that
   does not exist.
 - `HFS_APP_GALLERY_ROUTE_MISSING` (PROJECT-GALLERY-4; `localOnly` in the failure catalog, so a warning in `--env local`): a `page.tsx` route
   of the front end has no screen folder whose `explain.md` `route` matches it and no reasoned exclusion in `gallery/routes.json`.
-- `HFS_APP_GALLERY_EXPLAIN_STALE` (PROJECT-GALLERY-5, `rules/gallery-coupling.mts`, run by `starci app check` over the commits since the base and
-  by `starci app check --staged`, which only lists it; `localOnly`): a screen's source changed and its `explain.md` did not.
 - `HFS_APP_GALLERY_FRONT_MATTER` (a warning): the front matter lacks `title`, `route` or `area`, or its `area` is not the
   folder's.
 - `HFS_APP_GALLERY_DESIGN_MANIFEST` (PROJECT-GALLERY-6): `.starcistacks/canvas/design.json` is not JSON or not the shape of its item 4.
@@ -317,8 +305,8 @@ same order until it adopts a board.
 **Enforced by** (R395, `rules/gallery-coupling.mts`, run by `starci app check` and, listing only, by the commit guard):
 
 - `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (`localOnly`: a warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4; the
-  commit guard lists it and never blocks): the source of a canvas-managed screen changed (the same screen to source map and the same judged set as
-  `HFS_APP_GALLERY_EXPLAIN_STALE` of PROJECT-GALLERY-5: the commits since the base, the index and the work tree) and the screen's page in
+  commit guard lists it and never blocks): the source of a canvas-managed screen changed (the same screen to source map and the same judged set of
+  PROJECT-GALLERY-5: the commits since the base, the index and the work tree) and the screen's page in
   `design.json` is missing, `drafted`, or `approved` with an `approvedAt` earlier than the newest change of that screen's source. The time of a
   change is the committer time of the newest commit since the base that touched its source files; a change not yet committed counts as now. The change
   passes when the page's entry in `design.json` also differs from the base's (a fresh `approvedAt`, or the build recorded with its shots), which is how

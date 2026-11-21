@@ -1174,9 +1174,6 @@ slots:
     rules:
       - HFS_MANAGED_FILE_DRIFT
       - HFS_APP_GALLERY_MISSING
-      - HFS_APP_GALLERY_SCRIPT
-      - HFS_APP_GALLERY_VITE_UNPINNED
-      - HFS_APP_GALLERY_SHOTS_TRACKED
   - id: app.gallery-lock
     profiles:
       - app
@@ -1193,8 +1190,7 @@ slots:
     tracked: ignored
     tier: none
     tests: none
-    rules:
-      - HFS_APP_GALLERY_SHOTS_TRACKED
+    rules: []
   - id: app.gallery-explain
     profiles:
       - app
@@ -1206,8 +1202,6 @@ slots:
     rules:
       - HFS_APP_GALLERY_EXPLAIN_MISSING
       - HFS_APP_GALLERY_SCREEN_INVALID
-      - HFS_APP_GALLERY_REGION_INCOMPLETE
-      - HFS_APP_GALLERY_REGION_UNCLEAR
       - HFS_APP_GALLERY_FRONT_MATTER
       - HFS_APP_GALLERY_SCREEN_FILE
       - HFS_APP_GALLERY_LINKS

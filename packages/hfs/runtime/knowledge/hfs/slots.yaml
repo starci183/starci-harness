@@ -766,7 +766,7 @@ slots:
     tier: none
     tests: none
     managedBy: gallery
-    rules: [HFS_MANAGED_FILE_DRIFT, HFS_APP_GALLERY_MISSING, HFS_APP_GALLERY_SCRIPT, HFS_APP_GALLERY_VITE_UNPINNED, HFS_APP_GALLERY_SHOTS_TRACKED]
+    rules: [HFS_MANAGED_FILE_DRIFT, HFS_APP_GALLERY_MISSING]
   - id: app.gallery-lock
     since: 3.27.0
     profiles: [app]
@@ -783,7 +783,7 @@ slots:
     tracked: ignored
     tier: none
     tests: none
-    rules: [HFS_APP_GALLERY_SHOTS_TRACKED]
+    rules: []
   - id: app.gallery-explain
     since: 3.28.0
     profiles: [app]
@@ -792,7 +792,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    rules: [HFS_APP_GALLERY_EXPLAIN_MISSING, HFS_APP_GALLERY_REGION_INCOMPLETE, HFS_APP_GALLERY_REGION_UNCLEAR, HFS_APP_GALLERY_FRONT_MATTER, HFS_APP_GALLERY_SCREEN_FILE, HFS_APP_GALLERY_LINKS]
+    rules: [HFS_APP_GALLERY_EXPLAIN_MISSING, HFS_APP_GALLERY_FRONT_MATTER, HFS_APP_GALLERY_SCREEN_FILE, HFS_APP_GALLERY_LINKS]
   - id: app.gallery-flows
     since: 3.28.0
     profiles: [app]

@@ -190,7 +190,6 @@ for (const edition of ['lite'] as const) {
     write(root, 'gallery/pages/customers/list/explain.md', `${EXPLAIN('customers')}\n## Phương án đã cân nhắc\n\n- Hai tab: loại, thành hai dải điều hướng chồng nhau.\n- Một thanh công cụ: chọn.\n`);
     write(root, '.starcistacks/canvas/design.json', JSON.stringify(page({ matchedAt: '2026-11-18T16:00:00+07:00' })));
     assert.deepEqual(critique(root), [], 'the section is a record, not a region: no region problem either');
-    assert.deepEqual(codes(run(root, edition)).filter((code) => code === 'HFS_APP_GALLERY_REGION_INCOMPLETE'), []);
     write(root, 'gallery/pages/customers/list/explain.md', `${EXPLAIN('customers')}\n## Phương án đã cân nhắc\n`);
     assert.equal(critique(root).length, 1, 'an empty section is no record');
   });

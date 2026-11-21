@@ -3309,38 +3309,6 @@ HFS_APP_GALLERY_MISSING:
   owner: op-retry
   kind: check-finding
 
-HFS_APP_GALLERY_SCRIPT:
-  title: "The gallery serves on the base port plus 50"
-  title_vi: "Gallery không chạy ở cổng gốc cộng 50"
-  meaning_vi: "gallery/package.json không có script dev chạy vite --port <basePort + 50> --strictPort, hoặc ứng dụng chưa khai báo local.basePort để suy ra cổng đó."
-  causes_vi:
-    - "Vi phạm R395: cổng của gallery phải suy ra từ cổng gốc dự án như mọi tiến trình native khác, và --strictPort để cổng bị chiếm báo lỗi thay vì lệch cổng."
-    - "Tệp gallery/package.json bị sửa tay hoặc cổng gốc đã đổi mà chưa chạy lại starci app sync."
-  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json từ mẫu; nếu chưa có basePort thì khai báo nó trong .starcistacks/application-stacks.yaml trước."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_VITE_UNPINNED:
-  title: "The gallery pins its Vite version"
-  title_vi: "Gallery chưa ghim phiên bản Vite"
-  meaning_vi: "gallery/package.json không có vite trong devDependencies hoặc phiên bản không phải số chính xác (có ^, ~ hoặc khoảng)."
-  causes_vi:
-    - "Vi phạm R395: mọi phụ thuộc của ứng dụng được ghim đúng một phiên bản."
-    - "Tệp gallery/package.json bị sửa tay."
-  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json với phiên bản Vite đã ghim."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_SHOTS_TRACKED:
-  title: "The gallery screenshots are git-ignored"
-  title_vi: "Ảnh chụp của gallery chưa được git bỏ qua"
-  meaning_vi: "gallery/pages/**/*.png không nằm trong .gitignore, hoặc đã có ảnh PNG bị git theo dõi: ảnh chụp là bằng chứng cục bộ, không phải mã nguồn."
-  causes_vi:
-    - "Vi phạm R395: khối .gitignore do sync quản lý thiếu dòng gallery/pages/**/*.png, hoặc ảnh đã được git add."
-  nextStep_vi: "Chạy starci app sync --execute để khối .gitignore có dòng gallery/pages/**/*.png, rồi git rm --cached các ảnh đã bị theo dõi."
-  owner: op-retry
-  kind: check-finding
-
 HFS_APP_GALLERY_EXPLAIN_MISSING:
   title: "A gallery page with shots has an explain.md"
   title_vi: "Trang trong gallery có ảnh nhưng thiếu explain.md"
@@ -3351,29 +3319,6 @@ HFS_APP_GALLERY_EXPLAIN_MISSING:
   nextStep_vi: "Viết gallery/pages/<khu>/<trang>/explain.md: front matter (title, route, area) và mỗi vùng một mục `## <tên vùng>` với ba dòng `Vì sao:`, `Luật:`, `Grammar:`; vùng không giải thích được là lỗi giao diện, sửa trang trước."
   owner: op-retry
   kind: check-finding
-
-HFS_APP_GALLERY_REGION_INCOMPLETE:
-  title: "Every region of a gallery page says why and names its Grammar"
-  title_vi: "Vùng trong explain.md thiếu Vì sao hoặc Grammar"
-  meaning_vi: "explain.md của một trang gallery không có mục `## <tên vùng>` nào, hoặc có vùng thiếu dòng `Vì sao:` hoặc dòng `Grammar:` (hoặc để trống)."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi vùng phải nêu luật của chủ sản phẩm quyết định nó và thành phần Grammar (component, prop, đường dẫn hoặc story) tạo ra nó."
-    - "Vùng được vẽ mà không giải thích được: đó là lỗi giao diện, không phải lỗi tài liệu."
-  nextStep_vi: "Điền `Vì sao:` (luật nào) và `Grammar:` (component + prop, kèm đường dẫn nguồn hoặc story) cho từng vùng được liệt kê; nếu không điền được thì sửa trang cho đến khi giải thích được."
-  owner: op-retry
-  kind: check-finding
-
-HFS_APP_GALLERY_REGION_UNCLEAR:
-  title: "No region of a gallery page is marked CHƯA RÕ or SAI"
-  title_vi: "Vùng trong explain.md còn ghi CHƯA RÕ hoặc SAI"
-  meaning_vi: "Một dòng Vì sao, Luật hoặc Grammar của explain.md bắt đầu bằng CHƯA RÕ hoặc SAI: tác giả tự nhận vùng đó chưa giải thích được hoặc đang sai, tức là một lỗi giao diện chưa sửa."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-2): một vùng chưa giải thích được bằng luật và tham chiếu Grammar là lỗi, phải sửa trước khi báo cáo."
-    - "`--env local` chỉ liệt kê (đang lặp lại khi sửa), `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Sửa trang cho đến khi vùng đó giải thích được, rồi viết lại dòng với luật và tham chiếu Grammar thật."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
 
 HFS_APP_GALLERY_FRONT_MATTER:
   title: "A gallery explain.md declares its title, route and area"
@@ -3561,18 +3506,6 @@ HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED:
     - "Vi phạm R395 (PROJECT-GALLERY-9): mỗi mục trên board phải trở thành một route; màn chưa code thì ghi planned, code xong thì bỏ dấu."
     - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
   nextStep_vi: "Sửa route của mục cho đúng, thêm planned: true cho màn chưa code, hoặc bỏ planned khi route đã có."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-HFS_APP_GALLERY_EXPLAIN_STALE:
-  title: "A screen's explain.md changes with its source"
-  title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"
-  meaning_vi: "Các commit kể từ nhánh gốc (hoặc commit đang tạo) đổi page.tsx của một route hoặc tệp trong thư mục features/pages/<Tên>/ mà page.tsx nhập, nhưng không đổi explain.md của màn hình đó trong gallery/pages."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-5): người sửa giao diện phải cập nhật lời giải thích (và ảnh) cùng lúc với màn hình; nếu không, gallery nói về màn hình cũ."
-    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Mở explain.md của màn hình, đối chiếu từng vùng với giao diện mới, sửa Vì sao/Luật/Grammar (hoặc chụp lại ảnh) rồi commit cùng thay đổi; nếu giao diện không đổi gì nhìn thấy được, vẫn mở explain.md và xác nhận nó còn đúng."
   owner: op-retry
   kind: check-finding
   localOnly: true
