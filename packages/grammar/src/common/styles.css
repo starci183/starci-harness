@@ -3278,13 +3278,6 @@
         -webkit-tap-highlight-color: transparent;
     }
 
-    .starci-core-bottom-nav-item::after {
-        content: "";
-        position: absolute;
-        inset-block: calc(-1 * var(--grammar-identity-gap));
-        inset-inline: 0;
-    }
-
     .starci-core-bottom-nav-item[data-hovered="true"] {
         color: var(--foreground);
     }

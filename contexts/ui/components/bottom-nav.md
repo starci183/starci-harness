@@ -30,8 +30,7 @@ returns to, never a command (a command lives in the page's actions).
 - The sheet is a bottom `Drawer` titled by `more.label` holding `Sidebar presentation="drawer"` of `more.items` (flat) or `more.groups` (the `Sidebar` group: `id`, `label`, `items`, the `label` drawn as the heading of its rows; give one of the two, a console with named areas gives groups): one look for a place in the sheet, the drawer and the rail; a place there takes a count, a trailing mark, `href` and `isDisabled` as a sidebar item does. Choosing a place closes the sheet and returns focus to the "more" place.
 
 ## Size
-The place is the bar-control height (the `md` 40, glyph 20 over a one-line 12 name), its hit area stretched to the bar's 48 by a pseudo element so the box never grows (`DNA-COMMON-TARGET-COARSE`
-floor). The places share the width equally. The bar keeps `env(safe-area-inset-bottom)`: the page sets `viewport-fit=cover` for it to be non-zero. The bar draws below 48rem only; above it the slot is `display: none` and the navigation is the sidebar.
+The place is the bar-control height (the `md` 40, glyph 20 over a one-line 12 name), pressed where it is drawn (no invisible hit area; owner, 2026-11-21: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy"). The places share the width equally. The bar keeps `env(safe-area-inset-bottom)`: the page sets `viewport-fit=cover` for it to be non-zero. The bar draws below 48rem only; above it the slot is `display: none` and the navigation is the sidebar.
 
 ## States
 Hover and focus-visible (the vendor ring), current, pressed. A disabled place is not drawn in the bar (a sheet row may be disabled). The "more" place is a button (`aria-haspopup`, `aria-expanded` from the Drawer trigger).

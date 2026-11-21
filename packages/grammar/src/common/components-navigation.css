@@ -58,20 +58,6 @@
 
     /* The head variant (0.36.0): the label then an arrow that slides 3px toward the end on hover and focus; the underline on hover is the vendor's. */
     .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
-    /*
-     * The touch floor of a standalone link (0.48.0): a head link (a section head's "Xem tất cả", a Bento tile's "Tìm hiểu thêm") keeps its 14 or 16 line, and an unseen
-     * layer centred on it makes the hit area 48 x 48 (above the 44 floor), so the visual never changes.
-     */
-    .starci-core-link[data-grammar-link-variant="head"] { position: relative; }
-    .starci-core-link[data-grammar-link-variant="head"]::before {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        inline-size: max(100%, 3rem);
-        block-size: max(100%, 3rem);
-        content: "";
-        transform: translate(-50%, -50%);
-    }
     .starci-core-link-arrow { display: inline-flex; flex: none; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
     .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: translateX(var(--grammar-link-arrow-travel)); }
     [dir="rtl"] .starci-core-link-arrow { scale: -1 1; }
