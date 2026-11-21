@@ -45,5 +45,4 @@ punctuation is allowed on both sides.
 
 Why: one language keeps every file readable by every reader and every search, and copy in source escapes translation.
 
-Enforced by: back end `no-non-ascii-source` (R89); front end `no-vietnamese-in-source`, `no-emoji-in-source` (R91)
-and `no-second-language-in-path`; R96 HFS_DOC_NOT_ENGLISH for Markdown and YAML.
+Enforced by: back end `no-non-ascii-source` (R89); front end `no-vietnamese-in-source`, `no-emoji-in-source` (R91); R96 HFS_DOC_NOT_ENGLISH for Markdown and YAML.

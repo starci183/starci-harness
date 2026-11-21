@@ -17,7 +17,7 @@
 import test from "node:test"
 import { canonTester } from "../fixtures/typed/tester.ts"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
-import { noMiddlewareFile, pageExportsMetadata } from "./next-conventions.ts"
+import { pageExportsMetadata } from "./next-conventions.ts"
 import { rules } from "./project-graph.ts"
 import type { Rule, Rules } from "./lib/rule.ts"
 
@@ -34,18 +34,6 @@ const HOME = "import { HomePage } from '../../features/pages/HomePage';\nexport 
 const layoutAt = (up: number, body: string): string => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\n${body}\n`
 
 for (const edition of ['lite'] as const) {
-    test(`R54 ${edition}: valid proxy and invalid retired middleware file`, (t) => {
-        const files = {
-            "apps/web/src/proxy.ts": "export function proxy(request) { return request }\n",
-            "apps/web/src/middleware.ts": "export function middleware() {}\n",
-        }
-        const fixture = projectFixture({ profile: "fe", edition, files })
-        t.after(() => fixture.cleanup())
-        canonTester(fixture.tester).run("no-middleware-file", noMiddlewareFile, {
-            valid: [{ filename: fixture.at("apps/web/src/proxy.ts"), code: files["apps/web/src/proxy.ts"] }],
-            invalid: [{ filename: fixture.at("apps/web/src/middleware.ts"), code: files["apps/web/src/middleware.ts"], errors: [{ messageId: "file" }] }],
-        })
-    })
 
     test(`R54 ${edition}: valid page metadata and invalid missing page metadata`, (t) => {
         const files = {

@@ -38,8 +38,6 @@ configuration for source that has not adopted the product composition laws.
 
 The [surface composition law](docs/surface-rules.md) (R318) holds ANATOMY-2 and PADDING-0 for every
 family that publishes the shared HeroUI surface and field API: `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
-`no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
-within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`),
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or
 columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`), and
 `no-heading-above-card` refuses a `Section` around a single card (`FE_HEADING_ABOVE_CARD`), `no-fill-command-in-header` refuses a `width="fill"` Button in a page, card or section header slot (`FE_COMMAND_FILLS_HEADER`), and `no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `Section` holds the table and a `Section kind="list"` with its note as `caption` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's

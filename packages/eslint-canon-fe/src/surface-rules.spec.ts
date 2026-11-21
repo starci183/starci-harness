@@ -1,6 +1,4 @@
 /** Regression proof for app composition of Grammar surface context and panel lists. */
-// proves: FE_LIST_PANEL_PADDING
-// proves: FE_LIST_PANEL_PADDING
 // proves: FE_HAND_BUILT_PANES
 // proves: FE_HAND_BUILT_PANES
 // proves: FE_HEADING_ABOVE_CARD
@@ -18,14 +16,13 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { noFillCommandInHeader, noHeadingAboveCard, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, rules } from "./surface-rules.ts"
+import { noFillCommandInHeader, noHeadingAboveCard, noHandBuiltPanes, noTableInCard, noAppSurfacePaint, rules } from "./surface-rules.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 
 const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
 const grammar = 'import { SurfaceCard, SearchField, ListBox } from "@starci/grammar/core"; '
 const surface = { messageId: "surface" }
-const padding = { messageId: "padding" }
 
 for (const edition of ['lite'] as const) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
@@ -78,53 +75,17 @@ for (const edition of ['lite'] as const) {
 })
 }
 
-for (const edition of ['lite'] as const) {
-  test(`PADDING-0 ${edition}: valid page gutters pass and invalid padding within the nearest painted surface is rejected`, () => {
-    assert.doesNotThrow(() => tester().run("no-list-panel-padding", noListPanelPadding, {
-      valid: [
-        grammar + 'const Page = () => <SurfaceCard><ListBox inset="panel" /></SurfaceCard>',
-        grammar + 'const Page = () => <SurfaceCard><div className="py-2 gap-2"><ListBox /></div></SurfaceCard>',
-        grammar + 'const Page = () => <div className="px-4"><SurfaceCard><ListBox /></SurfaceCard></div>',
-        grammar + 'const Page = () => <div className="ps-3"><ListBox /></div>',
-        grammar + 'const Page = () => <ListBox className="p-2" />',
-        grammar + 'const Page = () => <ListBox.Section header={<div className="px-3">caption</div>} />',
-        'import { ListBox } from "other-kit"; const Page = () => <div className="px-2"><ListBox /></div>',
-        grammar + 'const Child = () => <ListBox />; const Page = () => <SurfaceCard><div className="px-2"><Child /></div></SurfaceCard>',
-        grammar + 'const Page = () => <SurfaceCard><ListBox.Section><ListBox.Item><div className="px-2">row</div></ListBox.Item></ListBox.Section></SurfaceCard>',
-        grammar + 'const styles={clean:"py-2",dirty:"px-2"}; const {clean}=styles; const Page=()=> <SurfaceCard><div className={clean}><ListBox /></div></SurfaceCard>',
-        grammar + 'const className="title"; const props={[className]:"px-2"}; const Page=()=> <SurfaceCard><div {...props}><ListBox /></div></SurfaceCard>',
-        'import { Rail, ListBox } from "@starci/grammar/core"; const Page=()=> <Rail><div className="p-2"><ListBox /></div></Rail>',
-      ],
-      invalid: [
-        ...["p-2", "px-2", "ps-2", "pe-2", "pl-2", "pr-2", "md:pl-2", "[padding-inline:1rem]", "md:[padding-inline-start:1rem]", "[padding-inline-end:1rem]"].map((utility) => ({ code: grammar + `const Page=()=> <SurfaceCard><div className="${utility}"><ListBox /></div></SurfaceCard>`, errors: [padding] })),
-        { code: grammar + 'const Page = () => <SurfaceCard><div className={cn("flex", active && "px-2")}><ListBox /></div></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const classes = { list: "px-2" }; const Page = () => <SurfaceCard><div className={classes.list}><ListBox /></div></SurfaceCard>', errors: [padding] },
-        { code: 'import { SurfaceCard, ListBox as List } from "@starci/grammar/core"; const Page = () => <SurfaceCard><div className="px-2"><List /></div></SurfaceCard>', errors: [padding] },
-        { code: 'import * as G from "@starci/grammar/core"; const Page = () => <G.SurfaceCard><div className="px-2"><G.ListBox /></div></G.SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const Page = () => <SurfaceCard><div className="px-2"><ListBox /><ListBox /></div></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const Page = () => <SurfaceCard><ListBox.Section header={<div className="px-3">caption</div>} /></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const Page = () => <SurfaceCard><ListBox.Section><div className="ps-3">caption</div></ListBox.Section></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const Page = () => <SurfaceCard><ListBox className="px-2" /></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const props = { className: "px-2" }; const Page = () => <SurfaceCard><div {...props}><ListBox /></div></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const styles={clean:"py-2",dirty:"px-2"}; const {dirty:alias}=styles; const Page=()=> <SurfaceCard><div className={alias}><ListBox /></div></SurfaceCard>', errors: [padding] },
-        { code: grammar + 'const Page=()=> <SurfaceCard><div className="px-2">{rows.map(function RenderRow() { return <ListBox /> })}</div></SurfaceCard>', errors: [padding] },
-      ],
-    }))
-  })
-}
-
-test("the typed lint of an app follows imported colocated class declarations for panel padding and surface paint", async () => {
+test("the typed lint of an app follows imported colocated class declarations for surface paint", async () => {
   const root = mkdtempSync(join(tmpdir(), "starci-fe-surface-"))
   try {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { jsx: "preserve", strict: true, target: "ES2022", module: "ESNext", moduleResolution: "Bundler" }, include: ["*.ts", "*.tsx"] }))
     writeFileSync(join(root, "classNames.ts"), [
       'declare function cn(...args: unknown[]): string',
       'declare function alwaysSecondary(value: string): "secondary"',
-      'export const styles = { list: cn("flex", "md:px-2"), clean: "py-2", raw: cn("dark:bg-surface/70") }',
+      'export const styles = { clean: "py-2", raw: cn("dark:bg-surface/70") }',
       'export const primary = "primary"',
       'export const secondary = alwaysSecondary("primary")',
       'export const template = `flex bg-surface ${true}`',
-      'export const listProps = {className: "px-2"}',
       'export const cleanProps = {className: "py-2"}',
       'export const fieldProps = {variant: "primary"}',
       'export const secondaryProps = {variant: "secondary"}',
@@ -143,14 +104,10 @@ test("the typed lint of an app follows imported colocated class declarations for
       'export const otherProps = { title: "bg-white" }',
     ].join("\n"))
     const cases = [
-      { code: grammar + 'import { styles } from "./classNames"; const Page = () => <SurfaceCard><div className={styles.list}><ListBox /></div></SurfaceCard>', ids: ["padding"] },
       { code: grammar + 'import { styles } from "./classNames"; const Page = () => <div className={styles.raw} />', ids: ["surface"] },
       { code: grammar + 'import { styles, secondary } from "./classNames"; const Page = () => <SurfaceCard><SearchField variant={secondary} /><div className={styles.clean}><ListBox /></div></SurfaceCard>', ids: [] },
       { code: grammar + 'import { template } from "./classNames"; const Page = () => <div className={template} />', ids: ["surface"] },
-      { code: grammar + 'import * as C from "./classNames"; const Page = () => <SurfaceCard><div className={C.styles["list"]}><ListBox /></div></SurfaceCard>', ids: ["padding"] },
-      { code: grammar + 'import { listProps } from "./classNames"; const Page=()=> <SurfaceCard><div {...listProps}><ListBox /></div></SurfaceCard>', ids: ["padding"] },
       { code: grammar + 'import { styles } from "./classNames"; const {clean:alias}=styles; const Page=()=> <div className={alias}><ListBox /></div>', ids: [] },
-      { code: grammar + 'import { styles } from "./classNames"; const {list:alias}=styles; const Page=()=> <SurfaceCard><div className={alias}><ListBox /></div></SurfaceCard>', ids: ["padding"] },
       { code: 'import { paintStyle } from "./classNames"; const Page=()=> <div style={paintStyle} />', ids: ["surface"] },
       { code: 'import { numericPaint } from "./classNames"; const Page=()=> <div style={numericPaint} />', ids: ["surface"] },
       { code: 'import { layoutStyle } from "./classNames"; const Page=()=> <div style={layoutStyle} />', ids: [] },
@@ -184,19 +141,6 @@ test("the typed lint of an app follows imported colocated class declarations for
 const panes = 'import { Divider, Button, Page, Pane, PaneGrid, PaneSection, Section, ListBox, SurfaceCard } from "@starci/grammar/core"; '
 const seam = { messageId: "seam" }
 const joined = { messageId: "joined" }
-
-test("Pane and PaneSection are surfaces: wrapper padding around a ListBox in a pane is caught in the file", () => {
-  assert.doesNotThrow(() => tester().run("no-list-panel-padding", noListPanelPadding, {
-    valid: [
-      panes + 'const A = () => <Pane area="list"><PaneSection grow><ListBox inset="panel" /></PaneSection></Pane>',
-      panes + 'const A = () => <Pane area="list"><PaneSection><div className="flex gap-2"><ListBox /></div></PaneSection></Pane>',
-    ],
-    invalid: [
-      { code: panes + 'const A = () => <Pane area="list"><PaneSection grow><div className="px-4"><ListBox /></div></PaneSection></Pane>', errors: [padding] },
-      { code: panes + 'const A = () => <Pane area="list"><div className="px-4"><ListBox /></div></Pane>', errors: [padding] },
-    ],
-  }))
-})
 
 for (const edition of ['lite'] as const) {
   test(`${edition}: a multi-pane frame is a PaneGrid, not a vertical divider between columns or columns in a joined card`, () => {

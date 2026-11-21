@@ -8,7 +8,7 @@ import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
-import { i18nStackInOneModule, localeSegmentIsLocale, navigationFromIntl, noNativeAnchor, noSecondI18nStack } from './next-conventions.ts';
+import { i18nStackInOneModule, navigationFromIntl, noNativeAnchor, noSecondI18nStack } from './next-conventions.ts';
 import { useIntlFormatter } from './formatting.ts';
 
 for (const edition of ['lite'] as const) {
@@ -18,10 +18,6 @@ for (const edition of ['lite'] as const) {
       settings: { starci: { hfs: fixtureHfs(LITE_FE_DECLARATION, { lite: edition === 'lite' }) } },
     }));
     const block = at('apps/web/src/components/blocks/Nav/index.tsx');
-    tester.run('locale-segment-is-locale', localeSegmentIsLocale, {
-      valid: [{ filename: at('apps/web/src/app/[locale]/page.tsx'), code: 'export default function Page() {}' }],
-      invalid: [{ filename: at('apps/web/src/app/[lang]/page.tsx'), code: 'export default function Page() {}', errors: [{ messageId: 'segment' }] }],
-    });
     tester.run('no-second-i18n-stack', noSecondI18nStack, {
       valid: [{ filename: block, code: 'import { useTranslations } from "next-intl";' }],
       invalid: [{ filename: block, code: 'import { t } from "@lingui/core";', errors: [{ messageId: 'stack' }] }],

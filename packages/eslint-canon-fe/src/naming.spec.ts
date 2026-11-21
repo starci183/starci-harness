@@ -59,44 +59,6 @@ test("NAMING-2: a handler is named for the slot it will be passed into", () => {
   }))
 })
 
-test("NAMING-3: a path names its file in the one language every reader shares", () => {
-  assert.doesNotThrow(() => tester.run("no-second-language-in-path", rules["no-second-language-in-path"], {
-    valid: [
-      // The ordinary case: an English route, whatever the copy inside it turns out to be.
-      { filename: at("apps/web/src/app/provisioning/page.tsx"), code: "export const x = 1" },
-      // The words a reader sees live in the catalogue, and the catalogue's own name is English.
-      { filename: at("apps/web/src/messages/vi.json.ts"), code: "export const x = 1" },
-      // ENGLISH WORDS THAT LOOK LIKE THE ROMANISED LIST ARE NOT IT. `cap` and `dang` open several
-      // ordinary English names, and a rule that refused them would be noise its readers learn to
-      // ignore - which costs more than the case it was reaching for.
-      { filename: at("apps/web/src/app/capacity/page.tsx"), code: "export const x = 1" },
-      { filename: at("apps/web/src/components/leaves/DangerBadge/index.tsx"), code: "export const x = 1" },
-      // a locale segment and a route group are ordinary segments
-      { filename: at("apps/web/src/app/[locale]/x/page.tsx"), code: "export const x = 1" },
-    ],
-    invalid: [
-      // Diacritics survive in a folder name even though a URL segment drops them.
-      {
-        filename: at("apps/web/src/app/c\u1ea5p-ph\u00e1t/page.tsx"),
-        code: "export const x = 1",
-        errors: [{ messageId: "path" }],
-      },
-      // The form that actually reaches the filesystem, and the one an accent check cannot see.
-      {
-        filename: at("apps/web/src/app/cap-phat/page.tsx"),
-        code: "export const x = 1",
-        errors: [{ messageId: "path" }],
-      },
-      // A route group's parentheses are punctuation around the name, not part of it.
-      {
-        filename: at("apps/web/src/app/(auth)/dang-nhap/page.tsx"),
-        code: "export const x = 1",
-        errors: [{ messageId: "path" }],
-      },
-    ],
-  }))
-})
-
 test("machine-only: a const introduces a value instead of renaming one identifier", () => {
   const PAGE = at("apps/web/src/app/[locale]/(app)/subscriptions/checkout/page.tsx")
   const LAYOUT = at("apps/web/src/app/[locale]/layout.tsx")

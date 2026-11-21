@@ -10,10 +10,8 @@ import type { HfsView } from "./lib/hfs.ts"
 import {
   htmlLangFromLocale,
   i18nStackInOneModule,
-  localeSegmentIsLocale,
   navigationFromIntl,
   noHardcodedRoute,
-  noMiddlewareFile,
   noNativeAnchor,
   noNullSuspenseFallback,
   noSecondI18nStack,
@@ -25,48 +23,6 @@ const tester = slotTester()
 
 test("every rule this law declares is a rule", () => {
   for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
-})
-
-test("FE-NEXT-1: the interceptor is proxy.ts and exports proxy", () => {
-  assert.doesNotThrow(() => tester.run("no-middleware-file", noMiddlewareFile, {
-    valid: [
-      { filename: at("apps/web/src/proxy.ts"), code: "export function proxy(request) { return request }" },
-      { filename: at("apps/web/src/proxy.ts"), code: "export const proxy = (request) => request\nexport const config = { matcher: [] }" },
-      { filename: at("apps/web/src/proxy.ts"), code: "export default function proxy() {}" },
-      // a helper that merely has the word in its name deep in the tree is not the interceptor
-      { filename: at("apps/web/src/modules/http/middleware.ts"), code: "export const x = 1" },
-      // a middleware-named file beside a route or in a component folder is not the source-root interceptor
-      { filename: at("apps/web/src/app/[locale]/middleware.ts"), code: "export const x = 1" },
-      { filename: at("apps/web/src/components/blocks/Nav/middleware.ts"), code: "export const x = 1" },
-      // a proxy.ts in a folder the slot does not pin is no interceptor: its export names are nobody's business here
-      { filename: at("apps/web/src/modules/http/proxy.ts"), code: "export const middleware = 1" },
-    ],
-    invalid: [
-      { filename: at("apps/web/src/middleware.ts"), code: "export function middleware() {}", errors: [{ messageId: "file" }] },
-      { filename: at("apps/web/src/middleware.ts"), code: "export const x = 1", errors: [{ messageId: "file" }] },
-      { filename: at("apps/web/src/proxy.ts"), code: "export function middleware() {}", errors: [{ messageId: "export" }] },
-      { filename: at("apps/web/src/proxy.ts"), code: "const middleware = () => 1\nexport { middleware }", errors: [{ messageId: "export" }] },
-      { filename: at("apps/web/src/proxy.ts"), code: "export const middleware = () => 1", errors: [{ messageId: "export" }] },
-    ],
-  }))
-})
-
-test("FE-NEXT-2: the locale segment is [locale]", () => {
-  assert.doesNotThrow(() => tester.run("locale-segment-is-locale", localeSegmentIsLocale, {
-    valid: [
-      { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export default function P() {}" },
-      { filename: at("apps/web/src/app/[locale]/projects/[slug]/page.tsx"), code: "export default function P() {}" },
-      { filename: at("apps/web/src/app/health/live/route.ts"), code: "export const GET = 1" },
-      // a folder named [lang] that the route slot does not own is not a locale segment
-      { filename: at("apps/web/src/components/app/[lang]/page.tsx"), code: "export default function P() {}" },
-    ],
-    invalid: [
-      { filename: at("apps/web/src/app/[lang]/page.tsx"), code: "export default function P() {}", errors: [{ messageId: "segment" }] },
-      { filename: at("apps/web/src/app/[lng]/x/page.tsx"), code: "export default function P() {}", errors: [{ messageId: "segment" }] },
-      { filename: at("apps/web/src/app/[lang]/layout.tsx"), code: "export default function L() {}", errors: [{ messageId: "segment" }] },
-      { filename: at("apps/admin/src/app/[locale]/[i18n]/x/page.tsx"), code: "export const metadata = 1", errors: [{ messageId: "segment" }] },
-    ],
-  }))
 })
 
 test("FE-NEXT-3: next-intl is the only i18n stack", () => {

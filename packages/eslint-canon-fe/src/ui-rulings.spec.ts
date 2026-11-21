@@ -9,7 +9,6 @@ import { at, slotTester } from "../fixtures/typed/tester.ts";
 import {
   rules,
   recommended,
-  selectionFillNoCheck,
   noGrammarInternalSelector,
 } from "./ui-rulings.ts";
 import { rules as published, recommended as universal } from "./index.ts";
@@ -31,60 +30,6 @@ test("the UI rules are registered universally at error", () => {
     assert.equal(universal[`starci-fe/${name}`], "error");
   }
 });
-
-for (const edition of ['lite'] as const)
-  test(`COLLECTION-1 ${edition}: fill replaces checks in navigation-like single-select lists`, () => {
-    assert.doesNotThrow(() => slotTester().run("selection-fill-no-check", selectionFillNoCheck, {
-      valid: [
-        grammar +
-          'const C=()=> <nav><ListBox selectionIndicator="none" /></nav>',
-        grammar +
-          'const C=()=> <Rail><ListBox selectionMode="single" selectionIndicator={"none"} /></Rail>',
-        grammar +
-          'const C=()=> <nav><ListBox selectionMode="multiple" /></nav>',
-        grammar + 'const C=()=> <nav><ListBox selectionMode="none" /></nav>',
-        grammar + 'const C=()=> <ListBox selectionMode="single" />',
-        grammar + "const C=({ListBox})=> <nav><ListBox /></nav>",
-        'import {ListBox} from "other-kit"; const C=()=> <nav><ListBox /></nav>',
-        grammar +
-          'const C=()=> <nav><ListBox {...props} selectionIndicator="none" /></nav>',
-      ],
-      invalid: [
-        fixture("const C=()=> <nav><ListBox /></nav>", "indicator"),
-        fixture(
-          'const C=()=> <Rail><ListBox selectionMode="single" /></Rail>',
-          "indicator",
-        ),
-        fixture(
-          'const C=()=> <Sidebar><ListBox selectionIndicator="check" /></Sidebar>',
-          "indicator",
-        ),
-        fixture('const C=()=> <div role="list"><ListBox /></div>', "indicator"),
-        fixture(
-          'const C=()=> <div role="navigation"><ListBox /></div>',
-          "indicator",
-        ),
-        fixture("const C=()=> <ul><li><ListBox /></li></ul>", "indicator"),
-        fixture("const C=()=> <ol><li><ListBox /></li></ol>", "indicator"),
-        fixture(
-          'const C=()=> <nav><ListBox selectionIndicator="none" {...props} /></nav>',
-          "indicator",
-        ),
-        fixture(
-          "const C=()=> <nav><ListBox selectionIndicator={indicator} /></nav>",
-          "indicator",
-        ),
-        {
-          code: 'import {ListBox as Choices} from "@starci/grammar/offset-pop"; const C=()=> <nav><Choices /></nav>',
-          errors: [{ messageId: "indicator" }],
-        },
-        {
-          code: 'import * as G from "@starci/grammar/offset-pop"; const C=()=> <G.Rail><G.ListBox /></G.Rail>',
-          errors: [{ messageId: "indicator" }],
-        },
-      ],
-    }));
-  });
 
 for (const edition of ['lite'] as const)
   test(`ACTION-3 ${edition}: application selectors cannot restyle Grammar internals`, () => {

@@ -19,11 +19,6 @@
 
 /** @type {Record<string, Why>} */
 export const why = {
-  "selection-fill-no-check": {
-    code: "FE_NESTED_VARIANT",
-    en: "`<file>` adds a check indicator to a navigation-like single-select list.",
-    fix: 'Set selectionIndicator="none" and let the row fill carry selection.',
-  },
   "no-grammar-internal-selector": {
     code: "FE_GRAMMAR_LAYOUT_ONLY",
     en: "`<file>` targets a Grammar internal class from application styles.",
@@ -129,11 +124,6 @@ export const why = {
     en: "`<file>` sets paint or typography in app CSS instead of composing Grammar's published components and props.",
     fix: "Keep app CSS layout-only and compose a painted Grammar surface such as SurfaceCard.",
   },
-  "no-list-panel-padding": {
-    code: "FE_LIST_PANEL_PADDING",
-    en: "`<file>` adds horizontal wrapper padding to a Grammar list or its section caption, stacking the content inset.",
-    fix: "Remove the wrapper padding and use ListBox inset=\"panel\" so headers, captions and rows share the panel content edge.",
-  },
   "no-env-outside-config": {
     code: "FE_ENV_OWNER",
     en: "`<file>` reads an environment variable. Only `modules/config` may read env.",
@@ -183,16 +173,6 @@ export const why = {
     code: "FE_HOOKS_ARE_HOOKS",
     en: "`<file>` inside `hooks/` is not a React hook, or is not a file its hooks family names. A call to the back end goes to `modules/api`, a helper to `<domain>.shared.ts`.",
     fix: "One hook per `use*.ts` file under the name its family gives it (`hooks/swr/api/graphql/queries/useQuery<X>Swr.ts`, `hooks/rhf/use<X>Form.ts`, ...); a shared helper goes in `<domain>.shared.ts`; a back-end call is an operation of `modules/api`.",
-  },
-  "no-middleware-file": {
-    code: "FE_NEXT_CONVENTIONS",
-    en: "`<file>` uses the name `middleware`. From Next 16 the request gate is `proxy.ts` exporting `proxy`.",
-    fix: "Rename the file to `proxy.ts` and rename the export to `proxy`.",
-  },
-  "locale-segment-is-locale": {
-    code: "FE_I18N_PLACEMENT",
-    en: "File `<file>` sits under a locale segment that is not `[locale]`. There is one pattern: `next-intl`, `[locale]`, default `vi`.",
-    fix: "Rename the segment directory to `[locale]`.",
   },
   "no-second-i18n-stack": {
     code: "FE_I18N_PLACEMENT",
@@ -388,11 +368,6 @@ export const why = {
     code: "FE_SIZE_AND_STATE_BUDGET",
     en: "`<file>` starts a recurring timer that reads the wall clock for live time labels.",
     fix: "Render Grammar RelativeTime with the target dateTime, locale and mode; its shared ticker owns live relative time and countdown updates.",
-  },
-  "swr-extension-from-package": {
-    code: "FE_STACK_FORBIDDEN",
-    en: "`<file>` imports the `Middleware` or `ScopedMutator` type of `swr`, so it writes an SWR middleware or a cache binding the stack already ships.",
-    fix: "List `viewerSwrConfig` (it carries `pollingRestart`) in the app's SWRConfig and write through the `createViewerCache()` instance of `@starci/next-data`.",
   },
   "fe-stack-import": {
     code: "FE_STACK_FORBIDDEN",

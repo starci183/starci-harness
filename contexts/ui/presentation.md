@@ -71,7 +71,7 @@ Padding (inline and block chosen apart):
   carries no padding of its own. Lint: `starci-grammar/no-pane-section-padding`.
 - **P2 Inline belongs to the container, block to the item.** Every box in one container starts at the same content
   edge (a search field, the first tab label, the selected row, a meter, a chip); the text inside a box keeps the box's
-  own padding. Block padding is the density of each band. Lint: `starci-fe/no-list-panel-padding`.
+  own padding. Block padding is the density of each band.
 - **P3 Nesting steps down.** 32/24/12 → 16 or 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
   surface inside a surface. The card's 16 is the one intentional step between the shared edge and the content, and the
   card-inset step is used for nothing else.
@@ -191,7 +191,7 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | --- | --- |
 | grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
-| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `divider-full-bleed`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
 
 An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
 and of every utility left for a person).

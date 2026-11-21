@@ -34,7 +34,7 @@ Why: each of these is a way to fork the design system inside one app.
 
 Enforced by: R92 (`no-inline-class-name`, `class-names-in-colocated-file`, `cn-arguments-are-single-tokens`,
 `no-public-classname-prop`), R61 (`no-arbitrary-value`, `no-raw-brand-value`), R318 (`no-app-surface-paint`,
-`no-grammar-internal-selector`, `no-list-panel-padding`).
+`no-grammar-internal-selector`).
 
 ## FE-CSS-2 `globals.css` imports in the cascade order
 

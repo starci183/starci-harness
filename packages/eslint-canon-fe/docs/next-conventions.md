@@ -6,50 +6,6 @@ One locale pattern everywhere: `next-intl`, a `[locale]` segment, default `vi`, 
 
 Every rule below is an error in `starciFeConfig`; none can be switched off or suppressed inline.
 
-## `starci-fe/no-middleware-file`
-
-`middleware.ts` is forbidden: the request interceptor is `proxy.ts` and exports `proxy`.
-
-**Invalid** (`src/middleware.ts`)
-
-```ts
-export function middleware() {}
-```
-
-**Valid** (`src/proxy.ts`)
-
-```ts
-export function proxy(request) { return request }
-```
-
-**Finding code:** `FE_NEXT_CONVENTIONS`
-
-**Why:** `<file>` uses the name `middleware`. Since Next 16 the request interceptor is `proxy.ts` and exports `proxy`.
-
-**Fix:** Rename the file to `proxy.ts` and rename the export to `proxy`.
-
-## `starci-fe/locale-segment-is-locale`
-
-The locale route segment is `[locale]`, never `[lang]`.
-
-**Invalid** (`src/app/[lang]/page.tsx`)
-
-```ts
-export default function Page() {}
-```
-
-**Valid** (`src/app/[locale]/page.tsx`)
-
-```ts
-export default function Page() {}
-```
-
-**Finding code:** `FE_I18N_PLACEMENT`
-
-**Why:** The file `<file>` sits under a language segment that is not `[locale]`. There is only one pattern: `next-intl`, `[locale]`, default `vi`.
-
-**Fix:** Rename the segment directory to `[locale]`.
-
 ## `starci-fe/no-second-i18n-stack`
 
 `next-intl` is the only i18n library.

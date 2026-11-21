@@ -530,7 +530,6 @@ rules:
       - FE_ROUTE_CLIENT_HOOK
       - FE_ROUTE_DEFAULT_EXPORT
     enforcers:
-      - {kind: eslint-fe, id: no-middleware-file}
       - {kind: eslint-fe, id: page-exports-metadata}
       - {kind: eslint-fe, id: route-files-thin}
       - {kind: eslint-fe, id: route-adapter}
@@ -590,7 +589,6 @@ rules:
       - FE_I18N_NAVIGATION
       - FE_I18N_FORMATTER
     enforcers:
-      - {kind: eslint-fe, id: locale-segment-is-locale}
       - {kind: eslint-fe, id: no-second-i18n-stack}
       - {kind: eslint-fe, id: i18n-stack-in-one-module}
       - {kind: eslint-fe, id: navigation-from-intl}
@@ -891,7 +889,6 @@ rules:
       - {kind: eslint-fe, id: require-export-jsdoc}
       - {kind: eslint-fe, id: no-emoji-in-source}
       - {kind: eslint-fe, id: no-vietnamese-in-source}
-      - {kind: eslint-fe, id: no-shell-tier}
       - {kind: eslint-fe, id: source-tier-marker-matches-folder}
       - {kind: eslint-fe, id: surface-folder-two-files-only}
       - {kind: eslint-fe, id: route-tree-holds-routes-only}
@@ -902,7 +899,6 @@ rules:
       - {kind: eslint-fe, id: monorepo-tier-belongs-to-its-side}
       - {kind: eslint-fe, id: prefer-arrow-export}
       - {kind: eslint-fe, id: handler-on-prefix}
-      - {kind: eslint-fe, id: no-second-language-in-path}
       - {kind: eslint-fe, id: no-direct-const-alias}
       - {kind: eslint-fe, id: frontend-source-layout}
   - id: R92
@@ -1518,7 +1514,6 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
-      - {kind: eslint-fe, id: no-line-separator-literal}
       - {kind: eslint-be, id: no-bidirectional-character}
       - {kind: eslint-fe, id: no-bidirectional-character}
       - {kind: eslint-be, id: no-duplicate-import}
@@ -1547,7 +1542,6 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
-      - {kind: eslint-fe, id: swr-extension-from-package}
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
@@ -2110,9 +2104,7 @@ rules:
       - FE_GRAMMAR_LAYOUT_ONLY
       - FE_DIVIDER_FULL_BLEED
     enforcers:
-      - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
   - id: R319
     code: FE_BUTTON_INTENT

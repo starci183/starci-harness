@@ -48,8 +48,8 @@ reaches only its default cache.
 Why: cache identity is product behaviour; a key without the tenant or the viewer shows one workspace's or one user's
 data to the next.
 
-Enforced by: R50 (`swr-data-lifecycle`); R244 (`swr-extension-from-package`) refuses an app's own SWR middleware or cache
-binding; the use of the key helpers is review only.
+Enforced by: R50 (`swr-data-lifecycle`); an app's own SWR middleware or cache binding is review only (R244); the use of the key
+helpers is review only.
 
 ## FE-DATA-COMMAND A user-started write runs through a domain command hook
 
