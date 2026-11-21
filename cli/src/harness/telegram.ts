@@ -73,13 +73,18 @@ const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optiona
 export const telegramBot = (config: TelegramConfig = loadTelegram()): TelegramBot => {
     const token = lookupSecret(config.tokenVariable)?.value
     if (token === undefined) throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${config.tokenVariable} is not set; ${secretHome(config.tokenVariable)}`)
+    return botWithToken(config, token)
+}
+
+/** The Bot API client of any bot by its token (an app's own alert bot, opened from its sealed member); `fetcher` is the http seam a spec replaces. */
+export const botWithToken = (config: TelegramConfig, token: string, fetcher: typeof fetch = fetch): TelegramBot => {
     const api = trimEndChars(config.apiBase, "/")
     const redact = (text: string): string => text.replaceAll(token, "<token>")
     const call = async <T>(method: string, body: Readonly<Record<string, unknown>> | FormData, schema: z.ZodType<T>, waitSeconds = 0): Promise<T> => {
         const form = body instanceof FormData
         let response: Response
         try {
-            response = await fetch(`${api}/bot${token}/${method}`, {
+            response = await fetcher(`${api}/bot${token}/${method}`, {
                 method: "POST",
                 ...(form ? { body } : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
                 signal: AbortSignal.timeout((config.requestTimeoutSeconds + waitSeconds) * 1000),

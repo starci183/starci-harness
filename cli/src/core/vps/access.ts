@@ -1,10 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
 import { stringify } from "yaml"
-import { locateOps } from "../../harness/ops.js"
 import { runPlan, sessionFor } from "../../harness/vps/fleet.js"
 import { confirm, fingerprints, generateKey, keyscan, promptHidden, publicKeyOf, withPrivateDir } from "../../harness/vps/local.js"
-import { inventoryDir, loadVpsPolicy, parseServer } from "../../harness/vps/policy.js"
+import { inventoryDir, loadVpsPolicy, locateFleetOps, parseServer } from "../../harness/vps/policy.js"
 import { deployUser, grantPlan, revokePlan } from "../../harness/vps/plan.js"
 import { ownerStore, requireKey, SERVER_KEYS } from "../../harness/vps/sealed.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
@@ -60,7 +59,7 @@ export const vpsAddVerb = defineVerb({
             return { data: registered.data, message: registered.lines.join("\n") }
         }
         if (flags.host === undefined || flags.os === undefined || flags.provider === undefined) throw new UsageError("starci vps add <name> takes --roles <r1,r2> to register a machine (with --host and --user), or --host, --os and --provider to enroll a managed server")
-        const opsDir = locateOps()
+        const opsDir = locateFleetOps()
         const policy = loadVpsPolicy(opsDir)
         const dir = inventoryDir(policy, opsDir)
         const port = flags.port === undefined ? 22 : Number(flags.port)

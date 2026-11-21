@@ -45,7 +45,12 @@ export interface MonitoringOptIn {
   /** The services that send traces (OTLP) and profiles: `true` is every `metrics` service, a list names them. */
   traces: string[];
   profiles: string[];
+  /** The sealed member that holds this environment's own alert bot (ALERTS_TELEGRAM_BOT_TOKEN, ALERTS_TELEGRAM_CHAT_ID), or null: its alerts are held. */
+  alertsMember: string | null;
 }
+
+/** The keys of an environment's alert-bot member (`monitoring.alerts.telegram.member`). */
+export const ALERT_BOT_KEYS = { token: 'ALERTS_TELEGRAM_BOT_TOKEN', chat: 'ALERTS_TELEGRAM_CHAT_ID' } as const;
 
 const NETWORK = /^[a-z][a-z0-9_-]*$/u;
 const PATH = /^\/\S*$/u;
@@ -133,8 +138,15 @@ export function monitoringOf(environment: Parsed, context: { services: Set<strin
     return [];
   };
   const traces = telemetry('traces'), profiles = telemetry('profiles');
+  let alertsMember: string | null = null;
+  if (block.alerts !== undefined) {
+    const member = block.alerts?.telegram?.member;
+    if (typeof member !== 'string' || !/^[a-z][a-z0-9-]*$/u.test(member)) problems.push('alerts.telegram.member is no member name');
+    else if (!members.has(member)) problems.push(`alerts.telegram.member names ${member}, which is not sealed for ${env} (seal ${ALERT_BOT_KEYS.token} into .starcistacks/${env}/secrets/${member}.enc.yaml)`);
+    else alertsMember = member;
+  }
   if (problems.length > 0) throw refusal(DEPLOY_CONFIG_CODE, `environments.${env}.monitoring: ${problems.slice(0, 6).join('; ')}`);
-  return { network: String(network), logs: block.logs !== false, metrics, sidecars, probes, probeCarrier, traces, profiles };
+  return { network: String(network), logs: block.logs !== false, metrics, sidecars, probes, probeCarrier, traces, profiles, alertsMember };
 }
 
 /** The secret grants of the exporter sidecars: each password key mounted as a file (no `_FILE` pointer; the sidecar's environment names it). */

@@ -481,6 +481,10 @@ export const edgeStackFile = (policy: VpsPolicy, pins: VpsPins): string => {
         `--certificatesresolvers.${resolver}.acme.dnschallenge=true`,
         `--certificatesresolvers.${resolver}.acme.dnschallenge.provider=cloudflare`,
         `--certificatesresolvers.${resolver}.acme.storage=/acme/acme.json`,
+        // Prometheus metrics on an entrypoint published on no port: only the monitoring stack's Prometheus on the same network reads it.
+        "--entrypoints.metrics.address=:8082",
+        "--metrics.prometheus=true",
+        "--metrics.prometheus.entryPoint=metrics",
     ]
     return [
         "# Written by `starci vps edge up` (ops/vps.yaml edge): Traefik on 80 and 443 of the box, routing to labelled swarm services.",

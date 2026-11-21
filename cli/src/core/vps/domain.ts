@@ -1,12 +1,11 @@
 import { existsSync, mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import { locateOps } from "../../harness/ops.js"
 import { applyDns, cloudflareCall, deleteRecord, dnsAction, ensureTunnel, ingressWith, ingressWithout, putIngress, recordsOf, tunnelIngress, tunnelToken, verifyToken, wantedRecord, zoneId } from "../../harness/vps/cloudflare.js"
 import type { CloudflareCall } from "../../harness/vps/cloudflare.js"
 import { runPlan, sessionFor } from "../../harness/vps/fleet.js"
 import type { StepOutcome } from "../../harness/vps/fleet.js"
 import { promptHidden } from "../../harness/vps/local.js"
-import { cloudflareFile, forServer, loadVpsPolicy } from "../../harness/vps/policy.js"
+import { cloudflareFile, forServer, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
 import type { VpsPolicy } from "../../harness/vps/policy.js"
 import { connectorStep, edgeListScript, edgeRouteStep, edgeUnrouteStep, edgeUpPlan, fqdnOf, routeOf } from "../../harness/vps/plan.js"
 import type { DomainRoute, PlanStep, VpsPlan } from "../../harness/vps/plan.js"
@@ -246,7 +245,7 @@ export const vpsCloudflareVerb = defineVerb({
     },
     run: async (_context, flags): Promise<VerbResult<VpsData>> => {
         const action = requireAction(flags.action, ["set-token", "status"], "cloudflare")
-        const opsDir = locateOps()
+        const opsDir = locateFleetOps()
         const policy = loadVpsPolicy(opsDir)
         const file = cloudflareFile(policy, opsDir)
         const scopes = [`the token needs, on ${policy.ingress.domain} only:`, ...[...new Set([...policy.ingress.tokenScopes.tunnel, ...policy.ingress.tokenScopes.edge])].map((scope) => `  ${scope}`)]

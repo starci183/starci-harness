@@ -202,7 +202,7 @@ roles:
             network: starci-monitor
             probe: {kind: replicas}
       alertmanager:
-        summary: Alertmanager, its alerts to the owner's Telegram channel
+        summary: Alertmanager, each app's alerts to that app's own Telegram bot (monitoring.alerts), never the harness bot
         default: true
         on:
           remote:
@@ -214,7 +214,7 @@ roles:
             images:
               - {image: prom/alertmanager, pin: alertmanager}
             limits: {memory: 96M, cpus: "0.10"}
-            secrets: [TELEGRAM_BOT_TOKEN]
+            secrets: []
             network: starci-monitor
             probe: {kind: replicas}
       exporters:

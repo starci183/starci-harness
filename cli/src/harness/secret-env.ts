@@ -48,7 +48,9 @@ const fileValue = (key: string, file: string = secretEnvPath()): string | undefi
 }
 
 /**
- * The one reader of host secrets: `key` from the process environment, else from the harness's secret.env, or undefined when
+ * The one reader of host secrets: `key` from the process environment, else from the first secret.env of secretEnvFiles(cwd) that
+ * sets it (this CLI's own, then the harness home's of the working folder, so an installed CLI run from D:/.claude reads
+ * D:/.claude/secret.env as SOPS_AGE_KEY is found), or undefined when
  * neither sets it (an empty value is unset). Only the keys policy/security.yaml `secretKeys` lists are read; any other is
  * refused SECRET_KEY_UNLISTED before a file is opened. No other key of the file is kept, and no message carries a value.
  */
@@ -57,8 +59,11 @@ export const lookupSecret = (key: string): Secret | undefined => {
     if (!listed.includes(key)) throw new Refusal("SECRET_KEY_UNLISTED", `${key} is not a secret key the harness reads; policy/security.yaml secretKeys lists ${listed.join(", ")}`)
     const fromEnv = (process.env[key] ?? "").trim()
     if (fromEnv !== "") return { value: fromEnv, source: "environment" }
-    const fromFile = (fileValue(key) ?? "").trim()
-    return fromFile === "" ? undefined : { value: fromFile, source: "secret.env" }
+    for (const file of secretEnvFiles(process.cwd())) {
+        const fromFile = (fileValue(key, file) ?? "").trim()
+        if (fromFile !== "") return { value: fromFile, source: "secret.env" }
+    }
+    return undefined
 }
 
 /** Where the owner sets `key`, for a refusal or a status line. */
@@ -95,10 +100,10 @@ const samePath = (left: string, right: string): boolean => {
 }
 
 /**
- * The secret.env files the age identity is looked for in, in order: this CLI's own (secretEnvPath), then the harness home's of
+ * The secret.env files every host secret is looked for in, in order: this CLI's own (secretEnvPath), then the harness home's of
  * `cwd` (harnessHomeOf) when it is another file. Only paths are resolved; no file is opened.
  */
-export const ageIdentityFiles = (cwd: string): string[] => {
+export const secretEnvFiles = (cwd: string): string[] => {
     const own = secretEnvPath()
     const home = harnessHomeOf(cwd)
     const homeFile = home === undefined ? undefined : join(home, "secret.env")
@@ -107,12 +112,12 @@ export const ageIdentityFiles = (cwd: string): string[] => {
 
 /**
  * The host's SOPS_AGE_KEY as @starci/hfs's last age identity source (after the environment and the app's own `.claude/secret.env`):
- * the process environment, else the first of ageIdentityFiles(`cwd`) that sets it. Its label names the files it looks in, and once
+ * the process environment, else the first of secretEnvFiles(`cwd`) that sets it. Its label names the files it looks in, and once
  * read the one that held the key; the value is read only when nothing before it selects an identity, is never put in a label,
  * and is handed to the sops child alone. SOPS_AGE_KEY is listed in policy/security.yaml `secretKeys` (lookupSecret's guard).
  */
 export const hostAgeIdentity = (cwd: string = process.cwd()): { readonly label: string; readonly read: () => string | undefined } => {
-    const files = ageIdentityFiles(cwd)
+    const files = secretEnvFiles(cwd)
     let holder: string | undefined
     return {
         get label() {
