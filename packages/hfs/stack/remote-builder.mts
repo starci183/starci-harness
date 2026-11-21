@@ -1,4 +1,4 @@
-// remote-builder.mts - the client side of the remote BuildKit of a managed VPS (owner decision "A", 2026-11-21): the names the images workflow
+// remote-builder.mts - the client side of the remote BuildKit of a managed VPS (contexts/harness/managed-vps.md "Remote BuildKit"): the names the images workflow
 // (sync/stack-images.mts) and `starci app stack build --builder-host` (build.mts) share. They match the harness's ops/vps/services/buildkit/service.yaml
 // (access.user, access.builder), whose server side - the rootless buildkitd, the gate admitting only `buildctl dial-stdio`, the per-repository keys
 // of `starci vps build-key` - lives in the harness CLI.

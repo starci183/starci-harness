@@ -11,7 +11,7 @@ import type { Keep, Measured } from "./services.js"
 import { shellQuote } from "./ssh.js"
 
 /**
- * The remote BuildKit of a managed VPS (owner decision "A", 2026-11-21; contexts/harness/managed-vps.md "Remote BuildKit"): one rootless
+ * The remote BuildKit of a managed VPS (contexts/harness/managed-vps.md "Remote BuildKit"): one rootless
  * buildkitd per server as a host-level docker compose project, its only door a Unix socket that the ssh user `starci-build` reaches through
  * a forced-command gate admitting exactly `buildctl dial-stdio`. The service is the self-contained folder ops/vps/services/buildkit
  * (service.yaml, compose.yaml, buildkitd.toml); the host roles catalog deploys it as the `buildkit` service of the `starci` role (kind

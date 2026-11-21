@@ -102,7 +102,7 @@ wrappers:
         { kind: default, target: "ColorSwatch:shape", reason: "literal color content uses the vendor square swatch consistently" } ] }
   - { file: core/leaf/DateField/index.tsx, wraps: [DateField] }
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
-  - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }
+  - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label, Skeleton] }
   - { file: core/leaf/Heading/index.tsx, wraps: [Typography] }
   - { file: core/leaf/IconButton/index.tsx, wraps: [Button, Link, Spinner] }
   - { file: core/HorizontalScrollFrame.tsx, wraps: [ScrollShadow] }

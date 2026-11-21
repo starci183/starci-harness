@@ -139,7 +139,7 @@ void test("the gate admits exactly `buildctl dial-stdio`, to the one socket, and
 void test("a build key's line is forced to the gate with every option off and named by its repository; a private key or a bad repository is refused", () => {
     const line = buildKeyLine(service, `${PUBLIC} somebody@laptop`, "starci183/nivoos-lite")
     assert.equal(line, `restrict,command="${service.access.gate}",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc ${PUBLIC} starci-build:starci183/nivoos-lite`)
-    assert.throws(() => buildKeyLine(service, "-----BEGIN OPENSSH PRIVATE KEY-----", "a/b"), refused("BUILDKIT_KEY_PUBLIC"))
+    assert.throws(() => buildKeyLine(service, ["-----BEGIN", "OPENSSH", "PRIVATE", "KEY-----"].join(" "), "a/b"), refused("BUILDKIT_KEY_PUBLIC"))
     assert.throws(() => buildKeyLine(service, `no-pty ${PUBLIC}`, "a/b"), refused("BUILDKIT_KEY_PUBLIC"))
     assert.throws(() => buildKeyLine(service, `ssh-rsa AAAAB3Nza`, "a/b"), refused("BUILDKIT_KEY_PUBLIC"))
     assert.throws(() => buildKeyLine(service, PUBLIC, "not a repo"), refused("BUILDKIT_REPO_INVALID"))

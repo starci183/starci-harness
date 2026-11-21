@@ -2,7 +2,7 @@
 // proves: STACK_BUILD_BUILDER_HOST
 // proves: STACK_BUILD_REMOTE_UNREACHABLE
 // proves: STACK_BUILD_REMOTE_UNREACHABLE
-// The remote BuildKit of a managed VPS on the client side (owner decision "A", 2026-11-21): images.yml renders exactly as before unless the app
+// The remote BuildKit of a managed VPS on the client side (contexts/harness/managed-vps.md "Remote BuildKit"): images.yml renders exactly as before unless the app
 // declares ci.imageBuilder remote; with it, the job tries the builder over ssh with the repository's key and falls back to the runner's builder,
 // ci.yml passes the three builder secrets, a multi-architecture build stays on the runner; `starci app stack build --builder-host` creates and
 // bootstraps the buildx builder `starci-remote` and builds through it, and refuses an unreachable one.
