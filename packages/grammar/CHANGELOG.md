@@ -2,6 +2,8 @@
 
 ## 0.54.0 - 2026-11-21
 
+- codemod: v0540 (`starci app codemod v0540`, or `starci app codemod --from <installed> --to 0.54.0`). It moves Tailwind text-size utilities onto `starci-type-<role>` and `<Text size isStrong mono>` onto `<Text role>`, and it marks what it cannot decide with `TODO(type-role)`.
+- Added: `@starci/grammar/codemods`, the Grammar's codemods (`packages/grammar/codemods`, one per release that needs one, named after its version), loaded by `starci app codemod`.
 - Added: the type roles (owner 2026-11-21, "ok chốt vậy đi"). Ten roles, each a size, line height and weight in `ramps.css` (`--grammar-type-<role>-size|line|weight`): figure 24/32/500, title.page 22/28/500, title.section 16/24/500, label.item 14/20/500, body 14/22/400, label.field 13/18/500 muted, label.group 12/16/500 muted, caption 12/16/400 muted, badge 12/16/500, code 12/18 mono. title.page (1.27) is the one role under the 1.33x line height for Vietnamese diacritics; the owner's numbers stand.
 - Added: `<Text role>` (typed `TextRole`, `TEXT_ROLES`) and the public classes `starci-type-<role>` with dots as dashes (`starci-type-label-item`), plus `typeRoleClassName(role)`. Text stays a server component.
 - Changed: the Grammar's parts draw their roles. A Section title, a card or panel `label` and a pane header title use title.section. A ListRow title and a keyValue key use label.item (14 / 500, was 16 / 400), and its meta uses caption. A field label uses label.field (13 / 500 muted) and its description caption. A stat cell uses label.group for the label and figure for the value (24 / 32 / 500, was 20 / 600). A DataTable header uses label.field, and Badge uses badge. Button is unchanged.

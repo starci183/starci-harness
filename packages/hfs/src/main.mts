@@ -294,7 +294,7 @@ const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', D
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
     specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags }))))])),
-  codemod: CODEMODS.map((name: string) => `starci app codemod ${name} [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]`),
+  codemod: ['starci app codemod --list [--json]', 'starci app codemod v<major><minor><patch> [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]', 'starci app codemod --from <installed x.y.z> [--to <target x.y.z>] [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]', ...CODEMODS.map((name: string) => `starci app codemod ${name} [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]`)],
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
   world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]'],

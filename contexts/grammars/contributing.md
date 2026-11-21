@@ -155,6 +155,26 @@ npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, `cli/src/co
 lines, so it can over-ask for a minor and never lets one through as a patch; a false alarm is answered with the minor it asks for. The
 three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
 
+## Codemods
+
+On 2026-11-21 the owner set how Grammar codemods are named: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars".
+One codemod goes with one Grammar release that needs it, and it is named after that version: 0.54.0 is `v0540`
+(`v<major><minor><patch>`). It lives with the Grammar in `packages/grammar/codemods/<id>/`, beside its before/after fixtures and spec
+(`npm run test:codemods`), and it is registered in `packages/grammar/codemods/index.mts`. The package builds the codemods to
+`dist/codemods` and publishes them as `@starci/grammar/codemods`. `starci app codemod` (in `@starci/hfs`, `codemod/grammar.mts`)
+imports them from the Grammar the app has installed and passes in the app's own TypeScript compiler, so neither package takes a
+runtime dependency on the other. An app installs the target Grammar first, and that Grammar carries every codemod up to its version.
+
+- `starci app codemod --list` prints each codemod with its Grammar version and summary.
+- `starci app codemod v0540` is dry by default and prints a per-file summary. `--execute` writes the changes. Cases it cannot decide are
+  marked in source with `TODO(type-role)` (each codemod names its marker) and listed; a run that leaves one exits 1.
+- `starci app codemod --from <installed> --to <target>` runs every codemod above `<installed>` up to `<target>`, in version order, so an
+  app that skips versions upgrades in one go. `--to` defaults to the installed Grammar.
+- `starci deps install-local` prints the `--from`/`--to` line when it moves an app's Grammar. It never runs the line.
+
+**The CHANGELOG says which.** Every Grammar release that changes an app-facing API names its migration in its CHANGELOG entry: either
+"codemod: vXXXX" (the codemod of that release), "no codemod needed", or "manual steps" followed by the steps.
+
 ## Render proof
 
 Lint passing says nothing about looks. Before review:

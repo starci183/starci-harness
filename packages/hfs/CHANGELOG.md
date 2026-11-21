@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (t191 type scale: Grammar codemods)
+
+- Added (`starci app codemod`, `codemod/grammar.mts`): the Grammar's codemods, one per Grammar release that needs one and named after its version (owner 2026-11-21: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars"). `starci app codemod --list` prints each codemod of the installed Grammar with its version and summary. `starci app codemod v0540` runs one codemod: it is dry until `--execute` and exits 1 when it leaves a `TODO(type-role)` case. `starci app codemod --from <installed> [--to <target>]` runs every codemod in between, in version order. The codemods load from the app's installed `@starci/grammar/codemods` (0.54.0 and later) and use the app's TypeScript compiler. A target above the installed Grammar, an unknown id and a Grammar with no codemods are refused, each with what to do.
+- Changed (canon pins): the Grammar family is 0.54.0 (`~0.54.0`).
+
 ## Unreleased (train 189: ci-key custody)
 
 - Added (images.yml, `sync/stack-images.mts`): when the release environment is declared `custody: ci-key`, the `image-sealed` job binds no Environment and reads the repository secret `SOPS_AGE_KEY` (the CI key), behind the release-only guard it already had; ci.yml's images call and each `deploy-<env>` call of a ci-key environment pass `secrets: inherit`, the only way a called workflow whose job binds no Environment reads a repository secret (without it the automatic deploy of a ci-key environment read an empty key). R251 accepts the unbound sealed job only in images.yml, with the release-tag guard and the tag-is-version check before any secret, for a `--env` declared ci-key, and accepts `secrets: inherit` only on a ci.yml caller of stack-deploy.yml whose environment is ci-key. Apps on environment custody render byte-identically.

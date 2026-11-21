@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (t191 type scale)
+
+- Added: the Grammar codemods behind `starci app codemod`. A codemod is named after the Grammar version that needs it (`v0540` for 0.54.0) and loaded from the app's installed Grammar: `starci app codemod --list`, `starci app codemod v0540 [--execute]`, `starci app codemod --from <installed> --to <target>`. `starci deps install-local` prints the `--from`/`--to` line when it moves an app's Grammar, and never runs it.
+- Changed: the Grammar family is 0.54.0 (the type roles, `<Text role>`, `starci-type-<role>`, the counting rule `starci-grammar/no-raw-type-size`).
+
 ## Unreleased (train 190: the dev flow)
 
 - Fixed (`starci dev sync`): an install no longer runs over a running dev stack or leaves a half-wiped node_modules. Before anything writes node_modules the sync ends the stack processes the environment records (read through the app's pinned CLI, `app stack status --json`) with their children and sees them gone, else DEV_SYNC_STOP before anything moves. npm ci runs with every node_modules it replaces (root and workspaces) renamed aside, one retry on EPERM/EBUSY, then DEV_SYNC_BUSY with nothing deleted; a failed install puts the old copies back and restarts the stopped processes. The stopped processes restart after the install with the changed ones (core/dev/stack-stop.ts, core/dev/safe-install.ts).

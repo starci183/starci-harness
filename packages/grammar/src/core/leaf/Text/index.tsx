@@ -1,26 +1,13 @@
 import { skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
+import { TEXT_ROLES, typeRoleClassName, type TextRole } from "../../../common/typeRoles.js"
+
+export { TEXT_ROLES, typeRoleClassName, type TextRole }
 
 export type TextAs = "div" | "p" | "span"
 export type TextTone = "default" | "muted"
 /** `figure` is the leading value of a region (FONT-5): a price, a total, a count read first, in tabular figures. */
 export type TextSize = "xs" | "sm" | "md" | "figure"
-/**
- * The type roles (0.54.0, owner 2026-11-21): ten roles, each one size, line height and weight from `ramps.css`
- * (`--grammar-type-<role>-size|line|weight`, dots as dashes). `label.field`, `label.group` and `caption` are muted;
- * `badge` takes its tone from the badge around it; `code` is set in the mono stack.
- */
-export type TextRole =
-    | "figure"
-    | "title.page"
-    | "title.section"
-    | "label.item"
-    | "body"
-    | "label.field"
-    | "label.group"
-    | "caption"
-    | "badge"
-    | "code"
 export type TextLive = "off" | "polite" | "assertive"
 export type TextOverflow = "wrap" | "truncate" | "clamp-2"
 
@@ -62,23 +49,6 @@ export type TextProps = {
  * element already emits, so a consumer gets the scale without scanning this package with Tailwind.
  */
 const TEXT_CLASS_NAME = "starci-core-text"
-
-/** Every type role, in the owner's order. */
-export const TEXT_ROLES: readonly TextRole[] = Object.freeze([
-    "figure",
-    "title.page",
-    "title.section",
-    "label.item",
-    "body",
-    "label.field",
-    "label.group",
-    "caption",
-    "badge",
-    "code",
-])
-
-/** The public class of a role, dots as dashes (`label.item` is `starci-type-label-item`): an app moves a raw size utility onto it. */
-export const typeRoleClassName = (role: TextRole): string => `starci-type-${role.replace(".", "-")}`
 
 /** The roles drawn in the muted tone. */
 const MUTED_ROLES: ReadonlySet<TextRole> = new Set(["label.field", "label.group", "caption"])

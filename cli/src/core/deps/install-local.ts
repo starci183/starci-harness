@@ -153,6 +153,18 @@ const LOCKFILE_NAME = "package-lock.json"
 
 const RESTORE_STEP = "before a commit, put the npm pins back: starci deps install-local --restore"
 
+/**
+ * The Grammar codemod line an install suggests when it moves @starci/grammar to another version: `starci app codemod --from <the pin
+ * it replaced> --to <the version installed>`, which runs every codemod in between (owner 2026-11-21: one codemod per Grammar release).
+ * Printed only, never run; null when the install moves no Grammar or the replaced pin is not an x.y.z version.
+ */
+export const grammarCodemodHint = (packages: readonly { readonly name: string; readonly version: string; readonly pins: readonly { readonly spec: string | null }[] }[]): string | null => {
+    const grammar = packages.find((one) => one.name === "@starci/grammar")
+    const from = grammar?.pins.map((pin) => /^[~^=v]?(\d+\.\d+\.\d+)$/.exec(pin.spec ?? "")?.[1]).find((version) => version !== undefined)
+    if (grammar === undefined || from === undefined || from === grammar.version) return null
+    return `the Grammar moves ${from} -> ${grammar.version}: run its codemods with starci app codemod --from ${from} --to ${grammar.version} (dry; add --execute to write)`
+}
+
 /** Installs the local versions into the app like npm and records the pins they replaced. */
 export const installLocal = async (root: string, requested: readonly Requested[], port: number, execute: boolean): Promise<{ readonly data: InstallLocalData; readonly message: string }> => {
     if (!(await registryAnswers(port))) throw new Refusal("LOCAL_REGISTRY_NOT_READY", `${registryUrl(port)} does not answer; start the local-registry service (starci host up local-registry) and publish with starci deps publish-local --execute`)
@@ -161,7 +173,7 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     const plan = await planInstall(root, versions, before)
     const lines = versions.map((one) => `${one.name}@${one.version}`)
     if (!execute) {
-        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} (plan only, add --execute)`, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`))].join("\n") }
+        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} (plan only, add --execute)`, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
     }
     const names = versions.map((one) => one.name)
     const lockText = readFileSync(join(root, LOCKFILE_NAME), "utf8")
@@ -186,7 +198,7 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     writeInstallRecord(root, { schema: "starci/deps-install-local@1", registry: registryUrl(port), packages: [...kept, ...plan.packages].toSorted((left, right) => left.name.localeCompare(right.name)) })
     return {
         data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: installRecordFile(root) },
-        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and package-lock.json name them, and ${installRecordFile(root)} records what they replaced`, RESTORE_STEP].join("\n"),
+        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and package-lock.json name them, and ${installRecordFile(root)} records what they replaced`, ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null), RESTORE_STEP].join("\n"),
     }
 }
 
