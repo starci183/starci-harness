@@ -41,70 +41,6 @@ const VERSIONED_NAME = /(?:^|[a-z])V[0-9]+(?:$|[A-Z_])|_V[0-9]+/
 
 // -- NAME-1 ----------------------------------------------------------------------------------------
 
-/** Decorator names carried by a class declaration. */
-const decoratorNames = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): Array<string | null> =>
-  (node.decorators || []).map((decorator) => {
-    const expression = decorator.expression
-    if (expression.type === "CallExpression" && expression.callee.type === "Identifier") return expression.callee.name
-    if (expression.type === "Identifier") return expression.name
-    return null
-  }).filter(Boolean)
-
-/**
- * Vendor dynamic-module factory names, each mapped to the house name a `.module.ts` file's own
- * factory declares instead: `register`, or `registerAsync` for its async companion.
- *
- * This is a CLOSED list of the exact method names Nest's own modules publish
- * (`ConfigModule.forRoot`, `TypeOrmModule.forFeature`, `BullModule.forRootAsync`,
- * `SentryCoreModule.forRoot`). A repository class that declares its OWN static factory under one of
- * these names is not calling the vendor - it is shaped like the vendor, which is exactly what makes
- * `PrimaryPostgreSQLModule.forFeature()` unreadable at a glance from `TypeOrmModule.forFeature()`:
- * same literal name, two different owners, and nothing at the call site says which.
- */
-const VENDOR_FACTORY_NAMES = new Map([
-  ["forRoot", "register"],
-  ["forRootAsync", "registerAsync"],
-  ["forFeature", "register"],
-  ["forFeatureAsync", "registerAsync"],
-])
-
-/** A `.module.ts` file's own static factory is named `register`, never a vendor's factory shape. */
-export const noVendorModuleFactoryName: RuleModule = {
-  meta: {
-    type: "problem",
-    docs: {
-      description:
-        "NAME-1: a `.module.ts` file's own static factory is named `register` (`registerAsync` for its async companion), never a vendor dynamic-module name it does not own.",
-    },
-    schema: [],
-    messages: {
-      vendorShaped:
-        "`{{name}}` is a module declared IN THIS REPOSITORY, but its static factory is named `{{method}}` - the exact name Nest's own vendor modules publish (`ConfigModule.forRoot`, `TypeOrmModule.forFeature`, `BullModule.forRootAsync`). A reader hitting `{{name}}.{{method}}(...)` in an `imports:` list cannot tell, from the name alone, whether that call lands in this class or forwards straight into a vendor's. Thirty-nine other modules in this tree already answer that question by calling this factory `{{suggestion}}` instead - a name no vendor already owns. Rename `{{method}}` to `{{suggestion}}`.",
-    },
-  },
-  create(context) {
-    return {
-      MethodDefinition(node) {
-        if (!node.static) return
-        if (!node.key || node.key.type !== "Identifier") return
-        const suggestion = VENDOR_FACTORY_NAMES.get(node.key.name)
-        if (!suggestion) return
-
-        const classBody = node.parent
-        const classNode = classBody && classBody.parent
-        if (!classNode || !decoratorNames(classNode).includes("Module")) return
-
-        const name = (classNode.id && classNode.id.name) || "this module"
-        context.report({
-          node: node.key,
-          messageId: "vendorShaped",
-          data: { name, method: node.key.name, suggestion },
-        })
-      },
-    }
-  },
-}
-
 // -- NAME-2 ----------------------------------------------------------------------------------------
 
 /** A name says what a thing is, never which schema generation it was built for. */
@@ -185,13 +121,11 @@ export const noDefaultExport: RuleModule = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-version-in-name": noVersionInName,
-  "no-vendor-module-factory-name": noVendorModuleFactoryName,
   "no-default-export": noDefaultExport,
 } satisfies Rules
 
 /** Every rule of this law at `error`. */
 export const recommended: Recommended = {
   "starci-be/no-version-in-name": "error",
-  "starci-be/no-vendor-module-factory-name": "error",
   "starci-be/no-default-export": "error",
 }

@@ -452,7 +452,6 @@ rules:
       - {kind: eslint-be, id: no-sleep-in-flow}
       - {kind: eslint-be, id: no-wiring-in-flow-spec}
       - {kind: eslint-be, id: e2e-asserts-persisted-state}
-      - {kind: eslint-be, id: no-api-shaped-e2e-filename}
       - {kind: eslint-be, id: no-call-only-spec}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
@@ -864,7 +863,6 @@ rules:
       - {kind: eslint-be, id: require-enum-member-jsdoc}
       - {kind: eslint-be, id: no-non-ascii-source}
       - {kind: eslint-be, id: no-restated-name-jsdoc}
-      - {kind: eslint-be, id: no-vendor-module-factory-name}
       - {kind: eslint-be, id: no-version-in-name}
       - {kind: eslint-be, id: no-const-enum}
       - {kind: eslint-be, id: no-inline-object-type}

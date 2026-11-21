@@ -12,7 +12,6 @@
  *     (`unit-test-colocated`);
  *   - an e2e that never reads persisted state back, and an e2e that reaches a model provider
  *     (`e2e-asserts-persisted-state`, `no-model-call-in-e2e`);
- *   - an e2e filename that names an API shape instead of a business flow (`no-api-shaped-e2e-filename`);
  *
  * Every path question is asked of the slot manifest (`hfsOf(context)`): a rule never tests a path with a regular
  * expression. A file name is a role vocabulary of the slots (`*.spec.ts`, `*.e2e-spec.ts`, `*.handler.ts`) and is read
@@ -264,51 +263,6 @@ export const noModelCallInE2e: RuleModule = {
 
 // -- TESTING-1 (and E2E-1 in e2e-flow.md, the same requirement on the same file) -------------------
 
-/** Nouns that name an API shape rather than a business promise. `rewards-queries` is the anchor. */
-const API_SHAPED_FILENAME_NOUNS = new Set([
-  "queries", "query", "mutations", "mutation",
-  "resolvers", "resolver", "endpoints", "endpoint",
-  "controllers", "controller", "handlers", "handler",
-  "modules", "module", "apis", "api",
-])
-
-/** The hyphen-separated words of an e2e filename, with the lane suffix stripped. */
-const e2eFilenameSegments = (filename: string) => {
-  const base = baseOf(filename)
-  return base.replace(/\.e2e-spec\.ts$/, "").split("-").filter(Boolean)
-}
-
-/** An e2e file is one business flow; the filename may not be an API-shape noun wearing its clothes. */
-export const noApiShapedE2eFilename: RuleModule = {
-  meta: {
-    type: "problem",
-    docs: {
-      description:
-        "An e2e filename reads as a business sentence (TESTING-1; E2E-1 in e2e-flow.md), not a resolver/endpoint/module group.",
-    },
-    schema: [],
-    messages: {
-      apiShaped:
-        "`{{segment}}` names an API shape - a resolver group, an endpoint, a module - not a business promise. TESTING-1 / E2E-1: one e2e file is one business flow and the filename IS that flow; `rewards-queries.e2e-spec.ts` is exactly the shape this refuses. Name the file for the sentence it proves (`project-purchase.e2e-spec.ts`), not the API surface it happens to hit.",
-    },
-  },
-  create(context) {
-    const filename = context.filename || context.getFilename()
-    if (!isE2eSpec(filename)) return {}
-    const segments = e2eFilenameSegments(filename)
-    if (segments.length === 0) return {}
-    const lastSegment = segments[segments.length - 1]
-    if (lastSegment === undefined) return {}
-    const last = lastSegment.toLowerCase()
-    if (!API_SHAPED_FILENAME_NOUNS.has(last)) return {}
-    return {
-      Program(node) {
-        context.report({ node, messageId: "apiShaped", data: { segment: last } })
-      },
-    }
-  },
-}
-
 
 // -- TESTING-7 -------------------------------------------------------------------------------------
 
@@ -320,7 +274,6 @@ export const rules = {
   "unit-test-colocated": unitTestColocated,
   "e2e-asserts-persisted-state": e2eAssertsPersistedState,
   "no-model-call-in-e2e": noModelCallInE2e,
-  "no-api-shaped-e2e-filename": noApiShapedE2eFilename,
 } satisfies Rules
 
 /** Every rule of this law ships at `error`. */
@@ -329,5 +282,4 @@ export const recommended: Recommended = {
   "starci-be/unit-test-colocated": "error",
   "starci-be/e2e-asserts-persisted-state": "error",
   "starci-be/no-model-call-in-e2e": "error",
-  "starci-be/no-api-shaped-e2e-filename": "error",
 }

@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { noDefaultExport, noVendorModuleFactoryName, noVersionInName, rules } from "./naming.ts"
+import { noDefaultExport, noVersionInName, rules } from "./naming.ts"
 import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
@@ -27,78 +27,6 @@ test("every rule this law declares is exported under its published name", () => 
   for (const [name, rule] of Object.entries(rules)) {
     assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
   }
-})
-
-test("NAME-1: a module's own static factory is named register, not a vendor's factory shape", () => {
-  assert.doesNotThrow(() => {
-      tester.run("no-vendor-module-factory-name", noVendorModuleFactoryName, {
-        valid: [
-          // the house shape: the tree's other 39 modules all look like this
-          `
-          @Module({})
-          export class EnvModule extends ConfigurableModuleClass {
-            static register(options) {
-              const dynamicModule = super.register(options)
-              return { ...dynamicModule, imports: [ConfigModule.forRoot({ isGlobal: true })] }
-            }
-          }
-          `,
-          // a repository-invented auxiliary factory does not collide with a vendor shape
-          `
-          @Module({})
-          export class BullModule extends ConfigurableModuleClass {
-            static registerQueue(options) {
-              return NestBullModule.registerQueue({ name: options.name })
-            }
-          }
-          `,
-          // a vendor-named static method on a class that is NOT a Nest module is nobody's business here
-          "export class RetryPolicy { static forRoot() { return new RetryPolicy() } }",
-          // calling a vendor's OWN factory is not declaring one
-          "const dynamicModule = SentryCoreModule.forRoot(options)",
-        ],
-        invalid: [
-          {
-            // the bullmq.module.ts shape: a public forRoot standing in for register
-            code: `
-            @Module({})
-            export class BullModule extends ConfigurableModuleClass {
-              static forRoot(options) {
-                const dynamicModule = super.forRoot(options)
-                return dynamicModule
-              }
-            }
-            `,
-            errors: [{ messageId: "vendorShaped" }],
-          },
-          {
-            // the env.module.ts shape
-            code: `
-            @Module({})
-            export class EnvModule extends ConfigurableModuleClass {
-              static forRoot(options) {
-                return super.forRoot(options)
-              }
-            }
-            `,
-            errors: [{ messageId: "vendorShaped" }],
-          },
-          {
-            // the primary.module.ts shape: private, and still a divergence -- and the vendor call
-            // (NestTypeOrmModule.forFeature) inside it does NOT fire a second time
-            code: `
-            @Module({})
-            export class PrimaryPostgreSQLModule extends ConfigurableModuleClass {
-              private static forFeature() {
-                return { module: PrimaryPostgreSQLModule, imports: [NestTypeOrmModule.forFeature([UserEntity])] }
-              }
-            }
-            `,
-            errors: [{ messageId: "vendorShaped" }],
-          },
-        ],
-      })
-  })
 })
 
 test("NAME-2: a schema generation does not go in a name", () => {

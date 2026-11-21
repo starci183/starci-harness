@@ -14,7 +14,6 @@ import {
 } from "./e2e-flow.ts"
 import {
     e2eAssertsPersistedState,
-    noApiShapedE2eFilename,
     noCallOnlySpec,
     noModelCallInE2e,
 } from "./testing.ts"
@@ -123,18 +122,6 @@ for (const edition of ['lite'] as const) {
                 settings,
                 code: "it('records payment', () => { expect(response.status).toBe(200) })",
                 errors: [{ messageId: "noState" }],
-            }],
-        })
-    })
-
-    test(`R48 ${edition} accepts a business-flow filename and rejects an API-shaped filename`, () => {
-        tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
-            valid: [{ filename: FLOW, settings, code: "it('records payment', () => { expect(payment.status).toBe('paid') })" }],
-            invalid: [{
-                filename: at("src/tests/e2e/checkout/checkout-queries.e2e-spec.ts"),
-                settings,
-                code: "it('records payment', () => { expect(payment.status).toBe('paid') })",
-                errors: [{ messageId: "apiShaped" }],
             }],
         })
     })

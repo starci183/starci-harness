@@ -10,7 +10,7 @@ import { projectFixture } from '../fixtures/project/tester.ts';
 import { at, BE_DECLARATION, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { noNonAsciiSource, noRestatedNameJsdoc, requireEnumMemberJsdoc, requireExportJsdoc } from './comments.ts';
-import { noDefaultExport, noVendorModuleFactoryName, noVersionInName } from './naming.ts';
+import { noDefaultExport, noVersionInName } from './naming.ts';
 import { noTestDoubleInSource } from './service-deps.ts';
 import { noConstEnum, noInlineObjectType, noInlineParamType } from './type-safety.ts';
 import { rules as graphRules } from './project-graph.ts';
@@ -74,10 +74,6 @@ for (const edition of ['lite'] as const) {
     tester.run('no-restated-name-jsdoc', noRestatedNameJsdoc, {
       valid: ['/** Reads an authorized member. */\nexport const readUser = () => null;'],
       invalid: [{ code: '/** The read user function. */\nexport const readUser = () => null;', errors: [{ messageId: 'restated' }] }],
-    });
-    tester.run('no-vendor-module-factory-name', noVendorModuleFactoryName, {
-      valid: ['@Module({}) export class EnvModule { static register() { return {}; } }'],
-      invalid: [{ code: '@Module({}) export class EnvModule { static forRoot() { return {}; } }', errors: [{ messageId: 'vendorShaped' }] }],
     });
     tester.run('no-version-in-name', noVersionInName, {
       valid: ['export class SchemaReader {}'],

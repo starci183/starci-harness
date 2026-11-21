@@ -14,7 +14,6 @@ import tsParser from "@typescript-eslint/parser"
 import { BE_DECLARATION, at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import {
   e2eAssertsPersistedState,
-  noApiShapedE2eFilename,
   noCallOnlySpec,
   noModelCallInE2e,
   rules,
@@ -221,26 +220,6 @@ test("TESTING-9: an e2e reaches a model only through the world's network fake; o
       { filename: E2E, code: "import Anthropic from '@anthropic-ai/sdk'", errors: [{ messageId: "provider" }] },
       { filename: E2E, code: "import OpenAI from 'openai'", errors: [{ messageId: "provider" }] },
       { filename: E2E, code: "import { GoogleGenAI } from '@google/genai'", errors: [{ messageId: "provider" }] },
-    ],
-  }) })
-})
-
-test("TESTING-1 / E2E-1: an e2e filename is the business sentence, not an API-shape noun", () => {
-  assert.doesNotThrow(() => { tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
-    valid: [
-      // a business sentence
-      { filename: E2E, code: "it('x', () => {})" },
-      // multi-word business sentences that happen to end near an API-flavoured word but not one
-      { filename: at("src/tests/e2e/community/community-chat-room-authorization.e2e-spec.ts"), code: "it('x', () => {})" },
-      { filename: at("src/tests/e2e/github/github-account-link.e2e-spec.ts"), code: "it('x', () => {})" },
-      // not an e2e file - this code has nothing to say about a unit spec's name
-      { filename: UNIT, code: "it('x', () => {})" },
-    ],
-    invalid: [
-      // the law's own anchor example
-      { filename: at("src/tests/e2e/rewards/rewards-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-      { filename: at("src/tests/e2e/plans/installment-plan-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-      { filename: at("src/tests/e2e/projects/project-resolvers.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
     ],
   }) })
 })
