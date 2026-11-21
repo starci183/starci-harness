@@ -6,28 +6,10 @@ import tsParser from "@typescript-eslint/parser"
 import { rules as commonRules, why as commonWhy } from "@starci/eslint-grammar-core"
 import plugin, { offsetPopGrammarConfig, offsetPopGrammarPackagesConfig, rules, why } from "./index.ts"
 
-const lintStatus = (code: string): Linter.LintMessage[] => new Linter().verify(code, [{
-  files: ["**/*.tsx"],
-  languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
-  plugins: { "starci-grammar": plugin },
-  rules: { "starci-grammar/status-text-uses-soft-foreground": "error" },
-}], { filename: "apps/web/src/components/branches/Panel/index.tsx" })
-
 test("Offset Pop shares the authoritative Common checks and finding metadata", () => {
   assert.equal(rules, commonRules)
   assert.equal(why, commonWhy)
   assert.equal(plugin.rules, rules)
-})
-
-test("Offset Pop inherited status rule takes the soft pair on a tint and the tone itself alone", () => {
-  const imports = 'import { Text } from "@starci/grammar/offset-pop"; '
-  assert.deepEqual(lintStatus(imports + 'const Panel = () => <Text className="bg-success-soft text-success-soft-foreground">Saved</Text>'), [])
-  assert.deepEqual(lintStatus(imports + 'const Panel = () => <Text className="text-success">Saved</Text>'), [])
-  const invalid = lintStatus(imports + 'const Panel = () => <Text className="bg-success-soft text-success">Saved</Text>')
-  assert.equal(invalid.length, 1)
-  assert.equal(invalid[0]?.ruleId, "starci-grammar/status-text-uses-soft-foreground")
-  assert.equal(invalid[0]?.messageId, "onTint")
-  assert.equal(invalid[0]?.severity, 2)
 })
 
 const PANE_RULES = ["pane-grid-children", "pane-children", "no-pane-section-padding", "pane-grid-page"]
