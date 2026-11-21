@@ -105,8 +105,7 @@ second time, attributed or dated. A rule cites other rules by their ids, never a
 CHANGELOG entry says what changed, never which ruling asked for it. A question that awaits the owner is one entry of
 [contexts/harness/questions.md](contexts/harness/questions.md) until it is answered. It never becomes a case note
 beside a rule or a "lessons" section. No design document sits beside the owners: plans, phases and history live in git,
-not in a file. `starci contexts anatomy` refuses a ruling citation in contexts/, policy/ and the packages' source and
-knowledge (ANATOMY_RULING_HISTORY).
+not in a file.
 
 ### CONTRIB-8 Claims execute
 

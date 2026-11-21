@@ -1,5 +1,0 @@
-# The digests the parity gate compares against: a pinned file that changes is red until its new sha256 is recorded here,
-# in the commit that changes it, so the change shows in review. Read by `contexts anatomy` (cli/src/core/contexts/knowledge-gates.ts).
-schema: starci/vendor-pins@1
-pins:
-  wrappers.yaml: 1232122f421d634d75da14f775728c665828be413bff47960b2c4e251ed4721e

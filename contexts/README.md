@@ -207,7 +207,7 @@ specific to contexts:
 1. **Cite the code owner.** A value code owns (a token, a size, a lint rule, a component) is named by its owner
    (`owner: @starci/grammar src/common/spacing.ts`), never restated. A rule cites other rules by their rule ids and never
    a decision of the owner by its id, a decision log or a date: the rule says what holds now, and its history lives in git and the
-   CHANGELOGs (`contexts anatomy` refuses it, ANATOMY_RULING_HISTORY).
+   CHANGELOGs.
 2. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
    product's `.starciwork`. The law for every source of the harness is [harness/rules.md](harness/rules.md) rule 9.
 3. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose

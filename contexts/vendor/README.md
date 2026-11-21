@@ -9,7 +9,6 @@ about keeping it.
 | [heroui.md](heroui.md) | reasoning: what each component family ships and why its variants and sizes exist | an agent writing or reviewing a Grammar wrapper, or asking what a vendor variant means |
 | [parity.yaml](parity.yaml) | data: the two parity modes and, per vendor component, what a grammar must keep vs may change | the parity gate; the [grammar contract](../grammars/contract.yaml) cites its ids |
 | [wrappers.yaml](wrappers.yaml) | data: each Grammar file that imports HeroUI, what it wraps and delegates, and each override with its reason and the rule it applies | the parity gate; an author adding an override |
-| [pins.yaml](pins.yaml) | data: the sha256 of wrappers.yaml | the parity gate |
 
 Read [heroui.md](heroui.md) first, then [parity.yaml](parity.yaml); open [wrappers.yaml](wrappers.yaml) only
 when a wrapper changes. When to use a component is [ui/components](../ui/README.md); what it is in every
@@ -37,9 +36,3 @@ The parity judge reads the cache, [parity.yaml](parity.yaml), [wrappers.yaml](wr
 DNA `vendor.parity`. Its findings: `role` (a role the vendor ships is hand-rolled), `anatomy` (a part dropped or
 added), `undeclared` (a HeroUI import missing from wrappers), and for strict paint `slot`, `style`, `default`
 and `stale` (an override with no matching deviation).
-
-## Pin
-
-[wrappers.yaml](wrappers.yaml) is pinned by its sha256 in [pins.yaml](pins.yaml); an added or changed override is red
-(`ANATOMY_WRAPPER_PIN_DRIFT`) until the commit that makes it records the new digest there, so every override change is a
-reviewed change of the pin. Only the live pin is kept; earlier digests are git history.
