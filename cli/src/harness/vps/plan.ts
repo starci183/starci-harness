@@ -1,4 +1,5 @@
 import { Refusal } from "../../shared/errors.js"
+import type { DesiredFile } from "./drift.js"
 import { forServer } from "./policy.js"
 import type { ManagedServer, VpsPins, VpsPolicy } from "./policy.js"
 import { shellQuote } from "./ssh.js"
@@ -354,6 +355,12 @@ export const fqdnOf = (policy: VpsPolicy, label: string): string => `${label}.${
 /** The UI's public name for a server. */
 export const uiHost = (policy: VpsPolicy, server: Pick<ManagedServer, "id">): string => fqdnOf(policy, forServer(policy.ui.subdomain, server.id))
 
+/** Where `vps ui up` writes the Portainer stack file on a server. */
+export const UI_STACK_FILE = "/opt/starci/ui/stack.yml"
+
+/** The files `vps ui up` writes before it redeploys, for the read-only config drift of `host up|status|doctor --host` (drift.ts). */
+export const uiDesiredFiles = (policy: VpsPolicy, pins: VpsPins): DesiredFile[] => [{ path: UI_STACK_FILE, label: "ui/stack.yml", content: uiStackFile(policy, pins) }]
+
 /** `vps ui up <id>`: the Portainer stack, deployed (again) only when its file changed. */
 export const uiUpPlan = (policy: VpsPolicy, server: ManagedServer, pins: VpsPins): VpsPlan => ({
     verb: "ui up",
@@ -365,7 +372,7 @@ export const uiUpPlan = (policy: VpsPolicy, server: ManagedServer, pins: VpsPins
             `
 [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || { echo "no swarm: run starci vps swarm init first" >&2; exit 7; }
 install -d -m 700 /opt/starci/ui
-${writeIfChanged("/opt/starci/ui/stack.yml", uiStackFile(policy, pins), "600", `docker stack deploy --quiet -c /opt/starci/ui/stack.yml ${shellQuote(policy.ui.stack)} >/dev/null;`)}`,
+${writeIfChanged(UI_STACK_FILE, uiStackFile(policy, pins), "600", `docker stack deploy --quiet -c ${UI_STACK_FILE} ${shellQuote(policy.ui.stack)} >/dev/null;`)}`,
         ),
     ],
     notes: [
@@ -524,6 +531,12 @@ export const edgeStackFile = (policy: VpsPolicy, pins: VpsPins): string => {
     ].join("\n")
 }
 
+/** Where `vps edge up` writes the Traefik stack file on a server. */
+export const EDGE_STACK_FILE = "/opt/starci/edge/stack.yml"
+
+/** The files `vps edge up` writes before it redeploys, for the read-only config drift of `host up|status|doctor --host` (drift.ts). */
+export const edgeDesiredFiles = (policy: VpsPolicy, pins: VpsPins): DesiredFile[] => [{ path: EDGE_STACK_FILE, label: "edge/stack.yml", content: edgeStackFile(policy, pins) }]
+
 /** `vps edge up <id>`: the Cloudflare token as a swarm secret named by its hash, and the Traefik stack, deployed again only on a change. */
 export const edgeUpPlan = (policy: VpsPolicy, server: ManagedServer, pins: VpsPins): VpsPlan => {
     const marker = "STARCI_EOF"
@@ -542,13 +555,13 @@ C=unchanged
 export STARCI_CF_SECRET="starci_cf_dns_$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -c1-12)"
 if ! docker secret inspect "$STARCI_CF_SECRET" >/dev/null 2>&1; then printf '%s' "$CLOUDFLARE_API_TOKEN" | docker secret create "$STARCI_CF_SECRET" - >/dev/null; C=changed; fi
 install -d -m 700 /opt/starci/edge
-cat > /opt/starci/edge/stack.yml.starci-new <<'${marker}'
+cat > ${EDGE_STACK_FILE}.starci-new <<'${marker}'
 ${edgeStackFile(policy, pins)}
 ${marker}
-if ! cmp -s /opt/starci/edge/stack.yml.starci-new /opt/starci/edge/stack.yml; then install -m 600 /opt/starci/edge/stack.yml.starci-new /opt/starci/edge/stack.yml; C=changed; fi
-rm -f /opt/starci/edge/stack.yml.starci-new
+if ! cmp -s ${EDGE_STACK_FILE}.starci-new ${EDGE_STACK_FILE}; then install -m 600 ${EDGE_STACK_FILE}.starci-new ${EDGE_STACK_FILE}; C=changed; fi
+rm -f ${EDGE_STACK_FILE}.starci-new
 docker stack ls --format '{{.Name}}' | grep -qx ${stack} || C=changed
-if [ "$C" = changed ]; then docker stack deploy --quiet -c /opt/starci/edge/stack.yml ${stack} >/dev/null; fi
+if [ "$C" = changed ]; then docker stack deploy --quiet -c ${EDGE_STACK_FILE} ${stack} >/dev/null; fi
 echo "$C"`,
                 ["CLOUDFLARE_API_TOKEN"],
             ),

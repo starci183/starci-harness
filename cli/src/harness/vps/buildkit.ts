@@ -4,6 +4,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { locateOps } from "../ops.js"
+import type { DesiredFile } from "./drift.js"
 import { resolveImages } from "./policy.js"
 import type { PlanStep, VpsPlan } from "./plan.js"
 import { megabytes } from "./services.js"
@@ -237,6 +238,12 @@ echo "rootless.block=$B"`.trim()
 const PREFLIGHT_SUFFIX = `
 if [ -n "$B" ]; then echo "BuildKit cannot run rootless on this kernel: $B. Changing that is a host security setting, an owner decision; nothing was changed and there is no privileged fallback" >&2; exit 9; fi
 echo unchanged`
+
+/** The files the `files` step writes before `docker compose up -d`, for the read-only config drift of `host up --host` (drift.ts). */
+export const buildkitDesiredFiles = (service: BuildkitService, render: BuildkitRender): DesiredFile[] => [
+    { path: `${service.dir}/compose.yaml`, label: `${service.project}/compose.yaml`, content: render.compose },
+    { path: `${service.dir}/buildkitd.toml`, label: `${service.project}/buildkitd.toml`, content: render.toml },
+]
 
 /** The host compose project: rootless preflight, users, buildctl, gate, socket folder, files, up; each step idempotent, printing changed or unchanged. */
 export const buildkitUpPlan = (service: BuildkitService, render: BuildkitRender, serverId: string): VpsPlan => {

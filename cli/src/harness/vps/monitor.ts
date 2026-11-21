@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
+import type { DesiredFile } from "./drift.js"
 import { forServer, resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
 import { fqdnOf, routerOf, SWARM_DNS_SEARCH } from "./plan.js"
@@ -434,6 +435,9 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     files["stack.yml"] = "# Written by `starci vps monitor up` from ops/vps/monitor/components.yaml: the components this server runs, nothing else.\n" + stringify(stack, { lineWidth: 0 })
     return { files, secrets: [...secrets], doors, alertBots: on(tokenHolder) ? facts.alertBots : [], filled }
 }
+
+/** The files `vps monitor up` writes under `base` before it redeploys (its `cmp -s` of each), for the read-only config drift of `host up --host`. */
+export const monitorDesiredFiles = (render: MonitorRender, base: string): DesiredFile[] => Object.entries(render.files).map(([rel, content]) => ({ path: `${base}/${rel}`, label: `monitor/${rel}`, content }))
 
 /**
  * `vps monitor up <id>` (or `--local`): the monitoring network, the secrets named by the hash of their values, the files and the stack,

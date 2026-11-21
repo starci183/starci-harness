@@ -20,18 +20,23 @@ import {
     remoteHttpScript,
     remoteLockScript,
     remoteUnlockScript,
+    runUpPlan,
     unsupported,
     vectorOf,
+    withConfigDrift,
     withLocalLock,
 } from "../../harness/host-machine.js"
-import type { EmbedReading, MachineScope, ModelEndpoint, Observed, Parity, ServiceState, UpStep } from "../../harness/host-machine.js"
+import type { EmbedReading, MachineScope, ModelEndpoint, Observed, Parity, ServiceState, UpOutcome, UpStep } from "../../harness/host-machine.js"
 import { placementOf, roleService } from "../../harness/host-roles.js"
 import type { Placement, ServedModel } from "../../harness/host-roles.js"
 import { readMachines, writeMachines } from "../../harness/machines.js"
 import { lookupSecret } from "../../harness/secret-env.js"
+import { configDriftScript, readConfigDrift } from "../../harness/vps/drift.js"
+import type { DesiredFile } from "../../harness/vps/drift.js"
 import { runSteps, sessionFor } from "../../harness/vps/fleet.js"
-import { loadMonitorComponents } from "../../harness/vps/monitor.js"
-import { inventoryDir, loadServer, loadVpsPolicy } from "../../harness/vps/policy.js"
+import { loadMonitorComponents, monitorDesiredFiles } from "../../harness/vps/monitor.js"
+import { edgeDesiredFiles, uiDesiredFiles } from "../../harness/vps/plan.js"
+import { inventoryDir, loadServer, loadVpsPolicy, resolvePins } from "../../harness/vps/policy.js"
 import type { ManagedServer, VpsPolicy } from "../../harness/vps/policy.js"
 import { ownerStore } from "../../harness/vps/sealed.js"
 import type { SealedStore } from "../../harness/vps/sealed.js"
@@ -43,15 +48,16 @@ import { headline } from "../../shared/exec.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { vpsUiVerb } from "../vps/act.js"
 import { vpsEdgeVerb } from "../vps/domain.js"
-import { vpsMonitorVerb } from "../vps/monitor.js"
+import { monitorRunFor, vpsMonitorVerb } from "../vps/monitor.js"
 import { heldLine, registeredRoots, serverAlerts, serverRecipientOf } from "../../harness/vps/alerts.js"
-import { vpsServiceVerb } from "../vps/service.js"
+import { serviceDesired, vpsServiceVerb } from "../vps/service.js"
 
 /**
  * The half of `starci host up|status|doctor --host <name>` that reaches a machine (contexts/harness/host.md "Roles"): it observes a server's
- * Docker over its login (read-only), judges each service of the machine's roles, deploys only what is missing through the deployer that already
- * existed for it (host up of this machine, vps service|monitor|ui|edge up of a server, a host-compose adapter), waits for its health and rolls it
- * back when it never turns healthy, adopts what runs under another name, and never touches an app stack. One writer per host: a local lock and a
+ * Docker over its login (read-only), judges each service of the machine's roles, compares what each owned running service's deployer would write
+ * with the server's files (config drift, read-only), deploys what is missing and updates what drifted through the deployer that already existed
+ * for it (host up of this machine, vps service|monitor|ui|edge up of a server, a host-compose adapter), waits for its health and rolls it back
+ * when it never turns healthy, adopts what runs under another name (never redeployed), and never touches an app stack. One writer per host: a local lock and a
  * lock on the server itself.
  */
 
@@ -117,17 +123,94 @@ const judgeAll = async (scope: MachineScope, observed: Observed | null, host: Ho
             const mine = local.filter((service) => placement.ids.includes(service.id))
             const down = mine.filter((service) => service.state !== "up" && service.state !== "other platform")
             const evidence = mine.map((service) => `${service.id} ${service.state}`).join(", ")
-            states.push({ id, summary, state: down.length === 0 ? "running" : "missing", evidence: down.length === 0 ? evidence : `${evidence}; ${down.map((service) => `${service.id}: ${service.evidence}`).join("; ")}`, kind: placement.kind, via: placement.via, found: [], drift: [], images, endpoint: placement.endpoint ?? null })
+            states.push({ id, summary, state: down.length === 0 ? "running" : "missing", evidence: down.length === 0 ? evidence : `${evidence}; ${down.map((service) => `${service.id}: ${service.evidence}`).join("; ")}`, kind: placement.kind, via: placement.via, found: [], drift: [], configDrift: [], images, endpoint: placement.endpoint ?? null })
             continue
         }
         if (observed === null) {
-            states.push({ id, summary, state: "unobserved", evidence: "the server was not reached", kind: placement.kind, via: placement.via, found: [], drift: [], images, endpoint: placement.endpoint ?? null })
+            states.push({ id, summary, state: "unobserved", evidence: "the server was not reached", kind: placement.kind, via: placement.via, found: [], drift: [], configDrift: [], images, endpoint: placement.endpoint ?? null })
             continue
         }
         states.push(judgeRemote(id, summary, placement, images, observed, registry))
     }
     return states
 }
+
+/** The monitor components a run deploys: every component of the machine's monitor services; all other defaults turned off. */
+const monitorToggles = (policy: VpsPolicy, opsDir: string, wanted: readonly string[]): { readonly with: string[]; readonly without: string[] } => {
+    const components = loadMonitorComponents(policy, opsDir)
+    // A component on by `alert-bots` (the monitor bot) follows whether an app on the server has a bot ready, never forced on by host up.
+    return { with: wanted.filter((name) => components[name]?.default !== "alert-bots"), without: Object.keys(components).filter((name) => !wanted.includes(name) && components[name]?.default !== false) }
+}
+
+/** Every component of the machine's monitor services: one stack, deployed and compared as a whole. */
+const monitorWanted = (scope: MachineScope): string[] =>
+    scope.services.flatMap((id) => {
+        const placement = placementOf(scope.catalog, id, scope.site)
+        return placement?.via === "vps-monitor" ? placement.components : []
+    })
+
+/**
+ * The files the deployer of an owned placement would write now (its own render, the one its `cmp -s` compares before it redeploys), or null when
+ * it cannot tell (a host-stack service of this machine: compose up --no-recreate).
+ */
+const desiredFiles = (scope: MachineScope, reach: Reach, placement: Placement): DesiredFile[] | null => {
+    if (placement.via === "vps-monitor") {
+        const toggles = monitorToggles(reach.policy, scope.opsDir, monitorWanted(scope))
+        const monitorRun = monitorRunFor(scope.opsDir, scope.name, { with: toggles.with, without: toggles.without, apps: [] })
+        return monitorDesiredFiles(monitorRun.render, monitorRun.base)
+    }
+    if (placement.via === "vps-service") return serviceDesired(scope.opsDir, scope.name, placement.name)
+    if (placement.via === "vps-ui") return uiDesiredFiles(reach.policy, resolvePins(reach.policy, scope.opsDir))
+    if (placement.via === "vps-edge") return edgeDesiredFiles(reach.policy, resolvePins(reach.policy, scope.opsDir))
+    if (placement.via === "host-compose") return HOST_COMPOSE_ADAPTERS.get(placement.project)?.files(reach.policy, reach.server, scope.opsDir) ?? null
+    return null
+}
+
+/** The comparison of one deployer's files with the server's: the drift, or why it was not compared. */
+type Compared = { readonly drift: readonly string[] } | { readonly note: string }
+
+/** Compares one placement's rendered files with the server's, read-only. */
+const compareFiles = async (scope: MachineScope, reach: Reach, placement: Placement): Promise<Compared> => {
+    try {
+        const files = desiredFiles(scope, reach, placement)
+        if (files === null || files.length === 0) return { drift: [] }
+        const answer = await run(reach, configDriftScript(files))
+        if (answer.exitCode !== 0) return { note: `the config drift probe failed: ${headline(answer.stderr) || `exit ${String(answer.exitCode)}`}` }
+        const read = readConfigDrift(files, answer.stdout)
+        return read.unread.length > 0 ? { note: `the config drift probe did not read ${read.unread.join(", ")}` } : { drift: read.drift }
+    } catch (caught: unknown) {
+        return { note: `config not compared: ${caught instanceof Error ? caught.message : String(caught)}` }
+    }
+}
+
+/**
+ * Reads the config drift of every owned running service of a server, read-only (one sha256 per file the deployer writes, vps/drift.ts); the
+ * monitor services share one stack and are compared once. A comparison that cannot run is noted in the evidence, never a drift.
+ */
+const withConfigDrifts = async (scope: MachineScope, reach: Reach | null, states: readonly ServiceState[]): Promise<ServiceState[]> => {
+    if (reach === null) return [...states]
+    const compared = new Map<string, Compared>()
+    const out: ServiceState[] = []
+    for (const state of states) {
+        const placement = placementOf(scope.catalog, state.id, scope.site)
+        if (state.state !== "running" || placement === undefined) {
+            out.push(state)
+            continue
+        }
+        const key = placement.via === "vps-monitor" ? "vps-monitor" : state.id
+        const found = compared.get(key) ?? (await compareFiles(scope, reach, placement))
+        compared.set(key, found)
+        out.push("drift" in found ? withConfigDrift(state, found.drift) : { ...state, evidence: `${state.evidence}; ${found.note}` })
+    }
+    return out
+}
+
+/** The findings of a machine's services: each owned running service whose deployer would render it otherwise, or whose pinned images moved. */
+const findingsOf = (services: readonly ServiceState[]): string[] =>
+    services.flatMap((service) => [
+        ...(service.configDrift.length === 0 ? [] : [`${service.id}: config drift: ${service.configDrift.join(", ")}`]),
+        ...(service.drift.length === 0 ? [] : [`${service.id}: image drift${service.state === "adopted" ? " (adopted: reported only)" : ""}: ${service.drift.join("; ")}`]),
+    ])
 
 /** What `host status --host` reports. */
 export interface MachineStatus {
@@ -137,6 +220,8 @@ export interface MachineStatus {
     readonly services: readonly ServiceState[]
     readonly engine: string | null
     readonly gaps: readonly string[]
+    /** The config and image drift of the services, read-only: `host up --host <name> --execute` updates an owned one; an adopted one is reported only. */
+    readonly findings: readonly string[]
     /** The endpoints of every served model across the machines, in the order the apps' router tries them (`starci.embed`: local, then the VPS). */
     readonly endpoints: Readonly<Record<string, readonly ModelEndpoint[]>>
     readonly reached: boolean
@@ -156,17 +241,20 @@ export const machineStatus = async (name: string, cwd: string): Promise<MachineS
     let reach: Reach | null = null
     let observed: Observed | null = null
     let error: string | null = null
+    let services: ServiceState[]
     try {
         reach = await openReach(scope)
         if (reach !== null) observed = await observe(reach)
     } catch (caught: unknown) {
         error = caught instanceof Error ? caught.message : String(caught)
+    }
+    try {
+        services = await withConfigDrifts(scope, observed === null ? null : reach, await judgeAll(scope, observed, host, cwd))
     } finally {
         reach?.session.close()
     }
-    const services = await judgeAll(scope, observed, host, cwd)
     const gaps = services.filter((service) => GAP_STATES.has(service.state)).map((service) => `${service.id}: ${service.state}`)
-    return { machine: name, site: scope.site, roles: scope.machine.roles, services, engine: engineLine(scope, scope.site === "local" ? null : observed), gaps, endpoints: allEndpoints(scope), reached: scope.site === "local" || observed !== null, error }
+    return { machine: name, site: scope.site, roles: scope.machine.roles, services, engine: engineLine(scope, scope.site === "local" ? null : observed), gaps, findings: findingsOf(services), endpoints: allEndpoints(scope), reached: scope.site === "local" || observed !== null, error }
 }
 
 /** One service's doctor call. */
@@ -181,6 +269,8 @@ export interface MachineDoctor {
     readonly machine: string
     readonly calls: readonly DoctorCall[]
     readonly parity: Readonly<Record<string, Parity>>
+    /** The config and image drift found, read-only and never red: `host up --host <name> --execute` updates an owned service. */
+    readonly findings: readonly string[]
     readonly red: boolean
 }
 
@@ -309,9 +399,11 @@ export const machineDoctor = async (name: string, cwd: string): Promise<MachineD
     const calls: DoctorCall[] = []
     const readings = new Map<string, EmbedReading>()
     const parity: Record<string, Parity> = {}
+    const findings: string[] = []
     try {
         const observed = reach === null ? null : await observe(reach)
-        const states = await judgeAll(scope, observed, host, cwd)
+        const states = await withConfigDrifts(scope, reach, await judgeAll(scope, observed, host, cwd))
+        findings.push(...findingsOf(states))
         for (const state of states) calls.push(await callOne(scope, reach, host, state, observed, cwd, readings))
         if (reach !== null && scope.services.includes("monitor.alertmanager")) calls.push(alertBotsCall(reach.server, scope.opsDir))
     } finally {
@@ -324,25 +416,12 @@ export const machineDoctor = async (name: string, cwd: string): Promise<MachineD
         parity[id] = judgeParity(model, [own, ...(await otherReadings(scope, id, host, model))])
     }
     const red = calls.some((call) => call.ok === false) || Object.values(parity).some((entry) => entry.code !== null)
-    return { machine: name, calls, parity, red }
+    return { machine: name, calls, parity, findings, red }
 }
 
-/** What `host up --host` did for one service. */
-export interface UpOutcome {
-    readonly id: string
-    readonly action: UpStep["action"]
-    readonly outcome: "kept" | "adopted" | "deployed" | "rolled back" | "failed" | "skipped" | "planned"
-    readonly detail: string
-}
+export type { UpOutcome }
 
-/** The monitor components a run deploys: every component of the machine's monitor services; all other defaults turned off. */
-const monitorToggles = (reach: Reach, opsDir: string, wanted: readonly string[]): { readonly with: string[]; readonly without: string[] } => {
-    const components = loadMonitorComponents(reach.policy, opsDir)
-    // A component on by `alert-bots` (the monitor bot) follows whether an app on the server has a bot ready, never forced on by host up.
-    return { with: wanted.filter((name) => components[name]?.default !== "alert-bots"), without: Object.keys(components).filter((name) => !wanted.includes(name) && components[name]?.default !== false) }
-}
-
-/** Hands one missing placement to its deployer; true when the deployer reported no failure. */
+/** Hands one placement (missing, or owned and drifted) to its deployer; true when the deployer reported no failure. */
 const deploy = async (scope: MachineScope, reach: Reach | null, placement: Placement, monitor: readonly string[], context: VerbContext, host: HostConfig): Promise<{ readonly ok: boolean; readonly detail: string }> => {
     const id = scope.name
     if (placement.via === "host-stack") {
@@ -354,7 +433,7 @@ const deploy = async (scope: MachineScope, reach: Reach | null, placement: Place
     const result = await (async () => {
         if (placement.via === "vps-service") return vpsServiceVerb.run(context, { action: "up", id, service: placement.name, local: false, with: [], without: [], "acknowledge-reindex": false, "key-from-host": undefined, app: undefined, env: undefined, member: undefined, key: undefined, execute: true })
         if (placement.via === "vps-monitor") {
-            const toggles = monitorToggles(reach, scope.opsDir, monitor)
+            const toggles = monitorToggles(reach.policy, scope.opsDir, monitor)
             return vpsMonitorVerb.run(context, { action: "up", id, local: false, with: toggles.with, without: toggles.without, app: [], execute: true })
         }
         if (placement.via === "vps-ui") return vpsUiVerb.run(context, { action: "up", id, execute: true })
@@ -383,6 +462,16 @@ const rollback = async (scope: MachineScope, reach: Reach | null, placement: Pla
     }
     const answer = await run(reach, `docker stack ls --format '{{.Name}}' | grep -qx ${shellQuote(placement.stack)} || { echo unchanged; exit 0; }\ndocker stack rm ${shellQuote(placement.stack)} >/dev/null\necho changed`)
     return `docker stack rm ${placement.stack}: ${answer.exitCode === 0 ? answer.stdout.trim().split("\n").at(-1) ?? "" : headline(answer.stderr)}`
+}
+
+/** Rolls an update that never turned healthy back: each Swarm service it found to its previous spec; a compose project keeps none. */
+const rollbackUpdate = async (reach: Reach | null, placement: Placement, state: ServiceState | undefined): Promise<string> => {
+    if (reach === null || placement.kind === "host-compose") return `nothing rolled back: ${placement.stack} keeps no previous version; it stays for inspection`
+    const services = (state?.found ?? []).map((item) => item.as)
+    if (services.length === 0) return "nothing rolled back: no Swarm service was found"
+    const script = [...services.map((service) => `docker service rollback --quiet ${shellQuote(service)} >/dev/null || echo ${shellQuote(`failed ${service}`)}`), "echo changed"].join("\n")
+    const answer = await run(reach, script)
+    return `docker service rollback ${services.join(", ")}: ${answer.exitCode === 0 ? answer.stdout.trim().split("\n").join(", ") : headline(answer.stderr)}`
 }
 
 /** Waits until a deployed service judges running and its doctor call answers, or its wait passes. */
@@ -426,8 +515,9 @@ export interface MachineUp {
 
 /**
  * `host up --host <name> [--execute]`: plans the union of the machine's role services; with --execute it adopts what runs under another name,
- * deploys each missing service through its deployer, waits for its health and rolls it back when it never turns healthy, all under the host's
- * lock. A running service is never redeployed or restarted, and no app stack is touched.
+ * deploys each missing service and updates each owned running one whose deployer would render it otherwise (config drift) or whose pinned images
+ * moved, through its deployer's normal up; it waits for its health and rolls it back when it never turns healthy, all under the host's lock. An
+ * adopted service is never redeployed or restarted (its drift is reported only), and no app stack is touched.
  */
 export const machineUp = async (name: string, context: VerbContext, options: { readonly execute: boolean; readonly rollback: boolean }): Promise<MachineUp> => {
     const status = await machineStatus(name, context.cwd)
@@ -439,44 +529,22 @@ export const machineUp = async (name: string, context: VerbContext, options: { r
     const outcomes = await withLocalLock(name, async () => {
         const reach = await openReach(scope)
         const owner = lockOwner()
-        const done: UpOutcome[] = []
         try {
             if (reach !== null) await lockRemote(reach, owner)
             recordAdopted(scope, status.services)
-            // The monitor components of every monitor service the machine hosts deploy as one stack, once.
-            const monitor = plan.flatMap((step) => {
-                const placement = placementOf(scope.catalog, step.id, scope.site)
-                return step.action === "deploy" && placement?.via === "vps-monitor" ? placement.components : []
-            })
-            let monitorDone: UpOutcome | undefined
-            for (const step of plan) {
-                if (step.action === "keep") done.push({ id: step.id, action: step.action, outcome: "kept", detail: step.detail })
-                else if (step.action === "adopt") done.push({ id: step.id, action: step.action, outcome: "adopted", detail: step.detail })
-                else if (step.action === "skip") done.push({ id: step.id, action: step.action, outcome: "skipped", detail: step.detail })
-                else {
-                    const placement = placementOf(scope.catalog, step.id, scope.site)
-                    if (placement === undefined) continue
-                    if (placement.via === "vps-monitor" && monitorDone !== undefined) {
-                        done.push({ ...monitorDone, id: step.id })
-                        continue
-                    }
-                    context.progress(`${step.id}: deploying (${step.detail})`)
-                    let outcome: UpOutcome
-                    try {
-                        const deployed = await deploy(scope, reach, placement, monitor, context, host)
-                        const health = deployed.ok ? await awaitHealthy(scope, reach, step.id, host, context.cwd, placement.waitSeconds ?? scope.catalog.waitSeconds) : { id: step.id, ok: false, evidence: deployed.detail }
-                        if (health.ok === true) outcome = { id: step.id, action: "deploy", outcome: "deployed", detail: `${deployed.detail}; healthy: ${health.evidence}` }
-                        else if (options.rollback) outcome = { id: step.id, action: "deploy", outcome: "rolled back", detail: `never healthy (${health.evidence}); rolled back: ${await rollback(scope, reach, placement, context, host)}` }
-                        else outcome = { id: step.id, action: "deploy", outcome: "failed", detail: `never healthy (${health.evidence}); kept for inspection (--no-rollback)` }
-                    } catch (caught: unknown) {
-                        outcome = { id: step.id, action: "deploy", outcome: "failed", detail: caught instanceof Error ? caught.message : String(caught) }
-                    }
-                    context.progress(`${step.id}: ${outcome.outcome}`)
-                    if (placement.via === "vps-monitor") monitorDone = outcome
-                    done.push(outcome)
-                }
-            }
-            return done
+            // The monitor components of every monitor service the machine hosts deploy as one stack, once, rendered and compared as a whole.
+            const monitor = monitorWanted(scope)
+            return await runUpPlan(
+                scope,
+                plan,
+                {
+                    deploy: async (_step, placement) => deploy(scope, reach, placement, monitor, context, host),
+                    awaitHealthy: async (step, placement) => awaitHealthy(scope, reach, step.id, host, context.cwd, placement.waitSeconds ?? scope.catalog.waitSeconds),
+                    rollback: async (step, placement) => (step.action === "update" ? rollbackUpdate(reach, placement, status.services.find((state) => state.id === step.id)) : rollback(scope, reach, placement, context, host)),
+                    progress: context.progress,
+                },
+                { rollback: options.rollback },
+            )
         } finally {
             if (reach !== null) {
                 await run(reach, remoteUnlockScript(owner)).catch(() => undefined)

@@ -135,20 +135,31 @@ takes a config.yaml machine as a managed server.
 - **`host status --host <name>`** reads every service the machine's roles turn on: `running` (its stack or compose project runs), `adopted`
   (it runs under another name, found by its image), `partial` (a monitoring stack that runs without a component), `missing`, `unsupported`
   (no placement for this kind of machine), `unbuilt` (a host-compose service whose definition is not built yet), each with its drift (a
-  running image that is not the pin). A server is read with one read-only probe over its login. `--json` `data.endpoints` lists, per served
-  model, every machine's endpoint in the order a router tries them (`starci.embed`: `local` at https://embed.starci.org/v1 first, then each
-  server's `http://embeddings-gate:8080/v1`): the list the apps' ai-router profile is made from.
-- **`host up --host <name>`** plans the union; **`--execute`** brings it up. A service already running is kept; one running under another
-  name (traefik and portainer on sv-hk-1) is ADOPTED: recorded in config.yaml (`adopted`) and checked, never redeployed or restarted, its drift
-  reported only. A missing one goes to its deployer (the generated keys sealed from the key model), then `host up` waits for its health and,
-  when it never turns healthy, rolls it back (`docker stack rm`, `compose down`, or a stop of the ops/host.yaml services; volumes stay;
-  `--no-rollback` keeps it for inspection). A monitoring stack that runs without a component is kept as it is (adding one is the owner's
-  `vps monitor up --with`). App stacks are never touched. One writer per host: a local lock and a lock on the server itself
-  (`/run/starci-host-up.lock`), `HOST_BUSY` naming the holder. An unreachable server is never deployed blind (`HOST_UNREACHABLE`).
+  running image that is not the pin) and, for an owned running service, its config drift: each file its deployer would write now (the same
+  render `vps monitor|service|ui|edge up` or the host-compose adapter compares with `cmp -s` before it redeploys) that differs from the one on
+  the server or is not there, read with one sha256 per file and nothing written. Both are listed as findings; neither is a gap. A server is
+  read with one read-only probe over its login. `--json` `data.endpoints` lists, per served model, every machine's endpoint in the order a
+  router tries them (`starci.embed`: `local` at https://embed.starci.org/v1 first, then each server's `http://embeddings-gate:8080/v1`): the
+  list the apps' ai-router profile is made from.
+- **`host up --host <name>`** plans the union; **`--execute`** brings it up. Each service gets one state: `keep` (it runs as its deployer
+  renders it), `update` (an owned running service with config drift or image drift, e.g. `update (config drift: monitor/stack.yml differs:
+  ...)`), `adopt`, `deploy` or `skip`. An `update` runs the deployer's normal up for that service (the monitor services are one stack: one
+  `vps monitor up` with the machine's monitor components), then the same health wait; an update that never turns healthy is rolled back with
+  `docker service rollback` of each of its Swarm services (never `docker stack rm`; a host-compose project keeps no previous version and stays
+  for inspection). A secret rotated in a sealed file is not seen by the comparison (its value is never opened for a read); a host-stack
+  service of `local` has no config drift (compose up --no-recreate). The owner's rule for an ADOPTED service holds: one running under
+  another name (traefik and portainer on sv-hk-1) is recorded in config.yaml (`adopted`) and checked, never redeployed or restarted, its
+  config never compared and its image drift reported only. A missing one goes to its deployer (the generated keys sealed from the key
+  model), then `host up` waits for its health and, when it never turns healthy, rolls it back (`docker stack rm`, `compose down`, or a stop
+  of the ops/host.yaml services; volumes stay; `--no-rollback` keeps it for inspection). A monitoring stack that runs without a component is
+  kept as it is (adding one is the owner's `vps monitor up --with`). App stacks are never touched. One writer per host: a local lock and a
+  lock on the server itself (`/run/starci-host-up.lock`), `HOST_BUSY` naming the holder. An unreachable server is never deployed blind
+  (`HOST_UNREACHABLE`).
 - **`host doctor --host <name>`** makes one real call per running service: an embed vector of the pinned dimensions, the Grafana login
   page, the SonarQube status API, the registry ping, the BuildKit ping hook, each Swarm service at its replicas. Then, for every served model,
   the same fixed text is embedded on every machine serving it: equal dimensions and a cosine of at least the catalog's `minCosine` (0.999),
-  else `HOST_EMBED_MISMATCH` (mixed vectors would corrupt every app's search).
+  else `HOST_EMBED_MISMATCH` (mixed vectors would corrupt every app's search). The config and image drift of each service are printed as
+  findings, read-only and never red.
 - `starci host up --stack starci` (and `host status`, `host doctor --stack starci --fix --execute`, the scheduled self-heal) work as they
   did: `--host local` is the role-driven view of the same ops/host.yaml services.
 

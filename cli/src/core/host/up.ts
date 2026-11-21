@@ -20,12 +20,12 @@ const describeUp = (up: MachineUp): string => {
 /**
  * `starci host up [ids] [--stack <name>]`: starts every named service, or every service of the stack (and what it requires), that is down, in
  * requires order; idempotent. `starci host up --host <name> [--execute]`: the role-driven verb (contexts/harness/host.md "Roles"): plans the
- * union of the services the machine's roles turn on (config.yaml) and, with --execute, adopts what runs under another name and deploys only
- * what is missing, each with its rollback, under one writer per host.
+ * union of the services the machine's roles turn on (config.yaml) and, with --execute, adopts what runs under another name, deploys what is
+ * missing and updates an owned service its deployer would render otherwise, each with its rollback, under one writer per host.
  */
 export const hostUpVerb = defineVerb({
     path: ["host", "up"],
-    summary: "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, wait for its health and roll it back when it never turns healthy; a service already running (even under another name) is adopted, never redeployed or restarted, a drift only reported; no app stack is touched; one writer per host (HOST_BUSY)",
+    summary: "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, and update an owned running one whose deployer would render it otherwise (config drift) or whose pinned images moved through the same deployer; wait for its health and roll it back when it never turns healthy; a service running under another name is adopted, never redeployed or restarted, its drift only reported; no app stack is touched; one writer per host (HOST_BUSY)",
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-up@1",

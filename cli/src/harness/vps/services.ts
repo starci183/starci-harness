@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
+import type { DesiredFile } from "./drift.js"
 import { resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
 import { SWARM_DNS_SEARCH } from "./plan.js"
@@ -308,6 +309,9 @@ export const serviceImages = (service: SharedService, selected: readonly string[
 export const SERVICE_KEY = "SERVICE_KEY" as const
 
 const noSwarm = (target: ServiceTarget): string => `[ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || { echo "no swarm: run ${target.kind === "local" ? "docker swarm init" : "starci vps swarm init"} first" >&2; exit 7; }`
+
+/** The files `vps service up` writes under `base` before it redeploys (its `cmp -s` of each), for the read-only config drift of `host up --host`. */
+export const serviceDesiredFiles = (service: SharedService, render: ServiceRender, base: string): DesiredFile[] => Object.entries(render.files).map(([rel, content]) => ({ path: `${base}/${rel}`, label: `${service.name}/${rel}`, content }))
 
 /**
  * `vps service up`: the shared network, the key as a swarm secret named by its hash, the files and the stack, deployed again only when a file or
