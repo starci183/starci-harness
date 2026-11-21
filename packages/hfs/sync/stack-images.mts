@@ -350,11 +350,16 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
 function ciDeployVariables(stack: DeclaredStack, collected: boolean): Record<string, string> {
   const auto = (stack.environments ?? []).filter(environment => environment.auto);
   const jobs = auto.map((environment, index) => {
-    const previous = index > 0 ? `, deploy-${auto[index - 1]!.name}` : '';
+    const before = index > 0 ? `deploy-${auto[index - 1]!.name}` : '';
+    const previous = before ? `, ${before}` : '';
+    // A skipped need skips its dependents through the whole chain, even past the verdict's always(): a gate switched off (lint, test, coverage
+    // left out on purpose) silently cancelled the release deploy. So the deploy runs on its own status check and names every result it needs:
+    // the verdict green (it judged the gates, the off ones included), the images pushed, the environment before it deployed.
+    const results = ['verdict', ...(collected ? ['images'] : []), ...(before ? [before] : [])].map(job => ` && needs.${job}.result == 'success'`).join('');
     return lines([
       `deploy-${environment.name}:`,
       `  needs: [plan, verdict${collected ? ', images' : ''}${previous}]`,
-      "  if: ${{ needs.plan.outputs.release == 'true' }}",
+      `  if: \${{ !cancelled() && needs.plan.outputs.release == 'true'${results} }}`,
       '  permissions:', '    contents: read', '    packages: read', '    actions: read',
       '  concurrency:', `    group: deploy-${environment.name}`, '    cancel-in-progress: false',
       '  uses: ./.github/workflows/stack-deploy.yml',

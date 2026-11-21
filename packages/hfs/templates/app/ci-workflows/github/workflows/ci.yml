@@ -219,6 +219,7 @@ jobs:
           IMAGES: ${{ needs.plan.outputs.images }}
           FULL: ${{ needs.plan.outputs.full }}
           SONAR: ${{ needs.plan.outputs.sonar }}
+          RELEASE: ${{ needs.plan.outputs.release }}
         run: |
           set -euo pipefail
           fail=0
@@ -233,5 +234,9 @@ jobs:
           if [[ "$CHECKS" == true ]]; then want=success; else want=idle; fi
           for job in {{verdictJobs}}; do expect "$job" "$want"; done{{verdictIdle}}
           if [[ "$IMAGES" == true ]]; then expect images success; else expect images idle; fi{{verdictSonarCheck}}
+          # The deploy jobs run only on a release run with this verdict green; the summary says which, so a skipped deploy is never silent.
+          if [[ "$RELEASE" != true ]]; then echo "deploy: skipped because this is not a release tag run" >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$fail" != 0 ]]; then echo "::error::deploy skipped because the verdict failed (see the errors above)"; echo "deploy: skipped because the verdict failed" >> "$GITHUB_STEP_SUMMARY"
+          else echo "deploy: runs (release tag run, verdict green)" >> "$GITHUB_STEP_SUMMARY"; fi
           exit "$fail"
 {{ciDeployJobs}}

@@ -141,7 +141,7 @@ test('CI: a declared-off gate renders as one echo line that says so, a job whose
   assert.ok(verifyShards(['be'], {}).includes('--gate hfs') && verifyShards(['be'], {}).includes('--gate lint --side be'));
   assert.equal(JSON.parse(offStep('lint', "it's \"odd\": x")), "echo 'lint: off (declared: it'\\''s \"odd\": x)'");
   for (const edition of ['lite'] as const) {
-    const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
+    const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [{ name: 'production', auto: true, approval: 'none', platforms: ['linux/amd64'] }], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const ci: Doc = parseWorkflow(text);
     assert.equal(ci.jobs.lint.if, "${{ needs.plan.outputs.checks == 'true' && false }}", edition);
@@ -153,6 +153,9 @@ test('CI: a declared-off gate renders as one echo line that says so, a job whose
     assert.match(steps('fast'), /types: off \(declared:/u);
     assert.match(steps('fast'), /audit: off \(declared:/u);
     assert.match(ci.jobs.verdict.steps[0].run, /expect lint idle/u);
+    // The off gates are skipped jobs, and a skipped need skips every job after it: the release deploy (NIVO v0.0.8) must not hang on them.
+    assert.equal(ci.jobs['deploy-production'].if, "${{ !cancelled() && needs.plan.outputs.release == 'true' && needs.verdict.result == 'success' }}");
+    assert.match(ci.jobs.verdict.steps[0].run, /deploy: skipped because the verdict failed/u);
     assert.match(ci.jobs.plan.steps.find((step: Doc) => step.id === 'plan').run, /gate lint: off \(declared:/u);
   }
 });

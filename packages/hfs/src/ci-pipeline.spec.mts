@@ -90,7 +90,9 @@ for (const edition of ['lite'] as const) {
       assert.equal(call.with.images, '${{ needs.images.outputs.refs }}');
       assert.equal(call.with.ci_run, '${{ needs.plan.outputs.ci_run }}');
       assert.equal(call.concurrency['cancel-in-progress'], false);
-      assert.equal(call.if, "${{ needs.plan.outputs.release == 'true' }}");
+      // A switched-off gate is skipped, and a skipped need would skip the deploy: the deploy checks the results it needs itself.
+      const before = name === 'deploy-production' ? " && needs.deploy-staging.result == 'success'" : '';
+      assert.equal(call.if, `\${{ !cancelled() && needs.plan.outputs.release == 'true' && needs.verdict.result == 'success' && needs.images.result == 'success'${before} }}`);
     }
     // The checks never run on a plan that left them out; sonar and the Codecov upload run on every full run and on a push the plan reports them for,
     // and only a full run judges the Sonar quality gate.
