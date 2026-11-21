@@ -37,7 +37,7 @@ Why: the command line `<bin> <group> <command>` maps to one file path, so a comm
 and a root per app keeps the commands of one audience out of the build of the other; nest-commander matches a sub-command
 by its class name, so two `RunCli` classes make `cli b run` run the action of `cli a run`.
 
-Enforced by: `cli-command-shape`, `unit-test-colocated`, the hfs check `cli-command-names` (R149), `module-definition-required` (R295),
+Enforced by: `cli-command-shape`, `unit-test-colocated`, `module-definition-required` (R295),
 R45 (an app composes only the root its kind composes).
 
 ## BE-CLI-3 A command delegates once and is unit-tested

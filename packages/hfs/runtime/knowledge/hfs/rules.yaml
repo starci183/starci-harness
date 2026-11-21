@@ -2314,7 +2314,6 @@ rules:
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
-      - {kind: hfs, id: cli-command-names, at: runtime/scripts/hfs/rules/cli.mjs}
   - id: R150
     code: "BE_CLI_OWNER"
     docs: [docs/backend-cli.md#back-end-cli-rules]
