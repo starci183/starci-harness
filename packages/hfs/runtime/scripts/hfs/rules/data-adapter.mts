@@ -3,12 +3,13 @@
 // committed output stays manifest.json, data/, blobs/ and index/; raw/ is what people author, adapter/ converts it through the git driver of
 // @starci/seed (renderStandard, runStandardAdapter). Judged in the copy repository's commit hook and CI (`starci app check --staged`,
 // sync/hygiene.mts) over what the index holds, and by the bring-up's seed step over a pinned commit (stack/standard-gate.mts):
-//   HFS_DATA_ADAPTER_DRIFT     the adapter did not run, two runs over the same raw/ differ (a non-deterministic adapter), or its output and
-//                              the committed manifest.json, data/, blobs/ or index/ differ: a hand edit of data/ in an adapter repository,
-//                              or a raw/ change committed without re-running the adapter;
-//   HFS_DATA_ADAPTER_UNGUARDED an adapter repository lacks what runs the drift check: its entry adapter/main.ts and adapter/package.json,
-//                              the commit hook .githooks/pre-commit and the CI workflow .github/workflows/seed-standard.yml, each of the
-//                              last two running `starci app check --staged` (`starci data standard init` writes all four).
+//   HFS_DATA_ADAPTER_DRIFT  the one code of R434; its message names which of these it is:
+//     - the adapter did not run, two runs over the same raw/ differ (a non-deterministic adapter), or its output and
+//       the committed manifest.json, data/, blobs/ or index/ differ: a hand edit of data/ in an adapter repository,
+//       or a raw/ change committed without re-running the adapter;
+//     - an adapter repository lacks what runs the drift check: its entry adapter/main.ts and adapter/package.json,
+//       the commit hook .githooks/pre-commit and the CI workflow .github/workflows/seed-standard.yml, each of the
+//       last two running `starci app check --staged` (`starci data standard init` writes all four).
 // The sealing, size and manifest judgements of R400 (data-copies.mts) cover raw/ too. Findings name files, never a value.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -44,9 +45,9 @@ export const blobId = (bytes: Buffer): string => crypto.createHash('sha1').updat
 /** One adapter run: every output file it wrote with its blob id, or why it did not run. */
 export type Rendered = { ok: true; files: ReadonlyMap<string, string> } | { ok: false; reason: string };
 
-const unguarded = (file: string, message: string): Finding => found('HFS_DATA_ADAPTER_UNGUARDED', file, `${message}; \`starci data standard init --adapter\` writes it (PROJECT-STACKS-13)`);
+const unguarded = (file: string, message: string): Finding => found('HFS_DATA_ADAPTER_DRIFT', file, `${message}; \`starci data standard init --adapter\` writes it (PROJECT-STACKS-13)`);
 
-/** HFS_DATA_ADAPTER_UNGUARDED: the entry, the package, the hook and the workflow an adapter repository cannot be without. `read` answers a tracked file's text (null: absent). */
+/** HFS_DATA_ADAPTER_DRIFT: the entry, the package, the hook and the workflow an adapter repository cannot be without. `read` answers a tracked file's text (null: absent). */
 export function adapterGuardFindings({ files, read }: { files: readonly string[]; read: (file: string) => string | null }): Finding[] {
   if (!isAdapterRepository(files)) return [];
   const tracked = new Set(files);
