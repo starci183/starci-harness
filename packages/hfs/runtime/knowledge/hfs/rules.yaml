@@ -4578,7 +4578,7 @@ rules:
   - id: R343
     code: "HFS_CHECK_CACHE_FORGED"
     docs: [contexts/hfs/README.md#rule-notes]
-    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes: a run that wrote records its commit does not hold reports HFS_CHECK_CACHE_UNWARMED as info (never red), and only the pre-push hook's run (STARCI_PUSH_GATE=1) refuses the push for it, which `starci app push` and the lander avoid by committing the records first, and a host whose fingerprint is not portable is refused as HFS_CHECK_CACHE_UNPORTABLE, and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read. The pristine first commit (a root commit whose tree holds no cache file, what `starci app scaffold` records) pushes no record, so the push gate refuses nothing for it: it is the bootstrap push of PROJECT-BRANCH-1 and CI runs it in full; the cache the hook's run writes is the next commit, on dev."
+    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes; a run that wrote records its commit does not hold reports HFS_CHECK_CACHE_UNWARMED as info (never red), and only the pre-push hook's run (STARCI_PUSH_GATE=1) refuses the push for it, which `starci app push` and the lander avoid by committing the records first, and a host whose fingerprint is not portable is refused as HFS_CHECK_CACHE_UNPORTABLE, and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read. The pristine first commit (a root commit whose tree holds no cache file, what `starci app scaffold` records) pushes no record, so the push gate refuses nothing for it: it is the bootstrap push of PROJECT-BRANCH-1 and CI runs it in full; the cache the hook's run writes is the next commit, on dev."
     kinds: [codemod]
     gates: [ci]
     failureCodes: ["HFS_CHECK_CACHE_FORGED", "HFS_CHECK_CACHE_STALE", "HFS_CHECK_CACHE_MISSING", "HFS_CHECK_CACHE_UNWARMED", "HFS_CHECK_CACHE_UNPORTABLE", "HFS_CHECK_CACHE_FILE_TOO_LARGE", "HFS_CHECK_CACHE_VERIFY_LOCKED"]
@@ -4881,22 +4881,6 @@ rules:
       - {path: packages/hfs/src/surface-nesting.spec.mts, codes: [FE_RENDER_PROP_ACROSS_SERVER]}
     witness:
       - {path: packages/hfs/src/surface-nesting.spec.mts, codes: [FE_RENDER_PROP_ACROSS_SERVER]}
-
-  - id: R362
-    code: "FE_GRAMMAR_TIER_STATE"
-    law: "In the Grammar package a leaf and a composite hold no useState, useReducer or effect, and a component's own props and its ReactNode slots stay inside its tier's budget (leaf 8, branch 12, composite 12, frame 10 props; 3 slots). Both run as counting rules: their findings are the tier refactor list."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_GRAMMAR_TIER_STATE", "FE_GRAMMAR_PROP_BUDGET"]
-    enforcers: []
-    docs: [contexts/grammars/README.md#grammar-lint]
-    templateNa: "A template ships no Grammar source."
-    proves:
-      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
-    exemplifiedBy:
-      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
-    witness:
-      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
 
   - id: R363
     code: "FE_GRAMMAR_LITERAL"

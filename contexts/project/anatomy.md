@@ -69,7 +69,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
-    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
+    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05 (hfs `managed-file-drift`)
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
   - `dependabot.yml` — **app.dependabot** required · R05 (hfs `managed-file-drift`), R269 (hfs `supply-chain`)
 - `.dockerignore` — **app.dockerignore** required · R05 (hfs `managed-file-drift`)
@@ -91,8 +91,8 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `<package>/` — **app.nivoos-package** optional · R436 (hfs `nivoos` `nivoos-package-check`)
 - `desktop/`
-  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
-  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444 (hfs `desktop`)
+  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05 (hfs `managed-file-drift`)
+  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** optional · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`), R449 (hfs `master-plan`)
@@ -148,10 +148,10 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
       - `messages/` — **be.feature.messages** optional · [be/messages](../code/be/messages.md) · R78 (eslint-be `user-copy-through-catalog`)
     - `{api/,jobs/,reactors/,saga/}<feature>/application/` — **be.feature.application** required · [be/api](../code/be/api.md), [be/error](../code/be/error.md), [be/idempotency](../code/be/idempotency.md), [be/injection](../code/be/injection.md) · R29 (machine `feature-shape`; eslint-be `feature-layout` `application-never-imports-transport`), R37 (eslint-be `no-entity-in-contract`), R87 (eslint-be `handler-overrides-process` `handler-is-thin` `message-carries-params-only` `message-typed-result` `no-use-case` `no-event-bus` `execute-params-shape` `readonly-boundary`)
       - `support/` — **be.feature.application.support** optional · R29 (machine `feature-shape`; eslint-be `feature-layout` `application-never-imports-transport`), R28 (eslint-be `feature-imports-feature`)
-    - `saga/<saga>/` — **be.feature.saga** opt-in · [be/saga](../code/be/saga.md), [be/services](../code/be/services.md) · R156 (eslint-be `kind-isolation`; machine `tiers`), R28 (eslint-be `feature-imports-feature`), R31 (eslint-be `feature-not-composed`), R169 (hfs `saga-step-compensation`), R170 (hfs `saga-state-versioned`), R171 (hfs `saga-event-contract`)
-      - `steps/` — **be.feature.saga.steps** opt-in · [be/saga](../code/be/saga.md) · R169 (hfs `saga-step-compensation`), R171 (hfs `saga-event-contract`)
-      - `compensations/` — **be.feature.saga.compensations** opt-in · [be/saga](../code/be/saga.md) · R169 (hfs `saga-step-compensation`), R171 (hfs `saga-event-contract`)
-    - `{api/,reactors/,saga/}<feature>/transport/message/` — **be.transport.message** opt-in · [be/api-auth](../code/be/api-auth.md), [be/background](../code/be/background.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R46 (eslint-be `background-unowned`), R172 (hfs `saga-consumer-dedupe`)
+    - `saga/<saga>/` — **be.feature.saga** opt-in · [be/saga](../code/be/saga.md), [be/services](../code/be/services.md) · R156 (eslint-be `kind-isolation`; machine `tiers`), R28 (eslint-be `feature-imports-feature`), R31 (eslint-be `feature-not-composed`)
+      - `steps/` — **be.feature.saga.steps** opt-in · [be/saga](../code/be/saga.md)
+      - `compensations/` — **be.feature.saga.compensations** opt-in · [be/saga](../code/be/saga.md)
+    - `{api/,reactors/,saga/}<feature>/transport/message/` — **be.transport.message** opt-in · [be/api-auth](../code/be/api-auth.md), [be/background](../code/be/background.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R46 (eslint-be `background-unowned`)
     - `webhooks/<provider>/` — **be.feature.webhooks** opt-in · [be/webhooks](../code/be/webhooks.md) · R156 (eslint-be `kind-isolation`; machine `tiers`), R28 (eslint-be `feature-imports-feature`), R31 (eslint-be `feature-not-composed`)
       - `transport/http/` — **be.feature.webhooks.http** opt-in · [be/webhooks](../code/be/webhooks.md) · R182 (eslint-be `webhook-shape`), R183 (eslint-be `webhook-verify-first`), R41 (eslint-be `no-untyped-body` `public-needs-reason` `secret-compare-timing-safe` `no-auth-use-guards` `no-guard-injects-guard` `default-deny-app-guard`), R42 (eslint-be `input-bounded` `no-offset-pagination` `auth-door-strict-rate-tier`)
         - `dto/` — **be.feature.webhooks.dto** opt-in · [be/webhooks](../code/be/webhooks.md) · R42 (eslint-be `input-bounded` `no-offset-pagination` `auth-door-strict-rate-tier`)
@@ -184,7 +184,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
     - `queues/<queue>/` — **be.queues** opt-in · [be/queues](../code/be/queues.md) · R152 (eslint-be `outbox-write-tx`), R26 (eslint-be `tier-direction` `package-imports-app`)
     - `projections/<name>/` — **be.projections** opt-in · [be/projections](../code/be/projections.md) · R161 (eslint-be `projection-write-owner`), R162 (eslint-be `projection-shape`), R26 (eslint-be `tier-direction` `package-imports-app`), R175 (eslint-be `context-coupling`)
     - `integrations/`
-      - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R326 (eslint-be `provider-key-custody`), R327 (eslint-be `ai-client-through-gateway`)
+      - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R326 (eslint-be `provider-key-custody`), R327 (eslint-be `ai-client-through-gateway`), R344
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`)
       - `passport/` — **be.integrations.passport** required · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R328 (eslint-be `infra-import-owner`), R329 (machine `own-jwks-principal`; eslint-be `own-jwks-only`), R330 (eslint-be `refresh-token-cookie-only`)
       - `mail/` — **be.integrations.mail** required · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`)

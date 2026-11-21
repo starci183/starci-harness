@@ -30,7 +30,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06
-    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05, R444
+    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
   - `dependabot.yml` — **app.dependabot** required · R05, R269
 - `.dockerignore` — **app.dockerignore** required · R05
@@ -52,8 +52,8 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `<name>/` — **app.packages** optional · R25
   - `<package>/` — **app.nivoos-package** optional · R436
 - `desktop/`
-  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05, R444
-  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444
+  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05
+  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381, R06, R103, R402
 - `.starciwork/` — **app.starciwork** optional · R07, R09, R449
