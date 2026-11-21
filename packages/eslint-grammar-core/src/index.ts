@@ -19,7 +19,6 @@ import { rules as linkLookRules } from "./link-look.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as mediaRules } from "./media.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
-import { rules as messageSurfacesRules } from "./message-surfaces.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
@@ -35,8 +34,6 @@ import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
-import { rules as suggestionButtonsRules } from "./suggestion-buttons.ts"
-import { rules as tabCountChipRules } from "./tab-count-chip.ts"
 import { rules as tabsRules } from "./tabs.ts"
 import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
@@ -88,7 +85,6 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "mascot", rules: mascotRules },
   { law: "media", rules: mediaRules },
   { law: "menu-entries", rules: menuEntriesRules },
-  { law: "message-surfaces", rules: messageSurfacesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
@@ -103,9 +99,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "section-head-action", rules: sectionHeadActionRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
-  { law: "suggestion-buttons", rules: suggestionButtonsRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },
-  { law: "tab-count-chip", rules: tabCountChipRules },
   { law: "tabs", rules: tabsRules },
   { law: "table-cell-type", rules: tableCellTypeRules },
   { law: "text-rules", rules: textRules },

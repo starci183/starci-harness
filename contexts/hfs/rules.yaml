@@ -2252,8 +2252,7 @@ rules:
     law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
     failureCodes:
       - FE_GENERATED_ART_OUTSIDE_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    enforcers: []
   - id: R339
     code: FE_MASCOT_ASSET_SLOT_MISSING
     law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.

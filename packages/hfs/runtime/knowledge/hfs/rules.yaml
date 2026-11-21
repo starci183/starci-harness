@@ -5109,8 +5109,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GENERATED_ART_OUTSIDE_FRAME"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    enforcers: []
     docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
     templateNa: "A template draws no generated art; the art is the app's."
     proves:

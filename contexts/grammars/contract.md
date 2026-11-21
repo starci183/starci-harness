@@ -385,7 +385,7 @@ other party's (incoming, and every `MessageCard`) is one look on every host, the
 `Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
 is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
 bubble's foreground so it reads on either face. The replies a card offers are `Section kind="list" layout="suggestions"`. The
-corner on the author's side tightens to point at the avatar. An app never restyles a face (lint `message-surfaces`).
+corner on the author's side tightens to point at the avatar. An app never restyles a face.
 
 ### EmptyState
 

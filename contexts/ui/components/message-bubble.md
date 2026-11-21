@@ -20,8 +20,8 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
   replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
-`MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread (lint
-`starci-grammar/message-surfaces`, `FE_MESSAGE_SURFACES`). A pane footer that holds the composer starts at its own hairline: no empty
+`MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread.
+A pane footer that holds the composer starts at its own hairline: no empty
 band above the suggestion row (`DNA-COMMON-PANE-FOOTER-NO-BAND`). Story `Navigation & Data/Chat surfaces (0.37.31)`.
 
 ## The chat frame (0.37.33)
@@ -33,8 +33,7 @@ header band stays white. The 1px lines between head, thread and footer stay; the
 
 - **The role decides, the app chooses no tone.** The frame is `Pane content="chat"` holding the head band, the `PaneSection scroll
   role="log"` thread and the composer as the pane `footer`; any pane whose own stack holds a thread is drawn as a frame without the word,
-  and an overlay that holds a thread is the frame as a whole (its own head included). A chat frame states no `surface`: lint
-  `starci-grammar/message-surfaces` refuses `surface` on `content="chat"` and on a pane whose own children hold a `log` thread.
+  and an overlay that holds a thread is the frame as a whole (its own head included). A chat frame states no `surface`: it is ignored on `content="chat"` and on a pane whose own children hold a `log` thread.
 - **Only the thread scrolls** (`DNA-COMMON-CHAT-FRAME-SCROLL`): between the fixed head and the fixed composer the thread is the one
   scroller (the pane body above a footer is bounded and never scrolls), so `scroll.scrollRef` is the element that scrolls; a `log` band
   opens at its newest message and follows new ones while the reader is at the foot.
@@ -61,7 +60,7 @@ Choice `message-bubble.choose.suggestions`: how a message offers replies the rea
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | in a card | a `MessageCard` (an agent's stop card, a question) offers replies to its own question | ONE flat list in the card `body`: `Section kind="list" layout="suggestions" ariaLabel empty={null} items` with one row per reply, `{ id, title: text, onPress: send(text) }` and nothing else: the plain text (14, regular, wrapping, never truncated), the whole row the one button, a trailing chevron that stays at the end of the row at every width (390 included), vertically centred, the text wrapping beside it; flat in the card (BOUNDARY-7), never a nested card, a grey box or a row of pills | `DNA-COMMON-CARD-SUGGESTIONS`; stories `Chat surfaces (0.37.31)` `ChatPane`, `Flow graph selected (0.37.35)` `SuggestionsChevron390` |
-| by the composer | the thread offers things to ask next, above the composer | a `Cluster gap="inline"` of neutral `Button size="sm"` pills ([button](button.md) `button.choose.role:suggest`) | lint `suggestion-buttons` |
+| by the composer | the thread offers things to ask next, above the composer | a `Cluster gap="inline"` of neutral `Button size="sm"` pills ([button](button.md) `button.choose.role:suggest`) |
 
 Choice `message-status.choose.fact`: which authority-owned message fact the footer reports.
 

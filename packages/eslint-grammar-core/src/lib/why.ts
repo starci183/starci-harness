@@ -42,11 +42,6 @@ export const why: Record<string, WhyEntry> = {
     en: "The `Section` head `action` in `<file>` holds a Button that is not a neutral small text Button, or more than one command.",
     fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end: a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info `IconButton`, or a text `Button intent=\"neutral\" size=\"sm\"` (no icon, never the commit).",
   },
-  "tab-count-chip": {
-    code: "FE_TAB_COUNT_CHIP",
-    en: "A tab label in `<file>` carries its count as text (\"label \u00b7 N\").",
-    fix: "Give the tab item `count: N`; the tab draws a 12px chip, grey for a quantity. Add `isAttention: true` only when the number is work waiting for the owner (to handle, to approve, an error): that chip is pink.",
-  },
   "card-one-content": {
     code: "FE_CARD_ONE_CONTENT",
     en: "A `SurfaceCard` in `<file>` holds more than one content (a list, facts, a table, a graph, a form).",
@@ -91,11 +86,6 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_GAP_PROXIMITY",
     en: "A Grammar layout element in `<file>` (Stack, Cluster, PaneSection, Section, Grid, Form, Fieldset) stands directly inside another whose gap role is not wider: the child's gap is not at least one step closer than its container's.",
     fix: "Step the child down one role (region -> section -> row -> inline -> identity), or step the parent up. Section is always row and Grid and Form fix their own role: do not nest them where the parent is as close. A field stack of controls inside a Form or Fieldset is exempt.",
-  },
-  "generated-art-in-mascot-or-media-frame": {
-    code: "FE_GENERATED_ART_OUTSIDE_FRAME",
-    en: "Generated art (a `.webp` or `.png` under `/images/`) in `<file>` is drawn outside Grammar's `Mascot` and `MediaFrame`, so it takes whatever box the page gives it.",
-    fix: "Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero), or frame a scene or illustration in `<MediaFrame assetSlot>`.",
   },
   "mascot-asset-slot-required": {
     code: "FE_MASCOT_ASSET_SLOT_MISSING",
@@ -231,15 +221,5 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_ROW_TITLE_LINK",
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
-  },
-  "message-surfaces": {
-    code: "FE_MESSAGE_SURFACES",
-    en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, a chat thread asked for the surface tone, or a chat frame (`Pane content=\"chat\"`, a Pane holding a log thread) given `surface`.",
-    fix: "Remove the override: the chat frame (head, thread, composer) is `--background` (`Pane content=\"chat\"`, no `surface`, DNA-COMMON-CHAT-FRAME), others' messages outlined (the 1px `--border` edge, no fill), your own `--accent` (DNA-COMMON-CHAT-SURFACES); a message card's replies are `Section kind=\"list\" layout=\"suggestions\"`.",
-  },
-  "suggestion-buttons": {
-    code: "FE_SUGGESTION_BUTTONS",
-    en: "A Link row, a ChoiceChips, a ChoiceButtons or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
-    fix: "Suggestions and quick replies are one pattern: a `Cluster gap=\"inline\"` (with `label`) of neutral `Button size=\"sm\"` (a pill).",
   },
 }

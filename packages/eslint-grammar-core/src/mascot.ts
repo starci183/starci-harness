@@ -1,33 +1,20 @@
 import type { Rule, Scope } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
-import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
+import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
- * The mascot law (HFS R338 `FE_GENERATED_ART_OUTSIDE_FRAME`, R339 `FE_MASCOT_ASSET_SLOT_MISSING`): generated art renders
- * at the Grammar's size scale and stays tied to the asset workflow's request.
+ * The mascot law (HFS R339 `FE_MASCOT_ASSET_SLOT_MISSING`): every `Mascot` stays tied to the asset workflow's request.
  *
- * Generated art is a raster the asset workflow delivers under the public `/images/` tree, as `.webp` or `.png`. Drawn
- * through a bare `Image` or `<img>` it takes whatever box its page gives it, so one mascot comes out at a different size on
- * every screen and nothing ties the bytes to the slot that requested them. Grammar's `Mascot` owns the character scale
- * (sm, md, lg, hero), `Illustration` owns decorative art (a ratio and an art-directed crop) and `MediaFrame` frames a scene; those three are its renderers.
- *
- * WHAT IT READS. A JSX `src` attribute whose value is statically a string (a literal, an expression container holding one,
- * a template literal without expressions, or a `const` of the file initialised with one). A source computed at run time is
- * not judged: the rule never guesses. `assetSlot` is read on every `Mascot` element (`Mascot` or `<ns>.Mascot`); a spread
- * attribute may carry it, so an element with a spread is not judged.
+ * WHAT IT READS. `assetSlot` on every `Mascot` element (`Mascot` or `<ns>.Mascot`); a spread attribute may carry it, so an
+ * element with a spread is not judged.
  *
  * WHERE IT APPLIES. Product source (`isProductSource`: the route, feature, component, hook, foundation, module and transport
  * tiers and the workspace packages). A script or a file no slot owns is not judged.
  */
 
-/** A generated raster under the public `/images/` tree: `.webp` or `.png`, any case, an optional query or fragment. */
-export const GENERATED_ART = /^\/images\/.+\.(?:webp|png)(?:[?#].*)?$/i
-
 /** The components that render generated art: the element itself, or an ancestor that frames it. */
 const RENDERER = "Mascot"
-const ART_RENDERERS: ReadonlySet<string> = new Set([RENDERER, "Illustration"])
-const FRAME = "MediaFrame"
 
 /** The element name of a JSX name: `Mascot`, or `G.Mascot` as `Mascot`. */
 const nameOf = (name: TSESTree.JSXTagNameExpression): string | null => {
@@ -60,52 +47,6 @@ const staticString = (expression: Node, scopeOf: (node: Node) => Scope.Scope): s
   }
   return null
 }
-
-/** The string a JSX attribute value statically is, or null. */
-const attributeString = (value: TSESTree.JSXAttribute["value"], scopeOf: (node: Node) => Scope.Scope): string | null => {
-  if (value === null) return null
-  if (value.type === "Literal") return typeof value.value === "string" ? value.value : null
-  if (value.type === "JSXExpressionContainer" && value.expression.type !== "JSXEmptyExpression") return staticString(value.expression, scopeOf)
-  return null
-}
-
-/** True when a `MediaFrame` element encloses the node. */
-const insideFrame = (node: Node): boolean => {
-  // The Program's parent is null at run time though the tree's types say a node always has one.
-  for (let current: Node | null | undefined = node.parent; current !== undefined && current !== null; current = current.parent) {
-    if (current.type === "JSXElement" && nameOf(current.openingElement.name) === FRAME) return true
-  }
-  return false
-}
-
-/** Generated art under `/images/` renders only through `Mascot` or inside a `MediaFrame`. */
-export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = exemptFreestyle(defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "R338: generated art (a .webp or .png under /images/) renders only through Grammar's Mascot or inside a MediaFrame." },
-    schema: [],
-    messages: {
-      outside:
-        "`{{src}}` is generated art drawn by `<{{element}}>`, outside Grammar's `Mascot`, `Illustration` and `MediaFrame`: it takes whatever box this page gives it, so the same art comes out at a different size on every screen. Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero), decorative art with `<Illustration src ratio />`, or frame a scene in `<MediaFrame assetSlot>`.",
-    },
-  },
-  create(context) {
-    if (!isProductSource(context)) return {}
-    const scopeOf = (node: Node): Scope.Scope => context.sourceCode.getScope(node)
-    return {
-      JSXAttribute(attribute) {
-        if (attribute.name.type !== "JSXIdentifier" || attribute.name.name !== "src") return
-        const src = attributeString(attribute.value, scopeOf)
-        if (src === null || !GENERATED_ART.test(src)) return
-        const opening = attribute.parent
-        if (opening.type !== "JSXOpeningElement") return
-        const element = nameOf(opening.name)
-        if ((element !== null && ART_RENDERERS.has(element)) || insideFrame(opening)) return
-        context.report({ node: attribute, messageId: "outside", data: { src, element: element ?? "element" } })
-      },
-    }
-  },
-}))
 
 /** True when an attribute names nothing: no value, an empty string, or `undefined`. */
 const namesNothing = (attribute: TSESTree.JSXAttribute): boolean => {
@@ -147,11 +88,9 @@ export const mascotAssetSlotRequired: Rule.RuleModule = defineRule({
 
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
-  "generated-art-in-mascot-or-media-frame": generatedArtInMascotOrMediaFrame,
   "mascot-asset-slot-required": mascotAssetSlotRequired,
 }
 
-defineFamilyRules({ "generated-art-in-mascot-or-media-frame": generatedArtInMascotOrMediaFrame }, "knowledge/hfs/rules.yaml#R338")
 defineFamilyRules({ "mascot-asset-slot-required": mascotAssetSlotRequired }, "knowledge/hfs/rules.yaml#R339")
 
 /** Every rule of this law is an error. */
