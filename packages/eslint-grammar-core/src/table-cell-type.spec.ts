@@ -37,8 +37,10 @@ test("FE_TABLE_CELL_TYPE: a heading-size Text in a cell or a row is red", () => 
       // a local Text is not the Grammar Text
       { filename: BLOCK, code: "const Text = (p) => p.children\nexport const A = () => <DataTable renderCell={() => <Text size=\"figure\">1</Text>} />" },
       { filename: SCRIPT, code: IMPORT + "export const A = () => <DataTable renderCell={() => <Heading>x</Heading>} />" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text role=\"label.item\">{row.name}</Text>} />" },
     ],
     invalid: [
+      { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text role=\"title.section\">{row.name}</Text>} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"figure\">{row.name}</Text>} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"lg\">{row.name}</Text>} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Heading level={3}>{row.name}</Heading>} />", errors: [{ messageId: "heading" }] },

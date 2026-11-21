@@ -273,6 +273,17 @@ rules:
         when: A DataTable is written with a `surface` attribute
         assert: |-
           The attribute is refused whatever its value and the fix removes it. A table is flat, with no frame or card of its own, under the `Section` that titles it.
+  - id: TYPE-ROLES
+    title: Type is a Grammar role
+    governs: Type sizes an app sets.
+    cases:
+      - id: case-1
+        when: An app sets the size of text it draws
+        assert: |-
+          The size is a type role (owner 2026-11-21): `<Text role>` or the public class `starci-type-<role>` (figure, title.page,
+          title.section, label.item, body, label.field, label.group, caption, badge, code; dots as dashes in the class). A Tailwind
+          text-size utility, a `fontSize` or a CSS `font-size` in app source is reported (`starci-grammar/no-raw-type-size`, a
+          counting rule at warn until both apps migrate, then blocking).
   - id: NO-RAW-SCROLL
     title: Grammar never shows scrollbars
     governs: Scroll areas an app draws.

@@ -240,7 +240,7 @@ weights):
   | table header | md 14 / 500 muted | the table's own header |
 
 - **FONT-7a Label over content (owner, 2026-11-19, 0.48.0).** In a list body, a settings row and a description list the LABEL (a row title, a key, a settings title) is 16 / 400 in the primary colour and the CONTENT under it (a description, a value, a hint) is 14 in the secondary colour. The full scale: page title 18 / 500; section title and empty-state title 16 / 500; label 16 / 400; content 14 / 400 secondary (values, descriptions, hints, the page subtitle, nav items, buttons); meta 12 / 400 secondary (breadcrumbs, timestamps, chip counts, sidebar group labels, captions, badges). Laws `DNA-COMMON-LABEL-16`, `DNA-COMMON-CONTENT-14-SECONDARY`, `DNA-COMMON-SECTION-TITLE-SIZE`. This amends FONT-7 (14 for all UI text) and FONT-9 (a list row is 14 only) for these three places.
-- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site keeps its own display tokens. Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm", and the app-side lint ban on raw font utilities.
+- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site keeps its own display tokens. Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm". The app-side ban on raw font utilities is `starci-grammar/no-raw-type-size` (0.54.0, see "The type roles").
 - **FONT-8 One line, one size.** Words that stand side by side on one line share one size step: 14 (`md`, and `sm`, which is
   the same step), 12 (`xs`) or a display size (`figure`). A chip or `Badge` beside the words is below the ramp and exempt.
   Lint: `starci-grammar/same-line-size` (no mixed `Text` steps among the direct children of one `Cluster`; `sm` next to `md`
@@ -254,6 +254,42 @@ weights):
   `starci-grammar/no-raw-structural-element`, `starci-grammar/no-text-heading` (R358).
 - **Weight refines a rank, never creates one**; structure must hold with weight and colour removed.
 - Body copy is never shrunk to fit a container; the layout is repaired instead.
+
+### The type roles (0.54.0)
+
+On 2026-11-21 the owner approved the type scale below as final: "ok chốt vậy đi". There are ten roles, and each one has a size,
+a line height and a weight. Weights are 400 and 500 only. The Grammar keeps each role in `ramps.css` as
+`--grammar-type-<role>-size|line|weight`, with dots as dashes. `<Text role="…">` draws a role (the role names are a typed
+union, `TextRole`), and an element of the app's own wears the public class `starci-type-<role>`, for example
+`starci-type-label-item` or `starci-type-title-page`. An app therefore migrates by swapping a raw size utility for the class,
+with no change to its JSX structure. `Text size` keeps working, but it is deprecated in favour of `role`.
+
+| Role | Size | Line height | Weight | Colour | Grammar parts that draw it |
+| --- | --- | --- | --- | --- | --- |
+| `figure` | 24 | 32 | 500 | | a stat cell's value (`kind="figures"`, the stat strip) |
+| `title.page` | 22 | 28 | 500 | | `<Text role="title.page">` (the Page header title keeps FONT-4 for now) |
+| `title.section` | 16 | 24 | 500 | | a `Section` title, a card or panel `label`, a pane (side panel) header title |
+| `label.item` | 14 | 20 | 500 | | a `ListRow` title, a keyValue row key |
+| `body` | 14 | 22 | 400 | | running copy |
+| `label.field` | 13 | 18 | 500 | muted | a field label, a `DataTable` column header |
+| `label.group` | 12 | 16 | 500 | muted | a stat cell's label |
+| `caption` | 12 | 16 | 400 | muted | a `ListRow` meta line, a field's helper and description text |
+| `badge` | 12 | 16 | 500 | the badge's tone | `Badge` |
+| `code` | 12 | 18 | 400 | mono stack | |
+
+`Button` keeps its own type. The owner's table gives `code` no weight, so it takes the regular 400. **The line-height floor:**
+Vietnamese diacritics want a line height of at least 1.33 times the size. Every role meets it except `title.page`: 28 / 22 is
+1.27. The owner's numbers stand, and this is the one recorded conflict. The 12 / 16 roles sit exactly at 1.33.
+
+App source states no type size of its own. `starci-grammar/no-raw-type-size` (`@starci/eslint-grammar-core`, finding
+`FE_RAW_TYPE_SIZE`) reports a Tailwind text-size utility (`text-xs` through `text-2xl` and larger, and arbitrary lengths such
+as `text-[13px]`), a `fontSize` and a CSS `font-size` in a string. It is a warning for now, in the family's counting cohort.
+**To make it blocking** after both apps migrate, delete its entry from `COUNTING` in `packages/eslint-grammar-core/src/index.ts`
+(a Grammar family minor). App stylesheets already refuse a `font-size` that is not a token (`starci/token-only`), and they
+refuse the Grammar's private type tokens (`starci/no-grammar-private-token`). Measure: `check:type`, and the laws
+`DNA-COMMON-SECTION-TITLE-SIZE`, `DNA-COMMON-TYPE-ROW-TITLE`, `DNA-COMMON-TYPE-FIELD-LABEL` and `DNA-COMMON-TYPE-STAT`.
+Where the older rows above disagree with this table (FONT-7, FONT-7a, FONT-7b and FONT-9 on row titles, section titles, table
+headers and figures), this table wins.
 
 Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](proof/thresholds.yaml)):
 

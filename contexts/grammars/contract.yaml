@@ -330,7 +330,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS, DNA-COMMON-LIST-NO-BORDER, DNA-COMMON-LIST-ROW-PADDING, DNA-COMMON-LIST-ROW-PADDING-DIVIDER, DNA-COMMON-LIST-ROW-PADDING-EDGE, DNA-COMMON-LIST-ROW-NO-TRANSFORM, DNA-COMMON-SECTION-TITLE-SIZE, DNA-COMMON-LABEL-16, DNA-COMMON-CONTENT-14-SECONDARY, DNA-COMMON-PAGE-TITLE-18, DNA-COMMON-TYPE-PAGE-TITLE-LINE, DNA-COMMON-TYPE-SENTENCE-CASE, DNA-COMMON-EMPTY-TITLE-16, DNA-COMMON-ROW-PHONE-UNDER, DNA-COMMON-ROW-PHONE-START-EDGE, DNA-COMMON-STEP-NUMERAL-400, DNA-COMMON-TIMELINE-DOT-NEUTRAL]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS, DNA-COMMON-LIST-NO-BORDER, DNA-COMMON-LIST-ROW-PADDING, DNA-COMMON-LIST-ROW-PADDING-DIVIDER, DNA-COMMON-LIST-ROW-PADDING-EDGE, DNA-COMMON-LIST-ROW-NO-TRANSFORM, DNA-COMMON-SECTION-TITLE-SIZE, DNA-COMMON-LABEL-16, DNA-COMMON-TYPE-ROW-TITLE, DNA-COMMON-TYPE-FIELD-LABEL, DNA-COMMON-TYPE-STAT, DNA-COMMON-CONTENT-14-SECONDARY, DNA-COMMON-PAGE-TITLE-18, DNA-COMMON-TYPE-PAGE-TITLE-LINE, DNA-COMMON-TYPE-SENTENCE-CASE, DNA-COMMON-EMPTY-TITLE-16, DNA-COMMON-ROW-PHONE-UNDER, DNA-COMMON-ROW-PHONE-START-EDGE, DNA-COMMON-STEP-NUMERAL-400, DNA-COMMON-TIMELINE-DOT-NEUTRAL]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1309,8 +1309,8 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-SECTION-TITLE-SIZE
       role: list
-      law: "A section title is 16 / 500 (the title token): the same size as the labels under it (16 / 400), set apart by weight; the page title above it is 18 / 500."
-      measure: { kind: style, select: ':is(h2, h3, h4, h5, h6).starci-core-section-title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-title } }, { metric: font-weight, op: "=", value: 500 }] }
+      law: "A section title is the title.section role, 16 / 24 / 500 (0.54.0, owner 2026-11-21), above the 14 / 500 row titles (label.item) under it; the page title above it is 18 / 500."
+      measure: { kind: style, select: ':is(h2, h3, h4, h5, h6).starci-core-section-title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-title-section-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-title-section-line } }, { metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/text.md
     - id: DNA-COMMON-PAGE-TITLE-18
       role: list
@@ -1452,9 +1452,24 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-LABEL-16
       role: list
-      law: "A label (a description list term, a keyValue row key, a list or settings row title) is 16 / 400 in the primary colour."
-      measure: { kind: style, select: ':is(.starci-core-description-list:not([data-grammar-description-layout="stat-strip"]):not([data-grammar-description-density="compact"]) .starci-core-description-term, [data-grammar-list-layout="keyValue"] .starci-core-list-row-name, .starci-core-section-list:not([data-grammar-list-layout="suggestions"]) .starci-core-list-row:not([data-grammar-emphasis]):not([data-grammar-state]) .starci-core-list-row-name)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --foreground } }] }
+      law: "A description list term is 16 / 400 in the primary colour (a row title is the label.item role since 0.54.0: DNA-COMMON-TYPE-ROW-TITLE)."
+      measure: { kind: style, select: '.starci-core-description-list:not([data-grammar-description-layout="stat-strip"]):not([data-grammar-description-density="compact"]) .starci-core-description-term', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --foreground } }] }
       owner: ui/components/text.md
+    - id: DNA-COMMON-TYPE-ROW-TITLE
+      role: list
+      law: "A list, settings or keyValue row title is the label.item role, 14 / 20 / 500 in the primary colour, and its meta the caption role, 12 / 16 / 400 muted (0.54.0, owner 2026-11-21)."
+      measure: { kind: style, select: ':is([data-grammar-list-layout="keyValue"] .starci-core-list-row-name, .starci-core-section-list:not([data-grammar-list-layout="suggestions"]) .starci-core-list-row:not([data-grammar-state]) .starci-core-list-row-name)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-label-item-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-label-item-line } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --foreground } }] }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TYPE-FIELD-LABEL
+      role: list
+      law: "A field label and a table column header are the label.field role, 13 / 18 / 500 muted; a field's description is the caption role, 12 / 16 / 400 muted (0.54.0, owner 2026-11-21)."
+      measure: { kind: style, select: ':is(.starci-core-field-label, .starci-core-data-table .starci-core-data-table-column)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-label-field-size } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --muted } }] }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TYPE-STAT
+      role: list
+      law: "A stat cell's label is the label.group role (12 / 16 / 500 muted) and its value the figure role (24 / 32 / 500, tabular) (0.54.0, owner 2026-11-21)."
+      measure: { kind: style, select: '.starci-core-description-figure', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-figure-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-figure-line } }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/presentation.md
     - id: DNA-COMMON-CONTENT-14-SECONDARY
       role: list
       law: "The content under a label (a description list value, a keyValue row value, a row description or hint) is 14 in the secondary colour, smaller than its label, so a label never renders like its content."
@@ -1462,7 +1477,7 @@ mustKeep:
       owner: ui/components/text.md
     - id: DNA-COMMON-LIST-ROW-UNREAD
       role: list
-      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the 500 weight (a read row is 400) and an accent dot after it on the title line; the read rows keep the 400 weight."
+      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the 500 weight and an accent dot after it on the title line; since 0.54.0 every row title is 500 (the label.item role), so the dot alone marks it unread."
       measure: { kind: style, select: '[data-component="ListRow"][data-grammar-emphasis="unread"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-COMMAND-PALETTE-ONE-FIELD

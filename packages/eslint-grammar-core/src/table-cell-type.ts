@@ -21,6 +21,9 @@ import { attributeOf, descendants, elementOf, grammarBindings, isListRow, keyNam
 /** The Text sizes a cell or row takes: 14 (md, sm) and 12 (xs). */
 const CELL_SIZES: ReadonlySet<string> = new Set(["xs", "sm", "md"])
 
+/** The type roles above the row sizes (0.54.0): a figure or a title in a cell or a row is a heading drawn in a list. */
+const HEADING_ROLES: ReadonlySet<string> = new Set(["figure", "title.page", "title.section"])
+
 const HEADING_TAGS: ReadonlySet<string> = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
 
 const isFunction = (node: TSESTree.Node): node is TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration =>
@@ -50,6 +53,7 @@ export const tableCellType: Rule.RuleModule = defineRule({
         let what: string | null = null
         const size = grammar === "Text" ? literalAttribute(node.openingElement, "size") : null
         if (size !== null && !CELL_SIZES.has(size)) what = `\`Text size="${size}"\``
+        else if (grammar === "Text" && HEADING_ROLES.has(literalAttribute(node.openingElement, "role") ?? "")) what = `\`Text role="${literalAttribute(node.openingElement, "role") ?? ""}"\``
         else if (grammar === "Heading" || grammar === "Label") what = `\`${grammar}\``
         else if (tag !== null && HEADING_TAGS.has(tag)) what = `\`<${tag}>\``
         if (what === null) continue

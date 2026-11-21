@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.54.0 - 2026-11-21
+
+- Changed: versioned with @starci/grammar 0.54.0 and @starci/eslint-grammar-core 0.54.0 (`no-raw-type-size`, a counting warning).
+
 ## 0.52.3 - 2026-11-21
 
 - No rule changed: versioned with @starci/grammar 0.52.3 (loading as HeroUI Skeleton shapes, the content-zone loading mode).

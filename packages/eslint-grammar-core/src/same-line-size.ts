@@ -17,8 +17,18 @@ import { attributeOf, elementOf, grammarBindings, literalAttribute } from "./lib
 const LINES: ReadonlySet<string> = new Set(["Cluster", "Text"])
 
 /** The size step a Text states: its literal `size` (`sm` folds into `md`, both 14), `md` when it has none, null when it cannot be read. */
+/** The size step of each type role (0.54.0), in the names of the `size` steps where one is the same size. */
+const ROLE_STEP: Readonly<Record<string, string>> = {
+  figure: "figure", "title.page": "title.page", "title.section": "title.section", "label.item": "md", body: "md",
+  "label.field": "label.field", "label.group": "xs", caption: "xs", badge: "xs", code: "xs",
+}
+
 const sizeOf = (opening: TSESTree.JSXOpeningElement): string | null => {
   if (opening.attributes.some((entry) => entry.type === "JSXSpreadAttribute")) return null
+  if (attributeOf(opening, "role") !== null) {
+    const role = literalAttribute(opening, "role")
+    return role === null ? null : ROLE_STEP[role] ?? null
+  }
   if (attributeOf(opening, "size") === null) return "md"
   const size = literalAttribute(opening, "size")
   return size === "sm" ? "md" : size

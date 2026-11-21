@@ -21,13 +21,13 @@ Three ideas hold the whole layer together:
 | Job of the content | Owner |
 | --- | --- |
 | names a page or section | `Heading`, at the level the outline needs |
-| explains, or states a neutral fact | `Text`, default role, no state |
-| names a literal (identifier, path, hash, command) | `Text mono` on its own line, `Code` inside a sentence, `FencedCodeBlock` for a block |
+| explains, or states a neutral fact | `Text role="body"` (the default line), no state |
+| names a literal (identifier, path, hash, command) | `Text role="code"` on its own line, `Code` inside a sentence, `FencedCodeBlock` for a block |
 | tails a live log | `Terminal` |
 | reports an outcome authority settled | `Badge`, `StatusDot` or another state owner |
 | reports a verified measurement 0-100 | `Progress` / `Meter` with its label and value; a `Meter` inside a dense row takes `size="sm"` |
-| the principal figure of an overview cell | `Text` at the leading-value rank (FONT-5) |
-| feels important but matches no role | name the job in the spec first; no type utility stands in for a rank |
+| the principal figure of an overview cell | `Text role="figure"` (24 / 32 / 500, FONT-5) |
+| feels important but matches no role | name the job in the spec first; no type utility stands in for a rank: a size is one of the ten type roles ([presentation](presentation.md) "The type roles"), `<Text role>` or `starci-type-<role>`, and `starci-grammar/no-raw-type-size` reports a raw one |
 
 ### HIERARCHY-2 One anchor per region
 Each region has exactly one strongest semantic anchor (a `Section` title, a `Heading` or a labelled surface). A status
@@ -378,7 +378,7 @@ Exactly one form of a composition exists at a time; the other leaves no layout o
 
 ### RESPONSIVE-5 The page tiers
 Grammar owns every breakpoint of a page, through `Page layout` and `PaneGrid`; an app writes no media query. Desktop is from 1280, tablet 768
-to 1279, phone below 768. Type stays 14 / 12 at every tier. Page inset 32 / 24 / 16; the gap between a report page's cards 24, 16 on a phone
+to 1279, phone below 768. Type keeps its roles at every tier (the ten type roles of [presentation](presentation.md), 0.54.0): no size changes with the width. Page inset 32 / 24 / 16; the gap between a report page's cards 24, 16 on a phone
 (`--grammar-card-gap`; both are 12 on a phone until the spacing scale 0 4 8 12 24 32 gains a 16 step); content at most 1280 wide (`--grammar-content-max`).
 
 | Piece | Desktop | Tablet | Phone |

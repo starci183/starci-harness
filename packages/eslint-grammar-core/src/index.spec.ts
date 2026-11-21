@@ -12,7 +12,7 @@ import { parseYaml } from "@starci/hfs/runtime/engine/yaml.mjs"
 import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.ts"
 import { FE_DECLARATION, fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { rules as universal } from "../../eslint-canon-fe/src/index.ts"
-import plugin, { lawOwners, recommended, ruleDeclarations, rules, coreGrammarConfig, why } from "./index.ts"
+import plugin, { COUNTING, lawOwners, recommended, ruleDeclarations, rules, coreGrammarConfig, why } from "./index.ts"
 import { RULE_OWNERSHIP } from "./lib/rule-contract.ts"
 
 /**
@@ -116,7 +116,7 @@ test("the selected-family flat config attaches every rule at error and rejects a
   assert.equal(block.plugins?.["starci-grammar"], plugin)
   assert.deepEqual(block.files, ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"])
   assert.deepEqual(block.linterOptions, { noInlineConfig: true, reportUnusedDisableDirectives: "error" })
-  for (const name of Object.keys(rules)) assert.equal(block.rules?.[`starci-grammar/${name}`], "error")
+  for (const name of Object.keys(rules)) assert.equal(block.rules?.[`starci-grammar/${name}`], `starci-grammar/${name}` in COUNTING ? "warn" : "error")
   assert.throws(() => (coreGrammarConfig as () => Linter.Config[])(), /FE view/)
   assert.throws(() => coreGrammarConfig(refused({ hfs, family: "unknown" })), /does not match/)
   assert.throws(() => coreGrammarConfig(refused({ hfs: { ...hfs, grammar: "offset-pop" } })), /does not match/)
@@ -129,7 +129,7 @@ test("sides.fe.grammar core, the canonical id, loads the core family config with
   const hfs = fixtureHfs({ ...FE_DECLARATION, grammar: "core" })
   const block = only(coreGrammarConfig({ hfs }))
   assert.equal(block.plugins?.["starci-grammar"], plugin)
-  for (const name of Object.keys(rules)) assert.equal(block.rules?.[`starci-grammar/${name}`], "error")
+  for (const name of Object.keys(rules)) assert.equal(block.rules?.[`starci-grammar/${name}`], `starci-grammar/${name}` in COUNTING ? "warn" : "error")
   assert.deepEqual(only(coreGrammarConfig({ hfs, family: "core" })).rules, block.rules)
   assert.equal(warn.mock.callCount(), 0)
 })
@@ -155,4 +155,11 @@ test("the family config reports a concrete status-tone violation through its pub
   assert.deepEqual(linter.verify(source("text-success"), [config], { filename: "panel.tsx" }), [])
   const findings = linter.verify(source("bg-success-soft text-success"), [config], { filename: "panel.tsx" })
   assert.deepEqual(findings.map(({ ruleId, severity }) => ({ ruleId, severity })), [{ ruleId: "starci-grammar/status-text-uses-soft-foreground", severity: 2 }])
+})
+
+test("the counting cohort is closed: the type-roles rule alone runs at warn, until its entry is deleted", () => {
+  assert.deepEqual(Object.keys(COUNTING), ["starci-grammar/no-raw-type-size"])
+  assert.deepEqual(COUNTING["starci-grammar/no-raw-type-size"]?.law, "TYPE-ROLES")
+  const loose = Object.entries(recommended).filter(([, level]) => level !== "error").map(([name]) => name)
+  assert.deepEqual(loose, Object.keys(COUNTING))
 })
