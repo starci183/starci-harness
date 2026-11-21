@@ -325,10 +325,10 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         flex-wrap: nowrap;
-        /* 0.48.0: the section title is 16 / 500 with the count chip beside it; a label under it (a row title, a key) is 16 / 400 in the primary colour over its 14 secondary content: the title is set apart by weight. */
-        font-size: var(--grammar-text-title);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-title);
+        /* 0.54.0: the section title is the title.section role (16 / 24 / 500) with the count chip beside it. */
+        font-size: var(--grammar-type-title-section-size);
+        font-weight: var(--grammar-type-title-section-weight);
+        line-height: var(--grammar-type-title-section-line);
     }
 
     .starci-core-section-title-text {
@@ -1118,10 +1118,10 @@
         margin: 0;
         /* A label names what follows it: full foreground, never the muted tone a vendor body passes down (TONE). */
         color: var(--foreground);
-        /* A card or section title: 14 / 600 (the final type scale; 16 / 500 in 0.28). */
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-md);
+        /* A card or panel title: the title.section role (0.54.0, 16 / 24 / 500). */
+        font-size: var(--grammar-type-title-section-size);
+        font-weight: var(--grammar-type-title-section-weight);
+        line-height: var(--grammar-type-title-section-line);
     }
 
     .starci-core-label[data-grammar-label-depth="nested"] {
@@ -1857,12 +1857,12 @@
         line-height: inherit;
     }
 
-    /* 0.48.0: the row's label is 16 / 400 in the primary colour; its description (below) is the 14 secondary content. */
+    /* 0.54.0: the row's title is the label.item role (14 / 20 / 500) in the primary colour; its meta is the caption role. */
     .starci-core-list-row-name {
         min-width: 0;
-        font-size: var(--grammar-text-lg);
-        font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-leading-lg);
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
         overflow-wrap: anywhere;
     }
 
@@ -1995,8 +1995,9 @@
         max-inline-size: 10rem;
         overflow: hidden;
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-type-caption-weight);
+        line-height: var(--grammar-type-caption-line);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -5486,6 +5487,14 @@
         line-height: var(--grammar-leading-xs) !important;
     }
 
+    /* A pane's (side panel's) title is the title.section role (0.54.0), at whatever level its outline gives it. */
+    .grammar-common-root .starci-core-pane-header-title > [data-component="Heading"][data-scale="standard"] {
+        color: var(--foreground);
+        font-size: var(--grammar-type-title-section-size) !important;
+        font-weight: var(--grammar-type-title-section-weight) !important;
+        line-height: var(--grammar-type-title-section-line) !important;
+    }
+
     .starci-core-page-header-title[data-grammar-title-scale="title"] {
         font-size: var(--grammar-text-3xl);
         line-height: var(--grammar-leading-tight);
@@ -5607,6 +5616,7 @@
     .starci-core-text[data-size="xs"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 2.5rem; }
     .starci-core-text[data-size="sm"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 3rem; }
     .starci-core-text[data-size="md"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
+    .starci-core-text[data-role] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
 
     /* --- Text action: one recipe, eight appearances, selected by data attributes. --- */
     /*
@@ -5939,6 +5949,10 @@
      */
     [data-component="Badge"][data-loading] {
         padding-inline: 0.5rem;
+        /* The badge role (0.54.0): 12 / 16 / 500 in the badge's own tone. */
+        font-size: var(--grammar-type-badge-size);
+        font-weight: var(--grammar-type-badge-weight);
+        line-height: var(--grammar-type-badge-line);
     }
 
     /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
@@ -6689,12 +6703,12 @@
         max-inline-size: 50%;
     }
 
-    /* 0.48.0: the key is the label (16 / 400, primary); the value is the 14 secondary content. */
+    /* 0.54.0: the key is a row title, the label.item role (14 / 20 / 500, primary); the value is the 14 secondary content. */
     [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
         color: var(--foreground);
-        font-size: var(--grammar-text-lg);
-        font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-leading-lg);
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
     }
 
     [data-grammar-list-layout="keyValue"] .starci-core-list-row-value {
@@ -6779,3 +6793,21 @@
     }
 }
 
+
+/*
+ * THE TYPE ROLES (0.54.0, owner 2026-11-21): one public class per role, dots as dashes, each reading its three tokens of
+ * ramps.css. `<Text role>` wears the same class; an app moves a raw size utility (`text-sm`) onto the class of its role
+ * without restructuring its JSX. The rules come last in the layer, so a role wins over the base Text step.
+ */
+@layer starci-grammar-common {
+    .starci-type-figure { font-size: var(--grammar-type-figure-size); line-height: var(--grammar-type-figure-line); font-weight: var(--grammar-type-figure-weight); font-variant-numeric: tabular-nums; }
+    .starci-type-title-page { font-size: var(--grammar-type-title-page-size); line-height: var(--grammar-type-title-page-line); font-weight: var(--grammar-type-title-page-weight); }
+    .starci-type-title-section { font-size: var(--grammar-type-title-section-size); line-height: var(--grammar-type-title-section-line); font-weight: var(--grammar-type-title-section-weight); }
+    .starci-type-label-item { font-size: var(--grammar-type-label-item-size); line-height: var(--grammar-type-label-item-line); font-weight: var(--grammar-type-label-item-weight); }
+    .starci-type-body { font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); font-weight: var(--grammar-type-body-weight); }
+    .starci-type-label-field { color: var(--muted); font-size: var(--grammar-type-label-field-size); line-height: var(--grammar-type-label-field-line); font-weight: var(--grammar-type-label-field-weight); }
+    .starci-type-label-group { color: var(--muted); font-size: var(--grammar-type-label-group-size); line-height: var(--grammar-type-label-group-line); font-weight: var(--grammar-type-label-group-weight); }
+    .starci-type-caption { color: var(--muted); font-size: var(--grammar-type-caption-size); line-height: var(--grammar-type-caption-line); font-weight: var(--grammar-type-caption-weight); }
+    .starci-type-badge { font-size: var(--grammar-type-badge-size); line-height: var(--grammar-type-badge-line); font-weight: var(--grammar-type-badge-weight); }
+    .starci-type-code { font-family: var(--font-mono); font-size: var(--grammar-type-code-size); line-height: var(--grammar-type-code-line); font-weight: var(--grammar-type-code-weight); }
+}

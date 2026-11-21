@@ -81,11 +81,12 @@
         gap: var(--grammar-identity-gap) !important;
     }
 
+    /* The label.field role (0.54.0): 13 / 18 / 500, muted. */
     .starci-core-field-label {
-        color: var(--foreground);
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-tight);
+        color: var(--muted);
+        font-size: var(--grammar-type-label-field-size);
+        font-weight: var(--grammar-type-label-field-weight);
+        line-height: var(--grammar-type-label-field-line);
         overflow-wrap: anywhere;
     }
 
@@ -94,11 +95,13 @@
         color: var(--danger);
     }
 
+    /* Helper and description text: the caption role (0.54.0, 12 / 16 / 400, muted). */
     .starci-core-field-description {
         margin: 0;
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-snug);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-type-caption-weight);
+        line-height: var(--grammar-type-caption-line);
         overflow-wrap: anywhere;
     }
 
