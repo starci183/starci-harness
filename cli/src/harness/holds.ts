@@ -84,15 +84,9 @@ const heldDecisions = (db: DatabaseSync, command: HoldingCommand): { readonly id
 export const isHold = (command: HoldingCommand): boolean => command.kind === "workflow-change" && command.change === undefined && command.hold !== undefined
 
 /**
- * Refuses a hold with no release condition (HOLD_UNCONDITIONED): a workflow-change that answers a decision on a task without a
- * change or a need keeps the task where it stands, so it names what it waits for (`hold`); a `hold` on a command that holds
- * nothing is COMMAND_INVALID, and one naming a ticket the host does not know is TICKET_UNKNOWN.
+ * Refuses a `hold` on a command that holds nothing (COMMAND_INVALID), and one naming a ticket the host does not know (TICKET_UNKNOWN).
  */
 export const assertHold = (db: DatabaseSync, command: HoldingCommand): void => {
-    const answered = answeredOnTasks(db, command)
-    if (answered.length > 0 && command.hold === undefined) {
-        throw new Refusal("HOLD_UNCONDITIONED", `${command.kind} ${command.cmdId} answers ${answered.map((one) => one.id ?? "-").join(", ")} without moving task ${answered.map((one) => one.task).join(", ")}: that is a hold, and a hold names what releases it (hold: {ticket: <id>} | {commit: <sha on harness main>} | {need: <key>} | {time: <iso>}), preferably the ticket it waits on; or move the task (retry, edit, remove) or escalate`)
-    }
     if (command.hold === undefined) return
     if (heldDecisions(db, command).length === 0) throw new Refusal("COMMAND_INVALID", `hold belongs to a workflow-change with no change that answers a decision on a task or names the tasks it holds (hold.tasks); ${command.cmdId} holds nothing`)
     const ticket = command.hold.ticket

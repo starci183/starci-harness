@@ -42,7 +42,7 @@ turn, by its route or by an escalation naming what it waits for. A hold, a `work
 without a change, names what releases it: `hold: {ticket: <id>}` (the ticket it waits on, preferred), `{commit: <sha>}` (once
 harness main holds it), `{need: <key>}` (once the shared need ends) or `{time: <iso>}`, plus `tasks: [<key>...]` for the
 tasks it keeps beside the decisions it answers; with `tasks` it needs no open decision, so you hold a key on an open ticket
-with `answers: []`. One with no condition is refused `HOLD_UNCONDITIONED`, and a hold answers a task's decision off its route.
+with `answers: []`. A hold answers a task's decision off its route.
 Nothing runs a held key meanwhile, a shared need's release included. The harness releases it on its own when the condition is
 met: a task the harness ended comes back at the same try, a waiter parked on a shared need is retried once from its kept work,
 any other returns to you as its decision, reopened. One still undecided
