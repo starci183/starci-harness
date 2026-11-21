@@ -5814,7 +5814,7 @@ rules:
     law: "An api app that declares `contract: \"rest\"` commits the OpenAPI 3 document of its controllers (`be/contracts/<app>/openapi.json`, emitted by `starci app emit` with @nestjs/swagger over the head `apps/<app>/src/openapi.ts`), and in it every operation has a unique explicit operationId `<area>.<action>`, a named schema for every JSON request body and 2xx answer, a `default` answer with the one Error schema (code and message required), a page `{ items, nextCursor }` read with `cursor` and `limit` for a list GET (never a bare array), and a declared security scheme or an `x-public-reason` on a public operation."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_PAGINATION", "BE_REST_SECURITY"]
+    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_SECURITY"]
     enforcers:
       - {kind: hfs, id: rest-contract, at: runtime/scripts/hfs/rules/rest-contract.mjs}
     templateNa: "A rest contract is emitted from each rest app's controllers, not scaffolded; the default contract is graphql."

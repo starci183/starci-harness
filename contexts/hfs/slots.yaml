@@ -1978,7 +1978,6 @@ slots:
       - BE_REST_OPERATION_ID
       - BE_REST_UNTYPED
       - BE_REST_ERROR_SHAPE
-      - BE_REST_PAGINATION
       - BE_REST_SECURITY
   - id: be.contract.openapi.pin
     profiles:

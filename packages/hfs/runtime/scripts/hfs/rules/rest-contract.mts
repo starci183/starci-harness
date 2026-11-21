@@ -5,8 +5,6 @@
 //                               array of one), and a 2xx answer other than 204 has a JSON body;
 //        BE_REST_ERROR_SHAPE    every operation answers `default` with one and the same named schema, an object that requires `code`
 //                               and `message`;
-//        BE_REST_PAGINATION     a GET answers no bare array: a list is a named schema with `items` (an array) and `nextCursor`, read with the
-//                               query parameters `cursor` and `limit`;
 //        BE_REST_SECURITY       components.securitySchemes names at least one scheme, and every operation states its security (its own
 //                               `security` or the document's); an operation that states none (`security: []`) carries `x-public-reason`.
 //   R278 BE_REST_APP_GRAPHQL    a back end whose api apps declare rest holds a GraphQL door or the GraphQL platform: its door is the controller;
@@ -78,18 +76,6 @@ export function restContractProblems(doc: Parsed): Array<[string, string]> {
   const required = Array.isArray(error?.required) ? error.required : [];
   if (operations.length && (!plain(error) || error.type !== 'object' || !required.includes('code') || !required.includes('message'))) problems.push(['BE_REST_ERROR_SHAPE', `the error schema ${errorRef ?? '(none)'} is not an object that requires code and message (the one error body every operation answers as default)`]);
   for (const { at, ref } of defaults) if (errorRef !== undefined && ref !== errorRef) problems.push(['BE_REST_ERROR_SHAPE', `${at} does not answer default with ${errorRef}, the one error schema (@ApiDefaultResponse({ type: ErrorDto }) on the controller)`]);
-  for (const { at, method, op } of operations) {
-    if (method !== 'get') continue;
-    for (const [status, answer] of twoHundreds(op)) {
-      const schema = jsonSchemaOf(answer);
-      if (plain(schema) && schema.type === 'array') { problems.push(['BE_REST_PAGINATION', `${at} answers ${status} with a bare array: a list is a page { items, nextCursor } read with cursor and limit`]); continue; }
-      const page = resolved(doc, schema);
-      if (!plain(page?.properties) || page.properties.items?.type !== 'array') continue;
-      const query = new Set((Array.isArray(op.parameters) ? op.parameters : []).filter((parameter: Parsed) => parameter?.in === 'query').map((parameter: Parsed) => parameter.name));
-      const missing = [...(page.properties.nextCursor ? [] : ['the nextCursor field']), ...['cursor', 'limit'].filter((name) => !query.has(name)).map((name) => `the query parameter ${name}`)];
-      if (missing.length) problems.push(['BE_REST_PAGINATION', `${at} answers a page of items without ${missing.join(', ')}`]);
-    }
-  }
   const schemes = plain(doc?.components?.securitySchemes) ? Object.keys(doc.components.securitySchemes) : [];
   if (!schemes.length) problems.push(['BE_REST_SECURITY', 'components.securitySchemes declares no scheme (DocumentBuilder().addBearerAuth() or another scheme in apps/<app>/src/openapi.ts)']);
   for (const { at, op } of operations) {

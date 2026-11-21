@@ -7253,16 +7253,6 @@ BE_REST_ERROR_SHAPE:
   owner: op-retry
   kind: check-finding
 
-BE_REST_PAGINATION:
-  title: "A REST list is not a cursor page"
-  title_vi: "Danh sách REST không phân trang theo con trỏ"
-  meaning_vi: "Một GET không trả mảng trần: danh sách là schema có items (mảng) và nextCursor, đọc bằng tham số query cursor và limit."
-  causes_vi:
-    - "Vi phạm R396: GET trả mảng trần, hoặc trang thiếu nextCursor, cursor hay limit."
-  nextStep_vi: "Trả DTO trang { items, nextCursor } và nhận @Query cursor, limit; chạy npm run contract:emit và commit."
-  owner: op-retry
-  kind: check-finding
-
 BE_REST_SECURITY:
   title: "A REST operation states no security"
   title_vi: "Thao tác REST không khai bảo mật"

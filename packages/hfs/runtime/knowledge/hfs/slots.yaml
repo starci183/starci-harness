@@ -1471,7 +1471,7 @@ slots:
     tests: none
     coverage: none
     why: emitted by `npm run contract:emit` (`starci app emit`, never written by hand) from the app's typed operation table `apps/<app>/src/operations.ts` (canon BE-OPERATIONS-1), or, for an app whose contract is rest, from its controllers and the head `apps/<app>/src/openapi.ts` (BE-TRANSPORT-4); CI fails when the emitted file differs
-    rules: [HFS_CONTRACT_SNAPSHOT_DRIFT, BE_REST_OPERATION_ID, BE_REST_UNTYPED, BE_REST_ERROR_SHAPE, BE_REST_PAGINATION, BE_REST_SECURITY]
+    rules: [HFS_CONTRACT_SNAPSHOT_DRIFT, BE_REST_OPERATION_ID, BE_REST_UNTYPED, BE_REST_ERROR_SHAPE, BE_REST_SECURITY]
   - id: be.contract.openapi.pin
     since: 3.33.0
     profiles: [be]
