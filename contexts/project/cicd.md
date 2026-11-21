@@ -109,7 +109,7 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | schedule (nightly, `main`) and `workflow_dispatch` of `cache-verify.yml` on any branch | one job per family, each `app check --fresh --gate <family>`: the family recomputed, red when the committed records differ; red locks the release gate, a green run for the release's sha clears it | none | none |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
-`pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` and the
+`pull_request` is a new trigger for app workflows (R251 admits only tags, candidate branches, `main` and the
 branches with a branch profile for `ci.yml`, and dispatch); a pull request targets `main` alone, so it always runs the full gate. It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
 gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
@@ -421,7 +421,7 @@ is still in progress.
 workflows/ci.yml` (plan, images, verdict, deploy jobs; `pull_request`), `images.yml` and `stack-deploy.yml` as reusable
 workflows (`workflow_call`, dispatch kept on `stack-deploy.yml` with `deploy|redeploy|rollback`), `db-deploy.yml` retired
 (sync deletes it), `sync/ci-commands.mts`, `sync/stack-images.mts`, `runtime/knowledge/hfs/ci-standard.yaml` (jobs, the
-`verdict` and `plan` items), rules R221, R251, R271 (`HFS_DB_DEPLOY_UNGUARDED` moves to the deploy's migrate phase) and the
+`verdict` and `plan` items), rules R251, R271 (`HFS_DB_DEPLOY_UNGUARDED` moves to the deploy's migrate phase) and the
 supply-chain SBOM check (now on the pushed build), the stacks schema keys `deploy.auto`, `deploy.approval`,
 `deploy.platforms`, `ci.imageCache`, `services.notify`, the `vps-ci` sealed member and `starci-ssh-gate`. Tests:
 `hfs-deploy-workflow.spec`, `hfs-release-provenance.spec`, `hfs-supply-chain.spec`, the render specs,

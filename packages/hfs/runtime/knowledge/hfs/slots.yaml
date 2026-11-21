@@ -114,7 +114,7 @@ appKinds:
   be: [api, worker, cli, client-cli]
   fe: [next]
 
-# RT_SLOT_ID_SHAPE — the slot-id grammar and the suffix vocabulary law, stated once (scripts/checks/check-slot-id-shape.mjs
+# The slot-id grammar and the suffix vocabulary law, stated once (scripts/checks/check-slot-id-shape.mjs
 # reads this block): an id is dot-separated lowercase kebab segments whose first segment is one of `prefixes`;
 # `<side>.app.<kind>` names a kind of appKinds.<side>; any other deeper id extends a declared slot id (its `parent`)
 # or names `parent` explicitly. The role-suffix vocabulary never shares a word with bannedSuffixes and holds no

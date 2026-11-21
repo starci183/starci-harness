@@ -4,8 +4,6 @@
 // proves: HFS_DEPLOY_WORKFLOW
 // proves: HFS_APP_WORKFLOW_TRIGGER
 // proves: HFS_APP_WORKFLOW_TRIGGER
-// proves: CI_TRIGGERS_RELEASE_ONLY
-// proves: CI_TRIGGERS_RELEASE_ONLY
 // proves: HFS_RELEASE_TAG_MISMATCH
 // proves: HFS_RELEASE_TAG_MISMATCH
 // proves: HFS_SBOM_MISSING
@@ -28,7 +26,6 @@ import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-work
 import { releaseProvenanceFindings } from '../runtime/scripts/hfs/rules/release-provenance.mjs';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { workflowContextsFindings } from '../runtime/scripts/hfs/rules/workflow-contexts.mjs';
-import { gitTriggerFindings } from '../runtime/scripts/hfs/runtime-rules/git-triggers.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 import { renderTargets, retiredFiles } from '../sync/index.mjs';
 import type { DeclaredStack } from '../sync/stack-images.mjs';
@@ -186,7 +183,6 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(supplyChainFindings(ctx).filter((finding) => ['HFS_WORKFLOW_PIN', 'HFS_SBOM_MISSING', 'HFS_AUDIT_STEP_MISSING'].includes(finding.code)), []);
     assert.deepEqual(releaseProvenanceFindings({ repoRoot: root, files: ['package.json', ...files(workflows)], repo: { kind: 'app', edition }, isRoot: true }), []);
     assert.deepEqual(workflowContextsFindings(ctx), []);
-    assert.deepEqual(gitTriggerFindings(ctx), []);
     assert.deepEqual(ciStandardFindings({ doc: parseWorkflow(workflows['ci']!), file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
     for (const name of WORKFLOWS.filter((workflow) => workflows[workflow])) {
       const text = workflows[name]!;

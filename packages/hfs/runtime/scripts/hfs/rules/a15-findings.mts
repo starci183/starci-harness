@@ -1,4 +1,4 @@
-// a15-findings.mts - the one place where the alpha.15 content rules (R247-R280) are wired into `starci app check`.
+// a15-findings.mts - the one place where the alpha.15 content rules (R248-R280) are wired into `starci app check`.
 // Each rule module of a batch exports a synchronous finder `({ repoRoot, files, all, repo, resolver, manifest, isRoot, inScope }) => finding[]`
 // and is wired here by appending ONE import line and ONE entry to FINDERS. Nothing else in this file changes; the file is union-merged.
 // finders-import-begin

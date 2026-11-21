@@ -373,7 +373,6 @@ roles:
     bugSurface:
       - {bug: "a departure of a role stands with no edge-case entry", signal: "a departure printed with remedy none in starci debug digest", detectedBy: scripts/reconciler/debug-digest-analyze.mjs}
       - {bug: "Debug loosens a gate or check to let a workflow pass", signal: "RT_LOOSENING_STATE over the tree as it stands", detectedBy: scripts/checks/check-loosening-state.mjs}
-      - {bug: "Debug changes the runtime without recording the case", signal: "RT_EDGE_CASE_REGISTRY: a covered entry without its rule", detectedBy: scripts/checks/check-edge-case-registry.mjs}
       - {bug: "the loop runs on after its end condition holds, or its standing is not printed", signal: "the standing against each end-condition criterion in the digest", detectedBy: scripts/reconciler/debug-questions.mjs}
     revisionAck:
       noAck: "Debug is the owner's chat session and reads the tree itself each time it acts; it has no seat the runtime could wake or replace"

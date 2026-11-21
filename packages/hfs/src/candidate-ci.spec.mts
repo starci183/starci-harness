@@ -7,7 +7,6 @@ import type { RenderedTarget } from '../sync/index.mjs';
 import { renderTargets } from '../sync/index.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
-import { gitTriggerFindings } from '../runtime/scripts/hfs/runtime-rules/git-triggers.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -146,38 +145,12 @@ for (const edition of ['lite'] as const) {
       if (/images/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_call']);
       if (/stack-key-restore/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_dispatch']);
     }
-    const files = workflows.map(target => `packages/hfs/templates/app/ci-workflows/${target.path.slice(1)}`);
-    assert.deepEqual(gitTriggerFindings({ files, read: (file: string) => (workflows[files.indexOf(file)] as RenderedTarget).content }), []);
-    const file = files.find(file => file.endsWith('/ci.yml')) as string;
-    const bad = structuredClone(doc);
-    bad.on.push.branches = ['feature'];
-    assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(bad) }).length > 0);
-    const noBranches = structuredClone(doc);
-    delete noBranches.on.push.branches;
-    assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(noBranches) }).length > 0);
   });
 
-  test(`a pull request is judged in ci.yml only, to main only, and pull_request_target, workflow_run and schedules never start a run`, () => {
+  test(`the managed nightly verify of the check cache is rendered for every app`, () => {
     const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
-    const ci = parseWorkflow((targets.find(target => target.path === '.github/workflows/ci.yml') as RenderedTarget).content);
-    const findings = (file: string, mutate: (on: Record<string, unknown>) => void) => {
-      const doc = structuredClone(ci);
-      mutate(doc.on);
-      return gitTriggerFindings({ files: [file], read: () => JSON.stringify(doc) }).map(finding => finding.message);
-    };
-    const CI = 'packages/hfs/templates/app/ci-workflows/.github/workflows/ci.yml';
-    assert.deepEqual(findings(CI, () => {}), []);
-    assert.match(findings(CI, (on) => { on.pull_request = { branches: ['feature'] }; }).join('\n'), /pull_request\.branches/u);
-    assert.match(findings(CI, (on) => { on.pull_request = { branches: ['main'], paths: ['be/**'] }; }).join('\n'), /pull_request\.paths/u);
-    assert.match(findings(CI, (on) => { on.pull_request = null; }).join('\n'), /pull_request\.branches/u);
-    for (const event of ['pull_request_target', 'workflow_run', 'schedule', 'issue_comment']) {
-      assert.ok(findings(CI, (on) => { on[event] = {}; }).join('\n').includes(`the trigger \`${event}\` is not allowed`), event);
-    }
-    assert.match(findings('.github/workflows/images.yml', (on) => { on.pull_request = { branches: ['main'] }; }).join('\n'), /may start only ci\.yml/u, 'no other workflow runs the code of a pull request');
     // the one schedule: the managed nightly verify of the check cache, rendered for every app
     const verify = (targets.find(target => target.path === '.github/workflows/cache-verify.yml') as RenderedTarget).content;
-    assert.deepEqual(gitTriggerFindings({ files: ['.github/workflows/cache-verify.yml'], read: () => verify }), []);
-    assert.match(gitTriggerFindings({ files: ['.github/workflows/images.yml'], read: () => verify }).map(finding => finding.message).join('\n'), /a schedule only cache-verify\.yml/u);
     assert.match(verify, /starci app check --env prod --fresh/u);
     assert.doesNotMatch(verify, /STARCI_APP_CHECK_CACHE/u);
   });

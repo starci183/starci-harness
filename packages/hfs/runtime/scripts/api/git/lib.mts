@@ -1,4 +1,4 @@
-// scripts/api/git/lib.mts — the one place the runtime spawns git (RT_EXTERNAL_OWNER of scripts/hfs/runtime-rules/external-owner.mjs enforces it).
+// scripts/api/git/lib.mts — the one place the runtime spawns git.
 //
 // Every caller spelt the same options by hand - encoding:'utf8', windowsHide:true, sometimes a timeout - with two shapes:
 // `git args` in a cwd and `git -C dir args`. gitSpawn keeps the spawnSync(file, args, options) signature so an injected
