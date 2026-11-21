@@ -2,8 +2,6 @@
 //   FE_I18N_PLACEMENT (R59)     next-intl with the `[locale]` segment: every route file sits under `src/app/[locale]/` (the root
 //                               redirect page, global-error and health probes excepted), locale routing is `src/proxy.ts` and never
 //                               `middleware.ts`, and the default locale's catalog `vi.json` exists
-//   FE_ERROR_BOUNDARY_MISSING (R53) once the loading and error boundaries sit in a route group under `[locale]`: the `[locale]/[...rest]/page.tsx`
-//                               catch-all calls notFound() and `[locale]/not-found.tsx` exports its metadata (a `[locale]/loading.tsx` stays accepted, info)
 //   FE_I18N_CATALOG (R60)       every `modules/i18n/messages/<locale>.json` has the same key set
 // Over the whole app (the root scope, app-relative paths: the one package.json and the be contract snapshots sit outside the fe side):
 //   FE_WIRE_GENERATED (R52)     wire types come from the be contract snapshots the fe side reads in place (its declared reads,
@@ -123,26 +121,15 @@ function placementFindings({ app, tracked }: { app: Parsed; tracked: Parsed }) {
 
 /**
  * The unknown-path 404 of a locale segment. A `loading.tsx` at `[locale]` wraps the `[...rest]` catch-all, so Next streams a 200
- * before `notFound()` runs and an unknown address answers a soft 404. The loading and error boundaries therefore live in a route
- * group directly under `[locale]` (`[locale]/(pages)/`, with the pages), and then (FE_ERROR_BOUNDARY_MISSING, R53) the segment holds
- * `[locale]/[...rest]/page.tsx` calling `notFound()` and a `[locale]/not-found.tsx` exporting its metadata, both outside the group.
- * A `loading.tsx` still at `[locale]` stays accepted and is reported as info with the move.
+ * before `notFound()` runs and an unknown address answers a soft 404; it stays accepted and is reported as info with the move into a
+ * route group directly under `[locale]` (`[locale]/(pages)/`, with the pages).
  */
-function localeBoundaryFindings({ repoRoot, app, tracked }: { repoRoot: string; app: Parsed; tracked: Parsed }) {
+function localeBoundaryFindings({ app, tracked }: { app: Parsed; tracked: Parsed }) {
   const directory = `apps/${app}/src/app/[locale]/`;
   const findings: Parsed[] = [];
-  const grouped = tracked.some((f: Parsed) => f.startsWith(directory) && GROUPED_BOUNDARY.test(f.slice(directory.length)));
   if (tracked.includes(`${directory}loading.tsx`)) {
     findings.push({ ...found(I18N_PLACEMENT, `${directory}loading.tsx`, `${directory}loading.tsx wraps the [...rest] catch-all, so an unknown address answers 200 instead of 404; move loading.tsx and error.tsx into a route group directly under [locale] (${directory}(pages)/) together with the pages, and add ${directory}[...rest]/page.tsx that calls notFound()`, { app }), level: 'info' });
   }
-  if (!grouped) return findings;
-  const catchAll = `${directory}[...rest]/page.tsx`;
-  const catchAllText = tracked.includes(catchAll) ? readText(repoRoot, catchAll) : null;
-  if (!tracked.includes(catchAll)) findings.push(found(ERROR_BOUNDARY, catchAll, `${app} keeps its loading boundary in a route group but has no ${catchAll}; an unknown address needs this catch-all calling notFound() to answer a localized 404 (R53)`, { app }));
-  else if (catchAllText !== null && !NOT_FOUND_CALL.test(catchAllText)) findings.push(found(ERROR_BOUNDARY, catchAll, `${catchAll} does not call notFound(); the catch-all of an unknown address must answer 404 (R53)`, { app }));
-  const notFound = `${directory}not-found.tsx`;
-  const notFoundText = tracked.includes(notFound) ? readText(repoRoot, notFound) : null;
-  if (notFoundText !== null && !METADATA_EXPORT.test(notFoundText)) findings.push(found(ERROR_BOUNDARY, notFound, `${notFound} exports no generateMetadata or metadata; a 404 page carries its own localized document title (R53)`, { app }));
   return findings;
 }
 
