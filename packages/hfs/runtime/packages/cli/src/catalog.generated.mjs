@@ -3173,7 +3173,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "close": {
-          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves",
+          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves (--target-kind, --target) or as declined with --reason",
           "flags": [
             {
               "name": "kind",
@@ -3193,7 +3193,7 @@ export const CATALOG = {
             {
               "name": "reason",
               "type": "string",
-              "summary": "why it is not fixed (with --wontfix)"
+              "summary": "why it is not fixed (with --wontfix), or with --kind feedback why it is not acted on (--target-kind declined)"
             },
             {
               "name": "duplicate",
@@ -3203,12 +3203,12 @@ export const CATALOG = {
             {
               "name": "target-kind",
               "type": "string",
-              "summary": "feedback: the kind of target that closes it: grammar, cli, app, rule, context"
+              "summary": "feedback: the kind of target that closes it: grammar, cli, app, rule, context, root-fix, declined"
             },
             {
               "name": "target",
               "type": "string",
-              "summary": "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule) or an anchor id (context)"
+              "summary": "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule), an anchor id (context), or the commit that fixed the cause (root-fix): a sha of the harness checkout or <repo path>@<sha> of another repository; none for declined"
             }
           ],
           "positional": [

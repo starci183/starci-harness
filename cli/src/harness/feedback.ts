@@ -9,10 +9,12 @@ import { readMachine, withMachine } from "./machine.js"
 import { locateOps } from "./ops.js"
 
 /**
- * The kinds of target that close an owner feedback: a commit touching packages/grammar, cli/ or app/ of the harness checkout,
- * a rule of contexts/hfs/rules.yaml with a built enforcer, or a contexts anchor the search corpus resolves.
+ * The kinds that close an owner feedback: a commit touching packages/grammar, cli/ or app/ of the harness checkout, a rule of
+ * contexts/hfs/rules.yaml (with or without an enforcer: one without is held by review), a contexts anchor the search corpus
+ * resolves, `root-fix` (a commit that fixed the cause, in the harness checkout or in another repository: `<repo path>@<sha>`), or
+ * `declined` (the owner or lead decided not to act: a reason, no target).
  */
-export const FEEDBACK_TARGET_KINDS = ["grammar", "cli", "app", "rule", "context"] as const
+export const FEEDBACK_TARGET_KINDS = ["grammar", "cli", "app", "rule", "context", "root-fix", "declined"] as const
 /** One kind of closing target. */
 export type FeedbackTargetKind = (typeof FEEDBACK_TARGET_KINDS)[number]
 
@@ -130,10 +132,11 @@ export const addFeedback = (words: string, givenOn: string | undefined, id: stri
 }
 
 /**
- * Closes one feedback on a target the caller has already resolved (`evidence` says what it found). Closing a closed item on the
- * same target answers it unchanged; on another target it is refused, since a closure is a fact, not a choice to revise.
+ * Closes one feedback on a target the caller has already resolved (`evidence` says what it found; a `declined` one has no target
+ * and its evidence is the reason). Closing a closed item on the same target answers it unchanged; on another target it is
+ * refused, since a closure is a fact, not a choice to revise.
  */
-export const closeFeedback = (id: string, kind: FeedbackTargetKind, target: string, evidence: string): { readonly item: FeedbackItem; readonly changed: boolean } =>
+export const closeFeedback = (id: string, kind: FeedbackTargetKind, target: string | null, evidence: string): { readonly item: FeedbackItem; readonly changed: boolean } =>
     onFeedback((db) => {
         const item = find(db, id)
         if (item === undefined) throw new Refusal("FEEDBACK_UNKNOWN", `no feedback ${id}; starci ticket list --kind feedback --status all names them`)

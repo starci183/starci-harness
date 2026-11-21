@@ -9,8 +9,8 @@ import { resolveTarget, targetKindOf } from "./feedback-targets.js"
 
 /**
  * Owner feedback is the ticket kind `feedback` (`ticket open|list|show|close --kind feedback`): the owner's words kept verbatim in
- * the host ledger (harness/feedback.ts, machine.sqlite, never a repository) with the day given; it closes only on a target that
- * resolves (`ticket close --kind feedback --target-kind --target`), and `ticket list --kind feedback --status overdue` is red once
+ * the host ledger (harness/feedback.ts, machine.sqlite, never a repository) with the day given; it closes on a target that
+ * resolves (`ticket close --kind feedback --target-kind --target`) or is declined with a reason, and `ticket list --kind feedback --status overdue` is red once
  * one stays open past ops/liveness.yaml feedback.openMaxDays or a closed one's target no longer resolves.
  */
 export const FEEDBACK_KIND = "feedback"
@@ -35,20 +35,31 @@ export const openFeedbackItem = (words: string, on: string | undefined, id: stri
 }
 
 /**
- * Closes one owner feedback on the change that absorbed it, and only on one that resolves: a commit of the harness checkout touching
- * packages/grammar (grammar), cli/ (cli) or app/ (app), a rule R<n> of contexts/hfs/rules.yaml with a built enforcer (rule), or an
- * anchor of the contexts corpus (context). Anything else is FEEDBACK_TARGET_UNRESOLVED and the item stays open.
+ * Closes one owner feedback: on a change that absorbed it and resolves (a commit of the harness checkout touching packages/grammar
+ * (grammar), cli/ (cli) or app/ (app); a rule R<n> of contexts/hfs/rules.yaml (rule), held by review when it has no enforcer; an
+ * anchor of the contexts corpus (context); or `root-fix`, the commit that fixed the cause, a harness sha or `<repo path>@<sha>`),
+ * or as `declined` with a non-empty `reason` and no target (the owner or lead decided not to act). An unresolved target is
+ * FEEDBACK_TARGET_UNRESOLVED and the item stays open.
  */
-export const closeFeedbackItem = (id: string, kind: string | undefined, target: string | undefined): VerbResult<unknown> => {
-    if (kind === undefined || target === undefined) throw new Refusal("CLI_USAGE", "ticket close --kind feedback needs --target-kind <kind> and --target <target>", EXIT_USAGE)
+export const closeFeedbackItem = (id: string, kind: string | undefined, target: string | undefined, reason: string | undefined): VerbResult<unknown> => {
+    if (kind === undefined) throw new Refusal("CLI_USAGE", "ticket close --kind feedback needs --target-kind <kind>: --target <target>, or for declined --reason <why>", EXIT_USAGE)
     const targetKind = targetKindOf(kind)
+    if (targetKind === "declined") {
+        const why = reason?.trim() ?? ""
+        if (why === "") throw new Refusal("CLI_USAGE", "--target-kind declined needs --reason <why it is not acted on>", EXIT_USAGE)
+        if (target !== undefined) throw new Refusal("CLI_USAGE", "--target-kind declined takes a --reason and no --target", EXIT_USAGE)
+        const { item, changed } = closeFeedback(id, targetKind, null, why)
+        return { data: { item, changed }, message: `${item.id} ${changed ? "closed" : "already closed"} as declined: ${why}` }
+    }
+    if (target === undefined) throw new Refusal("CLI_USAGE", `--target-kind ${targetKind} needs --target <target>`, EXIT_USAGE)
+    if (reason !== undefined) throw new Refusal("CLI_USAGE", "--reason closes a feedback only with --target-kind declined", EXIT_USAGE)
     const resolved = resolveTarget(targetKind, target)
     const { item, changed } = closeFeedback(id, targetKind, resolved.target, resolved.evidence)
     return { data: { item, changed }, message: `${item.id} ${changed ? "closed" : "already closed"} on ${targetKind} ${resolved.target}: ${resolved.evidence}` }
 }
 
 const itemLine = (item: FeedbackItem): string => {
-    const aimed = item.target === null ? "" : " -> " + String(item.targetKind) + " " + item.target
+    const aimed = item.target === null ? (item.targetKind === "declined" ? ` -> declined: ${String(item.evidence)}` : "") : " -> " + String(item.targetKind) + " " + item.target
     return `${item.id} ${item.status} ${item.givenOn}${aimed}: ${item.words}`
 }
 
