@@ -145,7 +145,7 @@ void test("the embedding model is the host's native Ollama behind a token gate a
     const model = serviceOf(config, "embeddings")
     assert.equal(model.stack, undefined, "the model runs in the host's native Ollama, never a container of the stack")
     assert.equal(model.check?.http?.url, "http://127.0.0.1:11434/api/tags")
-    assert.deepEqual(model.check.json, { path: "models.0.name", equals: "qwen3-embedding:8b" })
+    assert.deepEqual(model.check.json, { path: "models.*.name", includes: "qwen3-embedding:4b" })
     const gate = serviceOf(config, "embeddings-gate")
     assert.deepEqual(gate.check?.http, { url: "http://127.0.0.1:11435/v1/models", status: 401 })
     assert.deepEqual(gate.requires, ["docker", "embeddings"])
