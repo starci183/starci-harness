@@ -41,6 +41,7 @@ test('the shards are the cached families once each and the lint family once per 
   assert.deepEqual(listed(verifyShards(['be', 'fe', 'packages'])), shardsOf(['be', 'fe', 'packages']));
   assert.deepEqual(listed(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', undefined, { packages: true, rootPackages: true }).ciVerifyShards), shardsOf(['be', 'fe', 'packages']));
   assert.deepEqual(listed(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info').ciVerifyShards), shardsOf(['be', 'fe']));
+  assert.equal(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', undefined, { app: { declaredSides: ['be'], sides: { fe: { apps: [] } } } as never }).ciVerifyCodegen, '', 'an app without a front end generates no wire types');
   assert.ok(!JSON.stringify(shardsOf([])).includes('audit') && !JSON.stringify(shardsOf([])).includes('sonar'), 'the audit and the Sonar scan keep no record');
 });
 
@@ -57,6 +58,11 @@ for (const edition of ['lite'] as const) {
     const fresh = steps.find((step) => step.name === 'verify the committed cache');
     assert.equal(fresh?.run, 'npx --no-install starci app check --env prod --fresh ${{ matrix.args }}');
     assert.match(steps.find((step) => step.name === 'build the lint inputs')?.if ?? '', /startsWith\(matrix\.args, '--gate lint'\)/u);
+    // The generated wire types are gitignored: every other shard runs the codegen before it verifies, or the hfs family refuses FE_WIRE_GENERATED every night.
+    const codegen = steps.find((step) => step.name === 'generate the wire types');
+    assert.equal(codegen?.run, 'npm run codegen --silent');
+    assert.match(codegen?.if ?? '', /!startsWith\(matrix\.args, '--gate lint'\)/u);
+    assert.ok(steps.findIndex((step) => step.name === 'generate the wire types') < steps.findIndex((step) => step.name === 'verify the committed cache'), 'the codegen runs before the verify');
     assert.ok(steps.some((step) => (step.run ?? '').includes('git status --porcelain --untracked-files=all -- .starcistacks/cache')), 'the job asserts the cache folder is unchanged');
     const verdict = doc.jobs.verdict as Job;
     assert.equal(verdict.needs?.toString(), 'verify');
@@ -70,6 +76,27 @@ for (const edition of ['lite'] as const) {
     assert.equal(written, text, 'the scaffold wrote what sync renders');
   });
 }
+
+test('an app whose lint gate is declared off still generates its wire types before the hfs shard verifies (FE_WIRE_GENERATED locked StarCi Next)', (t) => {
+  const root = newApp(t, 'lite');
+  const stacks = path.join(root, '.starcistacks', 'application-stacks.yaml');
+  const yaml = fs.readFileSync(stacks, 'utf8');
+  assert.doesNotMatch(yaml, /^gates:/mu, 'the scaffold declares no gate off');
+  fs.writeFileSync(stacks, `${yaml.replace(/\n*$/u, '\n')}gates:\n  lint: { run: off, reason: "lint is deferred" }\n  sonar: { run: off, reason: "Sonar imports the lint report" }\n`);
+  const doc = parseWorkflow(renderOf(root).text) as unknown as { jobs: Record<string, Job> };
+  const verify = doc.jobs.verify as Job;
+  const args = verify.strategy?.matrix?.args ?? [];
+  assert.ok(args.includes('--gate hfs') && !args.some((arg) => arg.startsWith('--gate lint')), args.join(', '));
+  const steps = verify.steps ?? [];
+  const codegen = steps.find((step) => step.name === 'generate the wire types');
+  assert.equal(codegen?.run, 'npm run codegen --silent', 'the lint inputs step never runs for a shard of this app, so the codegen is its own step');
+  // the hfs shard runs it: the only condition is not being a lint shard
+  assert.equal(codegen?.if, "${{ !startsWith(matrix.args, '--gate lint') }}");
+  const install = steps.findIndex((step) => (step.run ?? '').startsWith('npm ci'));
+  const verifyAt = steps.findIndex((step) => step.name === 'verify the committed cache');
+  const codegenAt = steps.findIndex((step) => step.name === 'generate the wire types');
+  assert.ok(install >= 0 && install < codegenAt && codegenAt < verifyAt, 'install, then codegen, then the verify');
+});
 
 test('an app with root packages verifies the packages side as a shard of its own, after building them', (t) => {
   const root = newApp(t, 'lite');

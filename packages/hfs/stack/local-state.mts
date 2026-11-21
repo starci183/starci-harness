@@ -14,6 +14,8 @@ export interface LocalRecord {
     seed: Record<string, { at: string; digest: string; volumes?: string }>;
     setup: Record<string, { at: string; digest: string }>;
     database?: { at: string; role: string };
+    /** Per front-end app folder (`fe/apps/web`), the digest of its route folder tree when `up` last judged its `.next` (local-up.mts clearMovedRoutes). */
+    routes?: Record<string, string>;
   };
 }
 

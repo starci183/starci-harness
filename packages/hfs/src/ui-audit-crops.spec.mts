@@ -78,7 +78,8 @@ test('crops: a shot that is not an 8-bit PNG gives a note and no crop, and the b
   assert.match(brief, /control height.*40px/);
   assert.match(brief, /no wrapped label/);
   assert.match(brief, /overflow goes to the menu/);
-  assert.match(brief, /44px/);
+  // owner, 2026-11-21: buttons stay md 40 / sm 32 with no invisible hit area, so the lens never asks for a 44px tap target
+  assert.doesNotMatch(brief, /44px|tap target/u);
 });
 
 test('crops: a screen folder holding the crops is not stray, any other extra still is', (t) => {

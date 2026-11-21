@@ -34,6 +34,7 @@ jobs:
     steps:
 {{> app/ci-workflows/install-steps.yml}}
 {{ciPackagesBuild}}
+{{ciVerifyCodegen}}
       - name: build the lint inputs
         if: ${{ startsWith(matrix.args, '--gate lint') }}
         run: {{ciLintInputs}}

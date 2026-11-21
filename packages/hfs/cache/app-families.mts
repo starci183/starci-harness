@@ -32,23 +32,44 @@ const ROOT_PACKAGES = 'packages';
  * The tsc programs of the app: the back end, each front-end workspace and each root workspace package (`packages/<pkg>/tsconfig.json`), from the tracked
  * tsconfigs. A root package is typechecked through its own tsconfig, as CI's `npm run typecheck` does (turbo runs each package's `tsc --noEmit`). It reads
  * the dist of its sibling packages (`exports`), which no tracked path holds, so its key covers every root package: a change in one reruns them all.
+ * A workspace whose own `typecheck` script names further tsconfigs (`tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.spec.json`) gets one more
+ * program per named tracked tsconfig of its folder (`<folder>/tsconfig.spec`): CI's fast job types exactly what that script names, a package's specs
+ * included, so a gate that typed only `tsconfig.json` passed what CI then refused (NIVO v0.0.7, TS2345 in a package spec). `readText` reads an app file.
  */
-export function programsOf(tracked: readonly string[]): TypesProgram[] {
+export function programsOf(tracked: readonly string[], readText: (file: string) => string | undefined = () => undefined): TypesProgram[] {
   const programs: TypesProgram[] = [];
+  const trackedSet = new Set(tracked);
+  const workspace = (dir: string, reads: readonly string[]): void => {
+    programs.push({ name: dir, tsconfig: `${dir}/tsconfig.json`, reads: [...reads] });
+    for (const tsconfig of typecheckTsconfigs(dir, readText(`${dir}/package.json`))) {
+      if (tsconfig !== `${dir}/tsconfig.json` && trackedSet.has(tsconfig)) programs.push({ name: tsconfig.replace(/\.json$/u, ''), tsconfig, reads: [...reads] });
+    }
+  };
   for (const file of tracked) {
     if (file === 'be/tsconfig.json') programs.push({ name: 'be', tsconfig: file, reads: ['be'] });
     const match = /^(fe\/(?:apps|packages)\/[^/]+)\/tsconfig\.json$/.exec(file);
-    if (match?.[1] !== undefined) programs.push({ name: match[1], tsconfig: file, reads: [match[1]] });
+    if (match?.[1] !== undefined) workspace(match[1], [match[1]]);
     const root = /^(packages\/[^/]+)\/tsconfig\.json$/.exec(file);
-    if (root?.[1] !== undefined) programs.push({ name: root[1], tsconfig: file, reads: [ROOT_PACKAGES] });
+    if (root?.[1] !== undefined) workspace(root[1], [ROOT_PACKAGES]);
   }
   return programs.sort((a, b) => (a.name < b.name ? -1 : 1));
+}
+
+/** The tsconfigs a workspace's `typecheck` script hands `tsc` (`-p <file>`, `--project <file>`, `-p=<file>`, a folder meaning its tsconfig.json), app-relative posix, inside the workspace folder only. */
+export function typecheckTsconfigs(dir: string, packageJson: string | undefined): string[] {
+  let script: unknown;
+  try { script = (JSON.parse(packageJson ?? '{}') as { scripts?: Record<string, unknown> }).scripts?.['typecheck']; } catch { return []; }
+  if (typeof script !== 'string') return [];
+  const named = [...script.matchAll(/(?:^|\s)(?:-p|--project)(?:\s+|=)(?<file>[^\s&|;'"]+)/gu)].map((match) => match.groups?.['file'] ?? '');
+  const files = named.map((file) => path.posix.normalize(path.posix.join(dir, file.endsWith('.json') ? file : `${file}/tsconfig.json`)));
+  return [...new Set(files.filter((file) => file.startsWith(`${dir}/`)))];
 }
 
 /** `--types`: `tsc --noEmit` per workspace program through the app's TypeScript, reused by program key. */
 export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute, concurrency, parity, tsc }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined; concurrency?: ((programs: number) => number) | undefined; parity?: ParityRun | undefined; tsc?: Parameters<typeof runTypesFamily>[0]['run'] | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
   const built = builtPackagesOf(repoRoot, tracked);
-  const programs = programsWithBuiltReads(programsOf(tracked), built, repoRoot);
+  const readApp = (file: string): string | undefined => { try { return fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return undefined; } };
+  const programs = programsWithBuiltReads(programsOf(tracked, readApp), built, repoRoot);
   const trackedSet = new Set(tracked);
   // The packages programs resolve through a build output are built first (built-packages.mts): a fresh tree holds no dist, and tsc would report every import of them.
   // The app's code generation (`npm run codegen`) runs first: its untracked output is read by the programs, and a failure of it blocks them all.
@@ -61,10 +82,11 @@ export async function runTypesForApp(session: CheckSession, { repoRoot, tracked,
     ...(concurrency === undefined ? {} : { concurrency }),
     inputsOf: (program) => {
       const rootPackage = program.name.startsWith(`${ROOT_PACKAGES}/`);
-      const side = program.name.startsWith('be') ? 'be' : rootPackage ? program.name : 'fe';
+      // A root package's script-named tsconfig (`packages/x/tsconfig.spec.json`) reads the untracked inputs its own config includes, in its own folder.
+      const side = program.name.startsWith('be') ? 'be' : rootPackage ? path.posix.dirname(program.tsconfig) : 'fe';
       const prefix = `${program.reads?.[0] ?? side}/`;
       const staged = runGitText(repoRoot, ['ls-files', '-s', '-z', '--', prefix]).stdout.split('\0').filter(Boolean).map((line) => line.replace(/^\d+ ([0-9a-f]+) (\d)\t(.*)$/u, '$3:$1:$2'));
-      return { staged, untracked: [...new Set([...untrackedProgramInputs(repoRoot, side, trackedSet).filter((file) => file.startsWith(prefix)), ...generatedInputs(repoRoot, prefix)])].sort() };
+      return { staged, untracked: [...new Set([...untrackedProgramInputs(repoRoot, side, trackedSet, rootPackage ? path.posix.basename(program.tsconfig) : undefined).filter((file) => file.startsWith(prefix)), ...generatedInputs(repoRoot, prefix)])].sort() };
     },
   });
   const codegenFindings: CheckFinding[] = generated?.state === 'failed' ? [{ code: TYPES_CODEGEN_FAILED, level: 'error', engine: 'tsc', path: 'package.json', message: generated.message ?? 'npm run codegen failed' }] : [];

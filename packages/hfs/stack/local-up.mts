@@ -36,6 +36,66 @@ export function migrationsDigest(repoRoot: string): string {
   return hash.digest('hex').slice(0, 16);
 }
 
+/** The route folder roots of a Next app, app-relative: `src/app` (the app template) or `app`. */
+const ROUTE_ROOTS = ['src/app', 'app'];
+
+/**
+ * The digest of a Next app's route folder tree: the sorted relative paths of every folder under its route root (`(entry)/sign-in`), names only, no contents, so
+ * reading it is one directory walk. null when the app has no route root.
+ */
+export function routeTreeDigest(appDir: string): string | null {
+  const root = ROUTE_ROOTS.map((name) => path.join(appDir, name)).find((candidate) => fs.existsSync(candidate));
+  if (root === undefined) return null;
+  const folders: string[] = [];
+  const walk = (dir: string, rel: string): void => {
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const child = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      folders.push(child);
+      walk(path.join(dir, entry.name), child);
+    }
+  };
+  walk(root, '');
+  return crypto.createHash('sha256').update(folders.sort().join('\n')).digest('hex').slice(0, 16);
+}
+
+/**
+ * Clears a front-end app's `.next` when its route folders moved since the last `up` (a renamed route group such as `(auth)` to `(entry)`): `next dev` keeps the
+ * compiled routes of the old tree in `.next` and goes on serving the groups that no longer exist. The check is the recorded digest of each app's route folder tree
+ * (routeTreeDigest), so an unchanged tree keeps its cache and its fast start; a tree with no digest yet (the first up that records one) clears it once, since an older
+ * `.next` cannot be trusted either. While a process of the environment still runs, its `next dev` holds `.next`: nothing is cleared and nothing recorded, so the next
+ * up after a `stack down` clears it.
+ */
+export async function clearMovedRoutes(ctx: StackContext, local: LocalConfig, deps: LocalDeps = {}): Promise<string[]> {
+  const appsDir = path.join(local.repoRoot, 'fe', 'apps');
+  let apps: string[] = [];
+  try { apps = fs.readdirSync(appsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort(); } catch { return []; }
+  const dir = stateOf(ctx, local);
+  const record = readRecord(dir);
+  const held = record.receipts.routes ?? {};
+  const moved = apps.flatMap((app) => {
+    const digest = routeTreeDigest(path.join(appsDir, app));
+    return digest === null || held[`fe/apps/${app}`] === digest ? [] : [{ app, digest }];
+  });
+  if (moved.length === 0) return [];
+  for (const [name, known] of Object.entries(record.processes)) {
+    if ((await ownedProcess(ctx, known, deps)).ours) return [`routes: the route folders of ${moved.map(({ app }) => app).join(', ')} moved, .next kept while process ${name} runs; run stack down and up again to clear it`];
+  }
+  const lines: string[] = [];
+  for (const { app, digest } of moved) {
+    const cache = path.join(appsDir, app, '.next');
+    const had = fs.existsSync(cache);
+    if (had) fs.rmSync(cache, { recursive: true, force: true });
+    held[`fe/apps/${app}`] = digest;
+    if (had) lines.push(`routes: fe/apps/${app} route folders changed since the last up; cleared its .next`);
+  }
+  record.receipts.routes = held;
+  writeRecord(dir, record);
+  return lines;
+}
+
 /** Creates the environment's own login role and database if absent and sets its password (psql in the db container, SQL on stdin, never argv). */
 async function provisionDatabase(ctx: StackContext, local: LocalConfig, custody: Custody): Promise<string> {
   if (!local.database) return 'database: none declared';
@@ -289,7 +349,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     provisioned = true;
     await bring(local.services.map((service) => service.name).filter((name) => name !== dbService));
   } else await bring(local.services.map((service) => service.name));
-  lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
+  lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await clearMovedRoutes(ctx, local, deps), ...await startProcesses(ctx, local, custody, deps));
   lines.push(...await waitReady(ctx, local, deadline, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));

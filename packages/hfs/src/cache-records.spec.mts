@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RecordSet, keyOfPaths, scopedStep } from '../cache/records.mjs';
 import { createFakeSession } from '../cache/fake-session.mjs';
-import { programsOf } from '../cache/app-families.mjs';
+import { programsOf, typecheckTsconfigs } from '../cache/app-families.mjs';
 import { compareFindings, familyLine, makeReport } from '../cache/report.mjs';
 import { hashText } from '../cache/hash.mjs';
 import type { Finding } from '../cache/types.mjs';
@@ -53,4 +53,24 @@ test('tsc programs are the back end, each front-end workspace and each root work
   const roots = programsOf(['packages/ui-kit/tsconfig.json', 'packages/sdk/tsconfig.json', 'packages/sdk/tsconfig.build.json', 'packages/sdk/src/tsconfig.json', 'be/tsconfig.json']);
   assert.deepEqual(roots.map((p) => p.name), ['be', 'packages/sdk', 'packages/ui-kit']);
   assert.deepEqual(roots.find((p) => p.name === 'packages/sdk'), { name: 'packages/sdk', tsconfig: 'packages/sdk/tsconfig.json', reads: ['packages'] });
+});
+
+test('a workspace typecheck script that names its spec tsconfig types the specs as CI does (NIVO v0.0.7: TS2345 in a package spec the gate never typed)', () => {
+  const scripts: Record<string, string> = {
+    'packages/provider-templates/package.json': JSON.stringify({ scripts: { typecheck: 'tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.spec.json' } }),
+    'fe/apps/web/package.json': JSON.stringify({ scripts: { typecheck: 'tsc --noEmit --project=./tsconfig.test.json && tsc -p ../../../outside.json' } }),
+    'packages/sdk/package.json': JSON.stringify({ scripts: { build: 'tsc -p tsconfig.build.json' } }),
+  };
+  const tracked = ['packages/provider-templates/tsconfig.json', 'packages/provider-templates/tsconfig.spec.json', 'packages/sdk/tsconfig.json', 'packages/sdk/tsconfig.build.json', 'fe/apps/web/tsconfig.json', 'fe/apps/web/tsconfig.test.json'];
+  const programs = programsOf(tracked, (file) => scripts[file]);
+  assert.deepEqual(programs.map((p) => [p.name, p.tsconfig, p.reads]), [
+    ['fe/apps/web', 'fe/apps/web/tsconfig.json', ['fe/apps/web']],
+    ['fe/apps/web/tsconfig.test', 'fe/apps/web/tsconfig.test.json', ['fe/apps/web']],
+    ['packages/provider-templates', 'packages/provider-templates/tsconfig.json', ['packages']],
+    ['packages/provider-templates/tsconfig.spec', 'packages/provider-templates/tsconfig.spec.json', ['packages']],
+    ['packages/sdk', 'packages/sdk/tsconfig.json', ['packages']],
+  ]);
+  assert.deepEqual(typecheckTsconfigs('packages/x', '{not json'), []);
+  assert.deepEqual(typecheckTsconfigs('packages/x', JSON.stringify({ scripts: { typecheck: 'tsc -p src' } })), ['packages/x/src/tsconfig.json']);
+  assert.deepEqual(programsOf(['packages/provider-templates/tsconfig.json'], (file) => scripts[file]).map((p) => p.name), ['packages/provider-templates'], 'a named tsconfig git does not track is no program');
 });
