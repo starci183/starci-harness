@@ -70,7 +70,7 @@ test("params and cause may be passed as undefined under exactOptionalPropertyTyp
     assert.equal(Object.hasOwn(error, "cause"), false)
 })
 
-test("ErrorParams is a named interface any string-or-number record satisfies", () => {
+test("ErrorParams is a named type any string-or-number record satisfies", () => {
     const text = (params: ErrorParams): string => Object.entries(params).map(([name, value]) => `${name}=${String(value)}`).join(",")
     assert.equal(text({ id: "o-1", count: 2 }), "id=o-1,count=2")
     assert.equal(text(new OrdersError({ code: "ORDERS_MISSING", params: { id: "o-1" } }).params), "id=o-1")

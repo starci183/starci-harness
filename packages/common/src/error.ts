@@ -3,9 +3,7 @@ export type ErrorKind =
     "invalid" | "unauthenticated" | "forbidden" | "not-found" | "conflict" | "rate-limited" | "unavailable" | "internal"
 
 /** Values that fill the named placeholders of an error text and travel next to the code; never prose. */
-export interface ErrorParams {
-    readonly [name: string]: string | number
-}
+export type ErrorParams = Readonly<Record<string, string | number>>
 
 /** What a coded error is built from: its code, optional text parameters and the failure that caused it. */
 export interface DomainErrorInit<C extends string> {
