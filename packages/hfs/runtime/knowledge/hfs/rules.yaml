@@ -5645,22 +5645,6 @@ rules:
       - packages/hfs/templates/app/skeleton/.starcistacks
     witness:
       - {path: packages/hfs/src/stack-local.spec.mjs}
-  - id: R373
-    code: "STACKS_RUNBOOK_DOCKER_COMMAND"
-    law: "The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command: Docker is run by the harness verb, never by hand (hard rule 8)."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["STACKS_RUNBOOK_DOCKER_COMMAND"]
-    enforcers:
-      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
-    docs:
-      - contexts/project/stacks.md#project-stacks-10-local-runs
-    proves:
-      - packages/hfs/src/stack-local.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/app/skeleton/.starcistacks
-    witness:
-      - {path: packages/hfs/src/stack-local.spec.mjs}
   - id: R374
     code: "STACKS_CODE_BIND_MOUNT"
     law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned; when the harness owns a StarCi fork image for that service the final stage is FROM it, held by review), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."

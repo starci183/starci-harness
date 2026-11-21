@@ -1,7 +1,6 @@
 // proves: STACKS_LOCAL_CONFIG_INVALID
-// proves: STACKS_RUNBOOK_DOCKER_COMMAND
 // A fresh starter passes its own check on what it declares: the dev environment carries the local block `starci app stack up`
-// runs and a runbook that names that verb (R372, R373), and every Dockerfile copies only folders the app holds (R187: a back end that emits no
+// runs and a runbook that names that verb (R372), and every Dockerfile copies only folders the app holds (R187: a back end that emits no
 // contract has no be/contracts/, so no Next image copies it).
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';

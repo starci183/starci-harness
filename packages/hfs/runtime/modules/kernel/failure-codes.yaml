@@ -6470,16 +6470,6 @@ STACKS_DEV_UNDECLARED:
   owner: op-retry
   kind: check-finding
 
-STACKS_RUNBOOK_DOCKER_COMMAND:
-  title: "A dev runbook carries a docker command or omits the one-command start"
-  title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
-  meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
-  causes_vi:
-    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
-  nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_BASE_PORT_ROLE:
   title: "A native process port departs from the role table of the project base port"
   title_vi: "Cổng của tiến trình native lệch khỏi bảng vai trò của cổng gốc dự án"

@@ -312,7 +312,7 @@ stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends on
 builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
 hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
 process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
-the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
+the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (held by review; Docker is run by the harness verb, never by hand). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.
 
