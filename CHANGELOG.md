@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (t192, live on sv-hk-1): the monitor stack names its own components by the full swarm name (`tasks.{{stack}}_<component>`, `{{stack}}_<component>`) in prometheus.yml, Alloy, the Grafana datasources, Alertmanager and the probe jobs, and every monitor and shared-service (embeddings) service sets `dns_search: ["."]`, so the host's search domain and its wildcard never resolve a target to the public IP; `vps add --roles` keeps config.yaml in the harness home (STARCI_LOCAL_ROOT, STARCI_OPS_DIR's checkout, the working folder's home, the built checkout), never a published package, and refuses when none is found; the import reads `user` and `sshPort` from the inventory file and refuses a remote machine whose user is unknown.
+
 ## 1.1.0-alpha.191 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.17.5, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

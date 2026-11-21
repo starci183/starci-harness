@@ -342,6 +342,13 @@ export const uiStackFile = (policy: VpsPolicy, pins: VpsPins): string =>
     ].join("\n")
 
 /** The fully qualified name of a subdomain label of the owner's domain. */
+/**
+ * The `dns_search` of every service a managed stack renders (monitor, shared services): the root alone. A container inherits the host's
+ * resolv.conf, and a short name the embedded DNS does not answer would be completed with the host's search domain, which a provider
+ * wildcard answers with the server's public IP. In-stack addresses are full swarm names (`<stack>_<component>`) besides.
+ */
+export const SWARM_DNS_SEARCH: readonly string[] = ["."]
+
 export const fqdnOf = (policy: VpsPolicy, label: string): string => `${label}.${policy.ingress.domain}`
 
 /** The UI's public name for a server. */

@@ -16,7 +16,7 @@ import type { Observed } from "./host-machine.js"
 import { judgeNeeds, readHostNeeds, requireHostServices, serverOfRecipient, targetOf } from "./host-needs.js"
 import { applyRoles, canonicalService, imageRepository, loadHostRoles, machineServices, placementImages, placementOf, roleService, serviceIds } from "./host-roles.js"
 import type { HostRoles, Placement } from "./host-roles.js"
-import { allMachines, importedFields, readMachines, writeMachines } from "./machines.js"
+import { allMachines, importedFields, machinesBaseOf, readMachines, writeMachines } from "./machines.js"
 import type { MachinesRead } from "./machines.js"
 import { loadServer, loadVpsPolicy } from "./vps/policy.js"
 import { loadService } from "./vps/services.js"
@@ -151,11 +151,36 @@ void test("vps add registers a machine in config.yaml with no question, local is
     const server = loadServer(policy, "box-1", join(opsDir, "vps", "servers"))
     assert.deepEqual({ id: server.id, host: server.host, port: server.sshPort, login: server.login?.user, sealed: server.sealedFile.replaceAll("\\", "/").endsWith("machines/box-1.enc.yaml") }, { id: "box-1", host: "203.0.113.7", port: 2222, login: "starci-ops", sealed: true }, "a config.yaml machine is a managed server for every vps verb")
     const inventory = join(dir, "sv-x.yaml")
-    writeFileSync(inventory, readFileSync(join(opsDir, "vps", "servers", "example.yaml"), "utf8").replace("id: example", "id: sv-x"))
-    assert.deepEqual(importedFields(parse(readFileSync(inventory, "utf8")), inventory), { host: "203.0.113.10", port: 22, os: "ubuntu", server: "sv-x" })
+    const example = readFileSync(join(opsDir, "vps", "servers", "example.yaml"), "utf8")
+    writeFileSync(inventory, example.replace("id: example", "id: sv-x").replace("sshPort: 22", "sshPort: 9999\nuser: root"))
+    assert.deepEqual(importedFields(parse(readFileSync(inventory, "utf8")), inventory), { host: "203.0.113.10", user: "root", port: 9999, os: "ubuntu", server: "sv-x" })
     registerMachine({ name: "sv-x", import: inventory, roles: "app-host,monitor" }, opsDir)
-    assert.equal(readMachines().doc.machines["sv-x"]?.server, "sv-x")
+    const imported = readMachines().doc.machines["sv-x"]
+    assert.deepEqual({ server: imported?.server, user: imported?.user, port: imported?.port }, { server: "sv-x", user: "root", port: 9999 }, "the import takes the user and the port from the inventory file")
+    assert.doesNotMatch(readFileSync(join(dir, "config.yaml"), "utf8"), /\?/u, "no unknown user is ever written")
+    const userless = join(dir, "sv-y.yaml")
+    writeFileSync(userless, example.replace("id: example", "id: sv-y"))
+    assert.throws(() => registerMachine({ name: "sv-y", import: userless, roles: "monitor" }, opsDir), { code: "HOST_MACHINE_USER" })
+    assert.equal(readMachines().doc.machines["sv-y"], undefined, "a machine whose user is unknown is never written")
+    registerMachine({ name: "sv-y", import: userless, user: "deploy", roles: "monitor" }, opsDir)
+    assert.equal(readMachines().doc.machines["sv-y"]?.user, "deploy")
+    assert.throws(() => registerMachine({ name: "box-3", host: "203.0.113.9", roles: "edge" }, opsDir), { code: "HOST_MACHINE_USER" })
     assert.throws(() => importedFields({ schema: "other" }, "f"), { code: "HOST_IMPORT_INVALID" })
+    assert.throws(() => importedFields({ schema: "starci/vps-server@1", id: "sv-z", host: "203.0.113.11", user: "?" }, "f"), { code: "HOST_IMPORT_INVALID" })
+    assert.throws(() => importedFields({ schema: "starci/vps-server@1", id: "sv-z", host: "203.0.113.11", sshPort: "ssh" }, "f"), { code: "HOST_IMPORT_INVALID" })
+})
+
+void test("config.yaml lives in the harness home: STARCI_LOCAL_ROOT, else STARCI_OPS_DIR's checkout, the working folder's home, the built checkout; never a package", () => {
+    const home = join(tmpdir(), "home", ".claude")
+    assert.equal(machinesBaseOf({ localRoot: join(tmpdir(), "state"), home }), join(tmpdir(), "state"))
+    assert.equal(machinesBaseOf({ opsDir: join(home, "ops"), home: join(tmpdir(), "other"), checkout: join(tmpdir(), "built") }), join(home, ".runtime"))
+    assert.equal(machinesBaseOf({ home, checkout: join(tmpdir(), "built") }), join(home, ".runtime"))
+    assert.equal(machinesBaseOf({ checkout: join(tmpdir(), "built") }), join(tmpdir(), "built", ".runtime"))
+    const published = join(tmpdir(), "app", "node_modules", "starci-harness")
+    assert.equal(machinesBaseOf({ opsDir: join(published, "ops"), home }), join(home, ".runtime"), "a package's ops/ never holds the state")
+    assert.throws(() => machinesBaseOf({}), { code: "HOST_STATE_NOT_FOUND" })
+    assert.throws(() => machinesBaseOf({ opsDir: join(published, "ops") }), { code: "HOST_STATE_NOT_FOUND" })
+    assert.throws(() => machinesBaseOf({ localRoot: join(published, ".runtime") }), { code: "HOST_STATE_NOT_FOUND" })
 })
 
 const observed = (text: string): Observed => readObserved(text)

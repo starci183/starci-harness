@@ -15,7 +15,7 @@
 }
 
 (ollama) {
-	reverse_proxy model:11434 {
+	reverse_proxy {{stack}}_model:11434 {
 		header_up Host localhost:11434
 		header_up -Authorization
 		header_up -Origin

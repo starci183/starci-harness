@@ -98,6 +98,8 @@ const serverSchema = z.strictObject({
     id: z.string().regex(ID, "an id is lower-case letters, digits and dashes, 2 to 32 long"),
     host: z.string().regex(HOST, "a host is an IP address or a DNS name"),
     sshPort: z.number().int().min(1).max(65535),
+    // The login user its sealed VPS_USER opens (no secret); `vps add --roles` imports it into config.yaml with the address and port.
+    user: z.string().regex(/^[a-z_][a-z0-9_-]{0,31}$/, "a login user is a POSIX account name").optional(),
     os: z.string().regex(/^[a-z]+$/),
     provider: z.string().min(1),
     panel: z.strictObject({ kind: z.enum(["none", "cpanel", "directadmin", "cyberpanel", "aapanel", "plesk", "other"]), url: z.url().nullable() }),

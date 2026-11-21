@@ -53,7 +53,12 @@ void test("the example server validates; a bad id, an unknown os and a file name
 
 void test("the inventory lists real servers only, never the example or a sealed file, and an unknown id names the known ones", (t) => {
     const dir = mkdtempSync(join(tmpdir(), "vps-inventory-"))
+    // The inventory also lists this host's config.yaml machines: an empty state base, so the host's own never leak in.
+    const savedState = process.env.STARCI_LOCAL_ROOT
+    process.env.STARCI_LOCAL_ROOT = join(dir, "state")
     t.after(() => {
+        if (savedState === undefined) delete process.env.STARCI_LOCAL_ROOT
+        else process.env.STARCI_LOCAL_ROOT = savedState
         rmSync(dir, { recursive: true, force: true })
     })
     const raw = readFileSync(exampleFile, "utf8")
@@ -214,7 +219,12 @@ void test("the secret scan refuses a tracked server file and a password key anyw
 
 void test("an empty inventory folder lists nothing", (t) => {
     const dir = mkdtempSync(join(tmpdir(), "vps-empty-"))
+    // The inventory also lists this host's config.yaml machines: an empty state base, so the host's own never leak in.
+    const savedState = process.env.STARCI_LOCAL_ROOT
+    process.env.STARCI_LOCAL_ROOT = join(dir, "state")
     t.after(() => {
+        if (savedState === undefined) delete process.env.STARCI_LOCAL_ROOT
+        else process.env.STARCI_LOCAL_ROOT = savedState
         rmSync(dir, { recursive: true, force: true })
     })
     mkdirSync(join(dir, "servers"))

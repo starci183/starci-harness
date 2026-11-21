@@ -17,6 +17,7 @@ import { tmpdir } from "node:os"
 import { loadMonitorComponents, monitorDir, monitorImages, renderMonitor, selectComponents } from "./monitor.js"
 import type { MonitorFacts } from "./monitor.js"
 import { loadVpsPolicy, parseServer, resolvePins } from "./policy.js"
+import { chooseModel, loadService, renderService, selectServiceComponents, serviceImages } from "./services.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops")
 const policy = loadVpsPolicy(opsDir)
@@ -148,4 +149,46 @@ void test("an app's alerts go to its own bot, a host alert to one bot of every a
     assert.match(lines, /docker secret create --label starci\.monitor=alerts/)
     assert.match(lines, /s\/__STARCI_ALERTS_CHAT_2__\/\$K\//)
     assert.doesNotMatch(lines, /echo "\$T"|echo "\$K"/, "no value is echoed")
+})
+
+// A container inherits the host's resolv.conf; a short name the embedded DNS does not answer is completed with the host's search domain,
+// and a provider wildcard there answers with the public IP (sv-hk-1 scraped alertmanager, alloy, cadvisor and grafana at it). So every
+// in-stack address is the full swarm name and every service sets dns_search to the root.
+const shortNames = (files: Readonly<Record<string, string>>, stacks: readonly string[], names: readonly string[]): string[] =>
+    Object.entries(files).flatMap(([rel, text]) => {
+        if (rel.endsWith(".json")) return []
+        const lines = text.split("\n").filter((line) => !/^\s*(?:#|\/\/)/.test(line))
+        const tasks = lines.flatMap((line) => [...line.matchAll(/tasks\.([A-Za-z0-9_.-]+)/g)].map((found) => found[1] ?? "")).filter((name) => !stacks.some((stack) => name.startsWith(`${stack}_`)))
+        const hosts = names.filter((name) => lines.some((line) => new RegExp(String.raw`(?<![\w.@-]|(?<!/)/)${name}:\d`).test(line)))
+        return [...tasks.map((name) => `${rel}: tasks.${name}`), ...hosts.map((name) => `${rel}: ${name}:<port>`)]
+    })
+
+void test("every in-stack address of the whole monitor stack is the full swarm name, and every service sets dns_search to the root", () => {
+    // The check itself: a short task name and a short URL host are found, an image's repository path and a full name are not.
+    const sample = ["url: http://loki:3100", "names: [tasks.loki]", "image: grafana/loki:3.5.0@sha256:0", "ok: http://m_loki:3100 tasks.m_loki"].join("\n")
+    assert.deepEqual(shortNames({ "x.yml": sample }, ["m"], ["loki"]), ["x.yml: tasks.loki", "x.yml: loki:<port>"])
+    const all = Object.fromEntries(Object.keys(components).map((name) => [name, true]))
+    for (const target of [{ kind: "server", server } as const, { kind: "local" } as const]) {
+        const files = render({ target, alertBots: [] }, all)
+        assert.deepEqual(shortNames(files, [policy.monitor.stack, policy.edge.stack], Object.keys(components)), [])
+        const prometheus = files["prometheus.yml"] ?? ""
+        for (const name of ["alertmanager", "alloy", "cadvisor", "grafana", "loki", "node-exporter"]) assert.ok(prometheus.includes(`tasks.${policy.monitor.stack}_${name}`), `prometheus.yml discovers ${name} by its swarm name`)
+        assert.ok(prometheus.includes(`${policy.monitor.stack}_alertmanager:9093`))
+        assert.ok((files["config.alloy"] ?? "").includes(`http://${policy.monitor.stack}_loki:3100/`))
+        assert.ok((files["grafana/datasources.yaml"] ?? "").includes(`http://${policy.monitor.stack}_prometheus:9090`))
+        const services = (parse(files["stack.yml"] ?? "") as { services: Record<string, { dns_search?: string[] }> }).services
+        assert.deepEqual(new Set(Object.keys(services)), new Set(Object.keys(components)))
+        for (const [name, service] of Object.entries(services)) assert.deepEqual(service.dns_search, ["."], `${name} sets dns_search`)
+    }
+})
+
+void test("the embeddings stack reaches its model by the swarm name and every service sets dns_search to the root", () => {
+    const service = loadService(policy, opsDir, "embeddings")
+    const selected = selectServiceComponents(service)
+    const rendered = renderService(service, selected, serviceImages(service, selected, opsDir), chooseModel(service, undefined, false)).files
+    assert.deepEqual(shortNames(rendered, [service.stack], Object.keys(service.components)), [])
+    assert.match(rendered.Caddyfile ?? "", new RegExp(`reverse_proxy ${service.stack}_model:11434 `))
+    const services = (parse(rendered["stack.yml"] ?? "") as { services: Record<string, { dns_search?: string[] }> }).services
+    assert.ok(Object.keys(services).length > 0)
+    for (const [name, one] of Object.entries(services)) assert.deepEqual(one.dns_search, ["."], `${name} sets dns_search`)
 })

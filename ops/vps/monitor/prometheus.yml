@@ -19,7 +19,7 @@ scrape_configs:
       - targets: ["localhost:9090"]
   - job_name: apps
     dockerswarm_sd_configs:
-      - host: tcp://socket-proxy:2375
+      - host: tcp://{{stack}}_socket-proxy:2375
         role: tasks
         refresh_interval: 30s
     relabel_configs:
@@ -53,7 +53,7 @@ scrape_configs:
     params:
       "match[]": ['up{job="prometheus"}']
     dockerswarm_sd_configs:
-      - host: tcp://socket-proxy:2375
+      - host: tcp://{{stack}}_socket-proxy:2375
         role: tasks
         refresh_interval: 30s
     relabel_configs:

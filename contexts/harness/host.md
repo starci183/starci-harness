@@ -113,8 +113,10 @@ until then it reads `unbuilt` (`HOST_SERVICE_UNBUILT`) and nothing is deployed f
 
 ### Machines
 
-A machine is an entry of **config.yaml** in the shared state base (`<main checkout>/.runtime/config.yaml`, or `STARCI_LOCAL_ROOT`),
-written only by the CLI and never pushed. `local` (this host) is always present, with roles `starci` (sonar, registry, embed with its
+A machine is an entry of **config.yaml** in the harness home's state (`<main checkout>/.runtime/config.yaml`, or `STARCI_LOCAL_ROOT`),
+written only by the CLI and never pushed. The home is found as the fleet's ops/ is: `STARCI_OPS_DIR`'s checkout, else the harness home of
+the working folder, else the checkout the CLI is built in; a published CLI's own package is never it, and with none found `vps add` refuses.
+A remote machine always has a login user: `--user`, or the `user:` of the inventory file it imports (with its `sshPort`). `local` (this host) is always present, with roles `starci` (sonar, registry, embed with its
 tunnel) and `dev`, until the owner changes it.
 
 | Verb | Does |

@@ -21,7 +21,7 @@ otelcol.processor.batch "apps" {
 
 otelcol.exporter.otlp "tempo" {
   client {
-    endpoint = "tempo:4317"
+    endpoint = "{{stack}}_tempo:4317"
     tls {
       insecure = true
     }

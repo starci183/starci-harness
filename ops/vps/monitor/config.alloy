@@ -2,7 +2,7 @@
 // carries `starci.monitor.logs=true` (an app environment's monitoring opt-in renders it) or belongs to a harness stack (`starci-*`), labelled
 // by stack and service, and pushes them to Loki. It reads the Docker API only through the read-only socket proxy.
 discovery.docker "swarm" {
-  host             = "tcp://socket-proxy:2375"
+  host             = "tcp://{{stack}}_socket-proxy:2375"
   refresh_interval = "30s"
 }
 
@@ -30,7 +30,7 @@ discovery.relabel "swarm" {
 }
 
 loki.source.docker "swarm" {
-  host          = "tcp://socket-proxy:2375"
+  host          = "tcp://{{stack}}_socket-proxy:2375"
   targets       = discovery.relabel.swarm.output
   relabel_rules = discovery.relabel.swarm.rules
   forward_to    = [loki.write.local.receiver]
@@ -38,6 +38,6 @@ loki.source.docker "swarm" {
 
 loki.write "local" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url = "http://{{stack}}_loki:3100/loki/api/v1/push"
   }
 }

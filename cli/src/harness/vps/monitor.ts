@@ -6,7 +6,7 @@ import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { forServer, resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
-import { fqdnOf, routerOf } from "./plan.js"
+import { fqdnOf, routerOf, SWARM_DNS_SEARCH } from "./plan.js"
 import type { StepSecret, VpsPlan } from "./plan.js"
 import { alertBotLines, alertRouting, ALERTMANAGER_CONFIG_ENV, tokenEnvOf, tokenFile } from "./alerts.js"
 import type { AlertBot } from "./alerts.js"
@@ -180,14 +180,21 @@ const readText = (dir: string, rel: string): string => {
 /** How many probe labels one environment may carry (`starci.monitor.probe.0` ... `.9`), one Prometheus job each. */
 export const PROBE_SLOTS = 10
 
-const probeJobs = (network: string): Record<string, unknown>[] =>
+/**
+ * The swarm name of a component of the stack (`<stack>_<component>`), the only name an in-stack address may use. The containers inherit the
+ * host's resolv.conf; a short name the embedded DNS does not answer on the asking network falls through to the host's search domain, and a
+ * provider's wildcard there answers with the server's public IP. Every service also sets `dns_search: ["."]` (SWARM_DNS_SEARCH).
+ */
+const swarmName = (stack: string, component: string): string => `${stack}_${component}`
+
+const probeJobs = (stack: string, network: string): Record<string, unknown>[] =>
     Array.from({ length: PROBE_SLOTS }, (_unused, slot) => {
         const label = `__meta_dockerswarm_service_label_starci_monitor_probe_${String(slot)}`
         return {
             job_name: `probe-${String(slot)}`,
             metrics_path: "/probe",
             params: { module: ["https"] },
-            dockerswarm_sd_configs: [{ host: "tcp://socket-proxy:2375", role: "services", refresh_interval: "60s" }],
+            dockerswarm_sd_configs: [{ host: `tcp://${swarmName(stack, "socket-proxy")}:2375`, role: "services", refresh_interval: "60s" }],
             relabel_configs: [
                 { source_labels: [label], regex: "(.+)", action: "keep" },
                 { source_labels: ["__meta_dockerswarm_network_name"], regex: network, action: "keep" },
@@ -196,7 +203,7 @@ const probeJobs = (network: string): Record<string, unknown>[] =>
                 { source_labels: ["__param_target"], regex: "http:/{2}.*", target_label: "__param_module", replacement: "http" },
                 { source_labels: ["__param_target"], target_label: "instance" },
                 { source_labels: ["__meta_dockerswarm_service_label_starci_monitor_stack"], target_label: "stack" },
-                { target_label: "__address__", replacement: "blackbox:9115" },
+                { target_label: "__address__", replacement: `${swarmName(stack, "blackbox")}:9115` },
             ],
         }
     })
@@ -249,8 +256,8 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     // Prometheus: its own file, every component's jobs, the probe jobs with blackbox, the alerting block with Alertmanager.
     if (on("prometheus")) {
         const prometheus = fillDeep(parse(readText(dir, "prometheus.yml")), tokensOf("prometheus"), "prometheus.yml") as Record<string, unknown>
-        const scrape = [...(prometheus.scrape_configs as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.scrape ?? [], tokensOf(name), `components.yaml ${name}.scrape`) as unknown[]), ...(on("blackbox") ? probeJobs(policy.monitor.network) : [])]
-        const assembled = { ...prometheus, ...(on("alertmanager") ? { alerting: { alertmanagers: [{ static_configs: [{ targets: ["alertmanager:9093"] }] }] } } : {}), scrape_configs: scrape }
+        const scrape = [...(prometheus.scrape_configs as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.scrape ?? [], tokensOf(name), `components.yaml ${name}.scrape`) as unknown[]), ...(on("blackbox") ? probeJobs(policy.monitor.stack, policy.monitor.network) : [])]
+        const assembled = { ...prometheus, ...(on("alertmanager") ? { alerting: { alertmanagers: [{ static_configs: [{ targets: [`${swarmName(policy.monitor.stack, "alertmanager")}:9093`] }] }] } } : {}), scrape_configs: scrape }
         files["prometheus.yml"] = header + stringify(assembled, { lineWidth: 0 })
         const alerts = parse(readText(dir, "alerts.yml")) as { groups: unknown[] }
         const groups = [...(fillDeep(alerts.groups, base, "alerts.yml") as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.alerts ?? [], tokensOf(name), `components.yaml ${name}.alerts`) as unknown[])]
@@ -263,11 +270,13 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     }
     if (on("grafana")) {
         const datasources = parse(readText(dir, "grafana/datasources.yaml")) as { apiVersion: number; datasources: unknown[] }
-        files["grafana/datasources.yaml"] = header + stringify({ ...datasources, datasources: [...datasources.datasources, ...selected.flatMap((name) => components[name]?.datasources ?? [])] }, { lineWidth: 0 })
+        const own = fillDeep(datasources.datasources, tokensOf("grafana"), "grafana/datasources.yaml") as unknown[]
+        const added = selected.flatMap((name) => fillDeep(components[name]?.datasources ?? [], tokensOf(name), `components.yaml ${name}.datasources`) as unknown[])
+        files["grafana/datasources.yaml"] = header + stringify({ ...datasources, datasources: [...own, ...added] }, { lineWidth: 0 })
         files["grafana/dashboards.yaml"] = readText(dir, "grafana/dashboards.yaml")
         for (const name of selected) for (const board of components[name]?.dashboards ?? []) files[board] = readText(dir, board)
     }
-    if (on("alloy")) files["config.alloy"] = [readText(dir, "config.alloy"), ...selected.flatMap((name) => { const extra = components[name]?.alloy; return extra === undefined ? [] : [readText(dir, extra)] })].join("")
+    if (on("alloy")) files["config.alloy"] = [fill(readText(dir, "config.alloy"), tokensOf("alloy"), "config.alloy"), ...selected.flatMap((name) => { const extra = components[name]?.alloy; return extra === undefined ? [] : [fill(readText(dir, extra), tokensOf(name), extra)] })].join("")
     for (const name of selected) {
         for (const rel of Object.keys(components[name]?.configs ?? {})) {
             if (files[rel] !== undefined || files[`${rel}.tmpl`] !== undefined) continue
@@ -325,6 +334,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
             ...(mounted.length + botMounts.length > 0 ? { secrets: [...mounted.map(([, file]) => file), ...botMounts].map((file) => ({ source: file, target: file, mode: 0o444 })) } : {}),
             ...(local && door !== undefined ? { ports: [{ target: door.port, published: door.localPort, protocol: "tcp", mode: "host" }] } : {}),
             networks: ownNetworks,
+            dns_search: [...SWARM_DNS_SEARCH],
             deploy: {
                 ...(component.global === true ? { mode: "global" } : { mode: "replicated", replicas: 1, placement: { constraints: ["node.role == manager"] } }),
                 resources: { limits: { memory: component.resources.memory, cpus: component.resources.cpus }, reservations: { memory: component.resources.reserveMemory, cpus: component.resources.reserveCpus } },

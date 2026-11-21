@@ -113,6 +113,7 @@ export const registerMachine = (input: RegisterInput, opsDir: string = locateFle
     const imported = importFile === undefined ? {} : importedFields(parse(readFileSync(importFile, "utf8")), importFile)
     const login = { ...imported, ...loginOf(input), ...(input.os === undefined ? {} : { os: input.os }) }
     if (input.name !== LOCAL && login.host === undefined) throw new UsageError(`starci vps add ${input.name} takes --host <addr> (or --import <ops/vps/servers/<id>.yaml>)`)
+    if (input.name !== LOCAL && login.user === undefined) throw new Refusal("HOST_MACHINE_USER", `starci vps add ${input.name} cannot tell the login user: give --user <user>${importFile === undefined ? "" : ` or set user: in ${importFile}`}; config.yaml never keeps a remote machine without one`)
     if (input.roles === undefined) throw new UsageError(`starci vps add ${input.name} takes --roles <r1,r2> (roles: ${Object.keys(catalog.roles).join(", ")})`)
     const choice = applyRoles(catalog, input.name === LOCAL ? catalog.local : undefined, input.roles)
     const machine: Machine = { ...login, roles: [...choice.roles], services: { ...choice.services }, adopted: {} }

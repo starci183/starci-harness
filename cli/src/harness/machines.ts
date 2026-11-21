@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, resolve, sep } from "node:path"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { sharedStateBase } from "./ledger.js"
+import { LOCAL_ROOT_ENV, mainCheckoutOf, runtimeRoot } from "./ledger.js"
+import { harnessHomeOf } from "./secret-env.js"
 
 /**
- * The machines of THIS harness host: config.yaml in the shared state base (`<main checkout>/.runtime/config.yaml`, or STARCI_LOCAL_ROOT),
+ * The machines of THIS harness host: config.yaml in the harness home's state (`<main checkout>/.runtime/config.yaml`, or STARCI_LOCAL_ROOT; machinesBase),
  * written only by the CLI (`starci vps add|set|remove`) and never pushed. The owner's words: "phải lưu máy lại ở config.yaml kiểu starci vps
  * add -- vì cái này là push xài chung" — the repository is shared, so an address, a user, a port or a key path lives here and nowhere else.
  * A secret never does: the keys stay in the sealed stores (a managed server's <id>.enc.yaml, or <state>/machines/<name>.enc.yaml), named only.
@@ -48,11 +49,53 @@ export type MachinesFile = z.infer<typeof fileSchema>
 /** The name of this harness host. */
 export const LOCAL = "local"
 
-/** config.yaml of this host: `<shared state base>/config.yaml`. */
-export const machinesFile = (): string => join(sharedStateBase(), "config.yaml")
+/** Where machinesBaseOf looks, in order; each is a folder or undefined. */
+export interface MachinesBaseInputs {
+    /** STARCI_LOCAL_ROOT: the whole state base, as for every other host state. */
+    readonly localRoot?: string | undefined
+    /** STARCI_OPS_DIR: the harness ops/ folder, whose checkout holds the state. */
+    readonly opsDir?: string | undefined
+    /** The harness home of the working folder (secret-env.ts harnessHomeOf): the checkout itself or an ancestor's `.claude`. */
+    readonly home?: string | undefined
+    /** The harness checkout this CLI is built in; undefined for a published CLI (its own package is never the home). */
+    readonly checkout?: string | undefined
+}
 
-/** The sealed file a machine's generated keys are sealed in when it is no managed server of ops/vps/servers: `<shared state>/machines/<name>.enc.yaml`. */
-export const machineSealedFile = (name: string): string => join(sharedStateBase(), "machines", `${name}.enc.yaml`)
+const insideNodeModules = (path: string): boolean => resolve(path).split(sep).some((part) => part.toLowerCase() === "node_modules")
+
+/**
+ * The folder of config.yaml and the machines' sealed files: STARCI_LOCAL_ROOT, else the `.runtime` of the harness main checkout found as the
+ * fleet's ops/ is (vps/policy.ts locateFleetOps): STARCI_OPS_DIR's checkout, else the harness home of the working folder, else the checkout
+ * the CLI is built in. A published CLI's own package copy is never it, and no folder inside node_modules is: with none found it is refused.
+ */
+export const machinesBaseOf = (inputs: MachinesBaseInputs): string => {
+    const local = inputs.localRoot ?? ""
+    if (local !== "") {
+        if (insideNodeModules(local)) throw new Refusal("HOST_STATE_NOT_FOUND", `${LOCAL_ROOT_ENV}=${local} is inside node_modules; config.yaml is never written into a package`)
+        return resolve(local)
+    }
+    const homes = [inputs.opsDir === undefined || inputs.opsDir === "" ? undefined : dirname(resolve(inputs.opsDir)), inputs.home, inputs.checkout]
+    const found = homes.find((home): home is string => home !== undefined && !insideNodeModules(home))
+    const looked = homes.filter((home) => home !== undefined).join(", ")
+    if (found === undefined) throw new Refusal("HOST_STATE_NOT_FOUND", `no harness home holds config.yaml (looked at ${looked === "" ? "STARCI_OPS_DIR, the working folder's harness home and the CLI's checkout" : looked}): run from the harness checkout (or below the folder whose .claude is one), or set STARCI_OPS_DIR or ${LOCAL_ROOT_ENV}; a published CLI never writes into its own package`)
+    return join(mainCheckoutOf(found), ".runtime")
+}
+
+/** The checkout this CLI is built in (cli/ and ops/checks.yaml side by side), or undefined for a published copy. */
+const builtCheckout = (): string | undefined => {
+    const root = runtimeRoot()
+    return existsSync(join(root, "cli", "package.json")) && existsSync(join(root, "ops", "checks.yaml")) ? root : undefined
+}
+
+/** The folder of config.yaml for this process: machinesBaseOf of its environment, working folder and CLI. */
+export const machinesBase = (cwd: string = process.cwd()): string =>
+    machinesBaseOf({ localRoot: process.env[LOCAL_ROOT_ENV], opsDir: process.env.STARCI_OPS_DIR, home: harnessHomeOf(cwd), checkout: builtCheckout() })
+
+/** config.yaml of this host: `<machinesBase>/config.yaml`. */
+export const machinesFile = (): string => join(machinesBase(), "config.yaml")
+
+/** The sealed file a machine's generated keys are sealed in when it is no managed server of ops/vps/servers: `<machinesBase>/machines/<name>.enc.yaml`. */
+export const machineSealedFile = (name: string): string => join(machinesBase(), "machines", `${name}.enc.yaml`)
 
 /** What config.yaml holds, as read: the file, whether it exists, and its machines (without the synthesized `local`). */
 export interface MachinesRead {
@@ -104,11 +147,15 @@ export const machineNamed = (machines: Readonly<Record<string, Machine>>, name: 
 export const keyPath = (path: string): string => resolve(path).replaceAll("\\", "/")
 
 /**
- * The fields an ops/vps/servers/<id>.yaml contributes when `vps add --import` turns it into a machine: its host, ssh port and os, and the link
- * to it (`server`), so its sealed login keeps serving the session. Nothing is read from its sealed file.
+ * The fields an ops/vps/servers/<id>.yaml contributes when `vps add --import` turns it into a machine: its host, login user, ssh port and os,
+ * and the link to it (`server`), so its sealed login keeps serving the session. Nothing is read from its sealed file; a user or port the file
+ * holds in another shape is refused, never guessed.
  */
-export const importedFields = (raw: unknown, file: string): Pick<Machine, "host" | "port" | "os" | "server"> => {
+export const importedFields = (raw: unknown, file: string): Pick<Machine, "host" | "user" | "port" | "os" | "server"> => {
     const doc = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {}
     if (doc.schema !== "starci/vps-server@1" || typeof doc.id !== "string" || typeof doc.host !== "string") throw new Refusal("HOST_IMPORT_INVALID", `${file} is no managed server file (schema starci/vps-server@1 with id and host)`)
-    return { host: doc.host, port: typeof doc.sshPort === "number" ? doc.sshPort : 22, ...(typeof doc.os === "string" ? { os: doc.os } : {}), server: doc.id }
+    const port = doc.sshPort === undefined ? 22 : Number(doc.sshPort)
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Refusal("HOST_IMPORT_INVALID", `${file}: sshPort ${String(doc.sshPort)} is no port`)
+    if (doc.user !== undefined && (typeof doc.user !== "string" || !ACCOUNT.test(doc.user))) throw new Refusal("HOST_IMPORT_INVALID", `${file}: user is no POSIX account name`)
+    return { host: doc.host, ...(typeof doc.user === "string" ? { user: doc.user } : {}), port, ...(typeof doc.os === "string" ? { os: doc.os } : {}), server: doc.id }
 }

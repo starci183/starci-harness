@@ -165,7 +165,10 @@ environments:
 Consul is off by default. It is offered only for a workload outside Swarm or for use across several hosts. Swarm already does what Consul
 would do on a single VPS:
 
-- **Discovery**: its embedded DNS answers `<service>` (the VIP) and `tasks.<service>` (every task).
+- **Discovery**: its embedded DNS answers `<service>` (the VIP) and `tasks.<service>` (every task). The stack always uses the full swarm
+  name (`<stack>_<component>`, `tasks.<stack>_<component>`) and every service sets `dns_search: ["."]`: a container inherits the host's
+  resolv.conf, and a short name the embedded DNS does not answer is completed by the host's search domain, whose provider wildcard answers
+  with the server's public IP.
 - **Health**: it replaces a failing task by its healthcheck and rolls an update back by `update_config`.
 - **Scraping**: Prometheus discovers Swarm natively (`dockerswarm_sd_configs`, the roles tasks, services and nodes), and so does Alloy
   (`discovery.docker` over the same socket proxy).

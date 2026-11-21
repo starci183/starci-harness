@@ -6,6 +6,7 @@ import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
+import { SWARM_DNS_SEARCH } from "./plan.js"
 import type { VpsPlan } from "./plan.js"
 import { shellQuote } from "./ssh.js"
 
@@ -272,6 +273,7 @@ export const renderService = (service: SharedService, selected: readonly string[
             ...(mounts.length > 0 ? { configs: mounts } : {}),
             ...(component.secret === true ? { secrets: [{ source: service.key.file, target: service.key.file, mode: 0o444 }] } : {}),
             networks: Object.fromEntries(component.networks.map((network) => [network, network === "shared" ? { aliases: [service.app.alias] } : {}])),
+            dns_search: [...SWARM_DNS_SEARCH],
             deploy: {
                 mode: "replicated",
                 replicas: 1,
