@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.188 - 2026-11-21
 
+- Changed: the CLI requires @starci/hfs@6.17.2, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added: `starci audit cycle <area>/<screen> --reason <why>` (@starci/hfs 6.17.2): close a gallery screen's UI audit cycle into its screen.yaml `considered` and open a new one.
 - Changed (contexts/project/gallery.md PROJECT-GALLERY-8, ops/ops/code.md, skills/claude-design): the UI audit gates a touched screen only until its first cycle passes. The pass is its baseline, and after it drift and later cycles are evidence, never a finding. The owner's words of 2026-11-21 are recorded in the rule. UI_AUDIT_INVALID folds into HFS_APP_GALLERY_SCREEN_INVALID.
 
