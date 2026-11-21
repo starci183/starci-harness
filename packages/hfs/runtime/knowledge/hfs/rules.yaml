@@ -6130,10 +6130,10 @@ rules:
       - {path: packages/hfs/src/app-brand.spec.mjs}
   - id: R438
     code: "HFS_STATICS_FILE_KIND"
-    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND, HFS_STATICS_PROMPT_ORPHAN for a sidecar with no image of that name, HFS_STATICS_PROMPT_SCHEMA for one that is not a YAML mapping with a non-empty `prompt`); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE), and the tree above 256 MiB an error (HFS_STATICS_TREE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
+    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_STATICS_FILE_KIND", "HFS_STATICS_KEY", "HFS_STATICS_FILE_SIZE", "HFS_STATICS_TREE_SIZE", "HFS_STATICS_PROMPT_ORPHAN", "HFS_STATICS_PROMPT_SCHEMA"]
+    failureCodes: ["HFS_STATICS_FILE_KIND", "HFS_STATICS_KEY", "HFS_STATICS_FILE_SIZE"]
     enforcers:
       - {kind: hfs, id: statics-shape, at: runtime/scripts/hfs/rules/statics-shape.mjs}
     templateNa: "A new app starts with an empty statics/ and, in lite, the storage service of the starter; the rule judges what an app adds."

@@ -7838,33 +7838,6 @@ HFS_STATICS_FILE_SIZE:
   nextStep_vi: "Nén hoặc đổi kích thước ảnh; video dài không thuộc repo."
   owner: op-retry
   kind: check-finding
-HFS_STATICS_TREE_SIZE:
-  title: "statics/ holds more than 256 MiB"
-  title_vi: "statics/ vượt 256 MiB"
-  meaning_vi: "statics/ được nhúng vào image storage nên tổng không được vượt 256 MiB."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Bỏ bớt hoặc nén; media của người dùng nằm trong object storage, không trong git."
-  owner: op-retry
-  kind: check-finding
-HFS_STATICS_PROMPT_ORPHAN:
-  title: "A prompt sidecar has no image beside it"
-  title_vi: "Tệp prompt không có ảnh cùng tên bên cạnh"
-  meaning_vi: "<tên>.prompt.yaml là prompt của một ảnh <tên>.<đuôi media> cùng thư mục."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Xoá tệp prompt hoặc thêm ảnh tương ứng."
-  owner: op-retry
-  kind: check-finding
-HFS_STATICS_PROMPT_SCHEMA:
-  title: "A prompt sidecar is not a YAML mapping with a prompt"
-  title_vi: "Tệp prompt không phải YAML mapping có trường prompt"
-  meaning_vi: "Tệp prompt phải parse được thành mapping và có `prompt` là chuỗi không rỗng; subject và phiên bản basePrompt do R436 kiểm."
-  causes_vi:
-    - "Vi phạm R438 (PROJECT-STATICS-1)."
-  nextStep_vi: "Sửa YAML của tệp prompt."
-  owner: op-retry
-  kind: check-finding
 HFS_STATIC_ASSET_OUTSIDE_STATICS:
   title: "A media file sits beside the code instead of in statics/"
   title_vi: "Tệp media nằm cạnh mã thay vì trong statics/"

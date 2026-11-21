@@ -5,33 +5,20 @@
 //   HFS_STATICS_KEY               a path segment that is not lowercase kebab-case (a directory, or a file name before its extension), an upper-case
 //                                 extension, or a media file directly under statics/ (the first folder is the area);
 //   HFS_STATICS_FILE_SIZE         a file above 2 MiB (warning) or 10 MiB (error);
-//   HFS_STATICS_TREE_SIZE         the files of statics/ together above 256 MiB;
-//   HFS_STATICS_PROMPT_ORPHAN     a <name>.prompt.yaml with no media file of that name beside it;
-//   HFS_STATICS_PROMPT_SCHEMA     a prompt sidecar that does not parse as a YAML mapping or holds no non-empty `prompt` string.
-// What else a prompt records (its subject, the basePrompt version it was made from) is judged by the brand rule over `.starcistacks/brand/` (R436, PROJECT-BRAND-2), not here.
 import fs from 'node:fs';
 import path from 'node:path';
-import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
-import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readText } from './read.mjs';
 import type { Finding, Repo } from './rule-types.mjs';
 
 export const STATICS_MEDIA = Object.freeze(['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif', 'svg', 'mp4', 'webm']);
 export const STATICS_WARN_BYTES = 2 * 1024 * 1024;
 export const STATICS_MAX_BYTES = 10 * 1024 * 1024;
-export const STATICS_TREE_BYTES = 256 * 1024 * 1024;
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const PROMPT_SUFFIX = '.prompt.yaml';
 const PREFIX = 'statics/';
 
 const MIB = 1024 * 1024;
 const WHY = '(PROJECT-STATICS-1)';
-
-/** The problems of a parsed prompt sidecar; an empty list is a valid one. */
-export function promptProblems(doc: unknown): string[] {
-  if (!plain(doc)) return ['it is not a mapping'];
-  return typeof doc.prompt === 'string' && doc.prompt.trim() !== '' ? [] : ['prompt must be a non-empty string'];
-}
 
 function sizeOf(repoRoot: string, file: string): number | null {
   readText(repoRoot, file); // records the read for the result cache: the size is a function of the file's bytes
@@ -53,23 +40,12 @@ function keyFindings(file: string): Finding[] {
   return findings;
 }
 
-function promptFindings(repoRoot: string, file: string): Finding[] {
-  const text = readText(repoRoot, file);
-  if (text === null) return [found('HFS_STATICS_PROMPT_SCHEMA', file, `${file} cannot be read as text ${WHY}`)];
-  let doc: unknown;
-  try { doc = parseYaml(text); } catch (error) { return [found('HFS_STATICS_PROMPT_SCHEMA', file, `${file} does not parse as YAML: ${String((error as { message?: unknown }).message ?? error).split('\n')[0]} ${WHY}`)]; }
-  const problems = promptProblems(doc);
-  return problems.length === 0 ? [] : [found('HFS_STATICS_PROMPT_SCHEMA', file, `${file} is not a valid prompt sidecar: ${problems.join('; ')} ${WHY}`)];
-}
-
 /** R438 over the tracked files of an app (app-relative, posix). */
 export function staticsShapeFindings({ repoRoot, repo, isRoot, all = [] }: { repoRoot: string; repo: Repo; isRoot: boolean; all?: string[] }): Finding[] {
   if (repo?.kind !== 'app' || isRoot === false) return [];
   const files = all.map((file) => file.replaceAll('\\', '/')).filter((file) => file.startsWith(PREFIX) && !file.endsWith('/.gitkeep'));
   if (files.length === 0) return [];
-  const present = new Set(files);
   const findings: Finding[] = [];
-  let total = 0;
   for (const file of files) {
     const name = file.slice(file.lastIndexOf('/') + 1);
     const prompt = name.endsWith(PROMPT_SUFFIX);
@@ -79,16 +55,9 @@ export function staticsShapeFindings({ repoRoot, repo, isRoot, all = [] }: { rep
     findings.push(...keyFindings(file));
     const bytes = sizeOf(repoRoot, file);
     if (bytes !== null) {
-      total += bytes;
       if (bytes > STATICS_MAX_BYTES) findings.push(found('HFS_STATICS_FILE_SIZE', file, `${file} is ${String(bytes)} bytes, above the ${String(STATICS_MAX_BYTES / MIB)} MiB limit of a static; compress or resize it ${WHY}`, { bytes }));
       else if (bytes > STATICS_WARN_BYTES) findings.push({ ...found('HFS_STATICS_FILE_SIZE', file, `${file} is ${String(bytes)} bytes, above ${String(STATICS_WARN_BYTES / MIB)} MiB: every client downloads it; compress or resize it ${WHY}`, { bytes }), level: 'warning' });
     }
-    if (prompt) {
-      const stem = file.slice(0, -PROMPT_SUFFIX.length);
-      if (!STATICS_MEDIA.some((ext) => present.has(`${stem}.${ext}`))) findings.push(found('HFS_STATICS_PROMPT_ORPHAN', file, `${file} has no media file of that name beside it (${stem}.<${STATICS_MEDIA.join('|')}>): it is the prompt of an image, so delete it or add the image ${WHY}`));
-    }
-    if (prompt) findings.push(...promptFindings(repoRoot, file));
   }
-  if (total > STATICS_TREE_BYTES) findings.push(found('HFS_STATICS_TREE_SIZE', 'statics', `statics/ holds ${String(total)} bytes, above ${String(STATICS_TREE_BYTES / MIB)} MiB: it is baked into the storage image, so keep the repository's own media small and put user media in object storage ${WHY}`, { bytes: total }));
   return findings;
 }

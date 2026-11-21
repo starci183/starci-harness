@@ -1160,7 +1160,7 @@ slots:
     tier: none
     tests: none
     allows: [".gitkeep", "**"]
-    rules: [HFS_STATICS_FILE_KIND, HFS_STATICS_KEY, HFS_STATICS_FILE_SIZE, HFS_STATICS_TREE_SIZE, HFS_STATICS_PROMPT_ORPHAN, HFS_STATICS_PROMPT_SCHEMA]
+    rules: [HFS_STATICS_FILE_KIND, HFS_STATICS_KEY, HFS_STATICS_FILE_SIZE]
   - id: app.starcistacks.cache
     profiles: [app]
     # The committed result cache of `starci app check` (contexts/project/check-cache.md): JSON Lines records keyed by
