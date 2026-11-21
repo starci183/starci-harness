@@ -6,8 +6,10 @@ import { heldLine, registeredRoots, serverAlerts, serverRecipientOf } from "../.
 import type { ServerAlerts } from "../../harness/vps/alerts.js"
 import { runPlan, runSteps } from "../../harness/vps/fleet.js"
 import { loadMonitorComponents, monitorBudget, monitorDir, monitorImages, monitorUpPlan, MONITOR_SECRETS, renderMonitor, selectComponents } from "../../harness/vps/monitor.js"
-import type { MonitorSecret, MonitorTarget } from "../../harness/vps/monitor.js"
+import type { MonitorRender, MonitorSecret, MonitorTarget } from "../../harness/vps/monitor.js"
+import type { VpsPlan } from "../../harness/vps/plan.js"
 import { inventoryDir, loadServer, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
+import type { ManagedServer, VpsPolicy } from "../../harness/vps/policy.js"
 import { ownerStore } from "../../harness/vps/sealed.js"
 import type { SealedStore } from "../../harness/vps/sealed.js"
 import { remoteInput } from "../../harness/vps/ssh.js"
@@ -63,6 +65,43 @@ const generatedSecrets = (store: SealedStore, file: string, kinds: readonly Moni
     return out
 }
 
+/** What `vps monitor up` renders for a server (or the local swarm): the components, their budget, the alert bots, the files and the plan. */
+export interface MonitorRun {
+    readonly policy: VpsPolicy
+    readonly server: ManagedServer | undefined
+    readonly selected: readonly string[]
+    readonly budget: ReturnType<typeof monitorBudget>
+    readonly alerts: ServerAlerts
+    readonly held: readonly string[]
+    readonly render: MonitorRender
+    readonly base: string
+    readonly plan: VpsPlan
+}
+
+/**
+ * Renders the monitoring stack exactly as `vps monitor up` deploys it, writing nothing: the server file's components with the run's toggles, the
+ * alert bots of the registered checkouts (and `apps`), the files under /opt/starci/monitor (the local swarm: the state base). `host up --host`
+ * reads its files for the config drift (vps/drift.ts) and hands an update to the verb itself.
+ */
+export const monitorRunFor = (opsDir: string, id: string | undefined, toggled: { readonly with: readonly string[]; readonly without: readonly string[]; readonly apps: readonly string[] }): MonitorRun => {
+    const policy = loadVpsPolicy(opsDir)
+    const server = id === undefined ? undefined : loadServer(policy, id, inventoryDir(policy, opsDir))
+    const target: MonitorTarget = server === undefined ? { kind: "local" } : { kind: "server", server }
+    const components = loadMonitorComponents(policy, opsDir)
+    const toggles = { ...(server?.monitor?.components ?? {}), ...Object.fromEntries(toggled.with.map((name) => [name, true])), ...Object.fromEntries(toggled.without.map((name) => [name, false])) }
+    // The alert bots are read first: the monitor bot runs by default only when an app on the server has one ready.
+    const found: ServerAlerts = server === undefined ? { bots: [], lacking: [] } : serverAlerts(server.projects, [...toggled.apps, ...registeredRoots()], serverRecipientOf(server.id, opsDir))
+    const selected = selectComponents(components, toggles, found.bots.length > 0)
+    const budget = monitorBudget(components, selected)
+    const alerting = selected.includes("alertmanager") && server !== undefined
+    const alerts: ServerAlerts = alerting ? found : { bots: [], lacking: [] }
+    const heldText = alerting ? heldLine(alerts) : null
+    const held = heldText === null ? [] : [`  note: ${heldText}`]
+    const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, alertBots: alerts.bots })
+    const base = target.kind === "local" ? join(stateBase(), "monitor", "stack").replaceAll("\\", "/") : "/opt/starci/monitor"
+    return { policy, server, selected, budget, alerts, held, render, base, plan: monitorUpPlan(policy, target, render, budget, base) }
+}
+
 /**
  * `starci vps monitor up <id> [--with <component>] [--without <component>] [--execute]`, or `up --local`: the shared monitoring stack of a
  * managed server (or of this machine's swarm) with the components its file turns on; a dry run prints the plan and the memory budget.
@@ -85,23 +124,7 @@ export const vpsMonitorVerb = defineVerb({
     run: async (context, flags): Promise<VerbResult<VpsData>> => {
         requireAction(flags.action, ["up"], "monitor")
         if (flags.local === (flags.id !== undefined)) throw new UsageError("starci vps monitor up takes a server id or --local, one of them")
-        const opsDir = locateFleetOps()
-        const policy = loadVpsPolicy(opsDir)
-        const server = flags.id === undefined ? undefined : loadServer(policy, flags.id, inventoryDir(policy, opsDir))
-        const target: MonitorTarget = server === undefined ? { kind: "local" } : { kind: "server", server }
-        const components = loadMonitorComponents(policy, opsDir)
-        const toggles = { ...(server?.monitor?.components ?? {}), ...Object.fromEntries(flags.with.map((name) => [name, true])), ...Object.fromEntries(flags.without.map((name) => [name, false])) }
-        // The alert bots are read first: the monitor bot runs by default only when an app on the server has one ready.
-        const found: ServerAlerts = server === undefined ? { bots: [], lacking: [] } : serverAlerts(server.projects, [...flags.app.map((dir) => resolve(context.cwd, dir)), ...registeredRoots()], serverRecipientOf(server.id, opsDir))
-        const selected = selectComponents(components, toggles, found.bots.length > 0)
-        const budget = monitorBudget(components, selected)
-        const alerting = selected.includes("alertmanager") && server !== undefined
-        const alerts: ServerAlerts = alerting ? found : { bots: [], lacking: [] }
-        const heldText = alerting ? heldLine(alerts) : null
-        const held = heldText === null ? [] : [`  note: ${heldText}`]
-        const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, alertBots: alerts.bots })
-        const base = target.kind === "local" ? join(stateBase(), "monitor", "stack").replaceAll("\\", "/") : "/opt/starci/monitor"
-        const plan = monitorUpPlan(policy, target, render, budget, base)
+        const { policy, server, selected, budget, alerts, held, render, plan } = monitorRunFor(locateFleetOps(), flags.id, { with: flags.with, without: flags.without, apps: flags.app.map((dir) => resolve(context.cwd, dir)) })
         const data = { budget, components: selected, alerts: { bots: alerts.bots.map((bot) => `${bot.project}/${bot.env}`), held: alerts.lacking } }
         if (!flags.execute) {
             const result = planResult(plan, undefined, held)

@@ -5,6 +5,7 @@ import { stateBase } from "../../harness/ledger.js"
 import { lookupSecret, secretHome } from "../../harness/secret-env.js"
 import { runSteps, sessionFor } from "../../harness/vps/fleet.js"
 import type { StepOutcome } from "../../harness/vps/fleet.js"
+import type { DesiredFile } from "../../harness/vps/drift.js"
 import { withPrivateDir } from "../../harness/vps/local.js"
 import { loadMonitorComponents, selectComponents } from "../../harness/vps/monitor.js"
 import { inventoryDir, loadServer, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
@@ -21,6 +22,7 @@ import {
     renderService,
     selectServiceComponents,
     serviceBudget,
+    serviceDesiredFiles,
     serviceDownPlan,
     serviceImages,
     serviceNames,
@@ -117,8 +119,8 @@ const appRoot = (path: string): string => {
 
 interface UpFlags { readonly with: readonly string[]; readonly without: readonly string[]; readonly "acknowledge-reindex": boolean; readonly "key-from-host"?: string | undefined; readonly execute: boolean }
 
-/** `service up`: plan, capacity, key, steps. */
-const up = async (scope: Scope, flags: UpFlags, progress: (line: string) => void): Promise<VerbResult<VpsData>> => {
+/** What `service up` renders: the components, the model, the budget, the images, the files under `base` and the plan; nothing is written. */
+const renderUp = (scope: Scope, flags: Pick<UpFlags, "with" | "without" | "acknowledge-reindex">) => {
     const { service, server, target } = scope
     const choice = server?.services?.[service.name]
     const toggles = { ...(choice?.components ?? {}), ...Object.fromEntries(flags.with.map((name) => [name, true])), ...Object.fromEntries(flags.without.map((name) => [name, false])) }
@@ -128,7 +130,25 @@ const up = async (scope: Scope, flags: UpFlags, progress: (line: string) => void
     const images = serviceImages(service, selected, scope.opsDir)
     const render = renderService(service, selected, images, model)
     const base = target.kind === "local" ? join(stateBase(), "services", service.name, "stack").replaceAll("\\", "/") : `/opt/starci/services/${service.name}`
-    const plan = serviceUpPlan(service, target, render, budget, model, base)
+    return { selected, model, budget, images, render, base, plan: serviceUpPlan(service, target, render, budget, model, base) }
+}
+
+/**
+ * The files `vps service up <id> --service <name>` (no toggles, the pinned model) writes on the server before it redeploys, rendered and never
+ * written: `host up --host` compares them with the server's for its config drift (harness/vps/drift.ts).
+ */
+export const serviceDesired = (opsDir: string, id: string, name: string): DesiredFile[] => {
+    const policy = loadVpsPolicy(opsDir)
+    const server = loadServer(policy, id, inventoryDir(policy, opsDir))
+    const scope: Scope = { opsDir, policy, service: loadService(policy, opsDir, name), server, target: { kind: "server", server } }
+    const { render, base } = renderUp(scope, { with: [], without: [], "acknowledge-reindex": false })
+    return serviceDesiredFiles(scope.service, render, base)
+}
+
+/** `service up`: plan, capacity, key, steps. */
+const up = async (scope: Scope, flags: UpFlags, progress: (line: string) => void): Promise<VerbResult<VpsData>> => {
+    const { service, server, target } = scope
+    const { selected, model, budget, images, render, plan } = renderUp(scope, flags)
     // The capacity probe runs in a throwaway container of the lightest image of the service on the local swarm.
     const probeImage = Object.entries(images).map(([name, image]) => ({ image, mb: megabytes(service.components[name]?.resources.memory ?? "0M") })).sort((left, right) => left.mb - right.mb)[0]?.image ?? ""
     const data = { service: service.name, components: selected, budget, model: model === null ? null : { id: model.id, name: model.variant.name, digest: model.variant.digest, reindex: model.reindex } }

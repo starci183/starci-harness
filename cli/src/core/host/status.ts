@@ -5,16 +5,18 @@ import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { machineStatus } from "./machine.js"
 import type { MachineStatus } from "./machine.js"
 
-/** The human lines of a machine's status: each service, its state and evidence, its drift, the gaps, and the model endpoints. */
+/** The human lines of a machine's status: each service, its state and evidence, its image and config drift, the gaps, the findings and the model endpoints. */
 export const describeMachine = (status: MachineStatus): string => {
     const width = Math.max(0, ...status.services.map((service) => service.id.length))
-    const lines = status.services.map((service) => `  ${service.id.padEnd(width)}  ${service.state}: ${service.evidence}${service.drift.map((line) => `\n  ${" ".repeat(width)}  drift: ${line}`).join("")}`)
+    const pad = `\n  ${" ".repeat(width)}  `
+    const lines = status.services.map((service) => `  ${service.id.padEnd(width)}  ${service.state}: ${service.evidence}${service.drift.map((line) => `${pad}drift: ${line}`).join("")}${service.configDrift.map((line) => `${pad}config drift: ${line}`).join("")}`)
     const endpoints = Object.entries(status.endpoints).flatMap(([id, list]) => (list.length === 0 ? [] : [`  endpoints of ${id} (in router order): ${list.map((endpoint) => `${endpoint.machine} ${endpoint.url}`).join(", ")}`]))
     return [
         `machine ${status.machine} (${status.site}), roles ${status.roles.join(", ")}${status.reached ? "" : `: NOT REACHED (${status.error ?? "no answer"})`}`,
         ...(status.engine === null ? [] : [`  ${status.engine}`]),
         ...lines,
         status.gaps.length === 0 ? "  no gap" : `  gaps: ${status.gaps.join(", ")} (starci host up --host ${status.machine} --execute brings up what is missing)`,
+        ...(status.findings.length === 0 ? [] : [`  findings: ${status.findings.join("; ")} (starci host up --host ${status.machine} --execute updates an owned service; an adopted one is reported only)`]),
         ...endpoints,
     ].join("\n")
 }
@@ -29,7 +31,7 @@ export const hostStatusVerb = defineVerb({
     flags: {
         ids: { kind: "rest", summary: "the services to report (default every service)" },
         stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)" },
-        host: { kind: "string", summary: "a machine of config.yaml: report each service its roles turn on (running, adopted, partial, missing, unsupported, unbuilt), its drift, the gaps, and the endpoints of every served model in router order (`--json` data.endpoints, what the apps' ai-router reads)" },
+        host: { kind: "string", summary: "a machine of config.yaml: report each service its roles turn on (running, adopted, partial, missing, unsupported, unbuilt), its image drift and config drift (the files its deployer would write now against the server's, read-only) as findings, the gaps, and the endpoints of every served model in router order (`--json` data.endpoints, what the apps' ai-router reads)" },
     },
     run: async (context, flags): Promise<VerbResult<unknown>> => {
         if (flags.host !== undefined) {

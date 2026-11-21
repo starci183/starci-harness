@@ -84,8 +84,13 @@ export interface ServiceState {
     readonly via: Placement["via"] | null
     /** What it was found running as (a swarm service or a container), when found. */
     readonly found: readonly { readonly as: string; readonly image: string; readonly replicas: string | null }[]
-    /** Each running image that is not the catalog's pin, reported only: `host up` never redeploys a running service. */
+    /** Each running image that is not the catalog's pin: `host up` updates an owned running service for it, an adopted one only reports it. */
     readonly drift: readonly string[]
+    /**
+     * Each file its deployer would write now that differs from the one on the server (or is not there): the config drift of an owned running
+     * service (vps/drift.ts), which `host up` updates; never read for an adopted, partial or local service.
+     */
+    readonly configDrift: readonly string[]
     readonly images: readonly string[]
     readonly endpoint: string | null
 }
@@ -115,19 +120,19 @@ export const judgeRemote = (id: string, summary: string, placement: Placement, i
         if (placement.via === "vps-monitor") {
             const missing = placement.components.filter((component) => !own.some((item) => item.as === `${placement.stack}_${component}`))
             const mine = own.filter((item) => placement.components.some((component) => item.as === `${placement.stack}_${component}`))
-            if (missing.length > 0) return { ...base, state: "partial", evidence: `the stack ${placement.stack} runs without ${missing.join(", ")}; host up never changes a running stack; adding them is the owner's choice (starci vps monitor up <name> --with ${missing.join(" --with ")})`, found: mine, drift: driftOf(images, mine) }
-            return { ...base, state: "running", evidence: mine.map((item) => `${item.as} ${item.replicas ?? ""}`.trim()).join(", "), found: mine, drift: driftOf(images, mine) }
+            if (missing.length > 0) return { ...base, state: "partial", evidence: `the stack ${placement.stack} runs without ${missing.join(", ")}; host up never changes a running stack; adding them is the owner's choice (starci vps monitor up <name> --with ${missing.join(" --with ")})`, found: mine, drift: driftOf(images, mine), configDrift: [] }
+            return { ...base, state: "running", evidence: mine.map((item) => `${item.as} ${item.replicas ?? ""}`.trim()).join(", "), found: mine, drift: driftOf(images, mine), configDrift: [] }
         }
-        return { ...base, state: "running", evidence: `${placement.kind === "swarm-stack" ? "stack" : "compose project"} ${placement.stack}: ${own.map((item) => `${item.as}${item.replicas === null ? "" : ` ${item.replicas}`}`).join(", ")}`, found: own, drift: driftOf(images, own) }
+        return { ...base, state: "running", evidence: `${placement.kind === "swarm-stack" ? "stack" : "compose project"} ${placement.stack}: ${own.map((item) => `${item.as}${item.replicas === null ? "" : ` ${item.replicas}`}`).join(", ")}`, found: own, drift: driftOf(images, own), configDrift: [] }
     }
     const repos = new Set([...placement.match, ...images.map(imageRepository)])
     const elsewhere = [
         ...observed.services.filter((service) => repos.has(imageRepository(service.image))).map((service) => ({ as: service.name, image: service.image, replicas: service.replicas })),
         ...observed.containers.filter((container) => repos.has(imageRepository(container.image)) && !observed.services.some((service) => container.name.startsWith(`${service.name}.`))).map((container) => ({ as: container.name, image: container.image, replicas: null })),
     ]
-    if (elsewhere.length > 0) return { ...base, state: "adopted", evidence: `runs as ${elsewhere.map((item) => item.as).join(", ")} (not ${placement.stack}): adopted, recorded and checked, never redeployed or restarted`, found: elsewhere, drift: driftOf(images, elsewhere) }
-    if (placement.via === "host-compose" && !registry.has(placement.project)) return { ...base, state: "unbuilt", evidence: `its definition (ops/${placement.dir}) and its host-compose adapter are not built yet (HOST_SERVICE_UNBUILT); nothing is deployed for it`, found: [], drift: [] }
-    return { ...base, state: "missing", evidence: `no ${placement.kind === "swarm-stack" ? "stack" : "compose project"} ${placement.stack} and nothing runs ${[...repos].join(" or ") || "it"}`, found: [], drift: [] }
+    if (elsewhere.length > 0) return { ...base, state: "adopted", evidence: `runs as ${elsewhere.map((item) => item.as).join(", ")} (not ${placement.stack}): adopted, recorded and checked, never redeployed or restarted`, found: elsewhere, drift: driftOf(images, elsewhere), configDrift: [] }
+    if (placement.via === "host-compose" && !registry.has(placement.project)) return { ...base, state: "unbuilt", evidence: `its definition (ops/${placement.dir}) and its host-compose adapter are not built yet (HOST_SERVICE_UNBUILT); nothing is deployed for it`, found: [], drift: [], configDrift: [] }
+    return { ...base, state: "missing", evidence: `no ${placement.kind === "swarm-stack" ? "stack" : "compose project"} ${placement.stack} and nothing runs ${[...repos].join(" or ") || "it"}`, found: [], drift: [], configDrift: [] }
 }
 
 /** A service with no placement for the machine's site. */
@@ -140,6 +145,7 @@ export const unsupported = (catalog: HostRoles, id: string, site: Site): Service
     via: null,
     found: [],
     drift: [],
+    configDrift: [],
     images: [],
     endpoint: null,
 })
@@ -161,10 +167,16 @@ export const engineLine = (scope: MachineScope, observed: Observed | null): stri
     return engine === "swarm" ? `engine swarm: ${observed.swarm}${observed.swarm === "active" ? "" : " (starci vps swarm init <name> makes it one)"}` : `engine ${engine}: declared, not built`
 }
 
+/**
+ * The config drift of one judged service: an owned running service (found under its own stack or compose project) gets the files its deployer
+ * would write now that differ from the server's; any other state is left as it is (an adopted service is never compared: nothing of ours runs it).
+ */
+export const withConfigDrift = (state: ServiceState, drift: readonly string[]): ServiceState => (state.state === "running" ? { ...state, configDrift: drift } : state)
+
 /** What `host up` will do for one service. */
 export interface UpStep {
     readonly id: string
-    readonly action: "keep" | "adopt" | "deploy" | "skip"
+    readonly action: "keep" | "adopt" | "update" | "deploy" | "skip"
     readonly detail: string
     readonly rollback: string | null
 }
@@ -185,15 +197,91 @@ const deployOf = (placement: Placement): string => {
     return `the ${placement.project} host-compose adapter (ops/${placement.dir})`
 }
 
-/** The plan of `host up`: keep what runs, adopt what runs under another name, deploy what is missing (each with its rollback), skip the rest. */
+/** How an update that never turns healthy is rolled back: each Swarm service of the stack to its previous spec; a compose project keeps no previous version. */
+const updateRollbackOf = (placement: Placement, state: ServiceState): string => {
+    if (placement.kind === "host-compose") return `none: the ${placement.stack} compose project keeps no previous version; it stays for inspection`
+    const services = state.found.map((item) => item.as)
+    return services.length === 0 ? "none: no Swarm service was found" : `docker service rollback ${services.join(", ")} (each to its previous spec)`
+}
+
+/** What an update is for: the config drift (the files that differ) and the image drift (pinned images that moved). */
+export const driftLine = (state: Pick<ServiceState, "drift" | "configDrift">): string =>
+    [...(state.configDrift.length === 0 ? [] : [`config drift: ${state.configDrift.join(", ")}`]), ...(state.drift.length === 0 ? [] : [`image drift: ${state.drift.join("; ")}`])].join("; ")
+
+/**
+ * The plan of `host up`: keep what runs as rendered, update an owned running service whose deployer would render it otherwise (config drift) or
+ * whose pinned images moved (image drift), adopt what runs under another name (its drift reported only, never acted on), deploy what is missing
+ * (each with its rollback), skip the rest. A partial monitor stack is kept: adding components is the owner's choice.
+ */
 export const planUp = (scope: MachineScope, states: readonly ServiceState[]): UpStep[] =>
     states.map((state): UpStep => {
         const placement = placementOf(scope.catalog, state.id, scope.site)
+        if (state.state === "running" && placement !== undefined && placement.via !== "host-stack" && (state.configDrift.length > 0 || state.drift.length > 0)) {
+            return { id: state.id, action: "update", detail: `${driftLine(state)}: ${deployOf(placement).replaceAll("<name>", scope.name)}, then wait for its health`, rollback: updateRollbackOf(placement, state) }
+        }
         if (state.state === "running" || state.state === "partial") return { id: state.id, action: "keep", detail: `${state.evidence}${state.drift.length === 0 ? "" : `; drift: ${state.drift.join("; ")}`}`, rollback: null }
-        if (state.state === "adopted") return { id: state.id, action: "adopt", detail: `record ${state.found.map((item) => item.as).join(", ")} in config.yaml; never redeployed or restarted${state.drift.length === 0 ? "" : `; drift: ${state.drift.join("; ")}`}`, rollback: null }
+        if (state.state === "adopted") return { id: state.id, action: "adopt", detail: `record ${state.found.map((item) => item.as).join(", ")} in config.yaml; never redeployed or restarted${state.drift.length === 0 ? "" : `; drift (reported only): ${state.drift.join("; ")}`}`, rollback: null }
         if (placement === undefined || state.state === "unsupported" || state.state === "unbuilt") return { id: state.id, action: "skip", detail: state.evidence, rollback: null }
         return { id: state.id, action: "deploy", detail: `${deployOf(placement).replaceAll("<name>", scope.name)}, then wait for its health`, rollback: rollbackOf(placement).replaceAll("<name>", scope.name) }
     })
+
+/** What `host up --host` did for one service. */
+export interface UpOutcome {
+    readonly id: string
+    readonly action: UpStep["action"]
+    readonly outcome: "kept" | "adopted" | "updated" | "deployed" | "rolled back" | "failed" | "skipped" | "planned"
+    readonly detail: string
+}
+
+/** The calls `runUpPlan` makes to reach a machine: its deployers, the health wait and the rollback (core/host/machine.ts; a spec's fakes). */
+export interface UpHooks {
+    /** Hands one placement to its deployer's normal up (the same call for a deploy and an update); ok when the deployer reported no failure. */
+    readonly deploy: (step: UpStep, placement: Placement) => Promise<{ readonly ok: boolean; readonly detail: string }>
+    /** Waits until the service judges running and its doctor call answers, or its wait passes. */
+    readonly awaitHealthy: (step: UpStep, placement: Placement) => Promise<{ readonly ok: boolean | null; readonly evidence: string }>
+    /** Rolls a step that never turned healthy back: a deploy is removed, an update returned to its previous spec. */
+    readonly rollback: (step: UpStep, placement: Placement) => Promise<string>
+    readonly progress: (line: string) => void
+}
+
+/**
+ * Runs the plan of `host up --execute`: keep, adopt and skip change nothing; a deploy or an update goes to its deployer's normal up, then waits for
+ * its health and is rolled back (unless `rollback` is off) when it never turns healthy. The monitor services of a machine are one stack: the first
+ * monitor deploy or update runs `vps monitor up` once and the others share its outcome.
+ */
+export const runUpPlan = async (scope: MachineScope, plan: readonly UpStep[], hooks: UpHooks, options: { readonly rollback: boolean }): Promise<UpOutcome[]> => {
+    const done: UpOutcome[] = []
+    let monitorDone: UpOutcome | undefined
+    for (const step of plan) {
+        if (step.action === "keep") done.push({ id: step.id, action: step.action, outcome: "kept", detail: step.detail })
+        else if (step.action === "adopt") done.push({ id: step.id, action: step.action, outcome: "adopted", detail: step.detail })
+        else if (step.action === "skip") done.push({ id: step.id, action: step.action, outcome: "skipped", detail: step.detail })
+        else {
+            const placement = placementOf(scope.catalog, step.id, scope.site)
+            if (placement === undefined) continue
+            if (placement.via === "vps-monitor" && monitorDone !== undefined) {
+                done.push({ ...monitorDone, id: step.id, action: step.action })
+                continue
+            }
+            const verb = step.action === "update" ? "updating" : "deploying"
+            hooks.progress(`${step.id}: ${verb} (${step.detail})`)
+            let outcome: UpOutcome
+            try {
+                const deployed = await hooks.deploy(step, placement)
+                const health = deployed.ok ? await hooks.awaitHealthy(step, placement) : { ok: false, evidence: deployed.detail }
+                if (health.ok === true) outcome = { id: step.id, action: step.action, outcome: step.action === "update" ? "updated" : "deployed", detail: `${deployed.detail}; healthy: ${health.evidence}` }
+                else if (options.rollback) outcome = { id: step.id, action: step.action, outcome: "rolled back", detail: `never healthy (${health.evidence}); rolled back: ${await hooks.rollback(step, placement)}` }
+                else outcome = { id: step.id, action: step.action, outcome: "failed", detail: `never healthy (${health.evidence}); kept for inspection (--no-rollback)` }
+            } catch (caught: unknown) {
+                outcome = { id: step.id, action: step.action, outcome: "failed", detail: caught instanceof Error ? caught.message : String(caught) }
+            }
+            hooks.progress(`${step.id}: ${outcome.outcome}`)
+            if (placement.via === "vps-monitor") monitorDone = outcome
+            done.push(outcome)
+        }
+    }
+    return done
+}
 
 /** One endpoint of a served model, as the apps' router reads it from `host status --json`. */
 export interface ModelEndpoint {

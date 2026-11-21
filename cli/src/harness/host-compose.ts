@@ -1,5 +1,6 @@
 import { locateOps } from "./ops.js"
-import { buildkitDoctorScript, buildkitDownPlan, buildkitImage, buildkitUpPlan, loadBuildkit, renderBuildkit } from "./vps/buildkit.js"
+import { buildkitDesiredFiles, buildkitDoctorScript, buildkitDownPlan, buildkitImage, buildkitUpPlan, loadBuildkit, renderBuildkit } from "./vps/buildkit.js"
+import type { DesiredFile } from "./vps/drift.js"
 import type { ManagedServer, VpsPolicy } from "./vps/policy.js"
 import type { VpsPlan } from "./vps/plan.js"
 
@@ -17,6 +18,8 @@ export interface HostComposeAdapter {
     readonly up: (policy: VpsPolicy, server: ManagedServer, opsDir: string) => VpsPlan
     /** The rollback: `docker compose -p <project> down` (its volumes stay). */
     readonly down: (policy: VpsPolicy, server: ManagedServer) => VpsPlan
+    /** The files `up` writes before it runs compose (the same render), for the read-only config drift of `host up|status|doctor --host`. */
+    readonly files: (policy: VpsPolicy, server: ManagedServer, opsDir: string) => DesiredFile[]
     /** The doctor's real call, run on the server: its last line is `ok <evidence>` or `fail <why>` (BuildKit: `buildctl debug workers` over the gate). */
     readonly ping: (server: ManagedServer) => string
 }
@@ -38,6 +41,10 @@ export const BUILDKIT_ADAPTER: HostComposeAdapter = {
     up: (_policy, server, opsDir) => {
         const service = loadBuildkit(opsDir)
         return buildkitUpPlan(service, renderBuildkit(service, buildkitImage(service, opsDir)), server.id)
+    },
+    files: (_policy, _server, opsDir) => {
+        const service = loadBuildkit(opsDir)
+        return buildkitDesiredFiles(service, renderBuildkit(service, buildkitImage(service, opsDir)))
     },
     down: (_policy, server) => buildkitDownPlan(loadBuildkit(locateOps()), server.id),
     ping: () => [buildkitDoctorScript(loadBuildkit(locateOps())), BUILDKIT_VERDICT.trim()].join("\n"),
