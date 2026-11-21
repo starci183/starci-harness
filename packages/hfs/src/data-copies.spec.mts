@@ -1,18 +1,6 @@
 /** Data lives in git only in a seed copy repository (PROJECT-STACKS-13, R400): the hfs check of a code project and the commit hook's guard of a copy repository. */
 // proves: HFS_DATA_IN_CODE
-// proves: HFS_DATA_IN_CODE
-// proves: HFS_DATA_DEPENDENCY
-// proves: HFS_DATA_DEPENDENCY
-// proves: HFS_DATA_UNSEALED
-// proves: HFS_DATA_UNSEALED
-// proves: HFS_DATA_STANDARD_SEALED
-// proves: HFS_DATA_STANDARD_SEALED
-// proves: HFS_DATA_MANIFEST_DRIFT
-// proves: HFS_DATA_MANIFEST_DRIFT
-// proves: HFS_DATA_FILE_SIZE
-// proves: HFS_DATA_FILE_SIZE
-// proves: HFS_DATA_CAP
-// proves: HFS_DATA_CAP
+// proves: HFS_DATA_COPY_INVALID
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -65,9 +53,9 @@ test('HFS_DATA_IN_CODE: a copy manifest and a sops binary envelope are refused i
   assert.deepEqual(dataInCodeFindings('notes.md', json(standard([]))), [], 'only JSON documents are judged');
 });
 
-test('HFS_DATA_DEPENDENCY: a package dependency, workspace, submodule or tsconfig path naming a copy repository is refused; prose and a longer name are not', () => {
+test('HFS_DATA_IN_CODE: a package dependency, workspace, submodule or tsconfig path naming a copy repository is refused; prose and a longer name are not', () => {
   const dependency = dataDependencyFindings('package.json', json({ name: 'shop', dependencies: { x: 'git+ssh://git@example.test/owner/shop-seed-standard.git' } }));
-  assert.deepEqual(codes(dependency), ['HFS_DATA_DEPENDENCY']);
+  assert.deepEqual(codes(dependency), ['HFS_DATA_IN_CODE']);
   assert.match(dependency[0]!.message, /names the copy repository shop-seed-standard in dependencies/);
   assert.match(dataDependencyFindings('be/package.json', json({ workspaces: ['../shop-seed-backup-production'] }))[0]!.message, /shop-seed-backup-production in workspaces/);
   assert.match(dataDependencyFindings('.gitmodules', '[submodule "d"]\n\turl = ../shop-seed-standard.git\n')[0]!.message, /in a submodule/);
@@ -90,7 +78,7 @@ test('R400 the hfs check: a tracked manifest with its data tree, an envelope and
   const all = ['package.json', 'be/copy/manifest.json', 'be/copy/data/a/0.json', 'be/copy/blobs/a/00/1.bin', 'be/test/x.sops.json', 'fe/messages/en.json'];
   const findings = dataBoundaryFindings({ repoRoot: root, repo, isRoot: true, all });
   assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [
-    ['HFS_DATA_DEPENDENCY', 'package.json'], ['HFS_DATA_IN_CODE', 'be/copy/manifest.json'], ['HFS_DATA_IN_CODE', 'be/test/x.sops.json'],
+    ['HFS_DATA_IN_CODE', 'package.json'], ['HFS_DATA_IN_CODE', 'be/copy/manifest.json'], ['HFS_DATA_IN_CODE', 'be/test/x.sops.json'],
     ['HFS_DATA_IN_CODE', 'be/copy/data/'], ['HFS_DATA_IN_CODE', 'be/copy/blobs/'],
   ]);
   assert.deepEqual(dataBoundaryFindings({ repoRoot: root, repo, isRoot: false, all }), [], 'a side scope is judged by the root');
@@ -104,27 +92,27 @@ test('a lawful seed-backup and a lawful seed-standard are green', () => {
   assert.deepEqual(dataCopyFindings({ manifestText: json(standard(['data/orders/00.json', 'index/orders.json'])), ...reader(plainFiles) }), []);
 });
 
-test('HFS_DATA_UNSEALED: a seed-backup file that is not a *.sops.json sops envelope is refused', () => {
+test('HFS_DATA_COPY_INVALID: a seed-backup file that is not a *.sops.json sops envelope is refused', () => {
   const files = { 'data/orders/00.json.sops.json': envelope, 'data/orders/01.json.sops.json': json({ a: 1 }), 'blobs/x/00/1.bin.sops.json': 'binary-ish' };
   const findings = dataCopyFindings({ manifestText: json(backup(['data/orders/00.json', 'data/orders/01.json', 'blobs/x/00/1.bin'])), ...reader(files) });
-  assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [['HFS_DATA_UNSEALED', 'data/orders/01.json.sops.json'], ['HFS_DATA_UNSEALED', 'blobs/x/00/1.bin.sops.json']]);
+  assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [['HFS_DATA_COPY_INVALID', 'data/orders/01.json.sops.json'], ['HFS_DATA_COPY_INVALID', 'blobs/x/00/1.bin.sops.json']]);
   const plain = dataCopyFindings({ manifestText: json(backup(['data/orders/00.json'])), ...reader({ 'data/orders/00.json': '{"a":1}' }) });
-  assert.deepEqual(codes(plain).sort(), ['HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_UNSEALED'], 'a plain name is unsealed and drifts from the sealed name the manifest implies');
-  assert.match(plain.find((finding) => finding.code === 'HFS_DATA_UNSEALED')!.message, /seed-backup is a \.sops\.json sops envelope/);
+  assert.deepEqual(codes(plain).sort(), ['HFS_DATA_COPY_INVALID', 'HFS_DATA_COPY_INVALID', 'HFS_DATA_COPY_INVALID'], 'a plain name is unsealed and drifts from the sealed name the manifest implies');
+  assert.ok(plain.some((finding) => /seed-backup is a \.sops\.json sops envelope/.test(finding.message)));
 });
 
-test('HFS_DATA_STANDARD_SEALED: a seed-standard holds no sops envelope, *.sops.json or *.enc.yaml, and says no sealing', () => {
+test('HFS_DATA_COPY_INVALID: a seed-standard holds no sops envelope, *.sops.json or *.enc.yaml, and says no sealing', () => {
   const files = { 'data/a/0.json': '{}', 'data/a/1.json.sops.json': envelope, 'creds/x.enc.yaml': 'k: v\n', 'notes/e.json': envelope };
   const findings = dataCopyFindings({ manifestText: json(standard(['data/a/0.json'])), ...reader(files) });
-  assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_DATA_STANDARD_SEALED').map((finding) => finding.path), ['data/a/1.json.sops.json', 'creds/x.enc.yaml', 'notes/e.json']);
+  assert.deepEqual(findings.filter((finding) => / is sealed; a seed-standard is plain/.test(finding.message)).map((finding) => finding.path), ['data/a/1.json.sops.json', 'creds/x.enc.yaml', 'notes/e.json']);
   const sealing = dataCopyFindings({ manifestText: json(standard([], { sealing: 'sops-age' })), ...reader({}) });
-  assert.deepEqual(codes(sealing), ['HFS_DATA_STANDARD_SEALED']);
+  assert.deepEqual(codes(sealing), ['HFS_DATA_COPY_INVALID']);
   assert.deepEqual(dataCopyFindings({ manifestText: json(standard(['data/a/0.json'])), ...reader({ 'data/a/0.json': '{}' }) }), [], 'negative control');
 });
 
-test('HFS_DATA_MANIFEST_DRIFT: files against the tracked data, the purpose against the format name, the backup environment', () => {
+test('HFS_DATA_COPY_INVALID: files against the tracked data, the purpose against the format name, the backup environment', () => {
   const missing = dataCopyFindings({ manifestText: json(standard(['data/a/0.json', 'data/a/1.json'])), ...reader({ 'data/a/0.json': '{}', 'data/a/2.json': '{}' }) });
-  assert.deepEqual(missing.map((finding) => finding.code), ['HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_MANIFEST_DRIFT']);
+  assert.deepEqual(missing.map((finding) => finding.code), ['HFS_DATA_COPY_INVALID', 'HFS_DATA_COPY_INVALID']);
   assert.match(missing[0]!.message, /lists data\/a\/1\.json, which is not tracked/);
   assert.match(missing[1]!.message, /data\/a\/2\.json is tracked but manifest\.json does not list it/);
   const purpose = dataCopyFindings({ manifestText: json(standard([], { purpose: 'seed-backup' })), ...reader({}) });
@@ -141,15 +129,15 @@ test('HFS_DATA_MANIFEST_DRIFT: files against the tracked data, the purpose again
   assert.match(notManifest[0]!.message, /is no copy manifest/);
 });
 
-test('HFS_DATA_FILE_SIZE and HFS_DATA_CAP: a data file over 4 MiB, a snapshot over 500 MiB (the s3 driver is named)', () => {
+test('HFS_DATA_COPY_INVALID and HFS_DATA_COPY_INVALID: a data file over 4 MiB, a snapshot over 500 MiB (the s3 driver is named)', () => {
   const names = ['data/a/0.json', 'data/a/1.json'];
   const big = dataCopyFindings({ manifestText: json(standard(names)), ...reader({ 'data/a/0.json': '{}', 'data/a/1.json': '{}' }, { 'data/a/1.json': GIT_SHARD_BYTES + 1 }) });
-  assert.deepEqual(big.map((finding) => [finding.code, finding.path]), [['HFS_DATA_FILE_SIZE', 'data/a/1.json']]);
+  assert.deepEqual(big.map((finding) => [finding.code, finding.path]), [['HFS_DATA_COPY_INVALID', 'data/a/1.json']]);
   const exact = dataCopyFindings({ manifestText: json(standard(names)), ...reader({ 'data/a/0.json': '{}', 'data/a/1.json': '{}' }, { 'data/a/1.json': GIT_SHARD_BYTES }) });
   assert.deepEqual(exact, [], 'negative control: exactly 4 MiB passes');
   const many = Array.from({ length: 126 }, (_, index) => `data/a/${String(index)}.json`);
   const cap = dataCopyFindings({ manifestText: json(standard(many)), ...reader(Object.fromEntries(many.map((name) => [name, '{}'])), Object.fromEntries(many.map((name) => [name, GIT_SHARD_BYTES]))) });
-  assert.deepEqual(codes(cap), ['HFS_DATA_CAP']);
+  assert.deepEqual(codes(cap), ['HFS_DATA_COPY_INVALID']);
   assert.match(cap[0]!.message, /outgrown git, declare the s3 driver/);
   const under = dataCopyFindings({ manifestText: json(standard(many.slice(0, 100))), ...reader(Object.fromEntries(many.slice(0, 100).map((name) => [name, '{}'])), Object.fromEntries(many.slice(0, 100).map((name) => [name, GIT_SHARD_BYTES]))) });
   assert.deepEqual(under, [], 'negative control: 400 MiB is under the cap');
@@ -170,12 +158,12 @@ test('R400 the commit hook: a copy repository is judged by its index, any other 
   assert.deepEqual(guard(copy, ['manifest.json', 'data/a/0.json.sops.json']), [], 'a sealed backup the manifest lists commits');
   fs.writeFileSync(path.join(copy, 'data/a/0.json.sops.json'), json({ plain: true }));
   git(copy, 'add', '-A');
-  assert.deepEqual(guard(copy, ['data/a/0.json.sops.json']), ['HFS_DATA_UNSEALED data/a/0.json.sops.json'], 'the staged blob is judged, not the work tree');
+  assert.deepEqual(guard(copy, ['data/a/0.json.sops.json']), ['HFS_DATA_COPY_INVALID data/a/0.json.sops.json'], 'the staged blob is judged, not the work tree');
   const plain = repository({ 'manifest.json': json(standard(['data/a/0.json'])), 'data/a/0.json': '{}\n' });
   assert.deepEqual(guard(plain, ['manifest.json']), [], 'a plain standard commits');
   fs.writeFileSync(path.join(plain, 'data/a/0.json'), 'x'.repeat(GIT_SHARD_BYTES + 1));
   git(plain, 'add', '-A');
-  assert.deepEqual(guard(plain, ['data/a/0.json']), ['HFS_DATA_FILE_SIZE data/a/0.json'], 'the size is the index blob\'s');
+  assert.deepEqual(guard(plain, ['data/a/0.json']), ['HFS_DATA_COPY_INVALID data/a/0.json'], 'the size is the index blob\'s');
   const code = repository({ 'hfs.json': '{"kind":"app"}\n', 'manifest.json': json(standard([])), 'be/x.sops.json': envelope });
   assert.deepEqual(guard(code, ['manifest.json', 'be/x.sops.json']), ['HFS_DATA_IN_CODE manifest.json', 'HFS_DATA_IN_CODE be/x.sops.json'], 'a code project is no copy repository, whatever it tracks');
 });
@@ -183,11 +171,11 @@ test('R400 the commit hook: a copy repository is judged by its index, any other 
 test('R400 over raw/ (R434): a raw/ file is sized and capped like a data file and never listed by the manifest', () => {
   const files = { 'data/a/0.json': '{}', 'raw/a.md': '# a', 'raw/big.png': 'x' };
   const big = dataCopyFindings({ manifestText: json(standard(['data/a/0.json'])), ...reader(files, { 'raw/big.png': GIT_SHARD_BYTES + 1 }) });
-  assert.deepEqual(big.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_FILE_SIZE raw/big.png']);
+  assert.deepEqual(big.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_COPY_INVALID raw/big.png']);
   const listed = dataCopyFindings({ manifestText: json(standard(['data/a/0.json', 'raw/a.md'])), ...reader(files) });
-  assert.deepEqual(listed.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_MANIFEST_DRIFT manifest.json']);
+  assert.deepEqual(listed.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_COPY_INVALID manifest.json']);
   assert.match(listed[0]?.message ?? '', /lists raw\/a\.md, which is no data file/u);
   const many = Array.from({ length: 126 }, (_, at) => `raw/${String(at)}.md`);
   const cap = dataCopyFindings({ manifestText: json(standard([])), ...reader(Object.fromEntries(many.map((name) => [name, '#'])), Object.fromEntries(many.map((name) => [name, GIT_SHARD_BYTES]))) });
-  assert.deepEqual(codes(cap), ['HFS_DATA_CAP'], 'raw/ counts toward the 500 MiB of the snapshot');
+  assert.deepEqual(codes(cap), ['HFS_DATA_COPY_INVALID'], 'raw/ counts toward the 500 MiB of the snapshot');
 });

@@ -2767,15 +2767,10 @@ rules:
       - {kind: hfs, id: project-sides}
   - id: R400
     code: HFS_DATA_IN_CODE
-    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path: HFS_DATA_DEPENDENCY); the commit hook refuses in a copy repository an unsealed backup file (HFS_DATA_UNSEALED), a sealed file in a standard (HFS_DATA_STANDARD_SEALED), a manifest that disagrees with the tracked data files or its format name (HFS_DATA_MANIFEST_DRIFT), a data file over 4 MiB (HFS_DATA_FILE_SIZE) and a snapshot over 500 MiB, which needs the s3 driver (HFS_DATA_CAP)."
+    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path); the commit hook refuses in a copy repository an unsealed backup file, a sealed file in a standard, a manifest that disagrees with the tracked data files or its format name, a data file over 4 MiB and a snapshot over 500 MiB, which needs the s3 driver."
     failureCodes:
       - HFS_DATA_IN_CODE
-      - HFS_DATA_DEPENDENCY
-      - HFS_DATA_UNSEALED
-      - HFS_DATA_STANDARD_SEALED
-      - HFS_DATA_MANIFEST_DRIFT
-      - HFS_DATA_FILE_SIZE
-      - HFS_DATA_CAP
+      - HFS_DATA_COPY_INVALID
     enforcers:
       - {kind: hfs, id: data-copies}
   - id: R401
@@ -2807,26 +2802,18 @@ rules:
     enforcers:
       - {kind: eslint-be, id: job-progress-shape}
   - id: R426
-    code: DATA_STORE_UNDECLARED
-    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (or a factory whose declared return type is `StoreAdapter`) and, for a store of a seed-backup set or a store a seed-standard without a project `completeness` fills, an `adapter.command` argv of the app command that serves it over starci/data-entries@1, the door `starci app data` and the bring-up's seed step reach it through (DATA_STORE_ADAPTER); a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (DATA_DERIVED_SOURCE; `from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
+    code: DATA_STORE_INVALID
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration; a store has a kind of the closed list (database, storage) and a level logical or physical, an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (or a factory whose declared return type is `StoreAdapter`) and, for a store of a seed-backup set or a store a seed-standard without a project `completeness` fills, an `adapter.command` argv of the app command that serves it over starci/data-entries@1, the door `starci app data` and the bring-up's seed step reach it through; a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (`from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
     failureCodes:
-      - DATA_STORE_UNDECLARED
-      - DATA_STORE_KIND
-      - DATA_STORE_ADAPTER
-      - DATA_DERIVED_SOURCE
+      - DATA_STORE_INVALID
     enforcers:
       - {kind: hfs, id: data-stores}
   - id: R427
-    code: DATA_PURPOSE
-    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
+    code: DATA_SET_INVALID
+    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments, a destination whose driver is git or s3, a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit`, `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup; `completeness` is `ext:<id>` of a check of ext/manifest.json; no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository."
     failureCodes:
-      - DATA_PURPOSE
-      - DATA_DRIVER_KIND
+      - DATA_SET_INVALID
       - DATA_COPY_NAME
-      - DATA_SEED_UNPINNED
-      - DATA_FORCE_MISPLACED
-      - DATA_BACKUP_LOADED
-      - DATA_EXTENSION_UNDECLARED
     enforcers:
       - {kind: hfs, id: data-sets}
   - id: R428
@@ -2880,26 +2867,23 @@ rules:
       - {kind: hfs, id: concept-conventions}
   - id: R434
     code: HFS_DATA_ADAPTER_DRIFT
-    law: "A seed-standard repository may keep what people author in `raw/` (plain, never sealed, sized and capped like the data files by R400) and an `adapter/` whose `convert(rawDir)` turns it into entries written through the git driver of @starci/seed (`renderStandard`, `runStandardAdapter`); its committed manifest.json, data/, blobs/ and index/ are then, byte for byte, what `node adapter/main.ts` writes from raw/: the copy repository's commit hook and CI (`starci app check --staged`) run the adapter twice over raw/ as the index holds it and refuse a run that fails, two runs that differ (a non-deterministic adapter), an output file that differs from, is missing from or is absent in the commit (a hand edit of data/, or raw/ committed without its output), and an adapter/ the index does not hold as it stands (HFS_DATA_ADAPTER_DRIFT); an adapter repository tracks adapter/main.ts, adapter/package.json, the hook .githooks/pre-commit and the workflow .github/workflows/seed-standard.yml, each of the last two running `starci app check --staged` (HFS_DATA_ADAPTER_UNGUARDED; `starci data standard init --adapter` writes them); the bring-up's seed step verifies each pinned seed-standard of the environment once per pin before any entry applies, running the same check on the pinned commit, and refuses a pin whose adapter output drifts or that cannot be read (STACK_SEED_ADAPTER_DRIFT)."
+    law: "A seed-standard repository may keep what people author in `raw/` (plain, never sealed, sized and capped like the data files by R400) and an `adapter/` whose `convert(rawDir)` turns it into entries written through the git driver of @starci/seed (`renderStandard`, `runStandardAdapter`); its committed manifest.json, data/, blobs/ and index/ are then, byte for byte, what `node adapter/main.ts` writes from raw/: the copy repository's commit hook and CI (`starci app check --staged`) run the adapter twice over raw/ as the index holds it and refuse a run that fails, two runs that differ (a non-deterministic adapter), an output file that differs from, is missing from or is absent in the commit (a hand edit of data/, or raw/ committed without its output), and an adapter/ the index does not hold as it stands (HFS_DATA_ADAPTER_DRIFT); an adapter repository tracks adapter/main.ts, adapter/package.json, the hook .githooks/pre-commit and the workflow .github/workflows/seed-standard.yml, each of the last two running `starci app check --staged` (`starci data standard init --adapter` writes them); the bring-up's seed step verifies each pinned seed-standard of the environment once per pin before any entry applies, running the same check on the pinned commit, and refuses a pin whose adapter output drifts or that cannot be read (STACK_SEED_ADAPTER_DRIFT)."
     failureCodes:
       - HFS_DATA_ADAPTER_DRIFT
-      - HFS_DATA_ADAPTER_UNGUARDED
       - STACK_SEED_ADAPTER_DRIFT
       - STACK_SEED_ADAPTER_INSTALL
     enforcers:
       - {kind: hfs, id: data-adapter}
       - {kind: hfs, id: standard-gate}
   - id: R435
-    code: HFS_DATA_SECOND_LOADER
-    law: "A seed-standard reaches an app by one path, the bring-up's seed step over the commit `data.sets` pins: no tracked text file of an app (source, scripts, package.json, workflows, compose, env and stack files; ext/, .starciwork, Markdown, lock files and the check cache aside) runs git clone, pull, fetch, archive, submodule, sparse-checkout or remote add on a `-seed-standard` repository (kind git), declares a content-sync command (a package.json script or a quoted command name `content|standard` + `sync|pull|fetch|import|load`, or a script that names a `-seed-standard` repository: kind command) or assigns an environment variable a value naming a `-seed-standard` repository or a name holding SEED_STANDARD (kind env) (HFS_DATA_SECOND_LOADER). That path is the loader of the seed step: after the R434 gate it reads each pin at its commit through `pinRepository` and the git driver (an unreadable pin is STACK_SEED_STANDARD_UNREADABLE, a copy that is no healthy plain standard or fills a store its set does not list is STACK_SEED_STANDARD_SCHEMA), applies it through each store's `adapter.command` over starci/data-entries@1 (a store with none is STACK_SEED_STORE_COMMAND), a dry run through every door first and then an upsert by natural key (a door that fails or refuses a key is STACK_SEED_DOOR_REFUSED), and writes one receipt per standard and commit only once every store applied; a receipt skips the pin, a changed pin is reported DATA_STANDARD_CHANGED and applies only with the set's `force: true`, once per commit; a set with a project `completeness` is left to the project. Known gap: the check reads one line at a time, so a repository name held in a variable and cloned on another line is held by review."
+    code: STACK_SEED_STANDARD_UNREADABLE
+    law: "A seed-standard reaches an app by one path, the bring-up's seed step over the commit `data.sets` pins; no app, whatever its source, scripts, workflows or environment, clones, pulls or fetches a `-seed-standard` repository, declares a content-sync command for one or names one in an environment variable (review holds this convention, no check guesses at the ways around it). That path is the loader of the seed step: after the R434 gate it reads each pin at its commit through `pinRepository` and the git driver (an unreadable pin is STACK_SEED_STANDARD_UNREADABLE, a copy that is no healthy plain standard or fills a store its set does not list is STACK_SEED_STANDARD_SCHEMA), applies it through each store's `adapter.command` over starci/data-entries@1 (a store with none is STACK_SEED_STORE_COMMAND), a dry run through every door first and then an upsert by natural key (a door that fails or refuses a key is STACK_SEED_DOOR_REFUSED), and writes one receipt per standard and commit only once every store applied; a receipt skips the pin, a changed pin is reported DATA_STANDARD_CHANGED and applies only with the set's `force: true`, once per commit; a set with a project `completeness` is left to the project."
     failureCodes:
-      - HFS_DATA_SECOND_LOADER
       - STACK_SEED_STANDARD_UNREADABLE
       - STACK_SEED_STANDARD_SCHEMA
       - STACK_SEED_STORE_COMMAND
       - STACK_SEED_DOOR_REFUSED
     enforcers:
-      - {kind: hfs, id: data-loaders}
       - {kind: hfs, id: standard-load}
   - id: R436
     code: HFS_NIVOOS_PACKAGE_MISSING

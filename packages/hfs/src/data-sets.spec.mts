@@ -1,18 +1,6 @@
 /** Every copy is written through a driver (PROJECT-STACKS-14, R427): the data sets of the stack declaration, and no bring-up loads a backup. */
-// proves: DATA_PURPOSE
-// proves: DATA_PURPOSE
-// proves: DATA_DRIVER_KIND
-// proves: DATA_DRIVER_KIND
+// proves: DATA_SET_INVALID
 // proves: DATA_COPY_NAME
-// proves: DATA_COPY_NAME
-// proves: DATA_SEED_UNPINNED
-// proves: DATA_SEED_UNPINNED
-// proves: DATA_FORCE_MISPLACED
-// proves: DATA_FORCE_MISPLACED
-// proves: DATA_BACKUP_LOADED
-// proves: DATA_BACKUP_LOADED
-// proves: DATA_EXTENSION_UNDECLARED
-// proves: DATA_EXTENSION_UNDECLARED
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -50,19 +38,19 @@ test('repositoryName takes the last path segment without .git', () => {
   assert.equal(repositoryName('D:\\data\\shop-seed-standard'), 'shop-seed-standard');
 });
 
-test('DATA_PURPOSE: a purpose outside the list, unknown stores and environments, a missing or twin id', () => {
-  assert.deepEqual(run((list) => { list[0].purpose = 'seed'; }), ['DATA_PURPOSE']);
-  assert.deepEqual(run((list) => { list[0].stores = ['ghost']; }), ['DATA_PURPOSE']);
-  assert.deepEqual(run((list) => { list[0].stores = []; }), ['DATA_PURPOSE']);
-  assert.deepEqual(run((list) => { list[1].environments = ['dev', 'staging']; }), ['DATA_PURPOSE']);
-  assert.deepEqual(run((list) => { list[1].id = 'shop-standard'; }), ['DATA_PURPOSE']);
-  assert.deepEqual(run((list) => { delete list[1].id; }), ['DATA_PURPOSE']);
+test('DATA_SET_INVALID: a purpose outside the list, unknown stores and environments, a missing or twin id', () => {
+  assert.deepEqual(run((list) => { list[0].purpose = 'seed'; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].stores = ['ghost']; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].stores = []; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[1].environments = ['dev', 'staging']; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[1].id = 'shop-standard'; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { delete list[1].id; }), ['DATA_SET_INVALID']);
 });
 
-test('DATA_DRIVER_KIND: a driver outside {git, s3}, no destination, a git destination without a repository', () => {
-  assert.deepEqual(run((list) => { list[0].to = [{ driver: 'ftp', repository: 'x' }]; }), ['DATA_DRIVER_KIND']);
-  assert.deepEqual(run((list) => { list[0].to = []; }), ['DATA_DRIVER_KIND']);
-  assert.deepEqual(run((list) => { list[0].to = [{ driver: 'git' }]; }), ['DATA_DRIVER_KIND']);
+test('DATA_SET_INVALID: a driver outside {git, s3}, no destination, a git destination without a repository', () => {
+  assert.deepEqual(run((list) => { list[0].to = [{ driver: 'ftp', repository: 'x' }]; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].to = []; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].to = [{ driver: 'git' }]; }), ['DATA_SET_INVALID']);
   assert.deepEqual(run((list) => { list[0].to = [{ driver: 's3', bucket: 'b' }]; }), [], 'negative control: an s3 destination is a driver of the list');
 });
 
@@ -91,36 +79,36 @@ test('DATA_COPY_NAME: <env> is the environment short name, else its name; a shor
   assert.deepEqual(withShort(7), ['DATA_COPY_NAME']);
 });
 
-test('DATA_FORCE_MISPLACED: maxAgeMinutes belongs to a backup, as a whole number', () => {
+test('DATA_SET_INVALID: maxAgeMinutes belongs to a backup, as a whole number', () => {
   assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 720; }), [], 'negative control');
-  assert.deepEqual(run((list) => { list[0].maxAgeMinutes = 720; }), ['DATA_FORCE_MISPLACED']);
-  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 0; }), ['DATA_FORCE_MISPLACED']);
-  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 'day'; }), ['DATA_FORCE_MISPLACED']);
+  assert.deepEqual(run((list) => { list[0].maxAgeMinutes = 720; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 0; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 'day'; }), ['DATA_SET_INVALID']);
 });
 
-test('DATA_SEED_UNPINNED: a standard carries a 40-hex commit', () => {
-  assert.deepEqual(run((list) => { delete list[0].commit; }), ['DATA_SEED_UNPINNED']);
-  assert.deepEqual(run((list) => { list[0].commit = 'main'; }), ['DATA_SEED_UNPINNED']);
-  assert.deepEqual(run((list) => { list[0].commit = COMMIT.toUpperCase(); }), ['DATA_SEED_UNPINNED']);
+test('DATA_SET_INVALID: a standard carries a 40-hex commit', () => {
+  assert.deepEqual(run((list) => { delete list[0].commit; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].commit = 'main'; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].commit = COMMIT.toUpperCase(); }), ['DATA_SET_INVALID']);
   assert.deepEqual(run((list) => { list[0].force = true; }), [], 'negative control: force on a pinned standard is lawful');
 });
 
-test('DATA_FORCE_MISPLACED: force and commit on a backup, everyMinutes on a standard, a non-boolean force', () => {
-  assert.deepEqual(run((list) => { list[1].force = true; }), ['DATA_FORCE_MISPLACED']);
-  assert.deepEqual(run((list) => { list[1].commit = COMMIT; }), ['DATA_FORCE_MISPLACED']);
-  assert.deepEqual(run((list) => { list[0].everyMinutes = 60; }), ['DATA_FORCE_MISPLACED']);
-  assert.deepEqual(run((list) => { list[0].force = 'yes'; }), ['DATA_FORCE_MISPLACED']);
+test('DATA_SET_INVALID: force and commit on a backup, everyMinutes on a standard, a non-boolean force', () => {
+  assert.deepEqual(run((list) => { list[1].force = true; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[1].commit = COMMIT; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].everyMinutes = 60; }), ['DATA_SET_INVALID']);
+  assert.deepEqual(run((list) => { list[0].force = 'yes'; }), ['DATA_SET_INVALID']);
 });
 
-test('DATA_EXTENSION_UNDECLARED: completeness is ext:<id> of a check ext/manifest.json declares', () => {
+test('DATA_SET_INVALID: completeness is ext:<id> of a check ext/manifest.json declares', () => {
   const complete = (value: unknown) => (list: Json[]): void => { list[0].completeness = value; };
   assert.deepEqual(run(complete('ext:shop-complete'), ['shop-complete']), []);
-  assert.deepEqual(run(complete('ext:shop-complete'), []), ['DATA_EXTENSION_UNDECLARED']);
-  assert.deepEqual(run(complete('shop-complete'), ['shop-complete']), ['DATA_EXTENSION_UNDECLARED']);
-  assert.deepEqual(run(complete(7), []), ['DATA_EXTENSION_UNDECLARED']);
+  assert.deepEqual(run(complete('ext:shop-complete'), []), ['DATA_SET_INVALID']);
+  assert.deepEqual(run(complete('shop-complete'), ['shop-complete']), ['DATA_SET_INVALID']);
+  assert.deepEqual(run(complete(7), []), ['DATA_SET_INVALID']);
 });
 
-test('DATA_BACKUP_LOADED: no seeds.yaml entry of any level, nor a document it names, mentions a -seed-backup repository', () => {
+test('DATA_SET_INVALID: no seeds.yaml entry of any level, nor a document it names, mentions a -seed-backup repository', () => {
   const files: Record<string, string> = {
     '.starcistacks/seeds/seeds.yaml': 'schema: starci/seeds@1\nentries:\n  - {id: plans, kind: data, path: data/plans.json, target: [node, a], mode: once}\n',
     '.starcistacks/seeds/data/plans.json': '{"plans":[]}\n',
@@ -131,8 +119,8 @@ test('DATA_BACKUP_LOADED: no seeds.yaml entry of any level, nor a document it na
   const all = Object.keys(files);
   const findings = backupLoadedFindings(all, (file) => files[file] ?? null);
   assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [
-    ['DATA_BACKUP_LOADED', '.starcistacks/dev/seeds/data/demo.json'],
-    ['DATA_BACKUP_LOADED', '.starcistacks/dev/seeds/seeds.yaml'],
+    ['DATA_SET_INVALID', '.starcistacks/dev/seeds/data/demo.json'],
+    ['DATA_SET_INVALID', '.starcistacks/dev/seeds/seeds.yaml'],
   ]);
   assert.deepEqual(backupLoadedFindings(all.filter((file) => !file.includes('/dev/')), (file) => files[file] ?? null), [], 'negative control: the shared level alone is clean');
   assert.deepEqual(backupLoadedFindings(['.starcistacks/seeds/seeds.yaml'], () => 'entries: [unclosed'), [], 'a manifest that does not parse is another rule\'s finding');
@@ -150,6 +138,6 @@ test('R427 over a work tree: the finder reads the stack declaration, ext/manifes
   const all = ['.starcistacks/application-stacks.yaml', 'ext/manifest.json'];
   assert.deepEqual(dataSetsFindings({ repoRoot: root, repo, isRoot: true, all }), []);
   fs.rmSync(path.join(root, 'ext/manifest.json'));
-  assert.deepEqual(codes(dataSetsFindings({ repoRoot: root, repo, isRoot: true, all })), ['DATA_EXTENSION_UNDECLARED']);
+  assert.deepEqual(codes(dataSetsFindings({ repoRoot: root, repo, isRoot: true, all })), ['DATA_SET_INVALID']);
   assert.deepEqual(dataSetsFindings({ repoRoot: root, repo, isRoot: false, all }), [], 'a side scope is judged by the root');
 });

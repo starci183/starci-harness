@@ -5,18 +5,17 @@
 // A copy repository is a repository whose root holds no hfs.json and whose root manifest.json carries `schema: "starci/data-manifest@1"`:
 // the manifest the driver wrote is the declaration, so no second file states it. A code project (hfs.json) is never one, whatever it tracks.
 //   in a code project:
-//   HFS_DATA_IN_CODE         a tracked copy manifest, a tracked file of the data/ blobs/ index/ tree next to one, or a sops binary-mode
-//                            envelope (`*.sops.json` with a `data` member): copy documents live in the copy repository only;
-//   HFS_DATA_DEPENDENCY      package.json (dependencies of every kind, workspaces), .gitmodules, tsconfig/jsconfig name a repository that
-//                            ends -seed-standard or -seed-backup-<env>;
+//   HFS_DATA_IN_CODE        a tracked copy manifest, a tracked file of the data/ blobs/ index/ tree next to one, or a sops binary-mode
+//                           envelope (`*.sops.json` with a `data` member): copy documents live in the copy repository only; or package.json
+//                           (dependencies of every kind, workspaces), .gitmodules, tsconfig/jsconfig naming a repository that
+//                           ends -seed-standard or -seed-backup-<env>;
 //   in a copy repository:
-//   HFS_DATA_UNSEALED        a seed-backup's file under data/ blobs/ index/ is no `*.sops.json` sops envelope;
-//   HFS_DATA_STANDARD_SEALED a seed-standard holds a sops envelope or an `*.sops.json` / `*.enc.yaml` file, or its manifest says sealing;
-//   HFS_DATA_MANIFEST_DRIFT  the manifest's `files` keys and the tracked data files disagree (sealed names carry `.sops.json` when the
-//                            sealing is sops-age), or its purpose and its format name (`<name>-seed-standard@N`,
-//                            `<name>-seed-backup-<env>@N`) disagree;
-//   HFS_DATA_FILE_SIZE       a data file, or a file of raw/ (what people author in a standard with an adapter, R434), over 4 MiB;
-//   HFS_DATA_CAP             the data files and raw/ together over 500 MiB: the data set has outgrown git and needs the s3 driver.
+//   HFS_DATA_COPY_INVALID   a seed-backup's file under data/ blobs/ index/ is no `*.sops.json` sops envelope; a seed-standard holds a sops
+//                           envelope or an `*.sops.json` / `*.enc.yaml` file, or its manifest says sealing; the manifest's `files` keys and the
+//                           tracked data files disagree (sealed names carry `.sops.json` when the sealing is sops-age), or its purpose and its
+//                           format name (`<name>-seed-standard@N`, `<name>-seed-backup-<env>@N`) disagree; a data file, or a file of raw/
+//                           (what people author in a standard with an adapter, R434), over 4 MiB; the data files and raw/ together over
+//                           500 MiB: the data set has outgrown git and needs the s3 driver.
 // raw/ is judged like the data files for sealing (a standard holds no sealed file anywhere), for size and for the manifest, whose files index
 // names data files only; data-adapter.mts (R434) judges that the outputs are the adapter's.
 // Findings name files, fields and counts, never a value; keys of a document are read, no value beyond them.
@@ -104,10 +103,10 @@ export function dataTreeInCodeFindings(manifests: readonly string[], all: readon
 /** True for the files through which a code project could depend on another repository: package.json, .gitmodules, tsconfig/jsconfig. */
 export const isDependencyFile = (file: string): boolean => /(?:^|\/)(?:package\.json|\.gitmodules|[tj]sconfig(?:\.[^/]*)?\.json)$/u.test(file);
 
-/** HFS_DATA_DEPENDENCY for one dependency file of a code project. */
+/** HFS_DATA_IN_CODE for one dependency file of a code project. */
 export function dataDependencyFindings(file: string, text: string | null): Finding[] {
   if (text === null || !isDependencyFile(file) || !text.includes('-seed-')) return [];
-  const at = (where: string, repository: string) => [found('HFS_DATA_DEPENDENCY', file, `${file} names the copy repository ${repository} in ${where}; a code project never depends on a seed copy (no dependency, submodule, workspace or path into one): its data enters through the bring-up's seed step or an explicit sync (PROJECT-STACKS-13)`, { repository })];
+  const at = (where: string, repository: string) => [found('HFS_DATA_IN_CODE', file, `${file} names the copy repository ${repository} in ${where}; a code project never depends on a seed copy (no dependency, submodule, workspace or path into one): its data enters through the bring-up's seed step or an explicit sync (PROJECT-STACKS-13)`, { repository })];
   if (!file.endsWith('package.json')) {
     const name = COPY_NAME.exec(text)?.[0];
     return name === undefined ? [] : at(file.endsWith('.gitmodules') ? 'a submodule' : 'a path', name);
@@ -148,9 +147,9 @@ export function dataBoundaryFindings({ repoRoot, repo, isRoot, all = [] }: { rep
 /** The reads a copy repository's judgement makes: the tracked paths, a file's text (null: absent, binary or too large) and its byte size (null: unknown). */
 export interface CopyReader { files: readonly string[]; read: (file: string) => string | null; sizeOf: (file: string) => number | null }
 
-const drift = (message: string, file = DATA_MANIFEST): Finding => found('HFS_DATA_MANIFEST_DRIFT', file, `${message} (PROJECT-STACKS-13)`);
+const drift = (message: string, file = DATA_MANIFEST): Finding => found('HFS_DATA_COPY_INVALID', file, `${message} (PROJECT-STACKS-13)`);
 
-/** HFS_DATA_MANIFEST_DRIFT: the purpose against the format name and the sealing, the `files` keys against the tracked data files. */
+/** HFS_DATA_COPY_INVALID: the purpose against the format name and the sealing, the `files` keys against the tracked data files. */
 function driftFindings(manifest: Record<string, Parsed>, files: readonly string[]): Finding[] {
   const out: Finding[] = [];
   const named = formatPurpose(manifest.format);
@@ -174,34 +173,33 @@ const sealedByName = (file: string): boolean => file.endsWith(SEALED_SUFFIX) || 
 const MAYBE_ENVELOPE = /\.(?:json|ya?ml|env)$/u;
 
 /**
- * Findings of R400 in a copy repository whose manifest is `manifestText`: sealing by purpose (HFS_DATA_UNSEALED, HFS_DATA_STANDARD_SEALED),
- * the manifest against the tracked data files (HFS_DATA_MANIFEST_DRIFT), the size of a file (HFS_DATA_FILE_SIZE) and of the whole snapshot
- * (HFS_DATA_CAP).
+ * Findings of R400 in a copy repository whose manifest is `manifestText`: sealing by purpose, the manifest
+ * against the tracked data files, the size of a file and of the whole snapshot: all HFS_DATA_COPY_INVALID.
  */
 export function dataCopyFindings({ manifestText, files, read, sizeOf }: { manifestText: string | null } & CopyReader): Finding[] {
   const manifest = copyManifestOf(parse(manifestText));
-  if (manifest === null) return [found('HFS_DATA_MANIFEST_DRIFT', DATA_MANIFEST, `${DATA_MANIFEST} is no copy manifest: it carries schema "${DATA_MANIFEST_SCHEMA}" (PROJECT-STACKS-13)`)];
+  if (manifest === null) return [found('HFS_DATA_COPY_INVALID', DATA_MANIFEST, `${DATA_MANIFEST} is no copy manifest: it carries schema "${DATA_MANIFEST_SCHEMA}" (PROJECT-STACKS-13)`)];
   const findings = driftFindings(manifest, files);
   const dataFiles = files.filter(isDataFile);
   if (manifest.purpose === 'seed-backup') {
     for (const file of dataFiles) {
       const text = read(file);
       if (!file.endsWith(SEALED_SUFFIX) || text === null || !isSopsEnvelope(text))
-        findings.push(found('HFS_DATA_UNSEALED', file, `${file} is not sealed: every file under data/, blobs/ and index/ of a seed-backup is a ${SEALED_SUFFIX} sops envelope (binary mode, age) to the environment's recipients; seal it with the driver before the commit (PROJECT-STACKS-13)`));
+        findings.push(found('HFS_DATA_COPY_INVALID', file, `${file} is not sealed: every file under data/, blobs/ and index/ of a seed-backup is a ${SEALED_SUFFIX} sops envelope (binary mode, age) to the environment's recipients; seal it with the driver before the commit (PROJECT-STACKS-13)`));
     }
   } else if (manifest.purpose === 'seed-standard') {
-    if (manifest.sealing !== undefined && manifest.sealing !== 'none') findings.push(found('HFS_DATA_STANDARD_SEALED', DATA_MANIFEST, `${DATA_MANIFEST} says sealing ${JSON.stringify(manifest.sealing)}; a seed-standard is plain and holds no secret (PROJECT-STACKS-13)`));
+    if (manifest.sealing !== undefined && manifest.sealing !== 'none') findings.push(found('HFS_DATA_COPY_INVALID', DATA_MANIFEST, `${DATA_MANIFEST} says sealing ${JSON.stringify(manifest.sealing)}; a seed-standard is plain and holds no secret (PROJECT-STACKS-13)`));
     for (const file of files) {
       if (sealedByName(file) || (MAYBE_ENVELOPE.test(file) && file !== DATA_MANIFEST && isSopsEnvelope(read(file))))
-        findings.push(found('HFS_DATA_STANDARD_SEALED', file, `${file} is sealed; a seed-standard is plain, readable and diffable, and holds no secret: a credential stays in the project's stack custody (PROJECT-STACKS-13)`));
+        findings.push(found('HFS_DATA_COPY_INVALID', file, `${file} is sealed; a seed-standard is plain, readable and diffable, and holds no secret: a credential stays in the project's stack custody (PROJECT-STACKS-13)`));
     }
   }
   let total = 0;
   for (const file of files.filter(isSizedFile)) {
     const size = sizeOf(file) ?? 0;
     total += size;
-    if (size > GIT_SHARD_BYTES) findings.push(found('HFS_DATA_FILE_SIZE', file, `${file} is ${String(size)} bytes; no data file or raw/ file of a git copy exceeds ${String(GIT_SHARD_BYTES)} bytes (4 MiB): write it in smaller shards or chunks, or split the authored file (PROJECT-STACKS-13)`, { bytes: size }));
+    if (size > GIT_SHARD_BYTES) findings.push(found('HFS_DATA_COPY_INVALID', file, `${file} is ${String(size)} bytes; no data file or raw/ file of a git copy exceeds ${String(GIT_SHARD_BYTES)} bytes (4 MiB): write it in smaller shards or chunks, or split the authored file (PROJECT-STACKS-13)`, { bytes: size }));
   }
-  if (total > GIT_CAP_BYTES) findings.push(found('HFS_DATA_CAP', DATA_MANIFEST, `the data files and raw/ of this copy hold ${String(total)} bytes, over the ${String(GIT_CAP_BYTES)} bytes (500 MiB) a git copy may hold: the data set has outgrown git, declare the s3 driver for it (PROJECT-STACKS-13, PROJECT-STACKS-14)`, { bytes: total }));
+  if (total > GIT_CAP_BYTES) findings.push(found('HFS_DATA_COPY_INVALID', DATA_MANIFEST, `the data files and raw/ of this copy hold ${String(total)} bytes, over the ${String(GIT_CAP_BYTES)} bytes (500 MiB) a git copy may hold: the data set has outgrown git, declare the s3 driver for it (PROJECT-STACKS-13, PROJECT-STACKS-14)`, { bytes: total }));
   return findings;
 }

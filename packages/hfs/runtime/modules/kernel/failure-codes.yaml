@@ -7357,97 +7357,41 @@ STACKS_COMPONENT_SIDE:
   owner: op-retry
   kind: check-finding
 HFS_DATA_IN_CODE:
-  title: "A code project tracks a seed copy document"
-  title_vi: "Dự án mã nguồn đang chứa tài liệu của bản sao dữ liệu"
-  meaning_vi: "Kho mã nguồn theo dõi một manifest bản sao (schema starci/data-manifest@1), một tệp trong cây data/, blobs/, index/ cạnh manifest đó, hoặc một phong bì sops chế độ binary (*.sops.json có thành viên data). Dữ liệu chỉ nằm trong kho bản sao <tên>-seed-standard hoặc <tên>-seed-backup-<env>."
+  title: "A code project tracks seed copy data or depends on a copy repository"
+  title_vi: "Dự án mã nguồn chứa dữ liệu của bản sao hoặc phụ thuộc vào kho bản sao"
+  meaning_vi: "Kho mã nguồn theo dõi một manifest bản sao (schema starci/data-manifest@1), một tệp trong cây data/, blobs/, index/ cạnh manifest đó, hoặc một phong bì sops chế độ binary (*.sops.json có thành viên data); hoặc package.json (dependencies, workspaces), .gitmodules hay tsconfig/jsconfig nêu tên kho kết thúc bằng -seed-standard hoặc -seed-backup-<env>. Dữ liệu chỉ nằm trong kho bản sao <tên>-seed-standard hoặc <tên>-seed-backup-<env>, và mã nguồn không được phụ thuộc vào nội dung bản sao."
   causes_vi:
     - "Vi phạm R400: một bản xuất dữ liệu được commit vào kho mã nguồn (PROJECT-STACKS-13)."
-  nextStep_vi: "Chuyển tệp sang kho bản sao qua driver dữ liệu, rồi xoá nó khỏi dự án mã nguồn; fixture của test dùng dữ liệu tổng hợp."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_DEPENDENCY:
-  title: "A code project depends on a seed copy repository"
-  title_vi: "Dự án mã nguồn phụ thuộc vào kho bản sao dữ liệu"
-  meaning_vi: "package.json (dependencies, workspaces), .gitmodules hoặc tsconfig/jsconfig nêu tên kho kết thúc bằng -seed-standard hoặc -seed-backup-<env>; mã nguồn không được phụ thuộc vào nội dung bản sao."
-  causes_vi:
     - "Vi phạm R400: kho bản sao được thêm làm package, submodule, workspace hoặc đường dẫn import (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tham chiếu đó; dữ liệu vào ứng dụng qua bước seed của bring-up hoặc một lệnh sync tường minh."
+  nextStep_vi: "Chuyển tệp sang kho bản sao qua driver dữ liệu, rồi xoá nó khỏi dự án mã nguồn; fixture của test dùng dữ liệu tổng hợp. Với phụ thuộc: xoá tham chiếu đó; dữ liệu vào ứng dụng qua bước seed của bring-up hoặc một lệnh sync tường minh."
   owner: op-retry
   kind: check-finding
-HFS_DATA_UNSEALED:
-  title: "A file of a seed-backup copy is not sealed"
-  title_vi: "Tệp của bản sao seed-backup chưa được niêm phong"
-  meaning_vi: "Mọi tệp trong data/, blobs/, index/ của seed-backup là phong bì sops chế độ binary (*.sops.json, age) gửi tới recipients của môi trường; tệp này không phải."
+
+HFS_DATA_COPY_INVALID:
+  title: "A seed copy repository breaks its sealing, manifest or size law"
+  title_vi: "Kho bản sao dữ liệu vi phạm luật niêm phong, manifest hoặc kích thước"
+  meaning_vi: "Trong kho bản sao (không có hfs.json, manifest.json gốc có schema starci/data-manifest@1), thông báo của lỗi nêu đúng điểm sai. Niêm phong: mọi tệp trong data/, blobs/, index/ của seed-backup phải là phong bì sops chế độ binary (*.sops.json, age) gửi tới recipients của môi trường; seed-standard là bản rõ, không chứa phong bì sops, tệp *.sops.json hoặc *.enc.yaml, manifest không khai sealing. Manifest: manifest.json phải liệt kê đúng các tệp trong data/, blobs/, index/ (tên có đuôi .sops.json khi sealing là sops-age) và purpose phải khớp tên format (<tên>-seed-standard@N hoặc <tên>-seed-backup-<env>@N). Kích thước: không tệp dữ liệu hoặc tệp raw/ nào của bản sao git vượt 4 MiB, và tổng các tệp dữ liệu cùng raw/ tối đa 500 MiB; vượt mức này bộ dữ liệu đã lớn hơn git."
   causes_vi:
-    - "Vi phạm R400: một tệp rõ được stage vào kho seed-backup (PROJECT-STACKS-13)."
-  nextStep_vi: "Bỏ stage tệp và để driver dữ liệu ghi bản sao (niêm phong cùng lúc), rồi commit lại."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_STANDARD_SEALED:
-  title: "A seed-standard copy holds a sealed file"
-  title_vi: "Bản sao seed-standard chứa tệp niêm phong"
-  meaning_vi: "Seed-standard là bản rõ, dễ đọc và so sánh, không chứa bí mật: không có phong bì sops, tệp *.sops.json hoặc *.enc.yaml, manifest không khai sealing."
-  causes_vi:
-    - "Vi phạm R400: một bí mật hoặc tệp niêm phong được đưa vào kho seed-standard (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tệp niêm phong khỏi kho; bí mật của dự án nằm trong kho lưu giữ của stack (PROJECT-STACKS-5)."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_MANIFEST_DRIFT:
-  title: "The copy manifest and its data files disagree"
-  title_vi: "manifest.json của bản sao lệch với các tệp dữ liệu"
-  meaning_vi: "manifest.json phải liệt kê đúng các tệp trong data/, blobs/, index/ (tên có đuôi .sops.json khi sealing là sops-age), purpose phải khớp tên format (<tên>-seed-standard@N hoặc <tên>-seed-backup-<env>@N)."
-  causes_vi:
+    - "Vi phạm R400: một tệp rõ được stage vào kho seed-backup, hoặc một bí mật hay tệp niêm phong được đưa vào kho seed-standard (PROJECT-STACKS-13)."
     - "Vi phạm R400: một tệp được thêm hoặc xoá mà manifest không đổi theo, hoặc manifest được sửa tay (PROJECT-STACKS-13)."
-  nextStep_vi: "Chạy lại driver dữ liệu để ghi manifest và tệp cùng lúc, không sửa tay."
+    - "Vi phạm R400: một shard hoặc chunk quá lớn, hoặc snapshot vượt trần (PROJECT-STACKS-13, PROJECT-STACKS-14)."
+  nextStep_vi: "Niêm phong: bỏ stage tệp và để driver dữ liệu ghi bản sao (niêm phong cùng lúc), rồi commit lại; với seed-standard thì xoá tệp niêm phong khỏi kho, bí mật của dự án nằm trong kho lưu giữ của stack (PROJECT-STACKS-5). Manifest: chạy lại driver dữ liệu để ghi manifest và tệp cùng lúc, không sửa tay. Kích thước: ghi lại qua driver dữ liệu với shard nhỏ hơn; nếu cả bộ vượt 500 MiB thì khai báo driver s3 cho bộ dữ liệu đó trong application-stacks.yaml."
   owner: op-retry
   kind: check-finding
-HFS_DATA_FILE_SIZE:
-  title: "A data file of a git copy is over 4 MiB"
-  title_vi: "Tệp dữ liệu của bản sao git vượt 4 MiB"
-  meaning_vi: "Không tệp dữ liệu nào của bản sao git được vượt 4 MiB."
-  causes_vi:
-    - "Vi phạm R400: một shard hoặc chunk quá lớn (PROJECT-STACKS-13)."
-  nextStep_vi: "Ghi lại qua driver dữ liệu với shard nhỏ hơn."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_CAP:
-  title: "A git copy holds more than 500 MiB"
-  title_vi: "Bản sao git chứa quá 500 MiB"
-  meaning_vi: "Tổng các tệp dữ liệu của một bản sao git tối đa 500 MiB; vượt mức này bộ dữ liệu đã lớn hơn git."
-  causes_vi:
-    - "Vi phạm R400: snapshot vượt trần (PROJECT-STACKS-13, PROJECT-STACKS-14)."
-  nextStep_vi: "Khai báo driver s3 cho bộ dữ liệu đó trong application-stacks.yaml."
-  owner: op-retry
-  kind: check-finding
+
 HFS_DATA_ADAPTER_DRIFT:
-  title: "A seed-standard's output is not what its adapter writes from raw/"
-  title_vi: "Đầu ra của seed-standard không khớp với những gì adapter ghi từ raw/"
-  meaning_vi: "Trong kho seed-standard có adapter/, manifest.json, data/, blobs/ và index/ đã commit phải trùng từng byte với đầu ra của node adapter/main.ts chạy trên raw/ (theo index). Adapter không chạy được, hai lần chạy cho kết quả khác nhau (adapter không tất định), một tệp đầu ra lệch, thiếu hoặc thừa so với commit, hoặc adapter/ có thay đổi chưa stage đều bị từ chối."
+  title: "A seed-standard's adapter is unguarded or its output is not what the adapter writes from raw/"
+  title_vi: "Adapter của seed-standard thiếu lớp bảo vệ hoặc đầu ra không khớp với những gì adapter ghi từ raw/"
+  meaning_vi: "Trong kho seed-standard có adapter/ (R434), thông báo của lỗi nêu đúng điểm sai. Đầu ra: manifest.json, data/, blobs/ và index/ đã commit phải trùng từng byte với đầu ra của node adapter/main.ts chạy trên raw/ (theo index); adapter không chạy được, hai lần chạy cho kết quả khác nhau (adapter không tất định), một tệp đầu ra lệch, thiếu hoặc thừa so với commit, hoặc adapter/ có thay đổi chưa stage đều bị từ chối. Lớp bảo vệ: kho phải theo dõi adapter/main.ts, adapter/package.json, hook .githooks/pre-commit và workflow .github/workflows/seed-standard.yml; hook và workflow đều chạy starci app check --staged để kiểm lại adapter trước mỗi commit và trên CI."
   causes_vi:
     - "Vi phạm R434: data/ bị sửa tay trong kho có adapter, hoặc raw/ được commit mà không chạy lại adapter (PROJECT-STACKS-13)."
     - "Adapter dùng đồng hồ, id ngẫu nhiên hoặc thứ tự hệ thống tệp nên mỗi lần chạy ra kết quả khác."
     - "Chưa cài phụ thuộc của adapter (npm ci --prefix adapter)."
-  nextStep_vi: "Sửa raw/ (hoặc adapter/), chạy lại node adapter/main.ts từ gốc kho rồi stage cả đầu ra; không sửa tay data/. Adapter phải tất định: không đồng hồ, không id ngẫu nhiên."
-  owner: op-retry
-  kind: check-finding
-HFS_DATA_ADAPTER_UNGUARDED:
-  title: "An adapter repository lacks its entry, package, commit hook or CI workflow"
-  title_vi: "Kho có adapter thiếu entry, package, hook commit hoặc workflow CI"
-  meaning_vi: "Kho seed-standard có adapter/ phải theo dõi adapter/main.ts, adapter/package.json, hook .githooks/pre-commit và workflow .github/workflows/seed-standard.yml; hook và workflow đều chạy starci app check --staged để kiểm lại adapter trước mỗi commit và trên CI."
-  causes_vi:
     - "Vi phạm R434: kho được dựng tay, thiếu phần mà starci data standard init --adapter viết (PROJECT-STACKS-13)."
-  nextStep_vi: "Chạy starci data standard init --adapter trong kho để viết các tệp còn thiếu, rồi commit chúng."
+  nextStep_vi: "Đầu ra: sửa raw/ (hoặc adapter/), chạy lại node adapter/main.ts từ gốc kho rồi stage cả đầu ra; không sửa tay data/. Adapter phải tất định: không đồng hồ, không id ngẫu nhiên. Lớp bảo vệ: chạy starci data standard init --adapter trong kho để viết các tệp còn thiếu, rồi commit chúng."
   owner: op-retry
   kind: check-finding
-HFS_DATA_SECOND_LOADER:
-  title: "An app reads a seed-standard by a path other than the bring-up seed step"
-  title_vi: "Ứng dụng đọc seed-standard qua đường khác ngoài bước seed của bring-up"
-  meaning_vi: "Seed-standard chỉ vào ứng dụng qua bước seed của bring-up, tại commit mà data.sets ghim. Một dòng chạy git clone/pull/fetch trên kho -seed-standard, một lệnh kiểu content sync, hoặc một biến môi trường nêu kho -seed-standard (hay tên chứa SEED_STANDARD) là đường nạp thứ hai và bị từ chối."
-  causes_vi:
-    - "Vi phạm R435: script hoặc mã nguồn tự kéo nội dung từ kho seed-standard (PROJECT-STACKS-13)."
-  nextStep_vi: "Khai báo seed-standard trong data.sets của .starcistacks/application-stacks.yaml (ghim commit) và xoá đường nạp đó; bring-up nạp chuẩn bằng upsert theo khoá tự nhiên."
-  owner: op-retry
-  kind: check-finding
+
 STACK_SEED_ADAPTER_DRIFT:
   title: "The seed step refused a pinned seed-standard whose adapter output drifts"
   title_vi: "Bước seed từ chối seed-standard đã ghim có đầu ra adapter bị lệch"
@@ -7494,7 +7438,7 @@ STACK_SEED_STORE_COMMAND:
   title_vi: "Kho mà seed-standard nạp vào không có cửa seed"
   meaning_vi: "Chuẩn được áp dụng qua cửa seed của ứng dụng: adapter.command của từng kho trong data.stores, phục vụ kho qua giao thức starci/data-entries@1 (serveStore của @starci/seed). Kho không khai lệnh đó, hoặc không được khai trong data.stores, thì chuẩn không có đường vào."
   causes_vi:
-    - "data.stores thiếu adapter.command cho kho mà một seed-standard nạp (R426 DATA_STORE_ADAPTER)."
+    - "data.stores thiếu adapter.command cho kho mà một seed-standard nạp (R426 DATA_STORE_INVALID)."
     - "Chuẩn nạp một kho mà data.stores không khai."
   nextStep_vi: "Thêm vào ứng dụng một lệnh phục vụ kho bằng serveStore và khai argv của nó ở adapter.command của kho, rồi chạy lại bring-up."
   owner: op-retry
@@ -7509,60 +7453,30 @@ STACK_SEED_DOOR_REFUSED:
   nextStep_vi: "Chạy lệnh của kho với import trên một bản sao dev để xem mã từ chối, sửa cửa của ứng dụng hoặc nội dung chuẩn, rồi chạy lại bring-up."
   owner: op-retry
   kind: verb-refusal
-DATA_STORE_UNDECLARED:
-  title: "A stateful component is neither a store nor derived"
-  title_vi: "Thành phần có trạng thái chưa là kho dữ liệu cũng chưa là derived"
-  meaning_vi: "Mọi thành phần có trạng thái (hoặc backing đã khai) là component của một store hoặc của một mục derived trong khối data; store hoặc derived không được nêu thành phần không có."
+DATA_STORE_INVALID:
+  title: "The data stores of the stack declaration are incomplete or invalid"
+  title_vi: "Khai báo kho dữ liệu của stack thiếu hoặc không hợp lệ"
+  meaning_vi: "Khối data của application-stacks.yaml (R426, PROJECT-STACKS-14) vi phạm; thông báo của lỗi nêu đúng điểm sai. Mọi thành phần có trạng thái (hoặc backing đã khai) là component của một store hoặc của một mục derived; store hoặc derived không được nêu thành phần không có. Store cần id duy nhất, kind là database hoặc storage, level là logical hoặc physical. adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter; store của một bộ seed-backup, hay store mà một seed-standard nạp, còn khai adapter.command (lệnh của ứng dụng phục vụ store qua starci/data-entries@1). Mục derived nêu from là một store đã khai và rebuild không rỗng."
   causes_vi:
     - "Vi phạm R426: thiếu khai báo data.stores hoặc data.derived (PROJECT-STACKS-14)."
-  nextStep_vi: "Khai báo store kèm adapter, hoặc khai thành phần là derived từ một store và cách dựng lại."
+    - "Vi phạm R426: id, kind hoặc level của store sai, hoặc đường dẫn adapter thiếu, không được theo dõi, hoặc không có lớp implements StoreAdapter (PROJECT-STACKS-14)."
+    - "Vi phạm R426: mục derived thiếu nguồn hoặc cách dựng lại (PROJECT-STACKS-14)."
+  nextStep_vi: "Khai store kèm adapter, hoặc khai thành phần là derived từ một store và cách dựng lại; sửa id, kind, level của store (kind mới là thay đổi của harness); trỏ adapter.module tới tệp chứa lớp implements StoreAdapter; sửa from thành store đã khai và ghi cách dựng lại thành phần."
   owner: op-retry
   kind: check-finding
-DATA_STORE_KIND:
-  title: "A data store has no id, a twin id or a kind outside the list"
-  title_vi: "Kho dữ liệu thiếu id, trùng id hoặc kind ngoài danh sách đóng"
-  meaning_vi: "Store cần id duy nhất, kind là database hoặc storage, level là logical hoặc physical."
+
+DATA_SET_INVALID:
+  title: "A data set of the stack declaration is invalid"
+  title_vi: "Bộ dữ liệu trong khai báo stack không hợp lệ"
+  meaning_vi: "Một mục data.sets của application-stacks.yaml (R427, PROJECT-STACKS-14) vi phạm; thông báo của lỗi nêu đúng điểm sai. Mỗi mục có id duy nhất, purpose seed-standard hoặc seed-backup, stores nêu store đã khai, environments nêu môi trường stack đã khai. Mỗi to[].driver là git hoặc s3; đích git nêu repository. Mỗi seed-standard có commit là 40 ký tự hex. force và commit chỉ thuộc seed-standard, everyMinutes và maxAgeMinutes chỉ thuộc seed-backup. Không mục seeds.yaml nào (mọi cấp) và không tài liệu nào chúng nêu được nhắc tới kho -seed-backup: backup chỉ được đồng bộ tường minh vào cùng môi trường. completeness là ext:<id> của một check trong ext/manifest.json."
   causes_vi:
-    - "Vi phạm R426 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa id, kind, level của store; kind mới là thay đổi của harness."
+    - "Vi phạm R427: id, purpose, stores, environments hoặc driver của bộ dữ liệu sai (PROJECT-STACKS-14)."
+    - "Vi phạm R427: seed-standard chưa ghim commit, hoặc force, commit, everyMinutes, maxAgeMinutes đặt sai loại bộ dữ liệu (PROJECT-STACKS-13)."
+    - "Vi phạm R427: seed của bring-up nạp kho seed-backup, hoặc completeness không nêu check mở rộng đã khai (PROJECT-STACKS-13)."
+  nextStep_vi: "Sửa id, purpose, stores, environments hoặc driver của bộ dữ liệu (driver mới là thay đổi của harness); ghi commit đã duyệt của kho seed-standard; chuyển hoặc xoá trường đặt sai loại; xoá tham chiếu kho seed-backup khỏi seeds và dùng sync tường minh để khôi phục; khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
-DATA_STORE_ADAPTER:
-  title: "A data store has no adapter source file"
-  title_vi: "Kho dữ liệu thiếu tệp adapter"
-  meaning_vi: "adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter; store của một bộ seed-backup còn khai adapter.command (lệnh của ứng dụng phục vụ store qua starci/data-entries@1)."
-  causes_vi:
-    - "Vi phạm R426: đường dẫn thiếu, không được theo dõi, hoặc không có lớp implements StoreAdapter (PROJECT-STACKS-14)."
-  nextStep_vi: "Trỏ adapter.module tới tệp chứa lớp implements StoreAdapter."
-  owner: op-retry
-  kind: check-finding
-DATA_DERIVED_SOURCE:
-  title: "A derived component has no declared source or rebuild"
-  title_vi: "Thành phần derived thiếu nguồn hoặc cách dựng lại"
-  meaning_vi: "Mục derived nêu from là một store đã khai và rebuild không rỗng."
-  causes_vi:
-    - "Vi phạm R426 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa from thành store đã khai và ghi cách dựng lại thành phần."
-  owner: op-retry
-  kind: check-finding
-DATA_PURPOSE:
-  title: "A data set has no valid purpose, stores or environments"
-  title_vi: "Bộ dữ liệu thiếu purpose, stores hoặc environments hợp lệ"
-  meaning_vi: "Mỗi mục data.sets có id duy nhất, purpose seed-standard hoặc seed-backup, stores nêu store đã khai, environments nêu môi trường stack đã khai."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa id, purpose, stores hoặc environments của bộ dữ liệu."
-  owner: op-retry
-  kind: check-finding
-DATA_DRIVER_KIND:
-  title: "A copy destination has no valid driver"
-  title_vi: "Đích của bản sao thiếu driver hợp lệ"
-  meaning_vi: "Mỗi to[].driver là git hoặc s3; đích git nêu repository."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-14)."
-  nextStep_vi: "Sửa driver; driver mới là thay đổi của harness."
-  owner: op-retry
-  kind: check-finding
+
 DATA_COPY_NAME:
   title: "A copy repository name breaks the naming law"
   title_vi: "Tên kho bản sao sai quy ước"
@@ -7570,42 +7484,6 @@ DATA_COPY_NAME:
   causes_vi:
     - "Vi phạm R427 (PROJECT-STACKS-13)."
   nextStep_vi: "Đổi tên kho theo quy ước."
-  owner: op-retry
-  kind: check-finding
-DATA_SEED_UNPINNED:
-  title: "A seed-standard is not pinned by commit"
-  title_vi: "Seed-standard chưa được ghim bằng commit"
-  meaning_vi: "Mỗi seed-standard có commit là 40 ký tự hex."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Ghi commit đã duyệt của kho seed-standard."
-  owner: op-retry
-  kind: check-finding
-DATA_FORCE_MISPLACED:
-  title: "force, commit or everyMinutes is on the wrong kind of set"
-  title_vi: "force, commit hoặc everyMinutes đặt sai loại bộ dữ liệu"
-  meaning_vi: "force và commit chỉ thuộc seed-standard, everyMinutes chỉ thuộc seed-backup."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Chuyển hoặc xoá trường đó."
-  owner: op-retry
-  kind: check-finding
-DATA_BACKUP_LOADED:
-  title: "A bring-up seed loads a seed-backup repository"
-  title_vi: "Seed của bring-up nạp kho seed-backup"
-  meaning_vi: "Không mục seeds.yaml nào (mọi cấp) và không tài liệu nào chúng nêu được nhắc tới kho -seed-backup: backup chỉ được đồng bộ tường minh vào cùng môi trường."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Xoá tham chiếu khỏi seeds; dùng sync tường minh để khôi phục."
-  owner: op-retry
-  kind: check-finding
-DATA_EXTENSION_UNDECLARED:
-  title: "A data set completeness names no declared extension check"
-  title_vi: "completeness của bộ dữ liệu không nêu check mở rộng đã khai"
-  meaning_vi: "completeness là ext:<id> của một check trong ext/manifest.json."
-  causes_vi:
-    - "Vi phạm R427 (PROJECT-STACKS-13)."
-  nextStep_vi: "Khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
 STORAGE_PUBLIC_ROUTE_MISSING:

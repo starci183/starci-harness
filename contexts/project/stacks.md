@@ -669,7 +669,7 @@ the committed `manifest.json`, `data/`, `blobs/` and `index/`; a run that fails,
 hand edit of `data/`, `raw/` committed without its output and an `adapter/` change left unstaged are HFS_DATA_ADAPTER_DRIFT. The adapter, and the git and npm
 the bring-up gate runs in its scratch checkout, run without the caller's `GIT_*` variables: under a hook they would point the scratch git
 of `renderStandard` at the user's repository. An adapter
-repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_UNGUARDED. `starci data standard init [--adapter]
+repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_DRIFT. `starci data standard init [--adapter]
 [--dir <folder>] [--name <name>-seed-standard] [--force]` writes the guard, `.gitattributes`, an empty plain manifest (byte for byte what the driver renders for no entry)
 and, with `--adapter`, `raw/README.md` and a compiling `adapter/` stub, and sets `core.hooksPath` to `.githooks`; a file a person changed is
 kept unless `--force`. The folder is named `<name>-seed-standard`; a repository converted in place during its rename passes `--name`, which is
@@ -708,9 +708,8 @@ upserts the lessons into the `database` store and the images into the `storage` 
 destination, no project `completeness`) through `pinRepository` into the harness's cache and, when the pinned commit carries `adapter/`,
 installs it from its lockfile in a scratch checkout and runs the same drift check; a pin whose output drifts, or that cannot be read, is
 refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded (an `npm ci` of its adapter that fails is STACK_SEED_ADAPTER_INSTALL, a checkout that fails STACK_SEED_STANDARD_UNREADABLE). A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
-commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: a git clone, pull or fetch of a
-`-seed-standard` repository, a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435, an error). Known
-gap: R435 reads one line at a time, so a repository name kept in a variable and cloned on another line is held by review.
+commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: no git clone, pull or fetch of a
+`-seed-standard` repository, no content-sync command, no environment variable naming one. The one path is the loader of the seed step (R435); review holds the convention, no check guesses at the ways around it.
 
 **The loader** (`packages/hfs/stack/standard-load.mts`, called by `seedStep` of `stack/seeds.mts` after the gate and before the levels: a
 standard is how the environment is born). Per pin of the environment, in declaration order:
@@ -796,12 +795,11 @@ rule of PROJECT-STACKS-6, take a backup first) and `DATA_SYNC_UNREACHABLE` (the 
 docker-compose environment is synced). The harness reaches a store through its declared `adapter.command` (PROJECT-STACKS-14), run from the app root in the environment's custody;
 no value, store error text or identity reaches an output.
 
-Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
-`HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`, raw/ included); R427 (the data sets);
-R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_INSTALL`); R435 (`data-loaders`:
-`HFS_DATA_SECOND_LOADER`; `standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
+Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`; in a copy repository's commit hook
+`HFS_DATA_COPY_INVALID`, raw/ included); R427 (the data sets);
+R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_INSTALL`); R435 (`standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
 `STACK_SEED_DOOR_REFUSED`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
-`packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
+`packages/hfs/src/data-adapter.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
 
 ## PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver
 
@@ -862,9 +860,8 @@ protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <opt
 of a `seed-backup` set declares one, and so does a store a `seed-standard` fills (no project `completeness`): that command is the app's **seed door**,
 the one way the bring-up's loader writes a standard into the store (PROJECT-STACKS-13, "The loader").
 
-Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER` including the `command` of a backed-up store and of a store a standard fills, `DATA_DERIVED_SOURCE`) and R427
-(`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
-`DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
+Enforced by: R426 (`data-stores`: `DATA_STORE_INVALID`, including the `command` of a backed-up store and of a store a standard fills) and R427
+(`data-sets`: `DATA_SET_INVALID`, `DATA_COPY_NAME`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
 
 ## PROJECT-STACKS-15 An object store a dev environment runs has a public route; links are built on it, never on the loopback
 
