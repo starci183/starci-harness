@@ -1656,10 +1656,7 @@ slots:
       - references/**
     rules:
       - HFS_BRAND_INVALID
-      - HFS_BRAND_MISSING
-      - HFS_BRAND_PROMPT_STALE
-      - HFS_BRAND_PROMPT_INCOMPLETE
-      - HFS_BRAND_BASE_UNKNOWN
+      - HFS_BRAND_PROMPT_INVALID
   - id: app.starcistacks.canvas
     profiles:
       - app

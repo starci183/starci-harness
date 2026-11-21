@@ -7597,51 +7597,16 @@ HFS_BRAND_INVALID:
   owner: op-retry
   kind: check-finding
 
-HFS_BRAND_MISSING:
-  title: "An app with prompt files has the brand sheet they are made from"
-  title_vi: "App có tệp prompt ảnh thì phải có tờ thương hiệu để tạo prompt"
-  meaning_vi: "Có tệp statics/**/*.prompt.yaml nhưng app không có .starcistacks/brand/illustration.yaml đọc được."
+HFS_BRAND_PROMPT_INVALID:
+  title: "A prompt file is not made from the brand sheet's current base prompt"
+  title_vi: "Tệp prompt ảnh không được tạo từ base prompt hiện hành của tờ thương hiệu"
+  meaning_vi: "Một tệp statics/**/*.prompt.yaml (R437, PROJECT-BRAND-1, PROJECT-BRAND-2) không khớp tờ thương hiệu; thông báo của lỗi nêu đúng điểm sai. Thiếu tờ: có tệp prompt nhưng app không có .starcistacks/brand/illustration.yaml đọc được (hay media.yaml). Cũ: tệp không ghi basePrompt.version, hoặc ghi một phiên bản khác phiên bản hiện hành của base nó nêu. Thiếu phần: tệp không phải YAML, thiếu subject, hoặc prompt không bắt đầu bằng basePrompt.text hiện hành. Base lạ: basePrompt.name (mặc định illustration) không có trong .starcistacks/brand/illustration.yaml (base illustration) lẫn .starcistacks/brand/media.yaml (bases)."
   causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-1, PROJECT-BRAND-2): ảnh AI phải được prompt từ basePrompt của thư mục brand, nếu không mỗi ảnh một phong cách."
-    - "App có từ trước khi có thư mục brand, hoặc thư mục bị xoá."
-  nextStep_vi: "Tạo .starcistacks/brand/ từ bản khởi tạo của starci app scaffold (templates/app/skeleton*/.starcistacks/brand/), điền thương hiệu rồi tạo lại prompt của các ảnh. `--env local` chỉ liệt kê, `--env prod` chặn."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-HFS_BRAND_PROMPT_STALE:
-  title: "A prompt file records the current basePrompt version"
-  title_vi: "Tệp prompt ảnh ghi đúng phiên bản basePrompt hiện hành"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml không ghi basePrompt.version, hoặc ghi một phiên bản khác phiên bản trong .starcistacks/brand/illustration.yaml."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): basePrompt đã đổi (version tăng) sau khi ảnh được tạo, nên ảnh mang phong cách cũ."
-    - "Tệp prompt viết tay, quên ghi basePrompt.version."
+    - "Vi phạm R437 (PROJECT-BRAND-1, PROJECT-BRAND-2): ảnh AI phải được prompt từ basePrompt của thư mục brand, nếu không mỗi ảnh một phong cách; app có từ trước khi có thư mục brand, hoặc thư mục bị xoá."
+    - "basePrompt đã đổi (version tăng) sau khi ảnh được tạo, nên ảnh mang phong cách cũ; hoặc tệp prompt viết tay, quên ghi basePrompt.version."
+    - "Prompt phải là basePrompt.text rồi đến subject, không viết từ trí nhớ; gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
     - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Dựng lại prompt = basePrompt.text + subject, tạo lại ảnh, ghi basePrompt.version hiện hành và để người duyệt (approvedBy) duyệt lại."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-HFS_BRAND_PROMPT_INCOMPLETE:
-  title: "A prompt file holds a subject and a prompt that starts with the base text"
-  title_vi: "Tệp prompt ảnh có subject và prompt mở đầu bằng khối basePrompt"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml không phải YAML, thiếu subject, hoặc prompt của nó không bắt đầu bằng basePrompt.text hiện hành."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): prompt phải là basePrompt.text rồi đến subject, không viết từ trí nhớ."
-    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Ghi subject (một vật, tối đa một chi tiết nhấn) và đặt prompt = basePrompt.text + subject."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-HFS_BRAND_BASE_UNKNOWN:
-  title: "A prompt file names a base the brand sheet defines"
-  title_vi: "Tệp prompt ảnh chỉ tên một base mà tờ thương hiệu có định nghĩa"
-  meaning_vi: "Một tệp statics/**/*.prompt.yaml ghi basePrompt.name (mặc định illustration) không có trong .starcistacks/brand/illustration.yaml (base illustration) lẫn .starcistacks/brand/media.yaml (bases)."
-  causes_vi:
-    - "Vi phạm R437 (PROJECT-BRAND-2): mỗi prompt phải bắt đầu bằng đúng một base có tên và phiên bản, nếu không phong cách của media không còn một nguồn."
-    - "Gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
-    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
-  nextStep_vi: "Sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } })."
+  nextStep_vi: "Thiếu tờ: tạo .starcistacks/brand/ từ bản khởi tạo của starci app scaffold (templates/app/skeleton*/.starcistacks/brand/), điền thương hiệu rồi tạo lại prompt của các ảnh. Cũ: dựng lại prompt = basePrompt.text + subject, tạo lại ảnh, ghi basePrompt.version hiện hành và để người duyệt (approvedBy) duyệt lại. Thiếu phần: ghi subject (một vật, tối đa một chi tiết nhấn) và đặt prompt = basePrompt.text + subject. Base lạ: sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } }). `--env local` chỉ liệt kê, `--env prod` chặn."
   owner: op-retry
   kind: check-finding
   localOnly: true
