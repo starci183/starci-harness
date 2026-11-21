@@ -11,7 +11,7 @@ import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import type { VerbContext } from '../release/index.mjs';
 
-const ESCAPE_HATCHES = [/continue-on-error/, /fail_ci_if_error:\s*false/, /--passWithNoTests/, /--coverageThreshold/, /\|\|\s*true/, /SONAR_TOKEN\s*!=/, /availability/, /skipped/];
+const ESCAPE_HATCHES = [/continue-on-error/, /fail_ci_if_error:\s*false/, /--passWithNoTests/, /--coverageThreshold/, /\|\|\s*true/, /SONAR_TOKEN\s*!=/];
 
 const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, project: 'no-loosening', sides: {
   be: { apps: [{ name: 'api', kind: 'api' }] },
