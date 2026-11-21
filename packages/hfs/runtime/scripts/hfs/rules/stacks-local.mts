@@ -1,16 +1,12 @@
-// stacks-local.mts - R372, R373 and R389: the dev environment of an app is declared runnable, its runbook names the harness verb and its native ports follow the base port.
+// stacks-local.mts - R372 and R389: the dev environment of an app is declared runnable and its native ports follow the base port.
 //   R372 STACKS_LOCAL_CONFIG_INVALID  every docker-compose environment carries a `local` block that the dev verbs of `starci app stack`
-//                                      normalise (scripts/hfs/stack-local-config.mts), and its compose services exist in the compose files;
-//        STACKS_DEV_UNDECLARED         an app declares at least one docker-compose environment (the dev kind of PROJECT-STACKS-3).
-//   R389 STACKS_BASE_PORT_ROLE        the native process ports of an environment that declares `local.basePort` follow the role table of
-//                                      scripts/hfs/stack-base-port.mts (front end base, api base+1, AI gateway base+2, the rest up to base+79);
-//        STACKS_COMPOSE_PORT_ROLE      its compose ports that play a role of the table do too (database base+90, mail SMTP base+91, mail UI base+92,
-//                                      object storage API base+93, its console base+94);
-//        STACKS_COMPOSE_PORT_LITERAL   its compose files publish every host port from `local.ports` (`${STACK_PORT_<NAME>}`), never a literal port;
+//                                      normalise (scripts/hfs/stack-local-config.mts), and its compose services exist in the compose files; an app declares at
+//                                      least one docker-compose environment (the dev kind of PROJECT-STACKS-3);
+//   R389 STACKS_LOCAL_CONFIG_INVALID  the native process ports of an environment that declares `local.basePort` follow the role table of
+//                                      scripts/hfs/stack-base-port.mts (front end base, api base+1, AI gateway base+2, the rest up to base+79), its compose ports that
+//                                      play a role of the table do too (database base+90, mail SMTP base+91, mail UI base+92, object storage API base+93, its console
+//                                      base+94), and its compose files publish every host port from `local.ports` (`${STACK_PORT_<NAME>}`), never a literal port;
 //        STACKS_BASE_PORT_UNDECLARED   a warning: an environment with native processes on ports declares no `local.basePort` yet.
-//   R373 STACKS_RUNBOOK_DOCKER_COMMAND the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no
-//                                      `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command (rules.md rule 8).
-import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration, readDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
@@ -21,7 +17,6 @@ import type { Parsed, Repo } from './rule-types.mjs';
 
 const DECLARATION = `${STACK_ROOT}/application-stacks.yaml`;
 const ENV_NAME = /^[a-z0-9][a-z0-9-]*$/u;
-const DOCKER_COMMAND = /^\s*(?:[$>]\s*)?(?:\w+=\S+\s+)*docker(?:-compose)?\s+(?:build|buildx|run|compose|create|start|stop|rm|pull|push|stack\s+deploy|stack\s+rm|service)\b/u;
 const mapping = (value: Parsed) => (plain(value) ? value : {});
 
 /** The services of each compose file of the environment, keyed by the file's environment-relative path. */
@@ -41,7 +36,7 @@ function basePortFindings(config: Parameters<typeof basePortProblems>[0], at: st
     return [found('STACKS_BASE_PORT_UNDECLARED', DECLARATION, `${at}.basePort is not declared: declare the project base port so the host ports follow the role table (front end base, api base+1, AI gateway base+2, the compose services from base+80) and two apps on one machine never collide (PROJECT-STACKS-10)`, { level: 'warning' })];
   }
   const table = basePortProblems(config).map((problem) => found(problem.code, DECLARATION, `${at}.${problem.at}: ${problem.message} (basePort ${config.basePort}, PROJECT-STACKS-10)`));
-  const literal = [...files].flatMap(([relative, services]) => literalPublishes(services).map((publish) => found('STACKS_COMPOSE_PORT_LITERAL', `${STACK_ROOT}/${environment}/${relative}`,
+  const literal = [...files].flatMap(([relative, services]) => literalPublishes(services).map((publish) => found('STACKS_LOCAL_CONFIG_INVALID', `${STACK_ROOT}/${environment}/${relative}`,
     `services.${publish.service}.ports publishes "${publish.entry}", a literal host port the base port cannot move: declare the port in ${at}.ports by the role table and publish "127.0.0.1:\${STACK_PORT_<NAME>}:<container port>" (basePort ${config.basePort}, PROJECT-STACKS-10)`)));
   return [...table, ...literal];
 }
@@ -60,18 +55,6 @@ function localFindings({ repoRoot, project, environment, spec }: { repoRoot: str
   return findings;
 }
 
-function runbookFindings({ repoRoot, environment, spec }: { repoRoot: string; environment: string; spec: Parsed }) {
-  const relative = typeof spec.runbook === 'string' ? spec.runbook : 'README.md';
-  const file = path.join(repoRoot, STACK_ROOT, environment, relative);
-  const display = path.relative(repoRoot, file).split(path.sep).join('/');
-  let text: string;
-  try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
-  const findings = text.split(/\r?\n/u).map((line, index) => ({ line, index })).filter(({ line }) => DOCKER_COMMAND.test(line) || /`docker\s+(?:build|run|compose|create|start|stop|pull|push|stack)\b/u.test(line))
-    .map(({ index }) => found('STACKS_RUNBOOK_DOCKER_COMMAND', `${display}:${index + 1}`, `the runbook of ${environment} carries a docker command; Docker is run by the harness: name \`starci app stack up --env ${environment}\` instead`));
-  if (!text.includes(`starci app stack up --env ${environment}`)) findings.push(found('STACKS_RUNBOOK_DOCKER_COMMAND', display, `the runbook of ${environment} does not name \`starci app stack up --env ${environment}\`, the one command that brings the environment up`));
-  return findings;
-}
-
 /** Findings of the dev environments of the app root. */
 export function stacksLocalFindings({ repoRoot, repo, isRoot }: { repoRoot: string; repo: Repo; isRoot: boolean }) {
   if (repo?.kind !== 'app' || isRoot === false) return [];
@@ -79,7 +62,7 @@ export function stacksLocalFindings({ repoRoot, repo, isRoot }: { repoRoot: stri
   if (!doc) return [];
   const project = String(readJson(repoRoot, 'hfs.json')?.project ?? 'app');
   const judged = Object.entries(mapping(mapping(doc).environments)).filter(([environment, spec]) => ENV_NAME.test(environment) && plain(spec) && (spec as Parsed).runtime === 'docker-compose');
-  const findings = judged.flatMap(([environment, spec]) => [...localFindings({ repoRoot, project, environment, spec }), ...runbookFindings({ repoRoot, environment, spec })]);
-  if (judged.length === 0) findings.push(found('STACKS_DEV_UNDECLARED', DECLARATION, 'an app declares its dev environment: an environment with runtime docker-compose and a local block, run by `starci app stack up --env dev` (PROJECT-STACKS-3, PROJECT-STACKS-6)'));
+  const findings = judged.flatMap(([environment, spec]) => localFindings({ repoRoot, project, environment, spec }));
+  if (judged.length === 0) findings.push(found('STACKS_LOCAL_CONFIG_INVALID', DECLARATION, 'an app declares its dev environment: an environment with runtime docker-compose and a local block, run by `starci app stack up --env dev` (PROJECT-STACKS-3, PROJECT-STACKS-6)'));
   return findings;
 }

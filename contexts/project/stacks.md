@@ -111,7 +111,7 @@ image, so any digest-pinned supported reverse proxy serves.
   (default `websecure`), `tls.certresolver`, the service port, `traefik.swarm.network` and `traefik.docker.network`) and attaches the service to the external edge `network`;
   a route with `paths` or `pathPrefixes` serves only those paths of its host (one host can split between a front end and an api; give the path route an explicit `priority`), and routes that share a port and a constraint form one router; a service that names no network of its own keeps the stack's default one. A shared-edge environment renders no ingress and publishes no port, and its
   DNS and TLS stay declared per host. A hostname written in the stack file's labels, or a rendered host that `routes` does not hold, is
-  `STACKS_HOST_UNROUTED`; a malformed shared-edge block is `STACKS_INGRESS_UNDECLARED`.
+  `STACKS_INGRESS_INVALID`, as is a malformed shared-edge block.
 - The application origin the back end trusts (BE-AUTH-7 in [code/be/api-auth.md](../code/be/api-auth.md)) is the
   ingress origin of that environment; the app is opened there, never at a process port.
 
@@ -308,7 +308,7 @@ stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends on
 builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
 hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
 process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
-the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
+the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (held by review; Docker is run by the harness verb, never by hand). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.
 
@@ -480,8 +480,8 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and port 9000 belongs to the host's shared analysis server, which no app's dev environment takes.
   The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
   A compose file of an environment with a base publishes every host port from `local.ports`, `127.0.0.1:${STACK_PORT_<NAME>}:<container port>`,
-  never a literal port, which the base cannot move. A native process off the table is `STACKS_BASE_PORT_ROLE`, a compose port of a role off
-  its slot `STACKS_COMPOSE_PORT_ROLE`, a literal host port in a compose file `STACKS_COMPOSE_PORT_LITERAL` (errors); the slot of another compose
+  never a literal port, which the base cannot move. A native process off the table, a compose port of a role off
+  its slot and a literal host port in a compose file are `STACKS_LOCAL_CONFIG_INVALID` (an error); the slot of another compose
   service is not judged yet. An app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
   that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
   of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store
@@ -524,7 +524,7 @@ Rules learned from running apps on developer hosts; each holds in every app.
 A service the app customises (wrapper scripts, plugins, configuration code) is built from the app's own image folder
 `.starcistacks/images/<name>/` whose Dockerfile starts every `FROM` at a digest-pinned base; when the harness owns a StarCi
 fork image for that service ([images/README.md](../../images/README.md), `images/sources.json`) the final stage is `FROM` that
-fork image and the app only adds its own files. No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
+fork image and the app only adds its own files (held by review). No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
 volume, a secret or config grant, a bind under the data root (`${data}` or `STACK_DATA_DIR`), the Docker socket read-only and a
 read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
 production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
@@ -533,9 +533,8 @@ project's own or a variable image reference, never a literal upstream image besi
 Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
 differs between dev and production proves nothing about production.
 
-Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`, `STACKS_IMAGE_BASE_NOT_FORK`,
-`STACKS_IMAGE_ENV_DIVERGES`); the fork list is `runtime/knowledge/hfs/fork-images.yaml`, held equal to `images/sources.json` by
-`stacks-service-images.spec.mts`.
+Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`,
+`STACKS_IMAGE_ENV_DIVERGES`); the fork base of a service the harness owns an image for is held by review.
 
 ## PROJECT-STACKS-12 Seed data lives in the seed levels of the stack
 
@@ -927,14 +926,14 @@ environments:
             STORAGE_PUBLIC_URL: "https://shop-local-files.example.org"
 ```
 
-An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the rule starts with the first
+An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the convention starts with the first
 public origin, because until then nothing outside the machine follows a link. Production is not judged here: its `STORAGE_ENDPOINT` is already a public
-host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store (`STORAGE_PUBLIC_LINK_INTERNAL`, R428). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
+host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store. The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
 file and served through the same public base; a project that wants a provider to fetch them seeds the files into the bucket.
 
-Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`, also for the statics base), R440 for the store itself ([statics.md](statics.md)), the shape of
-`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the stored value and the
-read-time link are held by review and by the app's own specs (no rule reads code for a host).
+Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_CONSOLE`, no tunnel route reaches the admin console), R440 for the store itself ([statics.md](statics.md)), the shape of
+`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the route to the S3 port, the two
+values (`STORAGE_ENDPOINT`, `STORAGE_PUBLIC_URL`), the stored value and the read-time link are held by review and by the app's own specs (no rule reads code for a host).
 
 ## Read with
 
@@ -1177,7 +1176,7 @@ unsound declaration tolerates nothing.
   findings of the codes `modules/kernel/failure-codes.yaml` marks `cutoverTolerant` whose environment is the pending one: a finding's environment is
   its `.starcistacks/<env>/` folder, or the one `environments.<env>.` its message names on the declaration file. `cutoverTolerant: true` codes are
   the not-yet-cut-over shape: a declared sealed member or key not sealed yet (`STACKS_SEALED_MEMBER_MISSING`) and the rendered stack of the old shape
-  (`STACKS_LITE_SELFHOSTED_DB`, `STACKS_LITE_REDIS_PERSISTENCE`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
+  (`STACKS_LITE_SELFHOSTED_DB`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
   (`ENV_SEALED_UNREAD`) is reported only for a member, or one key of a member, that `keep` names. Every other finding, of every environment, still
   blocks. The tolerated findings are listed `CUTOVER PENDING (<env>), REPORT ONLY`, and a section beside the gates off by declaration names each
   pending environment with its reason, its until, what it keeps and the codes it tolerated, so the state is never silent.

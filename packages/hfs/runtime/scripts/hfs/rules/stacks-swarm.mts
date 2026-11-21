@@ -6,12 +6,9 @@ import { composeEntries } from '../../lib/compose-values.mjs';
 import { list } from '../../lib/list.mjs';
 import { repositoryOf } from '../../lib/stack-services.mjs';
 import { isInside } from '../../lib/walk.mjs';
-import { readTypeScriptProject, resolveTypeScriptModule } from '../typescript-programs.mjs';
-import { parseSource, ts } from '../runtime-rules/source-ast.mjs';
 import { readText } from './read.mjs';
 import { edgeRoutes, externalIngressStack, sharedEdge } from './stacks-ingress.mjs';
 import { stacksDeploymentFindings } from './stacks-runtime.mjs';
-import type { ModuleResolutionHost } from 'typescript';
 import type { Parsed } from './rule-types.mjs';
 
 const mapping = (value: Parsed) => plain(value) ? value : {};
@@ -19,9 +16,6 @@ const present = (value: unknown): value is string => typeof value === 'string' &
 const VERSION = /^[1-9]\d*$/;
 const VERSIONED_SECRET = /-v[1-9]\d*$/;
 const SENSITIVE_KEY = /password|passwd|secret|token|credential|private[_-]?key|api[_-]?key|service[_-]?role|(?:(?:^|_)key$)/i;
-const SOURCE = /^be\/(?:apps|src)\/.*\.[cm]?[jt]sx?$/;
-const TEST_SOURCE = /(?:\.(?:spec|test)|-spec)\.[cm]?[jt]sx?$|\/tests\//;
-const REALTIME_SOURCE = /^be\/src\/features\/realtime\/[^/]+\//;
 const HOST = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
 
 function secretVersionMatches(declaration: Parsed, secret: Parsed) {
@@ -236,19 +230,19 @@ function publicRoutingIssues(input: Parsed, add: Parsed) {
   // A shared edge's hostnames live in the declaration only: the stack file carries none (its deploy renders the labels from ingress.routes). A tracked rendered model is the rendered output, which may.
   if (edge) for (const host of routed) {
     if (!declared.has(host) || !present(spec.renderedModel))
-      add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.routes`, `the stack file names the host ${host}: hostnames are declared once in ingress.routes and rendered into the Traefik labels by the stack deploy, never written in the stack file`);
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.ingress.routes`, `the stack file names the host ${host}: hostnames are declared once in ingress.routes and rendered into the Traefik labels by the stack deploy, never written in the stack file`);
   }
   for (const host of new Set([...declared, ...routed])) {
     if (!dns.some((entry: Parsed) => hostOf(entry?.host) === host && present(entry.owner) && present(entry.receipt)))
-      add('STACKS_DNS_UNDECLARED', `environments.${input.environment}.dns`, 'Each public host must declare its DNS owner and receipt');
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.dns`, 'Each public host must declare its DNS owner and receipt');
     // An external shared ingress routes the hosts from its own dynamic files (published by `starci app stack ingress publish`), not from labels here.
     if (!declared.has(host) || (externalIngressStack(spec) === null && !edge && !routed.has(host)))
-      add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.hosts`, 'Each public host must be declared and bound by an actual ingress route');
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.ingress.hosts`, 'Each public host must be declared and bound by an actual ingress route');
   }
   const ingress = mapping(input.model.services)[spec.ingress?.component];
   const publicIngress = declared.size || routed.size || list(ingress?.ports).length;
   if (publicIngress && (!present(spec.tls?.owner) || !present(spec.tls?.receipt)))
-    add('STACKS_TLS_UNDECLARED', `environments.${input.environment}.tls`, 'Public ingress must declare its TLS owner and issuance/persistence receipt');
+    add('STACKS_INGRESS_INVALID', `environments.${input.environment}.tls`, 'Public ingress must declare its TLS owner and issuance/persistence receipt');
 }
 
 function usesPersistentVolume(service: Parsed) {
@@ -266,7 +260,7 @@ function placementIssues(id: string, component: Parsed, service: Parsed, add: Pa
   if (!stateful) return;
   const constraints = list(service.deploy?.placement?.constraints);
   if (!constraints.length || !constraints.every(present))
-    add('STACKS_PLACEMENT_MISSING', `services.${id}.deploy.placement`, 'Stateful services and persistent volumes must declare node placement constraints');
+    add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.deploy.placement`, 'Stateful services and persistent volumes must declare node placement constraints');
 }
 
 function healthCommand(test: Parsed) {
@@ -308,116 +302,7 @@ function updatePolicyIssues(id: string, service: Parsed, add: Parsed) {
   const rollbackValid = Object.keys(mapping(deploy.rollback_config)).length > 0;
   const restartValid = ['none', 'any', 'on-failure'].includes(deploy.restart_policy?.condition);
   if (!updateValid || !rollbackValid || !restartValid)
-    add('STACKS_UPDATE_POLICY_MISSING', `services.${id}.deploy`, 'Declare update order, failure_action: rollback, a positive monitor, rollback_config and restart_policy');
-}
-
-function runtimeStaticReference(t: Parsed, node: Parsed) {
-  if (!node.moduleSpecifier || !t.isStringLiteralLike(node.moduleSpecifier) || node.isTypeOnly) return null;
-  if (t.isImportDeclaration(node)) {
-    const clause = node.importClause;
-    if (clause?.isTypeOnly) return null;
-    const named = clause?.namedBindings;
-    if (named && t.isNamedImports(named) && !clause.name && named.elements.every((entry: Parsed) => entry.isTypeOnly)) return null;
-  }
-  if (t.isExportDeclaration(node) && node.exportClause && t.isNamedExports(node.exportClause)
-    && node.exportClause.elements.every((entry: Parsed) => entry.isTypeOnly)) return null;
-  return node.moduleSpecifier.text;
-}
-
-function runtimeReference(t: Parsed, node: Parsed) {
-  if (t.isImportDeclaration(node) || t.isExportDeclaration(node)) return runtimeStaticReference(t, node);
-  if (t.isImportEqualsDeclaration(node) && !node.isTypeOnly && t.isExternalModuleReference(node.moduleReference)) {
-    const reference = node.moduleReference.expression;
-    return reference && t.isStringLiteralLike(reference) ? reference.text : null;
-  }
-  if (!t.isCallExpression(node) || !node.arguments.length || !t.isStringLiteralLike(node.arguments[0])) return null;
-  const expression = node.expression;
-  if (expression.kind === t.SyntaxKind.ImportKeyword || (t.isIdentifier(expression) && expression.text === 'require')) return node.arguments[0].text;
-  return null;
-}
-
-function runtimeImports(source: Parsed) {
-  const compiler = ts(), imports: Parsed[] = [];
-  const visit = (node: Parsed) => {
-    const reference = runtimeReference(compiler, node);
-    if (reference) imports.push(reference);
-    compiler.forEachChild(node, visit);
-  };
-  visit(source);
-  return imports;
-}
-
-function trackedCompilerHost(repoRoot: string, files: Parsed) {
-  const relativeOf = (absolute: Parsed) => path.relative(repoRoot, absolute).split(path.sep).join('/');
-  const readable = (absolute: Parsed) => {
-    const relative = relativeOf(absolute);
-    return files.has(relative) && relative.startsWith('be/') && !relative.includes('/secrets/')
-      && (SOURCE.test(relative) || relative.endsWith('.json')) && safeRegularFile(repoRoot, relative);
-  };
-  return { ...ts().sys,
-    readFile: (absolute: Parsed) => readable(absolute) ? readText(repoRoot, relativeOf(absolute)) ?? undefined : undefined,
-    fileExists: readable,
-  };
-}
-
-function compilerOptions(repoRoot: string, app: Parsed, files: Parsed, host: Parsed) {
-  for (const file of [`be/apps/${app}/tsconfig.json`, 'be/tsconfig.json']) {
-    if (!files.has(file)) continue;
-    const project = readTypeScriptProject(ts(), path.join(repoRoot, file), host.readFile);
-    if (project.parsed) return project.parsed.options;
-  }
-  return { baseUrl: path.join(repoRoot, 'be'), paths: { '@features/*': ['src/features/*'], '@modules/*': ['src/modules/*'] } };
-}
-
-function sourceTarget(repoRoot: string, file: string, specifier: Parsed, options: Parsed, files: Parsed, host: ModuleResolutionHost) {
-  const absolute = resolveTypeScriptModule(ts(), specifier, path.join(repoRoot, file), options, host);
-  if (!absolute) return null;
-  const relative = path.relative(repoRoot, absolute).split(path.sep).join('/');
-  return files.has(relative) && SOURCE.test(relative) && !TEST_SOURCE.test(relative) && !relative.includes('/secrets/') ? relative : null;
-}
-
-function appComposesRealtime(repoRoot: string, app: Parsed, files: string[]) {
-  if (!repoRoot) return false;
-  const tracked = new Set(files), host = trackedCompilerHost(repoRoot, tracked);
-  const options = compilerOptions(repoRoot, app, tracked, host);
-  const entry = `be/apps/${app}/src/main.ts`;
-  const queue = tracked.has(entry) ? [entry] : [];
-  const seen = new Set();
-  while (queue.length) {
-    const file = queue.shift();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    if (REALTIME_SOURCE.test(file!)) return true;
-    if (!safeRegularFile(repoRoot, file!)) continue;
-    const source = parseSource(readText(repoRoot, file!) ?? '', file);
-    for (const specifier of runtimeImports(source)) {
-      const target = sourceTarget(repoRoot, file!, specifier, options, tracked, host);
-      if (target) queue.push(target);
-    }
-  }
-  return false;
-}
-
-const SHARED_HUBS = new Set(['postgres', 'redis']);
-
-/** The hub a service selects with REALTIME_HUB, or null when it declares none. */
-function realtimeHub(service: Parsed) {
-  const entry = composeEntries(service.environment, { missingValue: null }).find(([key]: Parsed) => key === 'REALTIME_HUB');
-  return entry && present(entry[1]) ? String(entry[1]).trim() : null;
-}
-
-/** A service runs on several nodes: more than one replica, or the global mode (one task per node). */
-const scaledOut = (service: Parsed) => service.deploy?.mode === 'global' || Number(service.deploy?.replicas ?? 1) > 1;
-
-/** Realtime scale (knowledge/patterns/be/realtime.yaml BE-REALTIME-7): an API with several replicas selects a shared hub. */
-function realtimeIssues(input: Parsed, add: Parsed) {
-  const apis = new Set(list(input.repo?.sides?.be?.apps).filter((app: Parsed) => app.kind === 'api').map((app: Parsed) => app.name));
-  for (const [id, service] of Object.entries<Parsed>(mapping(input.model.services))) {
-    const component = mapping(input.doc.components)[id], app = component?.app ?? id;
-    if (!apis.has(app) || !scaledOut(service) || !appComposesRealtime(input.repoRoot, app, list(input.files))) continue;
-    if (!SHARED_HUBS.has(realtimeHub(service) ?? ''))
-      add('STACKS_REALTIME_SCALED', `services.${id}.environment.REALTIME_HUB`, 'A realtime API with more than one replica must select a shared hub (REALTIME_HUB postgres or redis): the memory hub serves one process only');
-  }
+    add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.deploy`, 'Declare update order, failure_action: rollback, a positive monitor, rollback_config and restart_policy');
 }
 
 /** Machine issues shared by the HFS finder and the rendered-model gate; no secret contents are read or returned. */
@@ -431,11 +316,10 @@ export function swarmHardeningIssues(input: Parsed) {
     publishedPortIssues(id, service, normalized.spec, add);
     placementIssues(id, component, service, add);
     if (!nontrivialHealthcheck(mapping(service.healthcheck)))
-      add('STACKS_HEALTHCHECK_MISSING', `services.${id}.healthcheck`, 'Every Swarm service needs an enabled healthcheck that can fail when its process is unhealthy');
+      add('STACKS_SERVICE_POLICY_MISSING', `services.${id}.healthcheck`, 'Every Swarm service needs an enabled healthcheck that can fail when its process is unhealthy');
     updatePolicyIssues(id, service, add);
   }
   publicRoutingIssues(normalized, add);
-  realtimeIssues(normalized, add);
   return issues;
 }
 

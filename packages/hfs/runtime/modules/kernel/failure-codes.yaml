@@ -5465,54 +5465,13 @@ SEALED_FILE_IN_WORK:
 # --- HFS rule catalog (knowledge/hfs/rules.yaml): one code per rule, from R01 up ---
 
 STACKS_LOCAL_CONFIG_INVALID:
-  title: "The local block of a docker-compose environment is not coherent"
-  title_vi: "Khối local của môi trường docker-compose không nhất quán"
-  meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
+  title: "The dev environment declaration of an app (local block, runnable dev environment, base port layout) is not coherent"
+  title_vi: "Khai báo môi trường dev của ứng dụng (khối local, môi trường dev chạy được, bố cục cổng theo cổng gốc) không nhất quán"
+  meaning_vi: "Môi trường docker-compose của ứng dụng không khai báo đúng: environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback; ứng dụng không có environment nào chạy docker-compose với khối local nên starci app stack up --env dev không có gì để chạy; hoặc khi đã khai báo basePort, cổng của một tiến trình native hay của một dịch vụ compose có vai trò (db = basePort + 90, mail + 91, mailui + 92, storage + 93, storage-console + 94) lệch khỏi bảng vai trò của PROJECT-STACKS-10, hay một tệp compose publish cổng host bằng số cố định thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\". Thông báo của finding nêu đường dẫn khóa, điều được mong đợi và điều tìm thấy."
   causes_vi:
-    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
-  nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_DEV_UNDECLARED:
-  title: "A lite app declares no runnable dev environment"
-  title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
-  meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
-  causes_vi:
-    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
-  nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_RUNBOOK_DOCKER_COMMAND:
-  title: "A dev runbook carries a docker command or omits the one-command start"
-  title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
-  meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
-  causes_vi:
-    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
-  nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_BASE_PORT_ROLE:
-  title: "A native process port departs from the role table of the project base port"
-  title_vi: "Cổng của tiến trình native lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng cổng của một tiến trình native không đúng bảng vai trò: front end chính = basePort, api = basePort + 1, AI gateway = basePort + 2, các tiến trình native còn lại từ basePort + 3 (basePort + 2 khi không có gateway) đến basePort + 79. Dải basePort + 80 đến basePort + 99 thuộc các dịch vụ compose (STACKS_COMPOSE_PORT_ROLE)."
-  causes_vi:
-    - "Vi phạm R389: cổng được đặt tay thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng."
-    - "Tên tiến trình không thuộc đúng vai trò (web, app, console là front end; api, core là api; gateway là AI gateway), nên bị xếp vào nhóm còn lại."
-  nextStep_vi: "Đặt lại cổng trong environments.<env>.local.ports theo đúng bảng vai trò của basePort (PROJECT-STACKS-10), cập nhật các nơi dùng ${port.<tên>}, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_COMPOSE_PORT_ROLE:
-  title: "A compose service port departs from the role table of the project base port"
-  title_vi: "Cổng của dịch vụ compose lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng một cổng compose có vai trò trong bảng lại không đúng chỗ: cơ sở dữ liệu (cổng mà local.database chỉ tới) = basePort + 90, SMTP của mail = basePort + 91, giao diện web của mail = basePort + 92, API S3 của object storage = basePort + 93, console của nó = basePort + 94."
-  causes_vi:
-    - "Vi phạm R389: cổng compose được đặt cố định (54322, 1025, 8025, 9000) thay vì suy ra từ cổng gốc, nên hai ứng dụng chạy cạnh nhau sẽ trùng cổng."
-    - "Ứng dụng được tạo trước khi bảng vai trò có phần compose và chưa chạy bản nâng cấp của starci app sync."
-  nextStep_vi: "Chạy starci app sync --execute: nó dời db, mail và mailui về cổng suy ra và thêm dịch vụ storage; hoặc sửa tay environments.<env>.local.ports theo bảng của PROJECT-STACKS-10, rồi chạy lại starci app check."
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng; môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+    - "Vi phạm R389: cổng được đặt tay hoặc viết thẳng vào tệp compose thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng; ứng dụng được tạo trước khi bảng vai trò có phần compose; tên tiến trình không thuộc đúng vai trò nên bị xếp vào nhóm còn lại."
+  nextStep_vi: "Sửa đúng trường nêu trong thông báo: đường dẫn environments.<env>.local, khai báo environments.dev với runtime docker-compose, composeFiles và khối local, đặt lại cổng trong environments.<env>.local.ports theo bảng vai trò của basePort và đổi dòng ports của dịch vụ compose thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\" (hoặc chạy starci app sync --execute để dời db, mail, mailui về cổng suy ra), rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
 
@@ -5546,16 +5505,6 @@ STACK_BASE_PORT_OVERLAP:
   owner: supervisor
   kind: check-finding
 
-STACKS_COMPOSE_PORT_LITERAL:
-  title: "A compose file of a dev environment with a base port publishes a literal host port"
-  title_vi: "File compose của môi trường dev có cổng gốc lại publish một cổng host cố định"
-  meaning_vi: "Môi trường khai báo basePort nhưng một dịch vụ trong file compose publish cổng host bằng số cố định (ví dụ \"127.0.0.1:3080:3080\") thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", nên cổng đó không đi theo cổng gốc và hai ứng dụng có thể trùng."
-  causes_vi:
-    - "Vi phạm R389: cổng được viết thẳng vào file compose thay vì khai báo trong environments.<env>.local.ports."
-  nextStep_vi: "Khai báo cổng trong environments.<env>.local.ports theo bảng vai trò của basePort (PROJECT-STACKS-10), đổi dòng ports của dịch vụ thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_BASE_PORT_UNDECLARED:
   title: "A dev environment with native processes declares no project base port"
   title_vi: "Môi trường dev có tiến trình native nhưng chưa khai báo cổng gốc dự án"
@@ -5577,68 +5526,15 @@ STACKS_DEPLOY_CONFIG_INVALID:
   owner: op-retry
   kind: check-finding
 
-STACKS_DNS_UNDECLARED:
-  title: "An ingress host has no DNS ownership receipt"
-  title_vi: "Host của ingress thiếu khai báo chủ sở hữu và bằng chứng DNS"
-  meaning_vi: "Một host được ingress sử dụng không có bản ghi dns với host, owner và receipt đầy đủ trong khai báo môi trường."
+STACKS_INGRESS_INVALID:
+  title: "The ingress, DNS or TLS declaration of a Swarm environment is incomplete or inconsistent"
+  title_vi: "Khai báo ingress, DNS hoặc TLS của môi trường Swarm thiếu hoặc không nhất quán"
+  meaning_vi: "Môi trường Swarm không có đúng một ingress được khai báo và định tuyến: thiếu ingress.component hoặc ingress.hosts (hay khối external, shared-edge hợp lệ), component ingress không tồn tại hoặc không dùng image Traefik/Caddy ghim bằng digest, có ingress thứ hai hoặc ingress tự render bên cạnh ingress ngoài; hoặc một host công khai thiếu bản ghi dns (host, owner, receipt), thiếu tls.owner và tls.receipt, hoặc không có tuyến trong mô hình ingress (một host viết tay trong stack file của shared edge cũng tính). Thông báo của finding nêu đường dẫn khóa và điều còn thiếu."
   causes_vi:
-    - "Vi phạm R266: điều kiện DNS chỉ tồn tại ngoài kho mã hoặc chưa có người chịu trách nhiệm rõ ràng."
-  nextStep_vi: "Thêm bản ghi dns cho từng host, nêu chủ sở hữu và tham chiếu bằng chứng DNS; việc thay đổi DNS vẫn do chủ sở hữu thực hiện."
+    - "Vi phạm R275 và R266: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn, hai ingress tạo hai chủ sở hữu định tuyến và cổng công khai, danh sách host và tuyến thực tế không khớp, và điều kiện DNS hoặc TLS chỉ tồn tại ngoài kho mã."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: khai báo đúng một ingress (component role ingress với Traefik hoặc Caddy ghim digest, hoặc ingress.external, hoặc shared-edge với routes), thêm tuyến cho từng host đã khai báo, thêm bản ghi dns cho từng host cùng tls.owner và tls.receipt; việc đổi DNS vẫn do chủ sở hữu thực hiện."
   owner: op-retry
   kind: check-finding
-
-STACKS_HEALTHCHECK_MISSING:
-  title: "A runnable Swarm service has no healthcheck"
-  title_vi: "Dịch vụ Swarm đang chạy thiếu healthcheck"
-  meaning_vi: "Mô hình Swarm thiếu healthcheck hoạt động cho dịch vụ chạy liên tục hoặc đã tắt healthcheck của dịch vụ đó."
-  causes_vi:
-    - "Vi phạm R266: trạng thái container chạy chưa chứng minh được tín hiệu sức khỏe cần để cập nhật và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo healthcheck có lệnh thực sự kiểm tra dịch vụ; tách tín hiệu sống và sẵn sàng theo trách nhiệm của ứng dụng."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_HOST_UNROUTED:
-  title: "A declared ingress host has no rendered route"
-  title_vi: "Host được khai báo chưa có tuyến trong mô hình ingress"
-  meaning_vi: "Danh sách ingress.hosts chứa host mà cấu hình Traefik hoặc Caddy đã render không định tuyến."
-  causes_vi:
-    - "Vi phạm R266: danh sách host và tuyến thực tế không khớp, nên khai báo chưa chứng minh được cửa vào của ứng dụng."
-  nextStep_vi: "Thêm tuyến cho host trong cấu hình ingress được theo dõi hoặc bỏ host không còn dùng, rồi render lại mô hình."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNDECLARED:
-  title: "A Swarm environment has no declared ingress"
-  title_vi: "Môi trường Swarm chưa khai báo ingress"
-  meaning_vi: "Môi trường chưa có ingress.component và danh sách ingress.hosts hợp lệ để xác định cửa vào của ứng dụng."
-  causes_vi:
-    - "Vi phạm R275: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn."
-  nextStep_vi: "Khai báo một ingress component và danh sách host của nó; dùng Traefik hoặc Caddy được ghim bằng digest."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNKNOWN:
-  title: "The declared ingress is unknown or unsupported"
-  title_vi: "Ingress được khai báo không tồn tại hoặc chưa được hỗ trợ"
-  meaning_vi: "Component ingress không được chọn, sai role, thiếu trong mô hình hoặc không dùng image Traefik hay Caddy được ghim bằng digest."
-  causes_vi:
-    - "Vi phạm R275: tên component hoặc image của cửa vào không khớp hợp đồng ingress được hỗ trợ."
-  nextStep_vi: "Chọn component có role ingress hiện diện trong mô hình và ghim image Traefik hoặc Caddy bằng digest đầy đủ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_LITE_REDIS_PERSISTENCE:
-  title: "The declared lite Redis is not one persisted, non-evicting stack service"
-  title_vi: "Redis đã khai báo của lite không phải một dịch vụ duy nhất có AOF và không evict"
-  meaning_vi: "hfs.json sides.be.backing khai báo redis nhưng stack lite không chạy đúng một dịch vụ Redis; hoặc dịch vụ Redis không chạy với --appendonly yes, không mount một named volume ghi được tại /data, hay đặt --maxmemory-policy khác noeviction. Job của hàng đợi nằm trong Redis nên khởi động lại hoặc evict sẽ làm mất chúng."
-  causes_vi:
-    - "Vi phạm R276 (R212): Redis đã khai báo không được render trong stack, hoặc được render nhiều lần."
-    - "Lệnh redis-server thiếu --appendonly yes, hoặc đặt maxmemory-policy evict khóa (allkeys-lru, volatile-ttl...)."
-    - "Dịch vụ Redis không mount named volume vào /data, hoặc mount chỉ đọc, hoặc volume không được định nghĩa trong mô hình."
-  nextStep_vi: "Render đúng một dịch vụ Redis, chạy redis-server với --appendonly yes, giữ maxmemory-policy noeviction (mặc định; khóa cache đặt TTL) và mount một named volume ghi được tại /data, khai báo volume đó trong mô hình và trong components.redis.volumes."
-  owner: op-retry
-  kind: check-finding
-  cutoverTolerant: true
 
 STACKS_LITE_SELFHOSTED_DB:
   title: "A lite deployment runs PostgreSQL, MongoDB, Qdrant or undeclared Redis"
@@ -5662,13 +5558,13 @@ STACKS_MODEL_UNAVAILABLE:
   owner: op-retry
   kind: check-finding
 
-STACKS_PLACEMENT_MISSING:
-  title: "A stateful Swarm service has no placement constraint"
-  title_vi: "Dịch vụ Swarm có trạng thái thiếu ràng buộc vị trí chạy"
-  meaning_vi: "Dịch vụ có trạng thái hoặc volume bền vững không khai báo deploy.placement.constraints trong mô hình đã render."
+STACKS_SERVICE_POLICY_MISSING:
+  title: "A Swarm service lacks a required runtime policy (placement, healthcheck or update policy)"
+  title_vi: "Dịch vụ Swarm thiếu chính sách chạy bắt buộc (vị trí chạy, healthcheck hoặc chính sách cập nhật)"
+  meaning_vi: "Mô hình Swarm đã render của một dịch vụ thiếu một trong ba chính sách bắt buộc: deploy.placement.constraints cho dịch vụ có trạng thái hoặc volume bền vững; healthcheck thật sự kiểm tra được dịch vụ chạy liên tục; deploy.update_config (order, failure_action rollback, monitor dương), rollback_config và restart_policy. Thông báo của finding nêu đường dẫn khóa và chính sách còn thiếu."
   causes_vi:
-    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu của component."
-  nextStep_vi: "Thêm ràng buộc placement phù hợp chủ sở hữu volume và nêu rõ giới hạn phục hồi khi node hoặc đĩa bị mất."
+    - "Vi phạm R266: task có thể chuyển sang node không giữ volume và mất quyền truy cập dữ liệu (placement); trạng thái container chạy chưa chứng minh được sức khỏe cần để cập nhật và phục hồi (healthcheck); triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi (chính sách cập nhật)."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: thêm ràng buộc placement phù hợp chủ sở hữu volume, healthcheck có lệnh thực sự kiểm tra dịch vụ, hoặc update_config, rollback_config và restart_policy của dịch vụ, rồi render lại mô hình."
   owner: op-retry
   kind: check-finding
 
@@ -5679,16 +5575,6 @@ STACKS_PORT_PUBLISHED:
   causes_vi:
     - "Vi phạm R266: API, worker hoặc dịch vụ dữ liệu có cửa truy cập trực tiếp vượt qua ingress đã khai báo."
   nextStep_vi: "Gỡ ports khỏi dịch vụ nội bộ và định tuyến lưu lượng công khai qua ingress được môi trường khai báo."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_REALTIME_SCALED:
-  title: "A realtime API with several replicas runs the in-process hub"
-  title_vi: "API Realtime nhiều replica đang chạy hub trong tiến trình"
-  meaning_vi: "App API có composition chứa feature be.feature.realtime.* và dịch vụ Swarm chạy nhiều hơn một replica, nhưng REALTIME_HUB không chọn hub dùng chung (postgres hoặc redis) hoặc không được khai báo. Hub memory chỉ phục vụ một tiến trình nên tin đẩy ở replica này không tới client đang nghe ở replica khác."
-  causes_vi:
-    - "Vi phạm R266: deploy.replicas lớn hơn 1 nhưng hub realtime là hub memory của bản chạy một replica và của test."
-  nextStep_vi: "Khai báo REALTIME_HUB=postgres trong environment của API (hoặc redis), hoặc ghim deploy.replicas: 1 khi chỉ chạy một replica; xem BE-REALTIME-7 trong knowledge/patterns/be/realtime.yaml."
   owner: op-retry
   kind: check-finding
 
@@ -5709,16 +5595,6 @@ STACKS_SEALED_MEMBER_PENDING:
   causes_vi:
     - "Khai báo member và quyền cấp được đưa vào trước khi chủ dự án niêm phong khoá (ví dụ khoá của dịch vụ dùng chung embeddings)"
   nextStep_vi: "Niêm phong khoá: starci vps service grant <id> --service <tên> --app . --env <env> --execute (khoá của dịch vụ dùng chung) hoặc starci app secret set --env <env> <member> <KEY>; bản render sau sẽ cấp khoá cho service."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SECOND_INGRESS:
-  title: "A Swarm environment selects more than one ingress"
-  title_vi: "Môi trường Swarm chọn nhiều hơn một ingress"
-  meaning_vi: "Tập component được chọn hoặc mô hình đã render chứa ingress thứ hai bên cạnh ingress của môi trường."
-  causes_vi:
-    - "Vi phạm R266: hai ingress tạo hai chủ sở hữu định tuyến, TLS hoặc cổng công khai trong cùng môi trường."
-  nextStep_vi: "Giữ đúng một ingress trong môi trường và mô hình; chuyển mọi host cùng quyền công bố cổng sang component đó."
   owner: op-retry
   kind: check-finding
 
@@ -5749,46 +5625,6 @@ STACKS_SECRET_UNVERSIONED:
   causes_vi:
     - "Vi phạm R266: tên secret có thể bị tái sử dụng khi xoay khóa hoặc khai báo không khớp secret của engine."
   nextStep_vi: "Khai báo runtimeName và version dương khớp hậu tố -v<version>; dùng đúng tên đó trong mô hình, đổi quyền của consumer rồi mới thu hồi phiên bản cũ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_DB_UNSUPPORTED:
-  title: "A lite sidecar requires an unsupported database adapter"
-  title_vi: "Sidecar của lite yêu cầu adapter cơ sở dữ liệu không được hỗ trợ"
-  meaning_vi: "Sidecar của lite khai báo hoặc cấu hình database khác SQLite, bao gồm PostgreSQL, Redis và MongoDB."
-  causes_vi:
-    - "Vi phạm R276: sidecar kéo thêm backing bị cấm vào topology lite thay vì dùng SQLite trên volume bền vững."
-  nextStep_vi: "Chọn chế độ SQLite được sidecar hỗ trợ và volume được khai báo; bỏ sidecar nếu nó bắt buộc dùng backing không được lite hỗ trợ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_VOLUME_UNDECLARED:
-  title: "A lite SQLite sidecar has no declared persistent volume"
-  title_vi: "Sidecar SQLite của lite thiếu volume bền vững được khai báo"
-  meaning_vi: "Sidecar dùng SQLite nhưng chưa khai báo database.volume, chưa liệt kê volume đó trong component hoặc chưa định nghĩa và mount volume trong mô hình."
-  causes_vi:
-    - "Vi phạm R276: tệp cơ sở dữ liệu sidecar không gắn với volume có chủ sở hữu rõ ràng và có thể mất khi tạo lại container."
-  nextStep_vi: "Khai báo database.provider: sqlite, database.volume và components.<id>.volumes, rồi định nghĩa và mount đúng named volume trong mô hình."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_TLS_UNDECLARED:
-  title: "A Swarm environment has no TLS ownership receipt"
-  title_vi: "Môi trường Swarm thiếu chủ sở hữu và bằng chứng TLS"
-  meaning_vi: "Môi trường có ingress nhưng chưa khai báo tls.owner và tls.receipt cho việc cấp chứng chỉ cùng nơi lưu giữ bền vững."
-  causes_vi:
-    - "Vi phạm R266: quyền cấp hoặc phục hồi chứng chỉ chưa có chủ sở hữu và bằng chứng được khai báo."
-  nextStep_vi: "Khai báo chủ sở hữu TLS và tham chiếu bằng chứng cấp, lưu giữ chứng chỉ; giữ thao tác của chủ sở hữu là điều kiện triển khai rõ ràng."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_UPDATE_POLICY_MISSING:
-  title: "A Swarm service has no explicit rollout and recovery policy"
-  title_vi: "Dịch vụ Swarm thiếu chính sách cập nhật và phục hồi rõ ràng"
-  meaning_vi: "Dịch vụ chạy liên tục thiếu chính sách deploy.update_config, rollback_config hoặc restart_policy cần cho vòng đời triển khai."
-  causes_vi:
-    - "Vi phạm R266: triển khai dựa vào mặc định thay vì nêu cách cập nhật, xử lý lỗi và phục hồi dịch vụ."
-  nextStep_vi: "Khai báo chính sách cập nhật, rollback và restart của từng dịch vụ trong mô hình, rồi kiểm tra cùng các tín hiệu sức khỏe."
   owner: op-retry
   kind: check-finding
 
@@ -6214,14 +6050,6 @@ STACKS_IMAGE_BASE_UNPINNED:
   causes_vi:
     - "Vi phạm R374: mọi image nền phải ghim digest."
   nextStep_vi: "Ghim FROM bằng name@sha256:<digest>."
-
-STACKS_IMAGE_BASE_NOT_FORK:
-  title: "A service image folder does not build on the harness fork image"
-  title_vi: "Thư mục image của dịch vụ không dựng trên image fork của harness"
-  meaning_vi: "Harness sở hữu image fork StarCi cho dịch vụ này (images/sources.json) nhưng giai đoạn cuối của Dockerfile không FROM image đó."
-  causes_vi:
-    - "Vi phạm R374: dịch vụ tùy biến phải dựng trên image fork do harness ghim."
-  nextStep_vi: "Đặt FROM <repository fork>@sha256:<digest> ở giai đoạn cuối."
 
 STACKS_IMAGE_ENV_DIVERGES:
   title: "A service with an image folder runs a third-party image in an environment"
@@ -6676,15 +6504,6 @@ DATA_EXTENSION_UNDECLARED:
   nextStep_vi: "Khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
-STORAGE_PUBLIC_ROUTE_MISSING:
-  title: "A dev object store has no public route on the dev tunnel"
-  title_vi: "Kho đối tượng của môi trường dev chưa có route công khai trên tunnel dev"
-  meaning_vi: "Môi trường dev có công bố địa chỉ công khai và chạy kho đối tượng (S3) nhưng không có tunnel.routes nào trỏ tới cổng S3 của kho: liên kết tới tệp sẽ là địa chỉ loopback, trình duyệt khác máy và nhà cung cấp không mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Thêm một mục vào local.tunnel.routes có port là cổng S3 của kho (không phải cổng console), rồi chạy starci app stack up --env <env> --execute để tạo ingress rule và bản ghi DNS."
-  owner: op-retry
-  kind: check-finding
 STORAGE_PUBLIC_ROUTE_CONSOLE:
   title: "A tunnel route reaches the admin console of an object store"
   title_vi: "Một route của tunnel trỏ vào console quản trị của kho đối tượng"
@@ -6692,15 +6511,6 @@ STORAGE_PUBLIC_ROUTE_CONSOLE:
   causes_vi:
     - "Vi phạm R428 (PROJECT-STACKS-15)."
   nextStep_vi: "Xoá route đó, hoặc trỏ nó tới cổng S3 của kho."
-  owner: op-retry
-  kind: check-finding
-STORAGE_PUBLIC_LINK_INTERNAL:
-  title: "An object-store link would use an internal host"
-  title_vi: "Liên kết tới kho đối tượng sẽ dùng địa chỉ nội bộ"
-  meaning_vi: "Tiến trình đặt STORAGE_ENDPOINT (địa chỉ nội bộ để ghi) nhưng không đặt STORAGE_PUBLIC_URL, hoặc đặt nó thành loopback, localhost, tên container hay host không có route tunnel tới kho: liên kết app dựng ra không ai mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Đặt STORAGE_PUBLIC_URL thành https://<host của route tunnel tới kho>; dữ liệu lưu chỉ giữ bucket và key."
   owner: op-retry
   kind: check-finding
 STACK_LOCAL_TUNNEL_CERT:
@@ -6882,31 +6692,13 @@ STACK_STORAGE_MISSING:
   owner: op-retry
   kind: check-finding
   cutoverTolerant: true
-STACK_STORAGE_UNUSED:
-  title: "A storage service is declared and nothing needs it"
-  title_vi: "Có service storage nhưng không cần dùng (cảnh báo)"
-  meaning_vi: "Không có statics/ (ngoài .gitkeep) và back end không dùng storage thì không cần MinIO."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Gỡ service storage hoặc thêm statics hay phần dùng storage."
-  owner: op-retry
-  kind: check-finding
-STACK_STORAGE_IMAGE_UNUSED:
-  title: "statics/ holds media and the storage service does not build the storage image"
-  title_vi: "statics/ có media nhưng service storage không build image storage"
-  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API."
-  causes_vi:
-    - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
-  owner: op-retry
-  kind: check-finding
 STACK_STORAGE_IMAGE_SHAPE:
-  title: "The storage service does not have the shape of the storage image"
-  title_vi: "Service storage sai hình dạng của image storage"
-  meaning_vi: "Service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}."
+  title: "The storage service does not build the storage image or does not have its shape"
+  title_vi: "Service storage không build image storage hoặc sai hình dạng của image đó"
+  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API: khi statics/ có media, service storage của dev phải build .starcistacks/images/storage/Dockerfile; service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}. Thông báo của finding nêu điều còn thiếu."
   causes_vi:
     - "Vi phạm R440 (PROJECT-STATICS-2)."
-  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn."
+  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn, hoặc cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
   owner: op-retry
   kind: check-finding
 

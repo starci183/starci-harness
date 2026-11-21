@@ -32,7 +32,7 @@ provenance:
     cleanup on the real stack. Nothing proves the ingress settings of an SSE channel (no compression, no buffering, HTTP/2, an
     idle timeout above the heartbeat): they are reviewed against the stack files and a real stream. The memory hub is
     single-process: its subscriptions and its replay buffer live in one process, so it serves tests and one replica only
-    (STACKS_REALTIME_SCALED refuses it with more); a shared hub (BE-REALTIME-7) carries pushes and replay across replicas, and
+    (an api with more replicas selects a shared hub); a shared hub (BE-REALTIME-7) carries pushes and replay across replicas, and
     its socket.io adapters have no connection state recovery, so a socket client resyncs by query. A replay returns at most 64 frames
     per topic; Postgres sweeps frames older than 15 minutes, Redis expires a topic stream after 15 minutes without a retained publish,
     and memory keeps its bounded buffer without a TTL. A client whose
@@ -255,7 +255,7 @@ rules:
         - BE_INFRA_OWNER
       manual:
         - Confirm the ingress route of the api sets no compression and no response buffering for text/event-stream, and that its idle timeout is above the heartbeat.
-        - Confirm an api that runs more than one replica selects a shared hub (STACKS_REALTIME_SCALED refuses the memory hub there).
+        - Confirm an api that runs more than one replica selects a shared hub (REALTIME_HUB postgres or redis): the memory hub serves one process only.
         - Confirm the replay bounds fit the channel (frames per topic, number of topics).
     relatedExamples: [realtime]
   - id: BE-REALTIME-6
@@ -287,8 +287,8 @@ rules:
 
       Hub (both editions): the hub default is Redis when Redis is declared (lite or full), Postgres LISTEN/NOTIFY when lite declares no
       Redis, and memory for tests or a single replica only; the memory hub is non-scale. Scale is the hub adapter behind the one
-      `RealtimeHub` port, never a different door. The Redis and Postgres hubs, the refusal of a stack with more than one api replica on
-      the memory hub (STACKS_REALTIME_SCALED) and the two-replica scenarios are the realtime scale rule BE-REALTIME-7.
+      `RealtimeHub` port, never a different door. The Redis and Postgres hubs, a stack with more than one api replica never runs
+      the memory hub, and the two-replica scenarios are the realtime scale rule BE-REALTIME-7.
 
       Lite (R212):
       ONE instance type, one api deployable, scales horizontally and stateless, with no sticky sessions, on its own Postgres plus
@@ -361,8 +361,8 @@ rules:
       not, and `memory` only for tests or one replica. A Postgres hub LISTENs on `REALTIME_DB_URL` when declared, else on the
       primary URL, and proves the connection at boot by hearing a probe the hub sends from another session, so a transaction pooler
       fails the boot instead of delivering nothing. The Redis hub reads its address from the secret `REALTIME_REDIS_URL`
-      (password, ACL user and `rediss://` included). The stack check `STACKS_REALTIME_SCALED` refuses an api that composes
-      a realtime feature, runs more than one replica and does not select `postgres` or `redis`. The socket.io adapters live in
+      (password, ACL user and `rediss://` included). An api that composes
+      a realtime feature, runs more than one replica and does not select `postgres` or `redis` is a defect (held by review). The socket.io adapters live in
       `platform/realtime` too and `main.ts` installs the one the hub selects through `realtimeIoAdapter(app)`: the default
       `IoAdapter` on the memory hub, `PostgresIoAdapter` (`@socket.io/postgres-adapter`, payloads of 8 KB or more through the
       `socket_io_attachments` table) or `RedisIoAdapter` (`createShardedAdapter`, Redis 7 or later). Both force
@@ -484,14 +484,8 @@ rules:
         - STACKS_SECRET_UNVERSIONED
         - STACKS_SECRET_ENV_LITERAL
         - STACKS_PORT_PUBLISHED
-        - STACKS_SECOND_INGRESS
-        - STACKS_DNS_UNDECLARED
-        - STACKS_HOST_UNROUTED
-        - STACKS_TLS_UNDECLARED
-        - STACKS_PLACEMENT_MISSING
-        - STACKS_HEALTHCHECK_MISSING
-        - STACKS_UPDATE_POLICY_MISSING
-        - STACKS_REALTIME_SCALED
+        - STACKS_INGRESS_INVALID
+        - STACKS_SERVICE_POLICY_MISSING
         - BE_PATTERN_SPEC_MISSING
       manual:
         - Confirm the ingress holds no sticky-session declaration for the api, and that polling is off in the socket.io client configuration.

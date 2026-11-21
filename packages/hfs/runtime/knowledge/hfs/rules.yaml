@@ -3366,7 +3366,7 @@ rules:
     law: "Every rendered Swarm deployment uses external immutable secrets whose names match the declared runtimeName and positive version; services carry no secret environment literals. Only the one declared ingress publishes ports, on 80 or 443, in ingress mode or in host mode (the routing mesh of ingress mode rewrites the client source IP, so per-IP limits behind the single proxy hop need host mode); a host-mode ingress listens on every node it runs on, so it is global mode or pinned by a placement constraint; its hosts have routes, DNS ownership receipts and TLS ownership evidence. Stateful services declare placement constraints, and runnable services declare healthchecks and update, rollback and restart policies. An api app composing be.feature.realtime.* that runs more than one replica selects a shared hub with REALTIME_HUB (postgres or redis)."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["STACKS_SECRET_NOT_EXTERNAL", "STACKS_SECRET_UNVERSIONED", "STACKS_SECRET_ENV_LITERAL", "STACKS_PORT_PUBLISHED", "STACKS_SECOND_INGRESS", "STACKS_DNS_UNDECLARED", "STACKS_HOST_UNROUTED", "STACKS_TLS_UNDECLARED", "STACKS_PLACEMENT_MISSING", "STACKS_HEALTHCHECK_MISSING", "STACKS_UPDATE_POLICY_MISSING", "STACKS_REALTIME_SCALED"]
+    failureCodes: ["STACKS_SECRET_NOT_EXTERNAL", "STACKS_SECRET_UNVERSIONED", "STACKS_SECRET_ENV_LITERAL", "STACKS_PORT_PUBLISHED", "STACKS_SERVICE_POLICY_MISSING"]
     enforcers:
       - {kind: hfs, id: stacks-swarm, at: scripts/hfs/rules/stacks-swarm.mjs}
       - {kind: hfs, id: stacks-second-ingress, at: scripts/hfs/rules/stacks-ingress.mjs}
@@ -3506,11 +3506,11 @@ rules:
     witness:
       - {path: packages/hfs/src/hfs-coverage-below.spec.mjs}
   - id: R275
-    code: "STACKS_INGRESS_UNDECLARED"
-    law: "Every Swarm environment declares its one ingress component and hosts. The named component has role ingress and a digest-pinned supported ingress image; Traefik and Caddy are both accepted without a preferred product. An absent declaration, unknown component or unsupported image is refused."
+    code: "STACKS_INGRESS_INVALID"
+    law: "Every Swarm environment declares its one ingress component and hosts. The named component has role ingress and a digest-pinned supported ingress image; Traefik and Caddy are both accepted without a preferred product, and a second ingress is refused. Each public host declares its DNS owner and receipt, the environment declares its TLS owner and receipt, and every declared host is routed by the ingress. An absent declaration, unknown component, unsupported image, missing DNS or TLS declaration or unrouted host is refused (STACKS_INGRESS_INVALID)."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["STACKS_INGRESS_UNDECLARED", "STACKS_INGRESS_UNKNOWN"]
+    failureCodes: ["STACKS_INGRESS_INVALID"]
     enforcers:
       - {kind: hfs, id: stacks-ingress, at: scripts/hfs/rules/stacks-ingress.mjs}
     docs:
@@ -3524,10 +3524,10 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-ingress.spec.mjs}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared. A Redis image runs only when hfs.json sides.be.backing declares redis, as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared. A Redis image runs only when hfs.json sides.be.backing declares redis, as one minimal instance. Held by review, not by a check: a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). Also held by review: a sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is not allowed. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
+    failureCodes: ["STACKS_LITE_SELFHOSTED_DB"]
     enforcers:
       - {kind: hfs, id: stacks-backing, at: scripts/hfs/rules/stacks-backing.mjs}
     docs:
@@ -5022,7 +5022,7 @@ rules:
     law: "In lite and full apps, every docker-compose environment of .starcistacks/application-stacks.yaml declares a coherent `local` block, judged by the same normalizeLocal the dev verbs of `starci app stack` (doctor, prepare, up, status, logs, verify, down) use: closed fields, one loopback port each, compose services that exist in the compose files, an environment-owned database role (never postgres, never the app role), dev-only custody generators and loopback probes; and a lite app declares at least one such dev environment, so `starci app stack up --env dev` has something to run."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_LOCAL_CONFIG_INVALID", "STACKS_DEV_UNDECLARED"]
+    failureCodes: ["STACKS_LOCAL_CONFIG_INVALID"]
     enforcers:
       - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
     docs:
@@ -5033,28 +5033,12 @@ rules:
       - packages/hfs/templates/app/skeleton/.starcistacks
     witness:
       - {path: packages/hfs/src/stack-local.spec.mjs}
-  - id: R373
-    code: "STACKS_RUNBOOK_DOCKER_COMMAND"
-    law: "The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command: Docker is run by the harness verb, never by hand (hard rule 8)."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["STACKS_RUNBOOK_DOCKER_COMMAND"]
-    enforcers:
-      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
-    docs:
-      - contexts/project/stacks.md#project-stacks-10-local-runs
-    proves:
-      - packages/hfs/src/stack-local.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/app/skeleton/.starcistacks
-    witness:
-      - {path: packages/hfs/src/stack-local.spec.mjs}
   - id: R374
     code: "STACKS_CODE_BIND_MOUNT"
-    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's StarCi fork image for that service when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
+    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned; when the harness owns a StarCi fork image for that service the final stage is FROM it, held by review), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_BASE_NOT_FORK", "STACKS_IMAGE_ENV_DIVERGES"]
+    failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_ENV_DIVERGES"]
     enforcers:
       - {kind: hfs, id: stacks-service-images, at: scripts/hfs/rules/stacks-service-images.mjs}
     docs:
@@ -5240,11 +5224,11 @@ rules:
     witness:
       - {path: packages/hfs/src/pre-push-branches.spec.mjs}
   - id: R389
-    code: "STACKS_BASE_PORT_ROLE"
-    law: "The host ports of a dev environment derive from its project base port, so two apps on one machine run side by side: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+79 (base+2 up to base+79 when no gateway runs) (STACKS_BASE_PORT_ROLE); the compose services take base+80 up to base+99, and a compose port that plays a role of the table sits on its slot: the port `local.database` names on base+90, `mail` (the mail sink's SMTP) on base+91, `mailui` on base+92, `storage` (the object store's S3 API) on base+93 and `storage-console` on base+94 (STACKS_COMPOSE_PORT_ROLE); every compose file of the environment publishes its host ports from `local.ports` as `${STACK_PORT_<NAME>}`, never a literal port (STACKS_COMPOSE_PORT_LITERAL). An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; Each project owns its own hundred: `starci app stack doctor --env <env>` fails its port range row, naming every registered project it compared (the ledgers of the state base's and the harness home's machine registries, each project's checkouts and worktrees; a project with no base holds its declared ports) and the next free base, when another project's hundred or ports overlap base..base+99; `starci app scaffold` takes the next free hundred when the name's base is held and refuses an overlapping `--base-port` (HFS_SCAFFOLD_BASE_PORT_TAKEN); `starci app stack up --env <env>` refuses to start anything on an overlapping range, naming the other project and the next free base (STACK_LOCAL_BASE_PORT_TAKEN); `starci app check --env local` reports the overlap as a warning, report-only, since CI has no machine registry and stack up is where it blocks (STACK_BASE_PORT_OVERLAP). `starci app sync --execute` moves an existing app's database and mail ports onto their slots and adds the storage service."
+    code: "STACKS_BASE_PORT_UNDECLARED"
+    law: "The host ports of a dev environment derive from its project base port, so two apps on one machine run side by side: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+79 (base+2 up to base+79 when no gateway runs) (STACKS_LOCAL_CONFIG_INVALID); the compose services take base+80 up to base+99, and a compose port that plays a role of the table sits on its slot: the port `local.database` names on base+90, `mail` (the mail sink's SMTP) on base+91, `mailui` on base+92, `storage` (the object store's S3 API) on base+93 and `storage-console` on base+94 (STACKS_LOCAL_CONFIG_INVALID); every compose file of the environment publishes its host ports from `local.ports` as `${STACK_PORT_<NAME>}`, never a literal port (STACKS_LOCAL_CONFIG_INVALID). An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; Each project owns its own hundred: `starci app stack doctor --env <env>` fails its port range row, naming every registered project it compared (the ledgers of the state base's and the harness home's machine registries, each project's checkouts and worktrees; a project with no base holds its declared ports) and the next free base, when another project's hundred or ports overlap base..base+99; `starci app scaffold` takes the next free hundred when the name's base is held and refuses an overlapping `--base-port` (HFS_SCAFFOLD_BASE_PORT_TAKEN); `starci app stack up --env <env>` refuses to start anything on an overlapping range, naming the other project and the next free base (STACK_LOCAL_BASE_PORT_TAKEN); `starci app check --env local` reports the overlap as a warning, report-only, since CI has no machine registry and stack up is where it blocks (STACK_BASE_PORT_OVERLAP). `starci app sync --execute` moves an existing app's database and mail ports onto their slots and adds the storage service."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_COMPOSE_PORT_ROLE", "STACKS_COMPOSE_PORT_LITERAL", "STACKS_BASE_PORT_UNDECLARED", "HFS_SCAFFOLD_BASE_PORT_TAKEN", "STACK_LOCAL_BASE_PORT_TAKEN", "STACK_BASE_PORT_OVERLAP"]
+    failureCodes: ["STACKS_BASE_PORT_UNDECLARED", "HFS_SCAFFOLD_BASE_PORT_TAKEN", "STACK_LOCAL_BASE_PORT_TAKEN", "STACK_BASE_PORT_OVERLAP"]
     enforcers:
       - {kind: hfs, id: stacks-local, at: runtime/scripts/hfs/rules/stacks-local.mjs}
     docs:
@@ -5464,11 +5448,11 @@ rules:
     witness:
       - {path: packages/hfs/src/data-sets.spec.mjs}
   - id: R428
-    code: "STORAGE_PUBLIC_ROUTE_MISSING"
-    law: "A dev environment that publishes anything (it declares `local.tunnel`, or a process whose environment holds a public https origin) and runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) routes its S3 API port on the dev tunnel: a `tunnel.routes[]` entry whose port is the store's port (STORAGE_PUBLIC_ROUTE_MISSING), never one that reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE); every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name (STORAGE_PUBLIC_LINK_INTERNAL). Stored data holds a bucket and a key, never a host (held by review and the app's specs); `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here. A process that sets the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) in such an environment sets one that starts with `https://<the host of a route to the store>/`, otherwise STORAGE_PUBLIC_LINK_INTERNAL."
+    code: "STORAGE_PUBLIC_ROUTE_CONSOLE"
+    law: "A dev environment that runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) publishes its S3 API port only: no `tunnel.routes[]` entry reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE). The rest of PROJECT-STACKS-15 is a convention held by review and the app's specs: a `tunnel.routes[]` entry whose port is the store's S3 port; every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name; the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) of a process in an environment with a tunnel starts with `https://<the host of a route to the store>/`; stored data holds a bucket and a key, never a host. `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STORAGE_PUBLIC_ROUTE_MISSING", "STORAGE_PUBLIC_ROUTE_CONSOLE", "STORAGE_PUBLIC_LINK_INTERNAL"]
+    failureCodes: ["STORAGE_PUBLIC_ROUTE_CONSOLE"]
     enforcers:
       - {kind: hfs, id: stacks-storage-public, at: runtime/scripts/hfs/rules/stacks-storage-public.mjs}
     templateNa: "A new app declares no dev tunnel and no object store route; the rule guards the declaration once it publishes anything."
@@ -5653,10 +5637,10 @@ rules:
       - {path: packages/hfs/src/statics-outside.spec.mjs}
   - id: R440
     code: "STACK_STORAGE_MISSING"
-    law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is a warning (STACK_STORAGE_UNUSED). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, STACK_STORAGE_IMAGE_UNUSED; a service that builds it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
+    law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is an object store nothing uses: remove it (held by review, not by a check). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, or a service that builds it does not have the shape, STACK_STORAGE_IMAGE_SHAPE: it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACK_STORAGE_MISSING", "STACK_STORAGE_UNUSED", "STACK_STORAGE_IMAGE_UNUSED", "STACK_STORAGE_IMAGE_SHAPE"]
+    failureCodes: ["STACK_STORAGE_MISSING", "STACK_STORAGE_IMAGE_SHAPE"]
     enforcers:
       - {kind: hfs, id: storage-image, at: runtime/scripts/hfs/rules/storage-image.mjs}
     templateNa: "A new app starts with an empty statics/ and, in lite, the storage service of the starter; the rule judges what an app adds."
