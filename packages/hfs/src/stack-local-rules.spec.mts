@@ -32,9 +32,9 @@ test('R372 a coherent dev environment raises nothing', (t) => {
   assert.deepEqual(codes(app(t)), []);
 });
 
-test('R372 an app without a docker-compose environment is STACKS_DEV_UNDECLARED, and a swarm dev is not one', (t) => {
+test('R372 an app without a docker-compose environment is STACKS_LOCAL_CONFIG_INVALID, and a swarm dev is not one', (t) => {
   const swarm = app(t, { environment: '  dev:\n    status: supported\n    runtime: docker-swarm\n    composeFiles: [infra/swarm/stack.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n' });
-  assert.deepEqual(codes(swarm), ['STACKS_DEV_UNDECLARED']);
+  assert.deepEqual(codes(swarm), ['STACKS_LOCAL_CONFIG_INVALID']);
 });
 
 test('R372 a docker-compose environment without a local block, or with a service the compose files lack, is STACKS_LOCAL_CONFIG_INVALID', (t) => {

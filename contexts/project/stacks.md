@@ -474,8 +474,8 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and port 9000 belongs to the host's shared analysis server, which no app's dev environment takes.
   The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
   A compose file of an environment with a base publishes every host port from `local.ports`, `127.0.0.1:${STACK_PORT_<NAME>}:<container port>`,
-  never a literal port, which the base cannot move. A native process off the table is `STACKS_BASE_PORT_ROLE`, a compose port of a role off
-  its slot `STACKS_COMPOSE_PORT_ROLE`, a literal host port in a compose file `STACKS_COMPOSE_PORT_LITERAL` (errors); the slot of another compose
+  never a literal port, which the base cannot move. A native process off the table, a compose port of a role off
+  its slot and a literal host port in a compose file are `STACKS_LOCAL_CONFIG_INVALID` (an error); the slot of another compose
   service is not judged yet. An app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
   that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
   of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store

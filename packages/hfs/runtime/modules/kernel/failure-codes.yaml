@@ -6451,44 +6451,13 @@ SEALED_FILE_IN_WORK:
 # --- HFS rule catalog (knowledge/hfs/rules.yaml): one code per rule, from R01 up ---
 
 STACKS_LOCAL_CONFIG_INVALID:
-  title: "The local block of a docker-compose environment is not coherent"
-  title_vi: "Khối local của môi trường docker-compose không nhất quán"
-  meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
+  title: "The dev environment declaration of an app (local block, runnable dev environment, base port layout) is not coherent"
+  title_vi: "Khai báo môi trường dev của ứng dụng (khối local, môi trường dev chạy được, bố cục cổng theo cổng gốc) không nhất quán"
+  meaning_vi: "Môi trường docker-compose của ứng dụng không khai báo đúng: environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback; ứng dụng không có environment nào chạy docker-compose với khối local nên starci app stack up --env dev không có gì để chạy; hoặc khi đã khai báo basePort, cổng của một tiến trình native hay của một dịch vụ compose có vai trò (db = basePort + 90, mail + 91, mailui + 92, storage + 93, storage-console + 94) lệch khỏi bảng vai trò của PROJECT-STACKS-10, hay một tệp compose publish cổng host bằng số cố định thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\". Thông báo của finding nêu đường dẫn khóa, điều được mong đợi và điều tìm thấy."
   causes_vi:
-    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
-  nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_DEV_UNDECLARED:
-  title: "A lite app declares no runnable dev environment"
-  title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
-  meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
-  causes_vi:
-    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
-  nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_BASE_PORT_ROLE:
-  title: "A native process port departs from the role table of the project base port"
-  title_vi: "Cổng của tiến trình native lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng cổng của một tiến trình native không đúng bảng vai trò: front end chính = basePort, api = basePort + 1, AI gateway = basePort + 2, các tiến trình native còn lại từ basePort + 3 (basePort + 2 khi không có gateway) đến basePort + 79. Dải basePort + 80 đến basePort + 99 thuộc các dịch vụ compose (STACKS_COMPOSE_PORT_ROLE)."
-  causes_vi:
-    - "Vi phạm R389: cổng được đặt tay thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng."
-    - "Tên tiến trình không thuộc đúng vai trò (web, app, console là front end; api, core là api; gateway là AI gateway), nên bị xếp vào nhóm còn lại."
-  nextStep_vi: "Đặt lại cổng trong environments.<env>.local.ports theo đúng bảng vai trò của basePort (PROJECT-STACKS-10), cập nhật các nơi dùng ${port.<tên>}, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_COMPOSE_PORT_ROLE:
-  title: "A compose service port departs from the role table of the project base port"
-  title_vi: "Cổng của dịch vụ compose lệch khỏi bảng vai trò của cổng gốc dự án"
-  meaning_vi: "environments.<env>.local khai báo basePort nhưng một cổng compose có vai trò trong bảng lại không đúng chỗ: cơ sở dữ liệu (cổng mà local.database chỉ tới) = basePort + 90, SMTP của mail = basePort + 91, giao diện web của mail = basePort + 92, API S3 của object storage = basePort + 93, console của nó = basePort + 94."
-  causes_vi:
-    - "Vi phạm R389: cổng compose được đặt cố định (54322, 1025, 8025, 9000) thay vì suy ra từ cổng gốc, nên hai ứng dụng chạy cạnh nhau sẽ trùng cổng."
-    - "Ứng dụng được tạo trước khi bảng vai trò có phần compose và chưa chạy bản nâng cấp của starci app sync."
-  nextStep_vi: "Chạy starci app sync --execute: nó dời db, mail và mailui về cổng suy ra và thêm dịch vụ storage; hoặc sửa tay environments.<env>.local.ports theo bảng của PROJECT-STACKS-10, rồi chạy lại starci app check."
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng; môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+    - "Vi phạm R389: cổng được đặt tay hoặc viết thẳng vào tệp compose thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng; ứng dụng được tạo trước khi bảng vai trò có phần compose; tên tiến trình không thuộc đúng vai trò nên bị xếp vào nhóm còn lại."
+  nextStep_vi: "Sửa đúng trường nêu trong thông báo: đường dẫn environments.<env>.local, khai báo environments.dev với runtime docker-compose, composeFiles và khối local, đặt lại cổng trong environments.<env>.local.ports theo bảng vai trò của basePort và đổi dòng ports của dịch vụ compose thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\" (hoặc chạy starci app sync --execute để dời db, mail, mailui về cổng suy ra), rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
 
@@ -6520,16 +6489,6 @@ STACK_BASE_PORT_OVERLAP:
     - "Hai dự án trên cùng máy khai cùng một trăm cổng (R389)."
   nextStep_vi: "Đổi environments.<env>.local.basePort của một trong hai dự án sang cổng gốc trống được đề xuất, rồi chạy lại starci app check."
   owner: supervisor
-  kind: check-finding
-
-STACKS_COMPOSE_PORT_LITERAL:
-  title: "A compose file of a dev environment with a base port publishes a literal host port"
-  title_vi: "File compose của môi trường dev có cổng gốc lại publish một cổng host cố định"
-  meaning_vi: "Môi trường khai báo basePort nhưng một dịch vụ trong file compose publish cổng host bằng số cố định (ví dụ \"127.0.0.1:3080:3080\") thay vì \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", nên cổng đó không đi theo cổng gốc và hai ứng dụng có thể trùng."
-  causes_vi:
-    - "Vi phạm R389: cổng được viết thẳng vào file compose thay vì khai báo trong environments.<env>.local.ports."
-  nextStep_vi: "Khai báo cổng trong environments.<env>.local.ports theo bảng vai trò của basePort (PROJECT-STACKS-10), đổi dòng ports của dịch vụ thành \"127.0.0.1:${STACK_PORT_<NAME>}:<cổng container>\", rồi chạy lại starci app check."
-  owner: op-retry
   kind: check-finding
 
 STACKS_BASE_PORT_UNDECLARED:
