@@ -19,7 +19,7 @@ a fork, and a defect shimmed in one app stays in the grammar for every other.
 Enforced by: R93 (`grammar-entry`, `vendor-primitive-has-named-owner`), R321 (`no-grammar-shim`), R62
 (`no-native-form-control`, `no-native-img`; grammar `no-raw-structural-element`), R319 (`button-intent-required`,
 `single-commit-per-render`, `destructive-confirm-in-dialog`, `no-commit-in-collection-item`),
-R320 (`control-height`), R313-R317 (grammar `app-shell-frame` and the navbar laws), R318.
+R320 (`control-height`), R313-R317 (grammar `navbar-control-size`), R318.
 
 ## FE-CSS-1 App CSS is layout only
 
@@ -34,7 +34,7 @@ Why: each of these is a way to fork the design system inside one app.
 
 Enforced by: R92 (`no-inline-class-name`, `class-names-in-colocated-file`, `cn-arguments-are-single-tokens`,
 `no-public-classname-prop`), R61 (`no-arbitrary-value`, `no-raw-brand-value`), R318 (`no-app-surface-paint`,
-`no-grammar-internal-selector`, `no-list-panel-padding`).
+`no-grammar-internal-selector`).
 
 ## FE-CSS-2 `globals.css` imports in the cascade order
 
@@ -53,7 +53,7 @@ classes.
 @source "../../../../../node_modules/@starci/grammar/dist";
 ```
 
-Enforced by: R61 (stylelint `globals-import-order`, `globals-shape`, `source-resolves`).
+Enforced by: R61 (stylelint `globals-shape`, `source-resolves`).
 
 ## FE-CSS-3 Colour lives in one brand file
 
@@ -85,7 +85,7 @@ a `globals.css`, or whose globals import no Grammar stylesheet or no brand file,
 
 Why: a second global sheet is a second design system for part of the routes, which is how a site and an app of one product end up looking like two.
 
-Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`, `globals-import-order`).
+Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`).
 
 ## FE-STATE-PAGES One page per system state
 

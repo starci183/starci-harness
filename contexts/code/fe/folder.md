@@ -27,8 +27,7 @@ Why: one fixed shape per app leaves no undeclared home for a helper, so nothing 
 - When a file such as `config.ts` or `i18n/request.ts` sits in the source root → move it into its module and point
   `next.config.ts` at the new path.
 
-Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree-holds-routes-only`), R54
-(`no-middleware-file`), R94 (machine `fe-slot-allows`).
+Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree-holds-routes-only`), R54, R94 (machine `fe-slot-allows`).
 
 ## FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts`
 

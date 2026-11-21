@@ -15,10 +15,6 @@ schema: starci/module-goal-source-phrases@1
 
 phrases:
 
-  # packages/eslint/grammar-core/lib/app-shell-create.mjs - localized labels of create actions prohibited in the navbar.
-  appShell:
-    product: ['Tạo mới', 'tao moi']
-
   # scripts/agent/bias.mjs extractRoutingBias - the routing markers an owner
   # prompt types before a pool alias. Regex alternatives; syllables join with \s*.
   bias:

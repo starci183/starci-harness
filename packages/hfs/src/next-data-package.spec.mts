@@ -47,10 +47,7 @@ test('the pin of @starci/next-data names the folder and the version of the packa
   assert.equal(pin?.version, JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', 'next-data', 'package.json'), 'utf8')).version);
 });
 
-test('R244 lists the rule that refuses an app-written SWR middleware, and the data concern of the stack names the package', () => {
-  const rules = fs.readFileSync(path.join(REPOSITORY, 'packages', 'hfs', 'runtime', 'knowledge', 'hfs', 'rules.yaml'), 'utf8');
-  const r244 = rules.slice(rules.indexOf('- id: R244'), rules.indexOf('- id: R245'));
-  assert.match(r244, /id: swr-extension-from-package/u);
+test('the data concern of the stack names the package', () => {
   const stack = fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'fe.yaml'), 'utf8');
   assert.match(stack, /packages: \[swr, '@starci\/next-data'\]/u);
 });

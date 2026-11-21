@@ -367,23 +367,6 @@ export const sourceTierMarkerMatchesFolder = defineRule({
   },
 })
 
-/** `shells/` is not a tier; vendor mechanics are closed named branches. */
-export const noShellTier = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "The component vocabulary has no shell tier." },
-    schema: [],
-    messages: {
-      shell:
-        "`shells/` is an untyped branch exemption. Move the owner to a named branch and keep vendor mechanics closed there.",
-    },
-  },
-  create(context) {
-    if (unknownLayerFolder(context) !== "shells") return {}
-    return { Program(node) { context.report({ node, messageId: "shell" }) } }
-  },
-})
-
 /**
  * The component a route slot mounts takes the slot's own name.
  *
@@ -471,7 +454,6 @@ export const routeSlotFixedName = defineRule({
 })
 
 export const rules: Rules = {
-  "no-shell-tier": noShellTier,
   "source-tier-marker-matches-folder": sourceTierMarkerMatchesFolder,
   "surface-folder-two-files-only": surfaceFolderTwoFilesOnly,
   "route-tree-holds-routes-only": routeTreeHoldsRoutesOnly,

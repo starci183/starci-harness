@@ -6,7 +6,7 @@
 //                              `globals.css` (the brand file is imported by the globals, never by a layout or a module).
 //   FE_GLOBALS_IMPORTS_MISSING an app with a route tree has no `src/app/globals.css`, or its globals `@import`s no Grammar stylesheet
 //                              (`@starci/grammar/...`) or no `modules/brand/brand.css`.
-// R61 (stylelint `globals-shape`, `globals-import-order`) judges what the globals hold; this rule judges that there is one and that it is the only door.
+// R61 (stylelint `globals-shape`) judges what the globals hold; this rule judges that there is one and that it is the only door.
 import path from 'node:path';
 import { found, readText } from './read.mjs';
 import type { Finding, Repo } from './rule-types.mjs';

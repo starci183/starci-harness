@@ -13,7 +13,7 @@ Choice `card.choose.role`: what presents the subject, which is the card's `kind`
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| collection | rows, a table, facts, figures, disclosures or a choice, wherever they stand | not a card: the collection stands flat in a `Section`, by the owner COLLECTION-4 names for it (`list-table.choose.role`) | lint `starci-grammar/card-is-object`, `starci-grammar/surface-card-list`, `starci-grammar/rows-in-card` |
+| collection | rows, a table, facts, figures, disclosures or a choice, wherever they stand | not a card: the collection stands flat in a `Section`, by the owner COLLECTION-4 names for it (`list-table.choose.role`) | lint `starci-grammar/card-is-object`, `starci-grammar/rows-in-card` |
 | form | fields with a page around them | not a card: a `Section` and a `Form`, which caps its own width (MEASURE-4) | lint `starci-grammar/card-is-object` |
 | sign-in | the one form with no page around it (sign-in, a sign-in callback) | `SurfaceCard measure="formCompact"`, centred | lint `starci-grammar/card-is-object` passes it |
 | whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
@@ -87,8 +87,8 @@ it, MEASURE-4).
 
 ## Rules
 COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, BOUNDARY-6, SURFACE-2. Lint:
-`starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
-`surface-card-kind` (R355), `card-is-object` (COLLECTION-2), `surface-card-list`, `rows-in-card` (COLLECTION-4),
+`starci-fe/no-app-surface-paint`, `starci-grammar/no-raised-surface-in-surface` (R340),
+`surface-card-kind` (R355), `card-is-object` (COLLECTION-2), `rows-in-card` (COLLECTION-4),
 `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354), `starci-grammar/surface-in-surface` (a list of rows inside
 the card body is a `Section kind="list"`, BOUNDARY-7), `starci-grammar/gap-proximity`. Proof: TASTE-7.
 

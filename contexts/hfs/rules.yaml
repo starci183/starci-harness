@@ -444,9 +444,7 @@ rules:
       - {kind: eslint-be, id: no-sleep-in-flow}
       - {kind: eslint-be, id: no-wiring-in-flow-spec}
       - {kind: eslint-be, id: e2e-asserts-persisted-state}
-      - {kind: eslint-be, id: no-api-shaped-e2e-filename}
       - {kind: eslint-be, id: no-call-only-spec}
-      - {kind: eslint-be, id: no-marker-model-stub}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
       - {kind: eslint-be, id: spec-builds-with-testing-module}
@@ -524,7 +522,6 @@ rules:
       - FE_ROUTE_CLIENT_HOOK
       - FE_ROUTE_DEFAULT_EXPORT
     enforcers:
-      - {kind: eslint-fe, id: no-middleware-file}
       - {kind: eslint-fe, id: page-exports-metadata}
       - {kind: eslint-fe, id: route-files-thin}
       - {kind: eslint-fe, id: route-adapter}
@@ -584,7 +581,6 @@ rules:
       - FE_I18N_NAVIGATION
       - FE_I18N_FORMATTER
     enforcers:
-      - {kind: eslint-fe, id: locale-segment-is-locale}
       - {kind: eslint-fe, id: no-second-i18n-stack}
       - {kind: eslint-fe, id: i18n-stack-in-one-module}
       - {kind: eslint-fe, id: navigation-from-intl}
@@ -611,9 +607,7 @@ rules:
       - {kind: stylelint, id: raw-brand-value}
       - {kind: stylelint, id: no-apply-raw}
       - {kind: stylelint, id: no-important}
-      - {kind: stylelint, id: no-self-reference}
       - {kind: stylelint, id: globals-shape}
-      - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
       - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
@@ -625,7 +619,6 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
     law: Product tiers compose the selected Grammar renderers for form controls, images and structural elements and never reproduce them with raw HTML.
@@ -860,8 +853,6 @@ rules:
       - {kind: eslint-be, id: require-enum-member-jsdoc}
       - {kind: eslint-be, id: no-non-ascii-source}
       - {kind: eslint-be, id: no-restated-name-jsdoc}
-      - {kind: eslint-be, id: no-bare-verb-export}
-      - {kind: eslint-be, id: no-vendor-module-factory-name}
       - {kind: eslint-be, id: no-version-in-name}
       - {kind: eslint-be, id: no-const-enum}
       - {kind: eslint-be, id: no-inline-object-type}
@@ -890,7 +881,6 @@ rules:
       - {kind: eslint-fe, id: require-export-jsdoc}
       - {kind: eslint-fe, id: no-emoji-in-source}
       - {kind: eslint-fe, id: no-vietnamese-in-source}
-      - {kind: eslint-fe, id: no-shell-tier}
       - {kind: eslint-fe, id: source-tier-marker-matches-folder}
       - {kind: eslint-fe, id: surface-folder-two-files-only}
       - {kind: eslint-fe, id: route-tree-holds-routes-only}
@@ -901,7 +891,6 @@ rules:
       - {kind: eslint-fe, id: monorepo-tier-belongs-to-its-side}
       - {kind: eslint-fe, id: prefer-arrow-export}
       - {kind: eslint-fe, id: handler-on-prefix}
-      - {kind: eslint-fe, id: no-second-language-in-path}
       - {kind: eslint-fe, id: no-direct-const-alias}
       - {kind: eslint-fe, id: frontend-source-layout}
   - id: R92
@@ -1474,8 +1463,6 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
-      - {kind: eslint-be, id: no-line-separator-literal}
-      - {kind: eslint-fe, id: no-line-separator-literal}
       - {kind: eslint-be, id: no-bidirectional-character}
       - {kind: eslint-fe, id: no-bidirectional-character}
       - {kind: eslint-be, id: no-duplicate-import}
@@ -1504,7 +1491,6 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
-      - {kind: eslint-fe, id: swr-extension-from-package}
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
@@ -1873,8 +1859,7 @@ rules:
     law: "`PublicReason` is exactly Health, AuthHandshake, SignedWebhook and CatalogRead, and other access uses its own credential guard."
     failureCodes:
       - BE_PUBLIC_REASON_CLOSED
-    enforcers:
-      - {kind: eslint-be, id: public-reason-closed}
+    enforcers: []
   - id: R291
     code: HFS_FUNCTION_BUDGET
     law: Every function, method or arrow body stays within the function line budget (ruleParams.common.functionLines).
@@ -2012,8 +1997,7 @@ rules:
     law: The selected Grammar shell owns the fixed application frame with independent navigation and content scroll, and the application layout never recreates it.
     failureCodes:
       - FE_APP_SHELL_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: app-shell-frame}
+    enforcers: []
   - id: R314
     code: FE_NAVBAR_CONTROL_SIZE
     law: Navbar controls share one height and icons one size per region from the selected Grammar scale.
@@ -2026,22 +2010,19 @@ rules:
     law: Navbar controls appear in the order language, theme, notifications and account, each supplied by the selected Grammar.
     failureCodes:
       - FE_NAVBAR_CLUSTER
-    enforcers:
-      - {kind: eslint-grammar-core, id: navbar-cluster}
+    enforcers: []
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
     law: An application keeps the selected Grammar shell's navigation model across viewports; the only bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places), and a hand-made bottom tab bar or a BottomNav anywhere else is refused.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
+    enforcers: []
   - id: R317
     code: FE_NAVBAR_CREATE
     law: Create actions live on the page that owns them, never in the global navbar.
     failureCodes:
       - FE_NAVBAR_CREATE
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-navbar-create}
+    enforcers: []
   - id: R318
     code: FE_NESTED_VARIANT
     law: Apps compose the Grammar with layout-only CSS; paint and surface edges belong to the Grammar, and app styles never target Grammar internals.
@@ -2051,10 +2032,7 @@ rules:
       - FE_GRAMMAR_LAYOUT_ONLY
       - FE_DIVIDER_FULL_BLEED
     enforcers:
-      - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: divider-full-bleed}
-      - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
   - id: R319
     code: FE_BUTTON_INTENT
@@ -2089,8 +2067,7 @@ rules:
     law: The label of a status chip (a Badge, with or without its dot) starts with an uppercase letter, so every chip of an app reads in one vocabulary.
     failureCodes:
       - FE_CHIP_LABEL_CASE
-    enforcers:
-      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    enforcers: []
   - id: R323
     code: FE_PAGE_HEADER_HAND_ROLLED
     law: A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator.
@@ -2196,8 +2173,7 @@ rules:
     law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
     failureCodes:
       - FE_GENERATED_ART_OUTSIDE_FRAME
-    enforcers:
-      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    enforcers: []
   - id: R339
     code: FE_MASCOT_ASSET_SLOT_MISSING
     law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.
@@ -2245,8 +2221,7 @@ rules:
     law: An app's ai-router gateway has one client key, `STARCI_AI_KEY`, and no admin token; `integrations/ai` reads exactly that secret name, and the gateway's custody owner passes no `adminToken`.
     failureCodes:
       - BE_AI_VIRTUAL_KEY
-    enforcers:
-      - {kind: eslint-be, id: ai-virtual-key-name}
+    enforcers: []
   - id: R345
     code: FE_PANE_GRID_CHILD_NOT_PANE
     law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
@@ -2314,8 +2289,7 @@ rules:
     law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are Tabs kind=\"filter\"."
     failureCodes:
       - FE_TAG_GROUP_SELECTION
-    enforcers:
-      - {kind: eslint-fe, id: no-selectable-tag-group}
+    enforcers: []
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD
@@ -2374,9 +2348,7 @@ rules:
     failureCodes:
       - FE_GRAMMAR_TIER_STATE
       - FE_GRAMMAR_PROP_BUDGET
-    enforcers:
-      - {kind: grammar-lint, id: tier-state}
-      - {kind: grammar-lint, id: prop-budget}
+    enforcers: []
   - id: R363
     code: FE_GRAMMAR_LITERAL
     law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."

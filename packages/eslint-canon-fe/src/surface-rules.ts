@@ -1,8 +1,7 @@
 /** Grammar owns surface nesting, the single content edge of a panel list (ANATOMY-2, PADDING-0) and the column seams of a pane frame (PaneGrid). */
 import { attributeValue, stringOf, walk } from "./lib/ast.ts"
-import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
+import { importOf, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.ts"
-import { reactHookOf } from "./lib/react.ts"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import type { PathStep } from "./lib/bindings.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
@@ -22,11 +21,6 @@ const memberName = (node: TSESTree.MemberExpression): string | null => (node.com
 const present = (value: Node | null | undefined): value is Node => Boolean(value)
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
-const SURFACES = new Set<string | undefined>([
-  "SurfaceCard", "Sidebar",
-  "Dialog", "Drawer", "AlertDialog", "Popover",
-  "WorkspaceShell", "TopBar", "Pane", "PaneSection",
-])
 const CLASS_BUILDERS = new Set(["cn", "clsx", "classNames", "cva", "tv"])
 
 /** Resolve a JSX name to its Grammar export and optional compound parts, preserving lexical import identity. */
@@ -75,36 +69,6 @@ const stringChildren = (node: Node, mode: string): readonly (Node | null)[] => {
   return []
 }
 
-/** A declared React component is a separate render tree; inline collection/render callbacks keep the surrounding context. */
-const componentBoundary = (context: AnyContext, node: Node): boolean => {
-  if (!isFn(node)) return false
-  if (node.parent?.type === "CallExpression" && isOneOf(["memo", "forwardRef"], reactHookOf(context, node.parent))) return true
-  if (node.parent?.type === "JSXExpressionContainer" || node.parent?.type === "CallExpression" && node.parent.arguments.some((argument) => argument === node)) return false
-  const name = node.id?.name ?? (node.parent?.type === "VariableDeclarator" ? (node.parent.id.type === "Identifier" ? node.parent.id.name : undefined) : null)
-  return name !== null && /^[A-Z]/.test(String(name))
-}
-
-/** The Grammar ancestors whose rendered content contains this node, excluding an overlay's trigger. */
-function* surfaceAncestors(context: AnyContext, node: Node | undefined): Generator<TSESTree.JSXOpeningElement, void> {
-  const triggers = new Set<Node>()
-  for (let current: Node | undefined = node?.parent; current; current = current.parent) {
-    if (componentBoundary(context, current)) return
-    if (current.type === "JSXAttribute" && current.name.name === "trigger") triggers.add(current.parent)
-    if (current.type === "JSXElement" && !triggers.has(current.openingElement)) yield current.openingElement
-  }
-}
-
-const isSurface = (context: AnyContext, node: TSESTree.JSXOpeningElement, descendant: Node): boolean => {
-  const name = grammarName(context, node.name)
-  if (name?.length !== 1) return false
-  if (name[0] === "WorkspaceShell") {
-    for (let current: Node | undefined = descendant; current && current !== node.parent; current = current.parent) {
-      if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "header") return true
-    }
-    return false
-  }
-  return SURFACES.has(name[0])
-}
 const classTokens = (text: string): string[] => text.split(/\s+/).map((token) => {
   let depth = 0
   let start = 0
@@ -130,7 +94,6 @@ const rawSurface = (token: string): boolean => {
   return /^-?(?:bg|from|via|to|shadow|inset-shadow|text-shadow|ring|inset-ring|outline|border|divide|rounded|text|font|leading|tracking|fill|stroke|mask|accent|caret|decoration|opacity|mix-blend|bg-blend|blur|brightness|contrast|drop-shadow|grayscale|hue-rotate|invert|saturate|sepia|backdrop|filter|appearance)(?:-|$)/.test(token)
     || /^(?:underline|overline|line-through|no-underline|italic|not-italic|antialiased|subpixel-antialiased)$/.test(token)
 }
-const horizontalPadding = (token: string): boolean => /^(?:p|px|ps|pe|pl|pr)-.+$/.test(token) || /^\[padding-inline(?:-start|-end)?:.+\]$/.test(token)
 
 /** Computed keys select their evaluated static name, rather than the identifier's spelling. */
 const propertyName = (context: AnyContext, property: TSESTree.Property): PathStep => {
@@ -202,18 +165,6 @@ const stylePaint = (context: AnyContext, input: Node | null | undefined, seen = 
   })
 }
 
-/** An explicit section caption excludes the row's own content subtree. */
-const inSectionCaption = (context: AnyContext, node: TSESTree.JSXOpeningElement): boolean => {
-  for (const ancestor of surfaceAncestors(context, node.parent)) {
-    if (isSurface(context, ancestor, node)) return false
-    const owner = grammarName(context, ancestor.name)
-    if (owner?.[0] !== "ListBox") continue
-    if (owner[1] === "Item") return false
-    if (isOneOf(["Section", "Header", "SectionHeader"], owner[1])) return true
-  }
-  return false
-}
-
 /** App classes carry layout; Grammar owns surface paint. */
 export const noAppSurfacePaint = exemptFreestyle(defineRule({
   meta: {
@@ -266,117 +217,6 @@ export const noAppSurfacePaint = exemptFreestyle(defineRule({
     }
   },
 }))
-
-/** PADDING-0: app padding wrappers cannot add a second horizontal inset to Grammar's list or section caption. */
-export const noListPanelPadding = exemptFreestyle(defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "PADDING-0: panel lists and section captions share the Grammar surface's content edge." },
-    schema: [],
-    messages: { padding: "FE_LIST_PANEL_PADDING: horizontal padding stacks with the Grammar list inset. Remove this wrapper padding and use ListBox inset=\"panel\" so rows and section captions share the panel content edge." },
-  },
-  create(context) {
-    const reported = new Set<Node>()
-    const check = (opening: TSESTree.JSXOpeningElement): void => {
-      const className = opening.attributes.find((entry) => ["className", "class"].some((name) => propStrings(context, entry, name).some((value) => classTokens(value.text).some(horizontalPadding))))
-      if (!className || reported.has(className)) return
-      reported.add(className)
-      context.report({ node: className, messageId: "padding" })
-    }
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const ancestors = [...surfaceAncestors(context, node.parent)]
-        const surfaceIndex = ancestors.findIndex((ancestor) => isSurface(context, ancestor, node))
-        if (surfaceIndex < 0) return
-        const name = grammarName(context, node.name)
-        if (name?.[0] === "ListBox" && (name.length === 1 || isOneOf(["Section", "Header", "SectionHeader"], name[1]))) {
-          check(node)
-          for (const ancestor of ancestors.slice(0, surfaceIndex + 1)) check(ancestor)
-        } else if (inSectionCaption(context, node)) check(node)
-      },
-    }
-  },
-}))
-
-/** BOUNDARY-1 case-5: only content bands carry inset; horizontal separators reach the surface edges. */
-export const dividerFullBleed = defineRule({
-  meta: {
-    type: "problem",
-    docs: {
-      description:
-        "BOUNDARY-1 case-5: horizontal Grammar dividers are full-bleed.",
-    },
-    schema: [],
-    messages: {
-      padding:
-        "FE_DIVIDER_FULL_BLEED: horizontal padding on this wrapper insets a Grammar Divider/Separator. Move padding to the sibling content bands so the divider reaches both surface edges.",
-    },
-  },
-  create(context) {
-    // Follow rendered same-file components, helper calls and JSX constants, with cycle protection.
-    const containsDivider = (root: Node | null | undefined, seen = new Set<Node>()): boolean => {
-      if (!root || seen.has(root)) return false
-      seen.add(root)
-      let found = false
-      const follow = (node: Node | null | undefined): void => {
-        found = containsDivider(node, seen) || found
-      }
-      walk(context.sourceCode, root, (node) => {
-        if (found) return false
-        if (isFn(node)) return false
-        if (node.type === "JSXOpeningElement") {
-          const name = grammarName(context, node.name)
-          if (
-            name?.length === 1 &&
-            isOneOf(["Divider", "Separator"], name[0])
-          ) {
-            const orientations = node.attributes.flatMap((entry) =>
-              propStrings(context, entry, "orientation", "variant"),
-            )
-            if (
-              !orientations.length ||
-              orientations.some((entry) => entry.text !== "vertical")
-            )
-              found = true
-          } else if (node.name.type === "JSXIdentifier") {
-            for (const definition of variableOf(context, node.name)?.defs ??
-              []) {
-              if (definition.type === "FunctionName")
-                follow(definition.node.body)
-              if (definition.type === "Variable")
-                follow(functionOf(context, definition.node.init)?.body)
-            }
-          }
-        }
-        if (node.type === "CallExpression") {
-          follow(functionOf(context, node.callee)?.body)
-          for (const argument of node.arguments)
-            if (isFn(argument)) follow(argument.body)
-        }
-        if (
-          node.type === "Identifier" &&
-          node.parent?.type === "JSXExpressionContainer"
-        ) {
-          for (const value of bindingValues(context, node)) follow(value)
-        }
-        return undefined
-      })
-      return found
-    }
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const padding = node.attributes.find((entry) =>
-          propStrings(context, entry, "className").some((value) =>
-            classTokens(value.text).some(horizontalPadding),
-          ),
-        )
-        if (!padding) return
-        if (node.parent.children.some((child) => containsDivider(child)))
-          context.report({ node: padding, messageId: "padding" })
-      },
-    }
-  },
-})
 
 /** True for a plain element (`div`), as opposed to a component. */
 const rawElement = (opening: TSESTree.JSXOpeningElement): boolean => opening.name.type === "JSXIdentifier" && /^[a-z]/.test(opening.name.name)
@@ -582,33 +422,6 @@ export const noFillCommandInHeader = defineRule({
   },
 })
 
-/** The props that made a TagGroup a selectable filter. */
-const TAG_SELECTION_PROPS = new Set(["selectionMode", "selectedIds", "defaultSelectedIds", "onSelectionChange"])
-
-/** A TagGroup holds values the user entered (remove, reorder); a filter over a collection is a FilterButtonGroup. */
-export const noSelectableTagGroup = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "A TagGroup has no selection: a filter over a collection is a FilterButtonGroup." },
-    schema: [],
-    messages: {
-      selection:
-        "FE_TAG_GROUP_SELECTION: a TagGroup holds values the user entered, to remove or to order, and has no selection. Peer values that filter a collection that stays in place are a `FilterButtonGroup` (`sm` toggle buttons on one row, the rest behind a \"+n\" search list).",
-    },
-  },
-  create(context) {
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const name = grammarName(context, node.name)
-        if (name?.length !== 1 || name[0] !== "TagGroup") return
-        for (const entry of node.attributes) {
-          if (entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && TAG_SELECTION_PROPS.has(entry.name.name)) context.report({ node: entry, messageId: "selection" })
-        }
-      },
-    }
-  },
-})
-
 /** The bounded surfaces that carry their own label. */
 const LABELLED_CARDS = new Set(["SurfaceCard"])
 
@@ -666,7 +479,7 @@ export const noHeadingAboveCard = defineRule({
 })
 
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

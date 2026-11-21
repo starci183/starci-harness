@@ -16,7 +16,7 @@ injected into another guard; a worker or cli app exposes no route.
 
 Why: with default deny a forgotten decorator fails closed, and every open door carries a reason a reviewer can read.
 
-Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-closed`, `no-auth-use-guards`,
+Enforced by: `default-deny-app-guard`, `public-needs-reason`, `no-auth-use-guards`,
 `no-guard-injects-guard`, `no-untyped-body` (R41, R290).
 
 ## BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource

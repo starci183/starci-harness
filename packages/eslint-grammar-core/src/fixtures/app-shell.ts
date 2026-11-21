@@ -1,5 +1,4 @@
 /** Shared valid app-bar fixture composition for the rule cases of a local and an imported owner. */
 export const IMPORTS = 'import { WorkspaceShell, TopBar, IconButton, Switch, AvatarButton, Button, IdentityLockup, DropdownMenu, Popover } from "@starci/grammar/common";'
 export const CLUSTER = '<><DropdownMenu trigger={<IconButton source={icons.language} label={copy.language} size="control" />} /><Switch size="control" /><Popover trigger={<IconButton source={icons.bell} label={copy.notifications} size="control" />} /><DropdownMenu trigger={<AvatarButton size="control" />} /></>'
-export const MOBILE_CLUSTER = '<><Popover trigger={<IconButton source={icons.bell} label={copy.notifications} size="control" />} /><DropdownMenu trigger={<AvatarButton size="control" />} /></>'
 export const bar = (actions = CLUSTER, extra = "") => `${IMPORTS} const AppShell = () => <WorkspaceShell viewport="fixed" header={<TopBar brand={<IdentityLockup size="control" />} navigation={<Button size="control">Search</Button>} actions={${actions}} ${extra} />} primary={<Content />} />;`

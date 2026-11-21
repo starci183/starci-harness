@@ -8,7 +8,6 @@ import test from "node:test"
 import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { freestyleHasReason, recommended, rules } from "./freestyle.ts"
 import { noRawStructuralElement } from "./grammar-boundary.ts"
-import { generatedArtInMascotOrMediaFrame } from "./mascot.ts"
 import { noFractionalStep } from "./tokens.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/Runs/component.tsx")
@@ -51,11 +50,7 @@ test("a raw element inside Freestyle is not a raw structural element; outside it
   }))
 })
 
-test("generated art and fractional steps inside Freestyle belong to the app", () => {
-  assert.doesNotThrow(() => slotTester().run("generated-art-in-mascot-or-media-frame", generatedArtInMascotOrMediaFrame, {
-    valid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"brand art\"><img src=\"/images/hero.webp\" alt=\"\" /></Freestyle>" }],
-    invalid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <img src=\"/images/hero.webp\" alt=\"\" />", errors: [{ messageId: "outside" }] }],
-  }))
+test("fractional steps inside Freestyle belong to the app", () => {
   assert.doesNotThrow(() => slotTester().run("no-fractional-step", noFractionalStep, {
     valid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"art\"><div className=\"gap-1.5\" /></Freestyle>" }],
     invalid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <div className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] }],

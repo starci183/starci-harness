@@ -69,10 +69,8 @@ type ButtonBase = {
  * it does at its start (`startGlyph`, or the app's own `startContent`). Every other Button (neutral, alternative, dismiss, destructive,
  * a suggestion pill, a row action) is text only, and the types refuse a start icon on it. A Button that LEADS somewhere ends with
  * Grammar's arrow (`endArrow`); the arrow is not an icon under this rule, so any intent may use it, but a Button never carries the
- * arrow and a start icon together. `IconButton` (icon only, named by its label) is unaffected. Lint `button-icon-primary-only` reads
- * what the types cannot see.
- * A `sm` Button is text only at every intent (owner, 2026-11-09): the types refuse a start icon at `size="sm"`, and lint
- * `button-icon-primary-only` reads the literal cases.
+ * arrow and a start icon together. `IconButton` (icon only, named by its label) is unaffected.
+ * A `sm` Button is text only at every intent (owner, 2026-11-09): the types refuse a start icon at `size="sm"`.
  * Both glyphs take the same inline gap (8) and the control's glyph padding on their side.
  */
 type ButtonText = {

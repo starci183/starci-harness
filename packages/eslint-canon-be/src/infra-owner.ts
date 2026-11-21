@@ -29,7 +29,6 @@
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { moduleReferences } from "./lib/import-source.ts"
 import { isOwnedType } from "./lib/ports.ts"
-import { recommended as thirdPartyRecommended, rules as thirdPartyRules } from "./third-party-owner.ts"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 
@@ -143,12 +142,10 @@ export const httpClientOnlyInIntegrations: RuleModule = {
 export const rules = {
     "infra-import-owner": infraImportOwner,
     "http-client-only-in-integrations": httpClientOnlyInIntegrations,
-    ...thirdPartyRules,
 } satisfies Rules
 
 /** Every rule of this law at `error`. */
 export const recommended: Recommended = {
     "starci-be/infra-import-owner": "error",
     "starci-be/http-client-only-in-integrations": "error",
-    ...thirdPartyRecommended,
 }

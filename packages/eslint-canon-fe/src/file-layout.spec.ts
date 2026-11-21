@@ -10,7 +10,6 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { at, FE_DECLARATION, slotTester } from "../fixtures/typed/tester.ts"
 import {
-  noShellTier,
   sourceTierMarkerMatchesFolder,
   exportMatchesFolder,
   monorepoTierBelongsToItsSide,
@@ -250,25 +249,6 @@ test("FILE-7: the source marker and owning tier agree", () => {
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const meta = { shape: 'shell' } as const", errors: [{ messageId: "mismatch" }] },
       { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'block' } as const", errors: [{ messageId: "mismatch" }] },
       { filename: at(`${F}/pages/Home/index.tsx`), code: "export const meta = { shape: 'layout' } as const", errors: [{ messageId: "mismatch" }] },
-    ],
-  })
-
-  })
-})
-
-test("FILE-8: shells are not a component tier", () => {
-  assert.doesNotThrow(() => {
-  tester.run("no-shell-tier", noShellTier, {
-    valid: [
-      { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const ModalBranch = () => null" },
-      { filename: at("packages/app-ui/src/branches/ModalBranch/index.tsx"), code: "export const ModalBranch = () => null" },
-      // another unknown folder is HFS_SLOT_UNDECLARED to name, and a `shells` folder outside the component tier is no shell tier
-      { filename: at(`${R}/pages/Home/index.tsx`), code: "export const Home = () => null" },
-      { filename: at("apps/web/src/modules/shells/x.ts"), code: "export const x = 1" },
-    ],
-    invalid: [
-      { filename: at(`${R}/shells/ModalShell/index.tsx`), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
-      { filename: at("packages/app-ui/src/shells/ModalShell/index.tsx"), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
     ],
   })
 

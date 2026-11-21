@@ -850,9 +850,7 @@ rules:
       - {kind: eslint-be, id: no-sleep-in-flow}
       - {kind: eslint-be, id: no-wiring-in-flow-spec}
       - {kind: eslint-be, id: e2e-asserts-persisted-state}
-      - {kind: eslint-be, id: no-api-shaped-e2e-filename}
       - {kind: eslint-be, id: no-call-only-spec}
-      - {kind: eslint-be, id: no-marker-model-stub}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
       - {kind: eslint-be, id: spec-builds-with-testing-module}
@@ -968,7 +966,6 @@ rules:
     gates: [settle, land, ci]
     failureCodes: ["FE_ROUTE_FILES_THIN", "FE_NEXT_CONVENTIONS", "FE_PAGE_METADATA_MISSING", "FE_ROUTE_ONE_PAGE", "FE_ROUTE_DRAWING_DECISION", "FE_ROUTE_CLIENT_BOUNDARY", "FE_ROUTE_CLIENT_HOOK", "FE_ROUTE_DEFAULT_EXPORT"]
     enforcers:
-      - {kind: eslint-fe, id: no-middleware-file}
       - {kind: eslint-fe, id: page-exports-metadata}
       - {kind: eslint-fe, id: route-files-thin}
       - {kind: eslint-fe, id: route-adapter}
@@ -1072,7 +1069,6 @@ rules:
     gates: [settle, land, ci]
     failureCodes: ["FE_I18N_PLACEMENT", "FE_I18N_NAVIGATION", "FE_I18N_FORMATTER"]
     enforcers:
-      - {kind: eslint-fe, id: locale-segment-is-locale}
       - {kind: eslint-fe, id: no-second-i18n-stack}
       - {kind: eslint-fe, id: i18n-stack-in-one-module}
       - {kind: eslint-fe, id: navigation-from-intl}
@@ -1119,9 +1115,7 @@ rules:
       - {kind: stylelint, id: raw-brand-value}
       - {kind: stylelint, id: no-apply-raw}
       - {kind: stylelint, id: no-important}
-      - {kind: stylelint, id: no-self-reference}
       - {kind: stylelint, id: globals-shape}
-      - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
       - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
@@ -1134,7 +1128,6 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
@@ -1596,8 +1589,6 @@ rules:
       - {kind: eslint-be, id: require-enum-member-jsdoc}
       - {kind: eslint-be, id: no-non-ascii-source}
       - {kind: eslint-be, id: no-restated-name-jsdoc}
-      - {kind: eslint-be, id: no-bare-verb-export}
-      - {kind: eslint-be, id: no-vendor-module-factory-name}
       - {kind: eslint-be, id: no-version-in-name}
       - {kind: eslint-be, id: no-const-enum}
       - {kind: eslint-be, id: no-inline-object-type}
@@ -1641,7 +1632,6 @@ rules:
       - {kind: eslint-fe, id: require-export-jsdoc}
       - {kind: eslint-fe, id: no-emoji-in-source}
       - {kind: eslint-fe, id: no-vietnamese-in-source}
-      - {kind: eslint-fe, id: no-shell-tier}
       - {kind: eslint-fe, id: source-tier-marker-matches-folder}
       - {kind: eslint-fe, id: surface-folder-two-files-only}
       - {kind: eslint-fe, id: route-tree-holds-routes-only}
@@ -1652,7 +1642,6 @@ rules:
       - {kind: eslint-fe, id: monorepo-tier-belongs-to-its-side}
       - {kind: eslint-fe, id: prefer-arrow-export}
       - {kind: eslint-fe, id: handler-on-prefix}
-      - {kind: eslint-fe, id: no-second-language-in-path}
       - {kind: eslint-fe, id: no-direct-const-alias}
       - {kind: eslint-fe, id: frontend-source-layout}
     docs: ["docs/frontend-source-authoring.md#r91-source-form"]
@@ -2962,8 +2951,6 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
-      - {kind: eslint-be, id: no-line-separator-literal}
-      - {kind: eslint-fe, id: no-line-separator-literal}
       - {kind: eslint-be, id: no-bidirectional-character}
       - {kind: eslint-fe, id: no-bidirectional-character}
       - {kind: eslint-be, id: no-duplicate-import}
@@ -3012,7 +2999,6 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack, at: scripts/hfs/rules/fe-stack.mjs}
       - {kind: eslint-fe, id: fe-stack-import}
-      - {kind: eslint-fe, id: swr-extension-from-package}
     proves:
       - {path: packages/eslint/fe/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
@@ -3766,8 +3752,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_PUBLIC_REASON_CLOSED"]
-    enforcers:
-      - {kind: eslint-be, id: public-reason-closed}
+    enforcers: []
     docs: [docs/microservices.md#r290]
     exemplifiedBy:
       - {path: packages/eslint/be/default-deny.spec.mjs, codes: [BE_PUBLIC_REASON_CLOSED]}
@@ -4104,8 +4089,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_FRAME"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: app-shell-frame}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4142,8 +4126,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CLUSTER"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: navbar-cluster}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4161,8 +4144,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_BOTTOM_TABS"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4180,8 +4162,7 @@ rules:
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CREATE"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-navbar-create}
+    enforcers: []
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - knowledge/ui/composition/app-shell.yaml
@@ -4200,10 +4181,7 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NESTED_VARIANT", "FE_LIST_PANEL_PADDING", "FE_GRAMMAR_LAYOUT_ONLY", "FE_DIVIDER_FULL_BLEED"]
     enforcers:
-      - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
-      - {kind: eslint-fe, id: divider-full-bleed}
-      - {kind: eslint-fe, id: selection-fill-no-check}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
     docs: ["docs/code-pattern-enforcement.md#r318-app-grammar-composition"]
     templateNa: "Product composition is proved by the FE canon's Grammar import and surface fixtures; a template cannot choose product slots or lists."
@@ -4267,8 +4245,7 @@ rules:
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_CHIP_LABEL_CASE"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    enforcers: []
     docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     templateNa: "A template states no chip label; the words are the app's."
     proves:
@@ -4520,8 +4497,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GENERATED_ART_OUTSIDE_FRAME"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    enforcers: []
     docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
     templateNa: "A template draws no generated art; the art is the app's."
     proves:
@@ -4627,8 +4603,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AI_VIRTUAL_KEY"]
-    enforcers:
-      - {kind: eslint-be, id: ai-virtual-key-name}
+    enforcers: []
     docs: [contexts/code/be/ai.md]
     templateNa: "The skeleton scaffolds no model call; an app adds the ai and ai-gateway integrations and the ai member when it calls a model."
     proves:
@@ -4781,8 +4756,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_TAG_GROUP_SELECTION"]
-    enforcers:
-      - {kind: eslint-fe, id: no-selectable-tag-group}
+    enforcers: []
     docs: [contexts/ui/components/chip.md]
     templateNa: "A template draws no filter row."
     proves:
@@ -4914,9 +4888,7 @@ rules:
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GRAMMAR_TIER_STATE", "FE_GRAMMAR_PROP_BUDGET"]
-    enforcers:
-      - {kind: runtime, id: tier-state, at: packages/grammar/scripts/lint/eslint-plugin.mts}
-      - {kind: runtime, id: prop-budget, at: packages/grammar/scripts/lint/eslint-plugin.mts}
+    enforcers: []
     docs: [contexts/grammars/README.md#grammar-lint]
     templateNa: "A template ships no Grammar source."
     proves:

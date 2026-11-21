@@ -71,5 +71,5 @@ folder is camelCase (`hooks/bookingDesk/` with `bookingDesk.shared.ts`); module 
 Why: the case tells a reader the kind of file before they open it, and one spelling per kind stops two folders for
 one domain.
 
-Enforced by: R91 (`export-matches-folder`, `no-second-language-in-path`), R56; the domain and module case is review
+Enforced by: R91 (`export-matches-folder`), R56; the domain and module case is review
 only.

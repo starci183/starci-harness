@@ -55,7 +55,7 @@ type PaneBaseProps = {
     readonly area: string
     /**
      * `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. A chat frame
-     * (`content="chat"`, or any pane whose own stack holds a `PaneSection scroll role="log"`) takes no tone: it is `--background` (lint `message-surfaces`).
+     * (`content="chat"`, or any pane whose own stack holds a `PaneSection scroll role="log"`) takes no tone: it is `--background`.
      */
     readonly surface?: boolean
     /**

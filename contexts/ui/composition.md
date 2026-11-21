@@ -267,8 +267,7 @@ A collection is never in a card: it stands flat in a `Section`, which carries it
 
 A standalone chart is the surface the same way: its title a `Section title` above it and one `Section caption` below. Measure:
 lint `card-is-object` (COLLECTION-2); lint `rows-in-card` refuses a `DescriptionList` or `DisclosureList` that stands neither in
-a `Section` nor in the body of an object card; lint `data-table-surface` refuses `surface` on a `DataTable` and its fix removes
-it.
+a `Section` nor in the body of an object card.
 
 ### COLLECTION-3 A group identity shows its members
 A group or conversation identity is one composite of its members' identities, distinguishable from one person's,
@@ -356,8 +355,7 @@ shop-table case is the reason: a view strip drawn under the page tabs.
 | FE-APP-SHELL-5 | A create action lives on the page whose content it changes, never in the navbar. |
 | FE-APP-SHELL-6 | A collapsed sidebar is an icon rail: one icon-only item per destination, tooltip labels, count badges, persisted per user, settings-type groups at the bottom. |
 
-Lint: `starci-grammar/app-shell-frame`, `navbar-control-size`, `navbar-cluster`, `no-shell-bottom-tabs`,
-`no-navbar-create`. The shell's component and prop names are the grammar contract's
+Lint: `navbar-control-size`. The shell's component and prop names are the grammar contract's
 ([../grammars/contract.md](../grammars/contract.md)).
 
 ## 7. Responsive

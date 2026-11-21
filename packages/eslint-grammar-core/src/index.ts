@@ -6,9 +6,7 @@ import { rules as appShellRules } from "./app-shell.ts"
 import { rules as buttonArrowRules } from "./button-arrow.ts"
 import { rules as cardContentRules } from "./card-content.ts"
 import { rules as cardIsObjectRules } from "./card-is-object.ts"
-import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as choiceControlsRules } from "./choice-controls.ts"
-import { rules as dataTableSurfaceRules } from "./data-table-surface.ts"
 import { rules as fragmentRules } from "./fragment.ts"
 import { rules as drawingRules } from "./drawing.ts"
 import { rules as fieldLabelRules } from "./field-label.ts"
@@ -21,7 +19,6 @@ import { rules as linkLookRules } from "./link-look.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as mediaRules } from "./media.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
-import { rules as messageSurfacesRules } from "./message-surfaces.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
@@ -34,13 +31,9 @@ import { rules as noCardLeadDescriptionRules } from "./no-card-lead-description.
 import { rules as noNestedLabelRules } from "./no-nested-label.ts"
 import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
-import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
-import { rules as surfaceCardListRules } from "./surface-card-list.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
-import { rules as suggestionButtonsRules } from "./suggestion-buttons.ts"
-import { rules as tabCountChipRules } from "./tab-count-chip.ts"
 import { rules as tabsRules } from "./tabs.ts"
 import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
@@ -80,9 +73,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "button-arrow", rules: buttonArrowRules },
   { law: "card-content", rules: cardContentRules },
   { law: "card-is-object", rules: cardIsObjectRules },
-  { law: "chip-label", rules: chipLabelRules },
   { law: "choice-controls", rules: choiceControlsRules },
-  { law: "data-table-surface", rules: dataTableSurfaceRules },
   { law: "drawing", rules: drawingRules },
   { law: "field-label", rules: fieldLabelRules },
   { law: "freestyle", rules: freestyleRules },
@@ -94,7 +85,6 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "mascot", rules: mascotRules },
   { law: "media", rules: mediaRules },
   { law: "menu-entries", rules: menuEntriesRules },
-  { law: "message-surfaces", rules: messageSurfacesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
@@ -107,13 +97,9 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "no-card-lead-description", rules: noCardLeadDescriptionRules },
   { law: "no-nested-label", rules: noNestedLabelRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
-  { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
-  { law: "surface-card-list", rules: surfaceCardListRules },
   { law: "surface-depth", rules: surfaceDepthRules },
-  { law: "suggestion-buttons", rules: suggestionButtonsRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },
-  { law: "tab-count-chip", rules: tabCountChipRules },
   { law: "tabs", rules: tabsRules },
   { law: "table-cell-type", rules: tableCellTypeRules },
   { law: "text-rules", rules: textRules },

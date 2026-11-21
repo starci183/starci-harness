@@ -19,7 +19,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
 | file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is `FileDropzone` (`text-field.choose.role:file`) | judgement |
-| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) | lint `starci-grammar/suggestion-buttons` |
+| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) |
 | text | any other command or destination, and always the view's commit | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.intent`: which intent the spec's facts give (the facts are CTA-6). The first row that
@@ -54,8 +54,8 @@ Choice `button.choose.glyph`: what a button's glyph says. The first row that app
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | leads | the press goes somewhere: a page, a tab, a next step (any intent; the arrow is not an icon under the primary-only rule) | `endArrow`: the grammar's arrow ends the label, slides toward the reading end on hover and focus and mirrors right to left. Never a typed arrow in the label, never an arrow icon through `endContent` | lint `starci-grammar/button-arrow` |
-| does | the press does something (add, upload, send, download) AND the button is the primary (`intent="commit"`, the CTA) | `startGlyph` naming the action (`plus`, `upload`, `send`, ...) | type: `startGlyph` / `startContent` need `intent="commit"`; lint `starci-grammar/button-icon-primary-only` |
-| text-only | the button is not the primary: neutral, alternative, dismiss, destructive, a suggestion pill, a row or tile action | no glyph: the label alone (only the primary button carries a leading icon). `IconButton` (icon only, named by its label) is unaffected | type and lint `starci-grammar/button-icon-primary-only` |
+| does | the press does something (add, upload, send, download) AND the button is the primary (`intent="commit"`, the CTA) | `startGlyph` naming the action (`plus`, `upload`, `send`, ...) | type: `startGlyph` / `startContent` need `intent="commit"` |
+| text-only | the button is not the primary: neutral, alternative, dismiss, destructive, a suggestion pill, a row or tile action | no glyph: the label alone (only the primary button carries a leading icon). `IconButton` (icon only, named by its label) is unaffected | type |
 | both | the button would carry both an arrow and a glyph | neither pair is written: `endArrow` and `startGlyph` exclude each other; the start says what the action is, the end says where it goes, and one button says one | type: the pair does not compile; lint `starci-grammar/button-arrow` (message `both`) |
 | plain | neither is true | no glyph | judgement |
 
@@ -74,7 +74,7 @@ None for the app: the grammar resolves the variant from `button.choose.intent` a
 context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
 
 ## Size
-Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (the single Button radius stays); the lint `suggestion-buttons` refuses the alternatives (a Link row, a `ChoiceChips` that sends, a `Chip` that sends).
+Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (the single Button radius stays); the alternatives (a Link row, a `ChoiceChips` that sends, a `Chip` that sends) are not suggestions.
 
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
 changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`); `width="wrap"`
@@ -109,11 +109,11 @@ so in its own content (the field's error or description, an `Alert`), not throug
 
 ## Icon and size
 A `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): a leading icon (`startGlyph`, `startContent`) is for the primary at `md` or `lg`.
-The type refuses a start icon at `size="sm"`, and lint `starci-grammar/button-icon-primary-only` reads the literal cases. `Alert` and `EmptyNotice`
+The type refuses a start icon at `size="sm"`. `Alert` and `EmptyNotice`
 draw their primary action at `md` when it carries an icon and at `sm` as text.
 
 ## Rules
-CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/button-icon-primary-only`, `starci-grammar/suggestion-buttons`, `starci-grammar/row-title-link`,
+CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/row-title-link`,
 `starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.

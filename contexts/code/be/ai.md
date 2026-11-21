@@ -51,8 +51,7 @@ accounts or providers, or keys with their own caps: keys of one provider account
 breaker state and the key store live in the hosting process, so the api that hosts the gateway runs one replica, or
 the gateway moves to a service of its own before the api scales out.
 
-Enforced by: `provider-key-custody` (R326), `ai-virtual-key-name` (R344: `integrations/ai` reads exactly `STARCI_AI_KEY`,
-and the custody owner passes no admin token), `infra-import-owner` (R90:
+Enforced by: `provider-key-custody` (R326), `infra-import-owner` (R90:
 `@starci/ai-router` in the custody owner, every provider SDK and `openai` nowhere); the embed pin is review only.
 
 ## BE-AI-2 Choose: a code chain or the agent runtime
@@ -85,7 +84,7 @@ model name is a gateway profile or pool alias, never a provider's model id baked
 Why: LangChain is the protocol code speaks; holding it in one owner keeps one configuration, one failure mapping into
 the integration's error family (BE-INFRA-3) and one upgrade path.
 
-Enforced by: `infra-import-owner` (R90), `ai-client-through-gateway` (R327), `ai-virtual-key-name` (R344).
+Enforced by: `infra-import-owner` (R90), `ai-client-through-gateway` (R327).
 
 ## BE-AI-4 A domain task is a chain: prompt, model, parser, then code's fixed tail
 

@@ -243,8 +243,7 @@ shapes:
       - id: create-actions
         implements: [FE-APP-SHELL-5]
         compose: |
-          The create action stays on its page. The static matcher reads appShell.product from
-          modules/goal/source-phrases.yaml; the navbar never receives that page command.
+          The create action stays on its page; the navbar never receives that page command.
       - id: sidebar-rail
         implements: [FE-APP-SHELL-6]
         compose: |

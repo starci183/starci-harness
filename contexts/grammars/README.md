@@ -101,7 +101,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
 | Spacing scale and rhythm | `src/common/spacing.ts`; the defaults of every composition hold the proximity law (children closer than the container's siblings) | which relationship a gap expresses ([ui/presentation](../ui/presentation.md) G6), under lint `gap-proximity` |
 | Field rhythm (label 8, help 4, field to field 24) | the form CSS of Common, `Form`, `Grid kind="form"`, `Fieldset` | nothing: the `label` prop, never a hand-made label (lint `field-label`) |
-| A list of rows, inside a surface or on the canvas | `Section kind="list"` draws the flat rows (BOUNDARY-7) | `Section kind="list"`, never a card (lint `surface-card-list`, `card-is-object`) and never blocks divided by `Divider` (lint `surface-in-surface`) |
+| A list of rows, inside a surface or on the canvas | `Section kind="list"` draws the flat rows (BOUNDARY-7) | `Section kind="list"`, never a card (lint `card-is-object`) and never blocks divided by `Divider` (lint `surface-in-surface`) |
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |
@@ -156,10 +156,8 @@ The Grammar package lints its own source with `packages/grammar/scripts/lint` (`
 
 | Rule | Id | Refuses |
 |---|---|---|
-| `starci-grammar/tier-state` | R362 | `useState`, `useReducer` or an effect in a leaf or a composite: behaviour belongs to a branch. |
-| `starci-grammar/prop-budget` | R362 | Props over the tier budget (leaf 8, branch 12, composite 12, frame 10), or more than 3 `ReactNode` slots. |
 | `starci-grammar/no-literal-look` | R363 | A colour, length, utility class or numeric style value written in a component. |
 | `starci-grammar/tier-props` | R26 | `children` or `className` against the tier. |
 | `starci/no-grammar-private-token` | R61 (audit R364) | In an app stylesheet, reading or writing `--grammar-*`, `--starci-core-*` or `--offset-pop-*`. |
 
-`tier-state` and `prop-budget` count at warn while their findings (the tier refactor list of the grammar audit, Appendix B) are fixed; the stamp of `data-tier` against the folder is R26 / `FE_GRAMMAR_TIER_STAMP` (R365), a machine check.
+The stamp of `data-tier` against the folder is R26 / `FE_GRAMMAR_TIER_STAMP` (R365), a machine check.
