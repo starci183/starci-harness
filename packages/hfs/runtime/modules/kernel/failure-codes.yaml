@@ -6553,43 +6553,13 @@ STACKS_DEPLOY_CONFIG_INVALID:
   owner: op-retry
   kind: check-finding
 
-STACKS_DNS_UNDECLARED:
-  title: "An ingress host has no DNS ownership receipt"
-  title_vi: "Host của ingress thiếu khai báo chủ sở hữu và bằng chứng DNS"
-  meaning_vi: "Một host được ingress sử dụng không có bản ghi dns với host, owner và receipt đầy đủ trong khai báo môi trường."
+STACKS_INGRESS_INVALID:
+  title: "The ingress, DNS or TLS declaration of a Swarm environment is incomplete or inconsistent"
+  title_vi: "Khai báo ingress, DNS hoặc TLS của môi trường Swarm thiếu hoặc không nhất quán"
+  meaning_vi: "Môi trường Swarm không có đúng một ingress được khai báo và định tuyến: thiếu ingress.component hoặc ingress.hosts (hay khối external, shared-edge hợp lệ), component ingress không tồn tại hoặc không dùng image Traefik/Caddy ghim bằng digest, có ingress thứ hai hoặc ingress tự render bên cạnh ingress ngoài; hoặc một host công khai thiếu bản ghi dns (host, owner, receipt), thiếu tls.owner và tls.receipt, hoặc không có tuyến trong mô hình ingress (một host viết tay trong stack file của shared edge cũng tính). Thông báo của finding nêu đường dẫn khóa và điều còn thiếu."
   causes_vi:
-    - "Vi phạm R266: điều kiện DNS chỉ tồn tại ngoài kho mã hoặc chưa có người chịu trách nhiệm rõ ràng."
-  nextStep_vi: "Thêm bản ghi dns cho từng host, nêu chủ sở hữu và tham chiếu bằng chứng DNS; việc thay đổi DNS vẫn do chủ sở hữu thực hiện."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_HOST_UNROUTED:
-  title: "A declared ingress host has no rendered route"
-  title_vi: "Host được khai báo chưa có tuyến trong mô hình ingress"
-  meaning_vi: "Danh sách ingress.hosts chứa host mà cấu hình Traefik hoặc Caddy đã render không định tuyến."
-  causes_vi:
-    - "Vi phạm R266: danh sách host và tuyến thực tế không khớp, nên khai báo chưa chứng minh được cửa vào của ứng dụng."
-  nextStep_vi: "Thêm tuyến cho host trong cấu hình ingress được theo dõi hoặc bỏ host không còn dùng, rồi render lại mô hình."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNDECLARED:
-  title: "A Swarm environment has no declared ingress"
-  title_vi: "Môi trường Swarm chưa khai báo ingress"
-  meaning_vi: "Môi trường chưa có ingress.component và danh sách ingress.hosts hợp lệ để xác định cửa vào của ứng dụng."
-  causes_vi:
-    - "Vi phạm R275: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn."
-  nextStep_vi: "Khai báo một ingress component và danh sách host của nó; dùng Traefik hoặc Caddy được ghim bằng digest."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_INGRESS_UNKNOWN:
-  title: "The declared ingress is unknown or unsupported"
-  title_vi: "Ingress được khai báo không tồn tại hoặc chưa được hỗ trợ"
-  meaning_vi: "Component ingress không được chọn, sai role, thiếu trong mô hình hoặc không dùng image Traefik hay Caddy được ghim bằng digest."
-  causes_vi:
-    - "Vi phạm R275: tên component hoặc image của cửa vào không khớp hợp đồng ingress được hỗ trợ."
-  nextStep_vi: "Chọn component có role ingress hiện diện trong mô hình và ghim image Traefik hoặc Caddy bằng digest đầy đủ."
+    - "Vi phạm R275 và R266: mô hình có thể chạy proxy nhưng khai báo không nêu ingress mà môi trường thực sự chọn, hai ingress tạo hai chủ sở hữu định tuyến và cổng công khai, danh sách host và tuyến thực tế không khớp, và điều kiện DNS hoặc TLS chỉ tồn tại ngoài kho mã."
+  nextStep_vi: "Làm theo đường dẫn trong thông báo: khai báo đúng một ingress (component role ingress với Traefik hoặc Caddy ghim digest, hoặc ingress.external, hoặc shared-edge với routes), thêm tuyến cho từng host đã khai báo, thêm bản ghi dns cho từng host cùng tls.owner và tls.receipt; việc đổi DNS vẫn do chủ sở hữu thực hiện."
   owner: op-retry
   kind: check-finding
 
@@ -6655,16 +6625,6 @@ STACKS_SEALED_MEMBER_PENDING:
   owner: op-retry
   kind: check-finding
 
-STACKS_SECOND_INGRESS:
-  title: "A Swarm environment selects more than one ingress"
-  title_vi: "Môi trường Swarm chọn nhiều hơn một ingress"
-  meaning_vi: "Tập component được chọn hoặc mô hình đã render chứa ingress thứ hai bên cạnh ingress của môi trường."
-  causes_vi:
-    - "Vi phạm R266: hai ingress tạo hai chủ sở hữu định tuyến, TLS hoặc cổng công khai trong cùng môi trường."
-  nextStep_vi: "Giữ đúng một ingress trong môi trường và mô hình; chuyển mọi host cùng quyền công bố cổng sang component đó."
-  owner: op-retry
-  kind: check-finding
-
 STACKS_SECRET_ENV_LITERAL:
   title: "A rendered service puts a secret literal in its environment"
   title_vi: "Dịch vụ đã render đưa bí mật trực tiếp vào biến môi trường"
@@ -6692,16 +6652,6 @@ STACKS_SECRET_UNVERSIONED:
   causes_vi:
     - "Vi phạm R266: tên secret có thể bị tái sử dụng khi xoay khóa hoặc khai báo không khớp secret của engine."
   nextStep_vi: "Khai báo runtimeName và version dương khớp hậu tố -v<version>; dùng đúng tên đó trong mô hình, đổi quyền của consumer rồi mới thu hồi phiên bản cũ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_TLS_UNDECLARED:
-  title: "A Swarm environment has no TLS ownership receipt"
-  title_vi: "Môi trường Swarm thiếu chủ sở hữu và bằng chứng TLS"
-  meaning_vi: "Môi trường có ingress nhưng chưa khai báo tls.owner và tls.receipt cho việc cấp chứng chỉ cùng nơi lưu giữ bền vững."
-  causes_vi:
-    - "Vi phạm R266: quyền cấp hoặc phục hồi chứng chỉ chưa có chủ sở hữu và bằng chứng được khai báo."
-  nextStep_vi: "Khai báo chủ sở hữu TLS và tham chiếu bằng chứng cấp, lưu giữ chứng chỉ; giữ thao tác của chủ sở hữu là điều kiện triển khai rõ ràng."
   owner: op-retry
   kind: check-finding
 

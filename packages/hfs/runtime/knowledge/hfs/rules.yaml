@@ -3931,7 +3931,7 @@ rules:
     law: "Every rendered Swarm deployment uses external immutable secrets whose names match the declared runtimeName and positive version; services carry no secret environment literals. Only the one declared ingress publishes ports, on 80 or 443, in ingress mode or in host mode (the routing mesh of ingress mode rewrites the client source IP, so per-IP limits behind the single proxy hop need host mode); a host-mode ingress listens on every node it runs on, so it is global mode or pinned by a placement constraint; its hosts have routes, DNS ownership receipts and TLS ownership evidence. Stateful services declare placement constraints, and runnable services declare healthchecks and update, rollback and restart policies. An api app composing be.feature.realtime.* that runs more than one replica selects a shared hub with REALTIME_HUB (postgres or redis)."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["STACKS_SECRET_NOT_EXTERNAL", "STACKS_SECRET_UNVERSIONED", "STACKS_SECRET_ENV_LITERAL", "STACKS_PORT_PUBLISHED", "STACKS_SECOND_INGRESS", "STACKS_DNS_UNDECLARED", "STACKS_HOST_UNROUTED", "STACKS_TLS_UNDECLARED", "STACKS_SERVICE_POLICY_MISSING"]
+    failureCodes: ["STACKS_SECRET_NOT_EXTERNAL", "STACKS_SECRET_UNVERSIONED", "STACKS_SECRET_ENV_LITERAL", "STACKS_PORT_PUBLISHED", "STACKS_SERVICE_POLICY_MISSING"]
     enforcers:
       - {kind: hfs, id: stacks-swarm, at: scripts/hfs/rules/stacks-swarm.mjs}
       - {kind: hfs, id: stacks-second-ingress, at: scripts/hfs/rules/stacks-ingress.mjs}
@@ -4083,11 +4083,11 @@ rules:
     docs:
       - "docs/quality-bar.md#r274"
   - id: R275
-    code: "STACKS_INGRESS_UNDECLARED"
-    law: "Every Swarm environment declares its one ingress component and hosts. The named component has role ingress and a digest-pinned supported ingress image; Traefik and Caddy are both accepted without a preferred product. An absent declaration, unknown component or unsupported image is refused."
+    code: "STACKS_INGRESS_INVALID"
+    law: "Every Swarm environment declares its one ingress component and hosts. The named component has role ingress and a digest-pinned supported ingress image; Traefik and Caddy are both accepted without a preferred product, and a second ingress is refused. Each public host declares its DNS owner and receipt, the environment declares its TLS owner and receipt, and every declared host is routed by the ingress. An absent declaration, unknown component, unsupported image, missing DNS or TLS declaration or unrouted host is refused (STACKS_INGRESS_INVALID)."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["STACKS_INGRESS_UNDECLARED", "STACKS_INGRESS_UNKNOWN"]
+    failureCodes: ["STACKS_INGRESS_INVALID"]
     enforcers:
       - {kind: hfs, id: stacks-ingress, at: scripts/hfs/rules/stacks-ingress.mjs}
     docs:

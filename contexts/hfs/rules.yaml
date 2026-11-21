@@ -1734,10 +1734,6 @@ rules:
       - STACKS_SECRET_UNVERSIONED
       - STACKS_SECRET_ENV_LITERAL
       - STACKS_PORT_PUBLISHED
-      - STACKS_SECOND_INGRESS
-      - STACKS_DNS_UNDECLARED
-      - STACKS_HOST_UNROUTED
-      - STACKS_TLS_UNDECLARED
       - STACKS_SERVICE_POLICY_MISSING
     enforcers:
       - {kind: hfs, id: stacks-swarm}
@@ -1809,11 +1805,10 @@ rules:
     enforcers:
       - {kind: hfs, id: coverage-below}
   - id: R275
-    code: STACKS_INGRESS_UNDECLARED
-    law: Every Swarm environment declares one ingress component with a digest-pinned supported ingress image and its hosts.
+    code: STACKS_INGRESS_INVALID
+    law: Every Swarm environment declares one ingress component with a digest-pinned supported ingress image and its hosts, never a second ingress; each public host declares its DNS owner and receipt, the environment its TLS owner and receipt, and every declared host is routed by the ingress (STACKS_INGRESS_INVALID).
     failureCodes:
-      - STACKS_INGRESS_UNDECLARED
-      - STACKS_INGRESS_UNKNOWN
+      - STACKS_INGRESS_INVALID
     enforcers:
       - {kind: hfs, id: stacks-ingress}
   - id: R276

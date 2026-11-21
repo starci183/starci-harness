@@ -2,10 +2,7 @@
 // proves: STACKS_SECRET_UNVERSIONED
 // proves: STACKS_SECRET_ENV_LITERAL
 // proves: STACKS_PORT_PUBLISHED
-// proves: STACKS_SECOND_INGRESS
-// proves: STACKS_DNS_UNDECLARED
-// proves: STACKS_HOST_UNROUTED
-// proves: STACKS_TLS_UNDECLARED
+// proves: STACKS_INGRESS_INVALID
 // proves: STACKS_SERVICE_POLICY_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -43,10 +40,20 @@ function fixture(t: TestContext, edition = 'lite') {
 const inputFor = (value: SwarmFixture) => ({ doc: value.manifest, spec: value.manifest.environments.production,
   model: value.model, environment: 'production', repo: value.declaration, repoRoot: value.root, files: [...value.files] });
 /** One finding code carries several detections; a detection is named CODE/part and told apart by its message. */
-const PARTS: Record<string, string> = { placement: 'placement constraints', healthcheck: 'healthcheck', update: 'update order' };
+const PARTS: Record<string, (message: string) => boolean> = {
+  placement: message => message.includes('placement constraints'),
+  healthcheck: message => message.includes('healthcheck'),
+  update: message => message.includes('update order'),
+  second: message => message.includes('second ingress') || message.includes('exactly one ingress') || message.includes('must not render an ingress of its own'),
+  unknown: message => message.includes('Traefik or Caddy pinned'),
+  dns: message => message.includes('DNS owner'),
+  tls: message => message.includes('TLS owner'),
+  host: message => message.includes('the stack file names the host') || message.includes('bound by an actual ingress route'),
+  undeclared: message => !['second', 'unknown', 'dns', 'tls', 'host'].some(other => PARTS[other]!(message)),
+};
 const detects = (name: string, item: { code: string; message: string }) => {
   const [code, part] = name.split('/');
-  return item.code === code && (part === undefined || item.message.includes(PARTS[part] ?? part));
+  return item.code === code && (part === undefined || PARTS[part]!(item.message));
 };
 const issuesFor = (value: SwarmFixture, name: string) => swarmHardeningIssues(inputFor(value)).filter(issue => detects(name, issue));
 const finderContext = (value: SwarmFixture) => ({ repoRoot: value.root, files: [...value.files], repo: value.declaration, isRoot: true });
@@ -56,9 +63,9 @@ const cases = [
   { code: 'STACKS_SECRET_UNVERSIONED', violate(value: SwarmFixture) { value.model.secrets['database-url'].name = 'swarm-app-database-url'; } },
   { code: 'STACKS_SECRET_ENV_LITERAL', violate(value: SwarmFixture) { value.model.services.api.environment = { API_TOKEN: 'synthetic-fixture-value' }; } },
   { code: 'STACKS_PORT_PUBLISHED', violate(value: SwarmFixture) { value.model.services.api.ports = ['3000:3000']; } },
-  { code: 'STACKS_DNS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
-  { code: 'STACKS_HOST_UNROUTED', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
-  { code: 'STACKS_TLS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
+  { code: 'STACKS_INGRESS_INVALID/dns', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
+  { code: 'STACKS_INGRESS_INVALID/host', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
+  { code: 'STACKS_INGRESS_INVALID/tls', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
   { code: 'STACKS_SERVICE_POLICY_MISSING/placement', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
   { code: 'STACKS_SERVICE_POLICY_MISSING/healthcheck', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
   { code: 'STACKS_SERVICE_POLICY_MISSING/update', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
@@ -81,11 +88,11 @@ for (const edition of ['lite'] as const) {
     });
   }
 
-  test(`STACKS_SECOND_INGRESS@${edition}: single ingress passes and a second rendered ingress fails`, t => {
+  test(`STACKS_INGRESS_INVALID/second@${edition}: single ingress passes and a second rendered ingress fails`, t => {
     const value = fixture(t, edition);
     assert.deepEqual(ingressIssues(inputFor(value)), []);
     value.model.services.preview = swarmService(pinned('caddy:2.10.2'));
-    assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_SECOND_INGRESS'));
+    assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/second', issue)));
   });
 
   test(`STACKS_SECRET_NOT_EXTERNAL@${edition}: embedded sources, undeclared grants and absent secrets fail`, t => {
@@ -170,41 +177,41 @@ for (const edition of ['lite'] as const) {
     assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'a non-ingress service in host mode');
   });
 
-  test(`STACKS_DNS_UNDECLARED@${edition}: each rendered route needs its own owner and receipt`, t => {
+  test(`STACKS_INGRESS_INVALID/dns@${edition}: each rendered route needs its own owner and receipt`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     value.model.services.api.deploy.labels[ROUTE] = 'Host(`app.example.test`, `admin.example.test`)';
     spec.ingress.hosts.push('admin.example.test');
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     spec.dns.push({ host: 'admin.example.test', owner: 'operator', receipt: 'docs/admin-dns.md' });
-    assert.deepEqual(issuesFor(value, 'STACKS_DNS_UNDECLARED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/dns'), []);
     delete spec.dns[1].receipt;
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     spec.dns[1].receipt = 'docs/admin-dns.md';
     delete spec.dns[1].owner;
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
   });
 
-  test(`STACKS_HOST_UNROUTED@${edition}: labels must bind declared hosts using the selected ingress`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: labels must bind declared hosts using the selected ingress`, t => {
     const value = fixture(t, edition);
     value.model.services.api.deploy.labels[ROUTE] = 'Host(`other.example.test`)';
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     for (const rule of ['!Host(`app.example.test`)', '!(Host(`app.example.test`))', 'Host(`https://app.example.test/path`)']) {
       value.model.services.api.deploy.labels = { [ROUTE]: rule };
-      assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     }
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`) && !Path(`/private`)' };
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
     value.model.services.api.deploy.labels = { caddy: 'app.example.test' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`)', 'traefik.enable': 'false' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
   });
 
-  test(`STACKS_TLS_UNDECLARED@${edition}: issuance receipt and owner are both required`, t => {
+  test(`STACKS_INGRESS_INVALID/tls@${edition}: issuance receipt and owner are both required`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     for (const tls of [{ owner: 'operator' }, { receipt: 'docs/tls.md' }, { owner: '', receipt: 'docs/tls.md' }]) {
       spec.tls = tls;
-      assert.ok(issuesFor(value, 'STACKS_TLS_UNDECLARED').length > 0);
+      assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/tls').length > 0);
     }
   });
 
@@ -300,10 +307,10 @@ test('R266 Caddy routes require a tracked config or matching docker-proxy labels
     value.put(config, 'app.example.test {\n  reverse_proxy api:3000\n}\n');
     assert.deepEqual(swarmHardeningIssues(inputFor(value)), []);
     value.files.delete(config);
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     ingress.image = pinned('lucaslorentz/caddy-docker-proxy:2.10.0');
     value.model.services.api.deploy.labels = { caddy: 'app.example.test', 'caddy.reverse_proxy': '{{upstreams 3000}}' };
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
   }
 });
 
@@ -316,7 +323,7 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   value.put(config, 'app.example.test {\n  reverse_proxy api:3000\n}\n');
   for (const file of ['../../secrets/routes.enc', '../../../../routes', path.join(value.root, config)]) {
     value.model.configs = { routes: { file } };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
   }
   const alias = '.starcistacks/production/infra/swarm/Caddy-alias';
   try {
@@ -327,11 +334,11 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   }
   value.files.add(alias);
   value.model.configs = { routes: { file: './Caddy-alias' } };
-  assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+  assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
 });
 
 for (const edition of ['lite'] as const) {
-  test(`STACKS_HOST_UNROUTED@${edition}: an external shared ingress routes the declared hosts itself, but DNS, TLS and ports stay judged`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: an external shared ingress routes the declared hosts itself, but DNS, TLS and ports stay judged`, t => {
     const value = fixture(t, edition);
     const spec = value.manifest.environments.production;
     delete value.manifest.components.ingress;
@@ -339,24 +346,24 @@ for (const edition of ['lite'] as const) {
     delete spec.components?.ingress;
     spec.ingress = { external: { stack: 'ingress' }, hosts: ['app.example.test'] };
     value.model.services.api.deploy.labels = {};
-    assert.deepEqual(issuesFor(value, 'STACKS_HOST_UNROUTED'), []);
-    assert.deepEqual(issuesFor(value, 'STACKS_DNS_UNDECLARED'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/host'), []);
+    assert.deepEqual(issuesFor(value, 'STACKS_INGRESS_INVALID/dns'), []);
     value.model.services.api.ports = [{ published: 443, target: 3000, mode: 'ingress' }];
     assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'only the shared ingress may publish ports');
     delete spec.tls;
-    assert.ok(issuesFor(value, 'STACKS_TLS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/tls').length > 0);
     spec.tls = { owner: 'application operator', receipt: 'docs/tls.md' };
     spec.dns = [];
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0);
     delete spec.ingress.external;
     spec.ingress.component = 'ingress';
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0, 'a declared component still needs a route');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0, 'a declared component still needs a route');
   });
 }
 
 // A shared edge-traefik (ingress.kind: shared-edge): hosts are declared once, in ingress.routes; the stack file names none, its deploy renders the labels.
 for (const edition of ['lite'] as const) {
-  test(`STACKS_HOST_UNROUTED@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
+  test(`STACKS_INGRESS_INVALID/host@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
     const value = fixture(t, edition), spec = value.manifest.environments.production;
     delete value.manifest.components.ingress;
     delete value.model.services.ingress;
@@ -366,18 +373,18 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(ingressIssues(inputFor(value)), []);
     assert.deepEqual(swarmHardeningIssues(inputFor(value)), [], 'no label in the stack file, the host is declared once');
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`)' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').some(issue => /names the host app\.example\.test/.test(issue.message)), 'even a declared host must not be hardcoded');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').some(issue => /names the host app\.example\.test/.test(issue.message)), 'even a declared host must not be hardcoded');
     value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`other.example.test`)' };
-    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/host').length > 0);
     value.model.services.api.deploy.labels = {};
     spec.dns = [];
-    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0, 'the DNS of each route host stays declared');
+    assert.ok(issuesFor(value, 'STACKS_INGRESS_INVALID/dns').length > 0, 'the DNS of each route host stays declared');
     spec.dns = [{ host: 'app.example.test', owner: 'application operator', receipt: 'docs/dns.md' }];
     for (const broken of [{ network: undefined }, { certResolver: undefined }, { routes: [] }, { routes: [{ host: 'a.example.test', service: 'api' }] }, { component: 'ingress' }, { hosts: ['x.example.test'] }]) {
       spec.ingress = { kind: 'shared-edge', network: 'edge', certResolver: 'letsencrypt', routes: [{ host: 'app.example.test', service: 'api', port: 3000 }], ...broken };
-      assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), JSON.stringify(broken));
+      assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/undeclared', issue)), JSON.stringify(broken));
     }
     spec.ingress = { component: 'ingress' };
-    assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), 'an own ingress still declares its hosts');
+    assert.ok(ingressIssues(inputFor(value)).some(issue => detects('STACKS_INGRESS_INVALID/undeclared', issue)), 'an own ingress still declares its hosts');
   });
 }

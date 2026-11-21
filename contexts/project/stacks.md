@@ -111,7 +111,7 @@ image, so any digest-pinned supported reverse proxy serves.
   (default `websecure`), `tls.certresolver`, the service port, `traefik.swarm.network` and `traefik.docker.network`) and attaches the service to the external edge `network`;
   a route with `paths` or `pathPrefixes` serves only those paths of its host (one host can split between a front end and an api; give the path route an explicit `priority`), and routes that share a port and a constraint form one router; a service that names no network of its own keeps the stack's default one. A shared-edge environment renders no ingress and publishes no port, and its
   DNS and TLS stay declared per host. A hostname written in the stack file's labels, or a rendered host that `routes` does not hold, is
-  `STACKS_HOST_UNROUTED`; a malformed shared-edge block is `STACKS_INGRESS_UNDECLARED`.
+  `STACKS_INGRESS_INVALID`, as is a malformed shared-edge block.
 - The application origin the back end trusts (BE-AUTH-7 in [code/be/api-auth.md](../code/be/api-auth.md)) is the
   ingress origin of that environment; the app is opened there, never at a process port.
 

@@ -230,19 +230,19 @@ function publicRoutingIssues(input: Parsed, add: Parsed) {
   // A shared edge's hostnames live in the declaration only: the stack file carries none (its deploy renders the labels from ingress.routes). A tracked rendered model is the rendered output, which may.
   if (edge) for (const host of routed) {
     if (!declared.has(host) || !present(spec.renderedModel))
-      add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.routes`, `the stack file names the host ${host}: hostnames are declared once in ingress.routes and rendered into the Traefik labels by the stack deploy, never written in the stack file`);
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.ingress.routes`, `the stack file names the host ${host}: hostnames are declared once in ingress.routes and rendered into the Traefik labels by the stack deploy, never written in the stack file`);
   }
   for (const host of new Set([...declared, ...routed])) {
     if (!dns.some((entry: Parsed) => hostOf(entry?.host) === host && present(entry.owner) && present(entry.receipt)))
-      add('STACKS_DNS_UNDECLARED', `environments.${input.environment}.dns`, 'Each public host must declare its DNS owner and receipt');
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.dns`, 'Each public host must declare its DNS owner and receipt');
     // An external shared ingress routes the hosts from its own dynamic files (published by `starci app stack ingress publish`), not from labels here.
     if (!declared.has(host) || (externalIngressStack(spec) === null && !edge && !routed.has(host)))
-      add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.hosts`, 'Each public host must be declared and bound by an actual ingress route');
+      add('STACKS_INGRESS_INVALID', `environments.${input.environment}.ingress.hosts`, 'Each public host must be declared and bound by an actual ingress route');
   }
   const ingress = mapping(input.model.services)[spec.ingress?.component];
   const publicIngress = declared.size || routed.size || list(ingress?.ports).length;
   if (publicIngress && (!present(spec.tls?.owner) || !present(spec.tls?.receipt)))
-    add('STACKS_TLS_UNDECLARED', `environments.${input.environment}.tls`, 'Public ingress must declare its TLS owner and issuance/persistence receipt');
+    add('STACKS_INGRESS_INVALID', `environments.${input.environment}.tls`, 'Public ingress must declare its TLS owner and issuance/persistence receipt');
 }
 
 function usesPersistentVolume(service: Parsed) {
