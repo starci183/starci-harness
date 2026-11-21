@@ -1,5 +1,6 @@
 # The components of the shared monitoring stack of a managed VPS, read by cli/src/harness/vps/monitor.ts (`starci vps monitor up`).
-# Each component is one entry and one toggle: `default` says whether a server runs it when its file says nothing, and a server's file
+# Each component is one entry and one toggle: `default` says whether a server runs it when its file says nothing (true, false, or `alert-bots`:
+# on when an app on the server has an alert bot ready, PROJECT-MONITORING-6), and a server's file
 # turns any one on or off (`monitor: {components: {tempo: true, cadvisor: false}}` in ops/vps/servers/<id>.yaml). The plan refuses a
 # component on whose `requires` are off, and prints the memory budget of exactly the components it runs (contexts/project/monitoring.md).
 #
@@ -55,7 +56,7 @@ components:
       healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   alertmanager:
     default: true
-    purpose: "routes each app's alerts to that app's own Telegram bot (its environment's monitoring.alerts member, opened on the server), host alerts to every app's bot once, the rest to a null receiver; never the harness bot"
+    purpose: "routes each app's alerts to that app's own Telegram bot (its environment's monitoring.alerts member, opened on the server), host alerts to every app's bot once, the rest to a null receiver; never the harness bot. With monitor-bot on, each receiver is a webhook to the bot's slot and the bot posts with buttons"
     why: "an alert nobody receives is no alert"
     requires: [prometheus]
     image: {image: prom/alertmanager, pin: alertmanager}
@@ -73,6 +74,24 @@ components:
       - {job_name: alertmanager, dns_sd_configs: [{names: [tasks.alertmanager], type: A, port: 9093}]}
     datasources:
       - {name: Alertmanager, uid: alertmanager, type: alertmanager, access: proxy, url: "http://alertmanager:9093", editable: false, jsonData: {implementation: prometheus, handleGrafanaManagedAlerts: false}}
+  monitor-bot:
+    default: alert-bots
+    purpose: "the two-way Telegram bot of each app (contexts/project/monitoring.md PROJECT-MONITORING-6): long-polls every app's own alert bot, answers only its owner chat (/status /cpu /ram /disk /svc /logs /alerts /silence /deploys /chart /help) from Prometheus, Loki, Alertmanager and the read-only socket proxy, and posts Alertmanager's notifications with buttons and a daily report; one Node process for every app bot of the server, its code the CLI's own compiled files shipped as configs"
+    why: "on when an app on the server has an alert bot ready (`default: alert-bots`); without one there is nothing to poll, and Alertmanager's own telegram receivers would have no buttons"
+    requires: [prometheus, alertmanager, socket-proxy]
+    image: {image: node, pin: monitor-bot-node}
+    resources: {memory: 96M, cpus: "0.20", reserveMemory: 48M, reserveCpus: "0.02"}
+    # stop-first: two pollers of one bot token conflict (Telegram answers 409), so the old task stops before the new one polls.
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    retention: {}
+    networks: [internal, socket]
+    service:
+      command: [node, /app/main.js]
+      environment: {MONITOR_BOT_CONFIG: /app/config.json, NODE_ENV: production, NODE_OPTIONS: --max-old-space-size=64}
+      user: "1000:1000"
+      read_only: true
+      healthcheck: {test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9095/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"], interval: 30s, timeout: 5s, retries: 3, start_period: 20s}
   grafana:
     default: true
     purpose: "the dashboards (host, services, logs) and datasources, provisioned as code; behind the server's door with its own login, anonymous off, the admin password a sealed swarm secret"
@@ -141,17 +160,17 @@ components:
             expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < (100 - {{health.memoryAlertPercent}}) / 100
             for: 10m
             labels: {severity: warning}
-            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its memory available"}
+            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its memory available", threshold: "{{health.memoryAlertPercent}}% used for 10m"}
           - alert: HostDiskFull
             expr: node_filesystem_avail_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} < (100 - {{health.diskAlertPercent}}) / 100
             for: 10m
             labels: {severity: warning}
-            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its root disk free"}
+            annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its root disk free", threshold: "{{health.diskAlertPercent}}% used for 10m"}
           - alert: HostCpuBusy
             expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
             for: 15m
             labels: {severity: warning}
-            annotations: {summary: "{{ $labels.instance }} CPU is {{ $value | humanizePercentage }} busy"}
+            annotations: {summary: "{{ $labels.instance }} CPU is {{ $value | humanizePercentage }} busy", threshold: "90% for 15m"}
   cadvisor:
     default: true
     purpose: "the container metrics (CPU, memory against its limit, restarts, network) by stack and service"
@@ -189,11 +208,11 @@ components:
             expr: max by (stack, service) (container_memory_working_set_bytes / (container_spec_memory_limit_bytes > 0)) > 0.90
             for: 10m
             labels: {severity: warning}
-            annotations: {summary: "{{ $labels.service }} uses {{ $value | humanizePercentage }} of its memory limit"}
+            annotations: {summary: "{{ $labels.service }} uses {{ $value | humanizePercentage }} of its memory limit", threshold: "90% of its limit for 10m"}
           - alert: ServiceRestarting
             expr: count by (stack, service) (changes(container_start_time_seconds[15m]) > 0) > 3
             labels: {severity: warning}
-            annotations: {summary: "{{ $labels.service }} started more than 3 new containers in 15 minutes"}
+            annotations: {summary: "{{ $labels.service }} started more than 3 new containers in 15 minutes", threshold: "3 restarts in 15m"}
   loki:
     default: true
     purpose: "the log store: one process, filesystem storage, the compactor deleting past the retention"

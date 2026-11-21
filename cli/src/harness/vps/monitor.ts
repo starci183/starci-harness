@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
+import { fileURLToPath } from "node:url"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
@@ -8,8 +9,8 @@ import { forServer, resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
 import { fqdnOf, routerOf } from "./plan.js"
 import type { StepSecret, VpsPlan } from "./plan.js"
-import { alertBotLines, alertRouting, ALERTMANAGER_CONFIG_ENV, tokenEnvOf, tokenFile } from "./alerts.js"
-import type { AlertBot } from "./alerts.js"
+import { adminsPlaceholder, alertBotLines, alertRouting, ALERTMANAGER_CONFIG_ENV, BOT_CONFIG_ENV, BOT_WEBHOOK_PORT, chatPlaceholder, tokenEnvOf, tokenFile } from "./alerts.js"
+import type { AlertBot, FilledFile } from "./alerts.js"
 import { shellQuote } from "./ssh.js"
 
 /**
@@ -41,8 +42,11 @@ export const MONITOR_SECRETS = {
 /** A monitoring secret kind. */
 export type MonitorSecret = keyof typeof MONITOR_SECRETS
 
+/** A component's default: on, off, or on when an app on the server has an alert bot ready (the monitor bot). */
+const defaultSchema = z.union([z.boolean(), z.literal("alert-bots")])
+
 const componentSchema = z.strictObject({
-    default: z.boolean(),
+    default: defaultSchema,
     purpose: z.string().min(1),
     why: z.string().min(1),
     requires: z.array(z.string().regex(NAME)).optional(),
@@ -96,10 +100,16 @@ export const loadMonitorComponents = (policy: VpsPolicy, opsDir: string): Record
     return parsed.data.components
 }
 
-/** The components a server runs: each default, turned on or off by its file's `monitor.components`; a requirement turned off is refused. */
-export const selectComponents = (components: Readonly<Record<string, MonitorComponent>>, toggles: Readonly<Record<string, boolean>> = {}): string[] => {
+/** Whether a component's default turns it on, given whether an app on the server has an alert bot ready. */
+export const onByDefault = (component: MonitorComponent | undefined, alertBots: boolean): boolean => component?.default === true || (component?.default === "alert-bots" && alertBots)
+
+/**
+ * The components a server runs: each default, turned on or off by its file's `monitor.components`; a requirement turned off is refused.
+ * `alertBots` says whether an app on the server has an alert bot ready (a default of `alert-bots` follows it).
+ */
+export const selectComponents = (components: Readonly<Record<string, MonitorComponent>>, toggles: Readonly<Record<string, boolean>> = {}, alertBots = false): string[] => {
     for (const name of Object.keys(toggles)) if (components[name] === undefined) throw new Refusal("VPS_MONITOR_COMPONENT", `the server file names the monitoring component ${name}; the components are ${Object.keys(components).join(", ")}`)
-    const on = Object.keys(components).filter((name) => toggles[name] ?? components[name]?.default === true)
+    const on = Object.keys(components).filter((name) => toggles[name] ?? onByDefault(components[name], alertBots))
     const missing = on.flatMap((name) => (components[name]?.requires ?? []).filter((needed) => !on.includes(needed)).map((needed) => `${name} needs ${needed}`))
     if (missing.length > 0) throw new Refusal("VPS_MONITOR_REQUIRES", `the monitoring components turned on need others that are off: ${missing.join("; ")}; turn them on in the server file's monitor.components`)
     return on
@@ -145,6 +155,43 @@ export interface MonitorRender {
     readonly doors: readonly { readonly component: string; readonly url: string; readonly target: string }[]
     /** The bots whose members the server opens before the deploy (their order is their slot). */
     readonly alertBots: readonly AlertBot[]
+    /** The files the server fills from their `.tmpl` with the bots' chat ids (alertmanager.yml, or the monitor bot's config). */
+    readonly filled: readonly FilledFile[]
+}
+
+/** The daily report of the monitor bot: 08:00 Asia/Ho_Chi_Minh (UTC+7, no daylight saving), the owner's zone. */
+export const BOT_REPORT = { hour: 8, offsetMinutes: 420 } as const
+
+/** The folder of the monitor bot's compiled code beside this file (dist/harness/vps/monitor-bot), shipped as configs. */
+export const botCodeDir = (): string => fileURLToPath(new URL("./monitor-bot/", import.meta.url))
+
+/** The monitor bot's code files: every compiled module of its folder but the specs, their source-map comment dropped. */
+export const botCodeFiles = (dir: string = botCodeDir()): Record<string, string> => {
+    const names = readdirSync(dir).filter((name) => name.endsWith(".js") && !name.endsWith(".test.js")).sort((left, right) => left.localeCompare(right))
+    if (!names.includes("main.js")) throw new Refusal("OPS_INVALID", `the monitor bot's code is not built in ${dir} (npm run build in cli)`)
+    return Object.fromEntries(names.map((name) => [`monitor-bot/${name}`, readFileSync(join(dir, name), "utf8").replace(/\n\/\/# sourceMappingURL=.*\s*$/, "\n")]))
+}
+
+/** The monitor bot's config (monitor-bot/config.ts parseConfig): the stack's addresses and one entry per bot, its chat and admins left as placeholders the server fills. */
+export const botConfig = (policy: VpsPolicy, server: string, bots: readonly AlertBot[], options: { readonly loki: boolean; readonly grafana: string | null }): string => {
+    const config = {
+        server,
+        telegram: "https://api.telegram.org",
+        prometheus: "http://prometheus:9090",
+        loki: options.loki ? "http://loki:3100" : null,
+        alertmanager: "http://alertmanager:9093",
+        docker: "http://socket-proxy:2375",
+        grafana: options.grafana,
+        renderer: false,
+        listen: BOT_WEBHOOK_PORT,
+        memoryAlertPercent: policy.health.memoryAlertPercent,
+        diskAlertPercent: policy.health.diskAlertPercent,
+        reportHour: BOT_REPORT.hour,
+        reportOffsetMinutes: BOT_REPORT.offsetMinutes,
+        bots: bots.map((bot, slot) => ({ slot, project: bot.project, env: bot.env, stack: bot.stack, tokenFile: `/run/secrets/${tokenFile(slot)}`, chat: chatPlaceholder(slot), admins: adminsPlaceholder(slot) })),
+    }
+    // The chat id is a JSON number once filled: its placeholder is written unquoted.
+    return `${JSON.stringify(config, null, 2).replaceAll(/"(__STARCI_ALERTS_CHAT_\d+__)"/g, "$1")}\n`
 }
 
 /** The env name the stack file reads a secret's swarm name from. */
@@ -256,11 +303,24 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         const groups = [...(fillDeep(alerts.groups, base, "alerts.yml") as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.alerts ?? [], tokensOf(name), `components.yaml ${name}.alerts`) as unknown[])]
         files["alerts.yml"] = header + stringify({ groups }, { lineWidth: 0 })
     }
+    // With the monitor bot on, Alertmanager's receivers are webhooks to it and the bot holds the tokens and chat ids; else the receivers are
+    // Alertmanager's own telegram_configs. Either way the chat ids are filled on the server from the opened members (alertBotLines).
+    const viaBot = on("monitor-bot")
+    const bots = facts.alertBots.length > 0
+    const filled: FilledFile[] = []
     if (on("alertmanager")) {
-        const routing = alertRouting(facts.alertBots)
-        // With a bot, the chat ids are filled on the server from the opened members (alertBotLines); the template is what ships.
-        files[facts.alertBots.length === 0 ? "alertmanager.yml" : "alertmanager.yml.tmpl"] = fill(readText(dir, "alertmanager.yml"), routing, "alertmanager.yml")
+        const routing = alertRouting(facts.alertBots, viaBot)
+        const onServer = bots && !viaBot
+        files[onServer ? "alertmanager.yml.tmpl" : "alertmanager.yml"] = fill(readText(dir, "alertmanager.yml"), routing, "alertmanager.yml")
+        if (onServer) filled.push({ rel: "alertmanager.yml", env: ALERTMANAGER_CONFIG_ENV })
     }
+    if (viaBot) {
+        Object.assign(files, botCodeFiles())
+        files["monitor-bot/package.json"] = `${JSON.stringify({ name: "starci-monitor-bot", private: true, type: "module" })}\n`
+        files[bots ? "monitor-bot/config.json.tmpl" : "monitor-bot/config.json"] = botConfig(policy, serverName, facts.alertBots, { loki: on("loki"), grafana: on("grafana") ? (doorTokens["door.grafana.url"] ?? null) : null })
+        if (bots) filled.push({ rel: "monitor-bot/config.json", env: BOT_CONFIG_ENV })
+    }
+    const tokenHolder = viaBot ? "monitor-bot" : "alertmanager"
     if (on("grafana")) {
         const datasources = parse(readText(dir, "grafana/datasources.yaml")) as { apiVersion: number; datasources: unknown[] }
         files["grafana/datasources.yaml"] = header + stringify({ ...datasources, datasources: [...datasources.datasources, ...selected.flatMap((name) => components[name]?.datasources ?? [])] }, { lineWidth: 0 })
@@ -278,13 +338,15 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     // The configs of the stack, each named by its content's hash, so a change is a new config and a rollback finds the old one.
     const configKey = (rel: string): string => rel.replaceAll(/[^a-z0-9]+/gi, "_").toLowerCase()
     const configs: Record<string, { file: string; name: string }> = {}
+    const botFiles = Object.keys(files).filter((rel) => rel.startsWith("monitor-bot/"))
     const mountsOf = (name: string): { source: string; target: string; mode: number }[] => {
         const own = Object.entries(components[name]?.configs ?? {})
         const boards = name === "grafana" ? selected.flatMap((other) => (components[other]?.dashboards ?? []).map((board): [string, string] => [board, `/etc/grafana/dashboards/${posix.basename(board)}`])) : []
-        return [...own, ...boards].map(([rel, mount]) => {
+        const code = name === "monitor-bot" ? botFiles.map((rel): [string, string] => [rel.replace(/\.tmpl$/, ""), `/app/${posix.basename(rel.replace(/\.tmpl$/, ""))}`]) : []
+        return [...own, ...boards, ...code].map(([rel, mount]) => {
             const key = configKey(rel)
-            const filledOnServer = rel === "alertmanager.yml" && facts.alertBots.length > 0
-            configs[key] = { file: `./${rel}`, name: filledOnServer ? `\${${ALERTMANAGER_CONFIG_ENV}}` : `${policy.monitor.stack.replaceAll("-", "_")}_${key}_${hash(files[rel] ?? "")}` }
+            const onServer = filled.find((file) => file.rel === rel)
+            configs[key] = { file: `./${rel}`, name: onServer !== undefined ? `\${${onServer.env}}` : `${policy.monitor.stack.replaceAll("-", "_")}_${key}_${hash(files[rel] ?? "")}` }
             return { source: key, target: mount, mode: 0o444 }
         })
     }
@@ -299,7 +361,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         const text = JSON.stringify(service)
         if (/\$(?!\$)/.test(text.replaceAll("$$", ""))) throw new Refusal("OPS_INVALID", `components.yaml ${name}.service holds a single $; write $$ for a $ the container sees`)
         const mounted = Object.entries(component.secrets ?? {}) as [MonitorSecret, string][]
-        const botMounts = name === "alertmanager" ? facts.alertBots.map((_bot, slot) => tokenFile(slot)) : []
+        const botMounts = name === tokenHolder ? facts.alertBots.map((_bot, slot) => tokenFile(slot)) : []
         for (const [kind] of mounted) secrets.add(kind)
         const ownNetworks = component.networks.filter((network) => !(local && network === "edge"))
         for (const network of ownNetworks) networks.add(network)
@@ -349,17 +411,17 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         networks: Object.fromEntries([...networks].sort((left, right) => left.localeCompare(right)).map((network) => [network, networkSpec[network]])),
         ...(volumes.size > 0 ? { volumes: Object.fromEntries([...volumes].sort((left, right) => left.localeCompare(right)).map((volume) => [volume, {}])) } : {}),
         ...(Object.keys(configs).length > 0 ? { configs } : {}),
-        ...(secrets.size + (on("alertmanager") ? facts.alertBots.length : 0) > 0
+        ...(secrets.size + (on(tokenHolder) ? facts.alertBots.length : 0) > 0
             ? {
                   secrets: {
                       ...Object.fromEntries([...secrets].map((kind) => [fileOf(kind), { external: true, name: `\${${secretEnvOf(kind)}}` }])),
-                      ...(on("alertmanager") ? Object.fromEntries(facts.alertBots.map((_bot, slot) => [tokenFile(slot), { external: true, name: `\${${tokenEnvOf(slot)}}` }])) : {}),
+                      ...(on(tokenHolder) ? Object.fromEntries(facts.alertBots.map((_bot, slot) => [tokenFile(slot), { external: true, name: `\${${tokenEnvOf(slot)}}` }])) : {}),
                   },
               }
             : {}),
     }
     files["stack.yml"] = "# Written by `starci vps monitor up` from ops/vps/monitor/components.yaml: the components this server runs, nothing else.\n" + stringify(stack, { lineWidth: 0 })
-    return { files, secrets: [...secrets], doors, alertBots: on("alertmanager") ? facts.alertBots : [] }
+    return { files, secrets: [...secrets], doors, alertBots: on(tokenHolder) ? facts.alertBots : [], filled }
 }
 
 /**
@@ -406,7 +468,7 @@ export const monitorUpPlan = (policy: VpsPolicy, target: MonitorTarget, render: 
                     `mkdir -p ${shellQuote(base)}; chmod 700 ${shellQuote(base)} 2>/dev/null || true`,
                     ...secretLines,
                     ...writes,
-                    ...alertBotLines(render.alertBots, base, marker),
+                    ...alertBotLines(render.alertBots, base, marker, render.filled),
                     `docker stack ls --format '{{.Name}}' | grep -qx ${stack} || C=changed`,
                     // --prune removes a component turned off. Configs and secrets of an older hash stay, so a rollback finds them.
                     `if [ "$C" = changed ]; then docker stack deploy --quiet --prune -c ${shellQuote(`${base}/stack.yml`)} ${stack} >/dev/null; fi`,
