@@ -4,6 +4,7 @@ import type { VerbContext } from "../../shared/verb.js"
 import { requireCiGreen, requireCiRunGreen } from "../check/ci.js"
 import { callerRole } from "../../shared/role.js"
 import { Refusal } from "../../shared/errors.js"
+import { judgeHostServices } from "./check.js"
 import { argSet, argValue, FORWARDED, leadingOperands, runHfs, withoutArg } from "./hfs.js"
 
 /** Waits for a green CI (or the urgent record) before an executed production deploy, as policy/quality.yaml requireCi asks. */
@@ -47,6 +48,8 @@ export const appStackVerb = defineVerb({
         const sha = argValue(args, "sha")
         const deploy = leadingOperands(args)[0] === "deploy"
         const ciRun = argValue(args, "ci-run")
+        // The host services the environment needs (hostServices) exist on its machines before anything deploys (HOST_SERVICE_MISSING).
+        if (deploy) judgeHostServices(context, argValue(args, "env") ?? "production")
         if (withoutArg(args, "ci-run").length !== args.length) {
             await judgeNamedRun(context, args, deploy, sha, ciRun)
         } else if (deploy && argSet(args, "execute") && (argValue(args, "env") ?? "production") === "production" && sha !== undefined) {
