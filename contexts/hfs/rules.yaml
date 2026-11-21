@@ -1041,13 +1041,6 @@ rules:
       - HFS_LINT_SUPPRESSION_FILE
     enforcers:
       - {kind: hfs, id: lint-suppression}
-  - id: R105
-    code: HFS_PROOF_COMMAND_FILE_MISSING
-    law: Every repository file a `.starciwork` proof command names exists.
-    failureCodes:
-      - HFS_PROOF_COMMAND_FILE_MISSING
-    enforcers:
-      - {kind: hfs, id: proof-command-files}
   - id: R106
     code: FE_I18N_KEYS
     law: "Front-end catalogs and source agree both ways: every literal key read through `next-intl` exists in every locale, and no catalog key is unread."

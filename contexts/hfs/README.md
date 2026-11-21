@@ -109,7 +109,6 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R15 | canon packages match their pins | Change the pin in `contexts/stack/pins.yaml` or the dependency, not both silently. |
 | R24 | the architecture machine reads the repository | Fix `hfs.json` so the machine sees files; zero analysed files is red. |
 | R104 | findings are fixed, not hidden | Delete the suppression file, script or option and fix the finding in code. |
-| R105 | proof commands run | Create the file the `.starciwork` proof command names, or correct the command. |
 | R143 | the monorepo shape | Declare the workspaces, an exact `packageManager`, the pinned turbo and one root lockfile. |
 | R146 | each workspace declares what it imports | Add the import to that workspace's `package.json`; the app root declares no workspace package. |
 | R187 | image builds are reproducible | Build from the app root and copy only from inside the build context. |

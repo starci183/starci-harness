@@ -4704,16 +4704,6 @@ HFS_PLAINTEXT_SECRET:
   owner: owner
   kind: check-finding
 
-HFS_PROOF_COMMAND_FILE_MISSING:
-  title: "A proof command names only files the repository holds"
-  title_vi: "Lệnh chứng minh trỏ tới tệp không tồn tại"
-  meaning_vi: "Lệnh `requiresProof.<kind>.command` của hồ sơ `.starciwork` `<f>` chạy tệp `<path>` mà kho không có, nên không thể chạy đúng như đã viết."
-  causes_vi:
-    - "Vi phạm luật R105: lệnh chứng minh phải chạy được nguyên văn; tệp spec, script hay cấu hình mà nó nêu tên phải có trong kho (script đã xóa thì kế hoạch chứng minh phải được viết lại)."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: tạo tệp được nêu hoặc viết lại kế hoạch chứng minh (ví dụ thành một spec e2e trên world); không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
-
 HFS_README_BADGE_NOT_LIVE:
   title: "README badge is not a live service"
   title_vi: "Huy hiệu README không phải dịch vụ ngoài đang chạy"

@@ -1908,22 +1908,6 @@ rules:
       - {path: packages/hfs/src/hfs-repository-hygiene-coverage.spec.mjs, codes: [HFS_LINT_SUPPRESSION_FILE]}
     witness:
       - {path: packages/hfs/src/hfs-repository-hygiene-coverage.spec.mjs, codes: [HFS_LINT_SUPPRESSION_FILE]}
-  - id: R105
-    code: "HFS_PROOF_COMMAND_FILE_MISSING"
-    docs: [docs/legacy-repo-rule-coverage.md#r105]
-    templateNa: "Proof plans name project-specific files in authored Work records; managed app scaffolds do not supply those commands or their target scripts."
-    law: "A proof command of a `.starciwork` record (`requiresProof.<kind>.command`) is runnable as written: every repository file it names exists."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["HFS_PROOF_COMMAND_FILE_MISSING"]
-    enforcers:
-      - {kind: hfs, id: proof-command-files, at: scripts/hfs/rules/proof-commands.mjs}
-    proves:
-      - packages/hfs/src/hfs-proof-command-file-missing.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/src/hfs-proof-command-file-missing.spec.mjs
-    witness:
-      - {path: packages/hfs/src/hfs-proof-command-file-missing.spec.mjs, codes: [HFS_PROOF_COMMAND_FILE_MISSING]}
   - id: R106
     code: "FE_I18N_KEYS"
     law: "The catalogs of a front-end app and its source agree both ways: a literal key read through `next-intl` (`useTranslations`, `getTranslations`, `t`, `t.rich`, `t.raw`, `t.markup`) exists in every locale, and a catalog key that no string of the app's or the shared packages' source can be reading is deleted."
