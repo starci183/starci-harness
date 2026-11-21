@@ -213,6 +213,25 @@ for (const edition of ['lite'] as const) {
     assert.equal(without.length, 2, without.join('\n'));
     assert.match(without[0]!, /job deploy leaves production without an environment and so reads the repository's SOPS_AGE_KEY; its first steps must be the release-tag guard/u);
     assert.match(judge(workflows, 'environment').join('\n'), /leaves production without an environment .*production is not declared deploy\.custody ci-key/u);
+    // images.yml: the sealed job of the ci-key release environment binds none and reads the CI key, behind its release-only guard.
+    const images: Doc = parseWorkflow(workflows['images']!);
+    const sealed = images.jobs['image-sealed'];
+    assert.equal(sealed.environment, undefined, 'production binds no Environment');
+    assert.equal(sealed.if, '${{ inputs.release }}', 'the sealed job still runs on a release only');
+    assert.ok(sealed.steps.some((step: Doc) => step.if === '${{ inputs.release }}' && String(step.run).includes('[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1')), 'the release-tag guard is kept');
+    assert.match(JSON.stringify(sealed.steps), /secrets\.SOPS_AGE_KEY \}\}/u);
+    assert.equal(parseWorkflow(rendered(edition, TWO)['images']!).jobs['image-sealed'].environment, 'production', 'environment custody keeps its binding');
+    // ci.yml hands the repository's secrets to the calls whose job binds no Environment, and only to those.
+    const ci: Doc = parseWorkflow(workflows['ci']!);
+    assert.deepEqual([ci.jobs.images.secrets, ci.jobs['deploy-production'].secrets, ci.jobs['deploy-staging'].secrets], ['inherit', 'inherit', undefined]);
+    const before: Doc = parseWorkflow(rendered(edition, TWO)['ci']!);
+    assert.deepEqual([before.jobs.images.secrets, before.jobs['deploy-production'].secrets], [undefined, undefined]);
+    const unguardedImages = workflows['images']!.replaceAll('          [[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1\n', '');
+    assert.notEqual(unguardedImages, workflows['images']);
+    assert.match(judge({ ...workflows, images: unguardedImages }).join('\n'), /images\.yml: job image-sealed leaves production without an environment .*its first steps must be the release-tag guard/u);
+    const inheritsStaging = workflows['ci']!.replace(/(  deploy-staging:\n(?:    .*\n)*?    uses: \.\/\.github\/workflows\/stack-deploy\.yml\n)/u, '$1    secrets: inherit\n');
+    assert.notEqual(inheritsStaging, workflows['ci']);
+    assert.match(judge({ ...workflows, ci: inheritsStaging }).join('\n'), /ci\.yml: inherited secrets are forbidden/u, 'only a ci-key environment inherits');
     assert.match(judge({ ...workflows, 'api-deploy': text }).join('\n'), /api-deploy\.yml: job deploy leaves production without an environment .*only stack-deploy\.yml may leave a name unbound/u);
   });
 

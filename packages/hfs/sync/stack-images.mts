@@ -165,7 +165,8 @@ function imageCacheLines(cache: 'gha' | 'registry'): string[] {
   return ['cache-from: type=gha,scope=${{ matrix.name }}', 'cache-to: type=gha,scope=${{ matrix.name }},mode=max'];
 }
 
-interface ImageJobOptions { project: string; nodeMajor: string; environment: string; platforms: readonly string[]; cache: 'gha' | 'registry'; remote: boolean }
+/** `ciKey`: the release environment is declared deploy.custody ci-key, so the sealed job binds no Environment and reads the repository's CI key. */
+interface ImageJobOptions { project: string; nodeMajor: string; environment: string; platforms: readonly string[]; cache: 'gha' | 'registry'; remote: boolean; ciKey: boolean }
 
 
 /**
@@ -212,14 +213,14 @@ function remoteBuilderCleanup(): string[] {
 }
 
 /** One build job of images.yml: `image` builds with public values and no environment, `image-sealed` opens the sealed build values of the release environment. */
-function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { project, nodeMajor, environment, platforms, cache, remote }: ImageJobOptions): string {
+function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { project, nodeMajor, environment, platforms, cache, remote, ciKey }: ImageJobOptions): string {
   const sealed = id === 'image-sealed';
   const qemu = platforms.some(platform => platform !== 'linux/amd64');
   const head = [
     `${id}:`,
     '  timeout-minutes: 30',
     '  runs-on: ubuntu-latest',
-    ...(sealed ? ['  if: ${{ inputs.release }}', `  environment: ${environment}`] : []),
+    ...(sealed ? ['  if: ${{ inputs.release }}', ...(ciKey ? [] : [`  environment: ${environment}`])] : []),
     '  permissions:', '    contents: read', '    packages: write',
     '  strategy:', '    fail-fast: false', '    matrix:', '      include:',
     ...matrixEntries(plans).map(line => `        ${line}`),
@@ -329,7 +330,8 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
   const platforms = platformsOf(stack.environments ?? []);
   // The remote builder is the server's own architecture, amd64; a multi-architecture build stays on the runner with QEMU.
   const remote = stack.imageBuilder === 'remote' && platforms.every(platform => platform === 'linux/amd64');
-  const options: ImageJobOptions = { project, nodeMajor, environment, platforms, cache: stack.imageCache ?? 'gha', remote };
+  const ciKey = (stack.environments ?? []).some(entry => entry.name === environment && entry.custody === 'ci-key');
+  const options: ImageJobOptions = { project, nodeMajor, environment, platforms, cache: stack.imageCache ?? 'gha', remote, ciKey };
   const jobs = [...(publicPlans.length ? ['image'] : []), ...(sealedPlans.length ? ['image-sealed'] : [])];
   const collect = plans.some(plan => plan.deployed) && jobs.length > 0;
   return {
@@ -340,8 +342,9 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
     ].join('\n\n'),
     imageWorkflowOutputs: collect ? lines(['outputs:', '  refs:', '    description: JSON object, service -> repository@sha256:digest of the images this run pushed', '    value: ${{ jobs.collect.outputs.refs }}'], '    ') : '',
     // The builder secrets reach the reusable workflow by inheritance: declaring them under workflow_call.secrets would hide the release
-    // environment's own SOPS_AGE_KEY from the sealed job's expressions.
-    ciImageSecrets: remote && jobs.length > 0 ? block(['secrets: inherit'], '    ') : '',
+    // environment's own SOPS_AGE_KEY from the sealed job's expressions. A ci-key release environment's sealed job reads the repository's
+    // SOPS_AGE_KEY, which a called workflow sees only by inheritance too.
+    ciImageSecrets: (remote && jobs.length > 0) || (ciKey && sealedPlans.length > 0) ? block(['secrets: inherit'], '    ') : '',
     imagesCollected: collect ? 'true' : '',
   };
 }
@@ -363,6 +366,8 @@ function ciDeployVariables(stack: DeclaredStack, collected: boolean): Record<str
       '  permissions:', '    contents: read', '    packages: read', '    actions: read',
       '  concurrency:', `    group: deploy-${environment.name}`, '    cancel-in-progress: false',
       '  uses: ./.github/workflows/stack-deploy.yml',
+      // A ci-key environment binds no Environment in the called workflow, which then reads the repository's SOPS_AGE_KEY: only by inheritance.
+      ...(environment.custody === 'ci-key' ? ['  secrets: inherit'] : []),
       '  with:',
       `    environment: ${environment.name}`,
       '    operation: deploy',
