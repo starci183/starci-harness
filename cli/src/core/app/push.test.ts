@@ -54,10 +54,11 @@ const harness = (script: Script): { ports: PushPorts; log: string[] } => {
     return { ports, log }
 }
 
-const UNWARMED = { code: "HFS_CHECK_CACHE_UNWARMED", level: "error", path: ".starcistacks/cache" }
+/** What a run that wrote records its commit lacks reports: info, the run stays green (hfs cache/freshness.mts). */
+const UNWARMED = { code: "HFS_CHECK_CACHE_UNWARMED", level: "info", path: ".starcistacks/cache" }
 
 void test("a cold cache: check writes it, one commit carries it, the proving check writes nothing, then one push", () => {
-    const { ports, log } = harness({ checks: [{ exitCode: 1, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [] }] })
+    const { ports, log } = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [] }] })
     const outcome = warmAndPush(ports, ["origin", "dev"])
     assert.deepEqual(log, ["check", "add", "commit chore(cache): warm the check cache for sha0", "check", "push origin dev"])
     assert.equal(outcome.pushed, true)
@@ -73,12 +74,12 @@ void test("a warm cache pushes without a commit", () => {
 })
 
 void test("a record the commit itself moves is settled by a second commit, never an amend, and a third run is the limit", () => {
-    const twice = harness({ checks: [{ exitCode: 1, findings: [UNWARMED], writes: true }, { exitCode: 1, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [] }] })
+    const twice = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [] }] })
     const settled = warmAndPush(twice.ports, [])
     assert.equal(settled.pushed, true)
     assert.equal(settled.commits.length, 2)
     assert.equal(twice.log.filter((line) => line.startsWith("commit")).length, 2)
-    const never = harness({ checks: [{ exitCode: 1, findings: [UNWARMED], writes: true }] })
+    const never = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }] })
     const stuck = warmAndPush(never.ports, [])
     assert.equal(stuck.pushed, false)
     assert.equal(stuck.exitCode, 1)
@@ -86,7 +87,7 @@ void test("a record the commit itself moves is settled by a second commit, never
     assert.equal(never.log.some((line) => line.startsWith("push")), false)
 })
 
-void test("a check red for another reason stops before any commit or push", () => {
+void test("a red check stops before any commit or push", () => {
     const { ports, log } = harness({ checks: [{ exitCode: 1, findings: [UNWARMED, { code: "LINT_X", level: "error", path: "fe/a.ts" }], writes: true }] })
     const outcome = warmAndPush(ports, [])
     assert.equal(outcome.pushed, false)
@@ -111,7 +112,7 @@ void test("uncommitted work outside the cache is refused before any check", () =
 })
 
 void test("a refused cache commit (its hook) and a refused push are reported, never forced", () => {
-    const commit = harness({ checks: [{ exitCode: 1, findings: [UNWARMED], writes: true }], commitExit: 1 })
+    const commit = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }], commitExit: 1 })
     const refused = warmAndPush(commit.ports, [])
     assert.equal(refused.pushed, false)
     assert.match(refused.refusal ?? "", /cache commit failed/u)

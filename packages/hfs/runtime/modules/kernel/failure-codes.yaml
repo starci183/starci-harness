@@ -4210,13 +4210,13 @@ CI_PARITY_SONAR_SKIPPED:
   kind: check-finding
 
 HFS_CHECK_CACHE_UNWARMED:
-  title: "The pushed check cache is not the one a run on its tree writes"
-  title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"
-  meaning_vi: "`starci app check` (hook pre-push) chạy mọi họ kiểm tra theo diff với cache trong cây và phải ghi hoặc xóa tệp trong `.starcistacks/cache/`, hoặc cây còn tệp cache chưa commit: bản ghi đi kèm lần push không đủ ấm, nên CI sẽ phải kiểm tra lạnh và vượt ngân sách ESLint."
+  title: "The commit does not hold the check cache records this run wrote"
+  title_vi: "Commit chưa chứa các bản ghi cache kiểm tra mà lần chạy này vừa ghi (chỉ báo cáo)"
+  meaning_vi: "`starci app check` chạy mọi họ kiểm tra theo diff với cache trong cây, đã tính xong và ghi bản ghi vào `.starcistacks/cache/`, nhưng cây còn tệp cache chưa commit. Đây không phải lỗi của mã: lần chạy vẫn đúng và không đỏ vì nó (mức info, mã thoát không đổi). Chỉ lần chạy của hook pre-push (STARCI_PUSH_GATE=1) coi là lỗi, vì push mang bản ghi chưa commit thì CI phải kiểm tra lạnh và vượt ngân sách ESLint."
   causes_vi:
-    - "Sửa mã mà chưa chạy `starci app check` rồi commit cache"
-    - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nhưng chưa chạy lại một lần cho ấm"
-  nextStep_vi: "Commit `.starcistacks/cache/` đúng như lần chạy vừa để lại rồi push lại; không sửa tay thư mục cache."
+    - "Sửa mã rồi chạy `starci app check` nhưng chưa commit bản ghi vừa ghi"
+    - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nên mọi họ phải tính lại một lần"
+  nextStep_vi: "Không cần làm gì để lần chạy xanh. Để push, dùng `npx --no-install starci app push` (tự commit bản ghi rồi push); bộ gộp lane (`lane land`) cũng tự commit. Không sửa tay thư mục cache."
   owner: op-retry
   kind: check-finding
 

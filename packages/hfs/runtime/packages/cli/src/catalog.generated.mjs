@@ -678,7 +678,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "push": {
-          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a check red for any other reason",
+          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
           "flags": [],
           "positional": [
             {
@@ -3344,7 +3344,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "gate": {
-          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green except the cache), or --push app push, and --ready register with the batch lander",
+          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green on its findings alone; the cache records it wrote are not a finding), or --push app push, and --ready register with the batch lander",
           "flags": [
             {
               "name": "ref",

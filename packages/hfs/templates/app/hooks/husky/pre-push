@@ -20,4 +20,5 @@ if [ "$deps" = off ] && [ "${STARCI_JUDGED_BRANCH:-}" != main ]; then
 else
   node node_modules/starci-harness/dist/main.js deps check
 fi
-node node_modules/starci-harness/dist/main.js app check --env prod
+# STARCI_PUSH_GATE=1: only this run makes an unwarmed cache (records the run wrote that the commit lacks) an error; every other run reports it (cache/freshness.mts). `starci app push` commits the records first.
+STARCI_PUSH_GATE=1 node node_modules/starci-harness/dist/main.js app check --env prod
