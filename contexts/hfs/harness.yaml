@@ -211,7 +211,7 @@ slots:
     path: contexts/hfs/harness.yaml
     presence: required
     holds: this manifest, the harness repository's own shape
-    rule: CONTRIB-10 gates before rules
+    rule: CONTRIB-10 general checks only
   - id: contexts.knowledge
     path: "contexts/**/*.{md,yaml,html}"
     presence: optional

@@ -6,7 +6,7 @@ How app code is written: [shared](shared/README.md) holds the rules both sides f
 Every rule of this tree has one form: a heading that opens with its stable id and states the law in one sentence
 (`## SHARED-TYPING-2 ...`, `## FE-FUNCTION-2 ...`, `## BE-PERSISTENCE-5 ...`), the body that makes it concrete, a
 `Why:` line and an `Enforced by:` line naming the enforcer (a lint rule id with the HFS rule of
-[hfs/rules.yaml](../hfs/rules.yaml) it belongs to, a gate, or "review only"). A rule cites the HFS rule instead of
+[hfs/rules.yaml](../hfs/rules.yaml) it belongs to, a gate, or "review only", which is a complete state). A rule cites the HFS rule instead of
 restating what it flags, and cites another rule's id instead of restating its law. The heading id is what a task's
 `rulesApplied` cites and what `starci contexts search` marks citable.
 

@@ -1,8 +1,8 @@
 # The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and
 # the enforcers that judge it. The law states what must hold; the reason lives in the pattern that cites the rule
 # (contexts/code/<side>/*.md), the value in its owner (hfs/slots.yaml ruleParams or budgets, stack/pins.yaml,
-# the grammar package). An enforcer marked `status: planned` is owed: `starci contexts anatomy` lists the rules judged only
-# by planned enforcers, and the status is removed the day the check ships.
+# the grammar package). An enforcer marked `status: planned` is not built yet: `starci contexts anatomy` lists the rules judged only
+# by planned enforcers. A rule held by review is complete; nothing is owed, and a check is added only under CONTRIB-10.
 schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)

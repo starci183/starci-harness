@@ -170,15 +170,16 @@ reasoning for an agent.
 | FE screen on a grammar | [ui/README](ui/README.md) → [ui/situations](ui/situations.md) → [ui/composition](ui/composition.md) and the [components](ui/components/README.md) it uses → [ui/scale](ui/scale.md) → [grammars/contract](grammars/contract.md) and the app's grammar file → [code/fe/README](code/fe/README.md) (the app's limits, the status recipe) → [ui.md](code/fe/ui.md), [function.md](code/fe/function.md), the topics of the slots touched → lint |
 | Code, back end or front end | [code/README "Read for a coding task"](code/README.md#read-for-a-coding-task) (each coding op's `context.base` follows it); a screen reads the row above first |
 | New dependency | [stack/fe.yaml](stack/fe.yaml) (or the be topic that owns the concern) → [stack/pins.yaml](stack/pins.yaml) |
-| New pattern or rule | this file's house rules → the topic that owns the concept (extend it, never add a sibling) → [hfs/rules.yaml](hfs/rules.yaml) if a machine can decide it |
+| New pattern or rule | this file's house rules → the topic that owns the concept (extend it, never add a sibling) → [hfs/rules.yaml](hfs/rules.yaml) only for a broad recurring class a machine can decide (CONTRIB-10) |
 | New grammar | [grammars/contract](grammars/contract.md) → [vendor/parity.yaml](vendor/parity.yaml) → implement; nothing else changes |
 
-## Feedback hardens
+## Feedback is fixed at its root
 
-A feedback is absorbed by making the system stricter (CONTRIBUTING.md CONTRIB-7, rewritten where its concept lives by
-CONTRIB-6). In order of preference it becomes: a grammar API that removes the choice; a lint, gate or threshold; or the
-general rule rewritten in its one place, stated as the rule that holds now. Every rule therefore has exactly one
-place where a hardening lands: its own section (ui, patterns), its contract role, or its threshold key.
+A feedback is absorbed by fixing its root cause (CONTRIBUTING.md CONTRIB-7, rewritten where its concept lives by
+CONTRIB-6). In order of preference it becomes: an API or generator change that removes the choice; the fix in the owning
+component; or the general rule rewritten in its one place, stated as the rule that holds now. It never becomes a check
+for that one case; CONTRIB-10 is the only way a check is added. Every rule therefore has exactly one place where a
+correction lands: its own section (ui, patterns), its contract role, or its threshold key.
 
 ### When a rule was missed
 
@@ -191,11 +192,12 @@ in the change that fixes the damage:
    not in the index, so a miss stays measured after it is fixed.
 2. **Name its causes**: `not-looked-up` (no lookup ran, or a compaction dropped the step), `ranked-low` (the lookup ran and
    the answer sat below the top 5), `not-in-core` (the seat's fixed core lacked a rule it cannot act without),
-   `no-enforcer` (nothing refused the mistake) or `brief-paraphrase` (a brief restated a rule from memory, wrongly).
+   `no-enforcer` (no check refused the mistake) or `brief-paraphrase` (a brief restated a rule from memory, wrongly).
 3. **Fix each cause where it lives.** `ranked-low`: rewrite the owning section so its heading and opening sentence carry the
    words the question used, until the eval ranks it in the top 5 (CONTRIB-6); `not-in-core`: promote the rule into the
-   fixed core that seat reads (AGENTS.md for every host, the op's `context.base`, the coordinator brief); `no-enforcer`: a
-   lint rule, an hfs check or a CLI refusal (CONTRIB-10); `not-looked-up` and `brief-paraphrase`: the lookup steps and the
+   fixed core that seat reads (AGENTS.md for every host, the op's `context.base`, the coordinator brief); `no-enforcer`: ask
+   whether an existing general check should have caught it and widen that one; a new check only under CONTRIB-10, else the rule
+   stays held by review; `not-looked-up` and `brief-paraphrase`: the lookup steps and the
    brief check of "Looking a rule up", or the brief that left them out. The record is the eval question; the fix is in
    its owner, never a lessons note (CONTRIB-7).
 
