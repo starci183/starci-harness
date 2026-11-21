@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process"
 import { join, resolve } from "node:path"
 import { mainCheckout } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
@@ -7,6 +8,9 @@ import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
 import { landAutoSync } from "../../harness/land-dev-sync.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
+import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
+import { listWorktrees } from "../../harness/worktree-remove.js"
+import { cliPackageName, packageVersion } from "../version.js"
 
 /** How long an idle lander waits before it reads the ready set again. */
 const POLL_MS = 30_000
@@ -17,6 +21,8 @@ const POLL_MS = 30_000
  * lanes its findings name and runs once more, never bisecting. `--once` runs one batch; `--dry-run` merges only. When this machine's local
  * settings turn on `devSync.afterLand` (harness/local-settings.ts, git-ignored, default off), a landed batch is followed by `starci dev sync
  * --execute` on the app's main dev checkout, debounced over consecutive batches, which restarts only the changed api or web of the running dev stack.
+ * A lander started from inside a worktree of the app (`npx starci lane land` in its checkout) runs itself again from its own install of the
+ * same version (harness/lander-install.ts), so no install of a checkout, a dev sync included, can wipe the files under it.
  */
 export const laneLandVerb = defineVerb({
     path: ["lane", "land"],
@@ -42,7 +48,15 @@ export const laneLandVerb = defineVerb({
             worktree: resolve(flags.worktree ?? join(dir, dryRun ? "_batch-lander-dry" : "_batch-lander")),
             migrations: flags.migrations ?? "db/migrations/",
         }
-        if (!dryRun) holdLander(dir)
+        if (!dryRun) {
+            const own = await landerHome({ cliRoot: runningCliRoot(), worktrees: (await listWorktrees(options.repo)).map((tree) => tree.path), dir, name: cliPackageName(), version: packageVersion(), env: process.env, say: context.progress })
+            if (own !== undefined) {
+                // The same argv from the lander's own install; this process only waits for it, and exits with its code.
+                const run = spawnSync(process.execPath, [own, ...process.argv.slice(2)], { stdio: "inherit", cwd: process.cwd(), env: { ...process.env, [LANDER_OWN_INSTALL_ENV]: "1" } })
+                process.exit(run.status ?? 1)
+            }
+            holdLander(dir)
+        }
         // The heartbeat: the lock's mtime moves every poll, through long gates too (the batch steps are async), so `lane status` tells a
         // live lander from a hung or killed one.
         const heartbeat = dryRun ? undefined : setInterval(() => {

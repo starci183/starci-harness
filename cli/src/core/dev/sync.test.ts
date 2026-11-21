@@ -1,7 +1,7 @@
 // `starci dev sync` and the lander's auto-sync: the side a change restarts, the overlay line, a real fast-forward of a dev checkout from
 // its origin (a bare repository in a scratch folder), the refusals, and the debounce of consecutive landed batches. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -10,8 +10,12 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { captureGitSync } from "../../shared/git.js"
 import { writeInstallRecord } from "../deps/install-local.js"
+import { ASIDE, installPlaces, realInstallFs } from "./safe-install.js"
+import type { InstallFs } from "./safe-install.js"
+import { parseStackStatus, stopTargets } from "./stack-stop.js"
+import type { StackProcesses, StackStop } from "./stack-stop.js"
 import { changedSides, devSync, overlayFiles, overlayLine, overlayOf, processesFor, summaryLine } from "./sync.js"
-import type { DevSyncRequest } from "./sync.js"
+import type { DevSyncDeps, DevSyncRequest } from "./sync.js"
 
 const PROCESSES = { be: ["api"], fe: ["web"] }
 
@@ -167,4 +171,178 @@ void test("a damaged local settings file is refused naming it", () => {
     } finally {
         rmSync(base, { recursive: true, force: true })
     }
+})
+
+/** A lockfile change pushed to dev (and `manifest`, when given), so the next sync installs; the checkout's node_modules holds an `old` marker. */
+const lockfileMoved = (pusher: string, checkout: string, manifest?: Record<string, unknown>): void => {
+    writeFileSync(join(pusher, "package-lock.json"), '{"name":"app","lockfileVersion":3,"requires":true,"packages":{"":{"name":"app","version":"1.0.1"}}}\n')
+    if (manifest !== undefined) writeFileSync(join(pusher, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`)
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "lockfile")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    writeFileSync(join(checkout, "node_modules", "old"), "the previous install\n")
+}
+
+const RUNNING: StackProcesses = { api: { pid: 101, startedAt: "2026-11-21T08:00:00.000Z" }, web: { pid: 102, startedAt: "2026-11-21T08:00:01.000Z" } }
+
+/** Fake seams that log every step in order. The fs is the real one with each rename logged; the first `refuseRenames` moves aside refuse with EPERM. */
+const fakeDeps = (log: string[], extra: Partial<DevSyncDeps> & { readonly refuseRenames?: number } = {}): DevSyncDeps => {
+    let refusals = extra.refuseRenames ?? 0
+    const fs: InstallFs = {
+        ...realInstallFs,
+        rename: (from, to) => {
+            if (refusals > 0 && to.endsWith(ASIDE)) {
+                refusals -= 1
+                log.push("rename refused")
+                throw Object.assign(new Error("EPERM: operation not permitted, rename lightningcss.win32-x64-msvc.node"), { code: "EPERM" })
+            }
+            log.push(`rename ${from.endsWith(ASIDE) && !to.includes(".starci-trash-") ? "back" : to.endsWith(ASIDE) ? "aside" : "trash"}`)
+            renameSync(from, to)
+        },
+    }
+    const seams: Partial<DevSyncDeps> = { ...extra }
+    Reflect.deleteProperty(seams, "refuseRenames")
+    return {
+        stackProcesses: () => {
+            log.push("status")
+            return Promise.resolve(RUNNING)
+        },
+        stop: (processes): Promise<StackStop> => {
+            log.push(`stop ${Object.keys(processes).join(",")}`)
+            return Promise.resolve({ stopped: Object.keys(processes), alive: [] })
+        },
+        npmCi: (root) => {
+            log.push(`npm ci (node_modules ${existsSync(join(root, "node_modules")) ? "present" : "moved aside"})`)
+            mkdirSync(join(root, "node_modules"), { recursive: true })
+            writeFileSync(join(root, "node_modules", "new"), "the new install\n")
+            return Promise.resolve()
+        },
+        fs,
+        pause: () => {
+            log.push("pause")
+            return Promise.resolve()
+        },
+        appRun: (_root, args) => {
+            log.push(`restart ${args[args.indexOf("--process") + 1] ?? ""}`)
+            return Promise.resolve({ exitCode: 0, stdout: "", stderr: "", timedOut: false })
+        },
+        ...seams,
+    }
+}
+
+const refused = (code: string, text = "") => (error: unknown): boolean => error instanceof Error && "code" in error && error.code === code && error.message.includes(text)
+
+void test("an install stops the recorded dev stack processes first, moves node_modules aside, installs, then restarts them", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log))
+    assert.deepEqual(log, ["status", "stop api,web", "rename aside", "npm ci (node_modules moved aside)", "rename trash", "restart api,web"])
+    assert.deepEqual(done.data.stopped, ["api", "web"])
+    assert.equal(done.data.restart, "done")
+    assert.ok(existsSync(join(checkout, "node_modules", "new")))
+    assert.equal(existsSync(join(checkout, "node_modules", "old")), false, "the old copy goes once the new one is in place")
+    assert.equal(existsSync(join(checkout, `node_modules${ASIDE}`)), false)
+})
+
+void test("--no-restart still brings back what the install stopped; a sync that installs nothing stops nothing", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: false }), fakeDeps(log))
+    assert.equal(log.at(-1), "restart api,web")
+    assert.deepEqual(done.data.restarted, ["api", "web"])
+    const again: string[] = []
+    const quiet = await devSync(request(checkout, { execute: true, restart: false }), fakeDeps(again))
+    assert.deepEqual(again, [], "nothing moved, nothing installed: the stack is left as it is")
+    assert.equal(quiet.data.installed, false)
+})
+
+void test("a failed npm ci puts the previous node_modules back whole, removes what it wrote, and restarts the stopped processes", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const failing = fakeDeps(log, {
+        npmCi: (root) => {
+            log.push("npm ci fails halfway")
+            mkdirSync(join(root, "node_modules"), { recursive: true })
+            writeFileSync(join(root, "node_modules", "half"), "")
+            return Promise.reject(new Error("npm ci: EPERM: operation not permitted, unlink lightningcss.win32-x64-msvc.node"))
+        },
+    })
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), failing), /EPERM/u)
+    assert.ok(existsSync(join(checkout, "node_modules", "old")), "the previous install is back")
+    assert.equal(existsSync(join(checkout, "node_modules", "half")), false)
+    assert.equal(existsSync(join(checkout, `node_modules${ASIDE}`)), false)
+    assert.deepEqual(log, ["status", "stop api,web", "rename aside", "npm ci fails halfway", "rename back", "restart api,web"])
+})
+
+void test("a node_modules still held after the stop gets one retry, then refuses DEV_SYNC_BUSY with nothing installed or deleted", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const once: string[] = []
+    await devSync(request(checkout, { execute: true }), fakeDeps(once, { refuseRenames: 1 }))
+    assert.deepEqual(once.slice(2, 5), ["rename refused", "pause", "rename aside"])
+    const { checkout: held, pusher: other } = scratch(t)
+    lockfileMoved(other, held)
+    const log: string[] = []
+    await assert.rejects(devSync(request(held, { execute: true }), fakeDeps(log, { refuseRenames: 2 })), refused("DEV_SYNC_BUSY", "Nothing was installed or deleted"))
+    assert.equal(log.some((line) => line.startsWith("npm ci")), false)
+    assert.ok(existsSync(join(held, "node_modules", "old")))
+})
+
+void test("a dev stack that cannot be stopped, or read, refuses DEV_SYNC_STOP before the checkout moves or anything installs", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const start = gitIn(checkout, "rev-parse", "HEAD")
+    const log: string[] = []
+    const stuck = fakeDeps(log, { stop: () => Promise.resolve({ stopped: ["api"], alive: ["web (pid 102)"] }) })
+    await assert.rejects(devSync(request(checkout, { execute: true }), stuck), refused("DEV_SYNC_STOP", "web (pid 102)"))
+    const unread = fakeDeps(log, { stackProcesses: () => Promise.resolve("STACK_USAGE: no such env") })
+    await assert.rejects(devSync(request(checkout, { execute: true }), unread), refused("DEV_SYNC_STOP", "STACK_USAGE"))
+    assert.equal(log.some((line) => line.startsWith("npm ci") || line.startsWith("rename")), false)
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), start)
+})
+
+void test("a copy an interrupted sync left aside is the last whole install: the next sync moves it back and installs again", async (t) => {
+    const { checkout } = scratch(t)
+    mkdirSync(join(checkout, `node_modules${ASIDE}`))
+    writeFileSync(join(checkout, `node_modules${ASIDE}`, "old"), "")
+    writeFileSync(join(checkout, "node_modules", "half"), "")
+    const dry = await devSync(request(checkout), fakeDeps([]))
+    assert.match(dry.message, /would move back the copy an earlier sync left aside/u)
+    assert.match(dry.message, /would run npm ci/u)
+    const log: string[] = []
+    await devSync(request(checkout, { execute: true }), fakeDeps(log))
+    assert.deepEqual(log.slice(0, 4), ["status", "stop api,web", "rename back", "rename aside"])
+    assert.ok(existsSync(join(checkout, "node_modules", "new")))
+    assert.equal(existsSync(join(checkout, `node_modules${ASIDE}`)), false)
+})
+
+void test("the places an install replaces are the root node_modules and each workspace's: all move aside, and all come back on failure", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    assert.deepEqual(installPlaces(checkout), [join(checkout, "node_modules")])
+    const manifest = JSON.parse(readFileSync(join(pusher, "package.json"), "utf8")) as Record<string, unknown>
+    lockfileMoved(pusher, checkout, { ...manifest, workspaces: ["fe/apps/*", "packages/**"] })
+    mkdirSync(join(checkout, "fe", "apps", "web", "node_modules"), { recursive: true })
+    writeFileSync(join(checkout, "fe", "apps", "web", "node_modules", "old"), "")
+    const log: string[] = []
+    await assert.rejects(devSync(request(checkout, { execute: true }), fakeDeps(log, { npmCi: () => Promise.reject(new Error("npm ci failed")) })), /npm ci failed/u)
+    assert.deepEqual(installPlaces(checkout), [join(checkout, "node_modules"), join(checkout, "fe", "apps", "web", "node_modules")])
+    assert.deepEqual(log.filter((line) => line.startsWith("rename")), ["rename aside", "rename aside", "rename back", "rename back"])
+    assert.ok(existsSync(join(checkout, "node_modules", "old")))
+    assert.ok(existsSync(join(checkout, "fe", "apps", "web", "node_modules", "old")))
+})
+
+void test("the stack's processes are read from the pinned CLI's status envelope, and a stop takes each recorded process with its children only", () => {
+    const envelope = JSON.stringify({ schema: "starci/app-stack@1", ok: true, data: { verb: "stack", exitCode: 1, output: { verb: "status", ok: false, processes: { web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z", port: 3000, command: "npm run start" } } } } })
+    assert.deepEqual(parseStackStatus(envelope), { web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z", command: "npm run start" } })
+    assert.equal(parseStackStatus(JSON.stringify({ schema: "starci/refusal@1", ok: false, code: "STACK_USAGE", message: "no env" })), "STACK_USAGE: no env")
+    assert.equal(parseStackStatus("not json"), "it printed no json (not json)")
+    const at = Date.parse("2026-11-21T08:00:00.000Z")
+    const row = (pid: number, ppid: number, startedMs: number | null): Parameters<typeof stopTargets>[1][number] => ({ pid, ppid, name: "node.exe", workingSetMb: 1, commandLine: "node", cpuMs: null, startedMs, cwd: null })
+    const table = [row(7, 1, at + 500), row(8, 7, at + 2_000), row(9, 8, at + 3_000), row(10, 7, at - 3_600_000), row(20, 1, at + 9_999_999)]
+    const targets = stopTargets({ web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z" }, api: { pid: 20, startedAt: "2026-11-21T08:00:00.000Z" }, gone: { pid: 30, startedAt: "2026-11-21T08:00:00.000Z" } }, table)
+    assert.deepEqual(targets.running, ["web"], "a reused pid (20) and a gone one (30) are not the stack's")
+    assert.deepEqual([...targets.pids].toSorted((left, right) => left - right), [7, 8, 9], "a child older than its parent (10) is a stranger")
 })

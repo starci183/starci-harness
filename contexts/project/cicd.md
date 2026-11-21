@@ -53,6 +53,16 @@ to `origin/dev` and its running dev stack onto that code:
    that does not name it again; then the checkout fast-forwards to `origin/dev` and `npm ci` runs (skipped when the lockfile did
    not change and no overlay was dropped).
 3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
+   Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
+   local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
+   children and seen gone: on Windows a running process that loaded a `.node` file makes `npm ci` die halfway with EPERM. A
+   stop that fails, or a record that cannot be read, is `DEV_SYNC_STOP`, and nothing installs or moves. `npm ci` runs with every
+   `node_modules` it replaces (the root's and each workspace's) renamed aside first, on the same volume: a folder a process still
+   holds refuses the rename at once, one retry follows a short pause, then `DEV_SYNC_BUSY` with nothing deleted. A failed
+   install puts every copy back; the copies are removed only once it passed, and a copy left aside by a sync that died is moved
+   back by the next sync, which installs again. (A staging install swapped in by a rename is not sound for npm workspaces:
+   their links and nested `node_modules` would point into the staging copy.) The stopped processes restart after the install,
+   with the changed ones, even under `--no-restart`.
 4. The changed side restarts: a change under `be/` restarts the api, under `fe/` the web, anything else a process reads (the root
    manifests, `packages/`, `db/`, the stack declaration, an overlay) both; docs and cache records restart nothing. It runs the app's
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
@@ -84,6 +94,13 @@ state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
 checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
 `local` keeps those packages on the local registry across syncs; empty restores the registry versions. `processes` names the
 stack processes of each side. A sync that is refused or fails is said in the lander's log and never stops the lander.
+
+The lander never runs from a checkout's `node_modules`: a `starci lane land` started from inside a worktree of the app (`npx
+starci lane land` in its main checkout) installs the same starci-harness version once into `<lanes>/_lander-cli/<version>`
+(staged, then renamed into place) and runs itself again from there, so a dev sync or any `npm ci` of the checkout cannot wipe
+the files under the running lander. Its `_batch-lander` worktree is no home: the lander runs `npm ci` there itself whenever a
+batch's lockfile moves. A lander started from outside every worktree (a global install, the harness checkout's build, its own
+install) runs as it is.
 
 **Prod** is slow and careful, in this order: harness fixes go to npm (the harness's own release), then the app code is pushed
 with its full checks, the docker images are built, `app check --env prod`, staging, the tag, CI, prod (the sections below).

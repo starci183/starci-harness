@@ -211,7 +211,7 @@ const waitGone = async (pids: readonly number[], waited = 0): Promise<void> => {
 }
 
 /** Ends each pid, never its tree by parent id (a reused parent id would take strangers): taskkill /F on Windows, SIGTERM then SIGKILL elsewhere. */
-const endAll = async (pids: readonly number[]): Promise<void> => {
+export const endAll = async (pids: readonly number[]): Promise<void> => {
     if (pids.length === 0) return
     if (process.platform === "win32") {
         const taskkill = join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "taskkill.exe")
