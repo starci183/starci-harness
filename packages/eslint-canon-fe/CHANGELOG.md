@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.21.5 - 2026-11-21
+
+- Removed: the special-case lint rules of the junk-check cleanup (one-off cases, owner 2026-11-21); the rules kept and why are in the release notes.
+
 ## 9.21.4 - 2026-11-21
 
 - Changed: cut with @starci/hfs 6.17.0; requires @starci/hfs ~6.17.0 (no rule change).

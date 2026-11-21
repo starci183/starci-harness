@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 6.17.6 - 2026-11-21
 
 - Removed (the junk-check cleanup, owner 2026-11-21: "mấy cái check này làm gì? sao lại check vô case đặc thù thế làm nặng lint? trò check cái gì hợp lý k dc à!!!!"): 41 hfs finding codes and 72 dead runtime codes that guarded one-off cases, the rules-cited and check-premise gates and ANATOMY_RULE_NO_ENFORCER. CONTRIB-7 and CONTRIB-10 are rewritten: a check is added only for a broad recurring class a machine can decide, and feedback closes as a root fix or declined (`starci ticket close <id> --kind feedback --target-kind root-fix|declined`). Old codes stop without an alias; the mappings are in the release notes.
 - Added (`starci app codemod`, `codemod/grammar.mts`): the Grammar's codemods, one per Grammar release that needs one and named after its version (owner 2026-11-21: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars"). `starci app codemod --list` prints each codemod of the installed Grammar with its version and summary. `starci app codemod v0540` runs one codemod: it is dry until `--execute` and exits 1 when it leaves a `TODO(type-role)` case. `starci app codemod --from <installed> [--to <target>]` runs every codemod in between, in version order. The codemods load from the app's installed `@starci/grammar/codemods` (0.54.0 and later) and use the app's TypeScript compiler. A target above the installed Grammar, an unknown id and a Grammar with no codemods are refused, each with what to do.

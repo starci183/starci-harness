@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.18 - 2026-11-21
+
+- Changed: requires @starci/grammar 0.54.0 (the type roles).
+
 ## 0.1.17 - 2026-11-21
 
 - Changed: requires @starci/grammar 0.53.0 (loading as HeroUI Skeleton shapes).

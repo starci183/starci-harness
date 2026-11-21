@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.8 - 2026-11-21
+
+- Removed: the special-case lint rules of the junk-check cleanup (one-off cases, owner 2026-11-21).
+
 ## 2.9.7 - 2026-11-19
 
 - Changed (`raw-brand-value`, R61): a named colour (`red`, `navy`) in a colour property (`color`, `background`, `border*`, `outline`, `fill`, `stroke`, `box-shadow`, ...) or alone as the value of a custom property is a raw brand value outside `brand.css`, like a hex colour. `NAMED_COLORS` equals `@starci/eslint-canon-fe`'s, and `findRawBrandValue(text, prop?)` takes the property.
