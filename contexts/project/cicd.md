@@ -23,6 +23,73 @@ digests only (`STACK_DEPLOY_PLACEHOLDER`), pre-pull, convergence judged on the n
 redeployed from its bytes, the `current` pointer moved only after verification. What is missing is the trigger, one
 build per commit, the database step, a lock shared with the owner's urgent deploy, and records that say what really runs.
 
+## Dev and prod
+
+An app has two delivery flows, and neither waits for the other. The owner's rules, verbatim:
+
+> ".claude nói rõ tách biệt quy trình dev (đưa lên cloudflare) và prod riêng biệt ko đợi nhau. npm cũng vào local và dev server mở thẳng lun"
+
+> "prod tối cũng dc, tập trung dev cho thầy trc!!!"
+
+> "dev thì chạy trên nhánh dev, code xong cứ merge vào dev, mở server local ra test (build từ code dev hiện tại và chạy để tránh hot-reload), trong quá trình làm có thể upgrade grammars,hfs,... nhưng mà đơn giản là publish local nên dev trơn tru. và cứ từ từ đưa lên .claude các bản vá, đưa lên code, check kĩ, build docker, app check,.. để dần dần lên prod sau dev"
+
+Dev is the fast path and comes first; prod is the slow, careful path and may run later the same day. They share no
+checkout and no lock: prod work never moves the dev checkout, and a dev batch never waits for a release.
+
+| | dev | prod |
+|---|---|---|
+| source | lanes -> the batch lander -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
+| harness packages | the local npm registry: `starci deps publish-local --execute` in the harness, `starci dev sync --local <pkg> --execute` (or `deps install-local`) in the app | npm only: harness fixes are published first (`release push`, CI publish), the app pins them, `deps install-local --restore` before a commit |
+| checks | the lander's one `app check --env prod` per batch | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
+| runs on | the app's main dev checkout and its dev stack (`starci app stack up --env dev`), exposed through the dev tunnel (Cloudflare, PROJECT-STACKS-15) | staging, then prod (Docker Swarm, below) |
+| moves by | `starci dev sync --execute`, by hand or by the lander after a landed batch | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
+
+**`starci dev sync [--local <pkg>]... [--dir <checkout>] [--env <env>] [--no-restart] --execute`** brings an app's main dev checkout
+to `origin/dev` and its running dev stack onto that code:
+
+1. It refuses a tracked change that is not a local overlay's (`DEV_SYNC_DIRTY`) and a checkout that is not on `dev` (`DEV_SYNC_NOT_DEV`);
+   a checkout holding commits `origin/dev` lacks is `DEV_SYNC_DIVERGED`. Work reaches dev through a lane, never through this checkout.
+2. A recorded overlay (`deps install-local`) is put back to the committed pins first, so the overlay never survives a sync
+   that does not name it again; then the checkout fast-forwards to `origin/dev` and `npm ci` runs (skipped when the lockfile did
+   not change and no overlay was dropped).
+3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
+4. The changed side restarts: a change under `be/` restarts the api, under `fe/` the web, anything else a process reads (the root
+   manifests, `packages/`, `db/`, the stack declaration, an overlay) both; docs and cache records restart nothing. It runs the app's
+   own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
+   checkout's code and runs the built artifact (the process's `serve` block: `next build` then `next start`, the api build then
+   `node dist/...`), never a watcher, waits for its health on the loopback and over each tunnel hostname that routes its port, and
+   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6).
+5. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
+
+Hot reload is opt-in for live coding: `starci app stack up --env dev --execute --watch` (or `stack restart --watch`) runs the
+process's own watcher argv.
+
+**The lander's auto-sync** is a setting of this machine alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the
+state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
+
+```json
+{
+  "devSync": {
+    "afterLand": true,
+    "checkout": "D:/Repositories/<app>",
+    "env": "dev",
+    "debounceSeconds": 120,
+    "local": [],
+    "processes": { "be": ["api"], "fe": ["web"] }
+  }
+}
+```
+
+`afterLand` (default `false`) makes `starci lane land` run `dev sync --execute` on `checkout` (default: the lander's app main
+checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
+`local` keeps those packages on the local registry across syncs; empty restores the registry versions. `processes` names the
+stack processes of each side. A sync that is refused or fails is said in the lander's log and never stops the lander.
+
+**Prod** is slow and careful, in this order: harness fixes go to npm (the harness's own release), then the app code is pushed
+with its full checks, the docker images are built, `app check --env prod`, staging, the tag, CI, prod (the sections below).
+`starci release cut --from <sha>` cuts the release from that fixed sha in a temporary worktree of its own, removed after the cut,
+so the release never checks out, moves or dirties the dev checkout; without `--from` it cuts the clean checkout's HEAD as before.
+
 ## Triggers and what runs
 
 Every push to an app's `main` already carries a release tag: the canon pre-push hook lets `main` and `v*` through only

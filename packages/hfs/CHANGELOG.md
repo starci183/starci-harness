@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (train 190: the dev flow)
+
+- Added (`starci app stack`, PROJECT-STACKS-6): a native process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`. `stack up` then builds it and runs the built artifact (next start, node dist/...), never a watcher. Its own `argv` (next dev, ts-node-dev) runs only with `--watch`, the opt-in for live coding. A process without `serve` runs as before.
+- Added: `starci app stack restart --env <env> --process <name>[,<name>] [--watch] [--execute]`. It ends only the named processes, rebuilds and starts them, and waits for their health on the loopback and over each dev tunnel hostname that routes their port. The compose services, volumes, custody and tunnel stay up. An environment with no running process is STACK_LOCAL_NOT_UP.
+- Changed (the app skeleton's `.starcistacks/application-stacks.yaml`): the api and web processes declare `serve` (`npm run build:be` then `node dist/apps/api/src/main.js`; `npm run build:fe` then `npm run start:web`), and the web gets `PORT`.
+
 ## 6.17.4 - 2026-11-21
 
 - Fixed (`starci app check`, the build and audit parity families): the run asked the failure-code catalog for CI_PARITY_STEP_FAILED only, so a host without Docker, whose database step is the warning CI_PARITY_DB_SKIPPED, ended in HFS_MANIFEST_INVALID ("has no failure-code catalog entry loaded"). It now asks for every code the parity steps reported. Found by StarCi Next.

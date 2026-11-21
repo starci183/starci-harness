@@ -470,3 +470,83 @@ test('up with a declared baseline starts the database service alone, adopts it, 
   assert.match(only.out.join(''), /only db: started; nothing else ran/u);
   assert.equal(only.calls.filter((call) => call.background).length, 0, 'no process starts under --only');
 });
+
+const SERVED = BLOCK.replace(
+  '        - {name: api, argv: [node, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}}',
+  '        - {name: api, argv: [node, --watch, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}, health: {url: "http://localhost:${port.api}/health/live"}, serve: {build: {argv: [npm, run, build:be], cwd: .}, argv: [node, dist/api.js], cwd: be}}',
+);
+
+test('the built mode of a process is judged: serve needs its argv, its build an argv, every path inside the app', () => {
+  const judged = (serve: unknown) => normalizeLocal({ ports: { api: 3001, db: 54322 }, services: [{ name: 'db', wait: 'healthy' }], processes: [{ name: 'api', argv: ['node', 'api.mjs'], port: 'api', serve }] }, { project: 'demo', env: 'dev' });
+  const good = judged({ build: { argv: ['npm', 'run', 'build'] }, argv: ['node', 'dist/main.js'], cwd: 'be' });
+  assert.equal(good.problems.length, 0, JSON.stringify(good.problems));
+  assert.deepEqual(good.config?.processes[0]?.serve, { argv: ['node', 'dist/main.js'], cwd: 'be', build: { argv: ['npm', 'run', 'build'], cwd: null } });
+  assert.equal(normalizeLocal({ ports: { api: 3001, db: 54322 }, services: [{ name: 'db', wait: 'healthy' }], processes: [{ name: 'api', argv: ['node', 'api.mjs'] }] }, { project: 'demo', env: 'dev' }).config?.processes[0]?.serve, null, 'no serve block: the process runs its own argv');
+  const text = (problems: Array<{ at: string; message: string }>): string => problems.map((item) => `${item.at}: ${item.message}`).join('\n');
+  assert.match(text(judged({ argv: ['node', 'x.js'], watch: true }).problems), /processes\[0\]\.serve\.watch/u);
+  assert.match(text(judged({ argv: [] }).problems), /processes\[0\]\.serve\.argv: must hold the command that serves the built artifact/u);
+  assert.match(text(judged({ argv: ['node', 'x.js'], build: { argv: [] } }).problems), /processes\[0\]\.serve\.build\.argv: must hold the build command/u);
+  assert.match(text(judged({ argv: ['node', 'x.js'], cwd: '../x' }).problems), /processes\[0\]\.serve\.cwd: must be a relative path inside the app root/u);
+  assert.match(text(judged({ argv: ['node', '${port.nope}'] }).problems), /serve of api: names the undeclared port nope/u);
+});
+
+test('up builds and serves the built artifact by default; the watcher runs only with --watch', async (t) => {
+  const root = app(t, { block: SERVED });
+  const served = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev'], served), 0, served.err.join(''));
+  assert.match(served.out.join(''), /plan build api: npm run build:be/u);
+  assert.match(served.out.join(''), /plan process api \(serve\): node dist\/api\.js/u);
+  const up = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], up), 0, up.err.join(''));
+  const build = up.calls.findIndex((call) => call.args.includes('build:be'));
+  const start = up.calls.findIndex((call) => call.background);
+  assert.ok(build >= 0 && build < start, 'the build runs before the built api starts');
+  assert.deepEqual(up.calls[start]?.args.slice(-1), ['dist/api.js']);
+  assert.equal(up.calls[build]?.env?.JWT_KEY_FILE, undefined, 'the build gets no custody file');
+  assert.match(up.out.join(''), /process api: built, started \(pid 4242, built artifact\)/u);
+  const watchRoot = app(t, { block: SERVED });
+  const watched = host(watchRoot);
+  assert.equal(await run(watchRoot, ['up', '--env', 'dev', '--execute', '--watch'], watched), 0, watched.err.join(''));
+  assert.equal(watched.calls.some((call) => call.args.includes('build:be')), false, '--watch builds nothing');
+  assert.ok(watched.calls.find((call) => call.background)?.args.includes('--watch'));
+});
+
+test('restart rebuilds and restarts only the named processes, waits for their health, and leaves compose, volumes and the tunnel alone', async (t) => {
+  const root = app(t, { block: SERVED });
+  const first = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute'], first), 2, 'a stack that is not up is refused');
+  assert.match(first.err.join(''), /STACK_LOCAL_NOT_UP/u);
+  const up = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], up), 0, up.err.join(''));
+  const started = up.calls.find((call) => call.background);
+  const recorded = started ? [started.command, ...started.args].join(' ') : '';
+  const dry = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api'], dry), 0, dry.err.join(''));
+  assert.match(dry.out.join(''), /plan stop api \(pid 4242\)[\s\S]*plan build api[\s\S]*plan wait api: http:\/\/localhost:\$\{port\.api\}\/health\/live[\s\S]*dry run/u);
+  assert.equal(dry.calls.some((call) => call.background), false);
+  const unknown = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'worker', '--execute'], unknown), 2);
+  assert.match(unknown.err.join(''), /--process names no process of dev: worker \(declared: api\)/u);
+  const killed: number[] = [];
+  const again = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute'], again, { alive: () => true, commandLine: () => recorded, kill: (pid) => killed.push(pid) }), 0, again.err.join(''));
+  assert.deepEqual(killed, [4242], 'the running api is ended');
+  assert.ok(again.calls.some((call) => call.args.includes('build:be')), 'the api is rebuilt');
+  assert.equal(again.calls.filter((call) => call.background).length, 1, 'and started once');
+  assert.equal(again.calls.some((call) => call.command === 'docker' && call.args.includes('compose') && (call.args.includes('up') || call.args.includes('down') || call.args.includes('restart'))), false, 'no compose service is touched');
+  assert.match(again.out.join(''), /ok {4}ready api: http:\/\/localhost:3001\/health\/live answered 200/u);
+  assert.match(again.out.join(''), /kept up: the compose services, their volumes, the custody files and the dev tunnel/u);
+  const sick = host(root);
+  sick.io.fetch = (async () => ({ status: 503, text: async () => '' })) as unknown as typeof fetch;
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute', '--timeout', '2'], sick, { alive: () => false }), 1);
+  assert.match(sick.out.join(''), /FAIL {2}ready api[\s\S]*api is not healthy; read its log with: starci app stack logs --env dev --service api/u);
+});
+
+test('a restarted process is waited for over each tunnel hostname that routes its port, on its health path', async () => {
+  const { restartProbes } = await import('../stack/local-restart.mjs');
+  const health = { name: 'api', url: 'http://localhost:${port.api}/health/live', method: 'GET', status: 200, contains: null };
+  const process = { name: 'api', argv: ['node'], cwd: 'be', heavy: 'none' as const, skipIfExists: null, env: {}, files: [], after: 'migrate' as const, port: 'api', health, serve: null };
+  const local = { tunnel: { name: 't', routes: [{ name: 'api', host: 'api.dev.example.com', port: 'api' }, { name: 'web', host: 'dev.example.com', port: 'web' }] } } as unknown as Parameters<typeof restartProbes>[0];
+  assert.deepEqual(restartProbes(local, process).map((row) => row.url), ['http://localhost:${port.api}/health/live', 'https://api.dev.example.com/health/live']);
+  assert.deepEqual(restartProbes(local, { ...process, health: null }), []);
+});

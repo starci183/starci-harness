@@ -5,6 +5,8 @@ import { holdLander, landPaths, lanesDir, releaseLockFile, touchLander } from ".
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
+import { landAutoSync } from "../../harness/land-dev-sync.js"
+import { loadLocalSettings } from "../../harness/local-settings.js"
 
 /** How long an idle lander waits before it reads the ready set again. */
 const POLL_MS = 30_000
@@ -12,7 +14,9 @@ const POLL_MS = 30_000
 /**
  * `starci lane land`: the one lander of an app's dev (contexts/project/branches.md PROJECT-BRANCH-2). Each loop takes every ready
  * lane, merges them in its own worktree, runs one `app check --env prod` and pushes dev through `app push`; a red batch drops the
- * lanes its findings name and runs once more, never bisecting. `--once` runs one batch; `--dry-run` merges only.
+ * lanes its findings name and runs once more, never bisecting. `--once` runs one batch; `--dry-run` merges only. When this machine's local
+ * settings turn on `devSync.afterLand` (harness/local-settings.ts, git-ignored, default off), a landed batch is followed by `starci dev sync
+ * --execute` on the app's main dev checkout, debounced over consecutive batches, which restarts only the changed api or web of the running dev stack.
  */
 export const laneLandVerb = defineVerb({
     path: ["lane", "land"],
@@ -46,12 +50,16 @@ export const laneLandVerb = defineVerb({
         }, POLL_MS)
         heartbeat?.unref()
         const batches: BatchRecord[] = []
+        const autoSync = landAutoSync(loadLocalSettings().devSync, options.repo, dryRun, context.progress)
         try {
             for (;;) {
                 const record = await runBatch(options)
                 if (record !== undefined) batches.push(record)
+                if (record?.landed !== undefined) autoSync?.debounce.landed(Date.now())
+                if (autoSync !== undefined && (autoSync.debounce.due(Date.now()) || ((flags.once || dryRun) && autoSync.debounce.pending))) await autoSync.run()
                 if (flags.once || dryRun) break
-                await new Promise((settle) => setTimeout(settle, record === undefined ? POLL_MS : 1000))
+                const wait = autoSync?.debounce.waitMs(Date.now())
+                await new Promise((settle) => setTimeout(settle, record === undefined ? Math.min(POLL_MS, wait ?? POLL_MS) : 1000))
             }
         } finally {
             clearInterval(heartbeat)

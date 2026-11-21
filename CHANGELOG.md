@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (train 190: the dev flow)
+
+- Added: `starci dev sync [--local <pkg>]... [--dir <checkout>] [--env <env>] [--no-restart] --execute`. It fast-forwards an app's main dev checkout to origin/dev and runs npm ci. Each `--local` package is installed from the local registry (deps install-local). It then rebuilds and restarts only the changed api or web of the running dev stack (`app stack restart`, @starci/hfs) and prints the local overlay in effect. A plain sync drops any overlay. Dry until --execute. Refusals: DEV_SYNC_DIRTY, DEV_SYNC_NOT_DEV, DEV_SYNC_DIVERGED, DEV_SYNC_FETCH, DEV_SYNC_RESTORE.
+- Added: the batch lander's auto-sync. With `devSync.afterLand: true` in this machine's `.runtime/local-settings.json` (git-ignored, schema starci/local-settings@1, default off), `starci lane land` runs `dev sync --execute` on the app's main dev checkout after a batch lands, debounced over consecutive batches (`devSync.debounceSeconds`, default 120). A damaged file is LOCAL_SETTINGS_INVALID.
+- Added: `starci release cut --from <sha>` cuts that fixed sha in its own temporary worktree, removed after the cut, so prod work never moves the dev checkout (CUT_FROM_UNKNOWN, CUT_WORKTREE).
+- Changed (AGENTS.md, contexts/project/cicd.md "Dev and prod", branches.md PROJECT-BRANCH-2 item 7, stacks.md, skills/starci/references/release.md): dev and prod are separate flows that never wait for each other, with the owner's words of 2026-11-21 quoted.
+
 ## 1.1.0-alpha.190 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.17.4, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
