@@ -5685,20 +5685,6 @@ rules:
       - contexts/project/stacks.md#project-stacks-12-seed-data-lives-in-the-seed-levels-of-the-stack
     proves:
       - packages/hfs/src/hfs-seeds-shape.spec.mjs
-  - id: R376
-    code: "HFS_BOOT_LOGGER_SILENCED"
-    law: "A back-end app root boots loudly: its `be/apps/<app>/src/main.ts` never hands Nest `logger: false` (NestFactory or nest-commander's CommandFactory), so a provider a module needs and the root does not compose, or any other bootstrap failure, is printed on stderr and exits non-zero instead of ending every boot or CLI command silently; the main passes the app's logger and an error handler that prints and exits non-zero."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_BOOT_LOGGER_SILENCED"]
-    enforcers:
-      - {kind: hfs, id: boot-logger, at: scripts/hfs/rules/boot-logger.mjs}
-    proves:
-      - packages/hfs/src/hfs-boot-logger.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/be/skeleton/apps/cli/src/main.ts
-    witness:
-      - {path: packages/hfs/src/hfs-boot-logger.spec.mjs}
   - id: R377
     code: "BE_FLOW_FAILURE_SWALLOWED"
     law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."

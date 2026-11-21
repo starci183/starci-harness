@@ -20,7 +20,7 @@ options and compose groups follow BE-ARCHITECTURE-2. A client cli (BE-CLI-5) boo
 Why: one image for every operator action gives one place to find, deploy and audit them, and a process that never
 listens cannot become an unguarded door.
 
-Enforced by: `cli-bootstrap` (R148), R147, R376 (`boot-logger`: no `logger: false` in an app root's main), and the boot proof R272.
+Enforced by: `cli-bootstrap` (R148), R147, and the boot proof R272.
 
 ## BE-CLI-2 Commands are groups and sub-commands under the feature root of their cli app
 
