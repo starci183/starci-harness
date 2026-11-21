@@ -1,14 +1,13 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { stateBase } from "../../harness/ledger.js"
-import { locateOps } from "../../harness/ops.js"
-import { lookupSecret, secretHome } from "../../harness/secret-env.js"
-import { connectedChannel, loadTelegram } from "../../harness/telegram.js"
+import { heldLine, registeredRoots, serverAlerts, serverRecipientOf } from "../../harness/vps/alerts.js"
+import type { ServerAlerts } from "../../harness/vps/alerts.js"
 import { runPlan, runSteps } from "../../harness/vps/fleet.js"
 import { loadMonitorComponents, monitorBudget, monitorDir, monitorImages, monitorUpPlan, MONITOR_SECRETS, renderMonitor, selectComponents } from "../../harness/vps/monitor.js"
 import type { MonitorSecret, MonitorTarget } from "../../harness/vps/monitor.js"
-import { inventoryDir, loadServer, loadVpsPolicy } from "../../harness/vps/policy.js"
+import { inventoryDir, loadServer, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
 import { ownerStore } from "../../harness/vps/sealed.js"
 import type { SealedStore } from "../../harness/vps/sealed.js"
 import { remoteInput } from "../../harness/vps/ssh.js"
@@ -21,7 +20,7 @@ import { EXECUTE, OWNER, planResult, requireAction } from "./shared.js"
 import type { VpsData } from "./shared.js"
 
 /** The keys of the sealed file (the server's <id>.enc.yaml, or the local one) that hold the generated monitoring secrets. */
-const SEALED_KEYS: Readonly<Record<Exclude<MonitorSecret, "telegram">, string>> = {
+const SEALED_KEYS: Readonly<Record<MonitorSecret, string>> = {
     grafana: "monitorGrafanaAdminPassword",
     glitchtipDb: "monitorGlitchtipDbPassword",
     glitchtipKey: "monitorGlitchtipSecretKey",
@@ -53,7 +52,6 @@ const generatedSecrets = (store: SealedStore, file: string, kinds: readonly Moni
     const out: Record<string, string> = {}
     const made: Record<string, string> = {}
     for (const kind of kinds) {
-        if (kind === "telegram") continue
         const key = SEALED_KEYS[kind]
         const value = sealed[key] ?? ""
         out[MONITOR_SECRETS[kind]] = value === "" ? (made[key] = randomBytes(24).toString("base64url")) : value
@@ -71,7 +69,7 @@ const generatedSecrets = (store: SealedStore, file: string, kinds: readonly Moni
  */
 export const vpsMonitorVerb = defineVerb({
     path: ["vps", "monitor"],
-    summary: "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
+    summary: "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-monitor@1",
@@ -81,12 +79,13 @@ export const vpsMonitorVerb = defineVerb({
         local: { kind: "boolean", summary: "the swarm of this machine (Docker Desktop) instead of a server: the same components, doors on localhost, no alert sent" },
         with: { kind: "list", summary: "a component to turn on for this run, beside the server file's monitor.components (repeat)" },
         without: { kind: "list", summary: "a component to turn off for this run (repeat)" },
+        app: { kind: "list", summary: "an app checkout whose alert bots (environments.<env>.monitoring.alerts) this server's Alertmanager reads, beside the checkouts registered with this harness (repeat)" },
         execute: EXECUTE,
     },
     run: async (context, flags): Promise<VerbResult<VpsData>> => {
         requireAction(flags.action, ["up"], "monitor")
         if (flags.local === (flags.id !== undefined)) throw new UsageError("starci vps monitor up takes a server id or --local, one of them")
-        const opsDir = locateOps()
+        const opsDir = locateFleetOps()
         const policy = loadVpsPolicy(opsDir)
         const server = flags.id === undefined ? undefined : loadServer(policy, flags.id, inventoryDir(policy, opsDir))
         const target: MonitorTarget = server === undefined ? { kind: "local" } : { kind: "server", server }
@@ -94,35 +93,22 @@ export const vpsMonitorVerb = defineVerb({
         const toggles = { ...(server?.monitor?.components ?? {}), ...Object.fromEntries(flags.with.map((name) => [name, true])), ...Object.fromEntries(flags.without.map((name) => [name, false])) }
         const selected = selectComponents(components, toggles)
         const budget = monitorBudget(components, selected)
-        const alerting = selected.includes("alertmanager") && target.kind === "server"
-        let chat: string | null = null
-        if (alerting) {
-            try {
-                chat = connectedChannel().chatId
-            } catch (error: unknown) {
-                if (flags.execute) throw error
-                chat = "0"
-            }
-            if (!/^-?\d+$/.test(chat)) throw new Refusal("VPS_MONITOR_CHAT", "the stored owner chat is no Telegram chat id")
-        }
-        const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, telegramChat: chat })
+        const alerting = selected.includes("alertmanager") && server !== undefined
+        const alerts: ServerAlerts = alerting ? serverAlerts(server.projects, [...flags.app.map((dir) => resolve(context.cwd, dir)), ...registeredRoots()], serverRecipientOf(server.id, opsDir)) : { bots: [], lacking: [] }
+        const heldText = alerting ? heldLine(alerts) : null
+        const held = heldText === null ? [] : [`  note: ${heldText}`]
+        const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, alertBots: alerts.bots })
         const base = target.kind === "local" ? join(stateBase(), "monitor", "stack").replaceAll("\\", "/") : "/opt/starci/monitor"
         const plan = monitorUpPlan(policy, target, render, budget, base)
-        const data = { budget, components: selected }
+        const data = { budget, components: selected, alerts: { bots: alerts.bots.map((bot) => `${bot.project}/${bot.env}`), held: alerts.lacking } }
         if (!flags.execute) {
-            const result = planResult(plan, undefined, alerting && chat === "0" ? ["  note: no owner chat is stored yet (`starci connect telegram discover-chat`); --execute refuses until it is"] : [])
+            const result = planResult(plan, undefined, held)
             return { ...result, data: { ...result.data, ...data } }
         }
         const store = await ownerStore()
         const secrets: Partial<Record<string, string>> = generatedSecrets(store, server?.sealedFile ?? localSealedFile(), render.secrets)
-        if (render.secrets.includes("telegram")) {
-            const variable = loadTelegram().tokenVariable
-            const token = lookupSecret(variable)?.value
-            if (token === undefined) throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${variable} is not set; ${secretHome(variable)}`)
-            secrets[MONITOR_SECRETS.telegram] = token
-        }
         const outcomes = server === undefined ? await runSteps(policy, localSession(), plan.steps, secrets, context.progress) : await runPlan(policy, server, store, plan, secrets, context.progress)
-        const result = planResult(plan, outcomes)
+        const result = planResult(plan, outcomes, held)
         return { ...result, data: { ...result.data, ...data } }
     },
 })

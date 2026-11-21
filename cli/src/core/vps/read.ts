@@ -1,7 +1,6 @@
-import { locateOps } from "../../harness/ops.js"
 import { fleetOf, sessionFor } from "../../harness/vps/fleet.js"
 import type { FleetRow } from "../../harness/vps/fleet.js"
-import { loadVpsPolicy } from "../../harness/vps/policy.js"
+import { loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
 import { doctorScript, judgeDoctor } from "../../harness/vps/probe.js"
 import { ownerStore } from "../../harness/vps/sealed.js"
 import { headline } from "../../shared/exec.js"
@@ -34,7 +33,7 @@ export const vpsListVerb = defineVerb({
     schema: "starci/vps-list@1",
     flags: { offline: { kind: "boolean", summary: "only the inventory, no ssh (no owner key needed)" } },
     run: async (_context, flags): Promise<VerbResult<VpsData>> => {
-        const opsDir = locateOps()
+        const opsDir = locateFleetOps()
         const policy = loadVpsPolicy(opsDir)
         const machines = machineRows()
         const rows = await fleetOf(policy, opsDir, !flags.offline, ownerStore)

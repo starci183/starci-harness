@@ -1,10 +1,26 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { LOCAL, machineSealedFile, readMachines } from "../machines.js"
-import { locateOps } from "../ops.js"
+import { locateOps, OP_FILES, OPS_README } from "../ops.js"
+import { harnessHomeOf } from "../secret-env.js"
+
+/**
+ * The ops/ folder of the fleet (ops/vps/servers and ops/vps/cloudflare.enc.yaml, gitignored, so never in a published copy): STARCI_OPS_DIR,
+ * else the ops/ of the harness home of `cwd` (harnessHomeOf: the checkout itself or an ancestor's `.claude`), else the repository's ops/
+ * above a CLI built in a checkout. The copy a published CLI carries beside itself is never it; with none of them it is refused.
+ */
+export const locateFleetOps = (cwd: string = process.cwd()): string => {
+    const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+    const home = harnessHomeOf(cwd)
+    const candidates = [process.env.STARCI_OPS_DIR, home === undefined ? undefined : join(home, "ops"), join(packageRoot, "..", "ops")].filter((path): path is string => path !== undefined && path !== "")
+    const found = candidates.find((path) => existsSync(join(path, "checks.yaml")) && existsSync(join(path, OP_FILES, OPS_README)) && existsSync(join(path, "vps.yaml")))
+    if (found === undefined) throw new Refusal("OPS_FLEET_NOT_FOUND", `no harness ops/ folder holds the fleet (looked in ${candidates.join(", ")}): run from the harness checkout (or below the folder whose .claude is one) or set STARCI_OPS_DIR; the copy a published CLI carries has no inventory`)
+    return found
+}
 
 /** A server id: the file name of its inventory entry and the label of its DNS names. */
 const ID = /^[a-z][a-z0-9-]{0,30}[a-z0-9]$/

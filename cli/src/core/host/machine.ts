@@ -44,6 +44,7 @@ import type { VerbContext } from "../../shared/verb.js"
 import { vpsUiVerb } from "../vps/act.js"
 import { vpsEdgeVerb } from "../vps/domain.js"
 import { vpsMonitorVerb } from "../vps/monitor.js"
+import { heldLine, registeredRoots, serverAlerts, serverRecipientOf } from "../../harness/vps/alerts.js"
 import { vpsServiceVerb } from "../vps/service.js"
 
 /**
@@ -290,6 +291,13 @@ const otherReadings = async (scope: MachineScope, id: string, host: HostConfig, 
     return readings
 }
 
+/** Which app on the server has no alert bot ready: its alerts are held (PROJECT-MONITORING-5); a warning, never red. */
+const alertBotsCall = (server: ManagedServer, opsDir: string): DoctorCall => {
+    const alerts = serverAlerts(server.projects, registeredRoots(), serverRecipientOf(server.id, opsDir))
+    const ready = alerts.bots.map((bot) => `${bot.project}/${bot.env}`)
+    return { id: "monitor.alert-bots", ok: alerts.lacking.length === 0 ? true : null, evidence: `${ready.length === 0 ? "no app alert bot is ready" : `alert bots ready: ${ready.join(", ")}`}${alerts.lacking.length === 0 ? "" : `; ${heldLine(alerts) ?? ""}`}` }
+}
+
 /**
  * `host doctor --host`: one real call per running service (an embed vector of the pinned dimensions, the Grafana login page, a status API, a
  * BuildKit ping hook, each Swarm service at its replicas), then the parity of every served model across the machines that serve it.
@@ -305,6 +313,7 @@ export const machineDoctor = async (name: string, cwd: string): Promise<MachineD
         const observed = reach === null ? null : await observe(reach)
         const states = await judgeAll(scope, observed, host, cwd)
         for (const state of states) calls.push(await callOne(scope, reach, host, state, observed, cwd, readings))
+        if (reach !== null && scope.services.includes("monitor.alertmanager")) calls.push(alertBotsCall(reach.server, scope.opsDir))
     } finally {
         reach?.session.close()
     }
@@ -345,7 +354,7 @@ const deploy = async (scope: MachineScope, reach: Reach | null, placement: Place
         if (placement.via === "vps-service") return vpsServiceVerb.run(context, { action: "up", id, service: placement.name, local: false, with: [], without: [], "acknowledge-reindex": false, "key-from-host": undefined, app: undefined, env: undefined, member: undefined, key: undefined, execute: true })
         if (placement.via === "vps-monitor") {
             const toggles = monitorToggles(reach, scope.opsDir, monitor)
-            return vpsMonitorVerb.run(context, { action: "up", id, local: false, with: toggles.with, without: toggles.without, execute: true })
+            return vpsMonitorVerb.run(context, { action: "up", id, local: false, with: toggles.with, without: toggles.without, app: [], execute: true })
         }
         if (placement.via === "vps-ui") return vpsUiVerb.run(context, { action: "up", id, execute: true })
         if (placement.via === "vps-edge") return vpsEdgeVerb.run(context, { action: "up", id, execute: true })

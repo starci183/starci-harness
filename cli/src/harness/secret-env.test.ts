@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { locatePolicy } from "./policy.js"
-import { ageIdentityFiles, harnessHomeOf, hostAgeIdentity } from "./secret-env.js"
+import { harnessHomeOf, hostAgeIdentity, lookupSecret, secretEnvFiles } from "./secret-env.js"
 
 const FIXTURE_KEY = `AGE-SECRET-KEY-1${"Q".repeat(58)}`
 const OWN_KEY = `AGE-SECRET-KEY-1${"P".repeat(58)}`
@@ -39,7 +39,7 @@ const host = (t: { after: (fn: () => void) => void }): { readonly root: string; 
 void test("an app's installed CLI looks for the age identity in its own secret.env, then the harness home's", (t) => {
     const { home, installed, app } = host(t)
     assert.equal(harnessHomeOf(app), home)
-    assert.deepEqual(ageIdentityFiles(app), [join(installed, "secret.env"), join(home, "secret.env")])
+    assert.deepEqual(secretEnvFiles(app), [join(installed, "secret.env"), join(home, "secret.env")])
     writeFileSync(join(home, "secret.env"), `# host secrets\nSOPS_AGE_KEY=${FIXTURE_KEY}\n`)
     const identity = hostAgeIdentity(app)
     assert.equal(identity.label, `${join(installed, "secret.env")}, then ${join(home, "secret.env")}`)
@@ -75,5 +75,26 @@ void test("with no harness home and no secret.env the host reads nothing, and a 
     mkdirSync(join(installed, "cli"), { recursive: true })
     mkdirSync(join(installed, "ops"), { recursive: true })
     writeFileSync(join(installed, "ops", "checks.yaml"), "schema: fixture\n")
-    assert.deepEqual(ageIdentityFiles(installed), [join(installed, "secret.env")])
+    assert.deepEqual(secretEnvFiles(installed), [join(installed, "secret.env")])
+})
+
+void test("every host secret is read like the age identity: an installed CLI run below the harness home reads the home's secret.env", (t) => {
+    const { home, installed, app } = host(t)
+    const saved = { cwd: process.cwd(), token: process.env.TELEGRAM_BOT_TOKEN }
+    delete process.env.TELEGRAM_BOT_TOKEN
+    t.after(() => {
+        if (saved.token !== undefined) process.env.TELEGRAM_BOT_TOKEN = saved.token
+    })
+    mkdirSync(app, { recursive: true })
+    process.chdir(app)
+    try {
+        assert.equal(lookupSecret("TELEGRAM_BOT_TOKEN"), undefined)
+        writeFileSync(join(home, "secret.env"), "TELEGRAM_BOT_TOKEN=fixture-from-home\n")
+        assert.deepEqual(lookupSecret("TELEGRAM_BOT_TOKEN"), { value: "fixture-from-home", source: "secret.env" })
+        writeFileSync(join(installed, "secret.env"), "TELEGRAM_BOT_TOKEN=fixture-own\n")
+        assert.equal(lookupSecret("TELEGRAM_BOT_TOKEN")?.value, "fixture-own", "the CLI's own secret.env wins")
+    } finally {
+        // back out of the fixture before its folder is removed (Windows refuses to remove the working folder)
+        process.chdir(saved.cwd)
+    }
 })

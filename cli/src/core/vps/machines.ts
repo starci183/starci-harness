@@ -5,8 +5,7 @@ import { applyRoles, loadHostRoles, machineServices } from "../../harness/host-r
 import type { HostRoles } from "../../harness/host-roles.js"
 import { allMachines, importedFields, keyPath, LOCAL, MACHINE_NAME, machineNamed, machineSealedFile, readMachines, siteOf, writeMachines } from "../../harness/machines.js"
 import type { Machine, MachinesRead } from "../../harness/machines.js"
-import { locateOps } from "../../harness/ops.js"
-import { inventoryDir, loadVpsPolicy } from "../../harness/vps/policy.js"
+import { inventoryDir, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -102,7 +101,7 @@ export interface RegisterInput extends LoginFlags {
  * inventory file of the same name when it exists and no --host is given), and its roles. A name config.yaml holds is refused (`vps set`
  * changes it); `local` is this host, registered already.
  */
-export const registerMachine = (input: RegisterInput, opsDir: string = locateOps()): { readonly data: VpsData; readonly lines: string[] } => {
+export const registerMachine = (input: RegisterInput, opsDir: string = locateFleetOps()): { readonly data: VpsData; readonly lines: string[] } => {
     if (!MACHINE_NAME.test(input.name)) throw new UsageError(`${input.name} is no machine name (lower-case letters, digits and dashes, 2 to 32 long)`)
     const catalog = loadHostRoles(opsDir)
     const read = readMachines()

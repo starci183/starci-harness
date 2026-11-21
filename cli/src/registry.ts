@@ -31,6 +31,7 @@ import { appEmitVerb } from "./core/app/emit.js"
 import { appPushVerb } from "./core/app/push.js"
 import { appReleaseVerb } from "./core/app/release.js"
 import { appScaffoldVerb } from "./core/app/scaffold.js"
+import { appAlertsVerb } from "./core/app/alerts.js"
 import { appSecretVerb } from "./core/app/secret.js"
 import { appStackVerb } from "./core/app/stack.js"
 import { appSyncVerb } from "./core/app/sync.js"
@@ -186,6 +187,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appPushVerb,
     appReleaseVerb,
     appScaffoldVerb,
+    appAlertsVerb,
     appSecretVerb,
     appSlotVerb,
     appStackVerb,

@@ -1,5 +1,4 @@
-import { locateOps } from "../../harness/ops.js"
-import { loadServer, loadVpsPolicy, inventoryDir, resolvePins } from "../../harness/vps/policy.js"
+import { inventoryDir, loadServer, loadVpsPolicy, locateFleetOps, resolvePins } from "../../harness/vps/policy.js"
 import type { ManagedServer, VpsPins, VpsPolicy } from "../../harness/vps/policy.js"
 import { describePlan } from "../../harness/vps/plan.js"
 import type { VpsPlan } from "../../harness/vps/plan.js"
@@ -31,7 +30,7 @@ export interface VpsScope {
 
 /** Loads the policy and one server. */
 export const scopeOf = (id: string): VpsScope => {
-    const opsDir = locateOps()
+    const opsDir = locateFleetOps()
     const policy = loadVpsPolicy(opsDir)
     return { policy, opsDir, server: loadServer(policy, id, inventoryDir(policy, opsDir)) }
 }

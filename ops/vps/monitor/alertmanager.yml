@@ -1,12 +1,14 @@
-# Written by `starci vps monitor up` from ops/vps/monitor/alertmanager.yml: every alert goes to the one receiver, the owner's Telegram
-# channel (ops/telegram.yaml): the bot token is the swarm secret mounted at /run/secrets/telegram_token, the chat the one stored by
-# `starci connect telegram discover-chat`. On the local swarm the receiver sends nothing.
+# Written by `starci vps monitor up` from ops/vps/monitor/alertmanager.yml: the alerts go to the bot of each app the server runs, never the
+# harness bot (contexts/project/monitoring.md PROJECT-MONITORING-5). An app's alerts (its stack's label) reach the bot its environment seals in
+# `monitoring.alerts.telegram.member`; a host alert (no stack label) reaches one bot of every app, each once; the rest, and everything while no
+# app has a bot ready, go to the null receiver `held`. Each bot token is a swarm secret read by file; the chat ids are filled on the server.
 route:
-  receiver: owner
+  receiver: held
   group_by: [alertname, stack, service]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
+{{routes}}
 receivers:
-  - name: owner
-{{receiver}}
+  - name: held
+{{receivers}}

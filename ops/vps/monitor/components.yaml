@@ -6,7 +6,7 @@
 # Per component: its image (a pin of contexts/stack/pins.yaml, digests only), its limits and reservations (so monitoring cannot starve the
 # apps), its own update_config and rollback_config, its retention, and its service: the compose service without image, deploy and
 # configs, which the plan adds. Tokens in `{{...}}` are filled by the plan: {{stack}}, {{network}}, {{server}}, {{door.url}} (the component's https name, or its local address),
-# {{door.secure}}, {{door.<component>.url}} and {{retention.<key>}} of the same component. A `$` the container shell must see is written `$$` (stack deploy
+# {{door.secure}}, {{door.<component>.url}}, {{retention.<key>}} of the same component, {{edge.stack}} and {{health.<key>}} (ops/vps.yaml health). A `$` the container shell must see is written `$$` (stack deploy
 # interpolates the file once). `configs` maps a file of this folder to the path it is mounted at; `scrape`, `alerts`, `datasources` and
 # `alloy` add the component's own Prometheus jobs, alert groups, Grafana datasources and Alloy pipeline, and `dashboards` the Grafana
 # dashboards it feeds, when it runs. `door` is the name it answers on through the server's door (`vps domain add <id> <subdomain> --to
@@ -42,7 +42,7 @@ components:
     update: *stopFirst
     rollback: *rollbackStopFirst
     retention: {time: 15d, size: 4GB}
-    networks: [internal, socket, monitor]
+    networks: [internal, socket, monitor, edge]
     volumes: {prometheus-data: /prometheus}
     configs: {prometheus.yml: /etc/prometheus/prometheus.yml, alerts.yml: /etc/prometheus/alerts.yml}
     service:
@@ -55,7 +55,7 @@ components:
       healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   alertmanager:
     default: true
-    purpose: "routes the alerts to the owner's Telegram channel (ops/telegram.yaml), its bot token a swarm secret read by file"
+    purpose: "routes each app's alerts to that app's own Telegram bot (its environment's monitoring.alerts member, opened on the server), host alerts to every app's bot once, the rest to a null receiver; never the harness bot"
     why: "an alert nobody receives is no alert"
     requires: [prometheus]
     image: {image: prom/alertmanager, pin: alertmanager}
@@ -66,7 +66,6 @@ components:
     networks: [internal]
     volumes: {alertmanager-data: /alertmanager}
     configs: {alertmanager.yml: /etc/alertmanager/alertmanager.yml}
-    secrets: {telegram: telegram_token}
     service:
       command: [--config.file=/etc/alertmanager/alertmanager.yml, --storage.path=/alertmanager, "--data.retention={{retention.data}}"]
       healthcheck: {test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"], interval: 30s, timeout: 5s, retries: 3, start_period: 20s}
@@ -139,12 +138,12 @@ components:
       - name: host
         rules:
           - alert: HostMemoryLow
-            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < (100 - {{health.memoryAlertPercent}}) / 100
             for: 10m
             labels: {severity: warning}
             annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its memory available"}
           - alert: HostDiskFull
-            expr: node_filesystem_avail_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} < 0.15
+            expr: node_filesystem_avail_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/rootfs",fstype!~"tmpfs|overlay"} < (100 - {{health.diskAlertPercent}}) / 100
             for: 10m
             labels: {severity: warning}
             annotations: {summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} of its root disk free"}
@@ -203,7 +202,7 @@ components:
     resources: {memory: 512M, cpus: "0.50", reserveMemory: 192M, reserveCpus: "0.10"}
     update: *stopFirst
     rollback: *rollbackStopFirst
-    retention: {hours: 336}
+    retention: {hours: 168}
     networks: [internal]
     volumes: {loki-data: /loki}
     configs: {loki.yaml: /etc/loki/loki.yaml}
@@ -252,7 +251,7 @@ components:
         rules:
           - alert: ProbeFailed
             expr: probe_success == 0
-            for: 5m
+            for: 2m
             labels: {severity: critical}
             annotations: {summary: "{{ $labels.instance }} does not answer ({{ $labels.stack }})"}
           - alert: CertificateExpiresSoon

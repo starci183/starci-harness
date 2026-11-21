@@ -99,7 +99,7 @@ edge:
 # Loki, Alloy, node-exporter, cAdvisor and a read-only docker-socket-proxy, its files in ops/vps/monitor/. An app environment opts in with
 # `environments.<env>.monitoring` of its .starcistacks/application-stacks.yaml: its scraped services join `network` with scrape labels.
 # Grafana answers on grafana-<id>.<domain> through the server's door (`vps domain add <id> grafana-<id> --to <stack>_grafana:3000`);
-# its admin password is made once and sealed in the server's <id>.enc.yaml; alerts go to the owner's Telegram channel (ops/telegram.yaml).
+# its admin password is made once and sealed in the server's <id>.enc.yaml; alerts go to each app's own Telegram bot (monitoring.alerts), never the harness bot.
 monitor:
   stack: starci-monitor
   network: starci-monitor

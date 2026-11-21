@@ -2,13 +2,12 @@ import { randomBytes } from "node:crypto"
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { stateBase } from "../../harness/ledger.js"
-import { locateOps } from "../../harness/ops.js"
 import { lookupSecret, secretHome } from "../../harness/secret-env.js"
 import { runSteps, sessionFor } from "../../harness/vps/fleet.js"
 import type { StepOutcome } from "../../harness/vps/fleet.js"
 import { withPrivateDir } from "../../harness/vps/local.js"
 import { loadMonitorComponents, selectComponents } from "../../harness/vps/monitor.js"
-import { inventoryDir, loadServer, loadVpsPolicy } from "../../harness/vps/policy.js"
+import { inventoryDir, loadServer, loadVpsPolicy, locateFleetOps } from "../../harness/vps/policy.js"
 import type { ManagedServer, VpsPolicy } from "../../harness/vps/policy.js"
 import { ownerStore, requireKey } from "../../harness/vps/sealed.js"
 import type { SealedStore } from "../../harness/vps/sealed.js"
@@ -53,7 +52,7 @@ interface Scope {
 
 const scopeOf = (id: string | undefined, local: boolean, name: string): Scope => {
     if (local === (id !== undefined)) throw new UsageError("starci vps service takes a server id or --local, one of them")
-    const opsDir = locateOps()
+    const opsDir = locateFleetOps()
     const policy = loadVpsPolicy(opsDir)
     const server = id === undefined ? undefined : loadServer(policy, id, inventoryDir(policy, opsDir))
     return { opsDir, policy, service: loadService(policy, opsDir, name), server, target: server === undefined ? { kind: "local" } : { kind: "server", server } }

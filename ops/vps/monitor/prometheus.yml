@@ -2,6 +2,9 @@
 # Its own job and the apps job are here; every other component adds its own job (components.yaml scrape) when it runs. The apps
 # job keeps every app service that opted in (`environments.<env>.monitoring` of its
 # .starcistacks/application-stacks.yaml), found by Swarm discovery through the read-only socket proxy and scraped on {{network}}.
+# The swarm-tasks job keeps one series per task Swarm wants running (`up{job="swarm-tasks"}`, labelled by its state): it scrapes only
+# Prometheus's own one-series federate answer and drops every sample, so the task's labels are all it stores; the replicas alert reads it.
+# The edge job scrapes the metrics entrypoint of the server's edge Traefik ({{edge.stack}}) on the edge network, when it runs.
 global:
   scrape_interval: 30s
   scrape_timeout: 10s
@@ -44,3 +47,35 @@ scrape_configs:
         target_label: slot
       - source_labels: [__meta_dockerswarm_node_hostname]
         target_label: node
+  - job_name: swarm-tasks
+    scrape_interval: 60s
+    metrics_path: /federate
+    params:
+      "match[]": ['up{job="prometheus"}']
+    dockerswarm_sd_configs:
+      - host: tcp://socket-proxy:2375
+        role: tasks
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__meta_dockerswarm_task_desired_state]
+        regex: running
+        action: keep
+      - source_labels: [__meta_dockerswarm_service_label_com_docker_stack_namespace]
+        target_label: stack
+      - source_labels: [__meta_dockerswarm_service_name]
+        target_label: service
+      - source_labels: [__meta_dockerswarm_task_id]
+        target_label: task
+      - source_labels: [__meta_dockerswarm_task_state]
+        target_label: task_state
+      - target_label: __address__
+        replacement: localhost:9090
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: .+
+        action: drop
+  - job_name: edge
+    dns_sd_configs:
+      - names: ["tasks.{{edge.stack}}_proxy"]
+        type: A
+        port: 8082

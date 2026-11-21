@@ -8,7 +8,7 @@ import type { HostRoles, Placement, ServedModel, Site } from "./host-roles.js"
 import { sharedStateBase } from "./ledger.js"
 import { allMachines, LOCAL, machineNamed, readMachines, siteOf } from "./machines.js"
 import type { Machine, MachinesRead } from "./machines.js"
-import { locateOps } from "./ops.js"
+import { locateFleetOps } from "./vps/policy.js"
 import { shellQuote } from "./vps/ssh.js"
 
 /**
@@ -30,7 +30,7 @@ export interface MachineScope {
 }
 
 /** Resolves a machine of config.yaml (`local` always) with the services its roles turn on. */
-export const machineScope = (name: string, opsDir: string = locateOps(), read: MachinesRead = readMachines()): MachineScope => {
+export const machineScope = (name: string, opsDir: string = locateFleetOps(), read: MachinesRead = readMachines()): MachineScope => {
     const catalog = loadHostRoles(opsDir)
     const machines = allMachines(read, catalog.local)
     const machine = machineNamed(machines, name)

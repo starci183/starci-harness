@@ -33,14 +33,14 @@ budget of exactly what runs.
 | component | default | purpose | memory limit | why on or off by default |
 |---|---|---|---|---|
 | socket-proxy | on | the read-only Docker API (GET only) that Prometheus, Alloy and cAdvisor use to discover containers | 32M | every discovery reads it, and only it holds the socket |
-| prometheus | on | the metrics store and the alert rules; Swarm discovery of the opted-in services | 512M | the core; retention 15d or 4GB |
-| alertmanager | on | sends alerts to the owner's Telegram channel | 96M | an alert nobody receives is no alert |
+| prometheus | on | the metrics store and the alert rules; Swarm discovery of the opted-in services, of every task Swarm wants running, and of the edge Traefik | 512M | the core; retention 15d or 4GB |
+| alertmanager | on | sends each app's alerts to that app's own Telegram bot (PROJECT-MONITORING-5) | 96M | an alert nobody receives is no alert |
 | grafana | on | dashboards (host, stacks and services, logs) and datasources as code, behind the server's door with its own login | 256M | the one place the owner reads the server |
 | node-exporter | on, global | host metrics | 64M | the host dashboard and host alerts read it |
 | cadvisor | on, global | container metrics by stack and service | 192M | the services dashboard and service alerts read it |
-| loki | on | the log store, filesystem, the compactor deleting what is older than the retention | 512M | the logs view; retention 336h |
+| loki | on | the log store, filesystem, the compactor deleting what is older than the retention | 512M | the logs view; retention 168h (7 days) |
 | alloy | on | collects logs by stack and service; is also the OTLP receiver once Tempo is on | 256M | without it no log reaches Loki |
-| blackbox | off | HTTP, TLS and uptime probes of `monitoring.probes`, with ProbeFailed and CertificateExpiresSoon alerts | 48M | it probes the public names from inside the server, so it only proves the name answers; turn it on for uptime and certificate alerts |
+| blackbox | off | HTTP, TLS and uptime probes of `monitoring.probes`, with ProbeFailed (2 minutes) and CertificateExpiresSoon (under 14 days) alerts | 48M | it probes the public names from inside the server, so it only proves the name answers; turn it on for uptime and certificate alerts |
 | tempo | off | the trace store; Alloy forwards OTLP to it | 384M | no app emits traces until it adds an OpenTelemetry SDK; retention 72h |
 | pyroscope | off | continuous profiling | 384M | needs an SDK in the app and costs memory; retention 168h |
 | consul | off | one Consul server and its UI behind the door | 128M | see "Consul" below |
@@ -69,6 +69,7 @@ environments:
         - {kind: ingress, service: ingress, port: 2019}   # Caddy's admin metrics or Traefik's metrics entrypoint
       traces: true                   # true: every metrics service; or a list of services
       profiles: [api]
+      alerts: {telegram: {member: alerts}}   # this environment's own alert bot (PROJECT-MONITORING-5); absent: its alerts are held
       # network: starci-monitor      # default; the server's `monitor.network`
 ```
 
@@ -104,11 +105,18 @@ A docker-compose environment declares no monitoring block.
   stdin and becomes a Swarm secret named by its hash. The containers read them by file (`GF_SECURITY_ADMIN_PASSWORD__FILE`,
   `bot_token_file`, `POSTGRES_PASSWORD_FILE`). Grafana reads its admin password only when its database is first made; to rotate it later,
   use `grafana cli admin reset-admin-password` in the container.
-- **Alerts go to the owner's Telegram channel**: the bot and chat of [ops/telegram.yaml](../../ops/telegram.yaml). The bot token is
-  `TELEGRAM_BOT_TOKEN` from the harness secret loader. The chat is the one `starci connect telegram discover-chat` stored. The deploy flow's
-  own notice, `deploy.notify`, is a generic https webhook in an app's sealed member (PROJECT-STACKS-5). To send deploy notices to the same
-  chat, seal the bot's `sendMessage?chat_id=` URL there. The rules are generic: TargetDown, the host short of memory, disk or CPU, a
-  service near its memory limit or restarting in a loop, and, with blackbox, ProbeFailed and CertificateExpiresSoon.
+- **Alerts go to each app's own bot**, never the harness bot of ops/telegram.yaml (PROJECT-MONITORING-5).
+- **The rules are generic** (`ops/vps/monitor/alerts.yml` and each component's `alerts`); a rule whose metric no target serves stays silent:
+  - TargetDown; ServiceReplicasBelowDesired (a task Swarm wants running that does not run, 5 minutes; the `swarm-tasks` job keeps one series
+    per such task by scraping only Prometheus's own one-series federate answer and dropping every sample); ServiceRestarting (more than 3 new
+    containers in 15 minutes); ServiceMemoryNearLimit;
+  - HostDiskFull and HostMemoryLow at ops/vps.yaml `health.diskAlertPercent` and `memoryAlertPercent`; HostCpuBusy;
+  - PostgresDown, PostgresConnectionsNearMax (80% of max_connections) and PostgresSlowQueries (mean over 1s; only where the exporter collects
+    pg_stat_statements, which the sidecar does not turn on yet), RedisDown and RedisMemoryNearMax (90% of maxmemory), from the exporter sidecars;
+  - EdgeErrorRate: over 2% 5xx for one edge service for 5 minutes, once it serves more than 3 requests a minute. The edge Traefik serves its
+    metrics on an entrypoint `:8082` published on no port; Prometheus joins the edge network and scrapes `tasks.<edge stack>_proxy:8082`. A
+    running edge picks the entrypoint up on its next `starci vps edge up`;
+  - with blackbox: ProbeFailed (2 minutes) and CertificateExpiresSoon (under 14 days).
 
 ## PROJECT-MONITORING-4 Dev parity
 
@@ -116,8 +124,41 @@ A docker-compose environment declares no monitoring block.
 run in Git for Windows' bash. Differences from a server:
 
 - the doors are published on `localPort` (Grafana on `http://localhost:3300`), and the `edge` network is left out;
-- no alert is sent;
+- no alert is sent: Alertmanager routes everything to `held`;
 - the generated secrets are sealed in `.runtime/monitor/local.enc.yaml` of the harness state.
+
+## PROJECT-MONITORING-5 Each app's own alert bot
+
+The owner's words (2026-11-21): "bot giám sát server là bot khác nhé, setup trong từng dự án ở starcistacks". The harness bot
+(ops/telegram.yaml) carries the owner's questions; it never carries a server's alerts.
+
+```yaml
+environments:
+  production:
+    monitoring:
+      alerts:
+        telegram: {member: alerts}   # .starcistacks/production/secrets/alerts.enc.yaml
+```
+
+- **The member** holds `ALERTS_TELEGRAM_BOT_TOKEN` and `ALERTS_TELEGRAM_CHAT_ID`, sealed like every member of the environment (its server,
+  backup and CI recipients). The owner makes the bot with BotFather and seals its token with `starci app secret set --env <env> alerts
+  ALERTS_TELEGRAM_BOT_TOKEN`; after he sends /start to the bot, `starci app alerts discover-chat --env <env>` reads the bot's updates, finds
+  the one private chat (or `--chat` among several) and seals its id into the member, to the member's own recipients. It refuses when no chat
+  wrote yet, or when no identity on this machine opens the member.
+- **The routes.** `vps monitor up <id>` reads the apps of the server's `projects`: their checkouts registered with this harness, or
+  `--app <dir>`. An environment whose `deploy.remote.serverRecipient` is this server's key (ops/vps/recipients.yaml) and whose member holds
+  both keys (read from the sops envelope's plain key names) has a bot ready. Alertmanager sends an alert carrying an app's `stack` label to
+  that environment's bot; a host alert (no stack label: disk, memory, CPU, the edge) to one bot of every app, each once (`continue`);
+  everything else to the null receiver `held`.
+- **No value leaves the sealed files on this machine.** The plan ships each member's ciphertext to the server, whose own key
+  (`/root/.config/sops/age/keys.txt`, `starci app secret server-key`) opens it there with `sops`: the token becomes a swarm secret named by its
+  hash and read by file (`bot_token_file`), and the chat id fills `alertmanager.yml` from its template, whose config is named by the filled
+  file's hash. A server without sops or its key stops the step, naming which.
+- **Held, never refused.** With no bot ready, the stack still comes up with every alert behind `held`, and the run prints one line naming
+  each app (or environment) that lacks a bot and why. `starci host doctor --host <name>` reports the same as `monitor.alert-bots`, a warning.
+  A later `monitor up` with a bot rewires the receiver.
+- **Owed in the apps.** Neither nivoos-lite nor starci-next declares `monitoring.alerts` or has a bot yet: the owner's BotFather step, then
+  the member, the declaration and the discovery above, per environment.
 
 ## Consul
 

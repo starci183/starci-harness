@@ -8,6 +8,8 @@ import { forServer, resolveImages } from "./policy.js"
 import type { ManagedServer, VpsPolicy } from "./policy.js"
 import { fqdnOf, routerOf } from "./plan.js"
 import type { StepSecret, VpsPlan } from "./plan.js"
+import { alertBotLines, alertRouting, ALERTMANAGER_CONFIG_ENV, tokenEnvOf, tokenFile } from "./alerts.js"
+import type { AlertBot } from "./alerts.js"
 import { shellQuote } from "./ssh.js"
 
 /**
@@ -31,7 +33,6 @@ const rollout = z.strictObject({
 
 /** The kinds of secret a component reads, each a swarm secret named by its value's hash. */
 export const MONITOR_SECRETS = {
-    telegram: "MONITOR_TELEGRAM_TOKEN",
     grafana: "MONITOR_GRAFANA_PASSWORD",
     glitchtipDb: "MONITOR_GLITCHTIP_DB_PASSWORD",
     glitchtipKey: "MONITOR_GLITCHTIP_SECRET_KEY",
@@ -133,8 +134,8 @@ export type MonitorTarget = { readonly kind: "server"; readonly server: ManagedS
 /** The facts a render needs beyond the policy. */
 export interface MonitorFacts {
     readonly target: MonitorTarget
-    /** The owner's Telegram chat (`connect telegram discover-chat`); null sends no alert (the local swarm). */
-    readonly telegramChat: string | null
+    /** The alert bots of the apps the server runs (vps/alerts.ts); none holds every alert behind the null receiver. Never the harness bot. */
+    readonly alertBots: readonly AlertBot[]
 }
 
 /** The rendered stack: its files (relative path to content), the stack file among them, and the secret kinds it reads. */
@@ -142,6 +143,8 @@ export interface MonitorRender {
     readonly files: Readonly<Record<string, string>>
     readonly secrets: readonly MonitorSecret[]
     readonly doors: readonly { readonly component: string; readonly url: string; readonly target: string }[]
+    /** The bots whose members the server opens before the deploy (their order is their slot). */
+    readonly alertBots: readonly AlertBot[]
 }
 
 /** The env name the stack file reads a secret's swarm name from. */
@@ -223,7 +226,14 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         doorTokens[`door.${name}.url`] = found.url
         doors.push({ component: name, url: found.url, target: `${policy.monitor.stack}_${name}:${String(door.port)}` })
     }
-    const base = { stack: policy.monitor.stack, network: policy.monitor.network, server: serverName, ...doorTokens }
+    const base = {
+        stack: policy.monitor.stack,
+        network: policy.monitor.network,
+        server: serverName,
+        "edge.stack": policy.edge.stack,
+        ...Object.fromEntries(Object.entries(policy.health).map(([key, value]) => [`health.${key}`, String(value)])),
+        ...doorTokens,
+    }
     const tokensOf = (name: string): Record<string, string> => {
         const component = componentOf(components, name)
         const door = component.door === undefined ? undefined : doorOf(policy, target, component.door)
@@ -239,15 +249,17 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     // Prometheus: its own file, every component's jobs, the probe jobs with blackbox, the alerting block with Alertmanager.
     if (on("prometheus")) {
         const prometheus = fillDeep(parse(readText(dir, "prometheus.yml")), tokensOf("prometheus"), "prometheus.yml") as Record<string, unknown>
-        const scrape = [...(prometheus.scrape_configs as unknown[]), ...selected.flatMap((name) => components[name]?.scrape ?? []), ...(on("blackbox") ? probeJobs(policy.monitor.network) : [])]
+        const scrape = [...(prometheus.scrape_configs as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.scrape ?? [], tokensOf(name), `components.yaml ${name}.scrape`) as unknown[]), ...(on("blackbox") ? probeJobs(policy.monitor.network) : [])]
         const assembled = { ...prometheus, ...(on("alertmanager") ? { alerting: { alertmanagers: [{ static_configs: [{ targets: ["alertmanager:9093"] }] }] } } : {}), scrape_configs: scrape }
         files["prometheus.yml"] = header + stringify(assembled, { lineWidth: 0 })
         const alerts = parse(readText(dir, "alerts.yml")) as { groups: unknown[] }
-        files["alerts.yml"] = header + stringify({ groups: [...alerts.groups, ...selected.flatMap((name) => components[name]?.alerts ?? [])] }, { lineWidth: 0 })
+        const groups = [...(fillDeep(alerts.groups, base, "alerts.yml") as unknown[]), ...selected.flatMap((name) => fillDeep(components[name]?.alerts ?? [], tokensOf(name), `components.yaml ${name}.alerts`) as unknown[])]
+        files["alerts.yml"] = header + stringify({ groups }, { lineWidth: 0 })
     }
     if (on("alertmanager")) {
-        const receiver = facts.telegramChat === null ? "    # the local swarm sends no alert" : ["    telegram_configs:", "      - bot_token_file: /run/secrets/telegram_token", `        chat_id: ${facts.telegramChat}`, "        send_resolved: true"].join("\n")
-        files["alertmanager.yml"] = fill(readText(dir, "alertmanager.yml"), { receiver }, "alertmanager.yml")
+        const routing = alertRouting(facts.alertBots)
+        // With a bot, the chat ids are filled on the server from the opened members (alertBotLines); the template is what ships.
+        files[facts.alertBots.length === 0 ? "alertmanager.yml" : "alertmanager.yml.tmpl"] = fill(readText(dir, "alertmanager.yml"), routing, "alertmanager.yml")
     }
     if (on("grafana")) {
         const datasources = parse(readText(dir, "grafana/datasources.yaml")) as { apiVersion: number; datasources: unknown[] }
@@ -258,7 +270,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     if (on("alloy")) files["config.alloy"] = [readText(dir, "config.alloy"), ...selected.flatMap((name) => { const extra = components[name]?.alloy; return extra === undefined ? [] : [readText(dir, extra)] })].join("")
     for (const name of selected) {
         for (const rel of Object.keys(components[name]?.configs ?? {})) {
-            if (files[rel] !== undefined) continue
+            if (files[rel] !== undefined || files[`${rel}.tmpl`] !== undefined) continue
             files[rel] = fill(readText(dir, rel), tokensOf(name), rel)
         }
     }
@@ -271,7 +283,8 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         const boards = name === "grafana" ? selected.flatMap((other) => (components[other]?.dashboards ?? []).map((board): [string, string] => [board, `/etc/grafana/dashboards/${posix.basename(board)}`])) : []
         return [...own, ...boards].map(([rel, mount]) => {
             const key = configKey(rel)
-            configs[key] = { file: `./${rel}`, name: `${policy.monitor.stack.replaceAll("-", "_")}_${key}_${hash(files[rel] ?? "")}` }
+            const filledOnServer = rel === "alertmanager.yml" && facts.alertBots.length > 0
+            configs[key] = { file: `./${rel}`, name: filledOnServer ? `\${${ALERTMANAGER_CONFIG_ENV}}` : `${policy.monitor.stack.replaceAll("-", "_")}_${key}_${hash(files[rel] ?? "")}` }
             return { source: key, target: mount, mode: 0o444 }
         })
     }
@@ -285,7 +298,8 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         const service = fillDeep(component.service ?? {}, tokensOf(name), `components.yaml ${name}.service`) as Record<string, unknown>
         const text = JSON.stringify(service)
         if (/\$(?!\$)/.test(text.replaceAll("$$", ""))) throw new Refusal("OPS_INVALID", `components.yaml ${name}.service holds a single $; write $$ for a $ the container sees`)
-        const mounted = Object.entries(component.secrets ?? {}).filter(([kind]) => kind !== "telegram" || facts.telegramChat !== null) as [MonitorSecret, string][]
+        const mounted = Object.entries(component.secrets ?? {}) as [MonitorSecret, string][]
+        const botMounts = name === "alertmanager" ? facts.alertBots.map((_bot, slot) => tokenFile(slot)) : []
         for (const [kind] of mounted) secrets.add(kind)
         const ownNetworks = component.networks.filter((network) => !(local && network === "edge"))
         for (const network of ownNetworks) networks.add(network)
@@ -308,7 +322,7 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
             ...service,
             ...(volumeMounts.length + ((service.volumes as unknown[] | undefined)?.length ?? 0) > 0 ? { volumes: [...((service.volumes as unknown[] | undefined) ?? []), ...volumeMounts] } : {}),
             ...(configMounts.length > 0 ? { configs: configMounts } : {}),
-            ...(mounted.length > 0 ? { secrets: mounted.map(([, file]) => ({ source: file, target: file, mode: 0o444 })) } : {}),
+            ...(mounted.length + botMounts.length > 0 ? { secrets: [...mounted.map(([, file]) => file), ...botMounts].map((file) => ({ source: file, target: file, mode: 0o444 })) } : {}),
             ...(local && door !== undefined ? { ports: [{ target: door.port, published: door.localPort, protocol: "tcp", mode: "host" }] } : {}),
             networks: ownNetworks,
             deploy: {
@@ -335,10 +349,17 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
         networks: Object.fromEntries([...networks].sort((left, right) => left.localeCompare(right)).map((network) => [network, networkSpec[network]])),
         ...(volumes.size > 0 ? { volumes: Object.fromEntries([...volumes].sort((left, right) => left.localeCompare(right)).map((volume) => [volume, {}])) } : {}),
         ...(Object.keys(configs).length > 0 ? { configs } : {}),
-        ...(secrets.size > 0 ? { secrets: Object.fromEntries([...secrets].map((kind) => [fileOf(kind), { external: true, name: `\${${secretEnvOf(kind)}}` }])) } : {}),
+        ...(secrets.size + (on("alertmanager") ? facts.alertBots.length : 0) > 0
+            ? {
+                  secrets: {
+                      ...Object.fromEntries([...secrets].map((kind) => [fileOf(kind), { external: true, name: `\${${secretEnvOf(kind)}}` }])),
+                      ...(on("alertmanager") ? Object.fromEntries(facts.alertBots.map((_bot, slot) => [tokenFile(slot), { external: true, name: `\${${tokenEnvOf(slot)}}` }])) : {}),
+                  },
+              }
+            : {}),
     }
     files["stack.yml"] = "# Written by `starci vps monitor up` from ops/vps/monitor/components.yaml: the components this server runs, nothing else.\n" + stringify(stack, { lineWidth: 0 })
-    return { files, secrets: [...secrets], doors }
+    return { files, secrets: [...secrets], doors, alertBots: on("alertmanager") ? facts.alertBots : [] }
 }
 
 /**
@@ -385,6 +406,7 @@ export const monitorUpPlan = (policy: VpsPolicy, target: MonitorTarget, render: 
                     `mkdir -p ${shellQuote(base)}; chmod 700 ${shellQuote(base)} 2>/dev/null || true`,
                     ...secretLines,
                     ...writes,
+                    ...alertBotLines(render.alertBots, base, marker),
                     `docker stack ls --format '{{.Name}}' | grep -qx ${stack} || C=changed`,
                     // --prune removes a component turned off. Configs and secrets of an older hash stay, so a rollback finds them.
                     `if [ "$C" = changed ]; then docker stack deploy --quiet --prune -c ${shellQuote(`${base}/stack.yml`)} ${stack} >/dev/null; fi`,
