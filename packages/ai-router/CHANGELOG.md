@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1 - 2026-11-21
+
+- Added (`LOCAL_MODELS`): `qwen3-embedding:4b`, an embedding model with native 2560 dimensions, MRL-cuttable (`truncate: "mrl"`), context 4096. `localModel("qwen3-embedding:4b", { dimensions: 2560 })` is now an embeddings model; before, the id was unknown and came back as a chat model with no embeddings capability. The owner moved NIVO and StarCi Next to it (2026-11-21).
+
 ## 0.10.0 - 2026-11-17
 
 A self-hosted GPU as a provider: `kind: "local"` for Ollama, vLLM and the llama.cpp server. Additive: a pool with no `local` provider routes exactly as before, except that `ErrorClass` gains `model_not_found`. The README section "Local GPU (Ollama / vLLM / llama.cpp)" and docs/design.md "The local provider" give the design and cite the 0.9.0 lines that could not express each behaviour. Sources read 2026-11-17: docs.ollama.com/api/openai-compatibility, docs.ollama.com/api/embed, docs.ollama.com/gpu, ollama.com/library (qwen3-embedding, nomic-embed-text, bge-m3, qwen2.5), the pgvector README and NVIDIA's CUDA 12.8 release notes.

@@ -11,6 +11,8 @@ import type { ErrorClass, FetchLike, ModelConfig, ProviderConfig } from "./types
  *
  * - https://ollama.com/library/qwen3-embedding : tag `8b` (4.7 GB download), supports output sizes from 32 to 4096, 4096 at
  *   most. A server loads it with its own context (Ollama's default is 4096 tokens), so that is the window declared.
+ * - https://ollama.com/library/qwen3-embedding : tag `4b` (2.5 GB download), output sizes from 32 to 2560, 2560 native (read 2026-11-21;
+ *   `ollama pull qwen3-embedding:4b` gives digest df5bd2e3c74c, and /api/embed answers 2560 numbers). The owner's choice for NIVO and StarCi Next (2026-11-21).
  * - https://ollama.com/library/nomic-embed-text : 274 MB, 2K context. 768 dimensions is the model card's, not the page's.
  * - https://ollama.com/library/bge-m3 : 1.2 GB, 8K context, more than 100 languages. 1024 dimensions is the model card's.
  * - https://ollama.com/library/qwen2.5 : tags `7b` (4.7 GB) and `3b` (1.9 GB), 32K context, tools.
@@ -31,6 +33,7 @@ export interface LocalModel {
 
 export const LOCAL_MODELS: readonly LocalModel[] = Object.freeze([
     { id: "qwen3-embedding:8b", kind: "embedding", label: "Qwen3 Embedding 8B", contextWindow: 4096, dimensions: 4096, mrl: true },
+    { id: "qwen3-embedding:4b", kind: "embedding", label: "Qwen3 Embedding 4B", contextWindow: 4096, dimensions: 2560, mrl: true },
     { id: "nomic-embed-text", kind: "embedding", label: "Nomic Embed Text v1.5", contextWindow: 2048, dimensions: 768 },
     { id: "bge-m3", kind: "embedding", label: "BGE-M3", contextWindow: 8192, dimensions: 1024 },
     { id: "qwen2.5:7b", kind: "chat", label: "Qwen2.5 7B", contextWindow: 32_768 },
