@@ -24,8 +24,8 @@ through this package under the `starci-grammar/` namespace with unchanged IDs, c
 
 1. Set `sides.fe.grammar` to `offset-pop` in `hfs.json`; no family is inferred.
 2. Install this package at its canon-pins version beside `@starci/eslint-canon-fe` 9 in the app
-   root `devDependencies`; it brings the matching `@starci/eslint-grammar-core`. `starci app check`
-   refuses canon-fe 9 without it (`FE_STACK_FAMILY_LINT_MISSING`).
+   root `devDependencies`; it brings the matching `@starci/eslint-grammar-core`; without it the Grammar
+   component rules do not run.
 3. Compose `starciFeConfig({ hfs })` first and `offsetPopGrammarConfig({ hfs })` second (the block
    above); `starci app sync` renders that managed `fe/eslint.config.mjs`.
 4. Rename references to the moved rules from `starci-fe/` to `starci-grammar/`.

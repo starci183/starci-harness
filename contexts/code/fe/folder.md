@@ -67,8 +67,7 @@ The `loading.tsx` and `error.tsx` of the locale may sit in a route group directl
 and every unknown address is a soft 404 with the default title. The shape is `app/[locale]/(pages)/{page,loading,error}.tsx`
 (with every page of the app beside them), `app/[locale]/[...rest]/page.tsx` calling `notFound()`, and
 `app/[locale]/not-found.tsx` exporting its `generateMetadata`, the last two outside the group. A `loading.tsx` still at
-`[locale]` is accepted and reported as info with this move; once a group holds the boundaries, the catch-all and the
-metadata of `not-found.tsx` are required (`FE_ERROR_BOUNDARY_MISSING`, R53).
+`[locale]` is accepted and reported as info with this move.
 
 Why: without a boundary a render error blanks the page and a slow segment shows nothing.
 

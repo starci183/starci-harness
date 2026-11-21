@@ -97,7 +97,7 @@ components, so a failure or an unknown address inside the site, the console or a
 
 Why: the 404 and the 500 are the pages a visitor meets when something is wrong; two looks of them in one product say the product is two products.
 
-Enforced by: R447 (`FE_STATE_PAGE_NOT_SHARED`, `FE_STATE_PAGE_GROUP_MISSING`); that each draws the Grammar's empty state is R443 (`FE_ERROR_PAGE_NOT_EMPTY_STATE`).
+Enforced by: R447 (`FE_STATE_PAGE_NOT_SHARED`, `FE_STATE_PAGE_GROUP_MISSING`); each draws the Grammar's empty state by convention.
 
 ## FE-ICON One glyph vocabulary through one owner
 

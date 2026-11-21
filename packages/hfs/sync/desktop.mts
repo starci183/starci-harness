@@ -1,4 +1,4 @@
-// desktop.mts - the managed files of the desktop app a project declares (hfs.json `sides.desktop`, runtime/scripts/hfs/desktop-side.mts, R444): the Tauri
+// desktop.mts - the managed files of the desktop app a project declares (hfs.json `sides.desktop`, runtime/scripts/hfs/desktop-side.mts): the Tauri
 // config, the Cargo manifest, the Rust of the shell, the page Tauri bundles beside it, the release workflow's matrix and the ignore lines. Each is a pure
 // function of the declaration, and the templates under templates/app/desktop-config and desktop-workflow hold nothing but the variables these return, so
 // `starci app sync` renders the shell from the declaration and HFS_MANAGED_FILE_DRIFT is what a hand edit of it meets.

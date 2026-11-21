@@ -6,7 +6,7 @@
 //   R382 HFS_PACKAGE_SLOT_*                      the slots the manifest declares for a root workspace package (scripts/hfs/package-slots.mts)
 // An extension only adds: its codes never reuse a code of modules/kernel/failure-codes.yaml, so no finding of it stands in for, or hides, a harness one.
 import { rootPackageFoldersOf } from '../coverage-scope.mjs';
-import { PACKAGE_SLOTS_FILE, PACKAGE_SLOTS_INVALID, PACKAGE_SLOTS_MOVED, judgePackageSlots, packageSlotProblems, readPackageSlots } from '../package-slots.mjs';
+import { PACKAGE_SLOTS_FILE, PACKAGE_SLOTS_INVALID, judgePackageSlots, packageSlotProblems, readPackageSlots } from '../package-slots.mjs';
 import { PROJECT_EXT_MANIFEST, hasProjectExt, loadProjectExt, projectExtFindings, reservedCodes } from '../../lib/project-ext.mjs';
 import { found, readText } from './read.mjs';
 import type { Repo } from './rule-types.mjs';
@@ -26,7 +26,7 @@ export function projectExtCheckFindings({ repoRoot, files = [], all = files, rep
 
 /**
  * R382: every root package the project's manifest declares slots for, judged against them. A package the manifest does not declare and that still
- * carries its own slots.yaml is judged against that file, with a warning that the declaration moves into the manifest.
+ * carries its own slots.yaml is judged against that file.
  */
 export function packageSlotFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: Context) {
   if (repo?.kind !== 'app' || isRoot === false) return [];
@@ -40,12 +40,7 @@ export function packageSlotFindings({ repoRoot, files = [], all = files, repo, i
     const own = tracked.filter((file) => file.startsWith(`${folder}/`)).map((file) => file.slice(folder.length + 1));
     const legacy = `${folder}/${PACKAGE_SLOTS_FILE}`;
     const inManifest = Object.hasOwn(declared, folder);
-    if (tracked.includes(legacy)) {
-      const moved = inManifest
-        ? found(PACKAGE_SLOTS_INVALID, legacy, `${legacy} and ${PROJECT_EXT_MANIFEST} both declare the slots of ${folder}; the manifest holds them, delete ${legacy} (R382)`)
-        : { ...found(PACKAGE_SLOTS_MOVED, legacy, `${legacy} is read for this minor only: declare the slots of ${folder} in ${PROJECT_EXT_MANIFEST} under packages["${folder}"] and delete the file (R382, PROJECT-LINT-3)`), level: 'warning' };
-      if (inScope(legacy)) out.push(moved);
-    }
+    if (inManifest && tracked.includes(legacy) && inScope(legacy)) out.push(found(PACKAGE_SLOTS_INVALID, legacy, `${legacy} and ${PROJECT_EXT_MANIFEST} both declare the slots of ${folder}; the manifest holds them, delete ${legacy} (R382)`));
     const manifest = inManifest ? judgePackageSlots(declared[folder]) : tracked.includes(legacy) ? readPackageSlots(readText(repoRoot, legacy) ?? '') : null;
     if (manifest === null) continue;
     const at = inManifest ? `${PROJECT_EXT_MANIFEST} packages["${folder}"]` : legacy;

@@ -2062,17 +2062,6 @@ ENV_EXAMPLE_DRIFT:
   owner: op-retry
   kind: check-finding
 
-ENV_KEY_ENVIRONMENT_NAMED:
-  title: "A key name carries an environment"
-  title_vi: "Tên khoá mang tên môi trường"
-  meaning_vi: "Một khoá được niêm phong hoặc khai báo có tên bắt đầu bằng tên môi trường (DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_, TEST_). Môi trường của một khoá là thư mục của nó (`.starcistacks/<env>/secrets/`): một tên dùng cho mọi môi trường, mỗi môi trường niêm phong giá trị riêng."
-  causes_vi:
-    - "Vi phạm luật R248: khoá đặt tên theo môi trường nên dev và production phải khai hai tên cho cùng một vai trò."
-    - "Hai tên starter cũ DEV_DB_OWNER_PASSWORD và DEV_DB_APP_PASSWORD: cảnh báo trong minor này, lỗi từ minor sau."
-  nextStep_vi: "Đổi tên khoá thành tên không có tiền tố môi trường ở mọi chỗ khai báo (starci app sync in ra danh sách), rồi chủ dự án niêm phong giá trị dưới tên mới bằng starci app secret init hoặc rotate."
-  owner: op-retry
-  kind: check-finding
-
 ENV_PUBLIC_SEALED:
   title: "A NEXT_PUBLIC_* key is in sealed custody"
   title_vi: "Khoá NEXT_PUBLIC_* nằm trong khu vực niêm phong"
@@ -2612,16 +2601,6 @@ FE_NATIVE_IMAGE:
   owner: op-retry
   kind: check-finding
 
-FE_ERROR_PAGE_NOT_EMPTY_STATE:
-  title: "An error page is not the Grammar's empty state"
-  title_vi: "Trang lỗi không dùng trạng thái rỗng của Grammar"
-  meaning_vi: "Trang not-found, error hoặc global-error của ứng dụng web không vẽ `EmptyNotice scope=\"page\"` có `illustration`: trang được tự dựng từ các thành phần khác, hoặc bỏ phạm vi trang hay hình minh họa."
-  causes_vi:
-    - "Vi phạm R443: ba trang lỗi bắt buộc của ứng dụng web (not-found 404, error 500, global-error) chỉ được dựng từ EmptyNotice phạm vi trang có hình minh họa, tiêu đề, mô tả và hành động (về trang chủ, thử lại)."
-  nextStep_vi: "Dựng lại trang từ composite NotFoundNotice, ErrorNotice hoặc GlobalErrorNotice của template (EmptyNotice scope=\"page\" với illustration); chỉ sửa lời và hình, không dựng tay (R443; contexts/ui/components/empty-state.md)."
-  owner: op-retry
-  kind: check-finding
-
 FE_BRAND_NOT_ONE:
   title: "The front end does not have exactly one brand file"
   title_vi: "Front end không có đúng một file thương hiệu"
@@ -3084,16 +3063,6 @@ FE_STACK_CORE_MISSING:
   causes_vi:
     - "Manifest của workspace sản phẩm chưa khai báo đủ thư viện cốt lõi của cùng chuẩn lite và full."
   nextStep_vi: "Khai báo thư viện còn thiếu trong workspace sản phẩm; đặt công cụ codegen, lint, TypeScript và Tailwind tại gốc nếu dùng chung."
-  owner: op-retry
-  kind: check-finding
-
-FE_STACK_FAMILY_LINT_MISSING:
-  title: "The front end installs canon-fe 9 without the selected Grammar family's lint package"
-  title_vi: "Front end dùng canon-fe 9 nhưng thiếu gói lint của họ Grammar đã chọn"
-  meaning_vi: "hfs.json chọn sides.fe.grammar (starci hoặc offset-pop) và front end khai báo @starci/eslint-canon-fe 9 trở lên, nhưng không manifest nào khai báo gói lint của họ đó; từ canon-fe 9 các luật component Grammar nằm trong gói này, thiếu gói thì các luật ấy không chạy."
-  causes_vi:
-    - "Nâng @starci/eslint-canon-fe lên 9 mà chưa thêm @starci/eslint-grammar-core (Grammar StarCi) hoặc @starci/eslint-grammar-offset-pop (Grammar Offset Pop)."
-  nextStep_vi: "Thêm @starci/eslint-grammar-core (hoặc @starci/eslint-grammar-offset-pop) cạnh @starci/eslint-canon-fe, ghép coreGrammarConfig({ hfs }) (hoặc offsetPopGrammarConfig({ hfs })) sau starciFeConfig({ hfs }) trong fe/eslint.config.mjs, hoặc chạy starci app sync --execute."
   owner: op-retry
   kind: check-finding
 
@@ -3716,16 +3685,6 @@ HFS_APP_LAYOUT_INVALID:
   owner: other-op:backend.scaffold
   kind: check-finding
 
-HFS_APP_LEXICON:
-  title: "App source or documentation uses a removed product word"
-  title_vi: "Mã hoặc tài liệu dùng từ sản phẩm đã bỏ"
-  meaning_vi: "Tệp nguồn hoặc tài liệu dùng từ nằm trong hfs.json lexicon.removed, kể cả trong tên định danh, chú thích và nội dung giao diện."
-  causes_vi:
-    - "Đổi thuật ngữ sản phẩm nhưng chưa cập nhật toàn bộ mã và tài liệu."
-  nextStep_vi: "Thay từ đã bỏ bằng thuật ngữ sản phẩm hiện hành tại đường dẫn và dòng được báo."
-  owner: op-retry
-  kind: check-finding
-
 HFS_APP_WORKFLOW_TRIGGER:
   title: "App workflow trigger outside R251"
   title_vi: "Workflow ứng dụng có sự kiện khởi chạy không hợp lệ"
@@ -3879,16 +3838,6 @@ BE_FLOW_FAILURE_SWALLOWED:
   nextStep_vi: "Bỏ catch để lỗi tới runner (runner retry lỗi tạm thời và park phần còn lại với một cảnh báo), bỏ removeOnFail, rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
-HFS_BOOT_LOGGER_SILENCED:
-  title: "A back-end app root boots Nest with the logger off"
-  title_vi: "Một app back-end khởi động Nest với logger bị tắt"
-  meaning_vi: "main.ts của một app back-end truyền logger: false cho NestFactory hoặc CommandFactory, nên một provider mà module cần nhưng app root không ghép, hay bất kỳ lỗi khởi động nào, làm tiến trình dừng mà không in gì ra stderr: mọi lệnh cli chết im lặng."
-  causes_vi:
-    - "Vi phạm R376: main.ts của app root đặt logger: false."
-  nextStep_vi: "Truyền logger của app (createNestLogger) và một errorHandler in lỗi rồi thoát với mã khác 0, như main.ts của template, rồi chạy lại starci app check."
-  owner: op-retry
-  kind: check-finding
-
 HFS_BACKING_UNDECLARED:
   title: "A lite app uses undeclared Redis or full-only Qdrant instead of Supabase pgvector"
   title_vi: "App lite dùng Redis chưa khai báo hoặc Qdrant chỉ thuộc full thay cho Supabase pgvector"
@@ -7253,16 +7202,6 @@ HFS_PACKAGE_SLOTS_INVALID:
   owner: op-retry
   kind: check-finding
 
-HFS_PACKAGE_SLOTS_MOVED:
-  title: "A package still declares its slots in its own slots.yaml"
-  title_vi: "Một package vẫn khai slot trong slots.yaml riêng"
-  meaning_vi: "Slot của một root package do dự án khai trong ext/manifest.json (packages[\"packages/<name>\"]). packages/<name>/slots.yaml chỉ còn được đọc trong minor này, kèm cảnh báo."
-  causes_vi:
-    - "Vi phạm R382: package còn slots.yaml và manifest của dự án chưa khai package đó."
-  nextStep_vi: "Chuyển nội dung slots.yaml vào ext/manifest.json dưới packages[\"packages/<name>\"] (cùng khóa, dạng JSON) rồi xóa slots.yaml."
-  owner: op-retry
-  kind: check-finding
-
 HFS_PACKAGE_SLOT_MISSING:
   title: "An instance of a package slot lacks a file its slot requires"
   title_vi: "Một instance của slot trong package thiếu file mà slot yêu cầu"
@@ -7401,56 +7340,6 @@ HFS_NIVOOS_PACKAGE_CHECK:
     - "Vi phạm R436: mỗi gói nivoos đã khai báo phải qua nivoos package check trong starci app check (PROJECT-BUSINESS-1)."
     - "Mã gói đổi mà seed chưa được dựng lại và commit, hoặc devDependency `nivoos` thiếu."
   nextStep_vi: "Chạy `npm run build` trong packages/<tên>/ rồi commit seed; nếu CLI chưa cài, thêm `nivoos` vào devDependencies của gói và chạy npm install."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_UNDECLARED:
-  title: "A desktop file exists but the desktop app is not declared"
-  title_vi: "Có tệp của ứng dụng desktop nhưng hfs.json chưa khai báo"
-  meaning_vi: "Một tệp được git theo dõi dưới desktop/ hoặc workflow .github/workflows/desktop-release.yml tồn tại, nhưng hfs.json không có sides.desktop, nên không có khai báo nào làm nguồn cho vỏ Tauri."
-  causes_vi:
-    - "Vi phạm R444: ứng dụng desktop là một phía được khai báo; thư mục desktop/ và workflow phát hành của nó chỉ tồn tại khi hfs.json khai báo sides.desktop (PROJECT-DESKTOP-1)."
-    - "Khai báo bị xoá hoặc thư mục được chép từ dự án khác."
-  nextStep_vi: "Thêm sides.desktop vào hfs.json (`starci app desktop init` làm việc này), hoặc xoá desktop/ và workflow desktop-release.yml."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_FILE_MISSING:
-  title: "The desktop app lacks an icon or its lock file"
-  title_vi: "Ứng dụng desktop thiếu biểu tượng hoặc tệp khoá"
-  meaning_vi: "Ứng dụng desktop đã khai báo nhưng thiếu một biểu tượng trong desktop/src-tauri/icons/ (bản dựng đóng gói chúng), hoặc thiếu Cargo.lock (chỉ là cảnh báo)."
-  causes_vi:
-    - "Vi phạm R444: bản dựng cài đặt cần đủ bộ biểu tượng `tauri icon` sinh ra, và Cargo.lock phải được theo dõi để bản phát hành dựng đúng các phụ thuộc đã thử (PROJECT-DESKTOP-1)."
-    - "Biểu tượng chưa được sinh, hoặc bị .gitignore chặn; Cargo.lock chưa được tạo vì chưa dựng lần nào."
-  nextStep_vi: "Chạy `tauri icon <ảnh-1024px.png>` trong desktop/src-tauri rồi commit icons/; chạy `starci app desktop build` một lần và commit Cargo.lock."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_CONFIG:
-  title: "tauri.conf.json differs from the desktop declaration"
-  title_vi: "tauri.conf.json khác khai báo desktop"
-  meaning_vi: "Cấu hình Tauri không nói đúng điều hfs.json khai báo: định danh, tên sản phẩm, nguồn phiên bản (package.json của ứng dụng web), scheme deep link, khoá và endpoint của updater, origin dev, hoặc cửa sổ duy nhất do Rust tạo."
-  causes_vi:
-    - "Vi phạm R444: tauri.conf.json được dựng từ sides.desktop và số phiên bản của bộ cài, của updater và của ứng dụng web là một (PROJECT-DESKTOP-1)."
-    - "Tệp được sửa tay thay vì sửa khai báo."
-  nextStep_vi: "Sửa sides.desktop trong hfs.json rồi chạy `npx starci app sync --execute`; đừng sửa tauri.conf.json."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_SECURITY:
-  title: "The desktop shell's isolation is loosened"
-  title_vi: "Sự cô lập của vỏ desktop bị nới lỏng"
-  meaning_vi: "Cấu hình hoặc capability làm lộ API Tauri cho trang từ xa: withGlobalTauri bật, công tắc dangerous*, CSP rỗng hoặc chứa unsafe-eval/ký tự đại diện, updater qua http thường, hoặc capability cấp IPC cho origin từ xa dạng ký tự đại diện hay http thường."
-  causes_vi:
-    - "Vi phạm R444: vỏ chỉ tải ứng dụng web đã triển khai và trang đó không được gọi vỏ; mọi nới lỏng đều mở đường cho mã lạ chạy với danh tính ứng dụng (PROJECT-DESKTOP-1)."
-    - "Một capability được thêm để thử rồi quên gỡ."
-  nextStep_vi: "Gỡ công tắc hoặc capability đó; nếu trang cần gọi vỏ, nêu origin https cụ thể của ứng dụng thay cho ký tự đại diện."
-  owner: op-retry
-  kind: check-finding
-HFS_DESKTOP_SIGNING_KEY:
-  title: "A signing key or certificate is tracked"
-  title_vi: "Khoá hoặc chứng chỉ ký được git theo dõi"
-  meaning_vi: "Một chứng chỉ ký (.p12, .pfx), kho khoá hoặc khoá riêng minisign là tệp được theo dõi, hoặc một bí mật ký được ghi thẳng vào tệp dưới desktop/."
-  causes_vi:
-    - "Vi phạm R444: khoá updater và thông tin Apple là bí mật CI (TAURI_SIGNING_PRIVATE_KEY, APPLE_*), không bao giờ là tệp trong kho (PROJECT-DESKTOP-1)."
-    - "Khoá vừa sinh bằng `tauri signer generate` được lưu nhầm trong cây làm việc."
-  nextStep_vi: "Xoá tệp khỏi kho và khỏi lịch sử, coi khoá đã lộ và sinh khoá mới; đặt giá trị bằng `starci app ci secret set <TÊN> --execute`."
   owner: op-retry
   kind: check-finding
 STACKS_SIDES_UNDECLARED:

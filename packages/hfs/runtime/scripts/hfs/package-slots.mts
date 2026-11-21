@@ -11,7 +11,7 @@
 //         "coverage": { "none": "front-end views, proven by the front end's own gates (SHARED-TEST-1)" } },
 //       { "id": "barrel", "path": "src/index.ts" } ] } }
 // A package has no manifest of its own: the project declares it. `packages/<name>/slots.yaml` (`schema: starci/package-slots@1`, the same keys in
-// YAML) is still read for a package the project's manifest does not declare, with a warning (HFS_PACKAGE_SLOTS_MOVED), and goes with the next minor.
+// YAML) is still read for a package the project's manifest does not declare.
 // hfs enforces the slots as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no
 // slot are findings, and a declaration it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in
 // the back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason
@@ -27,7 +27,6 @@ export const PACKAGE_SLOTS_INVALID = 'HFS_PACKAGE_SLOTS_INVALID';
 export const PACKAGE_SLOT_MISSING = 'HFS_PACKAGE_SLOT_MISSING';
 export const PACKAGE_SLOT_DISALLOWED = 'HFS_PACKAGE_SLOT_DISALLOWED';
 export const PACKAGE_SLOT_UNPLACED = 'HFS_PACKAGE_SLOT_UNPLACED';
-export const PACKAGE_SLOTS_MOVED = 'HFS_PACKAGE_SLOTS_MOVED';
 /** The files of a package measured by no slot whatever its manifest says: the barrels and the type-only files, as in the back end. */
 export const PACKAGE_ALWAYS_UNMEASURED = Object.freeze(['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']);
 

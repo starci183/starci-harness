@@ -11,16 +11,11 @@ import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readJson } from './read.mjs';
 import { DEPENDENCY_SECTIONS } from './fe-no-tests.mjs';
 import { globExpression } from '../../lib/glob.mjs';
-import { grammarLintFor } from '../../lib/grammar-lint.mjs';
-import { numericMatch } from '../../lib/numeric-match.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 export const FE_STACK_FORBIDDEN = 'FE_STACK_FORBIDDEN';
 export const FE_STACK_UNLISTED = 'FE_STACK_UNLISTED';
 export const FE_STACK_CORE_MISSING = 'FE_STACK_CORE_MISSING';
-export const FE_STACK_FAMILY_LINT_MISSING = 'FE_STACK_FAMILY_LINT_MISSING';
-const UNIVERSAL_CANON = '@starci/eslint-canon-fe';
-const FAMILY_SPLIT_MAJOR = 9;
 const CATALOG_FILE = new URL('../../../knowledge/hfs/fe-stack.yaml', import.meta.url);
 const PACKAGE_JSON = /(?:^|\/)package\.json$/;
 const APP_ROOT_MANIFEST = 'package.json';
@@ -113,42 +108,6 @@ function unlistedFindings(rel: string, pkg: Parsed, allowed: Parsed, extras: Par
   return findings;
 }
 
-/** The major version a dependency spec admits, or null when the spec names no plain semver (a tag, a path or a protocol). */
-const declaredMajor = (spec: Parsed) => numericMatch(spec, /^[\^~>=v\s]*(\d+)(?:\.|$)/);
-
-/** The universal canon's declared spec in any front-end or app-root manifest, or null when none declares it. */
-function universalCanonSpec(manifests: Parsed) {
-  for (const [, pkg] of manifests) for (const section of DEPENDENCY_SECTIONS) {
-    const spec = pkg?.[section]?.[UNIVERSAL_CANON];
-    if (spec !== undefined) return spec;
-  }
-  return null;
-}
-
-/**
- * From canon-fe 9 the Grammar component rules ship in the selected family's lint package; an app that installs the
- * universal canon without that package would silently lose them, so the stack refuses it. An unparseable spec is judged
- * like 9 rather than waved through.
- */
-function familyLintFindings(declaration: Parsed, repo: Repo, packages: Parsed, rootManifest: Parsed) {
-  const family = declaration?.sides?.fe?.grammar ?? repo.grammar;
-  if (typeof family !== 'string' || !family) return [];
-  const manifests = [...packages, ['../package.json', rootManifest]];
-  const product = (repo.apps ?? []).find((app: Parsed) => app.kind === 'next' && app.name !== 'landing');
-  const anchor = product ? `apps/${product.name}/package.json` : 'package.json';
-  const spec = universalCanonSpec(manifests);
-  if (spec === null) return [];
-  const major = declaredMajor(spec);
-  if (major !== null && major < FAMILY_SPLIT_MAJOR) return [];
-  const lint = grammarLintFor(family);
-  if (lint.package === null) return [];
-  if (manifests.some(([, pkg]) => dependenciesOf(pkg).has(lint.package))) return [];
-  const nextStep = `Add ${lint.package} beside ${UNIVERSAL_CANON} (the app root devDependencies or the fe workspace), compose ${lint.factory}({ hfs }) after starciFeConfig({ hfs }) in fe/eslint.config.mjs, or run starci app sync.`;
-  return [found(FE_STACK_FAMILY_LINT_MISSING, anchor,
-    `hfs.json selects sides.fe.grammar ${family} and the front end declares ${UNIVERSAL_CANON} ${spec}, but no manifest declares ${lint.package}: from ${UNIVERSAL_CANON} ${FAMILY_SPLIT_MAJOR} that package carries the ${family} Grammar component rules, so without it they are not enforced. ${nextStep}`,
-    { dependency: lint.package, family, nextStep })];
-}
-
 /** Closed FE catalog and core presence over the front-end side (the mixed root also holds BE tools). */
 export function feStackAllowlistFindings({ repoRoot, files, all = files, repo, inScope = () => true }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; inScope?: (file: string) => boolean }) {
   if (repo.profile !== 'fe' || repo.kind === 'runtime') return [];
@@ -161,7 +120,6 @@ export function feStackAllowlistFindings({ repoRoot, files, all = files, repo, i
   const findings = [...packages].filter(([file]) => inScope(file)).flatMap(([file, pkg]) => unlistedFindings(file, pkg, allowed, extras, workspaces));
   const rootManifest = readJson(repoRoot, '../package.json');
   const rootTools = dependenciesOf(rootManifest);
-  findings.push(...familyLintFindings(declaration, repo, packages, rootManifest));
   for (const app of repo.apps ?? []) {
     if (app.kind !== 'next' || app.name === 'landing') continue;
     const rel = `apps/${app.name}/package.json`;

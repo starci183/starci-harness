@@ -241,7 +241,7 @@ lint plugin of its own (R103).
   its slot; every other file of no `lint: "fe"` slot, and every file of a package the project does not declare, is the back end's. The harness
   knows no folder name of a package. hfs holds the package to them as it holds the be and fe sides to theirs
   (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`, `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382). A package's own
-  `slots.yaml` is read for one more minor, for a package the manifest does not declare, with the warning `HFS_PACKAGE_SLOTS_MOVED`.
+  `slots.yaml` is still read for a package the manifest does not declare.
 - **A business package has its own profile.** A package the project declares under `sides.nivoos` (hfs.json) is the slot `app.nivoos-package`, whose `lintProfile: nivoos` hands its source to the SDK authoring profile of `@starci/eslint-canon-be`: the back-end canon less a short list of relaxations, each with its reason ([business-repo.md](business-repo.md) PROJECT-BUSINESS-1): among them `no-non-ascii-source`, which is not applied to the package at all because its business copy and comments are Vietnamese, and `starci app check` runs `nivoos package check` for it (`HFS_NIVOOS_PACKAGE_CHECK`, R436). The first slot that holds a file still decides: a package the project declares is never also an `ext/manifest.json` `packages` entry.
 - **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
   its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.

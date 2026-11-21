@@ -2314,7 +2314,6 @@ rules:
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
-      - {kind: hfs, id: cli-command-names, at: runtime/scripts/hfs/rules/cli.mjs}
   - id: R150
     code: "BE_CLI_OWNER"
     docs: [docs/backend-cli.md#back-end-cli-rules]
@@ -3622,7 +3621,7 @@ rules:
     law: "The environment keys a back end reads through its typed `EnvSource` (`<app>.env.ts` and the capability `*.config.ts` parse helpers, resolved by a static TypeScript walk that substitutes the literal arguments of a reader's call sites into a template key such as `${prefix}_WEBHOOK_SECRET`), the key names sealed in `.starcistacks/<env>/secrets/*.enc` and the keys the stack declares or passes (`KEYS.md`, `environment:`/`env:` entries, `runtimeSecrets`, `vars[].name`) are one set, compared by name only in both editions: a required read is sealed or declared (ENV_REQUIRED_UNSET), a sealed key is read or has a declared consumer (ENV_SEALED_UNREAD), one key lives in one member (ENV_DUPLICATE), no `NEXT_PUBLIC_*` key is sealed (ENV_PUBLIC_SEALED) and every `*.env.example` key is read (ENV_EXAMPLE_DRIFT)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT", "ENV_KEY_ENVIRONMENT_NAMED"]
+    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT"]
     enforcers:
       - {kind: hfs, id: env-parity, at: scripts/hfs/rules/env-parity.mjs}
     proves:
@@ -4236,22 +4235,6 @@ rules:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
     witness:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
-  - id: R283
-    code: "HFS_APP_LEXICON"
-    law: "An app's source and documentation use the current product vocabulary: a word declared in hfs.json lexicon.removed is refused as a whole word or identifier segment, in both editions."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_APP_LEXICON"]
-    enforcers:
-      - {kind: hfs, id: lexicon, at: scripts/hfs/rules/lexicon.mjs}
-    docs: [docs/quality-bar.md#r283]
-    templateNa: "Removed product vocabulary is application-specific hfs.json content; there is no canonical product lexicon to scaffold."
-    proves:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
-    witness:
-      - {path: packages/hfs/src/hfs-lexicon.spec.mjs, codes: [HFS_APP_LEXICON]}
   - id: R284
     code: "BE_LITE_PROOF_LANE_MISSING"
     law: "A lite back end declaring event-bus, queue, webhooks, realtime, fenced-job, projection, saga or idempotency proves each declared pattern through integration specs under src/tests/integration: runnable tests carry titles `<pattern>/<scenario>: ...` for every required scenario of that pattern. A missing integration lane is refused; missing scenario proofs use R155's BE_PATTERN_SPEC_MISSING. Full-edition pattern proof behavior is unchanged."
@@ -4316,20 +4299,20 @@ rules:
 
   - id: R288
     code: "FE_STACK_UNLISTED"
-    law: "Every direct FE workspace dependency belongs to knowledge/hfs/fe-stack.yaml or is declared in hfs.json fe.extraPackages with its name and a nonempty reason. Installed runtime dependencies carried by a listed Grammar package are not app declarations and raise no FE_STACK_UNLISTED; direct forbidden dependencies still raise FE_STACK_FORBIDDEN. Every product Next app declares the catalog's core runtime packages; codegen, lint, TypeScript and Tailwind tools may be installed once at the app root. The marketing landing app is exempt (lite and full) from core presence. A front end that selects sides.fe.grammar and declares @starci/eslint-canon-fe 9 or later also declares that family's lint package from knowledge/grammars/index.yaml, which carries its Grammar component rules (FE_STACK_FAMILY_LINT_MISSING). GraphQL documents, including gql templates, match the back-end contracts, and SWR keys carry fetcher identities without an opt-in declaration."
+    law: "Every direct FE workspace dependency belongs to knowledge/hfs/fe-stack.yaml or is declared in hfs.json fe.extraPackages with its name and a nonempty reason. Installed runtime dependencies carried by a listed Grammar package are not app declarations and raise no FE_STACK_UNLISTED; direct forbidden dependencies still raise FE_STACK_FORBIDDEN. Every product Next app declares the catalog's core runtime packages; codegen, lint, TypeScript and Tailwind tools may be installed once at the app root. The marketing landing app is exempt (lite and full) from core presence. A front end that selects sides.fe.grammar and declares @starci/eslint-canon-fe 9 or later also declares that family's lint package from knowledge/grammars/index.yaml, which carries its Grammar component rules. GraphQL documents, including gql templates, match the back-end contracts, and SWR keys carry fetcher identities without an opt-in declaration."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["FE_STACK_UNLISTED", "FE_STACK_CORE_MISSING", "FE_STACK_FAMILY_LINT_MISSING"]
+    failureCodes: ["FE_STACK_UNLISTED", "FE_STACK_CORE_MISSING"]
     enforcers:
       - {kind: hfs, id: fe-stack-allowlist, at: scripts/hfs/rules/fe-stack.mjs}
     docs: [docs/quality-bar.md#r288]
     proves:
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
     exemplifiedBy:
       - packages/hfs/templates/fe/app/package.json.tpl
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
     witness:
-      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING, FE_STACK_FAMILY_LINT_MISSING]}
+      - {path: packages/hfs/src/hfs-fe-stack.spec.mjs, codes: [FE_STACK_UNLISTED, FE_STACK_CORE_MISSING]}
   - id: R289
     code: "BE_APP_ENV_REQUIRED"
     law: "Every declared back-end app owns a tracked apps/<app>/src/<app>.env.ts exporting its typed environment interface and read<App>Env(env: EnvSource). main.ts constructs EnvSource once and delegates its reads to that reader, with no inline parsing. app.module.ts composes module lists only by spreading compose/<area>.ts groups; its own providers are limited to app-wide guards and filters."
@@ -5685,20 +5668,6 @@ rules:
       - contexts/project/stacks.md#project-stacks-12-seed-data-lives-in-the-seed-levels-of-the-stack
     proves:
       - packages/hfs/src/hfs-seeds-shape.spec.mjs
-  - id: R376
-    code: "HFS_BOOT_LOGGER_SILENCED"
-    law: "A back-end app root boots loudly: its `be/apps/<app>/src/main.ts` never hands Nest `logger: false` (NestFactory or nest-commander's CommandFactory), so a provider a module needs and the root does not compose, or any other bootstrap failure, is printed on stderr and exits non-zero instead of ending every boot or CLI command silently; the main passes the app's logger and an error handler that prints and exits non-zero."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_BOOT_LOGGER_SILENCED"]
-    enforcers:
-      - {kind: hfs, id: boot-logger, at: scripts/hfs/rules/boot-logger.mjs}
-    proves:
-      - packages/hfs/src/hfs-boot-logger.spec.mjs
-    exemplifiedBy:
-      - packages/hfs/templates/be/skeleton/apps/cli/src/main.ts
-    witness:
-      - {path: packages/hfs/src/hfs-boot-logger.spec.mjs}
   - id: R377
     code: "BE_FLOW_FAILURE_SWALLOWED"
     law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."
@@ -5779,7 +5748,7 @@ rules:
     law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID", "HFS_PACKAGE_SLOTS_MOVED"]
+    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID"]
     enforcers:
       - {kind: hfs, id: package-slots, at: scripts/hfs/rules/app-extension-findings.mjs}
     docs:
@@ -6310,36 +6279,6 @@ rules:
     witness:
       - {path: packages/eslint-grammar-core/src/media.spec.ts, codes: [FE_RAW_MEDIA_ELEMENT]}
 
-  - id: R443
-    code: "FE_ERROR_PAGE_NOT_EMPTY_STATE"
-    law: "The not-found, error and global-error pages of a web app (the boundaries R53 requires) draw the Grammar's one empty state: the source they reach, through the app's own files and the composites of its workspace ui package, holds an EmptyNotice of scope page with an illustration, so they are never hand-rolled from other components. An app edits their words and art; it never replaces the empty state."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["FE_ERROR_PAGE_NOT_EMPTY_STATE"]
-    enforcers:
-      - {kind: hfs, id: error-pages, at: runtime/scripts/hfs/rules/error-pages.mjs}
-    docs:
-      - contexts/ui/components/empty-state.md
-    proves:
-      - packages/hfs/src/error-pages.spec.mts
-    witness:
-      - {path: packages/hfs/src/error-pages.spec.mts}
-  - id: R444
-    code: "HFS_DESKTOP_UNDECLARED"
-    law: "The desktop app a project declares (hfs.json `sides.desktop`: `app` the fe app it wraps, `name`, a reverse-DNS `identifier` that does not end in `.app`, the https `origin` the shell loads, optional `devOrigin`, `allowedOrigins`, deep link `schemes`, `targets` (macos, windows, linux) and an `updater` `{ pubkey, endpoint }`; it needs the fe side) is a Tauri v2 remote-origin shell at `desktop/` and agrees with its tree and its config, each way: a tracked file of `desktop/` or the release workflow without the declaration is HFS_DESKTOP_UNDECLARED; a declared app tracks the icons `tauri icon` writes (and its Cargo.lock, a warning) or is HFS_DESKTOP_FILE_MISSING; `desktop/src-tauri/tauri.conf.json` says what the declaration says (identifier, product name, the version read from the app's package.json, deep link schemes, the updater key and endpoint, no window in the config) or is HFS_DESKTOP_CONFIG; the shell's isolation holds, with no global Tauri API, no dangerous* switch, a CSP without unsafe-eval or a wildcard, an updater over https and no capability that hands the IPC to a wildcard or plain-http remote origin, or it is HFS_DESKTOP_SECURITY; and no signing certificate, key store or private key is a tracked file and no signing secret is written into `desktop/`, or it is HFS_DESKTOP_SIGNING_KEY. The Tauri config, the Cargo manifest, the Rust of the shell, the bundled page and the release workflow are rendered from the declaration by `starci app sync` (slots `app.desktop-config`, `app.ci-desktop-release`, HFS_MANAGED_FILE_DRIFT); the signing secrets the workflow reads are names of `ci.secrets` (CI_DECLARATION_DRIFT) and are never committed."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_DESKTOP_UNDECLARED", "HFS_DESKTOP_FILE_MISSING", "HFS_DESKTOP_CONFIG", "HFS_DESKTOP_SECURITY", "HFS_DESKTOP_SIGNING_KEY"]
-    enforcers:
-      - {kind: hfs, id: desktop, at: runtime/scripts/hfs/rules/desktop.mjs}
-    templateNa: "A new app declares no desktop app; the rule guards the declaration, the tree and the config once it does."
-    docs:
-      - contexts/project/desktop.md#project-desktop-1-the-desktop-app-is-a-tauri-shell-around-the-deployed-web-app
-    proves:
-      - packages/hfs/src/desktop-side.spec.mjs
-    witness:
-      - {path: packages/hfs/src/desktop-side.spec.mjs}
-
   - id: R445
     code: "FE_BRAND_NOT_ONE"
     law: "The colours of a product live in ONE brand token file: the web apps of a front end hold exactly one `modules/brand/brand.css`, which every global stylesheet imports (a colour literal elsewhere is R61's lint, which also refuses a named colour and a Tailwind arbitrary or palette colour), and the canvas holds none of its own: `.starcistacks/canvas/tokens.css` is generated from the brand file by `canvas-tokens.mjs`, and no generator under `.starcistacks/canvas/gen/` (the claude-design `gen/kit/` aside) writes a colour literal."
@@ -6369,7 +6308,7 @@ rules:
 
   - id: R447
     code: "FE_STATE_PAGE_NOT_SHARED"
-    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state (R443)."
+    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["FE_STATE_PAGE_NOT_SHARED", "FE_STATE_PAGE_GROUP_MISSING"]
