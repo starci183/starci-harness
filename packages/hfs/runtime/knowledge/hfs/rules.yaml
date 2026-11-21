@@ -3622,7 +3622,7 @@ rules:
     law: "The environment keys a back end reads through its typed `EnvSource` (`<app>.env.ts` and the capability `*.config.ts` parse helpers, resolved by a static TypeScript walk that substitutes the literal arguments of a reader's call sites into a template key such as `${prefix}_WEBHOOK_SECRET`), the key names sealed in `.starcistacks/<env>/secrets/*.enc` and the keys the stack declares or passes (`KEYS.md`, `environment:`/`env:` entries, `runtimeSecrets`, `vars[].name`) are one set, compared by name only in both editions: a required read is sealed or declared (ENV_REQUIRED_UNSET), a sealed key is read or has a declared consumer (ENV_SEALED_UNREAD), one key lives in one member (ENV_DUPLICATE), no `NEXT_PUBLIC_*` key is sealed (ENV_PUBLIC_SEALED) and every `*.env.example` key is read (ENV_EXAMPLE_DRIFT)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT", "ENV_KEY_ENVIRONMENT_NAMED"]
+    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT"]
     enforcers:
       - {kind: hfs, id: env-parity, at: scripts/hfs/rules/env-parity.mjs}
     proves:

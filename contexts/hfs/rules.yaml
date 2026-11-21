@@ -1579,7 +1579,6 @@ rules:
       - ENV_DUPLICATE
       - ENV_PUBLIC_SEALED
       - ENV_EXAMPLE_DRIFT
-      - ENV_KEY_ENVIRONMENT_NAMED
     enforcers:
       - {kind: hfs, id: env-parity}
   - id: R249
