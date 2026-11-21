@@ -1,11 +1,8 @@
 # Changelog
 
-## Unreleased
-
-- Added: `createPublicEnv(keys, fallback?)`, the runtime public config of a front end (owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?", one image per sha configured per environment). The server renders an allowlist of `NEXT_PUBLIC_*` keys from its runtime environment into `window.__ENV` (`scriptProps` / `script`, frozen, the JSON escaped for an inline script) and the client reads `publicEnv(key)`: `window.__ENV`, then the runtime `process.env`, then the build/dev fallback. Pure parts: `publicEnvScript`, `publicEnvScriptProps`, `pickPublicEnv`, `readPublicEnv`, `serializePublicEnv`, `checkPublicEnvKeys`. A name that is not `NEXT_PUBLIC_*` is refused.
-
 ## 0.2.0 - 2026-11-21
 
+- Added: `createPublicEnv(keys, fallback?)`, the runtime public config of a front end (owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?", one image per sha configured per environment). The server renders an allowlist of `NEXT_PUBLIC_*` keys from its runtime environment into `window.__ENV` (`scriptProps` / `script`, frozen, the JSON escaped for an inline script) and the client reads `publicEnv(key)`: `window.__ENV`, then the runtime `process.env`, then the build/dev fallback. Pure parts: `publicEnvScript`, `publicEnvScriptProps`, `pickPublicEnv`, `readPublicEnv`, `serializePublicEnv`, `checkPublicEnvKeys`. A name that is not `NEXT_PUBLIC_*` is refused.
 - Added: `useSkeletonGate(isLoading, delayMs = 250, minMs = 500)` and its React-free core `createSkeletonGate`. A load shows the skeleton only past 250ms, then holds it at least 500ms (owner: "sao k bỏ useSkeletonGate vào packages/next-data").
 - Added: `skeletonGate()`, an SWR middleware that adds a gated `showSkeleton` to every response.
 - Added: `timedFetcher(fetcher, { route, sink })`, which reports `{ route, ms, ok }` to a pluggable sink, off by default, for per-route load-time percentiles.

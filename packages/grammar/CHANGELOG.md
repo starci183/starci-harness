@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.52.3 - 2026-11-21 - Loading as HeroUI Skeleton shapes, and the page content zone
+## 0.53.0 - 2026-11-21 - Loading as HeroUI Skeleton shapes, and the page content zone
 
 The owner's loading rule (2026-11-21): "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì", "không có xxxx -> ske. và không có plain text như label -> ske nốt", "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè".
 

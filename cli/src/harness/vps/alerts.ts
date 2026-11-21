@@ -37,19 +37,21 @@ export interface ServerAlerts {
     readonly lacking: readonly string[]
 }
 
-// reason: the declaration is parsed YAML, read leniently here; `starci app check` (HFS_STACKS_SHAPE) owns its refusals
-type Parsed = any
+/** The value at a dotted path of parsed YAML or JSON, read leniently; `starci app check` (HFS_STACKS_SHAPE) owns the shape's refusals. */
+export const fieldAt = (value: unknown, path: string): unknown =>
+    path.split(".").reduce<unknown>((at, key) => (typeof at === "object" && at !== null && key in at ? (at as Record<string, unknown>)[key] : undefined), value)
+
+const recordOf = (value: unknown): Record<string, unknown> => (typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {})
 
 /** The key names of a sops YAML document (its top-level keys but `sops`), read without opening it. */
 export const sealedKeyNames = (text: string): string[] => {
-    const doc = parse(text) as Parsed
-    return doc !== null && typeof doc === "object" ? Object.keys(doc).filter((key) => key !== "sops") : []
+    return Object.keys(recordOf(parse(text))).filter((key) => key !== "sops")
 }
 
 /** The project an app checkout's hfs.json names, or null. */
 export const projectOf = (root: string): string | null => {
     try {
-        const project: unknown = (JSON.parse(readFileSync(join(root, "hfs.json"), "utf8")) as Parsed)?.project
+        const project = fieldAt(JSON.parse(readFileSync(join(root, "hfs.json"), "utf8")), "project")
         return typeof project === "string" && project !== "" ? project : null
     } catch {
         return null
@@ -61,15 +63,15 @@ export const appAlertBots = (root: string, serverRecipient: string | null): { re
     const project = projectOf(root) ?? root
     const file = join(root, ".starcistacks", "application-stacks.yaml")
     if (!existsSync(file)) return { bots: [], lacking: [`${project}: no .starcistacks/application-stacks.yaml`], envs: 0 }
-    const environments = ((parse(readFileSync(file, "utf8")) as Parsed)?.environments ?? {}) as Record<string, Parsed>
+    const environments = recordOf(fieldAt(parse(readFileSync(file, "utf8")), "environments"))
     const bots: AlertBot[] = []
     const lacking: string[] = []
     let envs = 0
     for (const [env, value] of Object.entries(environments)) {
-        const recipient: unknown = value?.deploy?.remote?.serverRecipient
+        const recipient = fieldAt(value, "deploy.remote.serverRecipient")
         if (serverRecipient === null || recipient !== serverRecipient) continue
         envs += 1
-        const member: unknown = value?.monitoring?.alerts?.telegram?.member
+        const member = fieldAt(value, "monitoring.alerts.telegram.member")
         if (typeof member !== "string" || member === "") {
             lacking.push(`${project}/${env} declares no alert bot (environments.${env}.monitoring.alerts.telegram.member)`)
             continue
@@ -89,7 +91,7 @@ export const appAlertBots = (root: string, serverRecipient: string | null): { re
             lacking.push(`${project}/${env}: ${member} holds no ${ALERT_BOT_KEYS.chat} (/start the bot, then starci app alerts discover-chat --env ${env})`)
             continue
         }
-        const stack: unknown = value?.deploy?.stack
+        const stack = fieldAt(value, "deploy.stack")
         bots.push({ project, env, stack: typeof stack === "string" && stack !== "" ? stack : `${project}-${env}`, file: memberFile, sealed })
     }
     return { bots, lacking, envs }
@@ -99,7 +101,7 @@ export const appAlertBots = (root: string, serverRecipient: string | null): { re
 export const serverRecipientOf = (id: string, opsDir: string): string | null => {
     const file = join(opsDir, "vps", "recipients.yaml")
     if (!existsSync(file)) return null
-    const recipient: unknown = (parse(readFileSync(file, "utf8")) as Parsed)?.servers?.[id]?.server
+    const recipient = fieldAt(recordOf(fieldAt(parse(readFileSync(file, "utf8")), "servers"))[id], "server")
     return typeof recipient === "string" && recipient !== "" ? recipient : null
 }
 

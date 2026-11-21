@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.52.3 - 2026-11-21
+## 0.53.0 - 2026-11-21
 
 - No rule changed: versioned with @starci/grammar 0.52.3 (loading as HeroUI Skeleton shapes, the content-zone loading mode).
 

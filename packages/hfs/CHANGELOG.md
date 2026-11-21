@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (train 189: ci-key custody)
+## 6.17.5 - 2026-11-21
+
+- Fixed (ci.yml): a switched-off gate never skips the release deploy; each deploy job runs on its own status check and names the results it needs, and the verdict summary says whether a deploy runs or why not.
 
 - Added (images.yml, `sync/stack-images.mts`): when the release environment is declared `custody: ci-key`, the `image-sealed` job binds no Environment and reads the repository secret `SOPS_AGE_KEY` (the CI key), behind the release-only guard it already had; ci.yml's images call and each `deploy-<env>` call of a ci-key environment pass `secrets: inherit`, the only way a called workflow whose job binds no Environment reads a repository secret (without it the automatic deploy of a ci-key environment read an empty key). R251 accepts the unbound sealed job only in images.yml, with the release-tag guard and the tag-is-version check before any secret, for a `--env` declared ci-key, and accepts `secrets: inherit` only on a ci.yml caller of stack-deploy.yml whose environment is ci-key. Apps on environment custody render byte-identically.
 - Changed (docs only, `app secret server-key --restore github`): legacy. It serves only an old GitHub Environment backup, which nothing writes any more; the help, README and contexts/project/stacks.md say so. No behaviour change.
@@ -9,15 +11,12 @@
 - Changed (R251, `rules/deploy-workflow.mts`): a job whose binding is that ci-key expression is accepted only in stack-deploy.yml, with the release-tag guard and the tag-is-version check before any secret is read, for names the declaration gives `custody: ci-key`; otherwise HFS_DEPLOY_WORKFLOW names why.
 - Removed (`app secret server-key --backup github`, `stack/server-key.mts`): the server key is never copied into a repository. `starci app secret` refuses `--backup` with that reason (exit 2); its break-glass backup lives only in the harness repository's break-glass environment. `streamIdentityCommand` and the `ghCommand` dependency are gone. `--restore github` stays; its note about a repository-level `SOPS_AGE_KEY` no longer asks to delete it (it may be the CI key).
 
-## Unreleased (t190 runtime public env)
 
 - Added (`deploy.images.<service>.runtimePublicEnv`, owner 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?"): one web image per sha, configured per environment at runtime. An image that declares `runtimePublicEnv: true` is built without the NEXT_PUBLIC_* keys of its `buildArgs` (literal and sealed): `starci app stack build-args` and `stack build` pass only the other keys, and images.yml builds it in the public `image` job, with no GitHub Environment and no secret when no other key is left, pushed under `sha-<sha>` on every pushed run. The render (`stack render` / `stack deploy`) sets those keys as the service's runtime environment (sealed ones opened from their member; `deploy.environment` wins for a key both name; a changed value changes `configDigest`). The app reads them through `createPublicEnv` of `@starci/next-data` (`window.__ENV`). Without the declaration everything renders as before. Shared split: `buildTimeArgs` / `runtimePublicArgs` (`runtime/scripts/hfs/stack-deploy-config.mts`). Docs: contexts/project/stacks.md PROJECT-STACKS-22, cicd.md. Spec: `src/stack-runtime-public-env.spec.mts`.
-## Unreleased (train 190: the dev flow)
 
 - Added (`starci app stack`, PROJECT-STACKS-6): a native process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`. `stack up` then builds it and runs the built artifact (next start, node dist/...), never a watcher. Its own `argv` (next dev, ts-node-dev) runs only with `--watch`, the opt-in for live coding. A process without `serve` runs as before.
 - Added: `starci app stack restart --env <env> --process <name>[,<name>] [--watch] [--execute]`. It ends only the named processes, rebuilds and starts them, and waits for their health on the loopback and over each dev tunnel hostname that routes their port. The compose services, volumes, custody and tunnel stay up. An environment with no running process is STACK_LOCAL_NOT_UP.
 - Changed (the app skeleton's `.starcistacks/application-stacks.yaml`): the api and web processes declare `serve` (`npm run build:be` then `node dist/apps/api/src/main.js`; `npm run build:fe` then `npm run start:web`), and the web gets `PORT`.
-## Unreleased (train 190, lane hosts)
 
 - Added (`application-stacks.schema.yaml` `$defs.environment.hostServices`): the host services an environment needs (`needs: {starci.embed: [local, sv-hk-1]}`, an optional landing `machine`), judged by the starci CLI against the owner host's config.yaml (contexts/harness/host.md "What an app needs"); the render ignores it. Spec: `src/hfs-stacks-host-services-schema.spec.mts`.
 - Changed: the shared embeddings opt-in describes `qwen3-embedding:4b` at 2560 dimensions.
@@ -2063,13 +2062,11 @@ Breaking for lite apps (the migration note is contexts/project/lite.md "Moving a
 - New: `hfs secret list|show|set|gen` (alpha.5 item 6.4), the canon command over the sealed secrets of `.starcistacks/<env>/secrets/<slug>.enc`, on the runtime's sops api (a new `seal` call: the value travels on stdin, never on an argument list). Replaces the plain `sops` commands of runbooks and KEYS.md files.
 - Changed: HFS_REQUIRED_FILE_MISSING now also carries what BE_REQUIRED_MODULE_MISSING reported, and BE_TEST_TOPOLOGY what HFS_TEST_KIND_RETIRED reported (one code per obligation); the bundled architecture machine follows `APP_GUARD` and `APP_FILTER` providers built by a helper outside the app root file.
 - Changed: the managed fe scripts (`dev:fe`, `start:<app>`, `build:fe`) run `next` from the app directory (`cd fe/apps/<app> && next ...`) so next-intl finds its request config; the fe skeleton reads the request locale through `next/root-params` (`experimental.rootParams`), pins the workspace root three levels above the app and uses the `.*[.].*` proxy matcher; the bundled runtime carries the `&&`/`||`-aware FE_SWR_KEY_IDENTITY check.
-## Unreleased (a18 R281)
 
 - Fixed: the bundled architecture machine (`function-spec-providers.mjs`, `unit-spec-providers.mjs`) takes the callable subset of a function-only subject's exports (constants, enums, re-exports and overload signatures are ignored) and lets the spec of a value-object class (undecorated, no constructor injection token) construct it with `new`.
 - Security (canon pins, npm audit of 2026-10-16): `next` 16.1.6 to 16.4.2 (critical, with the `postcss` and `sharp` highs it brings), `axios` 1.15.2 to 1.20.0 and `@nestjs/platform-express` 11.2.5 to 11.2.7 (with `multer`) in `knowledge/hfs/canon-pins.yaml`; the example apps (`ecommerce-app`, `lite-app`, `shape-slot`) and `packages/test-world` carry the new pins and lockfiles.
 - Known advisory, accepted: `@nestjs/graphql` and `@nestjs/apollo` stay on 13.4.5. `npm audit --omit=dev --audit-level=high` still reports their highs (and `@graphql-tools/utils` through them); the fix is 14.0.3, a semver major, deferred to alpha.19.
 
-## Unreleased (C0 batch)
 
 - Fixed (contract change `sonar-coverage-exclusions`): SonarQube has no `sonar.coverage.inclusions` property, so Sonar ignored it and counted every executable be/ file at 0% (overall coverage 65.8% and 45.2% on the examples, although every service was at 100). The managed `sonar-project.properties` now renders `sonar.coverage.exclusions` as the complement of the services. `coverageExclusions(presets, manifest)` in `sync/index.mjs` derives it from the preset's `COVERAGE_SOURCES` and the slot manifest, and lists:
   - every be role of the R89 suffix vocabulary other than `service`;
@@ -2091,7 +2088,6 @@ Breaking for lite apps (the migration note is contexts/project/lite.md "Moving a
 
 - Changed: workflow worktree runtime copies, the services coverage scope for Sonar and codecov.yml, sonar-gate, canon-pins.
 
-## Unreleased (alpha.4, bumped in C0's batch)
 
 - Changed (contract change `sonar-services-coverage`): Sonar and Codecov judge the services' coverage. The managed `sonar-project.properties` adds `sonar.javascript.lcov.reportPaths=be/coverage/lcov.info` and `sonar.coverage.inclusions=be/src/**/*.service.ts`; a new managed `codecov.yml` (slot `app.quality-config`, now `{sonar-project.properties,codecov.yml}`) holds the same paths at 100 on the project and the patch and ignores `fe/**`; the managed CI workflow uploads the be lcov with `codecov/codecov-action@v5` and the `CODECOV_TOKEN` secret after the unit run. Both files are rendered from one scope, `coverageScope(presets)`: the installed jest preset's `COVERAGE_SOURCES` on the be side (`loadPresets` now returns `coverageSources`). An app re-renders with `hfs sync --write`.
 - Changed: the bundled runtime copies of `knowledge/sonar-gate.yaml` (coverage 100 overall and on new code, per file; every hotspot reviewed), `knowledge/hfs/slots.yaml` (the quality-config slot) and `modules/kernel/failure-codes.yaml` (the R11 law and HFS_SONAR_CONFIG text).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.17 - 2026-11-21
+
+- Changed: requires @starci/grammar 0.53.0 (loading as HeroUI Skeleton shapes).
+
 ## 0.1.16 - 2026-11-21
 
 - Changed: draws with @starci/grammar 0.52.2.

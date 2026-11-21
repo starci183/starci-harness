@@ -5,7 +5,7 @@ import { chatsOf } from "../../harness/telegram-bridge.js"
 import { botWithToken, getUpdates, loadTelegram } from "../../harness/telegram.js"
 import type { TelegramConfig } from "../../harness/telegram.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
-import { ALERT_BOT_KEYS } from "../../harness/vps/alerts.js"
+import { ALERT_BOT_KEYS, fieldAt } from "../../harness/vps/alerts.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -38,9 +38,9 @@ export const appRootOf = (cwd: string): string => {
 
 /** The alert member file of one environment, refused when the environment declares none. */
 export const alertMemberFile = (root: string, env: string): string => {
-    // reason: the declaration is parsed YAML; HFS_STACKS_SHAPE owns its shape
-    const doc = parse(readFileSync(join(root, ".starcistacks", "application-stacks.yaml"), "utf8")) as any
-    const member: unknown = doc?.environments?.[env]?.monitoring?.alerts?.telegram?.member
+    // The declaration is parsed YAML, read leniently; HFS_STACKS_SHAPE owns its shape. An env name is a single key, never dotted.
+    const environments: unknown = fieldAt(parse(readFileSync(join(root, ".starcistacks", "application-stacks.yaml"), "utf8")), "environments")
+    const member = fieldAt(typeof environments === "object" && environments !== null ? (environments as Record<string, unknown>)[env] : undefined, "monitoring.alerts.telegram.member")
     if (typeof member !== "string" || member === "") throw new Refusal("ALERTS_NOT_DECLARED", `environments.${env}.monitoring.alerts.telegram.member is not declared; declare the member that holds ${ALERT_BOT_KEYS.token} first`)
     const file = join(root, ".starcistacks", env, "secrets", `${member}.enc.yaml`)
     if (!existsSync(file)) throw new Refusal("ALERTS_MEMBER_MISSING", `${file} is not sealed: starci app secret set --env ${env} ${member} ${ALERT_BOT_KEYS.token} (the token BotFather gave)`)
@@ -79,7 +79,9 @@ const appStore = async (root: string): Promise<Pick<AlertChatSeams, "open" | "se
     const sops = (): unknown => defaultSops(process.env, root, process.platform, undefined, hostAgeIdentity(root))
     return {
         open: (file) => readMap(file, sops()),
-        seal: (file, values) => writeSecret({ file, values: { ...values }, age: [...envelopeOf(readFileSync(file, "utf8")).recipients], sops: sops() }),
+        seal: (file, values) => {
+            writeSecret({ file, values: { ...values }, age: [...envelopeOf(readFileSync(file, "utf8")).recipients], sops: sops() })
+        },
     }
 }
 

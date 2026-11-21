@@ -29,7 +29,7 @@ const render = (facts: MonitorFacts, toggles: Record<string, boolean> = {}): Rea
     return renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), facts).files
 }
 
-type Rule = { alert: string; expr: string; for?: string }
+interface Rule { alert: string; expr: string; for?: string }
 const rulesOf = (files: Readonly<Record<string, string>>): Rule[] => (parse(files["alerts.yml"] ?? "") as { groups: { rules: Rule[] }[] }).groups.flatMap((group) => group.rules)
 
 void test("the default stack fills every token, keeps logs 7 days and metrics 15 days, and reads the host thresholds from ops/vps.yaml health", () => {
@@ -98,7 +98,9 @@ const appAt = (root: string, project: string, env: string, keys: readonly string
 
 void test("each app's ready bot is found from its sealed member's key names; the rest are held by name, never refused", (t) => {
     const root = mkdtempSync(join(tmpdir(), "starci-alert-bots-"))
-    t.after(() => rmSync(root, { recursive: true, force: true }))
+    t.after(() => {
+        rmSync(root, { recursive: true, force: true })
+    })
     const ready = appAt(root, "nivo", "production", ["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"])
     const noChat = appAt(root, "next", "production", ["ALERTS_TELEGRAM_BOT_TOKEN"])
     const none = appAt(root, "plain", "staging", null)

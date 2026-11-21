@@ -16,7 +16,9 @@ const TOKEN = "123456:fixture-alert-bot"
 /** An app with environments.production.monitoring.alerts.telegram.member = alerts, its member sealed (fixture text). */
 const app = (t: { after: (fn: () => void) => void }, declared = true): string => {
     const root = mkdtempSync(join(tmpdir(), "starci-app-alerts-"))
-    t.after(() => rmSync(root, { recursive: true, force: true }))
+    t.after(() => {
+        rmSync(root, { recursive: true, force: true })
+    })
     mkdirSync(join(root, ".starcistacks", "production", "secrets"), { recursive: true })
     writeFileSync(join(root, "hfs.json"), JSON.stringify({ project: "fixture" }))
     writeFileSync(join(root, ".starcistacks", "application-stacks.yaml"), `environments:\n  production:\n    runtime: docker-swarm\n${declared ? "    monitoring:\n      alerts: {telegram: {member: alerts}}\n" : ""}`)
@@ -29,7 +31,7 @@ const seams = (updates: unknown[]): AlertChatSeams & { readonly sealed: Record<s
     const sealed: Record<string, string>[] = []
     const urls: string[] = []
     const fetcher = ((input: string | URL | Request) => {
-        urls.push(String(input))
+        urls.push(input instanceof Request ? input.url : input.toString())
         return Promise.resolve(new Response(JSON.stringify({ ok: true, result: updates }), { status: 200 }))
     }) as typeof fetch
     return { open: () => ({ ALERTS_TELEGRAM_BOT_TOKEN: TOKEN }), seal: (_file, values) => sealed.push({ ...values }), fetcher, config: loadTelegram(opsDir), sealed, urls }
