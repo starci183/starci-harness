@@ -11,7 +11,6 @@ import type { KnowledgeFinding } from "./knowledge-gates.js"
 /** The finding code of each gap. */
 export const GAP_CODES = {
     "slot-rule-unknown": "ANATOMY_SLOT_RULE_UNKNOWN",
-    "rule-no-enforcer": "ANATOMY_RULE_NO_ENFORCER",
     "enforcer-kind-unknown": "ANATOMY_ENFORCER_KIND_UNKNOWN",
     "law-path-unresolved": "ANATOMY_LAW_PATH_UNRESOLVED",
     "rule-no-doc": "ANATOMY_RULE_NO_DOC",
@@ -33,7 +32,7 @@ export interface Gap {
     readonly detail: string
 }
 
-/** A rule judged only by enforcers still owed (`status: planned`): listed, never red, until its check ships. */
+/** A rule judged only by enforcers marked `status: planned`: listed for information, never red; it is held by review until a check ships. */
 export interface PlannedRule {
     readonly id: string
     readonly code: string
@@ -107,11 +106,11 @@ const unresolvedPath = (knowledge: string, cited: string): string | undefined =>
 }
 
 /**
- * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer
- * of a declared kind and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed
+ * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every enforcer a rule names is of
+ * a declared kind and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed
  * spelling is written as code there, vendor/wrappers.yaml matches the Grammar source and its pin, and no governed file cites
- * decision history instead of the rule (ANATOMY_RULING_HISTORY). A rule whose every
- * enforcer is `status: planned` is not a gap: it is listed in `planned` until its check ships.
+ * decision history instead of the rule (ANATOMY_RULING_HISTORY). A rule may name no enforcer (it is held by review); a rule whose
+ * every enforcer is `status: planned` is not a gap either: it is listed in `planned`.
  */
 export const judgeAnatomy = (knowledge: string): GateVerdict => {
     const catalog = readParsed(join(knowledge, "hfs", "rules.yaml"), catalogSchema)
@@ -123,8 +122,7 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
     }
     for (const rule of catalog.rules) {
         const enforcers = rule.enforcers ?? []
-        if (enforcers.length === 0) red.push(gap("rule-no-enforcer", rule.id, `${rule.id} (${rule.code}) names no enforcer`))
-        else if (enforcers.every((enforcer) => enforcer.status === "planned")) planned.push({ id: rule.id, code: rule.code, enforcers: enforcers.map((enforcer) => `${enforcer.kind} ${enforcer.id}`) })
+        if (enforcers.length > 0 && enforcers.every((enforcer) => enforcer.status === "planned")) planned.push({ id: rule.id, code: rule.code, enforcers: enforcers.map((enforcer) => `${enforcer.kind} ${enforcer.id}`) })
         for (const enforcer of enforcers.filter((item) => !(item.kind in catalog.enforcerKinds))) {
             red.push(gap("enforcer-kind-unknown", rule.id, `${rule.id} names enforcer ${enforcer.id} of kind ${enforcer.kind}, which enforcerKinds does not declare`))
         }

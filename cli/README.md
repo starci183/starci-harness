@@ -981,7 +981,7 @@ then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks
 `ticket answer --answer | --accept-default [--reason]` (the owner, and the bridge for a Telegram reply) answers a question. Owner
 feedback is the kind `feedback` (`core/ticket/feedback.ts`, every writing role): `ticket open --kind feedback --title "<words>"`
 records the owner's words verbatim with the day given, `ticket close <id> --kind feedback --target-kind <kind> --target <t>`
-closes it only on a target that resolves, and `ticket list --kind feedback --status overdue` exits 1 on an item open past
+closes it on a target that resolves (kinds `grammar`, `cli`, `app`, `rule`, `context`, and `root-fix`: the commit that fixed the cause, a sha of the harness checkout or `<repo path>@<sha>` of another repository, verified with git in that path; a rule with no enforcer is held by review) or `--target-kind declined --reason <why>` (no target) when the owner or lead decided not to act, and `ticket list --kind feedback --status overdue` exits 1 on an item open past
 `feedback.openMaxDays` of ops/liveness.yaml or a closed one whose target no longer resolves. An end is
 recorded with who gave it and why, releases every waiter and wakes the Supervisor of each waiter's project (and of the
 ticket's, when the Supervisor opened it) with an owner request by the closer naming the ticket, the fix or answer and what it
