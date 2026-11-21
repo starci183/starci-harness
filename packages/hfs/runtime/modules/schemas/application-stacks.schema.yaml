@@ -1029,6 +1029,9 @@ $defs:
             propertyNames: {$ref: '#/$defs/deployKey'}
             additionalProperties: {type: string}
           sealed: {$ref: '#/$defs/deployMemberKeys'}
+      runtimePublicEnv:
+        description: 'One image per sha: true keeps the NEXT_PUBLIC_* keys of buildArgs out of the build (images.yml, stack build-args) and the deploy passes them to this service as runtime environment, which the app reads through @starci/next-data publicEnv (window.__ENV). Default false: built in, as before.'
+        type: boolean
   deploySecrets:
     type: object
     additionalProperties: false

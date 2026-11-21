@@ -969,6 +969,40 @@ marked required, renders without its key while the member is not sealed yet (`ST
 can land before the owner seals the key. The block, the catalog, the key's custody and the capacity check are in
 [shared-services.md](shared-services.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).
 
+## PROJECT-STACKS-22 One web image per sha; its public config is read at runtime
+
+The owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?" (one image, configured per environment). A front end is built once per commit,
+and the same digest goes from staging to production; only its environment differs. Next.js inlines every `process.env.NEXT_PUBLIC_*` read at
+build time, so a public URL passed as a build argument ties the image to the environment it was built for. An image entry opts out of that
+with `runtimePublicEnv: true`:
+
+```yaml
+environments:
+  production:
+    deploy:
+      images:
+        web:
+          app: web
+          runtimePublicEnv: true          # NEXT_PUBLIC_* below reach the service at runtime, not the build
+          buildArgs:
+            values: {NEXT_PUBLIC_API_URL: "https://api.example.com"}
+            sealed: {member: web, keys: [NEXT_PUBLIC_MAPS_KEY]}
+```
+
+- **Build.** The NEXT_PUBLIC_* keys of `buildArgs` (literal and sealed) are left out of the build: `starci app stack build-args` prints the
+  other keys only, `stack build` passes the same, and images.yml (rendered by sync) builds the image in the public `image` job with no build
+  values, no GitHub Environment and no secret when nothing else is left. The image is pushed under `sha-<sha>` on every pushed run, not only
+  on a release.
+- **Deploy.** The render (`stack render` / `stack deploy`) sets those keys as the service's environment, the sealed ones opened from their
+  member like any setting; `deploy.environment.<service>` wins over them for a key both name, and a changed value changes the release's
+  `configDigest`. The keys stay declared under `buildArgs`, so R300 (`FE_PUBLIC_BUILD_ARG_MISSING`) still reads them.
+- **App.** The server renders an allowlist of `NEXT_PUBLIC_*` keys into `window.__ENV` and the client reads them through one module,
+  `createPublicEnv` of `@starci/next-data` ([its README](../../packages/next-data/README.md)); the root layout renders per request, so the
+  script carries the runtime environment, not the build's. Only public keys: the allowlist refuses any name that is not `NEXT_PUBLIC_*`, and
+  a secret stays a grant (PROJECT-STACKS-5).
+- Without the declaration nothing changes: the values are build arguments of the release environment, as before. Apps adopt it in their own
+  lanes, each moving its `process.env.NEXT_PUBLIC_*` reads to `publicEnv(key)` first.
+
 ## PROJECT-STACKS-18 Moving a stack to new runtime names: standby, copy, adopt
 
 A Swarm stack whose runtime names change (the stack, its volumes, its releases base and so its secrets, overlay and router names) moves in one

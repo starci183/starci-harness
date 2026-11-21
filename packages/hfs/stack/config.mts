@@ -20,7 +20,8 @@ export type SealedRemote = SealedRoles;
 export interface DeployRemote { host: string; releasesBase: string | null; sealed: SealedRemote | null; serverRecipient: string | null }
 export interface BuildArgsSealed { member: string; keys: string[] }
 export interface BuildArgsBlock { values: Record<string, string>; sealed: BuildArgsSealed | null }
-export interface ImageEntry { app: string; buildArgs: BuildArgsBlock }
+/** `runtimePublicEnv` (one image per sha): the NEXT_PUBLIC_* build values move to the service's runtime environment; absent unless declared. */
+export interface ImageEntry { app: string; buildArgs: BuildArgsBlock; runtimePublicEnv?: true }
 /** `optional`: an explicit `required: false`, whose member may not be sealed yet (the render then leaves the source out, `pending`). */
 export interface SecretSource { member: string; keys: string[] | null; required: boolean; fill: boolean; optional?: true }
 export interface SecretGrant { service: string; filePointers: boolean; from: SecretSource[] }

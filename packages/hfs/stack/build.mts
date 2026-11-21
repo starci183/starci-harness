@@ -16,6 +16,7 @@ import type { RunResult, StackContext } from './context.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import { requireAgeIdentity } from './sealed.mjs';
+import { buildTimeArgs } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { scanImage } from './image-scan.mjs';
 import type { ImageScan } from './image-scan.mjs';
 
@@ -76,13 +77,16 @@ async function argsOf(ctx: StackContext, config: DeployConfig, app: string, hasB
   return result.lines.map((line) => BUILD_ARG.exec(line)).filter((match): match is RegExpExecArray => match !== null).map((match): [string, string] => [match[1] as string, match[2] as string]);
 }
 
+/** Whether the image is built with any value (`runtimePublicEnv: true` leaves its NEXT_PUBLIC_* keys to the runtime). */
+const hasBuildTimeArgs = (entry: DeployConfig['images'][string]): boolean => { const args = buildTimeArgs(entry); return Object.keys(args.values).length > 0 || args.sealed !== null; };
+
 function plan(config: DeployConfig, { sha, owner }: { sha: string; owner: string }): PlanItem[] {
   return Object.entries(config.images).map(([service, entry]) => ({
     service,
     app: entry.app,
     dockerfile: dockerfileOf(config, entry.app),
     ref: `${config.registry.host}/${owner}/${config.project}-${entry.app}:${sha}`,
-    hasBuildArgs: Object.keys(entry.buildArgs.values).length > 0 || entry.buildArgs.sealed !== null,
+    hasBuildArgs: hasBuildTimeArgs(entry),
   }));
 }
 
@@ -175,7 +179,7 @@ export async function buildImages(ctx: StackContext, config: DeployConfig, { pus
     const scan = config.registry.visibility === 'public' ? ', scan for secret material' : '';
     return { ok: true, lines: [...lines, `dry run: would build${scan}${push ? ' and push' : ' (local only, no digest without --push)'}; nothing was built`], data: { tag: release.tag, images: {} } };
   }
-  if (items.some((item) => config.images[item.service]?.buildArgs.sealed !== null)) requireAgeIdentity(ctx, config, 'build');
+  if (items.some((item) => { const entry = config.images[item.service]; return entry !== undefined && buildTimeArgs(entry).sealed !== null; })) requireAgeIdentity(ctx, config, 'build');
   const images: Record<string, string> = {};
   for (const item of items) {
     const outcome = processImage(ctx, config, item, await argsOf(ctx, config, item.app, item.hasBuildArgs), { push });

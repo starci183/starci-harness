@@ -120,6 +120,13 @@ with the job's `GITHUB_TOKEN` and `packages: write`):
   the manifest says `ci.imageCache: registry` (several large Next.js images can exceed the repository's Actions cache);
 - the job's outputs are `<service>=<repo>@sha256:<digest>` per image, the only form the deploy accepts.
 
+**One image per sha, configured at runtime.** The owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?". The digest a release
+record names is the same in staging and production; only the environment differs. Next.js inlines `NEXT_PUBLIC_*` reads at build time,
+so an image whose `deploy.images.<service>` declares `runtimePublicEnv: true` is built without its NEXT_PUBLIC_* build values (images.yml's
+public `image` job, no environment, no secret when no other key is left) and the deploy passes them to the service as runtime
+environment, where the app's server renders them into `window.__ENV` and the client reads `publicEnv(key)` (`@starci/next-data`).
+An image without the declaration is built with the release environment's values, as before ([stacks.md](stacks.md) PROJECT-STACKS-22).
+
 Pushing before the checks are green is deliberate (the owner's order: build, push, all pass, deploy): an image under
 `sha-<sha>` is immutable and inert until a release record names it. On a pull request the images build with
 `push: false` and no attestations.

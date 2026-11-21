@@ -15,6 +15,9 @@ The data helpers of a StarCi Next.js front end over SWR: pure logic, two middlew
 | `skeletonGate(timing?)` | SWR middleware: every response gains `showSkeleton`, its `isLoading` through the gate (`SkeletonGatedResponse`). Listed once in the `use` of the app's `SWRConfig` |
 | `timedFetcher(fetcher, { route?, sink? })` | wraps a fetcher so each call reports `{ route, ms, ok }` to `sink`, the input of per-route p50/p75/p95 load times. Off by default: with no sink the fetcher comes back unchanged. `route` defaults to `defaultFetchRoute` (a string key, or the first string of an array key); a throwing sink never fails the read. No network sink ships here |
 
+| `createPublicEnv(keys, fallback?)` | the one public-config module of an app (one image per sha, configured per environment at runtime): `publicEnv(key)` reads `window.__ENV`, then the server's runtime `process.env` (a computed read Next never inlines), then `fallback` (the build or dev values, written out as `process.env.NEXT_PUBLIC_X` so Next inlines them); `scriptProps({ nonce? })` and `script()` render the allowlisted runtime values into `window.__ENV`. A key outside the allowlist reads as undefined |
+| `publicEnvScript(keys, source?)`, `publicEnvScriptProps(keys, { source?, nonce? })`, `pickPublicEnv`, `readPublicEnv`, `serializePublicEnv`, `checkPublicEnvKeys` | the pure parts: the allowlist holds `NEXT_PUBLIC_*` names only (any other name throws, so a secret never reaches the page), the values are frozen, and the JSON escapes `<`, `>`, `&`, U+2028 and U+2029 so a value cannot close the script |
+
 ## In an app
 
 ```tsx
@@ -41,6 +44,23 @@ export const useWorkspaceKey = <Rest extends readonly (string | null)[]>(name: s
 // a read draws from showSkeleton, not isLoading; its fetcher, wrapped once at module scope, reports load times when a sink is given
 const fetchLeadsTimed = timedFetcher(fetchLeads, { sink: recordSample })
 const { data, showSkeleton } = useSWR(key, fetchLeadsTimed) as SkeletonGatedResponse<Lead[]>
+```
+
+Public config read at runtime, so one image serves staging and production (the deploy passes the values to the service, `runtimePublicEnv: true` in the stack declaration):
+
+```tsx
+// lib/public-env.ts: the one module every read goes through; the fallback is what dev and an unconfigured build see
+export const { publicEnv, scriptProps } = createPublicEnv(["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_SITE_URL"], {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+})
+
+// app/layout.tsx: rendered per request (a static layout would freeze the build's values into the HTML)
+export const dynamic = "force-dynamic"
+<head><script {...scriptProps({ nonce })} /></head>
+
+// anywhere, server or client
+const api = publicEnv("NEXT_PUBLIC_API_URL")
 ```
 
 The package pins no SWR or React: `swr` (>= 2) and `react` (>= 18) are peers, the versions of the app's stack.

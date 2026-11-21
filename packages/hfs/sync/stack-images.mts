@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { DECLARATION } from './sonar-key.mjs';
+import { buildTimeArgs } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { declaredBasePort, declaredGalleryHosts } from '../runtime/scripts/hfs/gallery.mjs';
 
@@ -34,12 +35,18 @@ const hasBuildArgs = (args: unknown): boolean => record(args) && (Object.keys(re
 const PLATFORM = /^linux\/(?:amd64|arm64)$/u;
 const DEFAULT_PLATFORMS = ['linux/amd64'];
 
+/** One image per sha: an image with `runtimePublicEnv: true` builds without its NEXT_PUBLIC_* values (the deploy passes them at runtime). */
+function buildTimeFlags(entry: Declaration): { buildArgs: boolean; sealed: boolean } {
+  const args: unknown = buildTimeArgs(entry);
+  return { buildArgs: hasBuildArgs(args), sealed: record(args) && record(args.sealed) };
+}
+
 function environmentImages(environment: Declaration): StackImage[] {
   const images = environment?.deploy?.images;
   if (!record(images)) return [];
   return Object.entries(images)
     .filter(([service, entry]) => NAME.test(service) && record(entry) && NAME.test(String(entry.app)))
-    .map(([service, entry]) => ({ service, app: entry.app, buildArgs: hasBuildArgs(entry.buildArgs), sealed: record(entry.buildArgs) && record(entry.buildArgs.sealed) }));
+    .map(([service, entry]) => ({ service, app: entry.app, ...buildTimeFlags(entry) }));
 }
 
 /**

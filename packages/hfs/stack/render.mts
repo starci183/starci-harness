@@ -2,7 +2,8 @@
 // `<KEY>_FILE` pointers and the versioned secret grants) resolved by `docker stack config`. Writes `stack.generated.yaml`, `stack.yaml`
 // and `release.json` under the output directory, and nothing at all when a guard refuses. Output carries names and counts only; the
 // docker child gets a minimal environment, never the age identity or DOCKER_HOST. The override mirrors the source's compose version:
-// Docker's legacy stack loader refuses mixed versions across its input files.
+// Docker's legacy stack loader refuses mixed versions across its input files. An image with `runtimePublicEnv: true` gets its NEXT_PUBLIC_* build
+// values as runtime environment here (one image per sha; the build left them out), under what deploy.environment declares for that service.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +17,8 @@ import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isImageReference, isReleaseId } from './digest.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
-import { configObjects, loadSealed, sha } from './sealed.mjs';
+import { configObjects, loadSealed, openMember, sha } from './sealed.mjs';
+import { runtimePublicArgs } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import type { ConfigObject, LoadedSealed } from './sealed.mjs';
 
 /** What `render` takes. */
@@ -43,6 +45,7 @@ const SOURCE_SHA = /^[0-9a-f]{7,64}$/u;
 const ENV_LINE = /^([A-Z][A-Z0-9_]*)=(.*)$/u;
 const BASE_ENV = ['PATH', 'HOME', 'USERPROFILE', 'SystemRoot', 'TEMP', 'TMP', 'DOCKER_CONFIG'];
 const SECRET_MODE = 0o444;
+const ONE_LINE = /^[^\r\n]+$/u;
 
 function checkImages(config: DeployConfig, options: RenderOptions): void {
   const wanted = Object.keys(config.images);
@@ -149,10 +152,29 @@ export function edgeLabels(edge: SharedEdge, service: string, stack: string): st
   return labels;
 }
 
-function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, service: string, joinsDefault: boolean): ServiceOverride {
+/** Per service, the NEXT_PUBLIC_* values (literal, then the sealed member's) of each image with `runtimePublicEnv: true`; empty without the opt-in. */
+type RuntimePublic = Record<string, Record<string, string>>;
+
+function runtimePublicEnvironment(ctx: StackContext, config: DeployConfig): RuntimePublic {
+  const out: RuntimePublic = {};
+  for (const [service, entry] of Object.entries(config.images)) {
+    const args = runtimePublicArgs(entry);
+    const opened = args.sealed === null ? {} : openMember(ctx, config, args.sealed.member);
+    const sealedValues = Object.fromEntries((args.sealed?.keys ?? []).map((key) => {
+      const value = opened[key];
+      if (typeof value !== 'string' || !ONE_LINE.test(value)) throw refusal('STACK_BUILD_ARG_INVALID', `${key} must be present and one line`);
+      return [key, value];
+    }));
+    const values = { ...args.values, ...sealedValues };
+    if (Object.keys(values).length > 0) out[service] = values;
+  }
+  return out;
+}
+
+function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, service: string, joinsDefault: boolean, runtimePublic: RuntimePublic): ServiceOverride {
   const edge = config.edge ?? null;
   const grant = config.secrets.grants.find((item) => item.service === service);
-  const environment = plainEnvironment(config, sealed.settings, config.environment[service] ?? { files: [], values: {}, settings: {} });
+  const environment = { ...runtimePublic[service], ...plainEnvironment(config, sealed.settings, config.environment[service] ?? { files: [], values: {}, settings: {} }) };
   const monitoring = config.monitoring ?? null;
   if (monitoring !== null) Object.assign(environment, monitoring.metrics.find((entry) => entry.service === service)?.environment ?? {}, telemetryServices(monitoring).includes(service) ? telemetryEnvironment(monitoring, service, config.stack, config.env) : {});
   const shared = config.sharedServices ?? [];
@@ -185,7 +207,7 @@ function onDefaultNetwork(config: DeployConfig): Set<string> {
   return new Set(Object.entries<{ networks?: unknown }>(services).filter(([, service]) => service?.networks === undefined).map(([name]) => name));
 }
 
-function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, version: unknown): Record<string, unknown> {
+function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, version: unknown, runtimePublic: RuntimePublic = {}): Record<string, unknown> {
   const edge = config.edge ?? null;
   const monitoring = config.monitoring ?? null;
   const shared = config.sharedServices ?? [];
@@ -197,7 +219,7 @@ function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Recor
   const source = monitoring === null || sidecars.size === 0 ? null : readYaml(config.stackFile, 'the stack source');
   const overrideOf = (service: string): unknown => {
     const sidecar = sidecars.get(service);
-    const own = serviceOverride(config, sealed, images, service, unnamed.has(service));
+    const own = serviceOverride(config, sealed, images, service, unnamed.has(service), runtimePublic);
     return sidecar === undefined || monitoring === null ? own : { ...sidecarService(sidecar, monitoring, config.stack, source), ...(own.secrets === undefined ? {} : { secrets: own.secrets }) };
   };
   return {
@@ -227,10 +249,11 @@ function dockerRender(ctx: StackContext, config: DeployConfig, overrideFile: str
   return escapeDollar(run.stdout);
 }
 
-function releaseRecord(ctx: StackContext, config: DeployConfig, parts: { sealed: LoadedSealed; configs: ConfigObject[]; options: RenderOptions; stackBytes: string; env: NodeJS.ProcessEnv }) {
-  const { sealed, configs, options, stackBytes, env } = parts;
+function releaseRecord(ctx: StackContext, config: DeployConfig, parts: { sealed: LoadedSealed; configs: ConfigObject[]; options: RenderOptions; stackBytes: string; env: NodeJS.ProcessEnv; runtimePublic: RuntimePublic }) {
+  const { sealed, configs, options, stackBytes, env, runtimePublic } = parts;
   const passed = Object.fromEntries(config.passEnv.map((name) => [name, env[name]]));
-  const digestInput = { environment: config.environment, settings: Object.entries(sealed.settings).sort(([a], [b]) => a.localeCompare(b)), configs: configs.map((item) => item.name), passed };
+  // A changed runtime public value is a changed release; without the opt-in the digest input is what it was.
+  const digestInput = { environment: config.environment, settings: Object.entries(sealed.settings).sort(([a], [b]) => a.localeCompare(b)), configs: configs.map((item) => item.name), passed, ...(Object.keys(runtimePublic).length === 0 ? {} : { runtimePublic }) };
   return {
     schema: 'starci/stack-release@1',
     stack: config.stack,
@@ -267,14 +290,15 @@ export async function renderRelease(ctx: StackContext, config: DeployConfig, opt
   checkComposeVersions(sourceVersion, options.extraCompose ?? []);
   const sealed = loadSealed(ctx, config);
   const configs = configObjects(config);
-  const override = buildOverride(config, sealed, options.images ?? {}, sourceVersion);
+  const runtimePublic = runtimePublicEnvironment(ctx, config);
+  const override = buildOverride(config, sealed, options.images ?? {}, sourceVersion, runtimePublic);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'stack-override-'));
   try {
     const overrideFile = path.join(scratch, 'stack.generated.yaml');
     fs.writeFileSync(overrideFile, `${JSON.stringify(override, null, 2)}\n`);
     const env = minimalEnv(ctx, config, configs);
     const stackBytes = dockerRender(ctx, config, overrideFile, options, env);
-    const release = releaseRecord(ctx, config, { sealed, configs, options, stackBytes, env });
+    const release = releaseRecord(ctx, config, { sealed, configs, options, stackBytes, env, runtimePublic });
     const out = options.out ?? fs.mkdtempSync(path.join(os.tmpdir(), 'stack-render-'));
     writeOutput(out, override, stackBytes, release);
     const releaseId = release.releaseDigest.slice(0, 16);
