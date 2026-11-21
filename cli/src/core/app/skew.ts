@@ -116,4 +116,4 @@ export const runSkew = (verb: HfsVerb, root: string): Skew | null => {
 
 
 /** Whether a forwarded argv of `verb` writes into the app (the writes a skewed CLI refuses): `sync --execute`, `check --fix`. */
-export const writes = (verb: HfsVerb, args: readonly string[]): boolean => (verb === "sync" && args.includes("--execute")) || (verb === "check" && args.includes("--fix")) || (verb === "uiaudit" && args[0] === "run") || (verb === "gallery" && args.includes("--execute"))
+export const writes = (verb: HfsVerb, args: readonly string[]): boolean => (verb === "sync" && args.includes("--execute")) || (verb === "check" && args.includes("--fix")) || (verb === "uiaudit" && (args[0] === "run" || args[0] === "cycle")) || (verb === "gallery" && args.includes("--execute"))

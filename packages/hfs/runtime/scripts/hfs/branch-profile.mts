@@ -15,7 +15,7 @@ import { findStackDeclaration, optionalGatePolicy, profileFor, profilePolicy, re
  */
 export interface ActiveProfile { branch: string | null; source: string; profile: string | null; modes: Record<ProfileGate, GateMode>; declaredOff: Partial<Record<ProfileGate, string>> }
 
-const FULL_GATE: Record<ProfileGate, GateMode> = Object.freeze({ hfs: 'blocking', format: 'blocking', db: 'blocking', secrets: 'blocking', wiring: 'blocking', types: 'blocking', lint: 'blocking', test: 'blocking', sonar: 'blocking', codecov: 'blocking', build: 'blocking', audit: 'blocking', checks: 'blocking', coverage: 'blocking', deps: 'blocking', uiaudit: 'blocking' });
+const FULL_GATE: Record<ProfileGate, GateMode> = Object.freeze({ hfs: 'blocking', format: 'blocking', db: 'blocking', secrets: 'blocking', wiring: 'blocking', types: 'blocking', lint: 'blocking', test: 'blocking', sonar: 'blocking', codecov: 'blocking', build: 'blocking', audit: 'blocking', checks: 'blocking', coverage: 'blocking', deps: 'blocking' });
 const set = (value: string | undefined): string | null => (value !== undefined && value.trim() !== '' ? value.trim() : null);
 
 /** The branch a run judges and how it was chosen: a pull request into `defaultBranch` is judged as the default branch. */

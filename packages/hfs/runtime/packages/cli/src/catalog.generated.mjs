@@ -801,8 +801,20 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "cycle": {
+          "summary": "close a gallery screen's UI audit cycle into its screen.yaml `considered` (the reason, the rounds and their dates, the last verdict of each lens, builder and auditor; the rounds stay in git history) and start an empty audit, so the next `starci audit run` prepares round 1 of a new cycle; the lawful way back to a screen after its round 4 (audit rounds are evidence, never a gate)",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        },
         "status": {
-          "summary": "list the gallery screens whose UI audit is missing, stale, pending, open or waiting for the owner, with the count of audited and grandfathered screens (--json for machines)",
+          "summary": "list the gallery screens whose UI audit is pending, open, stale or past its round 4, with the count of audited and not yet audited screens (--json for machines); evidence for the builder, never a gate",
           "flags": [],
           "positional": [
             {

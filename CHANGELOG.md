@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.188 - 2026-11-21
+
+- Added: `starci audit cycle <area>/<screen> --reason <why>` (@starci/hfs 6.18.0): close a gallery screen's UI audit cycle into its screen.yaml `considered` and open a new one.
+- Changed (contexts/project/gallery.md PROJECT-GALLERY-8, ops/ops/code.md, ops/ops/inspect.md, skills/claude-design): the UI audit is evidence, never a gate, with the owner's words of 2026-11-21. Only a malformed screen.yaml fails a check (HFS_APP_GALLERY_SCREEN_INVALID); the `uiaudit` gate and its UI_AUDIT_* codes are gone from the rule catalog.
+
 ## 1.1.0-alpha.187 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.17.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

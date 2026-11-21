@@ -3623,97 +3623,10 @@ HFS_APP_GALLERY_SCREEN_INVALID:
   meaning_vi: "screen.yaml của màn hình sai khuôn (thiếu khóa bắt buộc, sai id, ảnh, section hoặc considered)."
   causes_vi:
     - "Vi phạm PROJECT-GALLERY-8: screen.yaml thay explain.md và audit.json, phải đủ schema, screen, title, route, area, summary, code, shots, sections, considered, audit."
-  nextStep_vi: "Mở tệp, sửa theo danh sách lỗi của finding; `starci audit run <màn>` ghi lại khung chuẩn."
+    - "Khối audit sai khuôn: mỗi vòng đủ bảy lens (order, layout, actionable, live, words, states, truth), verdict pass, fixed hoặc open, fixed/open có notes, n liên tiếp, at là ISO có múi giờ. Đây là kiểm tra duy nhất còn lại của UI audit (chủ sản phẩm, 2026-11-21): kết quả audit là bằng chứng, không chặn."
+  nextStep_vi: "Mở tệp, sửa theo danh sách lỗi của finding; `starci audit run <màn>` ghi lại khung chuẩn, `starci audit cycle <màn> --reason <lý do>` mở chu kỳ mới."
   owner: op-retry
   kind: check-finding
-
-UI_AUDIT_MISSING:
-  title: "A touched screen has no UI audit"
-  title_vi: "màn hình có mã đổi nhưng chưa có audit"
-  meaning_vi: "màn hình có mã đổi nhưng chưa có audit."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: màn hình đổi mã (hoặc đang sửa audit) so với nhánh gốc mà screen.yaml có audit: null hoặc chưa có."
-  nextStep_vi: "Chạy `starci audit run <màn>`, giao brief cho một auditor khác người dựng, sửa theo vòng, chụp lại."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_INVALID:
-  title: "The audit block of a screen.yaml is malformed"
-  title_vi: "khối audit trong screen.yaml sai khuôn"
-  meaning_vi: "khối audit trong screen.yaml sai khuôn."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: mỗi vòng đủ bảy lens (order, layout, actionable, live, words, states, truth) với verdict pass, fixed hoặc open; fixed/open phải có notes; n liên tiếp; tối đa 4 vòng."
-  nextStep_vi: "Sửa theo danh sách lỗi của finding."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_STALE:
-  title: "The audit is of an older screen"
-  title_vi: "audit không còn khớp màn hình (ảnh khác sha, hoặc mã đổi mà screen.yaml không đổi)"
-  meaning_vi: "audit không còn khớp màn hình (ảnh khác sha, hoặc mã đổi mà screen.yaml không đổi)."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: sha256 ảnh trong screen.yaml khác ảnh hiện có, chưa ghi sha, hoặc mã màn hình đổi sau lần audit."
-  nextStep_vi: "Chụp lại 1440 và 390, chạy `starci audit run <màn>` để ghi sha mới và mở vòng kế tiếp."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_SELF_REVIEW:
-  title: "The auditor is the builder"
-  title_vi: "auditor trùng với người dựng"
-  meaning_vi: "auditor trùng với người dựng."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: người dựng không tự audit; auditor phải là agent khác."
-  nextStep_vi: "Giao vòng audit cho một agent khác và ghi audit.auditor.agent."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_ROUNDS_FEW:
-  title: "The audit has fewer than two rounds"
-  title_vi: "audit chưa đủ 2 vòng"
-  meaning_vi: "audit chưa đủ 2 vòng."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: ít nhất 2 vòng: vòng 1 tìm lỗi, sửa, vòng 2 kiểm lại."
-  nextStep_vi: "Chạy `starci audit run <màn>` để mở vòng kế tiếp."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_OPEN:
-  title: "A lens is still open in the last round"
-  title_vi: "vòng audit cuối còn lens open"
-  meaning_vi: "vòng audit cuối còn lens open."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: vòng cuối phải không còn lens nào open."
-  nextStep_vi: "Sửa màn hình, chụp lại, chạy `starci audit run <màn>` cho vòng kế tiếp."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_NEEDS_OWNER:
-  title: "A lens is still open after round four"
-  title_vi: "còn lens open sau vòng 4, cần chủ sản phẩm quyết"
-  meaning_vi: "còn lens open sau vòng 4, cần chủ sản phẩm quyết."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: sau 4 vòng vẫn open thì không tự qua; cổng giữ đỏ."
-  nextStep_vi: "Ghi audit.escalate với lý do và báo chủ sản phẩm; chỉ lời của chủ sản phẩm mới đóng được."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
-UI_AUDIT_CONSIDERED_EMPTY:
-  title: "The screen records no option considered"
-  title_vi: "màn hình chưa ghi phương án đã cân nhắc"
-  meaning_vi: "màn hình chưa ghi phương án đã cân nhắc."
-  causes_vi:
-    - "Vi phạm PROJECT-GALLERY-8: considered phải liệt kê từng phương án đã cân nhắc, được chọn hay bị loại và vì sao."
-  nextStep_vi: "Điền considered trong screen.yaml."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
 
 HFS_APP_LAYOUT_INVALID:
   title: "App directory layout invalid"

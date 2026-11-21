@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|uiaudit|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mts, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -154,7 +154,6 @@ import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
-import { runUiAuditFamily } from '../cache/uiaudit-family.mjs';
 import { CACHE_DIR, FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
 import { SECRET_CODES as SECRET_CODE_LIST } from '../cache/hfs-family.mjs';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } from '../report/sonar.mjs';
@@ -319,7 +318,7 @@ const VERB_USAGE: Record<string, string[]> = {
   data: [...DATA_USAGE],
   coverage: COVERAGE_USAGE.replace(/^usage: /, '').split(' | ').map((text) => text.replace(' [--cwd <dir>]', '')),
   audit: [AUDIT_USAGE.replace(/^usage: /, '').replace(' [--cwd <dir>]', '')],
-  uiaudit: ['starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]', 'starci app uiaudit status [--json]'],
+  uiaudit: ['starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]', 'starci app uiaudit cycle <area>/<screen> --reason <why>', 'starci app uiaudit status [--json]'],
   gallery: ['starci app gallery migrate-explain [--execute]'],
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
@@ -552,7 +551,6 @@ const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shar
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
   const code = finding.code ?? '';
-  if (/^UI_AUDIT_/u.test(code)) return 'uiaudit';
   if (finding.engine === 'build' || finding.engine === 'audit' || finding.engine === 'sonar') return finding.engine;
   if (finding.engine === 'eslint' || finding.engine === 'stylelint') return 'lint';
   if (code === 'HFS_FORMAT') return 'format';
@@ -575,7 +573,7 @@ async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string
 const linterOf = (io: AppIo, execute: HeavyNodeRun | undefined): LinterRunner => io.runLinter ?? ((spec) => nativeLinter(spec, execute));
 
 /** The family whose report a step's reused and checked counts are, for the steps table; none for a step that reads the results of others. */
-const FAMILY_OF_STEP: Partial<Record<StepId, FamilyId>> = { test: 'test', types: 'types', lint: 'lint', wiring: 'wiring', hfs: 'hfs', format: 'format', db: 'db', audit: 'audit', build: 'build', sonar: 'sonar', uiaudit: 'uiaudit' };
+const FAMILY_OF_STEP: Partial<Record<StepId, FamilyId>> = { test: 'test', types: 'types', lint: 'lint', wiring: 'wiring', hfs: 'hfs', format: 'format', db: 'db', audit: 'audit', build: 'build', sonar: 'sonar' };
 
 /** The refusals of a host that held a step's child: the run they end has no verdict, so they end it before any other failure. */
 const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
@@ -677,14 +675,6 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     // A whole run also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof.
     if (whole && modes.coverage !== 'off') bodies.set('coverage', async () => { if (tests?.result?.lcov !== undefined && tests.findings.length === 0) found.set('coverage', await coverageParity(repoRoot, tests.result.lcov)); });
   }
-  if (session !== undefined && selected.has('uiaudit')) {
-    bodies.set('uiaudit', async () => {
-      const uiBase = landingBase(repoRoot, io.env, profile.branch).base;
-      const audited = runUiAuditFamily(session, { repoRoot, changed: changedSince(repoRoot, uiBase), base: uiBase });
-      found.set('uiaudit', withWhy(audited.findings as Dynamic[], readWhy(skillRoot, [...new Set(audited.findings.map((finding) => String(finding.code)))])));
-      said.set('uiaudit', audited.lines);
-    });
-  }
   for (const family of ['audit', 'build'] as const) {
     if (session === undefined || !selected.has(family)) continue;
     bodies.set(family, async (step) => {
@@ -743,7 +733,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (ending !== undefined) throw ending.error;
   const linted = eslint as CachedLinters['eslint'] | null;
   const extra: Dynamic[] = CHECK_GRAPH.flatMap((spec) => found.get(spec.id) ?? []);
-  const lines: string[] = ['checks', 'uiaudit', 'sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
+  const lines: string[] = ['checks', 'sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));

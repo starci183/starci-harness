@@ -67,7 +67,7 @@ export function declaredStack(entry: unknown): DeclaredStack | null {
  * mode of their own: `checks` (the project's own ext checks, inside the hfs run), `coverage` (the per-file threshold proof, inside the test run) and `deps`
  * (`starci deps check`, the pre-push pin check).
  */
-export const PROFILE_GATES = Object.freeze(['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'codecov', 'build', 'audit', 'checks', 'coverage', 'deps', 'uiaudit'] as const);
+export const PROFILE_GATES = Object.freeze(['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'codecov', 'build', 'audit', 'checks', 'coverage', 'deps'] as const);
 /** One gate a branch profile names. */
 export type ProfileGate = (typeof PROFILE_GATES)[number];
 /** The polish gates, the only ones a branch profile may lower; every other gate (hfs, types, wiring, db, secrets, format, test) blocks on every branch. */
@@ -138,7 +138,7 @@ export function profileFor(profiles: BranchProfiles['profiles'], branch: string)
  * `hfs` (structure, slots, stacks, naming, managed-file drift, the bypass markers, the project ext rules), `secrets` (the secret scan and the sealed-secret custody) and `db` (the
  * migration shape, sealing and row-level-security rules). Every other gate is the app's own to run or not.
  */
-export const HFS_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(['hfs', 'secrets', 'db', 'uiaudit']));
+export const HFS_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(['hfs', 'secrets', 'db']));
 /** The gates an app may switch off for the whole app: every gate that is not an hfs gate. */
 export const OPTIONAL_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(PROFILE_GATES.filter((gate) => !HFS_GATES.has(gate))));
 /**

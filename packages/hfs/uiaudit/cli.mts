@@ -1,7 +1,9 @@
-// cli.mts - `starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`, `starci app uiaudit status [--json]` and
-// `starci app gallery migrate-explain [--execute]` (reached as `starci audit run`, `starci audit status` and `starci gallery migrate-explain`; contexts/project/gallery.md PROJECT-GALLERY-8).
-// The harness itself never calls a model: `run` prepares the round (the shot hashes taken now, the next round written as a skeleton of seven open lenses in the screen's screen.yaml) and prints the brief
-// an auditor agent, a different agent from the builder, reads and fills; the gate (cache/uiaudit-family.mts) judges what the auditor wrote. `status` lists every screen with its audit state.
+// cli.mts - `starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`, `starci app uiaudit cycle <area>/<screen> --reason <why>`,
+// `starci app uiaudit status [--json]` and `starci app gallery migrate-explain [--execute]` (reached as `starci audit run|cycle|status` and `starci gallery migrate-explain`;
+// contexts/project/gallery.md PROJECT-GALLERY-8). The harness itself never calls a model: `run` prepares the round (the shot hashes taken now, the next round written as a
+// skeleton of seven open lenses in the screen's screen.yaml) and prints the brief an auditor agent, a different agent from the builder, reads and fills. The rounds are evidence
+// for later fixes, never a gate (owner, 2026-11-21): no check judges what the auditor wrote. `cycle` closes a cycle into `considered` and opens the next, the lawful way back
+// after round 4. `status` lists every screen with its audit state.
 // `migrate-explain` turns each explain.md into a screen.yaml (audit: null: the screen is grandfathered until the diff touches it) and deletes the explain.md.
 // Exit 0 done, 1 a screen could not be migrated or prepared, 2 bad usage.
 import fs from 'node:fs';
@@ -10,9 +12,9 @@ import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, resolveScreenRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { cropShots } from '../runtime/scripts/hfs/shot-crops.mjs';
-import { auditBrief, docProblems, LENSES, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { auditBrief, docProblems, LENSES, nextCycle, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 
-export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit status [--json] | starci gallery migrate-explain [--execute]';
+export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit cycle <area>/<screen> --reason <why> | starci audit status [--json] | starci gallery migrate-explain [--execute]';
 
 /** The laws an auditor holds a screen to: where they live in the repository the harness serves. */
 const LAWS = [
@@ -28,12 +30,23 @@ const readText = (file: string): string | null => { try { return fs.readFileSync
 
 interface RunOptions { action: 'run'; screen: string; builder?: string; auditor?: string; out?: string }
 interface StatusOptions { action: 'status'; json: boolean }
+interface CycleOptions { action: 'cycle'; screen: string; reason: string }
 
-function parseAudit(argv: readonly string[]): RunOptions | StatusOptions {
+const SCREEN_ID = /^[a-z0-9-]+\/[a-z0-9-]+$/u;
+
+function parseAudit(argv: readonly string[]): RunOptions | StatusOptions | CycleOptions {
   const [action, ...rest] = argv;
   if (action === 'status') {
     if (rest.some((arg) => arg !== '--json')) throw new Error(USAGE);
     return { action, json: rest.includes('--json') };
+  }
+  if (action === 'cycle') {
+    const at = rest.indexOf('--reason');
+    const reason = at < 0 ? undefined : rest[at + 1];
+    const others = rest.filter((_, index) => index !== at && index !== at + 1);
+    if (reason === undefined || reason.startsWith('--') || reason.trim() === '') throw new Error(`cycle needs --reason <why the screen is looked at again>; ${USAGE}`);
+    if (others.length !== 1 || !SCREEN_ID.test(others[0] as string)) throw new Error(`name the screen as <area>/<screen>; ${USAGE}`);
+    return { action, screen: others[0] as string, reason: reason.trim() };
   }
   if (action !== 'run') throw new Error(USAGE);
   const opts: RunOptions = { action, screen: '' };
@@ -48,7 +61,7 @@ function parseAudit(argv: readonly string[]): RunOptions | StatusOptions {
     else if (opts.screen === '') opts.screen = arg;
     else throw new Error(USAGE);
   }
-  if (!/^[a-z0-9-]+\/[a-z0-9-]+$/u.test(opts.screen)) throw new Error(`name the screen as <area>/<screen>; ${USAGE}`);
+  if (!SCREEN_ID.test(opts.screen)) throw new Error(`name the screen as <area>/<screen>; ${USAGE}`);
   return opts;
 }
 
@@ -79,7 +92,7 @@ export function stateOf(repoRoot: string, folder: string, id: string): { state: 
 
 /** `starci app uiaudit`: run or status. */
 export function uiauditMain(argv: string[], { cwd, stdout, stderr }: Io): number {
-  let opts: RunOptions | StatusOptions;
+  let opts: RunOptions | StatusOptions | CycleOptions;
   try { opts = parseAudit(argv); } catch (error) { stderr(`starci audit: ${(error as Error).message}\n`); return 2; }
   const params = galleryParams();
   if (opts.action === 'status') {
@@ -96,10 +109,20 @@ export function uiauditMain(argv: string[], { cwd, stdout, stderr }: Io): number
   if (text === null) { stderr(`starci audit: ${folder}/${SCREEN_FILE} does not exist: write it (PROJECT-GALLERY-8), or run starci gallery migrate-explain for an explain.md\n`); return 2; }
   const parsed = parseScreen(text, opts.screen);
   if (parsed.value === null || parsed.parseError !== null || parsed.doc.length > 0) { stderr(`starci audit: ${folder}/${SCREEN_FILE} ${parsed.parseError ?? parsed.doc.slice(0, 6).join('; ')}\n`); return 1; }
+  if (opts.action === 'cycle') {
+    const cycled = nextCycle(parsed.value, { reason: opts.reason });
+    if ('error' in cycled) { stderr(`starci audit: ${opts.screen} ${cycled.error}\n`); return 1; }
+    fs.writeFileSync(file, stringifyYaml(cycled.value));
+    stdout(`starci audit: ${opts.screen}: ${cycled.note}\n`);
+    return 0;
+  }
   const disk = shotsOnDisk(cwd, folder);
   const missing = (['1440', '390'] as const).filter((width) => disk[width] === undefined);
   if (missing.length > 0) { stderr(`starci audit: ${folder}/${missing.map((width) => `${width}.png`).join(' and ')} is missing: shoot the screen at 1440 and 390 first, the audit judges the shots\n`); return 2; }
   const next = nextRound(parsed.value, { disk, builder: opts.builder, auditor: opts.auditor, now: new Date().toISOString() });
+  // a closed cycle: nothing written, no brief (the round 4 verdicts never pass to a reshot image)
+  if (next.value === parsed.value) { stderr(`starci audit: ${opts.screen}: ${next.note}
+`); return 0; }
   fs.writeFileSync(file, stringifyYaml(next.value));
   const shotPaths = (['1440', '390'] as const).map((width) => path.join(cwd, ...folder.split('/'), `${width}.png`).replaceAll('\\', '/'));
   const crops = cropShots(path.join(cwd, ...folder.split('/')));

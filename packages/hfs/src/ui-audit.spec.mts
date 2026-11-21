@@ -1,37 +1,20 @@
-// proves: UI_AUDIT_MISSING
-// proves: UI_AUDIT_MISSING
-// proves: UI_AUDIT_INVALID
-// proves: UI_AUDIT_INVALID
-// proves: UI_AUDIT_STALE
-// proves: UI_AUDIT_STALE
-// proves: UI_AUDIT_SELF_REVIEW
-// proves: UI_AUDIT_SELF_REVIEW
-// proves: UI_AUDIT_ROUNDS_FEW
-// proves: UI_AUDIT_ROUNDS_FEW
-// proves: UI_AUDIT_OPEN
-// proves: UI_AUDIT_OPEN
-// proves: UI_AUDIT_NEEDS_OWNER
-// proves: UI_AUDIT_NEEDS_OWNER
-// proves: UI_AUDIT_CONSIDERED_EMPTY
-// proves: UI_AUDIT_CONSIDERED_EMPTY
 // proves: HFS_APP_GALLERY_SCREEN_INVALID
 // proves: HFS_APP_GALLERY_SCREEN_INVALID
-// The UI Audit gate (cache/uiaudit-family.mts, rules/screen-yaml.mts; contexts/project/gallery.md PROJECT-GALLERY-8): a screen the diff touches carries a screen.yaml audit of 2 to 4 rounds of seven lenses by an auditor
-// who is not the builder, on the shots it records, with the options considered; an unchanged screen is grandfathered; `audit run` prepares the next round; `migrate-explain` turns explain.md into screen.yaml.
+// screen.yaml (rules/screen-yaml.mts; contexts/project/gallery.md PROJECT-GALLERY-8): the one check left of the UI audit is that each screen.yaml is well formed, its audit block
+// included (HFS_APP_GALLERY_SCREEN_INVALID). The audit rounds are evidence, never a gate (owner, 2026-11-21): no finding for open lenses, the round count or shots drifted since.
+// `audit run` prepares the next round and records nothing after a cycle's round 4; `audit cycle` closes a cycle into `considered` and opens the next; `migrate-explain` turns
+// explain.md into screen.yaml.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { starterDeclaration } from '../scaffold/app.mjs';
-import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { appGalleryFindings } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { LENSES, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
-import { uiAuditFindings } from '../cache/uiaudit-family.mjs';
+import { LENSES, parseScreen, screenOfExplain, stringifyYaml } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { galleryMain, uiauditMain } from '../uiaudit/cli.mjs';
 
 const PAGE = 'fe/apps/web/src/app/[locale]/(console)/customers/page.tsx';
@@ -74,82 +57,58 @@ function app(t: TestContext, _edition: string, yaml: string | null): { root: str
   git(root, 'commit', '-q', '-m', 'one');
   return { root, base: git(root, 'rev-parse', 'HEAD').trim() };
 }
-const touchSource = (root: string): void => write(root, FEATURE, 'export const CustomersPage = () => 1\n');
-const codes = (root: string, base: string): string[] => uiAuditFindings({ repoRoot: root, changed: changedSince(root, base), base }).findings.map((finding) => String(finding.code));
 const io = (cwd: string) => { const out: string[] = []; const err: string[] = []; return { out, err, io: { cwd, stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text) } }; };
 
 for (const edition of ['lite'] as const) {
-  test(`an unchanged screen is grandfathered, even with no audit`, (t) => {
-    const { root, base } = app(t, edition, screen({ audit: null }));
-    assert.deepEqual(codes(root, base), []);
-    write(root, 'README.md', 'x');
-    assert.deepEqual(codes(root, base), []);
-  });
-
-  test(`a changed screen with no audit is UI_AUDIT_MISSING, and with an audit but an old screen.yaml it is stale`, (t) => {
-    const bare = app(t, edition, screen({ audit: null }));
-    touchSource(bare.root);
-    assert.deepEqual(codes(bare.root, bare.base), ['UI_AUDIT_MISSING']);
-    const audited = app(t, edition, screen());
-    touchSource(audited.root);
-    assert.deepEqual(codes(audited.root, audited.base), ['UI_AUDIT_STALE']);
-    write(audited.root, `${FOLDER}/screen.yaml`, screen({ summary: 'Danh sách khách hàng, bản mới' }));
-    assert.deepEqual(codes(audited.root, audited.base), []);
-  });
-
-  test(`a catalog over the rule read budget (1 MiB) counts only for the screens that read a changed key`, (t) => {
-    const CATALOG = 'fe/apps/web/src/modules/i18n/messages/vi.json';
-    const catalog = (title: string, other: string): string => {
-      const pad = Object.fromEntries(Array.from({ length: 11000 }, (_, i) => [`k${String(i)}`, 'x'.repeat(100)]));
-      return `${JSON.stringify({ customers: { customersTitle: title }, approvals: { otherNote: other }, pad }, null, 2)}\n`;
-    };
-    const { root } = app(t, edition, screen());
-    // the reach resolves imports with the app's own TypeScript: the fixture borrows this package's, linked (and unlinked before the folder goes)
-    const linked = path.join(root, 'node_modules', 'typescript');
-    fs.mkdirSync(path.dirname(linked), { recursive: true });
-    fs.symlinkSync(path.dirname(createRequire(import.meta.url).resolve('typescript/package.json')), linked, 'junction');
-    try {
-      write(root, '.gitignore', 'node_modules/\n');
-      write(root, CATALOG, catalog('Khách hàng', 'Ghi chú'));
-      write(root, FEATURE, 'import vi from "../../../modules/i18n/messages/vi.json"\nconst KEY = "customers.customersTitle"\nexport const CustomersPage = () => KEY.split(".").reduce((at: any, part) => at[part], vi)\n');
-      write(root, 'fe/apps/web/tsconfig.json', `${JSON.stringify({ compilerOptions: { resolveJsonModule: true, module: 'esnext', moduleResolution: 'bundler', jsx: 'preserve', baseUrl: '.', paths: { '@/*': ['./src/*'] } } })}\n`);
-      git(root, 'add', '-A');
-      git(root, 'commit', '-q', '-m', 'catalog');
-      const base = git(root, 'rev-parse', 'HEAD').trim();
-      assert.ok(fs.statSync(path.join(root, CATALOG)).size > 1024 * 1024);
-      write(root, CATALOG, catalog('Khách hàng', 'Ghi chú mới'));
-      assert.deepEqual(codes(root, base), [], 'a key the screen does not read');
-      write(root, CATALOG, catalog('Mọi khách hàng', 'Ghi chú mới'));
-      assert.deepEqual(codes(root, base), ['UI_AUDIT_STALE'], 'a key the screen reads');
-    } finally {
-      fs.unlinkSync(linked);
-    }
-  });
-
-  test(`shot hashes on disk must match the audited ones; a fresh checkout without PNGs is not judged`, (t) => {
-    const { root, base } = app(t, edition, screen());
-    touchSource(root);
-    write(root, `${FOLDER}/screen.yaml`, screen({ summary: 'mới' }));
-    write(root, `${FOLDER}/1440.png`, 'a');
-    write(root, `${FOLDER}/390.png`, 'b');
-    assert.deepEqual(codes(root, base), []);
-    write(root, `${FOLDER}/390.png`, 'changed');
-    assert.deepEqual(codes(root, base), ['UI_AUDIT_STALE']);
-  });
-
-  test(`builder equal to auditor, fewer than two rounds, open lenses, the fourth round and an empty considered`, () => {
-    const facts = (over: Record<string, unknown>) => judgeAudit({ id: 'customers/list', value: JSON.parse(JSON.stringify({ ...(JSON.parse(JSON.stringify({ audit: null })) as object), ...over })) as Record<string, unknown>, disk: {}, unrecorded: false });
-    const base = { shots: { 1440: { sha256: sha('a') }, 390: { sha256: sha('b') } }, considered: [{ option: 'a', chosen: true, why: 'b' }] };
+  test(`the audit block is part of the screen.yaml schema; what the rounds found is never a finding`, () => {
+    const doc = (audit: unknown) => parseScreen(screen({ audit }), 'customers/list');
     const audit = (rounds: unknown[], auditor = 'lane-b') => ({ builder: { agent: 'Lane-A' }, auditor: { agent: auditor }, rounds, escalate: null });
-    const codesOf = (over: Record<string, unknown>) => facts({ ...base, ...over }).map((finding) => finding.code);
-    assert.deepEqual(codesOf({ audit: audit([round(1), round(2)], ' lane-a ') }), ['UI_AUDIT_SELF_REVIEW']);
-    assert.deepEqual(codesOf({ audit: audit([round(1)]) }), ['UI_AUDIT_ROUNDS_FEW']);
-    assert.deepEqual(codesOf({ audit: audit([round(1), round(2, { states: 'open' })]) }), ['UI_AUDIT_OPEN']);
-    assert.deepEqual(codesOf({ audit: audit([round(1, { states: 'open' }), round(2, { states: 'open' }), round(3, { states: 'open' }), round(4, { states: 'open' })]) }), ['UI_AUDIT_NEEDS_OWNER']);
-    assert.deepEqual(codesOf({ audit: audit([round(1), round(2)]), considered: [] }), ['UI_AUDIT_CONSIDERED_EMPTY']);
-    assert.deepEqual(codesOf({ audit: audit([round(1), round(2), round(3), round(4), round(5)]) }), ['UI_AUDIT_INVALID']);
-    assert.deepEqual(codesOf({ audit: { ...audit([round(1), { n: 2, at: '2026-11-19T12:00:00Z', lenses: { order: { verdict: 'pass' } } }]) } }), ['UI_AUDIT_INVALID']);
-    assert.deepEqual(codesOf({ audit: audit([round(1), round(2)]) }), []);
+    // open lenses, one round, the builder as auditor, five rounds: evidence, the document stays well formed
+    assert.deepEqual(doc(audit([round(1), round(2, { states: 'open' })])).audit, []);
+    assert.deepEqual(doc(audit([round(1)], 'lane-a')).audit, []);
+    assert.deepEqual(doc(audit([round(1), round(2), round(3), round(4), round(5, { states: 'open' })])).audit, []);
+    // a malformed block is not
+    assert.match(doc(audit([round(1), { n: 2, at: '2026-11-19 12:00:00', lenses: { order: { verdict: 'pass' } } }])).audit.join('; '), /at is not an ISO timestamp/);
+    assert.match(doc({ builder: { agent: 'a' }, rounds: 'x' }).audit.join('; '), /auditor\.agent is missing/);
+  });
+
+  test(`a malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID; open lenses are not`, (t) => {
+    const bad = app(t, edition, screen({ audit: { builder: { agent: 'a' }, auditor: { agent: 'b' }, rounds: [{ n: 1, at: 'yesterday', lenses: {} }], escalate: null } }));
+    const declared = JSON.parse(fs.readFileSync(path.join(bad.root, 'hfs.json'), 'utf8')) as { kind?: string };
+    const codesOf = (root: string) => appGalleryFindings({ repoRoot: root, repo: { ...declared, kind: 'app', edition } as never, isRoot: true, all: [] }).map((finding) => String(finding.code));
+    assert.ok(codesOf(bad.root).includes('HFS_APP_GALLERY_SCREEN_INVALID'));
+    const open = app(t, edition, screen({ audit: { builder: { agent: 'a' }, auditor: { agent: 'a' }, rounds: [round(1, { layout: 'open' })], escalate: null } }));
+    assert.ok(!codesOf(open.root).includes('HFS_APP_GALLERY_SCREEN_INVALID'), codesOf(open.root).join(','));
+  });
+
+  test(`audit run records nothing after a cycle's round 4; audit cycle closes it into considered and run opens round 1`, (t) => {
+    const four = [round(1, { layout: 'open' }), round(2, { layout: 'open' }), round(3, { layout: 'open' }), round(4, { layout: 'open' })];
+    const { root } = app(t, edition, screen({ audit: { builder: { agent: 'lane-a' }, auditor: { agent: 'lane-b' }, rounds: four, escalate: 'needs owner: layout' } }));
+    write(root, `${FOLDER}/1440.png`, 'new-wide');
+    write(root, `${FOLDER}/390.png`, 'new-narrow');
+    const file = path.join(root, FOLDER, 'screen.yaml');
+    const before = fs.readFileSync(file, 'utf8');
+    const capped = io(root);
+    assert.equal(uiauditMain(['run', 'customers/list'], capped.io), 0, capped.err.join(''));
+    assert.equal(fs.readFileSync(file, 'utf8'), before, 'a closed cycle keeps the shots its last round judged');
+    assert.match(capped.err.join(''), /starci audit cycle/);
+    const usage = io(root);
+    assert.equal(uiauditMain(['cycle', 'customers/list'], usage.io), 2, 'cycle needs a reason');
+    const cycled = io(root);
+    assert.equal(uiauditMain(['cycle', 'customers/list', '--reason', 'layout fixed after round 4'], cycled.io), 0, cycled.err.join(''));
+    const reopened = fs.readFileSync(file, 'utf8');
+    assert.match(reopened, /layout fixed after round 4/);
+    assert.match(reopened, /ran 4 rounds/);
+    assert.match(reopened, /layout open/);
+    assert.match(reopened, /rounds: \[\]/);
+    const next = io(root);
+    assert.equal(uiauditMain(['run', 'customers/list'], next.io), 0, next.err.join(''));
+    const opened = fs.readFileSync(file, 'utf8');
+    assert.match(opened, new RegExp(sha('new-wide')));
+    assert.match(opened, /n: 1/);
+    const none = app(t, edition, screen({ audit: null }));
+    const nothing = io(none.root);
+    assert.equal(uiauditMain(['cycle', 'customers/list', '--reason', 'x'], nothing.io), 1);
   });
 
   test(`R395 reads screen.yaml, flags an invalid one and the route coverage counts it`, (t) => {

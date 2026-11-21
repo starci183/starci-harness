@@ -10,7 +10,7 @@ import type { HeavyAdmission, HeavyNodeRequest, HeavyNodeResult, HeavyNodeRun } 
 import type { ParityRun } from './parity-family.mjs';
 
 /** A step of the run: a family, or a part of the run that reads the results of others. */
-export type StepId = 'test' | 'types' | 'lint' | 'wiring' | 'hfs' | 'format' | 'db' | 'checks' | 'audit' | 'coverage' | 'sonar' | 'ratchet' | 'build' | 'sonar-scan' | 'uiaudit';
+export type StepId = 'test' | 'types' | 'lint' | 'wiring' | 'hfs' | 'format' | 'db' | 'checks' | 'audit' | 'coverage' | 'sonar' | 'ratchet' | 'build' | 'sonar-scan';
 
 /** One step: what must have ended before it starts, and its place in the sequence. */
 export interface StepSpec {
@@ -40,13 +40,12 @@ export const CHECK_GRAPH: readonly StepSpec[] = [
   { id: 'format', after: [], priority: 40, cache: '.starcistacks/cache/check/format' },
   { id: 'db', after: [], priority: 35, cache: 'tool cache local-records/check/db (keyed on the merge-base with origin/main: machine-local)' },
   { id: 'checks', after: [], priority: 33, cache: 'none (never cached unless the check declares reads: a project check reads what it reads; one that declares reads and refs is a machine-local record keyed on them, tool cache local-records/check/build)' },
-  { id: 'uiaudit', after: [], priority: 34, cache: 'none (diff-only over the screens the diff touches; stores nothing)' },
   { id: 'audit', after: [], priority: 30, cache: 'none (never cached)' },
   { id: 'coverage', after: ['test'], priority: 25, cache: 'none (reads the merged lcov)' },
   { id: 'sonar', after: ['test'], priority: 20, cache: '.starcistacks/cache/sonar-baseline, codecov-baseline' },
   { id: 'ratchet', after: ['lint'], priority: 15, cache: 'none (reads the lint records)' },
   { id: 'build', after: ['types', 'lint', 'test', 'wiring'], priority: 45, cache: 'tool cache build-cache' },
-  { id: 'sonar-scan', after: ['test', 'types', 'lint', 'wiring', 'hfs', 'format', 'db', 'checks', 'uiaudit', 'audit', 'coverage', 'sonar', 'build'], priority: 10, cache: 'tool cache sonar-scan' },
+  { id: 'sonar-scan', after: ['test', 'types', 'lint', 'wiring', 'hfs', 'format', 'db', 'checks', 'audit', 'coverage', 'sonar', 'build'], priority: 10, cache: 'tool cache sonar-scan' },
 ];
 
 /** The time a run reads: real, or a spec's. */

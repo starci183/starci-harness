@@ -1,8 +1,11 @@
 // screen-yaml.mts - the one structured file of a gallery screen (contexts/project/gallery.md PROJECT-GALLERY-8): `gallery/pages/<area>/<screen>/screen.yaml` replaces `explain.md`
 // and `audit.json`. It holds the screen's identity (title, route, area, summary, code), the shot hashes, the sections (what each region shows and why), the options weighed
-// (`considered`) and the UI audit (`audit`: builder, auditor, rounds of seven lenses). Pure functions: the validator (HFS_APP_GALLERY_SCREEN_INVALID for the document,
-// UI_AUDIT_INVALID for the audit block), the UI audit judge, the reader that gives the older rules the explanation they already know, the skeleton and brief of
-// `starci app uiaudit run`, and the converter from an explain.md.
+// (`considered`) and the UI audit (`audit`: builder, auditor, rounds of seven lenses). Pure functions: the validator (HFS_APP_GALLERY_SCREEN_INVALID, the document and its
+// audit block alike), the reader that gives the older rules the explanation they already know, the skeleton and brief of `starci app uiaudit run`, the new cycle of
+// `starci app uiaudit cycle`, and the converter from an explain.md.
+// The audit is evidence, never a gate (owner, 2026-11-21, train 188): "Screen.yaml mang tính tương đối dc k chỉ được dùng để check lại như thanh tra. Yêu cầu có screen.yaml
+// chứ ko can thiệp vào ci, tức là phải audit mới hợp lý còn kết quả ntn kệ", then "Tức là chỉ còn hfs check và bỏ gate audit hiểu k, k cần cảnh báo. Sau này làm có bằng chứng
+// sửa dễ hơn". So the only check left is that each screen.yaml is well formed; what its rounds found (open lenses, the round count, shots drifted since) blocks nothing and warns nothing.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -59,7 +62,7 @@ export interface ScreenDoc {
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === 'string');
 
-/** The problems of the audit block alone (UI_AUDIT_INVALID); empty for `null` (a grandfathered screen). */
+/** The problems of the audit block alone (part of HFS_APP_GALLERY_SCREEN_INVALID); empty for `null` (a screen not audited yet). */
 export function auditProblems(audit: unknown): string[] {
   if (audit === null || audit === undefined) return [];
   if (!plain(audit)) return ['audit is neither null nor a mapping'];
@@ -67,7 +70,6 @@ export function auditProblems(audit: unknown): string[] {
   for (const side of ['builder', 'auditor'] as const) if (!plain(audit[side]) || !text((audit[side] as Record<string, unknown>)['agent'])) problems.push(`audit.${side}.agent is missing`);
   const rounds = audit['rounds'];
   if (!Array.isArray(rounds)) return [...problems, 'audit.rounds is not a list'];
-  if (rounds.length > MAX_ROUNDS) problems.push(`audit.rounds holds ${rounds.length} rounds, at most ${MAX_ROUNDS}: past round ${MAX_ROUNDS} the screen goes to the owner (audit.escalate)`);
   rounds.forEach((round, index) => {
     const at = `audit.rounds[${index}]`;
     if (!plain(round)) { problems.push(`${at} is not a mapping`); return; }
@@ -154,60 +156,6 @@ export function sha256File(file: string): string | null {
   try { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); } catch { return null; }
 }
 
-/** The facts the UI audit judge reads about one touched screen. */
-export interface AuditFacts {
-  id: string;
-  /** The raw screen.yaml value (null when absent or unparseable). */
-  value: Record<string, unknown> | null;
-  /** The shot hashes found on disk by key (`1440`, `390`); absent keys are not on this machine (a fresh checkout holds no PNG). */
-  disk: Readonly<Record<string, string>>;
-  /** Source or screen text changed since the base while screen.yaml did not. */
-  unrecorded: boolean;
-  /** The changed files that reach the screen (its own source first, then what its route imports): the first one and the count name the cause of a stale audit. */
-  changed?: readonly string[];
-}
-
-export interface AuditFinding { code: string; message: string }
-export const AUDIT_CODES = Object.freeze({
-  missing: 'UI_AUDIT_MISSING', invalid: 'UI_AUDIT_INVALID', stale: 'UI_AUDIT_STALE', self: 'UI_AUDIT_SELF_REVIEW', few: 'UI_AUDIT_ROUNDS_FEW',
-  open: 'UI_AUDIT_OPEN', owner: 'UI_AUDIT_NEEDS_OWNER', considered: 'UI_AUDIT_CONSIDERED_EMPTY',
-});
-
-const norm = (agent: unknown): string => String(agent ?? '').trim().toLowerCase();
-
-/** The UI audit verdict of one touched screen (PROJECT-GALLERY-8): every finding with its code. Empty when the audit stands. */
-/** The changed file that causes a stale audit, with how many more reach the screen. */
-export const causeOf = (changed: readonly string[] | undefined): string => (changed === undefined || changed.length === 0 ? '' : ` (changed: ${changed[0] as string}${changed.length > 1 ? ` and ${String(changed.length - 1)} more` : ''})`);
-
-export function judgeAudit(facts: AuditFacts): AuditFinding[] {
-  const { id, value } = facts;
-  const folder = `the screen ${id}`;
-  if (value === null || value['audit'] === null || value['audit'] === undefined) return [{ code: AUDIT_CODES.missing, message: `${folder} changed (its code, its screen.yaml or its shots) and has no audit: run \`starci audit run ${id}\`, let an auditor agent other than the builder fill the rounds, fix, shoot again (PROJECT-GALLERY-8)` }];
-  const problems = auditProblems(value['audit']);
-  if (problems.length > 0) return [{ code: AUDIT_CODES.invalid, message: `${folder}: ${problems.slice(0, 6).join('; ')}${problems.length > 6 ? `; and ${problems.length - 6} more` : ''} (PROJECT-GALLERY-8)` }];
-  const audit = value['audit'] as unknown as Audit;
-  const findings: AuditFinding[] = [];
-  const shots = (plain(value['shots']) ? value['shots'] : {}) as Record<string, ShotRecord | undefined>;
-  for (const width of SHOT_WIDTHS) {
-    const recorded = shots[width]?.sha256 ?? null;
-    if (recorded === null) findings.push({ code: AUDIT_CODES.stale, message: `${folder} records no sha256 for its ${width} shot: shoot it and run \`starci audit run ${id}\` to record it (PROJECT-GALLERY-8)` });
-    else if (facts.disk[width] !== undefined && facts.disk[width] !== recorded) findings.push({ code: AUDIT_CODES.stale, message: `${folder}: ${width}.png is not the shot the audit saw (sha256 ${facts.disk[width]?.slice(0, 12)}, recorded ${recorded.slice(0, 12)}): run \`starci audit run ${id}\` for a new round on the new shot (PROJECT-GALLERY-8)` });
-  }
-  if (facts.unrecorded) findings.push({ code: AUDIT_CODES.stale, message: `${folder}: its code or text changed since the base and screen.yaml did not, so the audit is of an older screen${causeOf(facts.changed)}: run \`starci audit run ${id}\` (PROJECT-GALLERY-8)` });
-  if (norm(audit.builder.agent) === norm(audit.auditor.agent)) findings.push({ code: AUDIT_CODES.self, message: `${folder}: the auditor (${audit.auditor.agent}) is the builder: another agent audits (PROJECT-GALLERY-8)` });
-  if (audit.rounds.length < MIN_ROUNDS) findings.push({ code: AUDIT_CODES.few, message: `${folder} has ${audit.rounds.length} audit round${audit.rounds.length === 1 ? '' : 's'}, at least ${MIN_ROUNDS}: round 1 finds, the fixes land, round 2 checks (PROJECT-GALLERY-8)` });
-  const last = audit.rounds.at(-1);
-  const open = last === undefined ? [] : LENSES.filter((lens) => last.lenses[lens].verdict === 'open');
-  if (open.length > 0) {
-    findings.push(audit.rounds.length >= MAX_ROUNDS
-      ? { code: AUDIT_CODES.owner, message: `${folder} still has open lenses (${open.join(', ')}) after round ${MAX_ROUNDS}: needs owner${audit.escalate === null ? ' (write audit.escalate)' : `: ${audit.escalate}`}; the gate stays red until the owner decides (PROJECT-GALLERY-8)` }
-      : { code: AUDIT_CODES.open, message: `${folder} has open lenses in round ${audit.rounds.length} (${open.join(', ')}): fix them, shoot again and run another round (PROJECT-GALLERY-8)` });
-  }
-  const considered = Array.isArray(value['considered']) ? value['considered'] : [];
-  if (considered.length === 0) findings.push({ code: AUDIT_CODES.considered, message: `${folder} records no option considered: list each option weighed with why it was chosen or rejected (PROJECT-GALLERY-8)` });
-  return findings;
-}
-
 /** The explanation the explain.md rules know, built from a screen.yaml value: front matter, one region per section (`Vì sao` = why), the options section as a flag. */
 export function explanationOfScreen(value: Record<string, unknown>): Explanation & { hasOptions: boolean } {
   const sections = Array.isArray(value['sections']) ? (value['sections'] as unknown[]).filter(plain) : [];
@@ -252,6 +200,11 @@ const emptyLenses = (): Record<Lens, LensVerdict> => Object.fromEntries(LENSES.m
 
 /** The screen value with the shot hashes taken now and the next round skeleton appended (or the first, with the builder named). Returns the new value and what it did. */
 export function nextRound(value: Record<string, unknown>, { disk, builder, auditor, now }: { disk: Readonly<Record<string, string>>; builder?: string | undefined; auditor?: string | undefined; now: string }): { value: Record<string, unknown>; note: string } {
+  const done = plain(value['audit']) && Array.isArray(value['audit']['rounds']) ? (value['audit']['rounds'] as Round[]) : [];
+  const lastDone = done.at(-1);
+  const waiting = lastDone !== undefined && plain(lastDone.lenses) && LENSES.some((lens) => lastDone.lenses[lens]?.notes?.startsWith('auditor: fill this lens'));
+  // a closed cycle keeps the shots its last round judged: a reshoot after it opens a new cycle (`starci audit cycle`), never inherits round 4's verdicts
+  if (done.length >= MAX_ROUNDS && !waiting) return { value, note: `round ${MAX_ROUNDS} closed this cycle: nothing recorded; for a new look at the screen run \`starci audit cycle <area>/<screen> --reason <why>\`` };
   const next = structuredClone(value);
   const shots = (plain(next['shots']) ? next['shots'] : {}) as Record<string, ShotRecord>;
   for (const width of SHOT_WIDTHS) shots[width] = { file: `${width}.png`, sha256: disk[width] ?? shots[width]?.sha256 ?? null };
@@ -263,10 +216,33 @@ export function nextRound(value: Record<string, unknown>, { disk, builder, audit
   const pending = last !== undefined && LENSES.some((lens) => last.lenses[lens].notes?.startsWith('auditor: fill this lens'));
   let note: string;
   if (pending) note = `round ${last?.n} is still waiting for the auditor; the shot hashes are updated`;
-  else if (audit.rounds.length >= MAX_ROUNDS) note = `round ${MAX_ROUNDS} is done: nothing more to run; ${last !== undefined && LENSES.some((lens) => last.lenses[lens].verdict === 'open') ? 'set audit.escalate, the screen needs the owner' : 'the audit is complete'}`;
   else { audit.rounds.push({ n: audit.rounds.length + 1, at: now, lenses: emptyLenses() }); note = `round ${audit.rounds.length} prepared`; }
   next['audit'] = audit;
   return { value: next, note };
+}
+
+/**
+ * The screen value with its audit closed into the record and a new cycle opened (`starci audit cycle`): the closed cycle becomes one `considered` entry (chosen, with the
+ * reason, its rounds, their dates, the last verdict of each lens, builder and auditor; the rounds themselves stay in git history) and `audit` starts empty again, so the next
+ * `starci audit run` prepares round 1. A screen with no audit has no cycle to close.
+ */
+export function nextCycle(value: Record<string, unknown>, { reason }: { reason: string }): { value: Record<string, unknown>; note: string } | { error: string } {
+  if (!plain(value['audit'])) return { error: 'has no audit to close: run `starci audit run` for its first round' };
+  const audit = value['audit'] as unknown as Audit;
+  const rounds = Array.isArray(audit.rounds) ? audit.rounds : [];
+  if (rounds.length === 0) return { error: 'has an audit with no round: run `starci audit run` instead' };
+  const last = rounds.at(-1) as Round;
+  const verdicts = LENSES.map((lens) => `${lens} ${last.lenses?.[lens]?.verdict ?? '?'}`).join(', ');
+  const next = structuredClone(value);
+  const considered = Array.isArray(next['considered']) ? (next['considered'] as unknown[]) : [];
+  considered.push({
+    option: `Close the audit cycle and open a new one: ${reason}`,
+    chosen: true,
+    why: `The closed cycle ran ${rounds.length} round${rounds.length === 1 ? '' : 's'} (${rounds[0]?.at ?? '?'} to ${last.at}), builder ${audit.builder?.agent ?? '?'}, auditor ${audit.auditor?.agent ?? '?'}; its last round: ${verdicts}${audit.escalate ? `; escalated: ${audit.escalate}` : ''}. Its rounds are in git history.`,
+  });
+  next['considered'] = considered;
+  next['audit'] = { builder: { agent: audit.builder?.agent ?? '' }, auditor: { agent: audit.auditor?.agent ?? '' }, rounds: [], escalate: null };
+  return { value: next, note: `cycle of ${rounds.length} round${rounds.length === 1 ? '' : 's'} closed into considered; run \`starci audit run\` for round 1 of the new cycle` };
 }
 
 /** The brief an auditor agent reads: the shots to open at full size, the screen's own words, the seven lenses and the laws. */
@@ -289,7 +265,7 @@ export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws 
     ...LAYOUT_CHECKLIST.map((item) => `- ${item}`),
     '',
     '## The loop',
-    `Round 1 finds; the builder fixes what is open and shoots again; run \`starci audit run ${id}\` for the next round. At least ${MIN_ROUNDS} rounds, at most ${MAX_ROUNDS}, until no lens is open. Still open after round ${MAX_ROUNDS}: set audit.escalate to "needs owner: <why>"; the gate stays red.`,
+    `Round 1 finds; the builder fixes what is open and shoots again; run \`starci audit run ${id}\` for the next round. At least ${MIN_ROUNDS} rounds, at most ${MAX_ROUNDS} a cycle, until no lens is open. Still open after round ${MAX_ROUNDS}: set audit.escalate to "needs owner: <why>". The rounds are evidence for the next fix, not a gate.`,
     'A lens you changed code for is "fixed" (notes: what changed), one that held is "pass", one still wrong is "open" (notes: what is wrong). Then fill audit.auditor.agent with your own id and `considered` with each option weighed and why it was chosen or rejected.',
     '',
     '## The laws to hold the screen to',

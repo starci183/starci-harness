@@ -204,7 +204,8 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
     if (source.kind === 'yaml') {
       if (readText(repoRoot, file) !== null) findings.push(found('HFS_APP_GALLERY_SCREEN_FILE', file, `${folder} holds both ${SCREEN_FILE} and explain.md: ${SCREEN_FILE} replaces explain.md, delete it (PROJECT-GALLERY-8)`));
       const parsed = parseScreen(readText(repoRoot, source.file) ?? '', `${area}/${screen}`);
-      const invalid = parsed.parseError !== null ? [parsed.parseError] : parsed.doc;
+      // the one UI-audit requirement left (owner, 2026-11-21): the screen.yaml is well formed, its audit block included; what the audit found is evidence, not a finding
+      const invalid = parsed.parseError !== null ? [parsed.parseError] : [...parsed.doc, ...parsed.audit];
       if (invalid.length > 0) findings.push(found('HFS_APP_GALLERY_SCREEN_INVALID', source.file, `${source.file} ${invalid.slice(0, 6).join('; ')}${invalid.length > 6 ? `; and ${invalid.length - 6} more` : ''} (PROJECT-GALLERY-8)`));
     }
     const explanation = source.explanation;
