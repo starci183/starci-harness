@@ -921,14 +921,14 @@ environments:
             STORAGE_PUBLIC_URL: "https://shop-local-files.example.org"
 ```
 
-An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the rule starts with the first
+An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the convention starts with the first
 public origin, because until then nothing outside the machine follows a link. Production is not judged here: its `STORAGE_ENDPOINT` is already a public
-host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store (`STORAGE_PUBLIC_LINK_INTERNAL`, R428). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
+host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store. The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
 file and served through the same public base; a project that wants a provider to fetch them seeds the files into the bucket.
 
-Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`, also for the statics base), R440 for the store itself ([statics.md](statics.md)), the shape of
-`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the stored value and the
-read-time link are held by review and by the app's own specs (no rule reads code for a host).
+Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_CONSOLE`, no tunnel route reaches the admin console), R440 for the store itself ([statics.md](statics.md)), the shape of
+`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the route to the S3 port, the two
+values (`STORAGE_ENDPOINT`, `STORAGE_PUBLIC_URL`), the stored value and the read-time link are held by review and by the app's own specs (no rule reads code for a host).
 
 ## Read with
 

@@ -86,7 +86,7 @@ The front end reads one public base, `NEXT_PUBLIC_STATICS_URL` (the gallery: `VI
 declared it is `https://<the storage route host>/<project>-dev/statics` (R428, PROJECT-STACKS-15). The env owner module of the front end reads it once
 (an exported reader the first image adds, since an unused export is dead code, `HFS_UNUSED_EXPORT`) and hands it to the Grammar statics provider with the staticsKey; the starter's `next.config` derives `images.remotePatterns` from its origin and path. Code and data hold keys only, never a URL.
 
-Enforced by: R428 (`STORAGE_PUBLIC_LINK_INTERNAL` for a statics base that is not a storage route host), R49 for the env module.
+Enforced by: R49 for the env module; the host of the statics base is held by review.
 
 ## PROJECT-STATICS-5 Production: the same image
 

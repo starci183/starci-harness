@@ -7732,15 +7732,6 @@ DATA_EXTENSION_UNDECLARED:
   nextStep_vi: "Khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
-STORAGE_PUBLIC_ROUTE_MISSING:
-  title: "A dev object store has no public route on the dev tunnel"
-  title_vi: "Kho đối tượng của môi trường dev chưa có route công khai trên tunnel dev"
-  meaning_vi: "Môi trường dev có công bố địa chỉ công khai và chạy kho đối tượng (S3) nhưng không có tunnel.routes nào trỏ tới cổng S3 của kho: liên kết tới tệp sẽ là địa chỉ loopback, trình duyệt khác máy và nhà cung cấp không mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Thêm một mục vào local.tunnel.routes có port là cổng S3 của kho (không phải cổng console), rồi chạy starci app stack up --env <env> --execute để tạo ingress rule và bản ghi DNS."
-  owner: op-retry
-  kind: check-finding
 STORAGE_PUBLIC_ROUTE_CONSOLE:
   title: "A tunnel route reaches the admin console of an object store"
   title_vi: "Một route của tunnel trỏ vào console quản trị của kho đối tượng"
@@ -7748,15 +7739,6 @@ STORAGE_PUBLIC_ROUTE_CONSOLE:
   causes_vi:
     - "Vi phạm R428 (PROJECT-STACKS-15)."
   nextStep_vi: "Xoá route đó, hoặc trỏ nó tới cổng S3 của kho."
-  owner: op-retry
-  kind: check-finding
-STORAGE_PUBLIC_LINK_INTERNAL:
-  title: "An object-store link would use an internal host"
-  title_vi: "Liên kết tới kho đối tượng sẽ dùng địa chỉ nội bộ"
-  meaning_vi: "Tiến trình đặt STORAGE_ENDPOINT (địa chỉ nội bộ để ghi) nhưng không đặt STORAGE_PUBLIC_URL, hoặc đặt nó thành loopback, localhost, tên container hay host không có route tunnel tới kho: liên kết app dựng ra không ai mở được."
-  causes_vi:
-    - "Vi phạm R428 (PROJECT-STACKS-15)."
-  nextStep_vi: "Đặt STORAGE_PUBLIC_URL thành https://<host của route tunnel tới kho>; dữ liệu lưu chỉ giữ bucket và key."
   owner: op-retry
   kind: check-finding
 STACK_LOCAL_TUNNEL_CERT:
