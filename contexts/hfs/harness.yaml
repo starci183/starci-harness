@@ -393,6 +393,14 @@ slots:
     presence: optional
     holds: the grammar's build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
     rule: every package is TypeScript
+  - id: packages.grammar-codemods
+    path:
+      - packages/grammar/codemods/index.mts
+      - "packages/grammar/codemods/v*/{index,v*.spec}.mts"
+      - "packages/grammar/codemods/v*/fixtures/{before,after}/*.tsx"
+    presence: optional
+    holds: the Grammar's codemods, one folder per release that changes an app-facing API, named after its version (v0540 for 0.54.0), with its before/after fixtures; shipped as @starci/grammar/codemods and run by `starci app codemod`
+    rule: contexts/grammars/contributing.md "Codemods"
   - id: packages.grammar-proof
     path:
       - packages/grammar/playwright.config.ts

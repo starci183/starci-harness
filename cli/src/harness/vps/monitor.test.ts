@@ -156,7 +156,8 @@ void test("an app's alerts go to its own bot, a host alert to one bot of every a
 // in-stack address is the full swarm name and every service sets dns_search to the root.
 const shortNames = (files: Readonly<Record<string, string>>, stacks: readonly string[], names: readonly string[]): string[] =>
     Object.entries(files).flatMap(([rel, text]) => {
-        if (rel.endsWith(".json")) return []
+        // The bot's own JavaScript is code, not an address list (its `tasks.filter` is an array method).
+        if (rel.endsWith(".json") || rel.startsWith("monitor-bot/")) return []
         const lines = text.split("\n").filter((line) => !/^\s*(?:#|\/\/)/.test(line))
         const tasks = lines.flatMap((line) => [...line.matchAll(/tasks\.([A-Za-z0-9_.-]+)/g)].map((found) => found[1] ?? "")).filter((name) => !stacks.some((stack) => name.startsWith(`${stack}_`)))
         const hosts = names.filter((name) => lines.some((line) => new RegExp(String.raw`(?<![\w.@-]|(?<!/)/)${name}:\d`).test(line)))
