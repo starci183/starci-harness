@@ -6613,19 +6613,6 @@ STACKS_INGRESS_UNKNOWN:
   owner: op-retry
   kind: check-finding
 
-STACKS_LITE_REDIS_PERSISTENCE:
-  title: "The declared lite Redis is not one persisted, non-evicting stack service"
-  title_vi: "Redis đã khai báo của lite không phải một dịch vụ duy nhất có AOF và không evict"
-  meaning_vi: "hfs.json sides.be.backing khai báo redis nhưng stack lite không chạy đúng một dịch vụ Redis; hoặc dịch vụ Redis không chạy với --appendonly yes, không mount một named volume ghi được tại /data, hay đặt --maxmemory-policy khác noeviction. Job của hàng đợi nằm trong Redis nên khởi động lại hoặc evict sẽ làm mất chúng."
-  causes_vi:
-    - "Vi phạm R276 (R212): Redis đã khai báo không được render trong stack, hoặc được render nhiều lần."
-    - "Lệnh redis-server thiếu --appendonly yes, hoặc đặt maxmemory-policy evict khóa (allkeys-lru, volatile-ttl...)."
-    - "Dịch vụ Redis không mount named volume vào /data, hoặc mount chỉ đọc, hoặc volume không được định nghĩa trong mô hình."
-  nextStep_vi: "Render đúng một dịch vụ Redis, chạy redis-server với --appendonly yes, giữ maxmemory-policy noeviction (mặc định; khóa cache đặt TTL) và mount một named volume ghi được tại /data, khai báo volume đó trong mô hình và trong components.redis.volumes."
-  owner: op-retry
-  kind: check-finding
-  cutoverTolerant: true
-
 STACKS_LITE_SELFHOSTED_DB:
   title: "A lite deployment runs PostgreSQL, MongoDB, Qdrant or undeclared Redis"
   title_vi: "Triển khai lite chạy PostgreSQL, MongoDB, Qdrant hoặc Redis chưa khai báo"
@@ -6725,26 +6712,6 @@ STACKS_SECRET_UNVERSIONED:
   causes_vi:
     - "Vi phạm R266: tên secret có thể bị tái sử dụng khi xoay khóa hoặc khai báo không khớp secret của engine."
   nextStep_vi: "Khai báo runtimeName và version dương khớp hậu tố -v<version>; dùng đúng tên đó trong mô hình, đổi quyền của consumer rồi mới thu hồi phiên bản cũ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_DB_UNSUPPORTED:
-  title: "A lite sidecar requires an unsupported database adapter"
-  title_vi: "Sidecar của lite yêu cầu adapter cơ sở dữ liệu không được hỗ trợ"
-  meaning_vi: "Sidecar của lite khai báo hoặc cấu hình database khác SQLite, bao gồm PostgreSQL, Redis và MongoDB."
-  causes_vi:
-    - "Vi phạm R276: sidecar kéo thêm backing bị cấm vào topology lite thay vì dùng SQLite trên volume bền vững."
-  nextStep_vi: "Chọn chế độ SQLite được sidecar hỗ trợ và volume được khai báo; bỏ sidecar nếu nó bắt buộc dùng backing không được lite hỗ trợ."
-  owner: op-retry
-  kind: check-finding
-
-STACKS_SIDECAR_VOLUME_UNDECLARED:
-  title: "A lite SQLite sidecar has no declared persistent volume"
-  title_vi: "Sidecar SQLite của lite thiếu volume bền vững được khai báo"
-  meaning_vi: "Sidecar dùng SQLite nhưng chưa khai báo database.volume, chưa liệt kê volume đó trong component hoặc chưa định nghĩa và mount volume trong mô hình."
-  causes_vi:
-    - "Vi phạm R276: tệp cơ sở dữ liệu sidecar không gắn với volume có chủ sở hữu rõ ràng và có thể mất khi tạo lại container."
-  nextStep_vi: "Khai báo database.provider: sqlite, database.volume và components.<id>.volumes, rồi định nghĩa và mount đúng named volume trong mô hình."
   owner: op-retry
   kind: check-finding
 

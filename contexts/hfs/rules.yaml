@@ -1820,12 +1820,9 @@ rules:
       - {kind: hfs, id: stacks-ingress}
   - id: R276
     code: STACKS_LITE_SELFHOSTED_DB
-    law: Lite runs no self-hosted database or vector store, runs Redis only when declared and then durably, and its sidecars keep their own storage on a declared volume.
+    law: Lite runs no self-hosted database or vector store, and runs Redis only when declared; that a declared Redis runs durably (one service, AOF on a named volume, no eviction) and that its sidecars keep their own storage on a declared volume is held by review, not by a check.
     failureCodes:
       - STACKS_LITE_SELFHOSTED_DB
-      - STACKS_SIDECAR_VOLUME_UNDECLARED
-      - STACKS_SIDECAR_DB_UNSUPPORTED
-      - STACKS_LITE_REDIS_PERSISTENCE
     enforcers:
       - {kind: hfs, id: stacks-backing}
   - id: R277

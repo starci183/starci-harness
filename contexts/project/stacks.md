@@ -1170,7 +1170,7 @@ unsound declaration tolerates nothing.
   findings of the codes `modules/kernel/failure-codes.yaml` marks `cutoverTolerant` whose environment is the pending one: a finding's environment is
   its `.starcistacks/<env>/` folder, or the one `environments.<env>.` its message names on the declaration file. `cutoverTolerant: true` codes are
   the not-yet-cut-over shape: a declared sealed member or key not sealed yet (`STACKS_SEALED_MEMBER_MISSING`) and the rendered stack of the old shape
-  (`STACKS_LITE_SELFHOSTED_DB`, `STACKS_LITE_REDIS_PERSISTENCE`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
+  (`STACKS_LITE_SELFHOSTED_DB`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
   (`ENV_SEALED_UNREAD`) is reported only for a member, or one key of a member, that `keep` names. Every other finding, of every environment, still
   blocks. The tolerated findings are listed `CUTOVER PENDING (<env>), REPORT ONLY`, and a section beside the gates off by declaration names each
   pending environment with its reason, its until, what it keeps and the codes it tolerated, so the state is never silent.
