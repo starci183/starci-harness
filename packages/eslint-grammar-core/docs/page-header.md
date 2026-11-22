@@ -15,7 +15,7 @@ A `PageHeader` or `Breadcrumbs` imported from `@starci/grammar` (by name, throug
 ```tsx
 import { PageHeader } from "@starci/grammar/core"
 
-<PageHeader title="Main account" actions={<Button intent="neutral">Disconnect</Button>} />
+<PageHeader title="Main account" actions={<Button>Disconnect</Button>} />
 ```
 
 **Valid** (`src/components/blocks/ConnectionPage/component.tsx`)
@@ -25,7 +25,7 @@ import { PageHeader } from "@starci/grammar/core"
   header={{
     breadcrumbs: { label: "Breadcrumb", items: trail },
     title: "Main account",
-    actions: <Button intent="neutral">Disconnect</Button>,
+    actions: <Button>Disconnect</Button>,
   }}
 >
   <WebhookCard />

@@ -1,10 +1,6 @@
-/** CTA-6 fixtures prove universal intent laws independently of a Grammar family or app edition. */
+/** CTA-6 fixtures prove the universal one-primary laws independently of a Grammar family or app edition. */
 // proves: FE_BUTTON_INTENT
 // proves: FE_BUTTON_INTENT
-// proves: FE_BUTTON_INTENT_REQUIRED
-// proves: FE_BUTTON_INTENT_REQUIRED
-// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
-// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
 // proves: FE_SINGLE_COMMIT_PER_RENDER
 // proves: FE_SINGLE_COMMIT_PER_RENDER
 // proves: FE_NO_COMMIT_IN_COLLECTION_ITEM
@@ -29,7 +25,7 @@ const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsP
 const fixture = (code: string, messageId: string, count = 1) => ({ code: grammar + code, errors: Array.from({ length: count }, () => ({ messageId })) })
 
 test("CTA-6 laws are registered universally at error with their finding codes", () => {
-  const codes = ["FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
+  const codes = ["FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
   Object.entries(rules).forEach(([name, rule], index) => {
     assert.equal(published[name], rule)
     assert.equal(ruleOwners[name], "button-intent")
@@ -41,117 +37,73 @@ test("CTA-6 laws are registered universally at error with their finding codes", 
 
 for (const edition of ['lite'] as const) {
   for (const family of ["core", "offset-pop"]) {
-    test(`CTA-6 ${edition} ${family}: valid intents pass and missing intents are rejected`, () => {
-  assert.doesNotThrow(() => {
-      tester().run("button-intent-required", rules["button-intent-required"], {
-        valid: [
-          grammar + 'const Page = () => <Button intent="commit" />',
-          grammar + 'const Page = () => <IconButton intent="neutral" aria-label="Edit" />',
-          grammar + 'const props={intent:"dismiss"}; const Page = () => <Button {...props} />',
-          grammar + 'const Page = () => <Button {...(active ? {intent:"commit"} : {intent:"alternative"})} />',
-          grammar + 'const Page = ({intent}) => <Button intent={intent} />',
-          'import {Button} from "other-kit"; const Page=()=> <Button />',
-          grammar + 'const Page = ({Button}) => <Button />',
-          grammar + 'const Page = () => <button />',
-        ],
-        invalid: [
-          fixture('const Page = () => <Button />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <IconButton aria-label="Edit" />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <Button {...props} />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <Button intent />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <Button intent={undefined} />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <Button intent={null} />', "FE_BUTTON_INTENT_REQUIRED"),
-          fixture('const Page = () => <Button {...(active ? {intent:"commit"} : {})} />', "FE_BUTTON_INTENT_REQUIRED"),
-          { code: `import {Button as Action} from "@starci/grammar/${family}"; const Page=()=> <Action />`, errors: [{ messageId: "FE_BUTTON_INTENT_REQUIRED" }] },
-          { code: `import * as G from "@starci/grammar/${family}"; const Page=()=> <G.IconButton />`, errors: [{ messageId: "FE_BUTTON_INTENT_REQUIRED" }] },
-        ],
+    test(`CTA-6 ${edition} ${family}: an aliased or namespaced Grammar Button counts its primary`, () => {
+      assert.doesNotThrow(() => {
+        tester().run("single-commit-per-render", rules["single-commit-per-render"], {
+          valid: [`import {Button as Action} from "@starci/grammar/${family}"; const Page=()=> <><Action variant="primary" /><Action /></>`],
+          invalid: [
+            { code: `import {Button as Action} from "@starci/grammar/${family}"; const Page=()=> <><Action variant="primary" /><Action variant="primary" /></>`, errors: [{ messageId: "FE_SINGLE_COMMIT_PER_RENDER" }] },
+            { code: `import * as G from "@starci/grammar/${family}"; const Page=()=> <><G.Button variant="primary" /><G.IconButton variant="primary" /></>`, errors: [{ messageId: "FE_SINGLE_COMMIT_PER_RENDER" }] },
+          ],
+        })
       })
-    
-  })
-})
+    })
   }
 
-  test(`CTA-6 ${edition}: valid same-file dialog confirms pass and outside confirms are rejected`, () => {
-  assert.doesNotThrow(() => {
-    tester().run("destructive-confirm-in-dialog", rules["destructive-confirm-in-dialog"], {
-      valid: [
-        grammar + 'const Page=()=> <AlertDialog><Button intent="dismiss" /><Button intent="destructive" step="confirm" /></AlertDialog>',
-        grammar + 'const Page=()=> <ConfirmDialog footer={<Button intent="destructive" step="confirm" />} />',
-        grammar + 'const Page=()=> <AlertDialog>{({close}) => <Button intent="destructive" step="confirm" onPress={close} />}</AlertDialog>',
-        grammar + 'const Page=()=> <Button intent="destructive" step="entry" />',
-        grammar + 'const Page=()=> <Button intent="alternative" />',
-        'import {AlertDialog as Confirm, Button as Action} from "@starci/grammar/core"; const Page=()=> <Confirm><Action intent="destructive" step="confirm" /></Confirm>',
-        'import * as G from "@starci/grammar/core"; const Page=()=> <G.AlertDialog><G.Button intent="destructive" step="confirm" /></G.AlertDialog>',
-      ],
-      invalid: [
-        fixture('const Page=()=> <Button intent="destructive" step="confirm" />', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const Page=()=> <AlertDialog trigger={<Button intent="destructive" step="confirm" />} />', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const Final=()=> <Button intent="destructive" step="confirm" />; const Page=()=> <AlertDialog><Final /></AlertDialog>', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const Page=({AlertDialog})=> <AlertDialog><Button intent="destructive" step="confirm" /></AlertDialog>', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const intent="destructive"; const step="confirm"; const Page=()=> <Button intent={intent} step={step} />', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const props={intent:"destructive",step:"confirm"}; const Page=()=> <Button {...props} />', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const {intent,step}={intent:"destructive",step:"confirm"}; const Page=()=> <Button intent={intent} step={step} />', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-        fixture('const Page=()=> <><AlertDialog /><Button intent="destructive" step="confirm" /></>', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
-      ],
-    })
-  
-  })
-})
-
-  test(`CTA-6 ${edition}: valid exclusive commit paths pass and concurrent commits are rejected`, () => {
+  test(`CTA-6 ${edition}: valid exclusive primary paths pass and concurrent primaries are rejected`, () => {
   assert.doesNotThrow(() => {
     tester().run("single-commit-per-render", rules["single-commit-per-render"], {
       valid: [
-        grammar + 'const Page=()=> <><Button intent="dismiss" /><Button intent="commit" /></>',
-        grammar + 'const Page=()=> active ? <Button intent="commit" /> : <IconButton intent="commit" />',
-        grammar + 'const Page=()=> <>{active && <Button intent="commit" />}{!active && <Button intent="commit" />}</>',
-        grammar + 'const Page=(props)=> <>{props.state === "form" ? <Button intent="commit" /> : null}{props.state === "confirm" ? <Button intent="commit" /> : null}</>',
-        grammar + 'const Page=(props)=> <>{props.state === "form" && <Button intent="commit" />}{props.state !== "form" && <Button intent="commit" />}</>',
-        grammar + 'function Page(){ if(active) return <Button intent="commit" />; return <Button intent="commit" /> }',
-        grammar + 'function Page(){ if(active) { return <Button intent="commit" /> } else { return <Button intent="commit" /> } }',
-        grammar + 'const First=()=> <Button intent="commit" />; const Second=()=> <Button intent="commit" />',
-        grammar + 'const Page=()=> <Button intent="alternative" />',
-        grammar + 'const Page=()=> <><Button intent={active ? "commit" : "alternative"}/><Button intent={active ? "alternative" : "commit"}/></>',
+        grammar + 'const Page=()=> <><Button variant="border" /><Button variant="primary" /></>',
+        grammar + 'const Page=()=> active ? <Button variant="primary" /> : <IconButton variant="primary" />',
+        grammar + 'const Page=()=> <>{active && <Button variant="primary" />}{!active && <Button variant="primary" />}</>',
+        grammar + 'const Page=(props)=> <>{props.state === "form" ? <Button variant="primary" /> : null}{props.state === "confirm" ? <Button variant="primary" /> : null}</>',
+        grammar + 'const Page=(props)=> <>{props.state === "form" && <Button variant="primary" />}{props.state !== "form" && <Button variant="primary" />}</>',
+        grammar + 'function Page(){ if(active) return <Button variant="primary" />; return <Button variant="primary" /> }',
+        grammar + 'function Page(){ if(active) { return <Button variant="primary" /> } else { return <Button variant="primary" /> } }',
+        grammar + 'const First=()=> <Button variant="primary" />; const Second=()=> <Button variant="primary" />',
+        grammar + 'const Page=()=> <Button variant="border" />',
+        grammar + 'const Page=()=> <><Button variant={active ? "primary" : "border"}/><Button variant={active ? "border" : "primary"}/></>',
       ],
       invalid: [
-        fixture('const Page=()=> <><Button intent="commit" /><IconButton intent="commit" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const Page=()=> <><Button intent="commit" /><SlotView>{() => <Button intent="commit" />}</SlotView></>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const Page=()=> <><SlotView>{() => {return <Button intent="commit" />}}</SlotView><SlotView>{() => {return <Button intent="commit" />}}</SlotView></>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const Page=()=> <><Button intent="commit" />{active ? <Button intent="commit" /> : <Button intent="neutral" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const Page=()=> <>{active && <Button intent="commit" />}{ready && <Button intent="commit" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const Page=()=> <>{active ? <Button intent="commit" /> : <Button intent="dismiss" />}{active && <Button intent="commit" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const intent="commit"; const Page=()=> <><Button intent={intent} /><Button intent="commit" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('const props={intent:"commit"}; const Page=()=> <><Button {...props} /><Button intent="commit" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
-        fixture('function Page(){ return <><Button intent="commit" /><Button intent="commit" /></> }', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <><Button variant="primary" /><IconButton variant="primary" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <><Button variant="primary" /><SlotView>{() => <Button variant="primary" />}</SlotView></>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <><SlotView>{() => {return <Button variant="primary" />}}</SlotView><SlotView>{() => {return <Button variant="primary" />}}</SlotView></>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <><Button variant="primary" />{active ? <Button variant="primary" /> : <Button variant="border" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <>{active && <Button variant="primary" />}{ready && <Button variant="primary" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const Page=()=> <>{active ? <Button variant="primary" /> : <Button variant="border" />}{active && <Button variant="primary" />}</>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const variant="primary"; const Page=()=> <><Button variant={variant} /><Button variant="primary" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('const props={variant:"primary"}; const Page=()=> <><Button {...props} /><Button variant="primary" /></>', "FE_SINGLE_COMMIT_PER_RENDER"),
+        fixture('function Page(){ return <><Button variant="primary" /><Button variant="primary" /></> }', "FE_SINGLE_COMMIT_PER_RENDER"),
       ],
     })
   
   })
 })
 
-  test(`CTA-6 ${edition}: valid item alternatives pass and collection commits are rejected`, () => {
+  test(`CTA-6 ${edition}: valid item border commands pass and collection primaries are rejected`, () => {
   assert.doesNotThrow(() => {
     tester().run("no-commit-in-collection-item", rules["no-commit-in-collection-item"], {
       valid: [
-        grammar + 'const Page=()=> rows.map(row => <Button key={row.id} intent="alternative" />)',
-        grammar + 'const Page=()=> <><ListRow><Button intent="neutral" /></ListRow><Button intent="commit" /></>',
-        grammar + 'const Page=()=> <Button intent="commit" />',
+        grammar + 'const Page=()=> rows.map(row => <Button key={row.id} variant="border" />)',
+        grammar + 'const Page=()=> <><ListRow><Button variant="border" /></ListRow><Button variant="primary" /></>',
+        grammar + 'const Page=()=> <Button variant="primary" />',
         grammar + 'const Page=()=> rows.map(row => <Row onPress={()=>save(row)} />)',
       ],
       invalid: [
-        fixture('const Page=()=> rows.map(row => <Button key={row.id} intent="commit" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> rows.map(row => <SlotView>{() => <Button intent="commit" />}</SlotView>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <ListRow><SlotView>{() => <Button intent="commit" />}</SlotView></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> rows["map"](row => <Button key={row.id} intent="commit" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const renderRow=(row)=> <Button key={row.id} intent="commit" />; const Page=()=> rows.map(renderRow)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> rows.map(row => { if(row.ready) return <Button intent="commit" />; return null })', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <ListRow><Button intent="commit" /></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <DataTable renderCell={(row)=> <Button intent="commit" />} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const renderCell=(row)=> <Button intent="commit" />; const Page=()=> <DataTable renderCell={renderCell} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <ListBox.Item><Button intent="commit" /></ListBox.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <Table.Row><Button intent="commit" /></Table.Row>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <GridList.Item><Button intent="commit" /></GridList.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> rows.map(row => <ListRow><Button intent="commit" /></ListRow>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows.map(row => <Button key={row.id} variant="primary" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows.map(row => <SlotView>{() => <Button variant="primary" />}</SlotView>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <ListRow><SlotView>{() => <Button variant="primary" />}</SlotView></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows["map"](row => <Button key={row.id} variant="primary" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const renderRow=(row)=> <Button key={row.id} variant="primary" />; const Page=()=> rows.map(renderRow)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows.map(row => { if(row.ready) return <Button variant="primary" />; return null })', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <ListRow><Button variant="primary" /></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <DataTable renderCell={(row)=> <Button variant="primary" />} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const renderCell=(row)=> <Button variant="primary" />; const Page=()=> <DataTable renderCell={renderCell} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <ListBox.Item><Button variant="primary" /></ListBox.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <Table.Row><Button variant="primary" /></Table.Row>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <GridList.Item><Button variant="primary" /></GridList.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows.map(row => <ListRow><Button variant="primary" /></ListRow>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
       ],
     })
   
@@ -160,15 +112,14 @@ for (const edition of ['lite'] as const) {
 
 }
 
-test("CTA-6: typed literal intent, step and spread variants retain the laws", async () => {
-  const root = mkdtempSync(join(tmpdir(), "starci-button-intent-"))
+test("CTA-6: typed literal and spread variants retain the laws", async () => {
+  const root = mkdtempSync(join(tmpdir(), "starci-button-variant-"))
   try {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { jsx: "preserve", strict: true, target: "ES2022", module: "ESNext", moduleResolution: "Bundler" }, include: ["*.tsx"] }))
     const cases = [
-      { code: 'const Page=({intent}:{intent:"commit"})=> <><Button intent={intent}/><Button intent="commit"/></>', ids: ["FE_SINGLE_COMMIT_PER_RENDER"] },
-      { code: 'const Page=({step}:{step:"confirm"})=> <Button intent="destructive" step={step}/>', ids: ["FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"] },
-      { code: 'const Page=(props:{intent:"neutral"})=> <Button {...props}/>', ids: [] },
-      { code: 'const Page=(props:{intent?:"neutral"})=> <Button {...props}/>', ids: ["FE_BUTTON_INTENT_REQUIRED"] },
+      { code: 'const Page=({variant}:{variant:"primary"})=> <><Button variant={variant}/><Button variant="primary"/></>', ids: ["FE_SINGLE_COMMIT_PER_RENDER"] },
+      { code: 'const Page=(props:{variant:"primary"})=> <><Button {...props}/><Button variant="primary"/></>', ids: ["FE_SINGLE_COMMIT_PER_RENDER"] },
+      { code: 'const Page=(props:{variant:"border"})=> <><Button {...props}/><Button variant="primary"/></>', ids: [] },
     ]
     for (const [index, entry] of cases.entries()) writeFileSync(join(root, `Page${index}.tsx`), grammar + entry.code)
     const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [{

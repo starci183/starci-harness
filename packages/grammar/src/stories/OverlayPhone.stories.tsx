@@ -23,8 +23,8 @@ const panel = (root: Document): HTMLElement => {
 export const PopoverEdgeAndSheet: Story = {
   render: () => (
     <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem' }}>
-      <G.Popover defaultOpen title="Thông báo" trigger={<G.IconButton label="Thông báo" source={BellGlyph} intent="dismiss" />} showArrow>
-        <G.Text size="sm">Ba cuộc trò chuyện đang chờ bạn.</G.Text>
+      <G.Popover defaultOpen title="Thông báo" trigger={<G.IconButton label="Thông báo" source={BellGlyph} variant="border" />} showArrow>
+        <G.Text role="body">Ba cuộc trò chuyện đang chờ bạn.</G.Text>
       </G.Popover>
     </div>
   ),
@@ -68,7 +68,7 @@ const Palette = () => {
       groups={GROUPS}
       onAction={() => undefined}
       empty={<G.EmptyNotice mark="none" message="Không có kết quả." />}
-      footer={<G.Text size="sm" tone="muted">Lên xuống để chọn, Enter để mở</G.Text>}
+      footer={<G.Text role="body" tone="muted">Lên xuống để chọn, Enter để mở</G.Text>}
     />
   );
 };

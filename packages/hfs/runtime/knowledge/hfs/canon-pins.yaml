@@ -45,8 +45,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.54.1
-    range: '~0.54.1'
+    version: 0.55.0
+    range: '~0.55.0'
     group: starci
     install: registry
     side: fe
@@ -68,31 +68,31 @@ pins:
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.21.5
-    range: '~9.21.5'
+    version: 9.22.0
+    range: '~9.22.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.54.1
-    range: '~0.54.1'
+    version: 0.55.0
+    range: '~0.55.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.54.1
-    range: '~0.54.1'
+    version: 0.55.0
+    range: '~0.55.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-offset-pop/package.json
     why: 'the Offset Pop Grammar component API lint, versioned with @starci/grammar; its shared component contract comes from the StarCi family lint without copying rules.'
   '@starci/stylelint-canon':
-    version: 2.9.8
+    version: 2.9.9
     group: starci
     install: registry
     side: fe
@@ -111,7 +111,7 @@ pins:
     side: both
     source: packages/prettier-config/package.json
   '@starci/jest-preset':
-    version: 2.11.1
+    version: 2.12.0
     group: starci
     install: registry
     side: be
@@ -168,14 +168,14 @@ pins:
     source: packages/seed/package.json
     why: 'the data standard of a project: the StoreAdapter and DriverAdapter ports, one export written to several copies, the copy contract and the line protocol, with the store and driver contract suites (./testing) and the git driver (./git, with renderStandard and runStandardAdapter, the adapter of a standard that keeps raw/: R434); the starter back end implements StoreAdapter for its database in integrations/seed, the one importer of the package (R426, R90), and imports only its types.'
   '@starci/gallery':
-    version: 0.1.19
+    version: 0.1.20
     group: starci
     install: registry
     side: fe
     source: packages/gallery/package.json
     why: 'the screenshot gallery of an app as one Vite config over the Grammar (PROJECT-GALLERY-1): the managed gallery/ is a vite.config.js that calls defineGallery from @starci/gallery/vite, a devDependency of gallery/ only (outside the workspaces); it reads gallery/pages, flows.json and the design canvas and draws each screen with its approved frame, shot, status dot, states and explanation.'
   '@starci/hfs':
-    version: 6.17.7
+    version: 6.17.8
     group: starci
     install: registry
     side: both
@@ -385,7 +385,42 @@ pins:
     version: 12.11.6
     group: ui
     side: fe
-    why: 'An app that draws its own node graph inside a Fragment region imports React Flow from @xyflow/react at this version; Grammar itself imports it nowhere and it is no longer a Grammar peer (0.49.0).'
+    why: 'An optional peer of the Grammar''s core graph ext (@starci/grammar/core/ext/graph), installed by an app that draws a graph; apps never import it.'
+  elkjs:
+    version: 0.12.0
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core graph ext: the layered layout, one ELK bundle run in the page; 0.13.0 is deprecated on npm; apps never import it.'
+  d3-force:
+    version: 3.0.0
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core graph ext: the seeded force layout of KnowledgeMap; apps never import it.'
+  unified:
+    version: 11.0.5
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core markdown ext (@starci/grammar/core/ext/markdown): its parser pipeline; apps never import it.'
+  remark-parse:
+    version: 11.0.0
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core markdown ext: the markdown parser; apps never import it.'
+  mdast-util-directive:
+    version: 3.2.0
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core markdown ext: the directive node types it reads; apps never import it.'
+  shiki:
+    version: 4.6.0
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core markdown ext: the server highlighter of /core/ext/markdown/server; apps never import it.'
+  beautiful-mermaid:
+    version: 1.1.3
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core markdown ext: mermaid drawn to SVG in Node at import time; apps never import it.'
   react-aria-components:
     version: 1.21.1
     group: ui
@@ -536,7 +571,7 @@ pins:
     version: 3.8.1
     group: ui
     side: fe
-    why: 'charts (fe-stack charts).'
+    why: 'An optional peer of the Grammar''s core charts ext (@starci/grammar/core/ext/recharts, fe-stack charts); an app installs it and imports it only through the ext.'
   'react-markdown':
     version: 10.1.0
     group: ui
@@ -596,12 +631,12 @@ pins:
     version: 15.0.0
     group: ui
     side: fe
-    why: 'file drop zones of uploads (fe-stack upload).'
-  'react-pdf':
-    version: 10.4.1
+    why: 'An optional peer of the Grammar''s core upload ext (@starci/grammar/core/ext/dropzone, fe-stack upload); an app installs it and imports it only through the ext.'
+  'pdfjs-dist':
+    version: 6.5.438
     group: ui
     side: fe
-    why: 'PDF viewing (fe-stack pdf).'
+    why: 'An optional peer of the Grammar''s core PDF ext (@starci/grammar/core/ext/pdf, fe-stack pdf), loaded lazily; an app installs it and imports it only through the ext.'
   '@fingerprintjs/fingerprintjs':
     version: 5.2.0
     group: framework

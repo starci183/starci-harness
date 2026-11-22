@@ -7,18 +7,33 @@
 # pushed branch (.starcistacks/application-stacks.yaml branches): a gate it reports runs and records but never counts, the lint of a line the branch changed since main
 # and the predicted coverage of the changed lines still block, and where lint reports the lint ratchet still refuses a pushed commit that adds a lint finding to a file it touches.
 # Gates the app declares off for every branch (`gates` of the declaration, PROJECT-LINT-4) are skipped by `app check`, each printed `off (declared: <reason>)`; `deps check` follows its own
-# gate (`deps`), except on a push of main or a release tag, which always runs it: a pin npm cannot serve breaks the release build.
+# gate (`deps`), except on a push of main or a release tag, which always runs it: a pin npm cannot serve breaks the release build. It is handed the pushed refs: a push
+# whose every ref is dev or a lane branch, of an app declaring hfs.json deps.devAllowsLocalRegistry, may carry local-registry pins (dev only).
+# The two-level gate (owner: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"): a push whose every ref is dev or a lane branch lands on dev and
+# runs the FAST level once, `app check --env prod --level dev --push-refs <refs>` (the deps check, types, the lane's own tests, db, the design approval; it names what it skips,
+# and a tree the lander's gate or lane gate already judged green is not judged again); main, a release tag and any other branch run the FULL level (`--level full`), every gate once.
 set -e
 refs=$(cat)
 printf '%s\n' "$refs" | STARCI_PUSH_REMOTE="$1" node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"
 case "$refs" in
   *" refs/heads/main "*|*" refs/tags/v"*) STARCI_JUDGED_BRANCH=main; export STARCI_JUDGED_BRANCH ;;
 esac
+level=full
+if [ "${STARCI_JUDGED_BRANCH:-}" != main ]; then
+  level=$(printf '%s\n' "$refs" | { seen=none; while read -r _local _sha remote _old; do
+    [ -n "$_old" ] || continue
+    case "$remote" in refs/heads/dev|refs/heads/lane/*) [ "$seen" = full ] || seen=dev ;; *) seen=full ;; esac
+  done; [ "$seen" = dev ] && echo dev || echo full; })
+fi
+if [ "$level" = dev ]; then
+  node node_modules/starci-harness/dist/main.js app check --env prod --level dev --push-refs "$refs"
+  exit $?
+fi
 deps=$(node node_modules/starci-harness/dist/main.js app check --profile --gate deps)
 if [ "$deps" = off ] && [ "${STARCI_JUDGED_BRANCH:-}" != main ]; then
   echo "deps: off by declaration (gates of .starcistacks/application-stacks.yaml), not run"
 else
-  node node_modules/starci-harness/dist/main.js deps check
+  node node_modules/starci-harness/dist/main.js deps check --push-refs "$refs"
 fi
 # STARCI_PUSH_GATE=1: only this run makes an unwarmed cache (records the run wrote that the commit lacks) an error; every other run reports it (cache/freshness.mts). `starci app push` commits the records first.
-STARCI_PUSH_GATE=1 node node_modules/starci-harness/dist/main.js app check --env prod
+STARCI_PUSH_GATE=1 node node_modules/starci-harness/dist/main.js app check --env prod --level full

@@ -63,7 +63,6 @@ wrappers:
         { kind: style, target: "Avatar.Root:radius", reason: "the group identity is round and its member cells are square crops" },
         { kind: style, target: "AvatarGroup.Count:block-size", rule: R320, reason: "the overflow count of a control-size group is drawn at the control height" } ] }
   - { file: core/composite/Breadcrumbs/index.tsx, wraps: [Breadcrumbs] }
-  - { file: core/composite/ButtonGroup/index.tsx, wraps: [ButtonGroup] }
   - { file: core/composite/CheckboxGroup/index.tsx, wraps: [Checkbox, CheckboxGroup], delegates: { Checkbox: [Content] } }
   - { file: core/frame/Fieldset/index.tsx, wraps: [Fieldset] }
   - { file: core/frame/Form/index.tsx, wraps: [Form] }
@@ -72,7 +71,6 @@ wrappers:
         { kind: style, target: "Pagination.Link:background", reason: "the current page paints its exclusive mark" },
         { kind: style, target: "Pagination.Link:color", reason: "the current page paints its exclusive mark" } ] }
   - { file: core/composite/RadioGroup/index.tsx, wraps: [Radio, RadioGroup] }
-  - { file: core/composite/FilterButtonGroup/index.tsx, wraps: [ToggleButton, ToggleButtonGroup] }
   - { file: core/choiceToggles.tsx, wraps: [ToggleButton, ToggleButtonGroup, Tooltip] }
   - { file: core/frame/ScheduleGrid/index.tsx, wraps: [Button] }
   - { file: core/composite/TagGroup/index.tsx, wraps: [Tag, TagGroup] }

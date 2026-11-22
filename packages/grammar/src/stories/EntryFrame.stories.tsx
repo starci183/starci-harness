@@ -33,7 +33,7 @@ const EntryDemo = ({ state = 'ready', long = false }: { readonly state?: 'ready'
       {state === 'error' ? <G.Alert title="We could not complete sign-in" description="Check your connection, then try again." tone="negative" /> : null}
       <G.Input id="entry-email" name="email" label="Email address" kind="email" isLoading={state === 'loading'} />
       <G.Input id="entry-password" name="password" label="Password" kind="password" isLoading={state === 'loading'} />
-      <G.Button intent="commit" width="fill" isLoading={state === 'loading'}>Continue</G.Button>
+      <G.Button variant="primary" width="fill" isLoading={state === 'loading'}>Continue</G.Button>
     </G.Stack>
   </G.EntryFrame>
 );
@@ -66,7 +66,7 @@ export const Centred: Story = {
           </G.Stack>
           <G.Input id="centred-email" name="email" label="Email address" kind="email" />
           <G.Input id="centred-password" name="password" label="Password" kind="password" />
-          <G.Button intent="commit" width="fill">Continue</G.Button>
+          <G.Button variant="primary" width="fill">Continue</G.Button>
         </G.Stack>
       </G.SurfaceCard>
     </G.EntryFrame>

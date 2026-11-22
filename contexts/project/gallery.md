@@ -290,7 +290,7 @@ same order until it adopts a board.
      Shopify or Linear; a form, a detail, a dashboard each with their own): what they put in one row, what they leave out, where the action sits.
    - **Round 2, the 390 frames and the states.** Check the phone frames and the empty, loading and error states (and no-match, first-visit,
      editing where a page has them).
-   Each round fills the seven lenses of every touched screen's `screen.yaml` audit (PROJECT-GALLERY-8 item 3); the fixes of a round land in the
+   Each round fills the ten lenses of every touched screen's `screen.yaml` audit (PROJECT-GALLERY-8 item 3); the fixes of a round land in the
    code and the shots are taken again before the next. When both rounds are done the board (or the canvas page) is synced to the code.
    **The record** is `considered` in each touched `screen.yaml` (`## Phương án đã cân nhắc` in an `explain.md` not migrated yet, and the canvas
    page's note): each option weighed, including the ones the builder and the drawing chose, with why it was chosen or rejected. An option that was
@@ -336,10 +336,10 @@ warns: drift since the pass and later cycles are the reference a later fix compa
    `considered`, the `code` is read from the route's source, the shot sha256 from the PNGs on disk) with `audit: null`, and deletes the explain.md. A dry run lists what it would do; a screen it cannot convert (no route, no title) is
    skipped and named.
 3. **The UI audit.** A touched screen is audited by an agent other than its builder until its first cycle passes (item 4). A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (`packages/hfs/cache/screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`: a shared composite, a hook, a module, a workspace package, the i18n keys its sources read; a barrel is transparent, a `renders: false` slot marks nothing), or when its audited screen.yaml changed. The audit holds
-   `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the seven `lenses` `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth`, each
+   `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the ten `lenses`: the seven core `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth` and the three content lenses `business`, `hand-composed`, `tech-leak` (a round written before the content lenses holds the seven core ones and stays valid), each
    `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`, `at` an ISO timestamp with its zone), `escalate`, and `baseline` (`{ at, rounds }`: the first pass, written by `starci audit run`, kept by every later cycle). The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
    rules, with an explicit checklist read on the full-resolution crops of the first viewport and the header at 390 and 1440 (never on the shrunk full-page shot): control height 40 (an `sm` control only nested in an item or a dense toolbar, never in a header), no wrapped label, overflow goes to the menu (`TopBar fit`; ui/presentation.md PHONE-1..4; `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE`, `DNA-COMMON-HEADER-NO-OVERFLOW`); **actionable** every value shows how to change it; **live** running, done, waiting and failed are visible with an icon and motion; **words** no mixed English or raw ids, one term per concept; **states** empty,
-   loading, error and no-permission at 1440 and 390; **truth** the data is real or marked "cần API". The audit loops, each round running all seven lenses, until every lens of the last round is `pass` or `fixed`:
+   loading, error and no-permission at 1440 and 390; **truth** the data is real or marked "cần API"; **business** which of the 2-3 owner questions the screen's screen.yaml states each region answers, with no run counts, trigger kinds, provider keys, raw codes or step chains on a summary; **hand-composed** a known situation ([../ui/situations.md](../ui/situations.md)) built from primitives instead of its Grammar component (a summary card from Text and Stack, a hand-drawn status circle); **tech-leak** the audience rule of [../ui/content.md](../ui/content.md) (a business app renders no raw code, English engine text, internal id or jargon outside a collapsed "Chi tiết kỹ thuật"). The audit loops, each round running all ten lenses, until every lens of the last round is `pass` or `fixed`:
    at least 2 rounds, at most 4 a cycle. Still `open` after round 4 is written to `escalate` ("needs owner: <why>"). A screen looked at again after its round 4 (a fix, a reshoot)
    opens a new cycle with `starci audit cycle` (item 5); `audit run` past a cycle's round 4 records nothing, so a reshot image never inherits round 4's verdicts.
 4. **The gate is "UI Audit" until the first pass** (`starci app check --gate uiaudit`, in every whole run and the pre-push hook; a mandatory gate no app switches off). It judges the touched
@@ -423,3 +423,23 @@ shots come from the code. It replaces drawing screen by screen.
 **Known gap**: the gate reads the record and the files, never the render: that a section module imports only the Grammar, and that the
 code matches its section, is held by the `design` op's `anchors-cited` and by the one review of PROJECT-GALLERY-7 item 4. The canvas gate
 `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` reads `design.json` only, so a board revision's `approvedAt` gates no code change yet.
+
+## PROJECT-GALLERY-10 A screen's lane brief maps it to the Grammar first, and its screen.yaml waits for the owner's OK
+
+The owner's rulings of 2026-11-22 (t195, the content layer): "ok h update .claude lại" and "screen phải duyệt kĩ". A screen is approved by its
+look, slowly, and the brief that builds it names the Grammar before any code.
+
+1. **Before any UI code, the lane brief lists the screen's questions and its component map.** The brief that starts a UI lane states the 2 or
+   3 owner questions the screen answers (the same `questions` its `screen.yaml` will carry; [../ui/content.md](../ui/content.md) CONTENT-1)
+   and a map of every element on the screen to the Grammar component that draws it ("the agent's summary → `EntitySummaryCard`", "the run's
+   steps → `Timeline` with `status`", "who is on it → `AvatarGroup`"), read from [../ui/situations.md](../ui/situations.md). An element with no
+   component is not composed from primitives in the app: it goes to Grammar first, as its own lane, and the screen lane waits for it.
+2. **The order of a screen.** land → dev test → a QA polish pass → the owner's OK on the look → `screen.yaml`. The `screen.yaml` (and its
+   audit) is written only AFTER the owner approves the screen as it renders ("screen phải duyệt kĩ"); a `screen.yaml` written before that
+   is a draft the lane redoes once the owner has looked. The first audit cycle (PROJECT-GALLERY-8) then runs on the approved shots.
+3. **What the audit adds.** The three content lenses of PROJECT-GALLERY-8 item 3 judge what the brief promised: **business** (each region
+   answers one of the questions, no tech on a summary), **hand-composed** (no known situation built from primitives, no hand-drawn status
+   circle) and **tech-leak** (the app's `audience` rule).
+
+**Enforced by** review (the lane brief and the owner's OK are words, not files a check reads); the content lenses are part of the audit
+block `starci audit run` writes, judged against the concept of [../ui/content.md](../ui/content.md), with no word list.

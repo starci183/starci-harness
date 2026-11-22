@@ -54,9 +54,9 @@ test('3. a non-literal ConnectionStatus state and its types are reported', () =>
   assert.deepEqual(codes(result).sort(), ['CONNECTION_STATUS_STATE', 'CONNECTION_STATUS_TYPES', 'CONNECTION_STATUS_TYPES']);
 });
 
-test('4. CloseButton becomes IconButton intent dismiss and reuses an existing IconButton import', () => {
+test('4. CloseButton becomes IconButton and reuses an existing IconButton import', () => {
   const result = run('CloseButton, IconButton', 'const A = () => <><CloseButton label="Close" size="sm" onPress={f} isDisabled /><IconButton label="x" source={s} /></>;');
-  assert.equal(result.text, `import { IconButton } from '${GRAMMAR}';\nconst A = () => <><IconButton intent="dismiss" label="Close" size="sm" onPress={f} isDisabled /><IconButton label="x" source={s} /></>;`);
+  assert.equal(result.text, `import { IconButton } from '${GRAMMAR}';\nconst A = () => <><IconButton label="Close" size="sm" onPress={f} isDisabled /><IconButton label="x" source={s} /></>;`);
 });
 
 test('5. TextAction with href becomes Link; target blank becomes kind external', () => {
@@ -99,11 +99,10 @@ test('10. field vocabulary: Input isError and OtpInput disabled, invalid, onChan
   assert.match(result.text, /<Input isInvalid=\{e\} \/><OtpInput isDisabled isInvalid=\{i\} onValueChange=\{f\} \/>/);
 });
 
-test('11. variant is deleted on fields and Tabs; Button and IconButton variant is reported', () => {
+test('11. variant is deleted on fields and Tabs; Button and IconButton keep theirs', () => {
   const result = run('Input, Tabs, Button, IconButton, Select', 'const A = () => <><Input variant="secondary" /><Tabs variant="x" /><Select variant={v} /><Button variant="primary">a</Button><IconButton variant="ghost" label="l" /></>;');
   assert.match(result.text, /<Input \/><Tabs \/><Select \/><Button variant="primary">a<\/Button><IconButton variant="ghost" label="l" \/>/);
-  assert.deepEqual(codes(result), ['BUTTON_VARIANT', 'BUTTON_VARIANT']);
-  assert.match(result.findings[0]?.reason ?? '', /button-intent/);
+  assert.deepEqual(codes(result), []);
 });
 
 test('12. size control is deleted; on Switch and Avatar it becomes lg', () => {
@@ -161,7 +160,7 @@ test('14. TagGroup selection props are reported', () => {
 
 test('names resolve through an alias and a namespace import', () => {
   const result = transformSmallRenames({ ts, text: `import { StatusDot as Dot, CloseButton as Close } from '${GRAMMAR}';\nimport * as G from '@starci/grammar/offset-pop';\nconst A = () => <><Dot tone="x">T</Dot><Close label="c" /><G.ChatBubble /><G.TextAction href="/a">L</G.TextAction></>;` });
-  assert.match(result.text, /<Badge isDot tone="x">T<\/Badge><IconButton intent="dismiss" label="c" \/><G\.MessageBubble \/><G\.Link href="\/a">L<\/G\.Link>/);
+  assert.match(result.text, /<Badge isDot tone="x">T<\/Badge><IconButton label="c" \/><G\.MessageBubble \/><G\.Link href="\/a">L<\/G\.Link>/);
   assert.match(result.text, /^import \{ Badge, IconButton \} from/);
 });
 

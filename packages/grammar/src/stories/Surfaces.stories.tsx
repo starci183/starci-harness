@@ -69,7 +69,7 @@ const FloatingCardPage = () => (
         <div data-story-dna="controls" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
           <G.Input id="dna-input" name="name" label="Name" />
           <G.Select label="Plan" options={dnaPlanOptions} defaultValue="team" />
-          <G.Button intent="commit" onPress={noop}>Save</G.Button>
+          <G.Button variant="primary" onPress={noop}>Save</G.Button>
         </div>
       </G.SurfaceCard>
     </div>
@@ -118,7 +118,7 @@ export const FloatingCard: Story = {
   render: (_, { globals }) => (
     <Matrix>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-dna-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} data-story-dna-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <FloatingCardPage />
         </G.GrammarRoot>
       ))}
@@ -283,7 +283,7 @@ export const SurfaceCardListRow: Story = {
           kind="list"
           title="Bank feed"
           fact="3 accounts"
-          action={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}
+          action={<G.Button variant="border" onPress={noop}>Add</G.Button>}
           empty={<G.EmptyNotice message="No accounts." />}
           items={[
             {
@@ -300,7 +300,7 @@ export const SurfaceCardListRow: Story = {
               title: 'Second account',
               badges: [{ label: 'Unfinished', tone: 'warning', isDot: true }],
               description: 'Bank A · •••• 1234 · Holder name',
-              action: { label: 'Continue', intent: 'alternative', press: noop },
+              action: { label: 'Continue', variant: 'border', press: noop },
               menu: { label: 'Options for Second account', entries: [{ id: 'rename', label: 'Rename' }] },
               state: 'cautionary',
             },
@@ -611,7 +611,7 @@ export const Section: Story = {
           kind="list"
           title="Customers"
           count={4}
-          filter={<G.FilterButtonGroup label="Plan" options={[{ value: "all", label: "All" }, { value: "team", label: "Team" }, { value: "solo", label: "Solo" }]} defaultValue="all" />}
+          filter={<G.Tabs kind="filter" label="Plan" selectedKey="all" onSelect={noop} items={[{ id: "all", label: "All", count: 4 }, { id: "team", label: "Team", count: 2 }, { id: "solo", label: "Solo", count: 2 }]} />}
           items={[
             { id: "ada", title: "Ada Lovelace", description: "Team plan", badges: [{ label: "Active", tone: "success" }], action: { label: "Open", press: noop } },
             { id: "grace", title: "Grace Hopper", description: "Solo plan" },
@@ -685,7 +685,7 @@ export const FencedCodeBlock: Story = {
   render: () => (
     <Matrix maxWidth={640}>
       <State label="Authored code with language and action" direction="column">
-        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "../common/index.js"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "../common/index.js"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" variant="border">Copy</G.Button>} />
       </State>
       <State label="Rendered children" direction="column">
         <G.FencedCodeBlock language="sh"><code>npm install @acme/ui</code></G.FencedCodeBlock>
@@ -755,9 +755,9 @@ export const Contradiction: Story = {
             <G.Quote source="Chat" byline="Chat, 09:12" text={'We transferred 285 million, the rest comes after the licence.'} />
           </G.Cluster>
           <G.Cluster gap="inline" justify="end">
-            <G.Button intent="dismiss" onPress={noop}>Ask later</G.Button>
-            <G.Button intent="alternative" onPress={noop}>It is 285 million</G.Button>
-            <G.Button intent="commit" onPress={noop}>It is 300 million</G.Button>
+            <G.Button variant="border" onPress={noop}>Ask later</G.Button>
+            <G.Button variant="border" onPress={noop}>It is 285 million</G.Button>
+            <G.Button variant="primary" onPress={noop}>It is 300 million</G.Button>
           </G.Cluster>
         </G.Stack>
       </G.Section>
@@ -779,9 +779,9 @@ export const NeedsApproval: Story = {
             ]}
           />
           <G.Cluster gap="inline" justify="end">
-            <G.Button intent="dismiss" onPress={noop}>Not now</G.Button>
-            <G.Button intent="alternative" onPress={noop}>Ask for changes</G.Button>
-            <G.Button intent="commit" onPress={noop}>Approve and send</G.Button>
+            <G.Button variant="border" onPress={noop}>Not now</G.Button>
+            <G.Button variant="border" onPress={noop}>Ask for changes</G.Button>
+            <G.Button variant="primary" onPress={noop}>Approve and send</G.Button>
           </G.Cluster>
         </G.Stack>
       </G.SurfaceCard>
@@ -793,9 +793,9 @@ export const NeedsApproval: Story = {
 export const FencedCodeLanguageLabel: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, inlineSize: 420 }}>
-      <G.FencedCodeBlock language="bash" code="npm install @acme/ui" action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
-      <G.FencedCodeBlock language="bash" showLanguage={false} code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
-      <G.FencedCodeBlock language="bash" code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" code="npm install @acme/ui" action={<G.Button size="sm" variant="border">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" showLanguage={false} code={'cd app\nnpm run dev'} action={<G.Button size="sm" variant="border">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" code={'cd app\nnpm run dev'} action={<G.Button size="sm" variant="border">Copy</G.Button>} />
     </div>
   ),
   play: async ({ canvasElement }) => {

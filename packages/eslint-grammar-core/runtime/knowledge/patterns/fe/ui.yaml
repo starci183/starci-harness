@@ -47,9 +47,9 @@ rules:
         when: A person or identity needs an avatar
         write: |-
           Pass the uploaded image when one exists; otherwise the selected Grammar's identity renderer uses
-          bundled DiceBear initials from the first and last words of the name, with colour seeded by the
-          user or identity id when present and by the name otherwise.
-          Agent names follow the same free-text rule and add the Grammar's bot badge.
+          two initials (the first letter of the first and of the last word of the name, diacritics kept) in
+          DiceBear's Initials style drawn locally, on a colour from the Grammar's tone palette seeded by the user or identity id when present and by the name otherwise.
+          Agent names follow the same free-text rule; the avatar stays initials, and the "AI" is the Grammar's small neutral Chip after the name (`isAgent` on the name slot of a row, a card head, a message or a members list), never placed by hand.
           Apps neither declare nor import an avatar-generation
           library and draw no avatar visuals; the family owns the renderer API (the StarCi recipe is
           groupIdentity in its playbook).
@@ -77,8 +77,6 @@ rules:
         - FE_NESTED_VARIANT
         - FE_GRAMMAR_LAYOUT_ONLY
         - FE_BUTTON_INTENT
-        - FE_BUTTON_INTENT_REQUIRED
-        - FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
         - FE_SINGLE_COMMIT_PER_RENDER
         - FE_NO_COMMIT_IN_COLLECTION_ITEM
         - FE_CONTROL_HEIGHT

@@ -4,30 +4,22 @@ import { HiddenSkeleton, withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
-import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
+import { BUTTON_VENDOR_VARIANT, type ButtonVariant } from "../Button/index.js"
 import { DismissGlyph } from "./dismissGlyph.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
- * The plate an icon-only action wears comes from its `intent` and the placement it sits in (`useButtonIntentVariant`), never from
- * a prop: `dismiss` is the quiet tertiary plate and draws the close glyph itself, `neutral` is the outline plate in a decision band
- * and the bare ghost glyph in an item or chrome (an overflow "..." menu, a secondary glyph action beside a card title), `commit` the
- * accent plate (one per view), and `destructive` the danger tone (`entry` the soft tint plate, `confirm` the solid one).
+ * The plate an icon-only action wears is one of the Button's three looks (owner, 2026-11-22), from `variant`, never from where it sits:
+ * `border` (the default) the outline plate, for every icon action (a close, an overflow "...", a glyph action beside a card title, a toolbar);
+ * `primary` the solid accent plate (one per view); `danger` the destructive one. With neither `source` nor `glyph` it draws the close glyph.
  */
 type IconButtonGlyph =
     | {
-        /** The close glyph is drawn by the grammar; pass `source` only to draw another. */
-        readonly intent: "dismiss"
+        /** The close glyph is drawn by the grammar when no other is given. */
         readonly source?: IconSource
         readonly glyph?: never
     }
     | {
-        readonly intent?: Exclude<ButtonIntent, "dismiss">
-        readonly source: IconSource
-        readonly glyph?: never
-    }
-    | {
-        readonly intent?: Exclude<ButtonIntent, "dismiss">
         /** A glyph of Grammar's own closed vocabulary (`more`, `send`, `panel-end`, `pencil`, `close`), for an app with no icon registry. */
         readonly glyph: GlyphName
         readonly source?: never
@@ -36,6 +28,8 @@ type IconButtonGlyph =
 export type IconButtonProps = NoChildren & {
     /** Required accessible name for the glyph-only action. */
     readonly label: string
+    /** The look: `border` (default), `primary` or `danger`, as on `Button`. */
+    readonly variant?: ButtonVariant
     /** `md` is the one control height (2.5rem, 40px: the default), `sm` (2rem) is for a control nested in an item or a dense toolbar, `lg` (3rem) is the landing hero step. */
     readonly size?: "sm" | "md" | "lg"
     /** Lifts the button with the overlay elevation, for an action floating over content (it owns no position). */
@@ -46,7 +40,7 @@ export type IconButtonProps = NoChildren & {
     /** The initiating action keeps its name and box while duplicate presses are blocked. */
     readonly isPending?: boolean
     readonly onPress?: () => void
-    /** A real destination: renders an anchor wearing the icon-button appearance (R7: it takes the intent of the command it stands for). */
+    /** A real destination: renders an anchor wearing the icon-button appearance (R7: it takes the look of the command it stands for). */
     readonly href?: string
     /** Disclosure: the id of the region this button shows and hides (`aria-controls`). */
     readonly "aria-controls"?: string
@@ -54,7 +48,7 @@ export type IconButtonProps = NoChildren & {
     readonly "aria-expanded"?: boolean
     /** Largest number shown before it collapses to `n+`. Default 99. */
     readonly badgeMax?: number
-} & IconButtonGlyph & Omit<ButtonIntentProps, "intent"> & (
+} & IconButtonGlyph & (
     | {
         /**
          * A decorative count at the glyph's top end. `0` and empty draw nothing;
@@ -87,8 +81,7 @@ const IconButtonFace = ({
     source: givenSource,
     glyph: givenGlyph,
     label,
-    intent,
-    step,
+    variant: look = "border",
     size = "md",
     isFloating = false,
     isActive = false,
@@ -103,7 +96,7 @@ const IconButtonFace = ({
     badgeLabel,
     badgeMax = 99,
 }: IconButtonProps) => {
-    const variant = useButtonIntentVariant(intent, step, "iconButton") ?? "tertiary"
+    const variant = BUTTON_VENDOR_VARIANT[look]
     const source = givenSource ?? (givenGlyph === undefined ? DismissGlyph : glyphSource(givenGlyph))
     const badgeText = isLoading ? null : iconButtonBadgeText(badge, badgeMax)
     const unavailable = isDisabled || isPending || isLoading
@@ -115,7 +108,7 @@ const IconButtonFace = ({
                 data-component="IconButton"
                 data-contract="A11Y-2"
                 data-active={isActive ? "true" : "false"}
-                data-variant={variant}
+                data-variant={look}
                 data-size={size}
                 data-floating={isFloating ? "true" : "false"}
                 data-loading={isLoading ? "true" : "false"}
@@ -140,7 +133,7 @@ const IconButtonFace = ({
         data-component="IconButton"
         data-contract="A11Y-2"
         data-active={isActive ? "true" : "false"}
-        data-variant={variant}
+        data-variant={look}
         data-size={size}
         data-floating={isFloating ? "true" : "false"}
         data-loading={isLoading ? "true" : "false"}

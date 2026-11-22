@@ -24,8 +24,15 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
   read any of them; they name the family's defaults, which an app may replace. Colour is per theme because dark is
   its own palette, not an inversion. The key `accentText` is the token `--accent-soft-foreground`: the accent painted as
   text, because a fill colour that reads well behind text rarely reads well as text, and the accent alone stays `--accent`.
-  `accentSoft` is the tint both `accentText` and `muted` stay legible on. Intent, arrangement and the item defaults are
+  `accentSoft` is the tint both `accentText` and `muted` stay legible on. The Button variant, arrangement and the item defaults are
   Common's, so they are not in a grammar's DNA.
+- **The core's ext, for its own situations only.** `src/core/ext/graph` and `src/core/ext/markdown` (the entries
+  `@starci/grammar/core/ext/graph` and `@starci/grammar/core/ext/markdown`) are part of the core: they import the core's
+  components and tokens, and the core entry never imports them, so their libraries are optional peers an app installs
+  only when it uses an ext (`starci-grammar/ext-boundary`, `DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY`). An ext is used ONLY
+  in its situation: a graph when the reader must see a structure of steps, relations or clusters (a run's flow, a data
+  ERD, a knowledge map); markdown for long authored documents. Everything else is core: a list, `Timeline`, `Stepper`,
+  cards. Offset Pop gets no ext.
 - **A lint factory**, even when it only re-exports Common's checks: a grammar without one would give its apps
   zero grammar rules without anyone noticing.
 - **Conformance**: every universal rule id is inherited or carries family evidence that names the mechanism.
@@ -71,29 +78,18 @@ small names (`xs`), `isStrong` weight 500, titles 600; display sizes flagged: pa
 section title 14, and every tab label 14 ([ui/presentation](../ui/presentation.md#type) FONT-7). Sizes and weights are
 Common tokens (`--grammar-text-*`); a grammar may repaint a face but not move a role to another size.
 
-## Intent x placement -> variant
+## Button variant
 
-The app states what a command does; the composition states where it sits; Common's map turns the pair into a
-HeroUI variant. The app never passes `variant`.
+A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary`
+(solid, the ONE main action of a card or region), `border` (an outline, every secondary action; the default) or `danger` (a destructive action:
+delete, disconnect, stop for good, at its entry and at its confirm). There is no intent, step, placement, ghost, tertiary, secondary, flat or
+soft-danger look, and the look never depends on where the Button sits. Common maps the looks onto the vendor: primary is HeroUI `primary`,
+border is `outline`, danger is `danger` (`BUTTON_VENDOR_VARIANT`, `src/core/leaf/Button/index.tsx`; the table is in the package's
+`docs/button-variant-props.md`). `tone` (`accent`, `info`, `success`, `warning`) is only the colour of a `primary`, never a fourth look: a toned
+notice's action (an `Alert`) is its primary in the notice's colour. `IconButton` takes the same three.
 
-- `intent`: `commit` (the step forward), `alternative` (a real other option), `dismiss` (no consequence: cancel,
-  close, back), `neutral` (not part of a decision), `destructive` with `step` `entry` (opens the confirmation) or
-  `confirm` (the irreversible press).
-- `placement`: `decision` (form, dialog or drawer footer, page-header decision, empty state), `item` (once per
-  collection item), `chrome` (toolbar, top bar, panel header); an icon button also knows `navbar`. The composing
-  Grammar component sets it, never the button.
-
-The map walks HeroUI's emphasis ladder (filled accent; neutral fill with accent text; neutral fill; border;
-nothing; and the danger pair):
-- emphasis follows consequence, so `commit` takes the top step where a decision is made;
-- a command repeated per item drops a step, because a column of primaries is noise and an item never holds the
-  view's commit;
-- `neutral` is quiet in chrome and an outlined pill where it repeats per item (a row or tile command: "Open", "Continue setup");
-- `destructive` is the soft danger at entry and the solid danger only at confirm, inside the dialog that
-  confirms it, dismiss first and focused.
-
-The exact map is Common data: `intent` in the DNA modules, resolved by `src/core/buttonIntent.tsx`, generated
-into the package's `docs/button-intent-props.generated.md` (one Common module for it is open: [questions](../harness/questions.md) 33).
+The view keeps one primary (lint `single-commit-per-render`, `DNA-COMMON-ONE-ACCENT-FILL`) and a collection item none (lint
+`no-commit-in-collection-item`); only the primary carries a leading icon (the types); a retry is `border` (`RETRY_VARIANT`).
 
 ## Roles
 
@@ -139,7 +135,7 @@ flush to it, with the outline's weight drawn under it).
 ### Button
 
 Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape
-only paints. Its variant comes from intent and placement, its size from the ramp: `sm`, `md`, `lg`, and `control`
+only paints. Its look is its `variant` (primary, border or danger), its size from the ramp: `sm`, `md`, `lg`, and `control`
 in a bar. `pending` means this control accepted work: label and box unchanged, a second press refused.
 `disabled` means the work cannot start, and its `disabledReason` says why in a tooltip on hover and keyboard focus
 that is also the button's accessible description, since a disabled control is otherwise mute; where no pointer can hover, the
@@ -150,22 +146,13 @@ motion; it keeps the variant names, so the emphasis ladder means the same in eve
 `IconButton.isPending` keeps its accessible name and box while drawing the native spinner, setting busy state and
 refusing duplicate activation. `isLoading` remains unresolved content, not an action's progress.
 
-A button's glyph says one thing. Only the primary button (`intent="commit"`, the CTA) carries a leading icon:
-neutral, alternative, dismiss and destructive buttons, suggestion pills and row actions are text only, which the types enforce; `IconButton` is unaffected. `endArrow` (any intent) marks a button that leads somewhere (a page, a tab, a next step): the grammar's
+A button's glyph says one thing. Only the primary button (`variant="primary"`, the CTA) carries a leading icon:
+`border` and `danger` buttons, suggestion pills and row actions are text only, which the types enforce; `IconButton` is unaffected. `endArrow` (any look) marks a button that leads somewhere (a page, a tab, a next step): the grammar's
 `arrow-end` glyph ends the label, slides one step toward the reading end on hover and focus (still under reduced motion) and
 mirrors right to left. `startGlyph` (a named glyph, among them `plus` and `upload`), on the primary only, marks one that does something. A button
 never takes both, which the types refuse, and a typed arrow in the label or an arrow passed through `endContent` is refused
 by lint `button-arrow`. `EmptyNotice` `actionEndArrow` and `ItemAction.endArrow` carry the same on a notice's action and a
 row or tile's action.
-
-### ButtonGroup
-
-An action group is two to five peers of one intent acting on one object (zoom, align). The vendor joins them:
-squared inner corners, collapsed borders, no press scale; the group forwards the vendor's size to every member.
-Each action's `isPending` keeps its own label and geometry while drawing the native busy state and refusing another
-activation. Group `isLoading` means unresolved content and keeps the whole fused skeleton inert. Icon-only members
-follow the same `IconButton.isPending` contract. Neither pending nor loading overrides the vendor's joined corners.
-A decision and its way out are not peers, so they are two buttons at the inline gap, never a group.
 
 ### Tabs
 
@@ -188,10 +175,9 @@ The value role is one value inside a form or a toolbar (period, audience, densit
 `ChoiceChips` (or a `RadioGroup` when each option needs a sentence). The pill-in-a-track look belongs to `Tabs
 appearance="primary"`, a mode or period switch.
 
-### FilterButtonGroup
+### Removable filter chips
 
-`FilterButtonGroup` is deprecated and refused in product source (R380): peer values that filter a collection which stays in
-place are `Tabs kind="filter"`. A removable group may end with `onClearAll` and `clearAllLabel` (0.47.1): a "Clear all" text action
+Peer values that filter a collection which stays in place are `Tabs kind="filter"` (`FilterButtonGroup` was deleted in 0.55.0). A removable group may end with `onClearAll` and `clearAllLabel` (0.47.1): a "Clear all" text action
 after the last chip, for a row of active filter values under a toolbar; it wraps under the chips when the row is full and leaves with
 the last chip.
 
@@ -425,8 +411,10 @@ reaches the page through `Mascot`, `Illustration` or a `MediaFrame` (R338). A ra
 ### Avatar
 
 An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a bar), so it matches the controls
-beside it. Without an image it draws generated initials coloured by a stable seed; an agent carries a badge and an
-accessible name that says so; a group is one composite at one size. `LogoStack` shows which provider connections something
+beside it. Without an image it draws generated initials coloured by a stable seed, or, as a MARK, an icon on a round brand-colour plate (a
+provider or a channel); an agent's avatar is initials only with an accessible name that says so, and its "AI" is the neutral Chip that
+follows the NAME (`AgentName`, `isAgent` on the name slots); avatars in a row or from a list are one `AvatarGroup` of people and marks
+at one size, with `max - 1` items then a "+N" tile (lint `avatar-row-uses-group`). `LogoStack` shows which provider connections something
 uses: round 20px logos with no plate, at most three then a "+N" pill, an optional muted `xs` caption, static or one plain
 pressable (or a `DropdownMenu` trigger through `isTrigger`); the exported `PlainPressable` lets an app wrap its own content
 the same way.
@@ -484,14 +472,13 @@ columns of rows (stages) that scroll as one row and snap, one stage at a time on
 its title and count, answers for its own empty state, and a loading board keeps its titles and draws its rows as geometry. A
 `ScheduleGrid` places entries by row and column (a week by hour, people by day, a month by week) in a real table with a
 caption, column headings and a heading per row; below 48rem of its own width it reads as an agenda in which each entry names
-its column and empty cells are not drawn, and a loading grid keeps its headings and draws shimmering entries. A `BarChart`
-draws bars on one scale from zero with the value over each bar and the label under it, as a list of values for assistive
-technology; it draws no axis, grid or legend.
+its column and empty cells are not drawn, and a loading grid keeps its headings and draws shimmering entries. Bars, lines and
+sparklines are the charts extension's (`@starci/grammar/core/ext/recharts`); core draws no chart of its own (0.55.0).
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
 `kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a grey chip, an attention count (`isAttention`) on the accent soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
 of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
-`DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` are deprecated and R380 refuses them in product source.
+`DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` were deleted in 0.55.0, and R380 still names the replacement in product source.
 
 The `Calendar` takes a controlled `value`, `minValue` and `maxValue`, `isDateUnavailable` with an `unavailableReason` (a full day says so
 on hover and to a screen reader), a `locale` (and so the week's first day: Monday for Vietnamese) with `firstDayOfWeek` to override,
@@ -562,10 +549,23 @@ replaces the strip. A strip that owns its visible heading supplies `title`. An a
 ### Diagram
 
 A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
-tokens; Grammar draws no node graph (since 0.49.0 a graph is app-owned, written inside a `Fragment` region with any library: contexts/ui/components/fragment.md). A
+tokens; a node graph is the core's graph ext (`@starci/grammar/core/ext/graph`: a run's flow, a data ERD, a knowledge map, and
+ONLY those; [graph](../ui/components/graph.md)), never a `Fragment` and never an app's own xyflow. A
 diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
 and a source the renderer refuses stays in the region as code under an error. A grammar decides the frame and the paint; the reserved box and the error carrier are the same
 everywhere.
+
+### Charts
+
+A chart or a sparkline is drawn by the charts extension of the core grammar (`@starci/grammar/core/ext/recharts`), never by hand-drawn SVG and never by a chart library imported in an app. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. A chart is one named image in a box that keeps its height in loading, empty and ready; its series are tone tokens, its axes and grid muted tokens, its tooltip a shadowless surface. An area's soft fill is its series token through the opacity tokens; a donut draws at most six parts, the rest folded into Other under the app's label, with its legend of values and shares as text beside the image.
+
+### PDF
+
+A PDF document is shown by the PDF extension of the core grammar (`@starci/grammar/core/ext/pdf`, `PdfViewer`), and that extension is used only to show PDF documents. Its pages are drawn to a canvas by pdfjs, never an iframe; the library is imported only inside that extension, lazily; core never imports it; it is an optional peer dependency. The viewer is a shadowless surface with a 1px border, its commands core IconButtons and a Button at the control size on every screen, its loading all Skeleton and its failure a negative Alert; highlights are tone-soft overlays.
+
+### Upload
+
+Every upload is taken by the upload extension of the core grammar (`@starci/grammar/core/ext/dropzone`, `Dropzone` over react-dropzone, loaded lazily), never by react-dropzone or another upload library imported in an app. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. The zone is a surface with a 1px dashed edge and no shadow that takes files and folders (a folder flattens into its files with their relative paths); drag-over paints the info soft surface, a refused drop the danger soft surface with the reason in words (too big, wrong type, too many). Each upload the app runs is a row: a 24px file-type icon, the name, an info Progress and an inline status of the three glyphs. Every word comes from the app's `labels`.
 
 ### Shell
 

@@ -1,12 +1,13 @@
 "use client"
 
+import { toneEdgeProps, type ToneEdge } from "../../toneEdge.js"
 import { Card } from "@heroui/react"
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
+import { AgentName } from "../../leaf/AgentName/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting, assertNoSurfaceInSurface, useSurfaceHost } from "../../surfaceContext.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { assertPresentationState, treatmentFor, type PresentationState } from "../../state.js"
 import type { CardHead, ItemMenu, TileData, WholeCardAction } from "../../surfaceCardData.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
@@ -37,6 +38,9 @@ type OptionallyNamed = { readonly label?: string; readonly ariaLabel?: string; r
 
 type Head = Omit<CardHead, "label" | "ariaLabel">
 
+/** The tone of a card's edge: every Grammar tone, each with its standard `--<tone>-border` token (the one tone-edge rule, `toneEdge.ts`). */
+export type SurfaceCardTone = ToneEdge
+
 /** What every card has: a note under it, a skeleton state, a presentation state, a height and a measure. */
 type Shell = {
     /** A note under the card: a small muted line, full width. */
@@ -52,6 +56,11 @@ type Shell = {
     readonly state?: PresentationState
     /** Let a peer grid stretch the complete card (a card that fills the height its host gives it). */
     readonly height?: "fill"
+    /**
+     * A card that waits on the reader draws its 1px edge in the tone's standard border token (`--<tone>-border`, 0.55.0: "card chờ duyệt có viền
+     * vàng" is `tone="warning"`). Only the edge takes the tone; the fill stays the surface. Say why in words too (a status, a needs-you line).
+     */
+    readonly tone?: SurfaceCardTone
     /**
      * Grammar-owned width contract. `content` (default): the card fills its host. `narrow`: capped at 30rem, left-aligned (an order
      * card in a chat bubble). `formCompact`: the centred form measure of the one form that has no page around it (sign-in).
@@ -169,6 +178,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-state={state}
             data-grammar-treatment={stateTreatment.tone}
             data-grammar-surface-emphasis={emphasis}
+            {...toneEdgeProps(props.tone)}
             data-grammar-surface-ground={props.kind === "tile" ? props.groundTone : undefined}
             data-grammar-surface-bleed={props.kind === "tile" && props.poster?.bleed === true ? "true" : undefined}
         >
@@ -189,12 +199,12 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             {body?.menu === undefined ? null : (
                 <span className="starci-core-body-menu" data-grammar-body-menu="true">
                     {isLoading || disabled ? (
-                        <IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={disabled} />
+                        <IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" isLoading={isLoading} isDisabled={disabled} />
                     ) : (
                         <DropdownMenu
                             placement="bottom end"
                             entries={body.menu.entries}
-                            trigger={<IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
+                            trigger={<IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" />}
                         />
                     )}
                 </span>
@@ -223,9 +233,9 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             {sublabel === undefined ? null : <Sublabel>{sublabel}</Sublabel>}
             {body === undefined || labelled === undefined ? null : (
                 <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={body.labelEnd === undefined ? "false" : "true"}>
-                    <Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>
+                    <AgentName isAgent={body.isAgent === true} {...(body.agentLabel === undefined ? {} : { agentLabel: body.agentLabel })} name={<Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>} />
                     {body.fact === undefined ? null : <span className={surfaceFactClassName} data-contract="TONE-2 FONT-2">{body.fact}</span>}
-                    {body.labelEnd === undefined ? null : <span className="starci-core-surface-label-end"><ButtonPlacementProvider placement="chrome">{body.labelEnd}</ButtonPlacementProvider></span>}
+                    {body.labelEnd === undefined ? null : <span className="starci-core-surface-label-end">{body.labelEnd}</span>}
                 </Card.Header>
             )}
             {surface}

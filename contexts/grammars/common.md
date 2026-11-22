@@ -1,7 +1,7 @@
 # Common
 
 Common is the layer every grammar is drawn over. It owns every renderer, prop and anatomy, the spacing rhythm,
-the size ladder, the presentation states, the intent map and the root mechanics, and it owns no colour: the paint is the HeroUI
+the size ladder, the presentation states, the three Button looks and the root mechanics, and it owns no colour: the paint is the HeroUI
 tokens an app sets, or a family's optional `theme.css`.
 A grammar changes paint inside its scope and nothing else ([contract](contract.md)), so everything in this
 file holds in every grammar.
@@ -21,7 +21,7 @@ to the caller:
   would vanish into the same white, so it takes the neutral fill. The same context refuses a card inside a card: it
   throws in development (`owner: src/core/surfaceContext.tsx`). The app
   omits these props; lint refuses a static one.
-- **Typed meaning instead of looks.** A command declares `intent`, a destination is an `href`, a status is a
+- **Typed meaning instead of looks.** A command picks one of three looks (`variant`: primary, border, danger), a destination is an `href`, a status is a
   `PresentationState` (`neutral`, `informative`, `affirmative`, `cautionary`, `negative`, `pending`,
   `unavailable`; `owner: src/common/state.ts`). A state paints a fact authority already settled; it never
   creates one.
@@ -43,9 +43,9 @@ role on `Stack`, `Cluster` or `Grid` and never a value. Which relation a gap exp
 stay strictly ordered is `DNA-COMMON-RHYTHM-MONOTONIC`. Because the rhythm is a relationship, a denser rhythm changes
 the values together in Common, never one of them in a grammar.
 
-## Size and intent
+## Size and the Button looks
 
-The shared size ladder, the corner rule and the intent x placement map are part of every grammar's
+The shared size ladder, the corner rule and the three Button looks are part of every grammar's
 interface, so they are stated once in [contract](contract.md#the-shared-scale). Common implements them.
 
 ## One root
@@ -97,7 +97,7 @@ from all three is asked, not invented.
 | Multi-section overview | One `Section` per section; a `Section kind="figures"` above a section that states a measure; a `Link variant="head"` as the section `action` where it leads on; object cards only for objects |
 | Sign-in | Surface header as title and line; one single-column form per step, one commit each; the way to the other journey last, as a text action |
 | Settings or profile form | `Form` (server refusals in `validationErrors` by field name) around one `Fieldset` per named group; each field carries its own label, description and error, and short fields that pair sit in a `Grid kind="form"` so a row aligns on its controls; a value the product holds is a `CopyField`; a switch applies immediately, a checkbox submits with the form; one commit after the last group |
-| Destructive confirmation | Entry button `intent="destructive"`; `AlertDialog` naming the consequence, dismiss first and focused, confirm last; a reversible action is not confirmed: act, then offer undo in a toast |
+| Destructive confirmation | Entry button `variant="danger"`; `AlertDialog` naming the consequence, dismiss first and focused, confirm last; a reversible action is not confirmed: act, then offer undo in a toast |
 | Secondary task | `Drawer` (side on wide layouts, bottom on a phone) or `Dialog` when the task is short and must block the page; one overlay at a time |
 | App shell | One root; `WorkspaceShell` owns the frame, the bar and the mobile drawer; bar controls share one height; one `Toaster` last in the root; the shell's meaning is in [ui](../ui/README.md) and its checks in the grammar lint |
 | One question per screen | Progress from a real count; the prompt as the heading; the answer choices as the control itself (radio group, checkbox group or `ChoiceChips`), each choice a full-width row; one commit at the bottom, disabled until a choice exists so nothing moves; the outcome as an Alert in place above the action; an optional explanation in a bottom drawer. A wrong answer is an outcome, never a field error |

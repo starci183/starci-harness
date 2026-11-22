@@ -30,18 +30,18 @@ const stopBody = (
       <div style={{ flex: 1, minWidth: 0 }}>
         <G.Textarea label="Reply" isLabelHidden placeholder="Reply to the AI..." />
       </div>
-      <G.Button intent="commit" startGlyph="send" onPress={noop}>Send</G.Button>
+      <G.Button variant="primary" startGlyph="send" onPress={noop}>Send</G.Button>
     </G.Cluster>
   </G.Stack>
 );
 
 const Thread = () => (
   <>
-    <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Hi, I have sent the payment." />
+    <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="md" />} body="Hi, I have sent the payment." />
     <G.MessageCard
       measure="wide"
       author="Chatbot"
-      avatar={<G.Avatar name="Chatbot" size="sm" />}
+      avatar={<G.Avatar name="Chatbot" size="md" />}
       title="Workflow paused"
       chip={<G.Badge tone="accent">Needs your decision</G.Badge>}
       body={stopBody}
@@ -59,8 +59,8 @@ const Thread = () => (
 const Composer = () => (
   <G.PaneSection as="footer" rule="start" gap="row">
     <G.Cluster gap="inline" label="Suggestions">
-      <G.Button intent="neutral" size="sm" onPress={noop}>What did you do today?</G.Button>
-      <G.Button intent="neutral" size="sm" onPress={noop}>Is anything waiting for my approval?</G.Button>
+      <G.Button variant="border" size="sm" onPress={noop}>What did you do today?</G.Button>
+      <G.Button variant="border" size="sm" onPress={noop}>Is anything waiting for my approval?</G.Button>
     </G.Cluster>
     <G.Textarea label="Message" isLabelHidden placeholder="Type a message..." onSubmitShortcut={noop} />
   </G.PaneSection>
@@ -76,7 +76,7 @@ const ChatPage = () => (
         </G.Pane>
         <G.Pane area="room" surface content="full" label="Chatbot room" footer={<Composer />}>
           <G.PaneSection align="center">
-            <G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="sm" />} />
+            <G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="md" />} />
           </G.PaneSection>
           {/* tone="surface" on purpose: a thread is the page tone whatever the app asks. */}
           <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'surface', align: 'end' }}>
@@ -208,11 +208,11 @@ const TrayThread = () => {
   return (
     <div style={{ padding: 12, maxWidth: 720 }}>
       <G.Stack gap="row">
-        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="The order for table 4 moved to 19:30, and the kitchen has the new time for the first dish." />
-        <G.MessageBubble id="tray-incoming" author="Sam" meta="09:13" avatar={<G.Avatar name="Sam" size="sm" />} body="Thanks, noted." actions={copy} onReact={setPicked} onReply={noop} onShare={noop} />
+        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="md" />} body="The order for table 4 moved to 19:30, and the kitchen has the new time for the first dish." />
+        <G.MessageBubble id="tray-incoming" author="Sam" meta="09:13" avatar={<G.Avatar name="Sam" size="md" />} body="Thanks, noted." actions={copy} onReact={setPicked} onReply={noop} onShare={noop} />
         <G.MessageBubble side="outgoing" meta="09:14" body="I will confirm with the guests in a minute." />
         <G.MessageBubble id="tray-outgoing" side="outgoing" meta="09:15" body="Done." actions={copy} onReact={setPicked} onReply={noop} />
-        {picked === null ? null : <G.Text size="sm" tone="muted">{`Picked ${picked}`}</G.Text>}
+        {picked === null ? null : <G.Text role="body" tone="muted">{`Picked ${picked}`}</G.Text>}
       </G.Stack>
     </div>
   );

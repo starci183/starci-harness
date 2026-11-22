@@ -147,6 +147,22 @@ export function mapClassList(list: string, tag: string | null): Mapped {
 }
 
 /** Rewrite one source text. Returns the new text and what it found; `file` names it in the findings. */
+/** The role of a `<Text size isStrong mono tone>` (the `<Text …>` rows of MAPPING), or why a person must choose. v0550's API pass reuses it. */
+export function textPropRole(input: { readonly size: string | undefined; readonly strong: boolean; readonly mono: boolean; readonly tone: string | null | undefined }): { readonly role: Role; readonly dropTone: boolean } | { readonly fail: string } {
+    const s = input.size ?? "md"
+    if (s === "figure") return { role: "figure", dropTone: false }
+    if (s === "xs") {
+        const role: Role = input.mono ? "code" : input.strong ? "label.group" : "caption"
+        return { role, dropTone: role !== "code" }
+    }
+    if (s === "sm" || s === "md") {
+        if (input.mono) return { fail: "mono at 14px: code is 12px" }
+        if (input.strong && input.tone !== undefined && input.tone !== "default") return { fail: "muted or dynamic-tone strong 14px: label.field or label.item" }
+        return { role: input.strong ? "label.item" : "body", dropTone: false }
+    }
+    return { fail: `unknown size ${s}` }
+}
+
 export function transformSource(ts: typeof Compiler, file: string, original: string): { readonly text: string; readonly findings: readonly Finding[] } {
     const findings: Finding[] = []
     const sf = ts.createSourceFile(file, original, ts.ScriptTarget.Latest, true, file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
@@ -261,18 +277,9 @@ export function transformSource(ts: typeof Compiler, file: string, original: str
         }
         if (attrs.some((a) => ts.isJsxSpreadAttribute(a))) return fail("spread props")
         if (sizeV === null || strongV === null || monoV === null) return fail("non-literal size, isStrong or mono")
-        const s = sizeV === undefined ? "md" : String(sizeV)
-        let role: Role
-        let dropTone = false
-        if (s === "figure") role = "figure"
-        else if (s === "xs") {
-            role = monoV ? "code" : strongV ? "label.group" : "caption"
-            dropTone = role !== "code"
-        } else if (s === "sm" || s === "md") {
-            if (monoV) return fail("mono at 14px: code is 12px")
-            if (strongV && toneV !== undefined && toneV !== "default") return fail("muted or dynamic-tone strong 14px: label.field or label.item")
-            role = strongV ? "label.item" : "body"
-        } else return fail(`unknown size ${s}`)
+        const mapped = textPropRole({ size: sizeV === undefined ? undefined : String(sizeV), strong: strongV === true, mono: monoV === true, tone: toneV === undefined ? undefined : toneV === null ? null : String(toneV) })
+        if ("fail" in mapped) return fail(mapped.fail)
+        const { role, dropTone } = mapped
         const drop = new Set<Ts.JsxAttribute>()
         for (const a of [size, strong, mono]) if (a) drop.add(a)
         if (dropTone && tone) drop.add(tone)

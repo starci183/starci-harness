@@ -1,6 +1,8 @@
 /* Common owns only universal structure/scales. Families supply material DNA. */
 @layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
 @import "./ramps.css";
+@import "./tones-info.css";
+@import "./tones-border.css";
 @import "./components-forms.css";
 @import "./components-overlays.css";
 @import "./components-navigation.css";
@@ -13,6 +15,8 @@
 @import "./components-funnel-chart.css";
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";
+@import "./components-message-actions.css";
+@import "./components-dropzone.css";
 @import "./components-spacing.css";
 @import "./entry-frame.css";
 
@@ -210,7 +214,6 @@
         .starci-core-rail-body,
         .starci-core-sidebar-list,
         .starci-core-terminal-log,
-        .starci-core-filter-button-list,
         .starci-core-mention-list,
         .starci-core-breadcrumbs,
         .starci-core-top-bar-navigation,
@@ -1212,11 +1215,24 @@
     }
 
     /*
+     * THE TONE EDGE (0.55.0, src/core/toneEdge.ts): a card face that waits on the reader draws its own 1px edge in the tone's standard border token; the
+     * fill, width and style stay the face's. One rule for every face that carries it (`SurfaceCard tone`, `MessageBubble content="card" tone`).
+     */
+    [data-grammar-tone-edge="neutral"] { --grammar-tone-edge: var(--default-border); }
+    [data-grammar-tone-edge="accent"] { --grammar-tone-edge: var(--accent-border); }
+    [data-grammar-tone-edge="info"] { --grammar-tone-edge: var(--info-border); }
+    [data-grammar-tone-edge="success"] { --grammar-tone-edge: var(--success-border); }
+    [data-grammar-tone-edge="warning"] { --grammar-tone-edge: var(--warning-border); }
+    [data-grammar-tone-edge="danger"] { --grammar-tone-edge: var(--danger-border); }
+    [data-grammar-tone-edge] { border-color: var(--grammar-tone-edge) !important; }
+
+    /*
      * 0.47.1: a tile `groundTone` paints the whole tile with its tone's soft pair, as `DataTableRow.groundTone` does a row; its quiet lines (byline, description,
      * facts) take the pair's foreground too, so nothing stays the neutral muted grey on the tint.
      */
     .starci-core-surface[data-grammar-surface-ground="accent"] { --starci-core-ground: var(--accent-soft); --starci-core-ground-ink: var(--accent-soft-foreground); }
     .starci-core-surface[data-grammar-surface-ground="success"] { --starci-core-ground: var(--success-soft); --starci-core-ground-ink: var(--success-soft-foreground); }
+    .starci-core-surface[data-grammar-surface-ground="info"] { --starci-core-ground: var(--info-soft); --starci-core-ground-ink: var(--info-soft-foreground); }
     .starci-core-surface[data-grammar-surface-ground="warning"] { --starci-core-ground: var(--warning-soft); --starci-core-ground-ink: var(--warning-soft-foreground); }
     .starci-core-surface[data-grammar-surface-ground="danger"] { --starci-core-ground: var(--danger-soft); --starci-core-ground-ink: var(--danger-soft-foreground); }
     .starci-core-surface[data-grammar-surface-ground] { background: var(--starci-core-ground); color: var(--starci-core-ground-ink); }
@@ -1355,6 +1371,7 @@
     [data-edge-tone="accent"] { --starci-core-row-edge-color: var(--accent); }
 
     [data-edge-tone="success"] { --starci-core-row-edge-color: var(--success); }
+    [data-edge-tone="info"] { --starci-core-row-edge-color: var(--info); }
     [data-edge-tone="warning"] { --starci-core-row-edge-color: var(--warning); }
     [data-edge-tone="danger"] { --starci-core-row-edge-color: var(--danger); }
 
@@ -1542,6 +1559,7 @@
     .starci-core-proportion-label { color: var(--muted); }
     .starci-core-proportion-value { color: var(--foreground); font-weight: var(--grammar-weight-medium); font-variant-numeric: tabular-nums; }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="success"] { background: var(--success); }
+    :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="info"] { background: var(--info); }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="warning"] { background: var(--warning); }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="danger"] { background: var(--danger); }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="neutral"] { background: var(--muted); }
@@ -1687,8 +1705,8 @@
     }
 
     /* p-4 where a row touches the list's edge, p-3 where it touches a divider: the first row stands 16 from the top, the last 16 from the bottom, the middle ones 12 on both sides. */
-    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:first-child { padding-block-start: var(--grammar-row-inset-edge); }
-    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:last-child { padding-block-end: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:first-child:not([data-grammar-diff], [data-grammar-diff-skeleton]) { padding-block-start: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:last-child:not([data-grammar-diff], [data-grammar-diff-skeleton]) { padding-block-end: var(--grammar-row-inset-edge); }
 
     /* The list body only: a list inside a card or a pane band sits on the surface's own padding, and a key-value or suggestions list stays flush with its title: no inline inset. */
     :is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) .starci-core-section-list,
@@ -1796,17 +1814,34 @@
     }
 
     /*
-     * LIST-ROW-DIFF (0.37.28, owner drawing "Compare versions", GitHub-style): a diff row's ground is its tone's soft pair (added success, removed danger, changed
-     * warning), full width like the row; the gutter mark at its start (+, −, ~) is monospace in the pair's ink, one width, so the marks stand in a column. A removed
-     * row's title is struck through; a changed row's "from → to" is the 12 muted line. The meaning is the glyph and the hidden label, never the colour alone. The row
-     * keeps the row padding (ROW-EDGE-PADDING).
+     * LIST-ROW-DIFF (0.37.28, owner drawing "Compare versions"; a block since 0.55.0, owner: "đã hình vuông rồi dấu + còn sát cạnh"): a diff row is a ROUNDED block
+     * in its tone's soft pair (added success, removed danger, changed warning), at the control / nested-region corner (RADIUS-5, a band inside a surface) with 12
+     * padding on every side (`--grammar-inset`), and consecutive diff blocks stand a small gap (8) apart with no hairline between them. The gutter mark (+, −, ~)
+     * is monospace in the pair's ink, one width, in a column of its own a row gap (12) from the copy, on the title's line. `diffLabel` is a visible 12 label in
+     * the pair's ink over the title; a removed row's title is struck through, its label is not. A changed row's "from", arrow icon, "to" is the 12 muted line.
+     * The meaning is the glyph and the label, never the colour alone. The loading block keeps the mark's column and the label's line: the same box.
      */
     .starci-core-list-row[data-grammar-diff="added"] { --starci-row-diff-ground: var(--success-soft); --starci-row-diff-ink: var(--success-soft-foreground); }
     .starci-core-list-row[data-grammar-diff="removed"] { --starci-row-diff-ground: var(--danger-soft); --starci-row-diff-ink: var(--danger-soft-foreground); }
     .starci-core-list-row[data-grammar-diff="changed"] { --starci-row-diff-ground: var(--warning-soft); --starci-row-diff-ink: var(--warning-soft-foreground); }
     .starci-core-list-row[data-grammar-diff] { background: var(--starci-row-diff-ground); }
-    /* The mark stands on the title's line, as a diff gutter does, not centred on a two-line row. */
-    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) > .starci-core-list-row-leading { align-self: flex-start; }
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) {
+        --starci-core-row-inset: var(--grammar-inset);
+        /* The mark's column stands a row gap (12) from the copy at every width, the narrow (compact) row included. */
+        column-gap: var(--grammar-row-gap);
+        border-radius: var(--starci-core-control-radius);
+    }
+    /* The change line holds the arrow icon (20), so its loading line is as tall: the loading block is the loaded block's box. */
+    .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-change { min-block-size: var(--grammar-icon-sm); }
+    /* A block is its own ground: no hairline on either side of it, and a small gap between two blocks. */
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) + .starci-core-list-row,
+    .starci-core-list-row + .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) { border-top-color: transparent; }
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) + .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) { margin-block-start: var(--grammar-inline-gap); }
+    /* The mark stands on the title's line, under the label's line, as a diff gutter does, not centred on a multi-line row. */
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) > .starci-core-list-row-leading {
+        align-self: flex-start;
+        margin-block-start: calc(var(--grammar-type-caption-line) + var(--starci-core-copy-gap));
+    }
     /* The loading diff row keeps the gutter's box (same column, same row box) and shows no glyph. */
     .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-diff { visibility: hidden; }
 
@@ -1823,9 +1858,24 @@
     }
 
     .starci-core-list-row-leading:has(> .starci-core-list-row-diff + *) { gap: var(--grammar-row-gap); }
+
+    /* The label over the value: the caption role, in the pair's ink; never struck through. */
+    .starci-core-list-row-diff-label {
+        display: block;
+        color: var(--starci-row-diff-ink);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-type-caption-weight);
+        line-height: var(--grammar-type-caption-line);
+        text-decoration-line: none;
+    }
+
     .starci-core-list-row[data-grammar-diff="removed"] .starci-core-list-row-name { text-decoration-line: line-through; text-decoration-color: var(--starci-row-diff-ink); }
 
     .starci-core-list-row-change {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
@@ -2123,25 +2173,18 @@
         }
     }
 
+    /* The step mark (0.55.0, the status-mark rule): a box for the round 40px status tile it holds; a loading mark keeps the box. */
     .starci-core-accordion-step {
         display: inline-grid;
         flex: none;
-        inline-size: 1.5rem;
-        block-size: 1.5rem;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
         place-items: center;
-        border: 2px solid var(--separator);
         border-radius: var(--grammar-radius-pill);
-        background: transparent;
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
+        font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        font-variant-numeric: tabular-nums;
     }
-
-    /* A step state is an outline ring in its tone, never a filled disc (0.36.0, ICONS-OUTLINE). */
-    .starci-core-accordion-step > svg { inline-size: 1rem; block-size: 1rem; }
-    .starci-core-accordion-step[data-grammar-step-state="done"] { border-color: var(--success); color: var(--success); }
-    .starci-core-accordion-step[data-grammar-step-state="current"] { border-color: var(--accent); color: var(--accent); }
-    .starci-core-accordion-step[data-grammar-step-state="problem"] { border-color: var(--warning); color: var(--warning); }
 
     /*
      * Tile: a peer you recognise and open (a provider, a connector). The name sits inside, beside its mark; the foot row
@@ -3213,6 +3256,7 @@
 
     :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="accent"] { --starci-core-nav-badge-ground: var(--accent-soft); --starci-core-nav-badge-ink: var(--accent-soft-foreground); }
     :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="success"] { --starci-core-nav-badge-ground: var(--success-soft); --starci-core-nav-badge-ink: var(--success-soft-foreground); }
+    :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="info"] { --starci-core-nav-badge-ground: var(--info-soft); --starci-core-nav-badge-ink: var(--info-soft-foreground); }
     :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="warning"] { --starci-core-nav-badge-ground: var(--warning-soft); --starci-core-nav-badge-ink: var(--warning-soft-foreground); }
     :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="danger"] { --starci-core-nav-badge-ground: var(--danger-soft); --starci-core-nav-badge-ink: var(--danger-soft-foreground); }
 
@@ -4316,6 +4360,7 @@
 
     .starci-core-schedule-item[data-grammar-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
     .starci-core-schedule-item[data-grammar-tone="success"] { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-core-schedule-item[data-grammar-tone="info"] { background: var(--info-soft); color: var(--info-soft-foreground); }
     .starci-core-schedule-item[data-grammar-tone="warning"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
     .starci-core-schedule-item[data-grammar-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
     .starci-core-schedule-item[data-grammar-pressable="true"] { min-height: var(--grammar-touch-size); cursor: pointer; }
@@ -4361,156 +4406,6 @@
         .starci-core-schedule-cell-column { display: block; color: var(--muted); font-size: var(--grammar-text-md); }
     }
 
-    /* --- BarChart: one scale from zero, value over the bar, label under it --- */
-    .starci-core-bar-chart { min-width: 0; }
-
-    .starci-core-bar-chart-bars {
-        display: grid;
-        grid-auto-columns: minmax(0, 1fr);
-        grid-auto-flow: column;
-        align-items: end;
-        gap: var(--grammar-inline-gap);
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-
-    .starci-core-bar-chart-bar {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--grammar-identity-gap);
-    }
-
-    .starci-core-bar-chart-plot {
-        display: flex;
-        width: 100%;
-        height: 8rem;
-        align-items: flex-end;
-        justify-content: center;
-    }
-
-    .starci-core-bar-chart-fill {
-        display: block;
-        width: 100%;
-        max-width: 3rem;
-        height: var(--starci-core-bar-share);
-        min-height: 2px;
-        border-start-start-radius: var(--grammar-radius-md);
-        border-start-end-radius: var(--grammar-radius-md);
-        background: var(--accent);
-    }
-
-    .starci-core-bar-chart-fill[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
-
-    .starci-core-bar-chart-value,
-    .starci-core-bar-chart-label {
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
-    }
-
-    .starci-core-bar-chart-label { color: var(--muted); }
-
-    /* highlightLast: the latest bar in the accent, the others in its soft tone. */
-    .starci-core-bar-chart-fill[data-grammar-bar-tone="soft"] { background: var(--accent-soft); }
-    .starci-core-bar-chart-fill[data-grammar-bar-tone="accent"] { background: var(--accent); }
-
-    /*
-     * valueAxis: the ticks stand at the start in a column, the grid lines run behind the bars across the plot band. The band is the
-     * plot's own height (8rem) and starts below the value line (one text line and the bar's inner gap), as each bar does, so the
-     * zero line is the bars' base and the top line the largest bar's top.
-     */
-    .starci-core-bar-chart[data-grammar-bar-axis="true"] {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        column-gap: var(--grammar-inline-gap);
-    }
-
-    .starci-core-bar-chart-axis { padding-block-start: calc(var(--grammar-leading-md) + var(--grammar-identity-gap)); }
-
-    .starci-core-bar-chart-axis-band {
-        position: relative;
-        height: 8rem;
-        min-inline-size: 2rem;
-    }
-
-    .starci-core-bar-chart-tick {
-        position: absolute;
-        inset-inline-end: 0;
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        font-variant-numeric: tabular-nums;
-        line-height: var(--grammar-leading-xs);
-        white-space: nowrap;
-        translate: 0 -50%;
-    }
-
-    .starci-core-bar-chart-tick[data-grammar-tick="max"] { inset-block-start: 0; }
-    .starci-core-bar-chart-tick[data-grammar-tick="half"] { inset-block-start: 50%; }
-    .starci-core-bar-chart-tick[data-grammar-tick="zero"] { inset-block-start: 100%; }
-    .starci-core-bar-chart-tick > .starci-core-skeleton-group { min-inline-size: 2rem; }
-
-    .starci-core-bar-chart-body { position: relative; min-width: 0; }
-
-    .starci-core-bar-chart-grid {
-        position: absolute;
-        inset-inline: 0;
-        inset-block-start: calc(var(--grammar-leading-md) + var(--grammar-identity-gap));
-        display: flex;
-        height: 8rem;
-        flex-direction: column;
-        justify-content: space-between;
-        pointer-events: none;
-    }
-
-    .starci-core-bar-chart-gridline {
-        display: block;
-        height: var(--grammar-hairline);
-        background: var(--separator);
-    }
-
-    .starci-core-bar-chart-bars { position: relative; }
-
-    /* --- Sparkline: a tiny inline line chart, one accent stroke and a soft fill, no axis --- */
-    .starci-core-sparkline {
-        display: inline-block;
-        flex: none;
-        width: var(--grammar-sparkline-width);
-        height: var(--grammar-sparkline-height);
-        line-height: 0;
-    }
-
-    .starci-core-sparkline-svg {
-        display: block;
-        width: 100%;
-        height: 100%;
-        overflow: visible;
-    }
-
-    .starci-core-sparkline-line {
-        fill: none;
-        stroke: var(--accent);
-        stroke-width: var(--grammar-stroke-fine);
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        vector-effect: non-scaling-stroke;
-    }
-
-    .starci-core-sparkline-area {
-        fill: var(--accent);
-        fill-opacity: var(--grammar-opacity-dimmed);
-        stroke: none;
-    }
-
-    /* No series (fewer than two values): a flat baseline, muted. */
-    .starci-core-sparkline[data-grammar-sparkline-flat="true"] .starci-core-sparkline-line { stroke: var(--separator); }
-
-    .starci-core-sparkline > .starci-core-skeleton { width: 100%; height: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-sm); }
 
     /* --- ChoiceChips and ChoiceButtons: one choice among a few options, wrapping onto as many rows as the width needs --- */
     /* The label -> chips step (inline 8) is THE FIELD RULE's (components-forms.css): the root keeps no gap. */
@@ -4526,9 +4421,9 @@
     [data-grammar-choice-look="button"][data-size="md"] .starci-core-choice-chip { block-size: 2.5rem; }
     [data-grammar-choice-look="button"][data-size="sm"] .starci-core-choice-chip { block-size: 2rem; }
     /*
-     * THE PLATE HOOKS (0.40.0): a toggle plate (a ChoiceChip, a FilterButton, a RadioGroup row) reads its fill, its edge and its selected pair from
-     * optional tokens, each defaulting to today's paint: `--starci-core-plate` (unselected fill: `--surface-secondary` here and on the rows,
-     * `--surface` on a FilterButton), `--starci-core-plate-border` (a `border` value, default `0`: no edge), `--starci-core-plate-selected` and
+     * THE PLATE HOOKS (0.40.0): a toggle plate (a ChoiceChip, a RadioGroup row) reads its fill, its edge and its selected pair from
+     * optional tokens, each defaulting to today's paint: `--starci-core-plate` (unselected fill: `--surface-secondary` here and on the rows),
+     * `--starci-core-plate-border` (a `border` value, default `0`: no edge), `--starci-core-plate-selected` and
      * `--starci-core-plate-selected-foreground` (default the accent soft pair) and `--starci-core-plate-selected-border` (default the unselected edge).
      */
     .starci-core-choice-chip { border: var(--starci-core-plate-border, 0); background: var(--starci-core-plate, var(--surface-secondary)); color: var(--foreground); }
@@ -4580,9 +4475,6 @@
         font-weight: var(--grammar-weight-semibold);
     }
 
-    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"]) .starci-core-avatar-letters { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-xs); }
-    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"])[data-grammar-avatar-size="sm"] .starci-core-avatar-letters { font-size: var(--grammar-text-xs); }
-    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"])[data-grammar-avatar-size="lg"] .starci-core-avatar-letters { font-size: var(--grammar-text-xl); }
 
     /* PageIntro: the plain heading block of a public page: mark beside a title, fact lines and a sentence, on the page ground. */
     .starci-core-page-intro { display: flex; min-width: 0; align-items: flex-start; gap: var(--grammar-row-gap); }
@@ -5075,14 +4967,10 @@
         flex: none;
     }
 
-    .starci-core-icon[data-usage="heading"] {
-        width: 1.5rem;
-        height: 1.5rem;
-    }
-
-    .starci-core-icon[data-usage="leading"] {
-        width: 1.25rem;
-        height: 1.25rem;
+    /* The two icon sizes (ramps.css): 24 before 14px text (`heading`, `leading`), 20 in a chip or badge and before 12px text (`chip`). */
+    .starci-core-icon:is([data-usage="heading"], [data-usage="leading"]) {
+        width: var(--grammar-icon-md);
+        height: var(--grammar-icon-md);
     }
 
     /* The icon of a Button takes HeroUI's scale (0.37.5): 20px on a phone, 16px from 640px, 16px on sm. Here, in the common layer, so it outranks the usage box above. */
@@ -5104,8 +4992,14 @@
     }
 
     .starci-core-icon[data-usage="chip"] {
-        width: 1rem;
-        height: 1rem;
+        width: var(--grammar-icon-sm);
+        height: var(--grammar-icon-sm);
+    }
+
+    /* 20 whatever the usage: a chip's or badge's icon, a 40px tile's glyph, a logo, and an icon button's glyph (its scale is unchanged; the lg step sizes its own). */
+    :is(.starci-core-icon-button, .starci-core-icon-tile, .starci-core-logo-stack-logo, [data-component="Badge"]) .starci-core-icon {
+        width: var(--grammar-icon-sm);
+        height: var(--grammar-icon-sm);
     }
 
     /* The resting glyph keeps the usage box of the glyph it stands for (skeleton parity); the size comes from data-usage. */
@@ -5183,11 +5077,26 @@
         padding-block: 0.5rem;
     }
 
-    /* The chrome avatar (`control`) is drawn here over the vendor `lg` box: the shared control height. */
-    [data-component="Avatar"][data-grammar-avatar-size="control"] {
-        --avatar-size: var(--starci-core-control-min-size);
-        inline-size: var(--starci-core-control-min-size);
-        block-size: var(--starci-core-control-min-size);
+    /*
+     * The two round-mark sizes (owner 2026-11-22, "40 và 24 thôi, không có 32"): `md` 40px, the common size, and `sm` 24px, the icon size, drawn here over the
+     * vendor boxes (the vendor `sm` is 32px). An Avatar, a grid AvatarGroup, a row group's "+N" and a loading avatar all carry the class and the size.
+     */
+    .starci-core-avatar[data-grammar-avatar-size="md"] {
+        --avatar-size: var(--grammar-avatar-md-size);
+        inline-size: var(--grammar-avatar-md-size);
+        block-size: var(--grammar-avatar-md-size);
+    }
+
+    .starci-core-avatar[data-grammar-avatar-size="sm"] {
+        --avatar-size: var(--grammar-avatar-sm-size);
+        inline-size: var(--grammar-avatar-sm-size);
+        block-size: var(--grammar-avatar-sm-size);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-avatar-skeleton[data-grammar-avatar-size] > * {
+        inline-size: var(--avatar-size) !important;
+        block-size: var(--avatar-size) !important;
     }
 
     .starci-core-text-action[data-size="control"] {
@@ -5195,7 +5104,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-icon-button:not(.starci-core-button-group > *) {
+    .starci-core-icon-button {
         border-radius: var(--starci-core-pill-radius) !important;
     }
 
@@ -5208,18 +5117,6 @@
     .starci-core-icon-button[data-size="lg"] > :is(svg, [data-slot="icon"]) {
         width: 1.5rem;
         height: 1.5rem;
-    }
-
-    /*
-     * `danger-soft`: the danger tone's soft tint plate - --danger-soft ground, --danger-soft-foreground glyph,
-     * --danger-soft-hover (one step stronger) on hover and press - for a reversible or row-level destructive action.
-     * Same sizes, focus ring and accessible label as every IconButton.
-     */
-    .starci-core-icon-button[data-variant="danger-soft"] {
-        --button-bg: var(--danger-soft);
-        --button-bg-hover: var(--danger-soft-hover, var(--danger-soft));
-        --button-bg-pressed: var(--danger-soft-hover, var(--danger-soft));
-        --button-fg: var(--danger-soft-foreground);
     }
 
     .starci-core-icon-button[data-floating="true"] {
@@ -5254,24 +5151,16 @@
     }
 
     /* --- Icon tile --- */
+    /* One tile, everywhere (owner, 2026-11-22: "alert và icon và icontile … đồng bộ là tròn size40"): a round 40px plate. */
     .starci-core-icon-tile {
         display: inline-flex;
         flex: none;
         align-items: center;
         justify-content: center;
         overflow: hidden;
-    }
-
-    .starci-core-icon-tile[data-size="sm"] {
-        width: 2rem;
-        height: 2rem;
-        border-radius: var(--grammar-radius-md);
-    }
-
-    .starci-core-icon-tile[data-size="md"] {
         width: 2.5rem;
         height: 2.5rem;
-        border-radius: var(--grammar-radius-md);
+        border-radius: var(--grammar-radius-pill);
     }
 
     /* A tone pair is painted only when the plate draws its own glyph. */
@@ -5290,6 +5179,11 @@
         color: var(--accent-soft-foreground);
     }
 
+    .starci-core-icon-tile[data-tone="info"][data-artwork="false"][data-loading="false"] {
+        background: var(--info-soft);
+        color: var(--info-soft-foreground);
+    }
+
     .starci-core-icon-tile[data-tone="success"][data-artwork="false"][data-loading="false"] {
         background: var(--success-soft);
         color: var(--success-soft-foreground);
@@ -5304,6 +5198,139 @@
         background: var(--danger-soft);
         color: var(--danger-soft-foreground);
     }
+
+    /*
+     * --- Status marks (0.55.0, owner "chốt"): (B) the round 40px tile, `data-grammar-mark="status"`, always `data-size="md"`; its plate tone is
+     * the state's. Case 1 carries the status glyph at 20px (check, x or a small ring; the ring spins while running); case 2 the subject icon, and a running subject wears a
+     * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (24 beside 14px words, 20 in a 12px line) and its words in the state's ink, no plate.
+     */
+    .starci-core-icon-tile[data-grammar-mark="status"] { position: relative; }
+    .starci-core-icon-tile .starci-core-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); flex: none; }
+    /* Running is the plain circle as a spinning ring (the three status glyphs, owner 2026-11-22); still under reduced motion. */
+    .starci-core-status-spin { transform-origin: center; animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-status-spin { animation: none; }
+    }
+
+    .starci-core-icon-tile-ring {
+        position: absolute;
+        inset: 0;
+        border: var(--grammar-ring-width) solid transparent;
+        border-radius: var(--grammar-radius-pill);
+        border-block-start-color: var(--info);
+        animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
+        pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-icon-tile-ring { animation: none; border-color: var(--info); }
+    }
+
+    .starci-core-inline-status {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        color: var(--muted);
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+        white-space: nowrap;
+    }
+
+    .starci-core-inline-status[data-tone="success"] { color: var(--success-soft-foreground); }
+    .starci-core-inline-status[data-tone="info"] { color: var(--info-soft-foreground); }
+    .starci-core-inline-status[data-tone="accent"] { color: var(--accent-soft-foreground); }
+    .starci-core-inline-status[data-tone="warning"] { color: var(--warning-soft-foreground); }
+    .starci-core-inline-status[data-tone="danger"] { color: var(--danger-soft-foreground); }
+    /* The glyph follows the text it sits beside (ramps.css, the two icon sizes): 24 beside its own 14px words, 20 when the status stands in a 12px line. */
+    .starci-core-inline-status :is(.starci-core-inline-status-glyph, .starci-core-inline-status-spinner) { width: var(--grammar-icon-md); height: var(--grammar-icon-md); flex: none; }
+    :is(.starci-type-caption, .starci-type-label-group, .starci-type-badge, .starci-type-code, [data-component="Badge"]) .starci-core-inline-status {
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+    }
+    :is(.starci-type-caption, .starci-type-label-group, .starci-type-badge, .starci-type-code, [data-component="Badge"]) .starci-core-inline-status :is(.starci-core-inline-status-glyph, .starci-core-inline-status-spinner) { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); }
+    .starci-core-inline-status-meta { color: var(--muted); font-weight: var(--grammar-weight-regular); }
+    .starci-core-inline-status[data-loading="true"] { inline-size: 6rem; }
+
+    /*
+     * --- EntitySummaryCard (0.55.0, contexts/ui/situations.md "an entity summary card"): the head (name, the AgentName Chip, the status at the
+     * top end), the role sentence, the period heading over exactly three figures, at most one "needs you" line, the channel and people groups.
+     */
+    .starci-core-entity-summary {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-entity-summary-head {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-entity-summary-name {
+        min-width: 0;
+        overflow: hidden;
+        font-size: var(--grammar-type-title-section-size);
+        font-weight: var(--grammar-type-title-section-weight);
+        line-height: var(--grammar-type-title-section-line);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-entity-summary-role {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-type-label-item-size);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-entity-summary-period { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+
+    .starci-core-entity-summary-period-label,
+    .starci-core-entity-summary-figure-label {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-type-caption-weight);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    .starci-core-entity-summary-figures {
+        display: grid;
+        min-width: 0;
+        margin: 0;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-entity-summary-figure { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-entity-summary-figure > dd { margin: 0; }
+
+    .starci-core-entity-summary-figure-value {
+        font-size: var(--grammar-type-figure-size);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--grammar-type-figure-weight);
+        line-height: var(--grammar-type-figure-line);
+    }
+
+    .starci-core-entity-summary-figure-delta {
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    .starci-core-entity-summary-figure-delta[data-tone="success"] { color: var(--success-soft-foreground); }
+    .starci-core-entity-summary-figure-delta[data-tone="danger"] { color: var(--danger-soft-foreground); }
+
+    .starci-core-entity-summary-groups { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--grammar-row-gap); }
+    .starci-core-entity-summary[data-loading="true"] .starci-core-entity-summary-name { inline-size: 50%; }
 
     /* --- Progress: a HeroUI `ProgressBar`, and a resting bar of the same measure. --- */
     /* Step mode: one segment per step at the small bar's height (the vendor sm track, 0.25rem), filled up to the current step. */
@@ -5325,6 +5352,7 @@
 
     /* The tone of the fill: the bar's fill variable (the vendor reads it) and the steps' done colour. */
     .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success); --starci-progress-fill: var(--success); }
+    .starci-core-progress[data-grammar-progress-tone="info"] { --progress-bar-fill: var(--info); --starci-progress-fill: var(--info); }
     .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning); --starci-progress-fill: var(--warning); }
     .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger); --starci-progress-fill: var(--danger); }
     /* foreground: a bar that spends no accent. The vendor's `default` variant writes the same variable on the same element and
@@ -5530,26 +5558,6 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-text[data-size="xs"] {
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
-    }
-
-    .starci-core-text[data-size="sm"] {
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
-    /* FONT-5: the leading value of a region (a price, a total), the size of a figures cell's value; one word, tabular figures. */
-    /* The big figure value: the display size 20 (it was 30), semibold, tabular. */
-    .starci-core-text[data-size="figure"] {
-        font-size: var(--grammar-text-2xl);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-xl);
-        letter-spacing: var(--grammar-tracking-snug);
-        font-variant-numeric: tabular-nums;
-    }
-
     .starci-core-text[data-tone="muted"] {
         color: var(--muted);
     }
@@ -5613,10 +5621,7 @@
     .starci-core-text[data-overflow="clamp-2"] > .starci-core-text-skeleton { max-block-size: 2lh; }
     .starci-core-text[data-overflow="truncate"] > .starci-core-text-skeleton { white-space: nowrap; }
 
-    .starci-core-text[data-size="xs"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 2.5rem; }
-    .starci-core-text[data-size="sm"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 3rem; }
-    .starci-core-text[data-size="md"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
-    .starci-core-text[data-role] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
+    .starci-core-text > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
 
     /* --- Text action: one recipe, eight appearances, selected by data attributes. --- */
     /*
@@ -5766,32 +5771,51 @@
      * size rules above hold the floor).
      */
 /*
-     * A Button on a band (0.48.0, `ground`): on an `accent` band (the brand colour) or an `inverse` one (the foreground as the ground) the intents keep their rank and
-     * take the band's contrast. `commit` is filled with the band's foreground and inked in the band's colour; every other intent is the band's foreground as ink with a
+     * A Button on a band (0.48.0, `ground`): on an `accent` band (the brand colour) or an `inverse` one (the foreground as the ground) the looks keep their rank and
+     * take the band's contrast. `primary` is filled with the band's foreground and inked in the band's colour; `border` and `danger` are the band's foreground as ink with a
      * 1px outline of it, transparent inside; hover and press tint with that ink. One look in both families; contrast at least 4.5:1 by construction (the pair).
      */
+    /*
+     * A toned primary (0.55.0, `variant="primary" tone`): a SOLID fill in the tone's own colour, never an outline (owner: "button phải là màu tương ứng, ko phải border").
+     * The vendor's `primary` carries the box; Grammar paints it the tone's pair, `--<tone>` filled and `--<tone>-foreground` inked.
+     */
+    .starci-core-button[data-grammar-button-tone="accent"] { --starci-core-button-tone: var(--accent); --starci-core-button-tone-ink: var(--accent-foreground); }
+    .starci-core-button[data-grammar-button-tone="info"] { --starci-core-button-tone: var(--info); --starci-core-button-tone-ink: var(--info-foreground); }
+    .starci-core-button[data-grammar-button-tone="success"] { --starci-core-button-tone: var(--success); --starci-core-button-tone-ink: var(--success-foreground); }
+    .starci-core-button[data-grammar-button-tone="warning"] { --starci-core-button-tone: var(--warning); --starci-core-button-tone-ink: var(--warning-foreground); }
+
+    .starci-core-button[data-grammar-button-tone] {
+        border-color: transparent !important;
+        background: var(--starci-core-button-tone) !important;
+        color: var(--starci-core-button-tone-ink) !important;
+    }
+
+    .starci-core-button[data-grammar-button-tone]:is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: color-mix(in oklab, var(--starci-core-button-tone) 88%, var(--starci-core-button-tone-ink)) !important;
+    }
+
     .starci-core-button[data-grammar-button-ground="accent"] { --starci-core-button-band: var(--accent); --starci-core-button-band-ink: var(--accent-foreground); }
     .starci-core-button[data-grammar-button-ground="inverse"] { --starci-core-button-band: var(--foreground); --starci-core-button-band-ink: var(--background); }
 
-    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"] {
+    .starci-core-button[data-grammar-button-ground][data-grammar-variant="primary"] {
         border-color: var(--starci-core-button-band-ink) !important;
         background: var(--starci-core-button-band-ink) !important;
         box-shadow: none !important;
         color: var(--starci-core-button-band) !important;
     }
 
-    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]) {
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-variant="primary"]) {
         border: 1px solid var(--starci-core-button-band-ink) !important;
         background: transparent !important;
         box-shadow: none !important;
         color: var(--starci-core-button-band-ink) !important;
     }
 
-    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"]:is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+    .starci-core-button[data-grammar-button-ground][data-grammar-variant="primary"]:is(:hover, [data-hovered="true"], [data-pressed="true"]) {
         background: color-mix(in oklab, var(--starci-core-button-band-ink) 88%, var(--starci-core-button-band)) !important;
     }
 
-    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-variant="primary"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
         background: color-mix(in oklab, var(--starci-core-button-band-ink) 14%, transparent) !important;
     }
 
@@ -5897,6 +5921,7 @@
     .starci-core-status-dot-mark[data-grammar-tone-dot="true"] { --starci-core-status-dot-color: var(--grammar-tone); }
     .starci-core-status-dot-mark[data-tone="accent"] { --starci-core-status-dot-color: var(--accent); }
     .starci-core-status-dot-mark[data-tone="success"] { --starci-core-status-dot-color: var(--success); }
+    .starci-core-status-dot-mark[data-tone="info"] { --starci-core-status-dot-color: var(--info); }
     .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning); }
     .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger); }
 
@@ -5957,6 +5982,12 @@
 
     /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
     /* An app-declared Badge tone: the soft pair its tokens give (set by customToneProps on the root). */
+    /* The built-in info Badge (0.55.0): HeroUI has no info Chip colour, so the default Chip takes the info soft pair. */
+    [data-component="Badge"][data-tone="info"]:not([data-loading="true"]) {
+        background: var(--info-soft);
+        color: var(--info-soft-foreground);
+    }
+
     [data-component="Badge"][data-grammar-tone-custom="true"]:not([data-loading="true"]) {
         background: var(--grammar-tone-soft);
         color: var(--grammar-tone-soft-foreground);
@@ -6033,23 +6064,6 @@
     }
 
 
-    /* --- FilterButtonGroup: peer filter values on ONE row of small toggle buttons; what does not fit goes behind a "+n" button. --- */
-    .starci-core-filter-button-group { position: relative; display: block; min-width: 0; inline-size: 100%; }
-    .starci-core-filter-button-row { display: flex; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 0.5rem; overflow: hidden; }
-    /* Until the width is measured the row is held at its height and hidden, so the server render and the first paint never jump. */
-    .starci-core-filter-button-group[data-grammar-filter-fit="pending"] .starci-core-filter-button-row { visibility: hidden; }
-    .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
-    .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
-    .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: var(--grammar-opacity-secondary); }
-    /* The rest takes the surface; selected is the accent soft pair. */
-    /* The plate hooks (THE PLATE HOOKS, above) paint it; the unselected fill defaults to the surface here. */
-    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { border: var(--starci-core-plate-border, 0); background: var(--starci-core-plate, var(--surface)); color: var(--surface-foreground); }
-    .starci-core-filter-button[data-selected="true"] { border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0)); background: var(--starci-core-plate-selected, var(--accent-soft)); color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground)); }
-    .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
-    .starci-core-filter-button-skeleton { display: inline-block; inline-size: 5rem; block-size: 2rem; }
-    .starci-core-filter-button-panel { display: flex; min-width: 16rem; flex-direction: column; gap: 0.5rem; }
-    .starci-core-filter-button-list { max-block-size: 16rem; overflow-y: auto; }
-    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted); font-size: var(--grammar-text-md); }
 
     /* --- MessageBubble: one message; the thread, grouping and scroll belong to the app. --- */
     .starci-core-message-bubble {
@@ -6810,4 +6824,11 @@
     .starci-type-caption { color: var(--muted); font-size: var(--grammar-type-caption-size); line-height: var(--grammar-type-caption-line); font-weight: var(--grammar-type-caption-weight); }
     .starci-type-badge { font-size: var(--grammar-type-badge-size); line-height: var(--grammar-type-badge-line); font-weight: var(--grammar-type-badge-weight); }
     .starci-type-code { font-family: var(--font-mono); font-size: var(--grammar-type-code-size); line-height: var(--grammar-type-code-line); font-weight: var(--grammar-type-code-weight); }
+    /* THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM"): the public marketing site only. Each class reads its role's tokens, whose
+       responsive steps live in ramps.css; the display roles add their tracking, the figure its tabular figures. No colour: the tone stays on the element. */
+    .starci-type-display-hero { font-size: var(--grammar-type-display-hero-size); line-height: var(--grammar-type-display-hero-line); font-weight: var(--grammar-type-display-hero-weight); letter-spacing: var(--grammar-type-display-hero-tracking); }
+    .starci-type-display-section { font-size: var(--grammar-type-display-section-size); line-height: var(--grammar-type-display-section-line); font-weight: var(--grammar-type-display-section-weight); letter-spacing: var(--grammar-type-display-section-tracking); }
+    .starci-type-display-figure { font-size: var(--grammar-type-display-figure-size); line-height: var(--grammar-type-display-figure-line); font-weight: var(--grammar-type-display-figure-weight); letter-spacing: var(--grammar-type-display-figure-tracking); font-variant-numeric: tabular-nums; }
+    .starci-type-lead { font-size: var(--grammar-type-lead-size); line-height: var(--grammar-type-lead-line); font-weight: var(--grammar-type-lead-weight); }
+    .starci-type-title-card { font-size: var(--grammar-type-title-card-size); line-height: var(--grammar-type-title-card-line); font-weight: var(--grammar-type-title-card-weight); }
 }

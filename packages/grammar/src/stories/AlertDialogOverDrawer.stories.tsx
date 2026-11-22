@@ -37,7 +37,7 @@ const confirm = (
     confirmLabel="Cancel order"
     cancelLabel="Keep order"
     onConfirm={noop}
-    trigger={<G.Button intent="destructive" step="entry" size="sm">Cancel order</G.Button>}
+    trigger={<G.Button variant="danger" size="sm">Cancel order</G.Button>}
   />
 );
 
@@ -55,7 +55,7 @@ const InDrawer = () => (
     title="Customer"
     description="Order DH-0006"
     closeLabel="Close customer"
-    trigger={<G.Button intent="alternative">Customer</G.Button>}
+    trigger={<G.Button variant="border">Customer</G.Button>}
   >
     {confirm}
   </G.Drawer>

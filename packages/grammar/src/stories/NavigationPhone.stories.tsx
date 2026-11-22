@@ -73,10 +73,10 @@ export const TopBarStartInsetAndSearch: Story = {
           startInset="sidebar"
           brand={<G.IdentityLockup title="NIVO" subtitle="Studio" size="control" />}
           search={{
-            wide: <G.Button intent="dismiss" endContent={<G.Kbd keys={['Ctrl', 'K']} />} onPress={noop}>Tìm kiếm</G.Button>,
+            wide: <G.Button variant="border" endContent={<G.Kbd keys={['Ctrl', 'K']} />} onPress={noop}>Tìm kiếm</G.Button>,
             compact: <G.IconButton label="Tìm kiếm" source={SearchGlyph} onPress={noop} />,
           }}
-          actions={<G.AvatarButton name="Mai Phương" size="control" />}
+          actions={<G.AvatarButton name="Mai Phương" size="md" />}
         />
       }
       navigation={<G.Sidebar label="Không gian" groups={SIDEBAR} selectedKey="home" onAction={noop} />}
@@ -107,7 +107,7 @@ export const TopBarStartInsetAndSearch: Story = {
 export const LinkHitArea: Story = {
   render: () => (
     <G.SurfaceCard label="Tự động hoá">
-      <G.Text size="sm">Để NIVO làm thay những việc lặp lại.</G.Text>
+      <G.Text role="body">Để NIVO làm thay những việc lặp lại.</G.Text>
       <G.Link variant="head" href="#automation">Tìm hiểu thêm</G.Link>
     </G.SurfaceCard>
   ),

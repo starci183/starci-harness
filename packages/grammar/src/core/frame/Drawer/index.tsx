@@ -7,7 +7,6 @@ import { SurfaceNesting } from "../../surfaceContext.js"
 import { overlayOpenProps, resolveTriggerlessOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import type { OverlayFooter } from "../Dialog/index.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 
 /** Edge the sheet slides from. `bottom` is the mobile bottom sheet. */
 export type DrawerPlacement = "left" | "right" | "top" | "bottom"
@@ -97,7 +96,7 @@ export const Drawer = ({
                     className="starci-core-drawer"
                 >
                     {({ close }) => (
-                        <ButtonPlacementProvider placement="decision">
+                        <>
                         <LoadingScope isLoading={false}><SurfaceNesting host="overlay">
                             {hasHandle ? <HeroDrawer.Handle data-grammar-drawer-handle="true" className="starci-core-drawer-handle" /> : null}
                             <HeroDrawer.Header className="starci-core-overlay-header">
@@ -108,7 +107,7 @@ export const Drawer = ({
                                         <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
                                     )}
                                 </div>
-                                {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
+                                {closeLabel === undefined ? null : <IconButton variant="border" label={closeLabel} onPress={close} />}
                             </HeroDrawer.Header>
                             {children === undefined ? null : (
                                 <HeroDrawer.Body className="starci-core-overlay-body" {...(bodyInset === "none" ? { "data-grammar-body-inset": "none" } : {})} {...(isLoading ? { "aria-busy": true, "data-grammar-loading-region": "true" } : {})}><LoadingScope isLoading={isLoading}>{children}</LoadingScope></HeroDrawer.Body>
@@ -119,7 +118,7 @@ export const Drawer = ({
                                 </HeroDrawer.Footer>
                             )}
                         </SurfaceNesting></LoadingScope>
-                        </ButtonPlacementProvider>
+                        </>
                     )}
                 </HeroDrawer.Dialog>
             </HeroDrawer.Content>

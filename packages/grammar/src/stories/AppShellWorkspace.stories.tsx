@@ -35,7 +35,7 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
         brand={<G.IdentityLockup title="Studio" subtitle="Owner" />}
         actions={<>
           <G.IconButton source={BellGlyph} label="Notifications" onPress={noop} />
-          <G.AvatarButton name="Alex Morgan" size="control" />
+          <G.AvatarButton name="Alex Morgan" size="md" />
         </>}
       />}
       navigation={<G.Sidebar label="Workspace" groups={groups} selectedKey="conversations" />}
@@ -53,7 +53,7 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
             </G.Pane>
             <G.Pane area="chat" label="Chat">
               <G.PaneSection align="center">
-                <G.PaneHeader title="Sam Lee" description="Email - 5 minutes ago" actions={<G.IconButton intent="neutral" source={EllipsisGlyph} label="More actions" />} />
+                <G.PaneHeader title="Sam Lee" description="Email - 5 minutes ago" actions={<G.IconButton variant="border" source={EllipsisGlyph} label="More actions" />} />
               </G.PaneSection>
               <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end', tone: 'background' }}>
                 <G.MessageBubble author="Sam" meta="09:12" body="Can the order for table 4 move to 19:30?" />
@@ -62,7 +62,7 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
             </G.Pane>
             <G.Pane area="aside" surface label="Needs you">
               <G.PaneSection as="header" align="center"><G.Heading level={2}>Needs your review</G.Heading></G.PaneSection>
-              <G.PaneSection gap="section"><G.Text isStrong>Refund for table 4</G.Text><G.Text tone="muted">Waiting for your approval.</G.Text><G.Button intent="commit">Approve</G.Button></G.PaneSection>
+              <G.PaneSection gap="section"><G.Text isStrong>Refund for table 4</G.Text><G.Text tone="muted">Waiting for your approval.</G.Text><G.Button variant="primary">Approve</G.Button></G.PaneSection>
             </G.Pane>
           </G.PaneGrid>
           )}
@@ -216,7 +216,7 @@ const ChatTabShell = ({ scope }: { readonly scope: ReturnType<typeof familyScope
   <G.GrammarRoot {...scope}>
     <G.WorkspaceShell
       viewport="fixed"
-      header={<G.TopBar position="static" brand={<G.IdentityLockup title="Studio" subtitle="Owner" />} actions={<G.AvatarButton name="Alex Morgan" size="control" />} />}
+      header={<G.TopBar position="static" brand={<G.IdentityLockup title="Studio" subtitle="Owner" />} actions={<G.AvatarButton name="Alex Morgan" size="md" />} />}
       navigation={<G.Sidebar label="Workspace" groups={groups} selectedKey="conversations" />}
       navigationLabel="Workspace navigation"
       navigationTrack="intrinsic"

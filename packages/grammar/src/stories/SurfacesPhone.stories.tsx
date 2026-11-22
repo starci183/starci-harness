@@ -111,12 +111,12 @@ export const ButtonOnBands: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: 16, maxInlineSize: 640 }}>
       <Band tone="accent">
-        <G.Button ground="accent" intent="commit" onPress={noop}>Dùng thử miễn phí</G.Button>
-        <G.Button ground="accent" intent="alternative" href="#contact">Liên hệ tư vấn</G.Button>
+        <G.Button ground="accent" variant="primary" onPress={noop}>Dùng thử miễn phí</G.Button>
+        <G.Button ground="accent" variant="border" href="#contact">Liên hệ tư vấn</G.Button>
       </Band>
       <Band tone="inverse">
-        <G.Button ground="inverse" intent="commit" onPress={noop}>Bắt đầu</G.Button>
-        <G.Button ground="inverse" intent="neutral" onPress={noop}>Xem bảng giá</G.Button>
+        <G.Button ground="inverse" variant="primary" onPress={noop}>Bắt đầu</G.Button>
+        <G.Button ground="inverse" variant="border" onPress={noop}>Xem bảng giá</G.Button>
       </Band>
     </div>
   ),
@@ -132,7 +132,7 @@ export const ButtonOnBands: Story = {
         const pair = textContrast(button.closest('[data-story-band]') as HTMLElement);
         expect(textContrast(button)).toBeGreaterThanOrEqual(Math.min(4.5, pair) - 0.05);
         // The primary is filled with the band's foreground; the others are an outline, transparent inside.
-        if (button.getAttribute('data-grammar-intent') === 'commit') expect(style.backgroundColor).not.toBe(band);
+        if (button.getAttribute('data-grammar-variant') === 'primary') expect(style.backgroundColor).not.toBe(band);
         else expect([style.backgroundColor, style.borderTopWidth]).toEqual(['rgba(0, 0, 0, 0)', '1px']);
       }
     });

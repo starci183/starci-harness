@@ -34,25 +34,27 @@ export const STARCI_CORE_DNA = Object.freeze({
         }),
         density: "vendor",
     }),
-    intent: Object.freeze({
-        commit: Object.freeze({ decision: "primary", item: "secondary", chrome: "primary" }),
-        alternative: "outline",
-        dismiss: "tertiary",
-        neutral: Object.freeze({
-            button: Object.freeze({ decision: "outline", item: "outline", chrome: "ghost" }),
-            iconButton: Object.freeze({ decision: "outline", item: "ghost", chrome: "ghost", navbar: "tertiary" }),
-        }),
-        destructive: Object.freeze({ entry: "danger-soft", confirm: "danger" }),
-    }),
     collectionItem: Object.freeze({
         descriptionLines: 1,
         unreadWeight: 600,
     }),
+    /**
+     * The avatar's solid backgrounds: Grammar's own theme tones (`theme.css`) as the hex each resolves to, because the generated avatar is an SVG in an
+     * `<img>` and cannot read a CSS variable. `token` and `mode` name the theme token; a spec checks every hex against `theme.css` and its contrast.
+     */
     avatar: Object.freeze({
-        style: "initials",
-        borderRadius: 0,
-        idRandomization: false,
-        agentBadgeMinSize: 32,
+        palette: Object.freeze([
+            Object.freeze({ token: "--accent", mode: "light", hex: "#7547ff" }),
+            Object.freeze({ token: "--success", mode: "light", hex: "#00aa65" }),
+            Object.freeze({ token: "--warning", mode: "light", hex: "#c28a00" }),
+            Object.freeze({ token: "--danger", mode: "light", hex: "#cb3000" }),
+            Object.freeze({ token: "--success", mode: "dark", hex: "#00cc84" }),
+            Object.freeze({ token: "--warning", mode: "dark", hex: "#e9bf4b" }),
+            Object.freeze({ token: "--danger", mode: "dark", hex: "#f4714c" }),
+            Object.freeze({ token: "--foreground", mode: "light", hex: "#191818" }),
+        ] as const),
+        /** The letter inks: white on a dark tone, the light theme's foreground on a light one (identity.ts avatarInk picks per tone). */
+        inks: Object.freeze({ light: "#ffffff", dark: "#191818" } as const),
     }),
     color: Object.freeze({
         accent: "#7547ff",
@@ -73,6 +75,9 @@ export const STARCI_CORE_DNA = Object.freeze({
             warningForeground: "oklch(21.03% 0.0059 84.37)",
             danger: "oklch(55% 0.2 37.78)",
             dangerForeground: "oklch(99.11% 0 0)",
+            /** Grammar's own built-in info pair (common/tones-info.css, 0.55.0): HeroUI ships none. */
+            info: "oklch(54% 0.18 255)",
+            infoForeground: "oklch(99.11% 0 0)",
             accentText: "#6a3cf2",
             accentSoft: "oklch(95.5% 0.03 287)",
         }),
@@ -91,6 +96,8 @@ export const STARCI_CORE_DNA = Object.freeze({
             warningForeground: "oklch(21.03% 0.0059 88.38)",
             danger: "oklch(70% 0.17 36.67)",
             dangerForeground: "oklch(21.03% 0.0059 36.67)",
+            info: "oklch(72% 0.15 250)",
+            infoForeground: "oklch(21.03% 0.0059 250)",
             accentText: "#a48bff",
             accentSoft: "oklch(30% 0.07 287)",
         }),
@@ -129,50 +136,9 @@ export type StarCiCoreSpacingStep = keyof typeof STARCI_CORE_SPACING_SCALE
 export type StarCiCoreSpacingValue = (typeof STARCI_CORE_SPACING_SCALE)[StarCiCoreSpacingStep]
 
 /**
- * The custom properties Core's theme sets: HeroUI's own tokens, which an app sets in its CSS (`core/theme.css` holds the
- * defaults), and the geometry and motion names Core defines on its root.
- *
- * @deprecated The defaults live in `@starci/grammar/core/theme.css`; this list is kept until the apps have migrated.
- */
-export const STARCI_CORE_TOKEN_NAMES = Object.freeze({
-    accent: "--accent",
-    accentForeground: "--accent-foreground",
-    focus: "--focus",
-    canvas: "--background",
-    surface: "--surface",
-    surfaceSecondary: "--surface-secondary",
-    surfaceTertiary: "--surface-tertiary",
-    foreground: "--foreground",
-    muted: "--muted",
-    border: "--border",
-    separator: "--separator",
-    success: "--success",
-    successForeground: "--success-foreground",
-    warning: "--warning",
-    warningForeground: "--warning-foreground",
-    danger: "--danger",
-    dangerForeground: "--danger-foreground",
-    accentText: "--accent-soft-foreground",
-    accentSoft: "--accent-soft",
-    pageMeasure: "--starci-core-page-measure",
-    readingMeasure: "--starci-core-reading-measure",
-    surfaceRadius: "--starci-core-surface-radius",
-    controlRadius: "--radius",
-    pillRadius: "--starci-core-pill-radius",
-    pageInset: "--starci-core-page-inset",
-    inlineGap: "--starci-core-inline-gap",
-    rowGap: "--starci-core-row-gap",
-    sectionGap: "--starci-core-section-gap",
-    regionGap: "--starci-core-region-gap",
-    elevation: "--surface-shadow",
-    motionDuration: "--starci-core-motion-duration",
-    motionEasing: "--starci-core-motion-easing",
-} as const)
-
-/**
  * Sticky-band geometry the package PUBLISHES rather than expects.
  *
- * These are not theme tokens and they are deliberately absent from `STARCI_CORE_TOKEN_NAMES`: a
+ * These are not theme tokens and they are not theme tokens: a
  * theme token has one default the family always defines, while each of these is either derived from
  * what is actually on the page or supplied by a host that wants to override that. A consumer reads
  * them; only `railOffset` is meant to be written.
@@ -195,62 +161,4 @@ export const STARCI_CORE_BAND_TOKEN_NAMES = Object.freeze({
 export type StarCiCoreBandTokenName = (typeof STARCI_CORE_BAND_TOKEN_NAMES)[keyof typeof STARCI_CORE_BAND_TOKEN_NAMES]
 
 export type StarCiCoreDna = typeof STARCI_CORE_DNA
-export type StarCiCoreTokenName = (typeof STARCI_CORE_TOKEN_NAMES)[keyof typeof STARCI_CORE_TOKEN_NAMES]
 
-/** @deprecated The values of `@starci/grammar/core/theme.css`, kept until the apps have migrated. */
-export const STARCI_CORE_TOKEN_DEFAULTS = Object.freeze({
-    "--accent": STARCI_CORE_DNA.color.accent,
-    "--accent-foreground": STARCI_CORE_DNA.color.accentForeground,
-    "--focus": STARCI_CORE_DNA.color.focus,
-    "--background": STARCI_CORE_DNA.color.light.canvas,
-    "--surface": STARCI_CORE_DNA.color.light.surface,
-    "--surface-secondary": STARCI_CORE_DNA.color.light.surfaceSecondary,
-    "--surface-tertiary": STARCI_CORE_DNA.color.light.surfaceTertiary,
-    "--foreground": STARCI_CORE_DNA.color.light.foreground,
-    "--muted": STARCI_CORE_DNA.color.light.muted,
-    "--border": STARCI_CORE_DNA.color.light.border,
-    "--separator": STARCI_CORE_DNA.color.light.separator,
-    "--success": STARCI_CORE_DNA.color.light.success,
-    "--success-foreground": STARCI_CORE_DNA.color.light.successForeground,
-    "--warning": STARCI_CORE_DNA.color.light.warning,
-    "--warning-foreground": STARCI_CORE_DNA.color.light.warningForeground,
-    "--danger": STARCI_CORE_DNA.color.light.danger,
-    "--danger-foreground": STARCI_CORE_DNA.color.light.dangerForeground,
-    "--accent-soft-foreground": STARCI_CORE_DNA.color.light.accentText,
-    "--accent-soft": STARCI_CORE_DNA.color.light.accentSoft,
-    "--starci-core-page-measure": STARCI_CORE_DNA.geometry.pageMeasure,
-    "--starci-core-reading-measure": STARCI_CORE_DNA.geometry.readingMeasure,
-    "--starci-core-surface-radius": STARCI_CORE_DNA.geometry.surfaceRadius,
-    "--radius": STARCI_CORE_DNA.geometry.controlRadius,
-    "--starci-core-pill-radius": STARCI_CORE_DNA.geometry.pillRadius,
-    "--starci-core-page-inset": STARCI_CORE_DNA.rhythm.pageInset,
-    "--starci-core-inline-gap": STARCI_CORE_DNA.rhythm.inlineGap,
-    "--starci-core-row-gap": STARCI_CORE_DNA.rhythm.rowGap,
-    "--starci-core-section-gap": STARCI_CORE_DNA.rhythm.sectionGap,
-    "--starci-core-region-gap": STARCI_CORE_DNA.rhythm.regionGap,
-    "--surface-shadow": STARCI_CORE_DNA.elevation.surface,
-    "--starci-core-motion-duration": STARCI_CORE_DNA.motion.duration,
-    "--starci-core-motion-easing": STARCI_CORE_DNA.motion.easing,
-} satisfies Readonly<Record<StarCiCoreTokenName, string>>)
-
-/** @deprecated The `.dark` values of `@starci/grammar/core/theme.css`, kept until the apps have migrated. */
-export const STARCI_CORE_DARK_TOKEN_DEFAULTS = Object.freeze({
-    "--background": STARCI_CORE_DNA.color.dark.canvas,
-    "--surface": STARCI_CORE_DNA.color.dark.surface,
-    "--surface-secondary": STARCI_CORE_DNA.color.dark.surfaceSecondary,
-    "--surface-tertiary": STARCI_CORE_DNA.color.dark.surfaceTertiary,
-    "--foreground": STARCI_CORE_DNA.color.dark.foreground,
-    "--muted": STARCI_CORE_DNA.color.dark.muted,
-    "--border": STARCI_CORE_DNA.color.dark.border,
-    "--separator": STARCI_CORE_DNA.color.dark.separator,
-    "--success": STARCI_CORE_DNA.color.dark.success,
-    "--success-foreground": STARCI_CORE_DNA.color.dark.successForeground,
-    "--warning": STARCI_CORE_DNA.color.dark.warning,
-    "--warning-foreground": STARCI_CORE_DNA.color.dark.warningForeground,
-    "--danger": STARCI_CORE_DNA.color.dark.danger,
-    "--danger-foreground": STARCI_CORE_DNA.color.dark.dangerForeground,
-    "--accent-soft-foreground": STARCI_CORE_DNA.color.dark.accentText,
-    "--accent-soft": STARCI_CORE_DNA.color.dark.accentSoft,
-} satisfies Readonly<Partial<Record<StarCiCoreTokenName, string>>>)
-
-export type StarCiCoreTokenDefaults = typeof STARCI_CORE_TOKEN_DEFAULTS

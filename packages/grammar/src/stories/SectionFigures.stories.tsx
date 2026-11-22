@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import * as G from '../common/index.js';
+import * as E from '../core/ext/recharts/index.js';
 import { Matrix, State } from './fixtures.js';
+
+/** A figure's trend chart: the ext Sparkline (core takes the drawn chart, never its numbers). */
+const trend = (label: string, values: readonly number[]) => (
+  <E.Sparkline ariaLabel={label} emptyLabel="No data yet" data={values.map((value, week) => ({ week, value }))} xKey="week" yKey="value" />
+);
 
 const meta: Meta = { title: 'Surfaces/Section figures' };
 export default meta;
@@ -39,13 +45,13 @@ export const States: Story = {
 };
 
 const trendFigures: readonly G.Figure[] = [
-  { id: 'revenue', term: 'Revenue', value: '48.2M', meta: '12% vs last month', trend: 'up', trendLine: [12, 14, 13, 18, 17, 22, 21, 27, 25, 31] },
-  { id: 'churn', term: 'Churn', value: '3.1', unit: '%', meta: '0.4 pt vs last month', trend: 'up', trendSense: 'lower-is-better', trendLine: [2, 2.4, 2.2, 2.9, 3.1] },
+  { id: 'revenue', term: 'Revenue', value: '48.2M', meta: '12% vs last month', trend: 'up', trendChart: trend('Revenue, last weeks', [12, 14, 13, 18, 17, 22, 21, 27, 25, 31]) },
+  { id: 'churn', term: 'Churn', value: '3.1', unit: '%', meta: '0.4 pt vs last month', trend: 'up', trendSense: 'lower-is-better', trendChart: trend('Churn, last weeks', [2, 2.4, 2.2, 2.9, 3.1]) },
   { id: 'cost', term: 'Cost per lead', value: '92k', meta: '8% vs last month', trend: 'down', trendSense: 'lower-is-better' },
   { id: 'orders', term: 'Orders', value: 310, meta: 'Same as last month', trend: 'flat' },
 ];
 
-/** `Figure.trend` marks the meta line (decorative triangle in the tone, direction also in words); `trendLine` draws a Sparkline under the cell. */
+/** `Figure.trend` marks the meta line (decorative triangle in the tone, direction also in words); `trendChart` takes the ext Sparkline under the cell. */
 export const TrendAndSparkline: Story = {
   render: () => (
     <Matrix maxWidth={960}>

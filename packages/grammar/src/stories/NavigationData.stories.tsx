@@ -143,7 +143,7 @@ export const AvatarGroup: Story = {
       </State>
       <State label="Sizes">
         <G.AvatarGroup label="Reviewers" items={people.slice(0, 3)} size="sm" overflowLabel={(count) => `${count} more`} />
-        <G.AvatarGroup label="Owners" items={people.slice(0, 2)} size="lg" overflowLabel={(count) => `${count} more`} />
+        <G.AvatarGroup label="Owners" items={people.slice(0, 2)} size="md" overflowLabel={(count) => `${count} more`} />
       </State>
     </Matrix>
   ),
@@ -449,7 +449,7 @@ export const ClientNavigation: Story = {
       <Matrix maxWidth={560}>
         <State label="Link and Button href">
           <G.Link href="/settings">Settings</G.Link>
-          <G.Button intent="neutral" href="/documents/new">New document</G.Button>
+          <G.Button variant="border" href="/documents/new">New document</G.Button>
         </State>
         <State label="DataTable row href" direction="column">
           <G.DataTable label="Documents" columns={navColumns} rows={navRows} renderCell={(row, columnId) => (columnId === 'title' ? row.title : row.status)} emptyContent="No documents." />
@@ -483,9 +483,9 @@ export const ClientNavigation: Story = {
 };
 
 const memberItems: ReadonlyArray<G.ListBoxItem> = [
-  { id: 'alex', label: 'Alex Morgan', description: 'alex@example.com', leading: <G.Avatar name="Alex Morgan" size="sm" isDecorative /> },
-  { id: 'sam', label: 'Sam Lee', description: 'sam@example.com', leading: <G.Avatar name="Sam Lee" size="sm" isDecorative /> },
-  { id: 'kim', label: 'Kim Tran', description: 'kim@example.com', leading: <G.Avatar name="Kim Tran" size="sm" isDecorative />, isDisabled: true },
+  { id: 'alex', label: 'Alex Morgan', description: 'alex@example.com', leading: <G.Avatar name="Alex Morgan" size="md" isDecorative /> },
+  { id: 'sam', label: 'Sam Lee', description: 'sam@example.com', leading: <G.Avatar name="Sam Lee" size="md" isDecorative /> },
+  { id: 'kim', label: 'Kim Tran', description: 'kim@example.com', leading: <G.Avatar name="Kim Tran" size="md" isDecorative />, isDisabled: true },
 ];
 
 /** HeroUI's ListBox docs examples: rows with an avatar and a description, single and multiple selection, a disabled row. */
@@ -533,7 +533,7 @@ const conversationItems: ReadonlyArray<G.ListBoxItem> = [
     trailing: <G.Badge tone="danger">3</G.Badge>,
     leading: <G.AvatarGroup label="Study group" layout="grid" size="sm" items={groupMembers} overflowLabel={(count) => `${count} more members`} />,
   },
-  { id: 'alex', label: 'Alex Morgan', description: 'Thanks!', leading: <G.Avatar name="Alex Morgan" seed="user-alex" size="sm" isDecorative /> },
+  { id: 'alex', label: 'Alex Morgan', description: 'Thanks!', leading: <G.Avatar name="Alex Morgan" seed="user-alex" size="md" isDecorative /> },
   {
     id: 'reading-club',
     label: 'Reading club',
@@ -741,7 +741,7 @@ export const StepperOnTheCard: Story = {
   render: (_args, { globals }) => (
     <Matrix maxWidth={720}>
       {THEMES.map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
           <State label={theme} direction="column">
             <div data-story-card={theme}>
               <G.SurfaceCard ariaLabel={`Onboarding on ${theme}`}>
@@ -917,7 +917,7 @@ const RenamingTabs = () => {
       <div role="tabpanel" id="story-rename-panel" aria-label="Renaming tabs" style={{ paddingTop: '1rem' }}>
         <G.Text>{name} panel</G.Text>
       </div>
-      <G.Button intent="alternative" onPress={() => setName((current) => (current === 'Documents' ? 'All documents and exercises' : 'Documents'))}>Change the selected tab label</G.Button>
+      <G.Button variant="border" onPress={() => setName((current) => (current === 'Documents' ? 'All documents and exercises' : 'Documents'))}>Change the selected tab label</G.Button>
     </div>
   );
 };

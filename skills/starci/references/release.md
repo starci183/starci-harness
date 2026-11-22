@@ -69,7 +69,8 @@ its `contexts/stack/pins.yaml` pin, else `CLI_PIN_SKEW`), one requiring a privat
 `RELEASE_PEER_RANGE_EXCLUDES_PIN`,
 and with `--base <commit>` (CI passes its plan's base) a package changed since then whose version is already on npm is
 `RELEASE_VERSION_NOT_BUMPED`: raise its version and CHANGELOG. `--execute` publishes a dependency before its dependent.
-npm is public and permanent: show the plan and get the owner's OK for exactly those packages and versions every time,
+npm is published once per release train, for prod only; lanes and app dev run on the local registry and never wait for it
+(`deps publish-local`, contexts/project/cicd.md "Dev and prod"). npm is public and permanent: show the plan and get the owner's OK for exactly those packages and versions every time,
 then publish. It publishes from a clean commit on the remote main and reads each version back; `PUBLISH_NOT_CONFIRMED`
 means the registry does not show it yet.
 

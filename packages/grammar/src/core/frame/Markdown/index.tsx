@@ -262,7 +262,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
             )
         case "footnoteDefinition":
             return (
-                <Text as="div" size="xs" tone="muted">
+                <Text as="div" role="caption">
                     [{node.label ?? node.identifier}] <Blocks nodes={node.children} context={context} isTight />
                 </Text>
             )

@@ -105,9 +105,12 @@ const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly o
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
 }
 
+/** The packages one sync installs from the local registry: the ones the verb names, else this machine's standing overlay (`devSync.local`). Pure. */
+export const syncLocal = (named: readonly string[], settings: Pick<DevSyncSettings, "local">): readonly string[] => (named.length > 0 ? named : settings.local)
+
 /** The overlay line every sync prints. Pure. */
 export const overlayLine = (overlay: readonly string[]): string =>
-    overlay.length === 0 ? "local overlay: none (every @starci package resolves from npm)" : `local overlay in effect: ${overlay.join(", ")} from the local registry (a plain dev sync restores the registry versions)`
+    overlay.length === 0 ? "local overlay: none (every @starci package resolves from npm)" : `local overlay in effect: ${overlay.join(", ")} from the local registry (kept while devSync.local names it; clear the setting to restore the registry versions)`
 
 /**
  * One `dev sync` of an app's dev checkout: refuse any tracked change but a recorded overlay's; put a recorded overlay back to the committed
@@ -132,12 +135,17 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const dirty = (await trackedChanges(root)).filter((file) => !ownFiles.includes(file))
     if (dirty.length > 0) throw new Refusal("DEV_SYNC_DIRTY", `${root} has tracked changes that are not a local overlay's: ${dirty.slice(0, 5).join(", ")}; the dev checkout only follows origin/dev, commit them on a lane instead`)
     const branch = await currentBranch(root)
-    if (branch !== "dev") throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on ${branch ?? "a detached HEAD"}, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
+    // A detached HEAD is where the lander leaves the main checkout (at origin/dev): it is accepted once it is origin/dev or behind it.
+    const detached = branch === undefined
+    if (!detached && branch !== "dev") throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on ${branch}, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
     const fetched = await gitOk(root, ["fetch", "--quiet", "origin", "dev"])
     if (!fetched.ok) throw new Refusal("DEV_SYNC_FETCH", `git fetch origin dev in ${root}: ${fetched.err}`)
     const from = await resolveSha(root, "HEAD")
     const to = await resolveSha(root, "origin/dev")
-    if (!(await gitOk(root, ["merge-base", "--is-ancestor", from, to])).ok) throw new Refusal("DEV_SYNC_DIVERGED", `${root} dev (${from.slice(0, 9)}) is not behind origin/dev (${to.slice(0, 9)}): the dev checkout holds commits dev does not; land them through a lane`)
+    if (!(await gitOk(root, ["merge-base", "--is-ancestor", from, to])).ok) {
+        if (detached) throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on a detached HEAD (${from.slice(0, 9)}) that is not origin/dev (${to.slice(0, 9)}) or behind it, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
+        throw new Refusal("DEV_SYNC_DIVERGED", `${root} dev (${from.slice(0, 9)}) is not behind origin/dev (${to.slice(0, 9)}): the dev checkout holds commits dev does not; land them through a lane`)
+    }
     const commits = Number((await gitOk(root, ["rev-list", "--count", `${from}..${to}`])).out) || 0
     const files = from === to ? [] : (await git(root, ["diff", "--name-only", from, to])).split("\n").filter((file) => file !== "")
     const requested = request.local.map(parseRequested)
@@ -151,7 +159,7 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const restartArgs = (names: readonly string[]): string[] => ["app", "stack", "restart", "--env", request.env, "--process", names.join(","), "--execute"]
     const base: Omit<DevSyncData, "overlay" | "installed" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
     if (!request.execute) {
-        say(`would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
+        say(detached ? `would put ${root} back on dev at origin/dev ${to.slice(0, 9)} (detached at ${from.slice(0, 9)}, ${String(commits)} commit(s) behind)` : `would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
         if (overlayBefore.length > 0) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
         if (aside.length > 0) say(`would move back the copy an earlier sync left aside: ${aside.join(", ")}`)
         if (writesModules) say(`would stop the dev stack processes the ${request.env} environment records before node_modules is written, and restart them after`)
@@ -169,8 +177,15 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
         rmSync(installRecordFile(root), { force: true })
         say(`restored the committed pins of ${ownFiles.join(", ")}: the overlay ${overlayBefore.join(", ")} is gone`)
     }
-    const merged = await gitOk(root, ["merge", "--ff-only", "--quiet", to])
-    if (!merged.ok) throw new Refusal("DEV_SYNC_DIVERGED", `git merge --ff-only origin/dev in ${root}: ${merged.err}`)
+    if (detached) {
+        // HEAD is origin/dev or an ancestor of it, so this only moves forward: the checkout ends on a local dev tracking origin/dev.
+        const switched = await gitOk(root, ["checkout", "--quiet", "-B", "dev", "--track", "origin/dev"])
+        if (!switched.ok) throw new Refusal("DEV_SYNC_DIVERGED", `git checkout -B dev origin/dev in ${root}: ${switched.err}`)
+        say(`put ${root} back on dev at origin/dev ${to.slice(0, 9)} (was detached at ${from.slice(0, 9)})`)
+    } else {
+        const merged = await gitOk(root, ["merge", "--ff-only", "--quiet", to])
+        if (!merged.ok) throw new Refusal("DEV_SYNC_DIVERGED", `git merge --ff-only origin/dev in ${root}: ${merged.err}`)
+    }
     say(from === to ? `${root} is at origin/dev ${to.slice(0, 9)}` : `fast-forwarded ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
     const restartNames = async (names: readonly string[], why: string): Promise<boolean> => {
         say(`${why} ${names.join(", ")} (the database, storage and tunnel stay up)`)
@@ -246,7 +261,7 @@ export const devSyncVerb = defineVerb({
     roles: WRITERS,
     schema: "starci/dev-sync@1",
     flags: {
-        local: { kind: "list", summary: "a harness package to install from the local registry after the install (grammar, @starci/hfs@6.18.0-local.1; repeat); without it every @starci package comes from npm" },
+        local: { kind: "list", summary: "a harness package to install from the local registry after the install (grammar, @starci/hfs@6.18.0-local.1; repeat); without it the sync uses this machine's devSync.local, and with that empty every @starci package comes from npm" },
         dir: { kind: "string", summary: "the app's dev checkout (default: the current one)" },
         env: { kind: "string", summary: "the dev environment of the running stack (default: the local settings' devSync.env, dev)" },
         "no-restart": { kind: "boolean", summary: "move the checkout and install, but leave the running stack as it is" },
@@ -254,8 +269,11 @@ export const devSyncVerb = defineVerb({
     },
     run: async (context, flags) => {
         const settings = loadLocalSettings().devSync
+        const named = flags.local.flatMap((one) => one.split(",")).map((one) => one.trim()).filter((one) => one !== "")
         const result = await devSync({
-            checkout: flags.dir ?? context.cwd, local: flags.local.flatMap((one) => one.split(",")).map((one) => one.trim()).filter((one) => one !== ""),
+            // With no --local, the sync keeps this machine's standing overlay (devSync.local), as the lander's auto-sync does: dev keeps running the
+            // local harness builds until the setting is cleared, instead of losing them on every plain sync.
+            checkout: flags.dir ?? context.cwd, local: syncLocal(named, settings),
             env: flags.env ?? settings.env, execute: flags.execute, restart: !flags["no-restart"], processes: settings.processes, say: context.progress,
         })
         // Every step was printed as it happened; the message is the one line that says where the checkout and the stack stand.

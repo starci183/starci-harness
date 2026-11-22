@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.stories.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": [
+    "specs/**/*.mts",
+    "specs/**/*.d.ts"
+  ]
+}

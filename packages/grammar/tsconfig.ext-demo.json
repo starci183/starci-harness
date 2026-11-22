@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.stories.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["node"],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "ext-demo/**/*.ts",
+    "ext-demo/**/*.tsx"
+  ]
+}

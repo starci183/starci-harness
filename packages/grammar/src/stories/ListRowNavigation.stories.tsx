@@ -36,7 +36,7 @@ export const WholeRowAndChevron: Story = {
   },
 };
 
-/** 0.37.14: an internal `href` row is a navigation row: the title is NOT link-coloured and has no ↗, the chevron ends the row, the real anchor stays. */
+/** 0.37.14: an internal `href` row is a navigation row: the title is NOT link-coloured and has no external icon, the chevron ends the row, the real anchor stays. */
 export const InternalHrefHasNoArrow: Story = {
   render: () => (
     <div style={{ width: 420 }}>
@@ -59,7 +59,7 @@ export const InternalHrefHasNoArrow: Story = {
   },
 };
 
-/** 0.37.14: the ↗ belongs to `kind="external"` only; an internal text link has none and keeps the accent colour; `variant="plain"` has neither colour nor icon. */
+/** 0.37.14: the external icon belongs to `kind="external"` only; an internal text link has none and keeps the accent colour; `variant="plain"` has neither colour nor icon. */
 export const LinkArrowOnlyWhenExternal: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

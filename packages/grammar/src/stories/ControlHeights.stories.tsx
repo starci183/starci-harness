@@ -24,17 +24,17 @@ const ControlRow = () => {
     const [tab, setTab] = useState("all")
     return (
         <div data-story-control-row="true" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
-            <G.Button intent="commit">Save</G.Button>
-            <G.Button intent="dismiss">Cancel</G.Button>
-            <G.IconButton intent="dismiss" source={BellGlyph} label="Notifications" />
-            <G.IconButton intent="dismiss" source={SettingsGlyph} label="Settings" />
+            <G.Button variant="primary">Save</G.Button>
+            <G.Button variant="border">Cancel</G.Button>
+            <G.IconButton variant="border" source={BellGlyph} label="Notifications" />
+            <G.IconButton variant="border" source={SettingsGlyph} label="Settings" />
             <G.Input id="control-heights-name" name="name" label="Name" isLabelHidden placeholder="Name" />
             <G.SearchField label="Search" isLabelHidden placeholder="Search" clearLabel="Clear search" />
             <G.Select label="Plan" isLabelHidden options={planOptions} defaultValue="starter" />
             <G.Tabs label="Filter" items={tabItems} selectedKey={tab} onSelect={setTab} panelId={(key) => `control-heights-${key}`} labelVisibility="always" />
             <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
-            <G.AvatarButton name="Alex Morgan" size="control" />
-            <G.Button intent="commit" startContent={<SearchGlyph />}>Send</G.Button>
+            <G.AvatarButton name="Alex Morgan" size="md" />
+            <G.Button variant="primary" startContent={<SearchGlyph />}>Send</G.Button>
         </div>
     )
 }
@@ -45,7 +45,7 @@ export const OneRowAllAtForty: Story = {
     render: (_, { globals }) => (
         <Matrix>
             {(["light", "dark"] as const).map((theme) => (
-                <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme}>
+                <G.GrammarRoot key={theme} {...familyScope(globals)}>
                     <State label={`${theme}: Button, IconButton, Input, SearchField, Select, Tabs, Switch, Avatar, send Button`} direction="column">
                         <ControlRow />
                     </State>
@@ -73,12 +73,12 @@ export const NestedAndHeroSteps: Story = {
     render: () => (
         <Matrix>
             <State label="sm (32px): row actions inside an item, every control of the row at sm">
-                <G.IconButton intent="dismiss" source={BellGlyph} label="Mute" size="sm" />
-                <G.IconButton intent="dismiss" source={SettingsGlyph} label="Settings" size="sm" />
-                <G.Button intent="neutral" size="sm" onPress={noop}>Details</G.Button>
+                <G.IconButton variant="border" source={BellGlyph} label="Mute" size="sm" />
+                <G.IconButton variant="border" source={SettingsGlyph} label="Settings" size="sm" />
+                <G.Button variant="border" size="sm" onPress={noop}>Details</G.Button>
             </State>
             <State label="lg (48px): the landing hero call to action">
-                <G.Button intent="commit" size="lg" onPress={noop}>Start free</G.Button>
+                <G.Button variant="primary" size="lg" onPress={noop}>Start free</G.Button>
             </State>
         </Matrix>
     ),
@@ -108,21 +108,21 @@ export const FillWidthAtForty: Story = {
                         <G.SurfaceCard label="Sign in" measure="formCompact">
                             <G.Form label="Sign in" onSubmit={noop}>
                                 <G.Input id="fill-heights-email" name="email" label="Email" placeholder="you@example.com" />
-                                <G.Button intent="commit" type="submit" width="fill">Sign in</G.Button>
-                                <G.Button intent="dismiss" width="fill" onPress={noop}>Continue another way</G.Button>
+                                <G.Button variant="primary" type="submit" width="fill">Sign in</G.Button>
+                                <G.Button variant="border" width="fill" onPress={noop}>Continue another way</G.Button>
                             </G.Form>
                         </G.SurfaceCard>
                     </div>
                 </State>
                 <State label="sm and lg fill keep their steps" direction="column">
                     <div data-story-fill="steps" style={{ display: "grid", gap: "0.75rem", inlineSize: "100%" }}>
-                        <G.Button intent="neutral" size="sm" width="fill" onPress={noop}>Details</G.Button>
-                        <G.Button intent="commit" size="lg" width="fill" onPress={noop}>Start free</G.Button>
+                        <G.Button variant="border" size="sm" width="fill" onPress={noop}>Details</G.Button>
+                        <G.Button variant="primary" size="lg" width="fill" onPress={noop}>Start free</G.Button>
                     </div>
                 </State>
                 <State label="a label that wraps grows the box" direction="column">
                     <div data-story-fill="wrap" style={{ inlineSize: "8rem" }}>
-                        <G.Button intent="neutral" width="fill" onPress={noop}>Continue with a very long provider name</G.Button>
+                        <G.Button variant="border" width="fill" onPress={noop}>Continue with a very long provider name</G.Button>
                     </div>
                 </State>
             </Matrix>

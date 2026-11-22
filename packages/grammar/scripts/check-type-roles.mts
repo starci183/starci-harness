@@ -16,8 +16,6 @@ const sheets = ["styles.css", "components-navigation.css", "components-forms.css
 const PINS: readonly { readonly selector: string; readonly holds: readonly string[] }[] = [
     { selector: ".starci-core-tabs .tabs__tab", holds: ["font-size: var(--grammar-text-sm) !important", "line-height: var(--grammar-leading-sm) !important"] },
     { selector: ".starci-core-text", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-regular)"] },
-    { selector: '.starci-core-text[data-size="sm"]', holds: ["font-size: var(--grammar-text-sm)"] },
-    { selector: '.starci-core-text[data-size="xs"]', holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: '.starci-core-text[data-strong="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-section-title", holds: ["font-size: var(--grammar-text-xl)", "font-weight: var(--grammar-weight-medium)"] },
     { selector: ":is(h2, h3, h4, h5, h6).starci-core-section-title", holds: ["font-size: var(--grammar-type-title-section-size)", "font-weight: var(--grammar-type-title-section-weight)", "line-height: var(--grammar-type-title-section-line)"] },
@@ -76,6 +74,40 @@ for (const [role, size, line, weight] of ROLES) {
     const reads = (part: string): string => `${part}: var(--grammar-type-${role}-${part === "font-size" ? "size" : part === "line-height" ? "line" : "weight"});`
     const body = /\{([^}]*)\}/.exec(all.slice(all.indexOf(`.starci-type-${role} {`)))?.[1] ?? ""
     if (!all.includes(`.starci-type-${role} {`) || !["font-size", "line-height", "font-weight"].every((part) => body.includes(reads(part)))) problems.push(`styles.css: .starci-type-${role} must read its three role tokens`)
+}
+/*
+ * THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM"): five roles of the public site, each with its 390 value and its steps from 48rem and
+ * 64rem in ramps.css; the display roles track -0.02em; every line holds the 1.33x floor for Vietnamese diacritics.
+ */
+const SITE_ROLES: readonly { readonly role: string; readonly weight: "regular" | "medium"; readonly tracking: boolean; readonly steps: readonly (readonly [string, string, string])[] }[] = [
+    { role: "display-hero", weight: "medium", tracking: true, steps: [["base", "2.25rem", "3rem"], ["48rem", "2.5rem", "3.375rem"], ["64rem", "3rem", "4rem"]] },
+    { role: "display-section", weight: "medium", tracking: true, steps: [["base", "1.75rem", "2.375rem"], ["64rem", "2rem", "2.75rem"]] },
+    { role: "display-figure", weight: "medium", tracking: true, steps: [["base", "2.25rem", "3rem"], ["48rem", "3rem", "4rem"], ["64rem", "3.5rem", "4.75rem"]] },
+    { role: "lead", weight: "regular", tracking: false, steps: [["base", "1rem", "1.625rem"], ["64rem", "1.125rem", "1.75rem"]] },
+    { role: "title-card", weight: "medium", tracking: false, steps: [["base", "1.125rem", "1.75rem"]] },
+]
+/** The body of the `.grammar-common-root` rule inside `@media (min-width: <at>)` of ramps.css, or the base root rule. */
+const rampsAt = (at: string): string => {
+    if (at === "base") return /\.grammar-common-root \{([^}]*)\}/.exec(ramps)?.[1] ?? ""
+    return new RegExp(`@media \\(min-width: ${at}\\) \\{\\s*\\.grammar-common-root \\{([^}]*)\\}`).exec(ramps)?.[1] ?? ""
+}
+for (const { role, weight, tracking, steps } of SITE_ROLES) {
+    for (const [at, size, line] of steps) {
+        const body = rampsAt(at)
+        for (const [part, value] of [["size", size], ["line", line]] as const) {
+            if (!body.includes(`--grammar-type-${role}-${part}: ${value};`)) problems.push(`ramps.css: --grammar-type-${role}-${part} must be ${value} at ${at} (the site group, 0.55.0)`)
+        }
+        if (Number.parseFloat(line) / Number.parseFloat(size) < 1.33) problems.push(`the site group: ${role} ${size} / ${line} is under the 1.33x line height`)
+    }
+    for (const [at] of [["48rem"], ["64rem"]] as const) {
+        if (!steps.some(([step]) => step === at) && rampsAt(at).includes(`--grammar-type-${role}-`)) problems.push(`ramps.css: ${role} takes no step at ${at}`)
+    }
+    if (!ramps.includes(`--grammar-type-${role}-weight: var(--grammar-weight-${weight});`)) problems.push(`ramps.css: --grammar-type-${role}-weight must be the ${weight} weight`)
+    if (tracking !== ramps.includes(`--grammar-type-${role}-tracking: -0.02em;`)) problems.push(`ramps.css: ${role} ${tracking ? "must track -0.02em" : "takes no tracking"}`)
+    const body = /\{([^}]*)\}/.exec(all.slice(all.indexOf(`.starci-type-${role} {`)))?.[1] ?? ""
+    const parts = ["size", "line", "weight", ...(tracking ? ["tracking"] : [])]
+    const property: Readonly<Record<string, string>> = { size: "font-size", line: "line-height", weight: "font-weight", tracking: "letter-spacing" }
+    if (!all.includes(`.starci-type-${role} {`) || !parts.every((part) => body.includes(`${property[part] ?? ""}: var(--grammar-type-${role}-${part});`)) || /(^|;)\s*color:/.test(body)) problems.push(`styles.css: .starci-type-${role} must read its role tokens and set no colour`)
 }
 for (const match of all.matchAll(/\.starci-core-tabs[^{]*\.tabs__tab[^{]*\{[^}]*font-size:\s*var\(--grammar-text-([a-z0-9]+)\)/g)) {
     if (match[1] !== "sm" && match[1] !== "md") problems.push(`a tab rule sets --grammar-text-${match[1]}; every tab is 14`)

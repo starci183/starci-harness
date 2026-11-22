@@ -2,7 +2,7 @@
  * Common form anatomy: the structure every family inherits for the form and input renderers
  * (Field, Textarea, Select, ComboBox, SearchField, NumberField, Checkbox, CheckboxGroup, RadioGroup,
  * Switch, Slider, DateField, DatePicker, DateRangePicker, TimeField, FileDropzone,
- * CopyField, Fieldset, Form, FormGrid, ButtonGroup).
+ * CopyField, Fieldset, Form, FormGrid).
  *
  * Only structure, rhythm and the touch floor live here. Paint resolves through the semantic
  * variables every family binds (`--field-*`, `--accent`, `--danger`, `--muted`, `--focus`,
@@ -617,26 +617,10 @@
     }
 
     /*
-     * The alternative button (HeroUI "secondary"): the vendor fills it with --default but writes its words in --accent-soft-foreground, which in
-     * a brand-coloured app (e.g. a rose accent) reads as pink words on grey. A fill and its words are one pair: --default with --default-foreground.
-     */
-    .starci-core-button.button--secondary { --button-fg: var(--default-foreground); }
-
-    /*
-     * The destructive entry button (HeroUI "danger-soft"): the danger soft pair with no edge by default. 0.40.0: `--starci-core-button-danger-soft`
-     * (fill, default `--danger-soft`) and `--starci-core-button-danger-soft-border` (a `border` value, default `0`) draw it as an outline instead.
-     */
-    .starci-core-button.button--danger-soft {
-        --button-bg: var(--starci-core-button-danger-soft, var(--danger-soft));
-        border: var(--starci-core-button-danger-soft-border, 0);
-    }
-
-    /*
-     * A DISABLED BUTTON IS NEUTRAL (0.42.0), whatever its intent, step or variant, Button and IconButton alike. The vendor only dims a disabled button to
+     * A DISABLED BUTTON IS NEUTRAL (0.42.0), whatever its variant, Button and IconButton alike. The vendor only dims a disabled button to
      * `--disabled-opacity`, so a disabled primary read as a pink accent wash and a disabled destructive as a pale red: a colour that still says "act".
      * Disabled now draws HeroUI's disabled pair at full opacity: a neutral fill (the foreground at 6% over the surface) and neutral words (the foreground
-     * at 40%), with no hover or press change. A ghost or outline button keeps no fill (an outline keeps its neutral edge), and an edged destructive entry
-     * drops its danger edge. A pending or loading button is not disabled here: it keeps its look under its spinner or skeleton. `disabledReason`
+     * at 40%), with no hover or press change. A `border` button keeps no fill (its outline keeps its neutral edge). A pending or loading button is not disabled here: it keeps its look under its spinner or skeleton. `disabledReason`
      * is untouched: its trigger wraps the control.
      */
     :is(.starci-core-button, .starci-core-icon-button):is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
@@ -647,12 +631,8 @@
         opacity: 1;
     }
 
-    :is(.starci-core-button, .starci-core-icon-button):is(.button--ghost, .button--outline):is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
+    :is(.starci-core-button, .starci-core-icon-button).button--outline:is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
         --button-bg: transparent;
-    }
-
-    .starci-core-button.button--danger-soft:is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
-        border-color: transparent;
     }
 
     /* An unselected radio or checkbox draws its own ring in the muted foreground (U2-G6). The vendor control paints only the field border and
@@ -664,7 +644,7 @@
     }
 
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
-    /* 0.40.0: the plate hooks of ChoiceChips and FilterButtonGroup (styles.css "THE PLATE HOOKS") paint these rows too. */
+    /* 0.40.0: the plate hooks of ChoiceChips (styles.css "THE PLATE HOOKS") paint these rows too. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;
         inline-size: 100%;
@@ -675,8 +655,14 @@
         color: var(--foreground);
     }
 
+    /*
+     * The chosen row is QUIET (0.55.0, owner: the dark selected edge was "màu lạ"): the radio dot says which; the row keeps the unselected edge's width
+     * and style, coloured at most the 1px accent border token, never a dark or thicker outline (the plate-selected-border hook does not reach a row).
+     * Keyboard focus keeps the standard focus ring, apart from selection.
+     */
     [data-grammar-radio-appearance="rows"] .starci-core-radio[data-selected="true"] {
-        border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0));
+        border: var(--starci-core-plate-border, 0);
+        border-color: var(--accent-border);
         background: var(--starci-core-plate-selected, var(--accent-soft));
         color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground));
     }
@@ -832,7 +818,8 @@
         block-size: 1rem;
     }
 
-    .starci-core-switch-icon > .starci-core-icon {
+    /* The thumb's glyph fills the thumb's own box: a control part, not a text icon. */
+    .starci-core-switch-icon > .starci-core-icon[data-usage] {
         inline-size: 100%;
         block-size: 100%;
     }
@@ -857,19 +844,6 @@
 
     .starci-core-slider-output {
         color: var(--muted);
-    }
-
-    /* --- ButtonGroup --- */
-    .starci-core-button-group {
-        max-width: 100%;
-    }
-
-    .starci-core-button-group[data-width="fill"] {
-        width: 100%;
-    }
-
-    .starci-core-button-group[data-width="fill"] > [data-component="Button"] {
-        flex: 1 1 0;
     }
 
     /*
@@ -1031,7 +1005,6 @@
         .starci-core-choice-content,
         .starci-core-segment,
         .starci-core-list-option,
-        .starci-core-button-group > *,
         .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="range"]), select) {
             min-block-size: var(--starci-core-control-min-size);
         }

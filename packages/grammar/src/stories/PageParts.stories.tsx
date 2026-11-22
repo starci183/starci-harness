@@ -60,7 +60,7 @@ export const PublicPageParts: Story = {
     render: () => (
         <Matrix maxWidth={560}>
             <State label="PageIntro: the plain heading block (accent initials mark, fact lines, a sentence)" direction="column">
-                <G.PageIntro title="Acme Studio" mark={<G.Avatar name="Acme Studio" size="lg" shape="rounded" tone="accent" />} lines={[{ id: "a", text: "42 Main Street" }, { id: "h", text: "Open 9:00 to 20:00, closed on Monday" }]} description="Book in a minute: pick a service, a time, leave your phone number." />
+                <G.PageIntro title="Acme Studio" mark={<G.Avatar name="Acme Studio" size="md" shape="rounded" tone="accent" />} lines={[{ id: "a", text: "42 Main Street" }, { id: "h", text: "Open 9:00 to 20:00, closed on Monday" }]} description="Book in a minute: pick a service, a time, leave your phone number." />
             </State>
             <State label="RadioGroup appearance=rows (the chosen row on the accent soft pair)" direction="column"><G.RadioGroup label="Service" appearance="rows" options={radioOptions} defaultValue="wash" /></State>
             <State label="A form field that spans both columns (span=full ends the row before it)" direction="column">
@@ -172,12 +172,12 @@ export const FormGridSpanEveryField: Story = {
 }
 
 const primaryRows: ReadonlyArray<G.ListRowData> = [
-    { id: "p1", title: "Connect a channel", description: "Needed before the agent can answer", action: { label: "Continue", intent: "commit", isPrimary: true, press: noop } },
-    { id: "p2", title: "Add a knowledge source", description: "Optional", action: { label: "Add", intent: "commit", press: noop } },
+    { id: "p1", title: "Connect a channel", description: "Needed before the agent can answer", action: { label: "Continue", variant: "primary", press: noop } },
+    { id: "p2", title: "Add a knowledge source", description: "Optional", action: { label: "Add", press: noop } },
     { id: "p3", title: "Invite a teammate", description: "Optional", action: { label: "Invite", press: noop } },
 ]
 
-/** A row command may be the region's one primary (`isPrimary`); the other commit and neutral commands stay the outlined item pill. */
+/** A row command may be the region's one primary (`variant: "primary"`); the other commands stay the outlined item pill (`border`). */
 export const RowPrimaryAction: Story = {
     render: () => (
         <Matrix maxWidth={560}>
@@ -191,7 +191,7 @@ export const RowPrimaryAction: Story = {
     ),
 }
 
-/** Below 30rem the action stacks under the text, full width, in its tone's intent; the dismiss stays beside the text. */
+/** Below 30rem the action stacks under the text, full width, in its tone's look; the dismiss stays beside the text. */
 export const AlertActionNarrow: Story = {
     render: () => (
         <Matrix maxWidth={560}>
@@ -202,12 +202,15 @@ export const AlertActionNarrow: Story = {
     ),
 }
 
-/** The other tones' actions below 30rem: negative (confirmed destructive intent) and loading (the same box). One accent fill per view, so they stand apart from the informative one. */
+/** The other tones' actions below 30rem: negative (the border retry, or danger when the action destroys) and loading (the same box). One accent fill per view, so they stand apart from the informative one. */
 export const AlertActionNarrowOtherTones: Story = {
     render: () => (
         <Matrix maxWidth={560}>
-            <State label="Negative with an action (confirmed destructive intent)" direction="column">
+            <State label="Negative with a retry (border)" direction="column">
                 <G.Alert tone="negative" title="Could not send" description="Check the connection and try again." action={{ label: "Try again", onAction: noop }} />
+            </State>
+            <State label="Negative with a destructive action (danger)" direction="column">
+                <G.Alert tone="negative" title="The channel token expired" description="Disconnect it to stop the failed sends." action={{ label: "Disconnect", onAction: noop, isDestructive: true }} />
             </State>
             <State label="Loading (the same box)" direction="column">
                 <G.Alert title="Finish setting up" description="Connect a channel so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" isLoading />

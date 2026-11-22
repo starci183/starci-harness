@@ -278,9 +278,9 @@
 
     .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step:not(:last-child)::after {
         position: absolute;
-        inset-block-start: calc(1.25rem - 1px);
-        inset-inline-start: calc(50% + 1.5rem);
-        inset-inline-end: calc(-50% + 1.5rem);
+        inset-block-start: calc(1.5rem - 1px);
+        inset-inline-start: calc(50% + 1.75rem);
+        inset-inline-end: calc(-50% + 1.75rem);
         block-size: 2px;
         border-radius: var(--grammar-radius-pill);
         background: var(--border);
@@ -332,53 +332,26 @@
         outline-offset: 2px;
     }
 
+    /*
+     * The marker (0.55.0, the status-mark rule, case 1 "how far along is it?"): the round 40px status tile, its plate tone the step's state and its
+     * glyph the STATUS (check complete, x error, pause paused, dashed circle upcoming); the current step, the reader's own, is its number on the
+     * accent plate. It replaces the 0.36.0 outline rings. The step's label names the step.
+     */
     .starci-core-step-marker {
         display: inline-flex;
-        width: 2rem;
-        height: 2rem;
+        width: 2.5rem;
+        height: 2.5rem;
         flex: 0 0 auto;
         align-items: center;
         justify-content: center;
-        border: 2px solid var(--separator);
         border-radius: var(--grammar-radius-pill);
-        background: transparent;
-        color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
         font-variant-numeric: tabular-nums;
     }
 
-    .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker {
-        border-color: var(--success);
-        background: transparent;
-        color: var(--success);
-    }
-
-    /*
-     * Every marker is an OUTLINE ring (0.36.0, ICONS-OUTLINE: never a filled disc, no tile): complete is a success ring with its check, the
-     * current step an accent ring, the upcoming steps a hairline ring with a muted number, the error and paused steps their tone ring. A SurfaceCard treatment rebinds the surface pair and those text tokens
-     * together, so the number keeps its contrast in every treatment (COLOR-5).
-     */
-    .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
-        border-color: var(--accent);
-        background: transparent;
-        color: var(--accent);
-    }
-
-    /* A bare mark wears the tone itself; Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
-    .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
-        border-color: var(--danger);
-        background: transparent;
-        color: var(--starci-core-mark-danger, var(--danger));
-    }
-
-    /* A paused step: a dashed circle in the warning ink, so the state is a form as well as a colour. */
-    .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
-        border-style: dashed;
-        border-color: var(--warning);
-        background: transparent;
-        color: var(--starci-core-mark-warning, var(--warning));
-    }
+    /* The copy's first line meets the tile's centre: the 24px label line, 8px down in the 40px marker. */
+    .starci-core-stepper[data-grammar-stepper-orientation="vertical"] .starci-core-step-copy { padding-block-start: var(--grammar-inline-gap); }
 
     /* Dense (a list row): a 20px marker, 12px type, no copy padding, and the connector re-aimed at the smaller circle. */
     /*
@@ -410,7 +383,14 @@
     .starci-core-stepper-caption .starci-core-step-skeleton-label { display: block; inline-size: 8rem; }
 
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap); }
-    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; border-width: 1.5px; font-size: var(--grammar-text-xs); }
+    /* Dense is inline (A): the bare 20px status glyph (the icon size before 12px text) in the step's ink; the current step's number in a 20px accent ring. */
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; font-size: var(--grammar-text-xs); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker > .starci-core-inline-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker { color: var(--success-soft-foreground); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker { color: var(--starci-core-mark-danger, var(--danger)); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker { color: var(--starci-core-mark-warning, var(--warning)); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="upcoming"] .starci-core-step-marker { color: var(--muted); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker { border: var(--grammar-ring-width) solid var(--accent); color: var(--accent); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-copy { padding-block-start: 0; gap: 0; }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-label { font-size: var(--grammar-text-xs); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-description { font-size: var(--grammar-text-xs); }
@@ -771,7 +751,18 @@
 
     /* ---------- Avatar / AvatarGroup ---------- */
     .starci-core-avatar {
+        --starci-avatar-letters-size: calc(var(--avatar-size) * var(--grammar-avatar-initials-ratio));
+        --starci-avatar-mark-size: calc(var(--avatar-size) * var(--grammar-avatar-mark-ratio));
         flex: 0 0 auto;
+    }
+
+    /*
+     * The avatar with no image is DiceBear's Initials image (drawn locally, a solid Grammar tone behind two letters), covering the avatar. An explicit plate
+     * `tone` (accent, solid, strong) draws its letters here instead, in the avatar's own size share.
+     */
+    .starci-core-avatar [data-grammar-avatar-fallback] {
+        display: grid;
+        place-items: center;
     }
 
     .starci-core-avatar-initials {
@@ -780,20 +771,82 @@
         object-fit: cover;
     }
 
-    .starci-core-avatar-agent-anchor {
-        overflow: visible !important;
-        background: transparent !important;
-        border-radius: var(--grammar-radius-round) !important;
+    .starci-core-avatar-letters {
+        font-size: var(--starci-avatar-letters-size);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-none);
+        white-space: nowrap;
+        user-select: none;
     }
 
-    .starci-core-avatar-agent-badge {
-        --badge-border: var(--surface) !important;
-        box-shadow: 0 0 0 var(--grammar-hairline) var(--surface);
+    /*
+     * A MARK (Avatar `mark`): an icon centred on a circle of one colour. The plate is a Grammar token by tone (solid by default), or a brand colour the app passes in as
+     * `--starci-avatar-mark-plate` (with `--starci-avatar-mark-ink` for the icon); the icon is a share of the avatar's size (ramps.css), so it reads at every step.
+     */
+    .starci-core-avatar [data-grammar-avatar-mark] {
+        --starci-avatar-mark-plate: var(--accent);
+        --starci-avatar-mark-ink: var(--accent-foreground);
+        display: grid;
+        place-items: center;
+        background: var(--starci-avatar-mark-plate);
+        color: var(--starci-avatar-mark-ink);
     }
 
-    .starci-core-avatar-agent-glyph {
-        inline-size: 0.75rem;
-        block-size: 0.75rem;
+    .starci-core-avatar [data-grammar-avatar-mark="accent"] {
+        --starci-avatar-mark-plate: var(--accent-soft);
+        --starci-avatar-mark-ink: var(--accent-soft-foreground);
+    }
+
+    .starci-core-avatar [data-grammar-avatar-mark="strong"] {
+        --starci-avatar-mark-plate: var(--foreground);
+        --starci-avatar-mark-ink: var(--background);
+    }
+
+    .starci-core-avatar-mark-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--starci-avatar-mark-size);
+        block-size: var(--starci-avatar-mark-size);
+    }
+
+    .starci-core-avatar-mark-icon > * {
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    /*
+     * tone="danger": a ring in the danger token around the avatar (a broken account), drawn as an outline (it paints, it takes no layout and adds no hit area). In an
+     * overlapping row it stands over its neighbours; in a Zalo tile it is drawn inside the tile.
+     */
+    .starci-core-avatar[data-grammar-avatar-tone="danger"] {
+        position: relative;
+        z-index: 1;
+        outline: var(--grammar-ring-width) solid var(--danger);
+        outline-offset: 0;
+    }
+
+    /*
+     * AgentName: the name, then the small neutral "AI" Chip right after it, on one line; the name shrinks and wraps, the Chip keeps its size. The Chip is
+     * SMALL (0.55.0, owner): the caption size, 12/16 in a 16px box with a 4px inset, never the 24px Badge pill, and it stands on the name's baseline.
+     */
+    .starci-core-agent-name {
+        display: inline-flex;
+        min-width: 0;
+        max-width: 100%;
+        align-items: baseline;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-agent-name > [data-component="Badge"][data-loading] {
+        flex: none;
+        block-size: var(--grammar-type-caption-line);
+        min-block-size: var(--grammar-type-caption-line);
+        padding-block: 0;
+        padding-inline: 0.25rem;
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+        font-weight: var(--grammar-type-badge-weight);
     }
 
     /* A loading avatar (knowledge STATE-8): the Skeleton circle at the avatar's size. */
@@ -936,8 +989,7 @@
         flex: none;
     }
 
-    .starci-core-avatar-button-floating [data-component="Avatar"],
-    .starci-core-avatar-button-floating .starci-core-avatar-agent-anchor {
+    .starci-core-avatar-button-floating [data-component="Avatar"] {
         --avatar-size: var(--grammar-avatar-floating-size);
         inline-size: var(--grammar-avatar-floating-size);
         block-size: var(--grammar-avatar-floating-size);
@@ -1323,6 +1375,7 @@
      */
     .starci-core-data-table-row[data-ground-tone="accent"], .starci-core-data-table-list-row[data-ground-tone="accent"] { --starci-core-row-ground: var(--accent-soft); --starci-core-row-ground-ink: var(--accent-soft-foreground); }
     .starci-core-data-table-row[data-ground-tone="success"], .starci-core-data-table-list-row[data-ground-tone="success"] { --starci-core-row-ground: var(--success-soft); --starci-core-row-ground-ink: var(--success-soft-foreground); }
+    .starci-core-data-table-row[data-ground-tone="info"], .starci-core-data-table-list-row[data-ground-tone="info"] { --starci-core-row-ground: var(--info-soft); --starci-core-row-ground-ink: var(--info-soft-foreground); }
     .starci-core-data-table-row[data-ground-tone="warning"], .starci-core-data-table-list-row[data-ground-tone="warning"] { --starci-core-row-ground: var(--warning-soft); --starci-core-row-ground-ink: var(--warning-soft-foreground); }
     .starci-core-data-table-row[data-ground-tone="danger"], .starci-core-data-table-list-row[data-ground-tone="danger"] { --starci-core-row-ground: var(--danger-soft); --starci-core-row-ground-ink: var(--danger-soft-foreground); }
 
@@ -1451,16 +1504,16 @@
     }
 
     /*
-     * AN ACTION CELL NEVER WRAPS (0.42.0). A cell that holds buttons (Button, IconButton, a ButtonGroup, a disabled one inside its reason's trigger) keeps them on
+     * AN ACTION CELL NEVER WRAPS (0.42.0). A cell that holds buttons (Button, IconButton, a disabled one inside its reason's trigger) keeps them on
      * one line, and its column sizes to them: a `Cluster` of two buttons wraps by default, and a `fit` column's min-content was its widest button, so
      * a delete button stood under a disable button. The row grows nowhere; a table wider than its container scrolls as any wide table does.
      */
-    .starci-core-data-table .starci-core-data-table-cell:has(:is([data-component="Button"], [data-component="IconButton"], [data-component="ButtonGroup"])) {
+    .starci-core-data-table .starci-core-data-table-cell:has(:is([data-component="Button"], [data-component="IconButton"])) {
         white-space: nowrap;
         min-inline-size: max-content;
     }
 
-    .starci-core-data-table .starci-core-data-table-cell :is(.starci-core-cluster, .starci-core-button-group):has(> :is([data-component="Button"], [data-component="IconButton"], .starci-core-tooltip-disabled-trigger)) {
+    .starci-core-data-table .starci-core-data-table-cell .starci-core-cluster:has(> :is([data-component="Button"], [data-component="IconButton"], .starci-core-tooltip-disabled-trigger)) {
         flex-wrap: nowrap;
     }
 
@@ -1700,6 +1753,7 @@
     .starci-core-drag-item[data-grammar-drag-tone="neutral"] { --starci-drag-item-leading: var(--muted); }
     .starci-core-drag-item[data-grammar-drag-tone="accent"] { --starci-drag-item-leading: var(--accent); }
     .starci-core-drag-item[data-grammar-drag-tone="success"] { --starci-drag-item-leading: var(--success); }
+    .starci-core-drag-item[data-grammar-drag-tone="info"] { --starci-drag-item-leading: var(--info); }
     .starci-core-drag-item[data-grammar-drag-tone="warning"] { --starci-drag-item-leading: var(--warning); }
     .starci-core-drag-item[data-grammar-drag-tone="danger"] { --starci-drag-item-leading: var(--danger); }
 
@@ -1943,6 +1997,7 @@
     /* The change's direction mark, before the meta text: the mark takes the tone's pair, the text stays muted. */
     .starci-core-description-trend { margin-inline-end: var(--grammar-identity-gap); font-size: var(--grammar-text-2xs); }
     .starci-core-description-trend[data-grammar-trend-tone="success"] { color: var(--success); }
+    .starci-core-description-trend[data-grammar-trend-tone="info"] { color: var(--info); }
     .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
 
     /* The trend line stands under the value and meta, at the start of the cell. */
@@ -2397,56 +2452,38 @@
         position: relative;
         display: grid;
         min-width: 0;
-        grid-template-columns: 1.5rem minmax(0, 1fr);
+        grid-template-columns: 2.5rem minmax(0, 1fr);
         gap: var(--grammar-row-gap);
         padding-block-end: var(--grammar-row-gap);
     }
 
+    /* The connector runs from under one 40px tile to the next, through the tile column's centre. */
     .starci-core-timeline-item:not(:last-child)::before {
         position: absolute;
-        top: 1.5rem;
+        top: 2.5rem;
         bottom: 0;
-        inset-inline-start: calc(0.75rem - 1px);
+        inset-inline-start: calc(1.25rem - 1px);
         width: 2px;
         background: var(--separator);
         content: "";
     }
 
+    /*
+     * The marker is the round 40px status tile (0.55.0, the status-mark rule, case 1): the STATUS glyph on the state's soft plate, on every entry.
+     * It replaces the 0.48.0 dot rule (past dots neutral, colour only on the current one): the plate tone is the state, the title the subject.
+     */
     .starci-core-timeline-marker {
         display: inline-flex;
-        width: 1.5rem;
-        height: 1.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
         align-items: center;
         justify-content: center;
         border-radius: var(--grammar-radius-pill);
         background: var(--surface);
-        color: var(--muted);
     }
 
-    .starci-core-timeline-marker:empty::after {
-        width: 0.625rem;
-        height: 0.625rem;
-        border: 2px solid currentColor;
-        border-radius: var(--grammar-radius-pill);
-        content: "";
-    }
-
-    /*
-     * The dot is neutral (--muted) on every entry that is not the current one (0.48.0, the dot rule: a coloured dot is for a live state only). A past entry's
-     * outcome is said by its words; only the current entry's dot takes a colour: its state's tone, or the accent when its state is neutral.
-     */
-    .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker {
-        color: var(--accent);
-    }
-
-    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success); }
-    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--informative, var(--accent)); }
-    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning); }
-    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger); }
-
-    .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker:empty::after {
-        background: currentColor;
-    }
+    /* The copy's first line sits on the tile's centre: the 24px title line, 8px down in the 40px column. */
+    .starci-core-timeline-copy { padding-block-start: var(--grammar-inline-gap); }
 
     /*
      * Attention entry: the whole row takes a tone background (the marker alone is too small to catch the eye). The
@@ -2467,9 +2504,9 @@
     .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--informative, var(--accent)); }
 
     .starci-core-timeline-item[data-grammar-attention="true"]:not(:last-child)::before {
-        top: 2rem;
+        top: 3rem;
         bottom: -0.5rem;
-        inset-inline-start: calc(1.25rem - 1px);
+        inset-inline-start: calc(1.75rem - 1px);
     }
 
     .starci-core-timeline-item[data-grammar-attention="true"] .starci-core-timeline-marker {
@@ -2477,7 +2514,7 @@
     }
 
     /* Loading timeline (knowledge STATE-8): static mark and connector tint, three Skeleton lines of the entry's rhythm. */
-    .starci-core-timeline-skeleton-marker > .starci-core-skeleton { inline-size: 1rem; block-size: 1rem; }
+    .starci-core-timeline-skeleton-marker > .starci-core-skeleton { inline-size: 2.5rem; block-size: 2.5rem; }
     .starci-core-timeline[data-loading="true"] .starci-core-timeline-item:not(:last-child)::before { background: color-mix(in srgb, var(--foreground) 9%, transparent); }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-title > .starci-core-skeleton-group { inline-size: 50%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-time > .starci-core-skeleton-group { inline-size: 25%; }

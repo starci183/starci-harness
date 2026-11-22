@@ -43,7 +43,7 @@ export const OverviewPageBlockBase = (props: OverviewPageBlockBaseProps) => {
                 ),
                 actions: (
                     <Button
-                        intent="commit"
+                        variant="primary"
                         isDisabled
                         disabledReason={labels.newWorkflowReason}
                         startContent={<Icon source={PlusIcon} usage="leading" />}

@@ -46,7 +46,7 @@ const TOGGLE: ReadonlySet<string> = new Set(["toggle"])
 const SWITCH_KINDS: ReadonlySet<string> = new Set(["toggle", "compact"])
 
 /**
- * A bar control's height comes from its published API. Buttons publish the shared 40px height as `md` (their default). A `Switch` publishes it
+ * A bar control's height comes from its published API. Buttons and the AvatarButton publish the shared 40px height as `md` (their default). A `Switch` publishes it
  * as `kind="toggle"`: a stated `kind` wins and the Grammar ignores `size` beside it, so the kind alone decides, and a Switch with no `kind` is
  * the toggle unless `size` says `md` or `lg`. The other bar controls publish `control`.
  */
@@ -58,15 +58,16 @@ const barControlHeight = (context: ReaderContext, control: TSESTree.JSXOpeningEl
   }
   const size = propOf(context, control, "size")
   if (!size.known) return "other"
-  if ((name === "Button" || name === "IconButton" || name === "Switch") && size.value === null) return "control"
-  if ((name === "Button" || name === "IconButton") && everyLiteral(context, size.value, new Set(["md"]))) return "control"
+  if ((name === "Button" || name === "IconButton" || name === "Switch" || name === "AvatarButton") && size.value === null) return "control"
+  // An AvatarButton's md is the 40px round mark, the control height (Grammar 0.55.0: round marks are sm 24 or md 40).
+  if ((name === "Button" || name === "IconButton" || name === "AvatarButton") && everyLiteral(context, size.value, new Set(["md"]))) return "control"
   return textProp(context, control, "size") === "control" ? "control" : "other"
 }
 
 /** Every visible control in a navbar band uses the shared control height through its published size API. */
 export const navbarControlSize: Rule.RuleModule = defineRule({
   meta: meta("FE_NAVBAR_CONTROL_SIZE", "FE-APP-SHELL-2 requires the shared control height on bar controls.", {
-    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs Grammar's shared control height: omit size or use md for Button/IconButton, kind=\"toggle\" (or no kind and no size) for Switch, and size=\"control\" for the other bar controls.",
+    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs Grammar's shared control height: omit size or use md for Button/IconButton/AvatarButton, kind=\"toggle\" (or no kind and no size) for Switch, and size=\"control\" for the other bar controls.",
     compact: "FE_NAVBAR_CONTROL_SIZE: a Switch kind=\"compact\" (32x18, no thumb glyph) in the navbar band breaks the bar's one 40px height; the bar's switch is kind=\"toggle\" (72x40, the theme switch). Compact is for a setting in a row, a list, a table cell or a toolbar.",
   }),
   create(context) {

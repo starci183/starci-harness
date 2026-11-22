@@ -6,7 +6,6 @@ import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Icon } from "../../leaf/Icon/index.js"
 import { glyphSource } from "../../leaf/Icon/glyphs.js"
-import { Sparkline } from "../../composite/Sparkline/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
 const TREND_WORDS = { up: "Up", down: "Down", flat: "No change" } as const
@@ -48,7 +47,7 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                 return (
                 <div key={item.id} className="starci-core-description-pair" style={{ "--starci-core-figure-chars": String(item.value).length } as CSSProperties} data-grammar-description-pair="true" data-grammar-figure-destination={item.href === undefined ? undefined : "true"}>
                     <dt className="starci-core-description-term starci-core-description-stat-term">
-                        {item.icon === undefined ? null : <IconTile source={item.icon} size="sm" tone="neutral" />}
+                        {item.icon === undefined ? null : <IconTile source={item.icon} tone="neutral" />}
                         <span>{item.term}</span>
                         {/* The pressable cue (0.48.0): a figure that leads somewhere ends its term with the quiet chevron a pressable row ends with, so a link reads as one before a hover. */}
                         {follows ? <span className="starci-core-figure-cue" data-grammar-figure-cue="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span> : null}
@@ -77,10 +76,8 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                             {isLoading ? pending(item.meta) : item.meta}
                         </dd>
                     )}
-                    {item.trendLine === undefined ? null : (
-                        <dd className="starci-core-description-trend-line">
-                            <Sparkline label={item.trendLineLabel ?? item.term} values={item.trendLine} isLoading={isLoading} />
-                        </dd>
+                    {item.trendChart === undefined ? null : (
+                        <dd className="starci-core-description-trend-line">{item.trendChart}</dd>
                     )}
                 </div>
                 )

@@ -32,6 +32,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
     fix: "A card has no description. Put the line in the row subtitle (a `ListRow` subtitle of a `Section kind=\"list\"`, or an option `description` of a `RadioGroup`), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
   },
+  "avatar-row-uses-group": {
+    code: "FE_AVATAR_ROW_USES_GROUP",
+    en: "`<file>` draws two or more `Avatar` elements side by side, or returns an `Avatar` from `.map()`, with no `AvatarGroup` around them.",
+    fix: "Avatars in a row or from a list are ONE `AvatarGroup`: `<AvatarGroup label items={[{ id, name, seed }, { id, name, mark }]} max overflowLabel />`. It overlaps the items, shows `max - 1` and a \"+N\" tile, rings a broken account (`tone: \"danger\"`) and names every member on hover; a person is `name` and `seed`, a provider or channel is a `mark`. Never hand-place or map `Avatar`.",
+  },
   "no-nested-label": {
     code: "FE_NO_NESTED_LABEL",
     en: "A `Section` or `SurfaceCard` in `<file>` has its own Label inside a labelled `Section` or `SurfaceCard`.",
@@ -39,8 +44,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "section-head-action": {
     code: "FE_SECTION_HEAD_ACTION",
-    en: "The `Section` head `action` in `<file>` holds a Button that is not a neutral small text Button, or more than one command.",
-    fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end: a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info `IconButton`, or a text `Button intent=\"neutral\" size=\"sm\"` (no icon, never the commit).",
+    en: "The `Section` head `action` in `<file>` holds a Button that is not a border small text Button, or more than one command.",
+    fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end: a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info `IconButton`, or a text `Button size=\"sm\"` in the border look (no icon, never the primary).",
   },
   "card-one-content": {
     code: "FE_CARD_ONE_CONTENT",
@@ -192,9 +197,14 @@ export const why: Record<string, WhyEntry> = {
     en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, or a SectionHeader or Heading as a second title.",
     fix: "Rows are a `Section kind=\"list\"` (never a card), key figures `Section kind=\"figures\"`, a band of commands at the card's foot is `actions`, a filter or search row the `filter` of a `Section`; the card's title is its `label`, a second subject its own `Section`.",
   },
+  "no-typed-arrow": {
+    code: "FE_NO_TYPED_ARROW",
+    en: "Rendered text in `<file>` types an arrow character (→ ← ↑ ↓ ⇒ ➜ ➔, the Unicode arrow blocks, or `->`).",
+    fix: "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar: `Button endArrow`, `Link`'s own arrow, or the Grammar arrow or chevron icon. Remove the character.",
+  },
   "button-arrow": {
     code: "FE_BUTTON_ARROW",
-    en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
+    en: "A Button in `<file>` types a pointing mark (› ») in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
     fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
   },
   "layout-two-axis": {
@@ -210,7 +220,12 @@ export const why: Record<string, WhyEntry> = {
   "no-raw-type-size": {
     code: "FE_RAW_TYPE_SIZE",
     en: "`<file>` sets a type size of its own: a Tailwind text-size utility (`text-sm`, `text-[13px]`), a `fontSize` or a CSS `font-size`.",
-    fix: "Type is a Grammar role (owner 2026-11-21): use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code.",
+    fix: "Type is a Grammar role (owner 2026-11-21): use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code; on the public site also display.hero, display.section, display.figure, lead and title.card.",
+  },
+  "site-type-role": {
+    code: "FE_SITE_TYPE_ROLE",
+    en: "`<file>` is not the public site, and it draws a role of the site group: `display.hero`, `display.section`, `display.figure`, `lead` or `title.card` (`<Text role>` or `starci-type-<role>`).",
+    fix: "The site group (Grammar 0.55.0, owner 2026-11-21) is the public marketing site's alone. A console draws with the ten roles: title.page for a page heading, title.section for a section or card title, figure for a value, body for copy. A file of the site is a `Site…` or `Marketing…` owner, a route under `(site)`, or `modules/site…`.",
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",

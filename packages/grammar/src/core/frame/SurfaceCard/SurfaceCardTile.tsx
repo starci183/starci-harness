@@ -1,5 +1,4 @@
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Badge } from "../../leaf/Badge/index.js"
@@ -11,6 +10,7 @@ import { Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { BadgeData, ItemAction, TileData, TileMark, TilePoster } from "../../surfaceCardData.js"
 import { tileClassName } from "./classNames.js"
+import { AgentName } from "../../leaf/AgentName/index.js"
 
 /** A tile poster names its frame by shape; the picture claims that shape as a ratio. */
 const POSTER_RATIO = { square: "1:1", landscape: "4:3", portrait: "3:4" } as const
@@ -20,8 +20,8 @@ const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly i
     if (mark.logo !== undefined) {
         return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image {...mark.logo} ratio="1:1" fit="contain" plate="none" /></span>
     }
-    if (mark.icon !== undefined) return <span className="starci-core-tile-mark" data-grammar-tile-mark="icon"><IconTile source={mark.icon} size="md" /></span>
-    return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
+    if (mark.icon !== undefined) return <span className="starci-core-tile-mark" data-grammar-tile-mark="icon"><IconTile source={mark.icon} /></span>
+    return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="md" isDecorative /></span>
 }
 
 const TilePosterView = ({ poster, isLoading }: { readonly poster: TilePoster; readonly isLoading: boolean }) => (
@@ -42,8 +42,8 @@ const TileBadge = ({ badge, isLoading }: { readonly badge: BadgeData; readonly i
 
 const TileAction = ({ action, isLoading, isDisabled }: { readonly action: ItemAction; readonly isLoading: boolean; readonly isDisabled: boolean }) => (
     action.href === undefined
-        ? <Button size="sm" intent={action.intent ?? "neutral"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" intent={action.intent ?? "neutral"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} href={action.href}>{action.label}</Button>
+        ? <Button size="sm" variant={action.variant ?? "border"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" variant={action.variant ?? "border"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} href={action.href}>{action.label}</Button>
 )
 
 /** The one tile face, shared by compact identities and media peers; the card shell owns its surface and busy region. */
@@ -58,7 +58,9 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
         {data.poster === undefined ? null : <TilePosterView poster={data.poster} isLoading={isLoading} />}
         {data.mark === undefined || data.poster !== undefined ? null : <TileMarkView mark={data.mark} isLoading={isLoading} />}
         <div className="starci-core-tile-copy" data-contract="GAP-1" data-grammar-tile-copy-beside-mark={data.mark !== undefined && data.poster === undefined ? "true" : undefined}>
-            <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{data.name}</Label>
+            {isLoading || data.isAgent !== true
+                ? <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{data.name}</Label>
+                : <AgentName isAgent name={<Label as={`h${headingLevel}`} id={headingId}>{data.name}</Label>} {...(data.agentLabel === undefined ? {} : { agentLabel: data.agentLabel })} />}
             {data.byline === undefined ? null : (
                 <span className="starci-core-tile-byline" data-grammar-tile-byline="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.byline}</SkeletonPlaceholder> : data.byline}</span>
             )}
@@ -74,7 +76,7 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
                 <span key={line} className="starci-core-tile-description" data-grammar-tile-facts="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{line}</SkeletonPlaceholder> : line}</span>
             ))}
         </div>
-        <ButtonPlacementProvider placement="item">
+        <>
             <div className="starci-core-tile-foot" data-contract="GAP-2" {...(data.figure === undefined ? {} : { "data-grammar-tile-figure": "true" })}>
                 {data.figure !== undefined
                     ? <span className="starci-core-tile-figure" data-grammar-tile-figure-value="true" data-contract="FONT-2">{isLoading ? <SkeletonPlaceholder>{data.figure}</SkeletonPlaceholder> : data.figure}</span>
@@ -84,18 +86,18 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
                     {data.menu === undefined ? null : (
                         <span className="starci-core-tile-menu">
                             {isLoading || isDisabled ? (
-                                <IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={isDisabled} />
+                                <IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" isLoading={isLoading} isDisabled={isDisabled} />
                             ) : (
                                 <DropdownMenu
                                     placement="bottom end"
                                     entries={data.menu.entries}
-                                    trigger={<IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
+                                    trigger={<IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" />}
                                 />
                             )}
                         </span>
                     )}
                 </span>
             </div>
-        </ButtonPlacementProvider>
+        </>
     </div>
 )

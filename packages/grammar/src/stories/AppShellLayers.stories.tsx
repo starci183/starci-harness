@@ -62,7 +62,7 @@ export const ShellSlotHeader: Story = {
   render: () => (
     <G.WorkspaceShell
       viewport="fixed"
-      compactHeader={<G.Drawer title="Navigation" closeLabel="Close navigation" placement="left" trigger={<G.IconButton label="Open navigation" source={EllipsisGlyph} intent="dismiss" />}><G.Sidebar label="Mobile navigation" presentation="drawer" groups={[]} selectedKey="home" /></G.Drawer>}
+      compactHeader={<G.Drawer title="Navigation" closeLabel="Close navigation" placement="left" trigger={<G.IconButton label="Open navigation" source={EllipsisGlyph} variant="border" />}><G.Sidebar label="Mobile navigation" presentation="drawer" groups={[]} selectedKey="home" /></G.Drawer>}
       navigation={<G.Sidebar label="Desktop navigation" groups={[]} selectedKey="home" />}
       navigationLabel="Workspace"
       primaryLabel="Page"

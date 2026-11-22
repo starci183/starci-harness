@@ -11,8 +11,8 @@ import type { NoChildren } from "../../tier.js"
  * a bar that spends no accent beside a screen's one commit (ACCENT-6). HeroUI's palette tones, and any tone the app declared
  * in `GrammarToneRegistry`.
  */
-export type ProgressTone = "accent" | "foreground" | "success" | "warning" | "danger" | CustomTone
-const BUILT_IN_TONES: readonly string[] = ["accent", "foreground", "success", "warning", "danger"]
+export type ProgressTone = "accent" | "foreground" | "info" | "success" | "warning" | "danger" | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["accent", "foreground", "info", "success", "warning", "danger"]
 
 /** `foreground` takes HeroUI's `default` colour, its nearest variant; the Common rule paints it `--foreground` exactly. */
 const vendorColorOf = (tone: ProgressTone) => (tone === "foreground" ? { color: "default" as const } : {})

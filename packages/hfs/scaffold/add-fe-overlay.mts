@@ -35,7 +35,7 @@ const OVERLAY_COPY: Readonly<Record<string, OverlayCopy>> & { readonly en: Overl
 /** The variables of the overlay templates for one shell, with or without a form. */
 function overlayVars({ nameKebab, shell, form }: { nameKebab: string, shell: string, form: boolean }): Record<string, string> {
   const decision = (indent: string, cancel: string, commit: string) => [
-    `${indent}<Button intent="dismiss" onPress={${cancel}}>`,
+    `${indent}<Button onPress={${cancel}}>`,
     `${indent}    {props.props.cancelLabel}`,
     `${indent}</Button>`,
     `${indent}${commit}`,
@@ -64,7 +64,7 @@ function overlayVars({ nameKebab, shell, form }: { nameKebab: string, shell: str
       submitFixture: 'submit: () => undefined',
       doc: `The ${shell} holding one form: its fields in one column in the body, the footer's way out first and the submit, which names the form, last.`,
       shellAttributes,
-      footer: footer(`<Button type="submit" form="${formId}" intent="commit">`),
+      footer: footer(`<Button type="submit" form="${formId}" variant="primary">`),
       body: [
         `        <Form id="${formId}" label={props.props.title} onSubmit={props.on.submit}>`,
         `            <Input id="${nameKebab}-name" name="name" label={props.props.nameLabel} isRequired />`,
@@ -82,7 +82,7 @@ function overlayVars({ nameKebab, shell, form }: { nameKebab: string, shell: str
     submitFixture: 'confirm: () => undefined',
     doc: `The ${shell} of one task: its sentence, and the footer's way out first and commit last.`,
     shellAttributes,
-    footer: footer('<Button intent="commit" onPress={props.on.confirm}>'),
+    footer: footer('<Button variant="primary" onPress={props.on.confirm}>'),
     body: '        <Text>{props.props.description}</Text>',
   };
 }

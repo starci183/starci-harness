@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.0 - 2026-11-22
+
+- Fixed: the root packages' `unit` projects resolve a relative `.js` specifier to the `.ts`, `.tsx` or `.mts` file beside it when no `.js` file exists (`ts-extension-resolver`, set as the projects' `resolver`). Package sources import `./x.ts` and ts-jest rewrites that to `./x.js`, which did not resolve; a real `.js` file and any package request resolve as jest does.
+- Added: `packages.tests` of `starciJestConfig`, the root package folders whose specs run in the packages' `unit` projects without being measured (a declared nivoos package; `starci app sync` renders it). Absent means none. Specs: `test/ts-extension-resolver.spec.ts`, `test/coverage-packages.spec.ts`.
 ## 2.11.1 - 2026-11-18
 
 - Fixed: a root package that has its own `packages/<name>/tsconfig.json` is compiled by jest with that file's options (extends chain read, path options dropped, unit options on top) in its own `unit` project, instead of the back end's `@starci/tsconfig/be.json` options. A package that writes standard decorators (no `experimentalDecorators`) now compiles in the root packages project. Packages without a tsconfig keep the shared project with the back end options. The rendered `be/jest.config.js` is unchanged, so `starci app sync` and `app check` stay in agreement (no HFS_COVERAGE_SCOPE_DRIFT).

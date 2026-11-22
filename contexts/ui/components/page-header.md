@@ -33,7 +33,7 @@ Choice `page-header.choose.slot`: which slot carries a fact about the page. Each
 | status | an outcome authority settled about the subject (connected, test mode) | `status`: `Badge` or `StatusDot` chips beside the heading (`chip.choose.role`) | `DNA-COMMON-BADGE-BELOW-RAMP` |
 | summary | short neutral facts that identify the subject (provider, account, count) | `meta`, one line | judgement |
 | explanation | a sentence saying what the page is for | `description`, one line | judgement |
-| command | a command on the whole page | `actions`: `Button`s by intent (`button.choose.intent`), the decision placement | candidate: at most one commit (CTA-1) |
+| command | a command on the whole page | `actions`: `Button`s by look (`button.choose.variant`) | candidate: at most one primary (CTA-1) |
 | views | the page's main area switches between views | `header.tabs` (`tabs.choose.level:page`), never a `Tabs` first in the body | lint `starci-grammar/page-tabs-in-header`; `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR` |
 | sub-views | one page tab has views of its own | `header.subTabs` (valid only with `tabs`): the second and last underline row inside the band, on its own full-width separator, the first label on the content edge | lint `starci-grammar/tabs-depth`; type: `subTabs` needs `tabs` |
 

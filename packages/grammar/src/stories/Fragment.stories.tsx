@@ -46,7 +46,7 @@ export const GrammarInside: Story = {
   render: () => (
     <div data-story-fragment="grammar">
       <G.Fragment reason="story: Grammar parts beside app code">
-        <G.Button intent="commit">Run</G.Button>
+        <G.Button variant="primary">Run</G.Button>
       </G.Fragment>
     </div>
   ),

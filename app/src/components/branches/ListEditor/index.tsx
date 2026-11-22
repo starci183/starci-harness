@@ -92,7 +92,7 @@ export const ListEditor = (props: ListEditorProps) => {
                     />
                     <span className="app-row">
                         <Button
-                            intent="neutral"
+                            variant="border"
                             size="sm"
                             isDisabled={props.isDisabled || text.trim() === ""}
                             isLoading={isLoading}

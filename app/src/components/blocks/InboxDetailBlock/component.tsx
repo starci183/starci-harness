@@ -99,7 +99,7 @@ const RulingForm = (props: PartProps) => {
             <div className="app-pair">
                 <span className="app-row">
                     <Button
-                        intent="commit"
+                        variant="primary"
                         onPress={props.on.send}
                         isDisabled={!props.props.canSend}
                         isPending={props.props.isPending}

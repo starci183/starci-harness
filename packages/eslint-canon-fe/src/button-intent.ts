@@ -1,4 +1,7 @@
-/** CTA-6: app buttons declare consequences; Grammar owns their visual variants. */
+/**
+ * CTA-6: the one primary. A Grammar Button has three looks (owner 2026-11-22: "chỉ có danger, border, và primary thôi"): `primary`, `border` (the default) and
+ * `danger`. A render shows at most one `primary`, and a collection item none; every other command is `border`, a destruction `danger`.
+ */
 import { attributeValue, stringOf, walk } from "./lib/ast.ts"
 import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
 import { typedPropertyStrings } from "./lib/typed-class-values.ts"
@@ -52,10 +55,9 @@ const memberName = (node: TSESTree.MemberExpression): string | null => (node.com
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const BUTTONS = new Set<string | null>(["Button", "IconButton"])
-const DIALOGS = new Set<string | null>(["AlertDialog", "ConfirmDialog"])
 const ITEMS = new Set<string | null>(["ListBox.Item", "GridList.Item", "Table.Row", "ListRow"])
 
-/** The consuming TypeScript program exposes literal intents and spread properties without executing app code. */
+/** The consuming TypeScript program exposes literal variants and spread properties without executing app code. */
 const typedInfo = (context: AnyContext, node: Node | null | undefined, key?: string): TypedInfo | null => {
   const services = context.sourceCode.parserServices
   if (!services?.program || !services.esTreeNodeToTSNodeMap || !node) return null
@@ -109,7 +111,7 @@ const objectProperty = (context: AnyContext, input: Node | null | undefined, key
   return values.flatMap((value) => objectProperty(context, value, key, next))
 }
 
-/** Possible statically authored values of an intent or step; dynamic values remain TypeScript's responsibility. */
+/** Possible statically authored values of a variant; dynamic values remain TypeScript's responsibility. */
 const valuesOf = (context: AnyContext, input: Node | null | undefined, seen: Seen = new Set()): string[] => {
   const node = unwrap(input)
   if (!node || seen.has(node)) return []
@@ -146,28 +148,6 @@ const propsOf = (context: AnyContext, opening: TSESTree.JSXOpeningElement, key: 
 const hasValue = (context: AnyContext, opening: TSESTree.JSXOpeningElement, key: string, value: string): boolean => propsOf(context, opening, key).some((prop) => prop.text === value || prop.texts?.includes(value) || valuesOf(context, prop.value).includes(value))
 const isButton = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => BUTTONS.has(roleOf(context, opening.name))
 
-/** A conditional props spread supplies intent only when every branch supplies it. */
-const suppliesIntent = (context: AnyContext, input: Node | null | undefined, seen: Seen = new Set()): boolean => {
-  const node = unwrap(input)
-  if (!node || seen.has(node)) return false
-  const next = new Set(seen).add(node)
-  if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].every((branch) => suppliesIntent(context, branch, next))
-  if (node.type === "Identifier") {
-    const definition = variableDefinition(context, node)
-    if (definition?.node.id.type === "Identifier") return suppliesIntent(context, definition.node.init, next)
-    const typed = typedInfo(context, node, "intent")
-    return Boolean(typed && !typed.optional)
-  }
-  return objectProperty(context, node, "intent").length > 0 || typedPropertyStrings(context, node, "intent", "variant").length > 0
-}
-
-const hasIntent = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => opening.attributes.some((entry) => {
-  if (entry.type === "JSXSpreadAttribute") return suppliesIntent(context, entry.argument)
-  if (entry.name.name !== "intent") return false
-  const value = unwrap(attributeValue(entry))
-  return value !== null && value !== undefined && !(value.type === "Literal" && value.value === null) && !(value.type === "Identifier" && value.name === "undefined")
-})
-
 /** JSX child render callbacks contribute content to their enclosing component render. */
 const inlineRenderCallback = (node: Node): boolean => node.parent?.type === "JSXExpressionContainer" && node.parent.parent?.type !== "JSXAttribute"
 
@@ -180,17 +160,6 @@ const lexicalFunction = (node: Node): Node | null => {
 const functionOwner = (node: Node): Node | null => {
   for (let current: Node | undefined = node.parent; current; current = current.parent) if (isFn(current) && !inlineRenderCallback(current)) return current
   return null
-}
-
-/** A trigger opens a dialog and is outside its confirmation subtree. */
-const insideDialog = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => {
-  const triggers = new Set<Node>()
-  for (let current: Node | undefined = opening.parent; current; current = current.parent) {
-    if (isFn(current) && !inlineRenderCallback(current)) return false
-    if (current.type === "JSXAttribute" && current.name.name === "trigger") triggers.add(current.parent)
-    if (current.type === "JSXElement" && !triggers.has(current.openingElement) && DIALOGS.has(roleOf(context, current.openingElement.name))) return true
-  }
-  return false
 }
 
 /** Normalize a condition so `ready` and `!ready` select opposite render paths. */
@@ -216,7 +185,7 @@ const constrainPath = <P extends Path>(context: AnyContext, path: P, test: Node,
   return path
 }
 
-/** Conditional intent values retain the guards selecting commit instead of flattening both alternatives. */
+/** Conditional variant values retain the guards selecting primary instead of flattening both alternatives. */
 const valuePaths = (context: AnyContext, input: Node | null | undefined, seen: Seen = new Set()): Path[] => {
   const node = unwrap(input)
   if (!node || seen.has(node)) return []
@@ -226,7 +195,7 @@ const valuePaths = (context: AnyContext, input: Node | null | undefined, seen: S
     const definition = variableDefinition(context, node)
     if (definition?.node.id.type === "Identifier") return valuePaths(context, definition.node.init, next)
   }
-  return valuesOf(context, node).includes("commit") ? [{ guards: new Map(), choices: new Map() }] : []
+  return valuesOf(context, node).includes("primary") ? [{ guards: new Map(), choices: new Map() }] : []
 }
 
 /** Branch guards and return ownership identify mutually exclusive render paths. */
@@ -252,43 +221,18 @@ const canCoexist = (left: RenderPath, right: RenderPath): boolean => {
   return [...left.guards].every(([condition, value]) => !right.guards.has(condition) || right.guards.get(condition) === value)
 }
 
-/** Every app button states its command's intent explicitly. */
-const buttonIntentRequired = defineRule({
-  meta: { type: "problem", docs: { description: "CTA-6: every app Button and IconButton declares intent." }, schema: [], messages: {
-    FE_BUTTON_INTENT_REQUIRED: "FE_BUTTON_INTENT_REQUIRED: Button and IconButton require intent (commit, alternative, dismiss, neutral or destructive). Choose it from the command's consequence and rank.",
-  } },
-  create(context) {
-    return { JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
-      if (isButton(context, opening) && !hasIntent(context, opening)) context.report({ node: opening, messageId: "FE_BUTTON_INTENT_REQUIRED" })
-    } }
-  },
-})
-
-/** A destructive final press is contained by its same-file confirmation dialog. */
-const destructiveConfirmInDialog = defineRule({
-  meta: { type: "problem", docs: { description: "CTA-6: destructive confirm buttons stay inside AlertDialog or ConfirmDialog." }, schema: [], messages: {
-    FE_DESTRUCTIVE_CONFIRM_IN_DIALOG: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG: a destructive confirm belongs inside the same-file AlertDialog or ConfirmDialog subtree. The trigger uses step=\"entry\".",
-  } },
-  create(context) {
-    return { JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
-      if (!isButton(context, opening) || !hasValue(context, opening, "intent", "destructive") || !hasValue(context, opening, "step", "confirm")) return
-      if (!insideDialog(context, opening)) context.report({ node: opening, messageId: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG" })
-    } }
-  },
-})
-
-/** A component render exposes one next action, with exclusive branches counted separately. */
+/** A component render exposes one primary, with exclusive branches counted separately. */
 const singleCommitPerRender = defineRule({
-  meta: { type: "problem", docs: { description: "CTA-6: at most one commit is visible in a component render." }, schema: [], messages: {
-    FE_SINGLE_COMMIT_PER_RENDER: "FE_SINGLE_COMMIT_PER_RENDER: this render contains another commit action. Keep the one next action as commit and classify its alternatives by consequence.",
+  meta: { type: "problem", docs: { description: "CTA-6: at most one variant=\"primary\" is visible in a component render." }, schema: [], messages: {
+    FE_SINGLE_COMMIT_PER_RENDER: "FE_SINGLE_COMMIT_PER_RENDER: this render contains another variant=\"primary\" Button. Keep the one main action primary; every other command is border (the default), a destruction danger.",
   } },
   create(context) {
     const owners = new Map<Node, RenderPath[]>()
     return { JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
-      if (!isButton(context, opening) || !hasValue(context, opening, "intent", "commit")) return
+      if (!isButton(context, opening) || !hasValue(context, opening, "variant", "primary")) return
       const owner = functionOwner(opening) ?? context.sourceCode.ast
       const base = renderPath(context, opening, owner)
-      const paths = propsOf(context, opening, "intent").flatMap((prop): Path[] => prop.value ? valuePaths(context, prop.value) : prop.text === "commit" || prop.texts?.includes("commit") ? [{ guards: new Map(), choices: new Map() }] : [])
+      const paths = propsOf(context, opening, "variant").flatMap((prop): Path[] => prop.value ? valuePaths(context, prop.value) : prop.text === "primary" || prop.texts?.includes("primary") ? [{ guards: new Map(), choices: new Map() }] : [])
         .map((path): RenderPath => ({ returned: base.returned, guards: new Map([...base.guards, ...path.guards]), choices: new Map([...base.choices, ...path.choices]) }))
       const prior = owners.get(owner) ?? []
       if (paths.some((path) => prior.some((entry) => canCoexist(entry, path)))) context.report({ node: opening, messageId: "FE_SINGLE_COMMIT_PER_RENDER" })
@@ -298,15 +242,15 @@ const singleCommitPerRender = defineRule({
   },
 })
 
-/** A repeated row's next action is alternative; the enclosing view keeps the commit. */
+/** A repeated row's command is border; the enclosing view keeps the primary. */
 const noCommitInCollectionItem = defineRule({
-  meta: { type: "problem", docs: { description: "CTA-6: collection item renders cannot expose commit actions." }, schema: [], messages: {
-    FE_NO_COMMIT_IN_COLLECTION_ITEM: "FE_NO_COMMIT_IN_COLLECTION_ITEM: collection items cannot use commit. Use alternative for an item's next action and reserve commit for the view's decision.",
+  meta: { type: "problem", docs: { description: "CTA-6: collection item renders cannot expose a variant=\"primary\" Button." }, schema: [], messages: {
+    FE_NO_COMMIT_IN_COLLECTION_ITEM: "FE_NO_COMMIT_IN_COLLECTION_ITEM: collection items cannot use variant=\"primary\". An item's command is border (the default); the view keeps its one primary.",
   } },
   create(context) {
     const reported = new Set<Node>()
     const report = (opening: TSESTree.JSXOpeningElement): void => {
-      if (!reported.has(opening) && isButton(context, opening) && hasValue(context, opening, "intent", "commit")) {
+      if (!reported.has(opening) && isButton(context, opening) && hasValue(context, opening, "variant", "primary")) {
         reported.add(opening)
         context.report({ node: opening, messageId: "FE_NO_COMMIT_IN_COLLECTION_ITEM" })
       }
@@ -340,13 +284,11 @@ const noCommitInCollectionItem = defineRule({
   },
 })
 
-/** Every intent law is universal across Grammar families and app editions. */
+/** Every primary law is universal across Grammar families and app editions. */
 export const rules = {
-  "button-intent-required": buttonIntentRequired,
-  "destructive-confirm-in-dialog": destructiveConfirmInDialog,
   "single-commit-per-render": singleCommitPerRender,
   "no-commit-in-collection-item": noCommitInCollectionItem,
 } satisfies Rules
 
-/** All five laws reach consumers at error. */
+/** Both laws reach consumers at error. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

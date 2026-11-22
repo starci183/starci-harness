@@ -35,7 +35,7 @@ by arrow traversal.
 - **App author decides:** options, labels, the value.
 
 ## Leading icon
-`icon` (an icon source, 0.47.1) draws a decorative 16px glyph at the start of the trigger, before any `prefix` and the value, in every appearance (a calendar on a period, a funnel on a filter). It is muted, `aria-hidden` and never the name: `label` names the control. The app owns the glyph; no appearance changes with it.
+`icon` (an icon source, 0.47.1) draws a decorative 20px glyph (the chip icon size) at the start of the trigger, before any `prefix` and the value, in every appearance (a calendar on a period, a funnel on a filter). It is muted, `aria-hidden` and never the name: `label` names the control. The app owns the glyph; no appearance changes with it.
 
 ## Compact
 `appearance="compact"` is the pill at the dense control step (32): a picker in a toolbar, a pane head or a `Section` `filter` row.

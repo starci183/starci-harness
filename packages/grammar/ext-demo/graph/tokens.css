@@ -1,0 +1,106 @@
+/*
+ * A stand-in for the Grammar theme, for this demo only: the tokens @starci/grammar/core/ext/graph reads, with the values of the Grammar default theme.
+ * An app gets them from @starci/grammar and its own brand; the graph never defines one.
+ */
+:root,
+[data-theme="light"] {
+    color-scheme: light;
+    --radius: 0.75rem;
+    --foreground: oklch(21.03% 0.0015 354.13);
+    --background: oklch(97.02% 0.0015 354.13);
+    --surface: oklch(100% 0.0008 354.13);
+    --surface-secondary: oklch(95.24% 0.0012 354.13);
+    --default: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
+    --default-foreground: var(--foreground);
+    --muted: oklch(52% 0.003 354.13);
+    --border: oklch(90% 0.0015 354.13);
+    --accent: #7547ff;
+    --accent-soft: oklch(95.5% 0.03 287);
+    --accent-soft-foreground: #6a3cf2;
+    --focus: #7248ff;
+    --success: oklch(62.8% 0.1941 162.85);
+    --warning: oklch(67% 0.159 84.37);
+    --danger: oklch(55% 0.2 37.78);
+    --info: oklch(66.8% 0.17 250);
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --foreground: oklch(99.11% 0.0015 354.13);
+    --background: oklch(17% 0.003 354.13);
+    --surface: oklch(21.03% 0.003 354.13);
+    --surface-secondary: oklch(25.7% 0.0023 354.13);
+    --muted: oklch(70.5% 0.003 354.13);
+    --border: oklch(28% 0.0015 354.13);
+    --accent-soft: oklch(30% 0.07 287);
+    --accent-soft-foreground: #a48bff;
+    --success: oklch(73.29% 0.1941 162.85);
+    --warning: oklch(82.03% 0.1392 88.38);
+    --danger: oklch(70% 0.17 36.67);
+    --info: oklch(72% 0.17 250);
+}
+
+:root {
+    --success-soft: color-mix(in oklab, var(--success) 14%, var(--surface));
+    --success-soft-foreground: color-mix(in oklab, var(--success) 50%, var(--foreground));
+    --warning-soft: color-mix(in oklab, var(--warning) 14%, var(--surface));
+    --warning-soft-foreground: color-mix(in oklab, var(--warning) 50%, var(--foreground));
+    --danger-soft: color-mix(in oklab, var(--danger) 14%, var(--surface));
+    --danger-soft-foreground: color-mix(in oklab, var(--danger) 50%, var(--foreground));
+    --grammar-radius-sm: calc(var(--radius) / 2);
+    --grammar-radius-md: var(--radius);
+    --grammar-radius-lg: calc(var(--radius) * 4 / 3);
+    --grammar-type-label-item-size: 0.875rem;
+    --grammar-type-label-item-line: 1.25rem;
+    --grammar-type-label-item-weight: 500;
+    --grammar-type-caption-size: 0.75rem;
+    --grammar-type-caption-line: 1rem;
+    --grammar-type-caption-weight: 400;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: system-ui, sans-serif;
+}
+
+.demo-page {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-block-size: 100vh;
+    padding: 1rem;
+}
+
+.demo-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 500;
+}
+
+.demo-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.demo-frame {
+    box-sizing: border-box;
+    block-size: min(70vh, 640px);
+    min-block-size: 22rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-lg);
+    overflow: hidden;
+}
+
+.demo-readout {
+    margin: 0;
+    padding: 0.5rem;
+    overflow: auto;
+    background: var(--surface-secondary);
+    border-radius: var(--grammar-radius-md);
+    font-size: 0.75rem;
+}

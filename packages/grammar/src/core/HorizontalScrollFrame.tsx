@@ -2,7 +2,6 @@
 
 import { ScrollShadow, cn } from "@heroui/react"
 import { forwardRef, useCallback, useRef, type ComponentProps } from "react"
-import { ButtonPlacementProvider } from "./buttonIntent.js"
 import { IconButton } from "./leaf/IconButton/index.js"
 import { glyphSource } from "./leaf/Icon/glyphs.js"
 
@@ -47,10 +46,10 @@ export const HorizontalScrollFrame = forwardRef<HTMLDivElement, HorizontalScroll
     return <div className={cn("starci-horizontal-scroll-frame", appearance === "tabs" ? "tabs__list-container" : undefined)} data-scroll-appearance={appearance}>
         {scroller}
         <span className="starci-horizontal-scroll-prev">
-            <ButtonPlacementProvider placement="chrome"><IconButton source={ScrollChevron} label={scrollPreviousLabel} intent="neutral" size="sm" onPress={() => scrollPage(-1)} /></ButtonPlacementProvider>
+            <IconButton source={ScrollChevron} label={scrollPreviousLabel} variant="border" size="sm" onPress={() => scrollPage(-1)} />
         </span>
         <span className="starci-horizontal-scroll-next">
-            <ButtonPlacementProvider placement="chrome"><IconButton source={ScrollChevron} label={scrollNextLabel} intent="neutral" size="sm" onPress={() => scrollPage(1)} /></ButtonPlacementProvider>
+            <IconButton source={ScrollChevron} label={scrollNextLabel} variant="border" size="sm" onPress={() => scrollPage(1)} />
         </span>
     </div>
 })

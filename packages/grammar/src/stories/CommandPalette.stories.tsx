@@ -43,7 +43,7 @@ const search = (query: string): ReadonlyArray<G.CommandPaletteGroup> => {
   return GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => `${item.label} ${item.hint ?? ''}`.toLowerCase().includes(needle)) })).filter((group) => group.items.length > 0);
 };
 
-const FOOTER = <G.Text size="sm" tone="muted">Up and down choose, Enter opens, Escape closes</G.Text>;
+const FOOTER = <G.Text role="body" tone="muted">Up and down choose, Enter opens, Escape closes</G.Text>;
 
 type DemoProps = {
   readonly defaultOpen?: boolean;
@@ -59,7 +59,7 @@ const Demo = ({ defaultOpen = false, initialQuery = '', isLoading = false, error
   G.useCommandPaletteShortcut(() => setOpen((open) => !open));
   return (
     <>
-      <G.Button endContent={<G.Kbd keys={['ctrl', 'K']} />} intent="dismiss" onPress={() => setOpen(true)}>Search</G.Button>
+      <G.Button endContent={<G.Kbd keys={['ctrl', 'K']} />} variant="border" onPress={() => setOpen(true)}>Search</G.Button>
       <p role="status" data-story-chosen={chosen}>Chosen: {chosen}</p>
       <G.CommandPalette
         label="Search"

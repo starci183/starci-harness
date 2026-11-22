@@ -2,17 +2,9 @@
 
 import type { ComponentPropsWithoutRef } from "react"
 import { RouterProvider } from "react-aria-components"
-import { ButtonIntentFamilyProvider } from "../../buttonIntent.js"
 import { CollectionItemFamilyProvider } from "../../collectionItem.js"
 
 export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "className" | "color"> & {
-    /**
-     * The mode is the app's: `.dark` on `html`, as HeroUI reads it. A root that switched the mode itself would shadow
-     * the app's tokens, so this prop sets nothing.
-     *
-     * @deprecated Remove it; set `.dark` on `html`.
-     */
-    readonly theme?: "system" | "light" | "dark"
     /** Visual families install their scoped material contract on this neutral root. */
     readonly "data-grammar-family"?: string
     /**
@@ -30,9 +22,8 @@ export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "className"
  * Contract: COLOR-5 - the root declares no theme token: an app's HeroUI tokens, on `:root`, `.light` and `.dark`,
  * reach every part, and a family's defaults are its optional `theme.css`.
  */
-export const GrammarRoot = ({ theme: _theme, navigate, useHref, ...props }: GrammarRootProps) => {
+export const GrammarRoot = ({ navigate, useHref, ...props }: GrammarRootProps) => {
     const root = (
-    <ButtonIntentFamilyProvider family={props["data-grammar-family"]}>
     <CollectionItemFamilyProvider family={props["data-grammar-family"]}>
     <div
         {...props}
@@ -43,7 +34,6 @@ export const GrammarRoot = ({ theme: _theme, navigate, useHref, ...props }: Gram
         data-tier="frame"
     />
     </CollectionItemFamilyProvider>
-    </ButtonIntentFamilyProvider>
     )
     return navigate === undefined ? root : <RouterProvider navigate={navigate} {...(useHref === undefined ? {} : { useHref })}>{root}</RouterProvider>
 }

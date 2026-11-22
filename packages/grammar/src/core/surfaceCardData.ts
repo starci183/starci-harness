@@ -1,13 +1,13 @@
 import type { ReactNode } from "react"
-import type { ButtonIntent } from "./buttonIntent.js"
 import type { PresentationState } from "./state.js"
+import type { MarkState } from "./statusMark.js"
 import type { DropdownMenuEntry } from "./branch/DropdownMenu/index.js"
 import type { AvatarKind, AvatarShape } from "./leaf/Avatar/index.js"
 import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
-import type { ButtonProps } from "./leaf/Button/index.js"
+import type { ButtonProps, ButtonVariant } from "./leaf/Button/index.js"
 import type { ImageFacts, ImageProps, MediaSourceRef } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
@@ -35,13 +35,11 @@ export type ImageData = MediaSourceRef & {
 /** One visible command of an item or a tile: a destination or a same-document command, never both. */
 export type ItemAction = Pick<ButtonProps, "isPending"> & {
     readonly label: string
-    /** The command's consequence. `destructive` draws the soft danger pill of the entry step (sign out, remove); the confirming press belongs in a dialog. Default `neutral`: the outlined pill of an item command. */
-    readonly intent?: ButtonIntent
     /**
-     * With `intent="commit"`: this row command is the region's ONE primary (the filled accent button), not the outlined item pill. At most
-     * one per region (`DNA-COMMON-ONE-ACCENT-FILL` counts it with every other filled button); ignored for any other intent.
+     * The command's look (0.55.0, the Button's three): `border` (default) the outlined pill of an item command; `danger` a destructive one (sign out,
+     * remove; a confirming press belongs in a dialog); `primary` the region's ONE solid action (`DNA-COMMON-ONE-ACCENT-FILL` counts it with every other filled button).
      */
-    readonly isPrimary?: boolean
+    readonly variant?: ButtonVariant
     readonly isDisabled?: boolean
     /** The command leads somewhere (opens a page, the next step): the button ends with Grammar's arrow (`Button endArrow`). */
     readonly endArrow?: boolean
@@ -60,7 +58,12 @@ export type ItemMenu = {
 /** The mark that leads a row. */
 export type ItemLeading =
     | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never }
-    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never }
+    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never; readonly state?: never }
+    /**
+     * A row among DIFFERENT things side by side (0.55.0, the status-mark rule, case 2 "which thing is which?": a run or workflow list, notification
+     * rows): the subject icon on the round 40px plate of the state's tone. The status then trails as an `InlineStatus` (the row's `value`), never a second circle.
+     */
+    | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never }
     | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never }
 
 type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
@@ -85,7 +88,7 @@ export type RowDrag = {
  * The tone of a row's leading edge (0.45.1): a 2px bar on the row's start edge in the theme's token of that tone (`accent`, `success`, `warning`, `danger`), the same bar a selected
  * table row draws. It marks a row that waits for the reader or leads a list (a pending approval, the most recent item), never a status word: the row's badge or meta carries the words.
  */
-export type RowEdgeTone = "accent" | "success" | "warning" | "danger"
+export type RowEdgeTone = "accent" | "info" | "success" | "warning" | "danger"
 
 /** The tone of a table row's ground (0.46.2): the row takes the soft pair of the theme's token of that tone. The same four tones as the edge; see `DataTableRow.groundTone`. */
 export type RowGroundTone = RowEdgeTone
@@ -94,6 +97,10 @@ export type RowGroundTone = RowEdgeTone
 export type ListRowData = {
     readonly id: string
     readonly title: string
+    /** The title names an AI agent: a small neutral "AI" Chip follows it (`AgentName`). The app never places the Chip by hand. */
+    readonly isAgent?: boolean
+    /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
+    readonly agentLabel?: string
     /**
      * The line under the name. A string is the muted description (14). A node (inline text with 16px marks: "@chatbot · [logo] Email · [logo] Chat")
      * is drawn at 12, muted, directly under the name at the identity gap; keep it to one line of inline content.
@@ -148,14 +155,15 @@ export type ListRowData = {
      */
     readonly meta?: { readonly text: string; readonly tone?: "muted" | "danger" }
     /**
-     * A row of a version diff (0.37.28, GitHub-style): a gutter mark at the row's start, `+` added, `−` removed, `~` changed (monospace, in the tone's ink), and the row's ground in
-     * the tone's soft pair (success, danger, warning). A removed row's title is struck through. The mark is never colour alone: the glyph carries the meaning and `diffLabel`
-     * is read before the title.
+     * A row of a version diff (0.37.28, GitHub-style; a block since 0.55.0): a rounded block (the control / nested-region corner) in the tone's soft pair (success, danger,
+     * warning) with 12 padding on every side and a small gap from the next diff block, its gutter mark (`+` added, `−` removed, `~` changed, monospace, in the tone's ink)
+     * in a column of its own beside the copy, and `diffLabel` as a visible 12 label in the tone's ink over the title. A removed row's title is struck through, its label
+     * is not. The meaning is never colour alone: the glyph and the label carry it.
      */
     readonly diff?: "added" | "removed" | "changed"
-    /** A changed row's change, drawn as the 12 muted line "from → to" under the title (after `description`). Only with `diff: "changed"`. */
+    /** A changed row's change, drawn as the 12 muted line "from", the Grammar arrow icon, "to" under the title (no typed arrow, 0.55.0) (after `description`). Only with `diff: "changed"`. */
     readonly change?: { readonly from: string; readonly to: string }
-    /** The word a screen reader reads for the gutter mark, in the app's language. Default "Added", "Removed", "Changed". */
+    /** The visible label over a diff row's title, in the app's language ("Đang dùng", "Sau khi duyệt"); read once, before the title. Default "Added", "Removed", "Changed". */
     readonly diffLabel?: string
 } & ListRowDestination
 
@@ -185,15 +193,20 @@ export type Figure = {
     readonly trendSense?: "higher-is-better" | "lower-is-better"
     /** The direction in words for assistive technology, read before the meta (e.g. "Tang", "Giam"). Default "Up", "Down", "No change". */
     readonly trendLabel?: string
-    /** The figure's recent values, oldest first: a Sparkline under the value and meta, 96 x 32. */
-    readonly trendLine?: readonly number[]
-    /** Names the trend line for assistive technology. Defaults to the term. */
-    readonly trendLineLabel?: string
+    /**
+     * The figure's trend chart under the value and meta: the app passes a `Sparkline` of `@starci/grammar/core/ext/recharts`
+     * (core never imports an ext, so the figure takes the drawn chart, not its numbers). Follows the region's loading itself.
+     */
+    readonly trendChart?: ReactNode
     readonly icon?: IconSource
 } & FigureDestination
 
 export type CardHead = {
     readonly label?: string
+    /** The label names an AI agent: a small neutral "AI" Chip follows it in the head (`AgentName`). */
+    readonly isAgent?: boolean
+    /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
+    readonly agentLabel?: string
     readonly ariaLabel?: string
     /*
      * A card head has NO description, subtitle or count: the head is the label, one fact and one end action. A line that explains the
@@ -260,6 +273,10 @@ type TileBadges =
 /** The tile owns its identity, media, supporting facts, one visible action and any overflow commands. */
 export type TileData = {
     readonly name: string
+    /** The tile names an AI agent (0.55.0): a small neutral "AI" Chip follows its name (`AgentName`), as on a ListRow title and a card head. */
+    readonly isAgent?: boolean
+    /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
+    readonly agentLabel?: string
     /** A muted small line under the name, beside the mark (who made it, which version, which category). */
     readonly byline?: string
     readonly description?: string

@@ -66,7 +66,6 @@
         --warning-foreground: oklch(21.03% 0.0059 88.38);
         --danger: oklch(70% 0.17 36.67);
         --danger-foreground: oklch(21.03% 0.0059 36.67);
-        --info: oklch(72% 0.17 250);
         --segment: color-mix(in oklab, var(--surface) 76%, var(--foreground));
         --surface-shadow: 0 8px 28px oklch(21.03% 0.0059 354.13 / 0.07);
     }

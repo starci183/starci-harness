@@ -1,7 +1,8 @@
 @layer starci-grammar-common {
     /* The vendor Avatar shell supplies the exact single-avatar dimensions, including the control size. */
     .starci-core-avatar-group[data-grammar-avatar-layout="grid"] {
-        --starci-avatar-group-text-size: calc(var(--avatar-size) / 4);
+        --starci-avatar-letters-size: calc(var(--avatar-size) * var(--grammar-avatar-tile-initials-ratio));
+        --starci-avatar-mark-size: calc(var(--avatar-size) * var(--grammar-avatar-tile-mark-ratio));
         overflow: hidden;
         border-radius: var(--grammar-radius-round);
     }
@@ -23,6 +24,12 @@
         outline-offset: -1px;
     }
 
+    /* A tile with tone="danger" (a broken account) is ringed in the danger token inside its own tile, over the surface ring. */
+    .starci-core-avatar-group-grid > .starci-core-avatar-group-member[data-grammar-avatar-tone="danger"] {
+        outline: var(--grammar-ring-width) solid var(--danger);
+        outline-offset: calc(-1 * var(--grammar-ring-width));
+    }
+
     .starci-core-avatar-group[data-grammar-avatar-cells="1"] > .starci-core-avatar-group-grid {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr);
@@ -33,9 +40,8 @@
     }
 
     /*
-     * Two members split the circle into two narrow tall halves. A square initials image covered into a half crops its
-     * letters at the centre line, so each half letterboxes the image: the letters stay centred in their own half and the
-     * same image fills the rest, keeping its solid background.
+     * Two members split the circle into two narrow tall halves. A square image covered into a half crops its letters at the centre line, so each half
+     * letterboxes the image: the letters stay centred in their own half and the same image fills the rest, keeping its solid background.
      */
     .starci-core-avatar-group[data-grammar-avatar-cells="2"] .starci-core-avatar-initials {
         object-fit: contain;
@@ -44,7 +50,7 @@
         background-position: center;
     }
 
-    /* The chat-app three-member identity has one full-width member above the two remaining members. */
+    /* Three members: one full-width half above two quarters. */
     .starci-core-avatar-group[data-grammar-avatar-cells="3"] .starci-core-avatar-group-member:first-child {
         grid-column: 1 / -1;
     }
@@ -62,8 +68,15 @@
         border-radius: 0 !important;
     }
 
-    .starci-core-avatar-group:not([data-grammar-avatar-cells="1"]) .starci-core-avatar-group-member [data-grammar-avatar-fallback] {
-        font-size: var(--starci-avatar-group-text-size) !important;
+    /* One member fills the avatar and keeps the single-avatar letters; with more, every tile reads at the tile share. */
+    .starci-core-avatar-group[data-grammar-avatar-cells="1"] {
+        --starci-avatar-letters-size: calc(var(--avatar-size) * var(--grammar-avatar-initials-ratio));
+        --starci-avatar-mark-size: calc(var(--avatar-size) * var(--grammar-avatar-mark-ratio));
+    }
+
+    .starci-core-avatar-group-member [data-grammar-avatar-fallback] {
+        inline-size: 100%;
+        block-size: 100%;
     }
 
     .starci-core-avatar-group-member img {
@@ -156,10 +169,72 @@
         align-items: center;
         justify-content: center;
         min-inline-size: 0;
-        background: var(--surface-secondary);
-        color: var(--foreground);
-        font-size: var(--starci-avatar-group-text-size);
-        font-weight: var(--grammar-weight-semibold);
+        overflow: hidden;
+    }
+
+    /*
+     * The "+N" mark is always the neutral muted pair (owner 2026-11-22: "+2 màu muted chớ"): the default plate and the muted ink at the letters' size share, on the
+     * same surface ring as the other marks; never a generated (hashed) or accent colour, at 24 and at 40.
+     */
+    .starci-core-avatar-overflow {
+        display: grid;
+        place-items: center;
+        inline-size: 100%;
+        block-size: 100%;
+        background: var(--default);
+        color: var(--muted);
+        font-size: var(--starci-avatar-letters-size);
+        font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-none);
+        white-space: nowrap;
+        user-select: none;
+    }
+
+    /*
+     * The group is the trigger of its member list (owner 2026-11-22): the group alone (no names beside it), focusable, its focus ring round the group's own box.
+     * It adds no hit area: the box is the group's.
+     */
+    .starci-core-avatar-group-trigger {
+        display: inline-flex;
+        min-width: 0;
+        max-width: 100%;
+        vertical-align: middle;
+        border-radius: var(--grammar-radius-pill);
+        cursor: default;
+        outline: none;
+    }
+
+    .starci-core-avatar-group-trigger:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+    }
+
+    /* The member list: one row per member, its 24px avatar, its name and an agent's small "AI" Chip. */
+    .starci-core-avatar-group-members {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+        margin: 0;
+        padding: var(--grammar-inline-gap) 0.75rem;
+        list-style: none;
+        max-block-size: min(20rem, 60vh);
+        overflow-y: auto;
+    }
+
+    .starci-core-avatar-group-members-row {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        min-block-size: 2rem;
+        min-width: 0;
+    }
+
+    .starci-core-avatar-group-members-name {
+        min-width: 0;
+        overflow: hidden;
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }

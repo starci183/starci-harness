@@ -66,7 +66,7 @@ const Body = () => (
     <G.SurfaceCard label="Plan" kind="body">
       <G.Stack gap="row">
         <G.Text>A card: its radius follows the card radius hook.</G.Text>
-        <div data-story-disabled="true"><G.Button intent="commit" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button></div>
+        <div data-story-disabled="true"><G.Button variant="primary" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button></div>
       </G.Stack>
     </G.SurfaceCard>
   </G.Stack>

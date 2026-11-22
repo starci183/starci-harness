@@ -72,6 +72,7 @@
     .starci-core-interval-range[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
     .starci-core-interval-range[data-grammar-tone="accent"] { background: var(--accent-soft); }
     .starci-core-interval-range[data-grammar-tone="success"] { background: var(--success-soft); }
+    .starci-core-interval-range[data-grammar-tone="info"] { background: var(--info-soft); }
     .starci-core-interval-range[data-grammar-tone="warning"] { background: var(--warning-soft); }
     .starci-core-interval-range[data-grammar-tone="danger"] { background: var(--danger-soft); }
 
@@ -90,6 +91,7 @@
 
     .starci-core-interval-point[data-grammar-tone="accent"] { border-color: var(--accent); }
     .starci-core-interval-point[data-grammar-tone="success"] { border-color: var(--success); }
+    .starci-core-interval-point[data-grammar-tone="info"] { border-color: var(--info); }
     .starci-core-interval-point[data-grammar-tone="warning"] { border-color: var(--warning); }
     .starci-core-interval-point[data-grammar-tone="danger"] { border-color: var(--danger); }
 

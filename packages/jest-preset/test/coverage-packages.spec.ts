@@ -181,3 +181,14 @@ test('a root package with a tsconfig.json of its own is its own unit project com
   assert.equal(options(2)?.experimentalDecorators, undefined, 'the package own options carry no back end decorator flag');
   assert.deepEqual(configured().map((unit) => unit.roots), units.map((unit) => unit.roots), 'the same tree gives the same projects');
 });
+
+test('a package listed under tests runs its specs in a unit project with the extension resolver, and is not measured', () => {
+  const { projects } = preset.starciJestConfig({ coverage: scope, packages: { folders: ['packages/sdk'], files: ['packages/sdk/src/**/*.ts'], excludes: [], tests: ['packages/biz'] } }) as unknown as { projects: Array<{ displayName?: unknown; roots?: string[]; resolver?: string }>; collectCoverageFrom?: string[] };
+  const units = projects.filter((project) => project.displayName === 'unit');
+  assert.deepEqual(units[1]?.roots, ['<rootDir>/packages/sdk/src', '<rootDir>/packages/biz/src']);
+  assert.match(String(units[1]?.resolver), /ts-extension-resolver.js$/);
+  assert.equal(units[0]?.resolver, undefined, 'the back end projects keep jest resolver');
+  const measured = JSON.stringify(preset.starciJestConfig({ coverage: scope, packages: { folders: [], files: [], excludes: [], tests: ['packages/biz'] } }));
+  assert.equal(measured.includes('packages/biz/src/**'), false, 'a tests-only package is no coverage subject');
+  assert.throws(() => preset.starciJestConfig({ coverage: scope, packages: { folders: [], files: [], excludes: [], tests: 'packages/biz' } }), /needs the root packages starci app sync renders/);
+});

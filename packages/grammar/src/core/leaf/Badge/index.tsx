@@ -8,7 +8,7 @@ import type { CustomTone } from "../../../common/tones.js"
 import { useCustomTone } from "../../useCustomTone.js"
 
 /** Core's built-in tones (HeroUI's palette) and the quiet `muted`; an app adds its own through `GrammarToneRegistry` (`tone="info"` where declared). */
-export type BadgeBuiltInTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
+export type BadgeBuiltInTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger" | "muted"
 export type BadgeTone = BadgeBuiltInTone | CustomTone
 
 type BadgeBase = {
@@ -44,6 +44,8 @@ const TONE_COLORS = {
     muted: "default",
     neutral: "default",
     accent: "accent",
+    // HeroUI has no info Chip colour: the default Chip, painted with the info soft pair by `[data-component="Badge"][data-tone="info"]`
+    info: "default",
     success: "success",
     warning: "warning",
     danger: "danger",

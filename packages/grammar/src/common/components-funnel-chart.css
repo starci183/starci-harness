@@ -77,6 +77,7 @@
     .starci-core-funnel-bar[data-grammar-skeleton="true"] { background: var(--surface-secondary); min-inline-size: 0; }
     .starci-core-funnel-bar[data-grammar-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
     .starci-core-funnel-bar[data-grammar-tone="success"] { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-core-funnel-bar[data-grammar-tone="info"] { background: var(--info-soft); color: var(--info-soft-foreground); }
     .starci-core-funnel-bar[data-grammar-tone="warning"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
     .starci-core-funnel-bar[data-grammar-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
 

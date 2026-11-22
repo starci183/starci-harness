@@ -48,7 +48,7 @@ export type SelectProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly prefix?: string
     /**
      * A glyph at the start of the trigger, before any `prefix` and the value (0.47.1; a calendar on a date range, a funnel on a filter). Decoration: it is
-     * `aria-hidden` and the control stays named by `label`. The 16px chip step in every appearance, the muted tone; the app owns which glyph.
+     * `aria-hidden` and the control stays named by `label`. The 20px chip step in every appearance, the muted tone; the app owns which glyph.
      */
     readonly icon?: IconSource
     readonly value?: string | null

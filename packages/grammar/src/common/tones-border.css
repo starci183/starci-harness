@@ -1,0 +1,19 @@
+/*
+ * The BORDER step of every tone (0.55.0): the 1px edge of a card that waits on the reader ("card chờ duyệt có viền vàng"), on a `SurfaceCard tone`
+ * and a `MessageBubble content="card" tone` (one rule, `.starci-core-tone-edge`). HeroUI ships one neutral `--border`; Grammar adds `--<tone>-border`
+ * for every tone with one derivation, the tone itself; neutral is the theme border. An app's own value wins.
+ */
+@layer starci-grammar-theme {
+    :root,
+    .light,
+    [data-theme="light"],
+    .dark,
+    [data-theme="dark"] {
+        --default-border: var(--border);
+        --accent-border: var(--accent);
+        --info-border: var(--info);
+        --success-border: var(--success);
+        --warning-border: var(--warning);
+        --danger-border: var(--danger);
+    }
+}

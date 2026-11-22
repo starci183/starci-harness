@@ -110,7 +110,7 @@ is `policy/`, not this tree.
 
 ```
 grammar package     a package that implements the grammar contract (grammars/contract.*): components, props,
-  (code)            anatomy, variants, sizes, tokens and their values, the intent x placement map, root and overlay
+  (code)            anatomy, variants, sizes, tokens and their values, the three Button looks, root and overlay
                     mechanics. Grammars: `core` and `offset-pop`; an app picks one in hfs.json (sides.fe.grammar).
 contexts            decision rules: WHEN and WHY. ui/ decides which component, rank, step, state; code/ decides
   (this tree)       where code lives and how it is shaped; hfs/ and stack/ are the shape and library data.

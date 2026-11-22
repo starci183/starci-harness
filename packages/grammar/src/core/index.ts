@@ -18,17 +18,12 @@ export * from "../common/index.js"
 export type { PresentationState } from "./state.js"
 export {
     STARCI_CORE_BAND_TOKEN_NAMES,
-    STARCI_CORE_DARK_TOKEN_DEFAULTS,
     STARCI_CORE_DNA,
     STARCI_CORE_SPACING_SCALE,
-    STARCI_CORE_TOKEN_DEFAULTS,
-    STARCI_CORE_TOKEN_NAMES,
     type StarCiCoreBandTokenName,
     type StarCiCoreDna,
     type StarCiCoreSpacingStep,
     type StarCiCoreSpacingValue,
-    type StarCiCoreTokenDefaults,
-    type StarCiCoreTokenName,
 } from "./dna.js"
 
 /** StarCi Core is one visual family implementing the Common contract. */

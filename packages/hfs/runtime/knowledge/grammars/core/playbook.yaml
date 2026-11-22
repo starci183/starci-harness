@@ -133,8 +133,7 @@ shapes:
           pending and the dialog open until it settles
       - renderer: Button
         role: |
-          The trigger, inside the Core root: `intent="destructive"` at the entry step, which resolves to
-          `danger-soft` (CTA-6); the confirm inside the AlertDialog is the solid `danger` confirm, dismiss
+          The trigger, inside the Core root: `variant="danger"` (CTA-6); the confirm inside the AlertDialog is the solid `danger` confirm, the way out
           comes first and takes initial focus
     notes: |
       Initial focus lands on the cancel action and an outside press never dismisses. A reversible

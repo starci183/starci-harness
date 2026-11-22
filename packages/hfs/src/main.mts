@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|uiaudit|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|uiaudit|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--level full|dev] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mts, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -25,6 +25,9 @@
 //                                            local-registry loop causes (failure-codes.yaml `localOnly`) as report-only, prod (the hook, CI, the release gate) blocks on them.
 //                                            Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known, fixed);
 //                                            progress goes to stderr (--quiet silences it).
+//                                            --level full|dev (default full): full is every gate, the main cut, a push of main, release cut, release push and app release; dev is the
+//                                            FAST level of a landing on dev (cache/fast-level.mts): types with its package builds and codegen, the lane's own tests, db and the design
+//                                            approval, and it prints one line naming what it skips (they run once at the main cut). It takes only --json, --env and --fresh.
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
 //                                            --side be|fe|packages limits the lint gate to one side or to the root packages (a CI matrix runs one per scope). --out <file> writes every finding of the run as ONE
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
@@ -136,6 +139,7 @@ import { committedLintCounts, landingBase, rangeTouched, ratchetBase, ratchetFin
 import { TYPES_PACKAGE_BUILD_FAILED } from '../cache/built-packages.mjs';
 import { TYPES_CODEGEN_FAILED } from '../cache/codegen.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
+import { CHECK_LEVELS, checkLevelOf, FAST_FAMILIES, FAST_GATES, FAST_SKIPPED, fastLevelLine, runLaneTests, type CheckLevel } from '../cache/fast-level.mjs';
 import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
@@ -257,7 +261,7 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'image', flags: [] },
     ],
   },
-  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env'] } }, { only: { boolean: ['--staged'] } }, { only: { boolean: ['--ratchet'] } }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS } }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env', '--level'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env', '--level'] } }, { only: { boolean: ['--staged'] } }, { only: { boolean: ['--ratchet'] } }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS } }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -269,7 +273,7 @@ const PARSED_FLAGS = new Set(Object.values(PARSED).flatMap(flagsOf));
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--level': CHECK_LEVELS.join('|'), '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -547,7 +551,7 @@ async function coverageParity(repoRoot: string, lcov: string): Promise<Dynamic[]
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', '--env', ...GATE_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', '--env', '--level', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -586,7 +590,7 @@ const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
  * child admitted by the CLI's governor when its step starts it, sized on the RAM free then. A red family never stops another; a step that throws ends the run with its error once the others
  * have ended. The session's fingerprint was taken when it opened and its flush runs once, after every step.
  */
-async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false, env = 'local' }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean; env?: CheckEnv }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
+async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false, env = 'local', level = 'full' }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean; env?: CheckEnv; level?: CheckLevel }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, presets, prettier } = io;
   const started = Date.now();
   // The branch profile (branch-profile.mts): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
@@ -669,7 +673,15 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const failedBuilds = typed.filter((finding) => ownCodes.includes(String(finding.code)));
     found.set('types', [...withWhy(failedBuilds, readWhy(skillRoot, [...new Set(failedBuilds.map((finding) => String(finding.code)))])), ...typed.filter((finding) => !ownCodes.includes(String(finding.code)))]);
   });
-  if (session !== undefined && selected.has('test')) {
+  // The fast level judges what the lane changed against the base its landing is judged from (the merge-base with origin/dev): its own tests and the design approval.
+  const laneChanged = level === 'dev' ? changedSince(repoRoot, landingBase(repoRoot, io.env, profile.branch).base) : [];
+  if (session !== undefined && selected.has('test') && level === 'dev') {
+    bodies.set('test', async (step) => {
+      const lane = await runLaneTests({ repoRoot, tracked, changed: laneChanged, execute: step.execute });
+      found.set('test', lane.findings);
+      said.set('test', lane.lines);
+    });
+  } else if (session !== undefined && selected.has('test')) {
     bodies.set('test', async (step) => {
       tests = await runTestForApp(session, { repoRoot, tracked, execute: step.execute });
       found.set('test', tests.findings);
@@ -744,15 +756,16 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (ending !== undefined) throw ending.error;
   const linted = eslint as CachedLinters['eslint'] | null;
   const extra: Dynamic[] = CHECK_GRAPH.flatMap((spec) => found.get(spec.id) ?? []);
-  const lines: string[] = ['checks', 'uiaudit', 'sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
+  const lines: string[] = ['test', 'checks', 'uiaudit', 'sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
   // The commits since the base, the index and the work tree of a whole run are the judged set of the gallery coupling.
-  if (whole && session !== undefined && selected.has('hfs')) {
+  // The owner's design approval is a product decision: the fast level keeps it (diff-only, no rule sweep), the full level judges it with the rules.
+  if (session !== undefined && ((whole && selected.has('hfs')) || level === 'dev')) {
     const landing = landingBase(repoRoot, io.env, profile.branch);
     const galleryBase = landing.base;
-    const galleryChanged = changedSince(repoRoot, galleryBase);
+    const galleryChanged = level === 'dev' ? laneChanged : changedSince(repoRoot, galleryBase);
     // the base is stated, so a lane and the lander (whose gate is a merge of the lane into origin/dev) can be compared: both judge the diff from the merge-base with origin/dev
     lines.push(`  gallery coupling: judged ${galleryChanged.length} file(s) changed since ${galleryBase === null ? 'no base (a root commit)' : galleryBase.slice(0, 10)}, ${landing.source}`);
     // A screen's source changed without an approved canvas page (PROJECT-GALLERY-7): the same judged set, a canvas-managed screen only.
@@ -821,7 +834,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const gatesOff = (Object.entries(profile.declaredOff) as [string, string][]).map(([gate, reason]) => ({ gate, reason }));
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, gatesOff, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
-  const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(cutover.length > 0 ? { cutover } : {}), ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const result = { ...checked, level, ...(level === 'dev' ? { fast: { runs: FAST_GATES, skipped: FAST_SKIPPED } } : {}), untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(cutover.length > 0 ? { cutover } : {}), ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
 
@@ -903,7 +916,15 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const fresh = booleanFlag(opts, 'fresh') === true;
   const env = checkEnvOf(valueFlag(opts, 'env'));
   if (env === undefined) throw new UsageError(`--env accepts ${CHECK_ENVS.join('|')}; got ${JSON.stringify(valueFlag(opts, 'env'))}`);
-  const explicit = selectedFamilies(opts, []);
+  const level = checkLevelOf(valueFlag(opts, 'level'));
+  if (level === undefined) throw new UsageError(`--level accepts ${CHECK_LEVELS.join('|')}; got ${JSON.stringify(valueFlag(opts, 'level'))}`);
+  if (level === 'dev') {
+    const given = ['--gate', '--side', '--fix', '--coverage-from', '--shard', '--out'].filter((flag) => opts[flag.slice(2)] !== undefined);
+    if (given.length > 0) throw new UsageError(`starci app check --level dev runs exactly the fast gates and takes no ${given.join(', ')}`);
+    // The one line naming what the fast level skips, first, on stderr (a --json report stays one document on stdout).
+    io.stderr(`${fastLevelLine()}\n`);
+  }
+  const explicit = level === 'dev' ? new Set<FamilyId>(FAST_FAMILIES) : selectedFamilies(opts, []);
   if (side !== undefined && !['be', 'fe', PACKAGES].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be, fe or packages');
   if (fix && !explicit.has('lint')) throw new UsageError('--fix runs the linters and needs --gate lint');
   if (shard !== undefined) {
@@ -918,16 +939,16 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
   // A run with no selector is whole: every default family and the CI-parity families (so a green run is not followed by a red CI build or audit), CI's coverage step and the cache verdict.
-  const whole = explicit.size === 0 && side === undefined && coverageFrom === undefined && !fix;
+  const whole = level === 'full' && explicit.size === 0 && side === undefined && coverageFrom === undefined && !fix;
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(whole ? [...DEFAULT_FAMILIES, ...PARITY_FAMILIES] : DEFAULT_FAMILIES) : new Set<FamilyId>();
   // --fresh: the selected families ignore their records and are recomputed from scratch (and written back).
   const full = fresh ? new Set(selected) : undefined;
-  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, whole, env });
+  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, whole, env, level });
   if (sonarOut !== undefined) writeSonarImport({ repoRoot, file: path.resolve(repoRoot, sonarOut), findings: result.findings, raw, side });
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }
   const exit = result.eslint?.errors.length ? 2 : result.ok ? 0 : 1;
-  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: (result.steps as Dynamic[] | undefined)?.find((row) => row.step === report.family || (row.step === 'hfs' && report.family === 'secrets'))?.seconds ?? 0 })) }, io.env);
+  writeRunLog(repoRoot, { command: `check${level === 'dev' ? ' --level dev' : ''}${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: (result.steps as Dynamic[] | undefined)?.find((row) => row.step === report.family || (row.step === 'hfs' && report.family === 'secrets'))?.seconds ?? 0 })) }, io.env);
   return exit;
 }
 

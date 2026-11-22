@@ -25,7 +25,7 @@ const Thread = ({ count = lines.length }: { readonly count?: number }) => (
   <>
     {lines.slice(0, count).map((text, index) => (
       index % 2 === 0
-        ? <G.MessageBubble key={text} author="Sam" meta={`09:${String(10 + index)}`} avatar={<G.Avatar name="Sam" size="sm" />} body={text} />
+        ? <G.MessageBubble key={text} author="Sam" meta={`09:${String(10 + index)}`} avatar={<G.Avatar name="Sam" size="md" />} body={text} />
         : <G.MessageBubble key={text} side="outgoing" meta={`09:${String(10 + index)}`} body={text} />
     ))}
   </>
@@ -39,7 +39,7 @@ const Composer = ({ placeholder }: { readonly placeholder: string }) => (
 
 const Head = ({ title }: { readonly title: string }) => (
   <G.PaneSection align="center">
-    <G.PaneHeader title={title} mark={<G.Avatar name={title} size="sm" />} />
+    <G.PaneHeader title={title} mark={<G.Avatar name={title} size="md" />} />
   </G.PaneSection>
 );
 
@@ -181,7 +181,7 @@ export const AssistantDrawer: Story = {
         <G.PaneGrid label="Assistant" areas={['chat']}>
           <G.Pane area="chat" content="chat" label="Assistant" footer={<Composer placeholder="Ask the assistant..." />}>
             <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}>
-              <G.MessageBubble author="Assistant" avatar={<G.Avatar name="Assistant" size="sm" />} body="How can I help?" />
+              <G.MessageBubble author="Assistant" avatar={<G.Avatar name="Assistant" size="md" />} body="How can I help?" />
               <G.MessageBubble side="outgoing" body="Summarize today" />
             </G.PaneSection>
           </G.Pane>

@@ -20,20 +20,20 @@ pins:
   '@starci/mail': {version: 0.3.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
   '@starci/outbox': {version: 0.2.0, group: starci, side: be, install: registry, why: "the Postgres job outbox of a back end: enqueue in the caller's transaction, the fair fenced claim with sorted slot locks, ladders, dead letters, timers and graceful stop, job notifications and app events published in the transaction and served over SSE with Last-Event-ID resume; imported only by platform/jobs"}
   '@starci/seed': {version: 0.3.0, group: starci, side: both, install: registry, why: "the data standard of a project: the store and driver ports, one export written to several copies, the copy contract and the line protocol, in-memory references with the store and driver contract suites (./testing) and the git driver (./git: renderStandard and runStandardAdapter for a standard that keeps raw/ and an adapter, seed-standard in plaintext, seed-backup sealed with sops and age, the 500 MiB snapshot cap); depends on @starci/common for DomainError"}
-  '@starci/gallery': {version: 0.1.19, group: starci, side: fe, install: registry, why: "the screenshot gallery of an app as one Vite config over the Grammar: the pages, the design canvas frames beside the shots, the status of each screen, its states and explanation, the flow map"}
-  '@starci/grammar': {version: 0.54.1, range: '~0.54.1', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/gallery': {version: 0.1.20, group: starci, side: fe, install: registry, why: "the screenshot gallery of an app as one Vite config over the Grammar: the pages, the design canvas frames beside the shots, the status of each screen, its states and explanation, the flow map"}
+  '@starci/grammar': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.1, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
   '@starci/eslint-canon-be': {version: 3.28.4, range: '~3.28.4', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.21.5, range: '~9.21.5', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.54.1, range: '~0.54.1', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.54.1, range: '~0.54.1', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
-  '@starci/stylelint-canon': {version: 2.9.8, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/eslint-canon-fe': {version: 9.22.0, range: '~9.22.0', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/stylelint-canon': {version: 2.9.9, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.1, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.11.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/jest-preset': {version: 2.12.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 2.2.1, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.10.1, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.17.7, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 6.17.8, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.5, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.2, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}
@@ -75,7 +75,9 @@ pins:
   next-intl: {version: 4.13.6, group: framework, side: fe, why: "the one i18n library"}
   graphql: {version: 16.14.2, group: framework, side: both, why: "one version for both sides"}
   supertest: {version: 7.3.0, group: tooling, side: be, why: "the e2e world calls the app over HTTP"}
-  '@xyflow/react': {version: 12.11.6, group: ui, side: fe, why: "an app's own node graph, drawn inside a Fragment region; no longer a Grammar peer"}
+  '@xyflow/react': {version: 12.11.6, group: ui, side: fe, why: "an optional peer of the grammar's core graph ext (@starci/grammar/core/ext/graph), installed by an app that draws a graph; apps never import it"}
+  elkjs: {version: 0.12.0, group: ui, side: fe, why: "an optional peer of the grammar's core graph ext: the layered layout (one ELK bundle, run in the page); 0.13.0 is deprecated on npm; apps never import it"}
+  d3-force: {version: 3.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core graph ext: the seeded force layout of KnowledgeMap; apps never import it"}
   react-aria-components: {version: 1.21.1, group: ui, side: fe, why: "a required peer of the grammar"}
   '@heroui/react': {version: 3.2.6, group: ui, side: fe, why: "the vendor the grammar wraps; vendor/README.md reads this pin"}
   '@heroui/styles': {version: 3.2.6, group: ui, side: fe, why: "the vendor stylesheet, the same release as @heroui/react"}
@@ -105,10 +107,15 @@ pins:
   superjson: {version: 2.2.6, group: framework, side: fe}
   lodash: {version: 4.17.23, group: framework, side: fe}
   usehooks-ts: {version: 3.1.1, group: framework, side: fe}
-  recharts: {version: 3.8.1, group: ui, side: fe}
+  recharts: {version: 3.8.1, group: ui, side: fe, why: "an optional peer of the grammar's core charts ext (@starci/grammar/core/ext/recharts); apps import it only through the ext"}
   react-markdown: {version: 10.1.0, group: ui, side: fe}
-  remark-gfm: {version: 4.0.1, group: ui, side: fe}
-  remark-directive: {version: 4.0.0, group: ui, side: fe}
+  remark-gfm: {version: 4.0.1, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext (@starci/grammar/core/ext/markdown); apps never import it"}
+  remark-directive: {version: 4.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext; apps never import it"}
+  unified: {version: 11.0.5, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext: its parser pipeline; apps never import it"}
+  remark-parse: {version: 11.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext: the markdown parser; apps never import it"}
+  mdast-util-directive: {version: 3.2.0, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext: the directive node types it reads; apps never import it"}
+  shiki: {version: 4.6.0, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext: the server highlighter of /core/ext/markdown/server (the css-variables theme on the Grammar tokens); apps never import it"}
+  beautiful-mermaid: {version: 1.1.3, group: ui, side: fe, why: "an optional peer of the grammar's core markdown ext: mermaid drawn to SVG in Node at import time (/core/ext/markdown/prerender); apps never import it"}
   react-shiki: {version: 0.9.2, group: ui, side: fe}
   '@monaco-editor/react': {version: 4.7.0, group: ui, side: fe}
   mermaid: {version: 11.16.0, group: ui, side: fe, why: "an exact dependency of the grammar's MermaidDiagram"}
@@ -117,8 +124,8 @@ pins:
   mdast-util-from-markdown: {version: 2.1.0, group: ui, side: fe, why: "an exact dependency of the grammar's Markdown (course content parsed to a syntax tree and mapped to grammar parts); apps never import it"}
   mdast-util-gfm: {version: 3.1.0, group: ui, side: fe, why: "an exact dependency of the grammar's Markdown (course content parsed to a syntax tree and mapped to grammar parts); apps never import it"}
   micromark-extension-gfm: {version: 3.0.0, group: ui, side: fe, why: "an exact dependency of the grammar's Markdown (course content parsed to a syntax tree and mapped to grammar parts); apps never import it"}
-  react-dropzone: {version: 15.0.0, group: ui, side: fe}
-  react-pdf: {version: 10.4.1, group: ui, side: fe}
+  react-dropzone: {version: 15.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core upload ext (@starci/grammar/core/ext/dropzone); apps import it only through the ext"}
+  pdfjs-dist: {version: 6.5.438, group: ui, side: fe, why: "an optional peer of the grammar's core PDF ext (@starci/grammar/core/ext/pdf), loaded lazily; apps import it only through the ext"}
   '@fingerprintjs/fingerprintjs': {version: 5.2.0, group: framework, side: fe}
   '@sentry/nextjs': {version: 11.7.0, group: framework, side: fe}
   '@nestjs/graphql': {version: 13.4.5, group: framework, side: be, why: "the GraphQL transport; held on the 13 line with an accepted advisory until the 14 upgrade"}

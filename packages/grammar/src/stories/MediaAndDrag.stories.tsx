@@ -11,12 +11,12 @@ export const DragItemStates: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="Resting, selected, invalid, dashed, disabled" direction="column">
-                <G.DragItem onDragStart={noop} body={<G.Button intent="neutral">Move item up</G.Button>} />
-                <G.DragItem isSelected onDragStart={noop} body={<G.Button intent="neutral">Selected item</G.Button>} />
-                <G.DragItem isInvalid onDragStart={noop} body={<G.Button intent="neutral">Invalid placement</G.Button>} />
-                <G.DragItem isDashed onDragStart={noop} body={<G.Button intent="neutral">Drop target</G.Button>} />
-                <G.DragItem isDisabled body={<G.Button intent="neutral" isDisabled>Locked item</G.Button>} />
-                <G.DragItem tone="accent" onDragStart={noop} body={<G.Button intent="neutral">With a tone</G.Button>} />
+                <G.DragItem onDragStart={noop} body={<G.Button variant="border">Move item up</G.Button>} />
+                <G.DragItem isSelected onDragStart={noop} body={<G.Button variant="border">Selected item</G.Button>} />
+                <G.DragItem isInvalid onDragStart={noop} body={<G.Button variant="border">Invalid placement</G.Button>} />
+                <G.DragItem isDashed onDragStart={noop} body={<G.Button variant="border">Drop target</G.Button>} />
+                <G.DragItem isDisabled body={<G.Button variant="border" isDisabled>Locked item</G.Button>} />
+                <G.DragItem tone="accent" onDragStart={noop} body={<G.Button variant="border">With a tone</G.Button>} />
             </State>
         </Matrix>
     ),

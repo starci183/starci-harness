@@ -30,15 +30,15 @@ export const Grid: Story = {
       <State label="One, two (split), three (one above two), four and total counts 5, 6 and 30">
         {[1, 2, 3, 4, 5, 6, 30].map((count) => <G.AvatarGroup key={count} label={`Conversation with ${count} members`} layout="grid" items={thirtyMembers.slice(0, count)} overflowLabel={overflowLabel} />)}
       </State>
-      <State label="Same sizes as Avatar: small, medium, large and control">
-        {(['sm', 'md', 'lg', 'control'] as const).map((size) => (
+      <State label="Same sizes as Avatar: sm 24 and md 40">
+        {(['sm', 'md'] as const).map((size) => (
           <React.Fragment key={size}>
             <G.Avatar name="Alex Morgan" src={placeholderImage('A', 40)} size={size} />
             <G.AvatarGroup label={`Study group (${size})`} layout="grid" size={size} items={members} overflowLabel={overflowLabel} />
           </React.Fragment>
         ))}
       </State>
-      <State label="DiceBear initials and failed-image fallback use Avatar's same parts">
+      <State label="Initials and failed-image fallback use Avatar's same parts">
         <G.AvatarGroup label="Study partners" layout="grid" items={[{ id: 'alex', name: 'Alex Morgan' }, { id: 'sam', name: 'Sam Lee', src: 'data:image/png;base64,broken' }, { id: 'robin', name: 'Robin Park', fallback: 'RP' }]} overflowLabel={overflowLabel} />
       </State>
       <State label="Seeded initials, uploaded src wins, and free-text agents in both layouts">
@@ -48,11 +48,11 @@ export const Grid: Story = {
           { id: 'robin', name: 'Th\u1ea3o V\u00e2n Mkt', kind: 'agent' },
         ]} overflowLabel={overflowLabel} />)}
       </State>
-      <State label="Empty member data uses the named group's DiceBear initials">
+      <State label="Empty member data uses the named group's initials">
         <G.AvatarGroup label="Study group" layout="grid" items={[]} overflowLabel={overflowLabel} />
       </State>
-      <State label="The member row still stacks and supports control size">
-        <G.AvatarGroup label="Study group members" size="control" items={members} max={4} overflowLabel={overflowLabel} />
+      <State label="The member row still stacks and takes the md size">
+        <G.AvatarGroup label="Study group members" size="md" items={members} max={4} overflowLabel={overflowLabel} />
       </State>
     </Matrix>
   ),

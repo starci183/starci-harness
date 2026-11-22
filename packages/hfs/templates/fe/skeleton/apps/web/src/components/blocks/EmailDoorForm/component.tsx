@@ -52,7 +52,7 @@ export const EmailDoorFormBase = (props: EmailDoorFormBaseProps) => (
                 {props.props.errorMessage === undefined ? null : (
                     <Text live="assertive">{props.props.errorMessage}</Text>
                 )}
-                <Button type="submit" intent="commit" isPending={props.props.pending}>
+                <Button type="submit" variant="primary" isPending={props.props.pending}>
                     {props.props.submitLabel}
                 </Button>
             </Form>

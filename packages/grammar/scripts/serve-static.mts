@@ -3,7 +3,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 
-const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webm': 'video/webm', '.mp4': 'video/mp4', '.vtt': 'text/vtt', '.mpd': 'application/dash+xml', '.m3u8': 'application/vnd.apple.mpegurl' };
+const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webm': 'video/webm', '.mp4': 'video/mp4', '.vtt': 'text/vtt', '.mpd': 'application/dash+xml', '.m3u8': 'application/vnd.apple.mpegurl' };
 const [folder = 'storybook-static', port = '6007'] = process.argv.slice(2);
 const base = resolve(folder);
 

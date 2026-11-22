@@ -1,7 +1,6 @@
 import { cn } from "@heroui/react"
 import { isValidElement, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { OverlayOpenState } from "../../overlayScope.js"
 import { Drawer } from "../Drawer/index.js"
 import { Rail } from "../Rail/index.js"
@@ -56,7 +55,7 @@ export type WorkspaceShellNavigationDrawer = OverlayOpenState & {
 /** The actual Drawer trigger owns activation, expanded state and focus restoration without a caller callback. */
 const WorkspaceNavigationDrawer = ({ openLabel, source, content, rowTitle, ...drawerProps }: WorkspaceShellNavigationDrawer) => (
     <div className={workspaceShellOpenerClassName} data-grammar-workspace-opener="true">
-        <Drawer {...drawerProps} placement="left" trigger={<IconButton label={openLabel} source={source} intent="neutral" />}>{content}</Drawer>
+        <Drawer {...drawerProps} placement="left" trigger={<IconButton label={openLabel} source={source} variant="border" />}>{content}</Drawer>
         {rowTitle === undefined ? null : <span className="starci-core-workspace-shell-opener-title" data-grammar-workspace-opener-title="true">{rowTitle}</span>}
     </div>
 )
@@ -119,9 +118,9 @@ export const WorkspaceShell = (props: WorkspaceShellProps) => {
 
     return <div className={workspaceShellClassName} data-contract="FE-APP-SHELL-1" data-grammar-workspace-viewport={props.viewport ?? "flow"} data-grammar-workspace-floating={hasFloatingLayer ? "present" : "absent"} data-grammar-workspace-shell="true" data-component="WorkspaceShell" data-tier="frame">
         {hasHeader ? (resolveWorkspaceHeaderLandmark(props.header, props.headerLandmark) === "slot"
-            ? <div className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="slot"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></div>
-            : <header className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="shell"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></header>) : null}
-        {hasCompactHeader ? <div className={cn(workspaceShellCompactHeaderClassName, hasSlotOpener ? workspaceShellOpenerClassName : undefined)} data-grammar-workspace-compact-header="true" data-grammar-workspace-opener={hasSlotOpener ? "true" : undefined}><ButtonPlacementProvider placement="chrome" navbar>{props.compactHeader}{drawerSpec === undefined ? null : <WorkspaceNavigationDrawer {...drawerSpec} />}</ButtonPlacementProvider></div> : null}
+            ? <div className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="slot"><SurfaceNesting>{props.header}</SurfaceNesting></div>
+            : <header className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="shell"><SurfaceNesting>{props.header}</SurfaceNesting></header>) : null}
+        {hasCompactHeader ? <div className={cn(workspaceShellCompactHeaderClassName, hasSlotOpener ? workspaceShellOpenerClassName : undefined)} data-grammar-workspace-compact-header="true" data-grammar-workspace-opener={hasSlotOpener ? "true" : undefined}>{props.compactHeader}{drawerSpec === undefined ? null : <WorkspaceNavigationDrawer {...drawerSpec} />}</div> : null}
         <div className={workspaceShellLayoutClassName} data-contract="GAP-5 MEASURE-1" data-grammar-workspace-align={props.align ?? "start"} data-grammar-workspace-navigation={hasNavigation ? "present" : "absent"} data-grammar-workspace-navigation-track={hasNavigation ? props.navigationTrack ?? (props.viewport === "fixed" ? "intrinsic" : "fixed") : undefined} data-grammar-workspace-navigation-visibility={hasNavigation ? props.navigationVisibility ?? (drawerSpec !== undefined || (hasSlotOpener && hasCompactHeader) ? "wide" : "always") : undefined} data-grammar-workspace-rail={hasRail ? "present" : "absent"} data-grammar-workspace-rail-position={railPosition} data-grammar-workspace-rail-width={hasRail ? props.railWidth ?? "standard" : undefined}>
             {hasNavigation ? <nav aria-label={props.navigationLabel} className={workspaceShellNavigationClassName} data-grammar-workspace-navigation-region="true">{props.navigation}</nav> : null}
             {railPosition === "leading" ? rail : null}{leadingRule}{primary}{railPosition === "trailing" ? rail : null}

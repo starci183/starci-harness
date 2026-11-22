@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.55.0 - 2026-11-22
+
+- Changed (`navbar-control-size`, with Grammar 0.55.0's two round-mark sizes): an `AvatarButton` with no `size` or `size="md"` (40px) has the bar's control height; its `control` size is deleted.
+- Changed (`no-icon-size-class`, wording only): the message names the two icon sizes, 24px before 14px text (`heading`, `leading`) and 20px in a chip or badge and before 12px text (`chip`).
+- Added: `no-typed-arrow` (`FE_NO_TYPED_ARROW`, BUTTON-ARROW case-3, error). Owner 2026-11-22: "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar". In product source, an arrow character (U+2190-U+21FF, U+2794-U+27BF, U+27F0-U+27FF, or ASCII `->`) in ANY rendered text is refused: JSX text, a string or template literal child, the branches of a conditional, and a string attribute that is rendered text (`label`, `title`, `aria-label`, ...). i18n JSON is not read (an accepted gap). Enabled at error in the published `recommended` set and `coreGrammarConfig` (owner 2026-11-22: "duyệt hết").
+- Changed: `button-arrow` keeps the Button's own law (a `›` or `»` in its label, an arrow icon as `endContent`, `endArrow` with a start mark); the typed arrow characters moved to `no-typed-arrow`.
+- No rule changed: versioned with @starci/grammar 0.55.0 (the Alert's final soft-pair look).
+- Added: `site-type-role` (SITE-TYPE-ROLES, `FE_SITE_TYPE_ROLE`), at error. Outside the public site it reports `<Text role>` and the class `starci-type-<role>` of the site group (display.hero, display.section, display.figure, lead, title.card). No hfs slot marks the site yet, and the proposed one is `fe.site`. Until it exists, a file is the site when `classify` places it as a `Site…` or `Marketing…` owner of fe.components or fe.feature, a route under `(site)` or `(marketing)`, or a `site…` capability of fe.modules (`src/lib/site-scope.ts`).
+- Changed: `same-line-size` gives each site role its own step, and `table-cell-type` reads a site role in a cell or row as a heading drawn in a list. Versioned with @starci/grammar 0.55.0.
+
 ## 0.54.1 - 2026-11-21
 
 - No rule changed: versioned with @starci/grammar 0.54.1 (the Switch track is its press target).
@@ -613,6 +623,7 @@
 
 ## Unreleased
 
+- Added: `avatar-row-uses-group` (DNA-COMMON-AVATAR-ROW-GROUP, `FE_AVATAR_ROW_USES_GROUP`, error). Owner 2026-11-22: "với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép tụi này render sáng tạo nhỉ". In product source, two or more Grammar `Avatar` siblings, or an `Avatar` returned from a `.map()` callback, with no `AvatarGroup` among its JSX ancestors is an error; the message points to `<AvatarGroup items max>`. A single `Avatar`, an `AvatarButton`, an `Avatar` inside an `AvatarGroup` and Grammar's own `AvatarGroup` (not product source) pass. Versioned with @starci/grammar 0.55.0.
 ## 0.21.5 - 2026-11-02
 
 - Changed: requires canon FE 9.9.5 and follows the HFS 5.0.1 canon-pin cohort; the Grammar component runtime stays at 0.21.3.

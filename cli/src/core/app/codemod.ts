@@ -5,7 +5,7 @@ import { FORWARDED, runHfs } from "./hfs.js"
  * `starci app codemod`: the app's migrations, run in-process in the app by @starci/hfs. A Grammar codemod is named after the Grammar
  * version that needs it (`v0540` for 0.54.0) and loaded from the Grammar the app installed: `starci app codemod --list`, `starci app
  * codemod v0540 [--execute]`, `starci app codemod --from <installed> --to <target> [--execute]`; the harness's own migrations keep their
- * names (`button-intent`, `spacing-roles`, ...). Dry until --execute; a case left for a person is marked and listed.
+ * names (`spacing-roles`, `theme-tokens`, ...). Dry until --execute; a case left for a person is marked and listed.
  */
 export const appCodemodVerb = defineVerb({
     path: ["app", "codemod"],

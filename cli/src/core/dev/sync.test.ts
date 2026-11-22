@@ -14,7 +14,7 @@ import { ASIDE, installPlaces, realInstallFs } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { parseStackStatus, stopTargets } from "./stack-stop.js"
 import type { StackProcesses, StackStop } from "./stack-stop.js"
-import { changedSides, devSync, overlayFiles, overlayLine, overlayOf, processesFor, summaryLine } from "./sync.js"
+import { changedSides, devSync, overlayFiles, overlayLine, overlayOf, processesFor, summaryLine, syncLocal } from "./sync.js"
 import type { DevSyncDeps, DevSyncRequest } from "./sync.js"
 
 const PROCESSES = { be: ["api"], fe: ["web"] }
@@ -119,6 +119,46 @@ void test("a tracked change that is no overlay's, and a checkout off dev, are re
     gitIn(checkout, "checkout", "--", "package.json")
     gitIn(checkout, "switch", "-q", "-c", "feature")
     await assert.rejects(devSync(request(checkout)), (error: unknown) => error instanceof Error && "code" in error && error.code === "DEV_SYNC_NOT_DEV")
+})
+
+void test("a checkout detached at origin/dev, where the lander leaves it, syncs and ends on dev tracking origin/dev", async (t) => {
+    const { checkout } = scratch(t)
+    const at = gitIn(checkout, "rev-parse", "HEAD")
+    gitIn(checkout, "checkout", "-q", "--detach", "origin/dev")
+    gitIn(checkout, "branch", "-q", "-D", "dev")
+    const dry = await devSync(request(checkout))
+    assert.match(dry.message, /would put .* back on dev at origin\/dev/u)
+    assert.equal(gitIn(checkout, "branch", "--show-current"), "", "a dry run leaves it detached")
+    await devSync(request(checkout, { execute: true }))
+    assert.equal(gitIn(checkout, "branch", "--show-current"), "dev")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), at)
+    assert.equal(gitIn(checkout, "rev-parse", "--abbrev-ref", "dev@{upstream}"), "origin/dev")
+})
+
+void test("a checkout detached behind origin/dev fast-forwards onto dev", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    gitIn(checkout, "checkout", "-q", "--detach", "HEAD")
+    writeFileSync(join(pusher, "README.md"), "x\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "docs")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const target = gitIn(pusher, "rev-parse", "HEAD")
+    const done = await devSync(request(checkout, { execute: true }))
+    assert.equal(done.data.commits, 1)
+    assert.equal(gitIn(checkout, "branch", "--show-current"), "dev")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), target)
+})
+
+void test("a checkout detached on a commit origin/dev does not hold is refused, and nothing moves", async (t) => {
+    const { checkout } = scratch(t)
+    gitIn(checkout, "checkout", "-q", "--detach", "HEAD")
+    writeFileSync(join(checkout, "other.txt"), "x\n")
+    gitIn(checkout, "add", ".")
+    gitIn(checkout, "commit", "-q", "-m", "unrelated")
+    const head = gitIn(checkout, "rev-parse", "HEAD")
+    await assert.rejects(devSync(request(checkout, { execute: true })), (error: unknown) => error instanceof Error && "code" in error && error.code === "DEV_SYNC_NOT_DEV" && error.message.includes("detached HEAD"))
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), head)
+    assert.equal(gitIn(checkout, "branch", "--show-current"), "")
 })
 
 void test("consecutive landed batches give one sync, once the debounce window passed since the last of them", () => {
@@ -345,4 +385,10 @@ void test("the stack's processes are read from the pinned CLI's status envelope,
     const targets = stopTargets({ web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z" }, api: { pid: 20, startedAt: "2026-11-21T08:00:00.000Z" }, gone: { pid: 30, startedAt: "2026-11-21T08:00:00.000Z" } }, table)
     assert.deepEqual(targets.running, ["web"], "a reused pid (20) and a gone one (30) are not the stack's")
     assert.deepEqual([...targets.pids].toSorted((left, right) => left - right), [7, 8, 9], "a child older than its parent (10) is a stranger")
+})
+
+void test("a sync with no --local keeps this machine's standing overlay (devSync.local); naming packages overrides it; an empty setting means npm", () => {
+    assert.deepEqual(syncLocal([], { local: ["grammar@0.55.0-content.4"] }), ["grammar@0.55.0-content.4"])
+    assert.deepEqual(syncLocal(["@starci/hfs@6.18.0-local.1"], { local: ["grammar@0.55.0-content.4"] }), ["@starci/hfs@6.18.0-local.1"])
+    assert.deepEqual(syncLocal([], { local: [] }), [])
 })

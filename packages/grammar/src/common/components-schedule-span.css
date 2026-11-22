@@ -10,9 +10,10 @@
     .starci-core-schedule-item { position: relative; overflow: hidden; }
     .starci-core-schedule-item[data-grammar-tone="accent"] { --starci-core-schedule-mark: var(--accent); }
     .starci-core-schedule-item[data-grammar-tone="success"] { --starci-core-schedule-mark: var(--success); }
+    .starci-core-schedule-item[data-grammar-tone="info"] { --starci-core-schedule-mark: var(--info); }
     .starci-core-schedule-item[data-grammar-tone="warning"] { --starci-core-schedule-mark: var(--warning); }
     .starci-core-schedule-item[data-grammar-tone="danger"] { --starci-core-schedule-mark: var(--danger); }
-    .starci-core-schedule-item:not([data-grammar-tone="accent"], [data-grammar-tone="success"], [data-grammar-tone="warning"], [data-grammar-tone="danger"]) { --starci-core-schedule-mark: var(--muted); }
+    .starci-core-schedule-item:not([data-grammar-tone="accent"], [data-grammar-tone="info"], [data-grammar-tone="success"], [data-grammar-tone="warning"], [data-grammar-tone="danger"]) { --starci-core-schedule-mark: var(--muted); }
 
     .starci-core-schedule-item-title,
     .starci-core-schedule-item-meta,

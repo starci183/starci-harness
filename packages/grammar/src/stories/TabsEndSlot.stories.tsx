@@ -25,7 +25,7 @@ const Strip = ({ kind, items = regions, id }: { readonly kind: 'views' | 'filter
       selectedKey={selectedKey}
       onSelect={setSelectedKey}
       items={items}
-      end={<G.Button intent="alternative" size="sm">Add region</G.Button>}
+      end={<G.Button variant="border" size="sm">Add region</G.Button>}
     />
   );
 };

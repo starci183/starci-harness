@@ -20,8 +20,8 @@ type SingleCommandBar = PinnedActionBarBase & {
 
 /**
  * A summary with up to two actions. `summary` is text or a node (a selection count, a total, unsaved changes);
- * `dismiss` is the secondary action (a `Button` with `intent="dismiss"`) and `commit` the primary one
- * (a `Button` with `intent="commit"`). The dismiss action sits before the commit action.
+ * `dismiss` is the secondary action (a `Button` with `variant="border"`) and `commit` the primary one
+ * (a `Button` with `variant="primary"`). The dismiss action sits before the commit action.
  */
 type SummaryBar = PinnedActionBarBase & {
     readonly children?: never

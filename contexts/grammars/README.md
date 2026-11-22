@@ -18,7 +18,7 @@ what a gate measures.
 | Layer | Who decides | What it decides | Owner | Proof |
 |---|---|---|---|---|
 | 1. Grammar and gates | the package, its types and lint, and the DNA gate | constraints: what holds on every render of the grammar, whatever was chosen | `@starci/grammar` code; the laws and their measures in [contract.yaml](contract.yaml) `mustKeep` | the compiler and lint refuse a wrong tree; `starci dna check` measures the rendered stories; render baselines detect change; pass or fail, no judgement ([who holds each proof](../ui/proof.md#who-holds-each-proof)) |
-| 2. The choice | the LLM drawing or implementing the screen | which component, which variant-deciding fact (intent, step, placement-free facts), which spacing step | the Choose sections of [ui/components](../ui/components/README.md), [ui/scale](../ui/scale.md) and [ui/presentation](../ui/presentation.md) | the record cites the choice anchor and the row it took |
+| 2. The choice | the LLM drawing or implementing the screen | which component, which Button look (primary, border or danger), which spacing step | the Choose sections of [ui/components](../ui/components/README.md), [ui/scale](../ui/scale.md) and [ui/presentation](../ui/presentation.md) | the record cites the choice anchor and the row it took |
 | 3. Taste | a reviewer of a different model than the author | whether the whole reads well: hierarchy, balance, density, voice | [ui/proof](../ui/proof.md) scored lenses | the review verdict; a rejection names the rule that was missing |
 
 **Layer 1 is constraints, never judgement.** A DNA entry is one sentence of law plus one measurement on the DOM
@@ -32,8 +32,8 @@ same size (`DNA-COMMON-BADGE-DOT-CHIP-PARITY`); no surface sits inside a surface
 
 **Layer 2 is a choice, read from a table and cited.** The LLM reads the Choose table that owns the decision,
 takes the row whose condition the spec's facts meet, and cites it as `<anchor>:<row>`. Examples: page tabs or
-region tabs (`tabs.choose.level`); which intent a command has, commit, alternative, dismiss, neutral or
-destructive (`button.choose.intent`); a decision with its way out or a peer `ButtonGroup`
+region tabs (`tabs.choose.level`); which look a command has, primary, border or
+danger (`button.choose.variant`); a decision with its way out or peer commands
 (`action-group.choose.kind`); which gap a relation takes (`space.choose.gap`); which step a control takes
 (`scale.choose.step`). The grammar then renders the look the choice implies; the app never passes it. A choice
 the tables do not settle is a gap the owner closes with a rule, never an improvisation.
@@ -43,7 +43,7 @@ the tables do not settle is a gap the owner closes with a rule, never an improvi
 reviewer names the choice row or the law it would add.
 
 **A rule moves down when it becomes measurable.** A choice rule whose outcome can be read off the DOM becomes a
-DNA entry and its Choose row cites the id: "one commit per view" is a choice when the LLM assigns intents, and a
+DNA entry and its Choose row cites the id: "one primary per view" is a choice when the LLM assigns looks, and a
 constraint once counted (`DNA-COMMON-ONE-ACCENT-FILL`). A taste verdict that recurs becomes a choice row or a threshold. Movement is only
 downward, and each move deletes the sentence it replaces (CONTRIB-6). Every Choose row says whether it is
 measured (a DNA id), measurable (a candidate) or a judgement.
@@ -54,7 +54,7 @@ measured (a DNA id), measurable (a candidate) or a judgement.
 HeroUI (anatomy, behaviour, a11y, default paint)                     ../vendor/
    │ wrapped once
    ▼
-Common   renderers, anatomy, spacing, size ladder, intent map, root and portal mechanics; no colour
+Common   renderers, anatomy, spacing, size ladder, the three Button looks, root and portal mechanics; no colour
    │ every grammar implements contract.yaml over Common
    ├── core        strict HeroUI parity: a default palette (theme.css), a few scoped rules
    └── offset-pop  custom parity: a default palette (theme.css) plus its own component sheets
@@ -105,7 +105,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |
-| Button variant | contract `intent`; resolver `src/core/buttonIntent.tsx` | `intent`, and `step` for a destructive command |
+| Button variant | contract `buttonVariant`; `BUTTON_VENDOR_VARIANT` in `src/core/leaf/Button/index.tsx` | `variant`: primary, border (default) or danger |
 | Placement, bar control size | the composing Grammar component | nothing |
 | Field, Tabs and Select look | the surface they stand on, read from context | nothing |
 | Surface nesting | none: a surface never stands inside another, refused by the types, lint and a development throw | nothing |

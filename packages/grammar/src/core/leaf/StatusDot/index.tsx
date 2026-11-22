@@ -8,10 +8,10 @@ import type { NoChildren } from "../../tier.js"
 import type { CustomTone } from "../../../common/tones.js"
 import { useCustomTone } from "../../useCustomTone.js"
 
-export type StatusDotBuiltInTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type StatusDotBuiltInTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
 /** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
 export type StatusDotTone = StatusDotBuiltInTone | CustomTone
-const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger"]
+const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "info", "success", "warning", "danger"]
 /** The same three sizes as HeroUI Chip, which the dot's hit area follows. */
 export type StatusDotSize = "sm" | "md" | "lg"
 

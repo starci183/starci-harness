@@ -19,7 +19,6 @@ export const PricingGrid: Story = {
       <G.Stepper
         label="Create a workspace"
         currentStepId="plan"
-        completeMarker="check"
         steps={[
           { id: 'business', label: 'Business' },
           { id: 'channels', label: 'Channels' },
@@ -39,12 +38,12 @@ export const PricingGrid: Story = {
                 <G.Heading level={2}>{plan.name}</G.Heading>
                 {'popular' in plan ? <G.Badge tone="accent">Most popular</G.Badge> : null}
               </G.Cluster>
-              <G.Text size="figure">{plan.price}</G.Text>
-              <G.Button intent={'popular' in plan ? 'commit' : 'neutral'} width="fill">{`Choose ${plan.name}`}</G.Button>
+              <G.Text role="figure">{plan.price}</G.Text>
+              <G.Button variant={'popular' in plan ? 'primary' : 'border'} width="fill">{`Choose ${plan.name}`}</G.Button>
             </G.Stack>
             <G.Stack gap="row">
               {plan.features.map((feature) => (
-                <G.Text key={feature} size="sm" startContent={<G.Icon source={CheckCircleIcon} usage="leading" />}>{feature}</G.Text>
+                <G.Text key={feature} role="body" startContent={<G.Icon source={CheckCircleIcon} usage="leading" />}>{feature}</G.Text>
               ))}
             </G.Stack>
           </G.SurfaceCard>

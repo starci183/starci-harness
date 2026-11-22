@@ -116,14 +116,14 @@ export const BookingCardFill: Story = {
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--grammar-section-gap, 1.5rem)", inlineSize: "100%" }}>
                     <G.Calendar label="Appointment date" previousLabel="Previous month" nextLabel="Next month" width="fill" defaultValue={parseDate("2026-11-05")} />
                     <G.ChoiceChips label="Repeat on" selectionMode="multiple" options={weekdays} defaultValues={["Mon", "Wed"]} empty={null} />
-                    <G.Button intent="commit" width="fill-narrow">Book this time</G.Button>
+                    <G.Button variant="primary" width="fill-narrow">Book this time</G.Button>
                 </div>
             </State>
             <State label="The same, loading" direction="column">
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--grammar-section-gap, 1.5rem)", inlineSize: "100%" }}>
                     <G.Calendar label="Appointment date" previousLabel="Previous month" nextLabel="Next month" width="fill" isLoading />
                     <G.ChoiceChips label="Repeat on" selectionMode="multiple" options={weekdays} isLoading empty={null} />
-                    <G.Button intent="commit" width="fill-narrow" isLoading>Book this time</G.Button>
+                    <G.Button variant="primary" width="fill-narrow" isLoading>Book this time</G.Button>
                 </div>
             </State>
         </Matrix>

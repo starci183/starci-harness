@@ -3,7 +3,6 @@
 import { withRegionLoading } from "../../regionScope.js"
 import { TextArea as HeroTextArea, TextField as HeroTextField } from "@heroui/react"
 import { useEffect, useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from "react"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import type { GlyphName } from "../../leaf/Icon/glyphs.js"
@@ -286,16 +285,16 @@ const TextareaControl = ({
                 <div className="starci-core-textarea-box" {...(startAction === undefined ? {} : { "data-grammar-textarea-start": "true" })}>
                     {startAction === undefined ? null : (
                         <span className="starci-core-textarea-start" data-grammar-textarea-start-action="true">
-                            <ButtonPlacementProvider placement="chrome">
+                            <>
                                 <IconButton
                                     {...(startAction.glyph === undefined ? { source: startAction.source } : { glyph: startAction.glyph })}
-                                    intent="neutral"
+                                    variant="border"
                                     size="sm"
                                     label={startAction.label}
                                     onPress={startAction.onPress}
                                     {...(startAction.isDisabled === undefined ? {} : { isDisabled: startAction.isDisabled })}
                                 />
-                            </ButtonPlacementProvider>
+                            </>
                         </span>
                     )}
                     <HeroTextArea
@@ -352,7 +351,7 @@ const TextareaControl = ({
                     <span className="starci-core-textarea-send" data-grammar-composer-send="true">
                         <span className="starci-core-textarea-send-wide">
                             <Button
-                                intent="commit"
+                                variant="primary"
                                 startGlyph="send"
                                 onPress={send.onPress}
                                 {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
@@ -362,7 +361,7 @@ const TextareaControl = ({
                         <span className="starci-core-textarea-send-compact">
                             <IconButton
                                 glyph="send"
-                                intent="commit"
+                                variant="primary"
                                 label={send.label}
                                 onPress={send.onPress}
                                 {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}

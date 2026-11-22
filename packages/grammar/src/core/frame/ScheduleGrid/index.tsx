@@ -10,7 +10,7 @@ import { useIsLoading } from "../../regionScope.js"
 import { ScheduleOverlay, useScheduleOverlay } from "./geometry.js"
 import { columnLabelOf, dependenciesOf, depthOf, hiddenRowIds, rangeOf, spanLanes, type SpanPlacement } from "./lanes.js"
 
-export type ScheduleTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type ScheduleTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
 
 /** One column: a day, a person, a room. */
 export type ScheduleColumn = {

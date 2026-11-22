@@ -17,3 +17,12 @@ test('a malformed publishes is refused in the words of the declaration', () => {
     assert.match(declarationShapeProblems(declaration({ publishes: bad }), ['be', 'fe']).join('\n'), /publishes must be a non-empty unique list of workspace package folders/);
   }
 });
+
+test('deps.devAllowsLocalRegistry is true or left out, and deps takes no other key', () => {
+  const problems = (deps: unknown) => declarationShapeProblems(declaration({ deps }), ['be', 'fe']).join(' | ');
+  assert.equal(problems({ devAllowsLocalRegistry: true }), '');
+  assert.equal(problems({}), '');
+  assert.match(problems({ devAllowsLocalRegistry: false }), /deps.devAllowsLocalRegistry is `true`/);
+  assert.match(problems({ allowLocal: true }), /deps has unknown key allowLocal/);
+  assert.match(problems(true), /deps must be an object/);
+});

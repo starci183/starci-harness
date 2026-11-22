@@ -2,12 +2,12 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { useId, type DragEvent, type KeyboardEvent } from "react"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { staticRowClassName } from "../../classNames.js"
 import { LeadingNumber } from "../../LeadingNumber.js"
 import { StateMark } from "../../StateMark.js"
 import { treatmentFor } from "../../state.js"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
+import { AgentName } from "../../leaf/AgentName/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Badge } from "../../leaf/Badge/index.js"
 import { Button } from "../../leaf/Button/index.js"
@@ -21,8 +21,9 @@ import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
 
-/** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column. */
+/** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column of their own. */
 const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
+/** The visible label over a diff row's value (0.55.0) when the app passes no `diffLabel`: an app localises it ("Đang dùng", "Sau khi duyệt"). */
 const DIFF_LABELS = { added: "Added", removed: "Removed", changed: "Changed" } as const
 
 export type ListRowProps = NoChildren & {
@@ -38,8 +39,8 @@ export type ListRowProps = NoChildren & {
 }
 
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
-    if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "sm"} isDecorative />
-    if (leading.icon !== undefined) return <IconTile source={leading.icon} size={leading.size ?? "sm"} />
+    if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "md"} isDecorative />
+    if (leading.icon !== undefined) return leading.state === undefined ? <IconTile source={leading.icon} /> : <IconTile source={leading.icon} state={leading.state} />
     return <LeadingNumber position={leading.position} {...(leading.format === undefined ? {} : { format: leading.format })} />
 }
 
@@ -55,17 +56,11 @@ const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
 )
 
 const RowAction = ({ action }: { readonly action: ItemAction }) => {
-    const intent = action.intent === "destructive"
-        ? { intent: "destructive" as const, step: "entry" as const }
-        : { intent: action.intent ?? "neutral" }
+    const look = { variant: action.variant ?? "border" } as const
     const arrow = action.endArrow === true ? { endArrow: true as const } : {}
-    const button = action.href === undefined
-        ? <Button size="sm" {...intent} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" {...intent} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
-    // The region's one primary stands in the decision placement (the filled step), not the item one (the outlined pill).
-    return action.isPrimary === true && action.intent === "commit"
-        ? <ButtonPlacementProvider placement="decision">{button}</ButtonPlacementProvider>
-        : button
+    return action.href === undefined
+        ? <Button size="sm" {...look} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" {...look} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
 }
 
 /**
@@ -118,13 +113,15 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
                 {hasLeading || row.diff !== undefined ? (
-                    <span className="starci-core-list-row-leading" data-grammar-leading-size={row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "sm" : "sm"}>
+                    <span className="starci-core-list-row-leading" data-grammar-leading-size={row.leading !== undefined && "state" in row.leading && row.leading.state !== undefined ? "md" : row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "md" : "md"}>
                         {/* A diff row loads with the same gutter column (0.37.29): the mark's box is kept, its glyph not shown, so the loading row is the loaded row's box. */}
                         {row.diff === undefined ? null : <span className="starci-core-list-row-diff" data-grammar-diff-mark={row.diff} aria-hidden="true">{DIFF_GLYPHS[row.diff]}</span>}
                         {!hasLeading ? null : row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
                     </span>
                 ) : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
+                    {/* The diff label's line loads as a skeleton line of the label's own type, so the loading block is the loaded block's box (0.55.0). */}
+                    {row.diff === undefined ? null : <span className="starci-core-list-row-diff-label"><Skeleton shape="text" /></span>}
                     <span className="starci-core-list-row-title"><span className="starci-core-list-row-name"><Skeleton shape="text" /></span></span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
                     {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change"><Skeleton shape="text" /></span>}
@@ -148,7 +145,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
         )
     }
     return (
-        <ButtonPlacementProvider placement="item">
+        <>
             <li
                 className={`${staticRowClassName} starci-core-list-row`}
                 data-grammar-row="true"
@@ -186,20 +183,27 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                     </span>
                 )}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
+                    {/* The diff label is visible text over the value (0.55.0), read once before it; it is never struck through. */}
+                    {row.diff === undefined ? null : <span className="starci-core-list-row-diff-label" data-grammar-diff-label="true">{row.diffLabel ?? DIFF_LABELS[row.diff]}</span>}
                     <span className="starci-core-list-row-title">
-                        {row.diff === undefined ? null : <span className="starci-core-visually-hidden" data-grammar-diff-label="true">{`${row.diffLabel ?? DIFF_LABELS[row.diff]}: `}</span>}
                         {row.emphasis !== "unread" || row.unreadLabel === undefined ? null : <span className="starci-core-visually-hidden" data-grammar-unread-label="true">{`${row.unreadLabel}: `}</span>}
-                        <span className="starci-core-list-row-name">
-                            {row.href !== undefined
-                                ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
-                                : row.onPress === undefined
-                                    ? row.title
-                                    : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
-                        </span>
+                        <AgentName
+                            isAgent={row.isAgent === true}
+                            {...(row.agentLabel === undefined ? {} : { agentLabel: row.agentLabel })}
+                            name={(
+                                <span className="starci-core-list-row-name">
+                                    {row.href !== undefined
+                                        ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
+                                        : row.onPress === undefined
+                                            ? row.title
+                                            : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
+                                </span>
+                            )}
+                        />
                         {row.emphasis === "unread" ? <span className="starci-core-list-row-unread" data-grammar-unread-dot="true" aria-hidden="true" /> : null}
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
-                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{`${row.change.from} → ${row.change.to}`}</span>}
+                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{row.change.from} <Icon source={glyphSource("arrow-end")} usage="chip" /> {row.change.to}</span>}
                 </span>
                 {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true">{row.value}</span>}
                 {hasTrail ? (
@@ -222,14 +226,14 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                             <DropdownMenu
                                 placement="bottom end"
                                 entries={row.menu.entries}
-                                trigger={<IconButton label={row.menu.label} source={EllipsisHorizontalIcon} intent="neutral" />}
+                                trigger={<IconButton label={row.menu.label} source={EllipsisHorizontalIcon} variant="border" />}
                             />
                         )}
                     </span>
                 ) : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
             </li>
-        </ButtonPlacementProvider>
+        </>
     )
 }
 

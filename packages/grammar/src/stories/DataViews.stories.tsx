@@ -39,7 +39,7 @@ export const EmptyNoticeActionIntent: Story = {
     render: () => (
         <Matrix>
             <State label="commit (default): the region's one primary" direction="column"><G.EmptyNotice message="No documents yet" description="Add a document so the agent can read it." actionLabel="Add document" onAction={noop} /></State>
-            <State label="neutral: a rail on a page whose primary is in its header" direction="column"><G.EmptyNotice message="No documents from Google Drive yet" description="Turn on Drive and pick a folder for the assistant to read." actionLabel="Turn on Drive" actionIntent="neutral" onAction={noop} /></State>
+            <State label="border: a rail on a page whose primary is in its header" direction="column"><G.EmptyNotice message="No documents from Google Drive yet" description="Turn on Drive and pick a folder for the assistant to read." actionLabel="Turn on Drive" actionVariant="border" onAction={noop} /></State>
         </Matrix>
     ),
 }
@@ -65,47 +65,6 @@ export const ScheduleGridStates: Story = {
             <State label="Loading (headings real, entries as geometry)" direction="column"><G.ScheduleGrid label="Appointments" columns={days} rows={hours} items={[]} empty={emptyLine} isLoading /></State>
             <State label="Empty (the grid stays, the answer under it)" direction="column"><G.ScheduleGrid label="Appointments" columns={days} rows={hours} items={[]} empty={<G.EmptyNotice message="No appointments this week" actionLabel="Add an appointment" onAction={noop} />} /></State>
             <State label="Error" direction="column"><G.ScheduleGrid label="Appointments" columns={days} rows={hours} items={entries} empty={emptyLine} error={failure} /></State>
-        </Matrix>
-    ),
-}
-
-const bars: ReadonlyArray<G.BarChartBar> = [
-    { id: "mon", label: "Mon", value: 168 }, { id: "tue", label: "Tue", value: 120 }, { id: "wed", label: "Wed", value: 236 },
-    { id: "thu", label: "Thu", value: 198 }, { id: "fri", label: "Fri", value: 214 }, { id: "sat", label: "Sat", value: 158 }, { id: "sun", label: "Sun", value: 142 },
-]
-
-export const BarChartStates: Story = {
-    render: () => (
-        <Matrix maxWidth={520}>
-            <State label="Ready" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} /></State>
-            <State label="Loading (labels kept)" direction="column"><G.BarChart label="Engagement per day" bars={bars.map((bar) => ({ ...bar, value: 0 }))} empty={emptyLine} isLoading /></State>
-            <State label="Empty" direction="column"><G.BarChart label="Engagement per day" bars={[]} empty={emptyLine} /></State>
-            <State label="Error" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} error={failure} /></State>
-        </Matrix>
-    ),
-}
-
-export const BarChartAxisAndHighlight: Story = {
-    render: () => (
-        <Matrix maxWidth={520}>
-            <State label="Value axis (max, half, 0) with light grid lines" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} valueAxis={{ format: (value) => `${Math.round(value)} k` }} /></State>
-            <State label="highlightLast (the latest bar in the accent, the others soft)" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} highlightLast /></State>
-            <State label="Both" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} valueAxis={{ format: (value) => `${Math.round(value)} k` }} highlightLast /></State>
-            <State label="Axis, loading (labels kept)" direction="column"><G.BarChart label="Engagement per day" bars={bars.map((bar) => ({ ...bar, value: 0 }))} empty={emptyLine} valueAxis={{ format: String }} highlightLast isLoading /></State>
-        </Matrix>
-    ),
-}
-
-const trendValues: readonly number[] = [12, 14, 13, 18, 17, 22, 21, 27, 25, 31]
-
-export const SparklineStates: Story = {
-    render: () => (
-        <Matrix maxWidth={360}>
-            <State label="Ready"><G.Sparkline label="Revenue, last 10 weeks" values={trendValues} /></State>
-            <State label="Falling"><G.Sparkline label="Churn, last 10 weeks" values={[...trendValues].reverse()} /></State>
-            <State label="Flat series"><G.Sparkline label="Steady" values={[5, 5, 5, 5]} /></State>
-            <State label="No series (a flat baseline)"><G.Sparkline label="No data yet" values={[]} /></State>
-            <State label="Loading (same box)"><G.Sparkline label="Revenue, last 10 weeks" values={trendValues} isLoading /></State>
         </Matrix>
     ),
 }

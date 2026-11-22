@@ -3,9 +3,11 @@
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { withRegionLoading } from "../../regionScope.js"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import { AgentName } from "../../leaf/AgentName/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { MessageActions, type MessageActionsConfig } from "../MessageActions/index.js"
 import type { NoChildren } from "../../tier.js"
+import { toneEdgeProps, type ToneEdge } from "../../toneEdge.js"
 import { DEFAULT_REACTION_LABELS, ReactionBar, ReactionPill, topReaction, useReactionBursts, type MessageReaction, type MessageReactionLabels } from "./Reactions.js"
 
 export type { MessageReaction, MessageReactionLabels } from "./Reactions.js"
@@ -47,15 +49,17 @@ type MessageBubbleMessage = {
     /** The message body. Plain text keeps its line breaks. */
     readonly body: ReactNode
     readonly side?: MessageBubbleSide
-    /** The face of an outgoing bubble; the brand fill when omitted. Never set on an incoming bubble. */
-    readonly tone?: MessageBubbleTone
     /** Who wrote it, shown above the body. Omit on consecutive messages from the same author. */
     readonly author?: ReactNode
+    /** The author is an AI agent: a small neutral "AI" Chip follows the name on the sender line (`AgentName`). Only with `author`; the app never places the Chip by hand. */
+    readonly isAgent?: boolean
+    /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
+    readonly agentLabel?: string
     /** An `Avatar` or `IconTile` beside the bubble. Omit (or pass the same width of nothing) on grouped follow-ups. */
     readonly avatar?: ReactNode
     /** The time or delivery state, muted after the author. */
     readonly meta?: ReactNode
-    /** A short marker beside the author, e.g. a neutral `Badge` "AI". */
+    /** A short marker beside the author (a delivery or role mark). An AI sender is `isAgent`, never a hand-placed "AI" `Badge`. */
     readonly status?: ReactNode
     /**
      * Message actions (copy, reply, open): `IconButton`s (each with a `Tooltip`) drawn as a small floating toolbar beside the bubble on a
@@ -68,11 +72,6 @@ type MessageBubbleMessage = {
     readonly actionsPlacement?: MessageBubbleActionsPlacement
     /** The bubble's widest reach; `standard` when omitted. */
     readonly measure?: MessageBubbleMeasure
-    /**
-     * `text` (default): the body is words in the bubble face. `card`: the body is a structured card (what `MessageCard` renders): the face
-     * is the surface card, its own padding and line breaks, capped at the same measure as a text bubble with the avatar at the start.
-     */
-    readonly content?: "text" | "card"
     /** Content under the body that is not part of the message text: an attachment, an approval card, a reaction row. */
     readonly footer?: ReactNode
     /** Draws the focus ring around the bubble, e.g. when a link jumps to this message. */
@@ -91,8 +90,25 @@ type MessageBubbleMessage = {
     readonly onShare?: () => void
     /** The words of the toolbar and the pill; Vietnamese when omitted. */
     readonly reactionLabels?: MessageReactionLabels
+    /**
+     * The hover rail beside the bubble (`MessageActions`, owner 2026-11-21): react, reply and more as ghost icon buttons on the side away from the avatar,
+     * vertically centred on the bubble, shown on hover, on a long press or on keyboard focus inside the message. The bubble gives it its `side`; `reactions`
+     * still draws the chosen emoji as the chip on the bubble's bottom corner. Use it instead of `onReact`/`onReply`/`onShare` (the older tray), not with them.
+     */
+    readonly messageActions?: MessageActionsConfig
     readonly hasAvatar?: never
-}
+} & MessageBubbleFace
+
+/**
+ * `content="text"` (default): the body is words in the bubble face, and `tone` is the face of an outgoing bubble (the brand fill when omitted; never
+ * set on an incoming bubble). `content="card"`: the body is a structured card (what `MessageCard` renders): the face is the surface card, its own
+ * padding and line breaks, capped at the same measure as a text bubble with the avatar at the start; its `tone` draws the card face's 1px edge in
+ * the tone's `--<tone>-border` (0.55.0: an approval card that waits is `tone="warning"`), the fill unchanged, by the same rule as `SurfaceCard tone`.
+ * Never wrap a SurfaceCard in the bubble for that: the layout collapses and the edges double.
+ */
+type MessageBubbleFace =
+    | { readonly content?: "text"; readonly tone?: MessageBubbleTone }
+    | { readonly content: "card"; readonly tone?: ToneEdge }
 
 /**
  * One unresolved message (knowledge STATE-8): with a `side`, the bubble face on that side with two Skeleton text lines in the
@@ -143,7 +159,7 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
         data-grammar-bubble-footer="false"
         data-grammar-skeleton="true"
     >
-        {hasAvatar ? <div className="starci-core-message-bubble-avatar"><Skeleton shape="circle" size="sm" /></div> : null}
+        {hasAvatar ? <div className="starci-core-message-bubble-avatar"><Skeleton shape="circle" size="md" /></div> : null}
         <div className="starci-core-message-bubble-stack">
             <div className="starci-core-message-bubble-body starci-core-message-bubble-skeleton-body"><Skeleton shape="text" lines={lines} /></div>
         </div>
@@ -152,8 +168,11 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
 
 /** One resolved message (the part that holds state: the long press, the reaction bursts). */
 const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
-    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", content = "text", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS } = props
-    const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>
+    const { body, side = "incoming", author, isAgent = false, agentLabel, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS, messageActions } = props
+    const content = props.content ?? "text"
+    const tone: MessageBubbleTone = props.content === "card" ? "brand" : props.tone ?? "brand"
+    const edge = props.content === "card" ? props.tone : undefined
+    const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar">{actions}</div>
     const hasHead = (author != null || meta != null || status != null) && (groupPosition === "single" || groupPosition === "first")
     const hasReactions = reactions !== undefined && reactions.some((reaction) => reaction.count > 0)
     const hasToolbar = onReact !== undefined || onReply !== undefined || onShare !== undefined
@@ -172,8 +191,19 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
         return () => document.removeEventListener("pointerdown", close)
     }, [isPicking])
     useEffect(() => () => { clearTimeout(press.current) }, [])
-    const react = (emoji: string) => { burst(emoji); onReact?.(emoji); setIsPicking(false) }
+    const react = (emoji: string) => { burst(emoji); (onReact ?? messageActions?.onReact)?.(emoji); setIsPicking(false) }
     const cancelPress = () => { clearTimeout(press.current) }
+    const pressable = hasTray || messageActions !== undefined
+    const bodyElement = (
+        <div
+            className="starci-core-message-bubble-body"
+            {...toneEdgeProps(edge)}
+            onPointerDown={pressable ? () => { cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
+            onPointerUp={pressable ? cancelPress : undefined}
+            onPointerCancel={pressable ? cancelPress : undefined}
+            onPointerMove={pressable ? cancelPress : undefined}
+        >{body}</div>
+    )
     const avatarVisible = groupPosition === "single" || groupPosition === "last"
     return (
         <div
@@ -201,7 +231,9 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
             <div className="starci-core-message-bubble-stack">
                 {hasHead ? (
                     <div className="starci-core-message-bubble-head">
-                        {author == null ? null : <span className="starci-core-message-bubble-author">{author}</span>}
+                        {author == null ? null : (
+                            <AgentName isAgent={isAgent} {...(agentLabel === undefined ? {} : { agentLabel })} name={<span className="starci-core-message-bubble-author">{author}</span>} />
+                        )}
                         {status}
                         {meta == null ? null : <span className="starci-core-message-bubble-meta">{meta}</span>}
                     </div>
@@ -216,13 +248,19 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
                         {hasFloatingActions ? actionsToolbar : null}
                     </div>
                 ) : null}
-                <div
-                    className="starci-core-message-bubble-body"
-                    onPointerDown={hasTray ? () => { cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
-                    onPointerUp={hasTray ? cancelPress : undefined}
-                    onPointerCancel={hasTray ? cancelPress : undefined}
-                    onPointerMove={hasTray ? cancelPress : undefined}
-                >{body}</div>
+                {messageActions === undefined ? bodyElement : (
+                    <div className="starci-core-message-bubble-line" data-grammar-message-actions-host="true">
+                        {bodyElement}
+                        <MessageActions
+                            {...messageActions}
+                            side={side}
+                            isVisible={isPicking}
+                            onReact={react}
+                            {...(messageActions.onReply === undefined ? {} : { onReply: () => { messageActions.onReply?.(); setIsPicking(false) } })}
+                            {...(messageActions.onMenuAction === undefined ? {} : { onMenuAction: (id: string) => { messageActions.onMenuAction?.(id); setIsPicking(false) } })}
+                        />
+                    </div>
+                )}
                 {hasReactions ? <ReactionPill reactions={reactions} labels={reactionLabels} onPress={() => { const emoji = topReaction(reactions); if (emoji !== undefined) react(emoji) }} /> : null}
                 {layer}
                 {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}

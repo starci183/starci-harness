@@ -162,8 +162,6 @@ export const THEME_HOOKS: readonly string[] = [
   "--starci-core-bubble-outgoing",
   "--starci-core-bubble-outgoing-border",
   "--starci-core-bubble-outgoing-foreground",
-  "--starci-core-button-danger-soft",
-  "--starci-core-button-danger-soft-border",
   "--starci-core-card-radius",
   "--starci-core-field-ring",
   "--starci-core-field-ring-width",

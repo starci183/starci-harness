@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
+import * as E from '../core/ext/recharts/index.js';
 import { BookGlyph, noop } from './fixtures.js';
 
 /**
@@ -9,6 +10,11 @@ import { BookGlyph, noop } from './fixtures.js';
  * in a `Section` with no card around it. `ObjectCard` shows the cards, `SectionFilterTable` the head, the filter row, the table and its pager, `FiguresRibbon` the figures
  * above a list and `SelectedRow` a selected table row beside a list.
  */
+/** A figure's trend chart: the ext Sparkline (core takes the drawn chart, never its numbers). */
+const trend = (label: string, values: readonly number[]) => (
+  <E.Sparkline ariaLabel={label} emptyLabel="No data yet" data={values.map((value, week) => ({ week, value }))} xKey="week" yKey="value" />
+);
+
 const meta: Meta = {
   title: 'Surfaces/White ground',
   parameters: { layout: 'padded' },
@@ -56,8 +62,8 @@ export const ObjectCard: Story = {
         emphasis="accent"
         actions={(
           <G.Cluster gap="inline">
-            <G.Button intent="commit" onPress={noop}>Approve refund</G.Button>
-            <G.Button intent="neutral" onPress={noop}>Decline</G.Button>
+            <G.Button variant="primary" onPress={noop}>Approve refund</G.Button>
+            <G.Button variant="border" onPress={noop}>Decline</G.Button>
           </G.Cluster>
         )}
       >
@@ -138,7 +144,7 @@ const InvoiceSection = () => {
       title="Invoices"
       count={42}
       fact="VND"
-      action={<G.Button intent="neutral" size="sm" onPress={noop}>Export</G.Button>}
+      action={<G.Button variant="border" size="sm" onPress={noop}>Export</G.Button>}
       caption="Amounts include 10% VAT. Updated at 10:00."
       filter={(
         <>
@@ -190,7 +196,7 @@ export const SectionFilterTable: Story = {
 /* ---------- a figures ribbon above a list ---------- */
 
 const MONTH_FIGURES: readonly G.Figure[] = [
-  { id: 'revenue', term: 'Revenue', value: '48.2M', unit: 'VND', meta: '12% vs last month', trend: 'up', trendLine: [12, 14, 13, 18, 17, 22, 21, 27, 25, 31] },
+  { id: 'revenue', term: 'Revenue', value: '48.2M', unit: 'VND', meta: '12% vs last month', trend: 'up', trendChart: trend('Revenue, last weeks', [12, 14, 13, 18, 17, 22, 21, 27, 25, 31]) },
   { id: 'orders', term: 'Orders', value: 310, meta: 'Same as last month', trend: 'flat' },
   { id: 'refunds', term: 'Refund rate', value: '4.6', unit: '%', meta: '1.2 pt vs last month', trend: 'up', trendSense: 'lower-is-better' },
   { id: 'overdue', term: 'Overdue invoices', value: 7, meta: 'Oldest 18 days' },

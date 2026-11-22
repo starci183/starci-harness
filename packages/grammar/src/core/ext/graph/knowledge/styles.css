@@ -1,0 +1,235 @@
+/*
+ * The knowledge map: the bordered panel is the shared `.starci-graph`; this adds its dot grid, bubbles, names, lines and the grouped list, from the Grammar tokens only.
+ */
+.starci-knowledge,
+.starci-knowledge [data-tone] {
+    --starci-knowledge-wash: color-mix(in oklab, var(--starci-knowledge-ink) 22%, var(--surface));
+}
+
+.starci-knowledge {
+    --starci-knowledge-ink: var(--muted);
+}
+
+.starci-knowledge [data-tone="accent"] {
+    --starci-knowledge-ink: var(--accent);
+}
+
+.starci-knowledge [data-tone="info"] {
+    --starci-knowledge-ink: var(--starci-graph-info, var(--info));
+}
+
+.starci-knowledge [data-tone="success"] {
+    --starci-knowledge-ink: var(--success);
+}
+
+.starci-knowledge [data-tone="warning"] {
+    --starci-knowledge-ink: var(--warning);
+}
+
+.starci-knowledge [data-tone="danger"] {
+    --starci-knowledge-ink: var(--danger);
+}
+
+.starci-knowledge [data-tone="muted"],
+.starci-knowledge [data-tone="default"] {
+    --starci-knowledge-ink: var(--muted);
+}
+
+/* The canvas: the dot grid lives inside the panel only. */
+.starci-knowledge-canvas {
+    position: relative;
+    flex: 1;
+    min-block-size: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+}
+
+.starci-knowledge-canvas:active {
+    cursor: grabbing;
+}
+
+.starci-knowledge-stage {
+    position: absolute;
+    inset: 0 auto auto 0;
+    transform-origin: 0 0;
+}
+
+.starci-knowledge-lines {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.starci-knowledge-line {
+    stroke: var(--starci-graph-line, var(--muted));
+    stroke-width: 1.25;
+    opacity: var(--grammar-opacity-hover);
+}
+
+.starci-knowledge-line[data-active="true"] {
+    stroke: var(--foreground);
+    stroke-width: 2;
+    opacity: 1;
+}
+
+/* A bubble: a document is filled in its cluster's tone, a fact is a ring. */
+.starci-knowledge-bubble {
+    position: absolute;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 0;
+    color: var(--starci-knowledge-ink);
+    background: var(--surface);
+    border: 2px solid var(--starci-knowledge-ink);
+    border-radius: var(--grammar-radius-round);
+    cursor: pointer;
+    font: inherit;
+}
+
+.starci-knowledge-bubble[data-kind="document"] {
+    background: var(--starci-knowledge-wash);
+}
+
+.starci-knowledge-bubble:hover,
+.starci-knowledge-bubble:focus-visible {
+    outline: 2px solid var(--focus, var(--accent));
+    outline-offset: 2px;
+}
+
+.starci-knowledge-glyph {
+    display: inline-flex;
+    color: var(--starci-knowledge-ink);
+}
+
+.starci-knowledge-glyph > svg {
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+}
+
+.starci-knowledge-bubble .starci-knowledge-glyph > svg {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+}
+
+/* A cluster's name: a pill on the surface, in the caption size, cut with an ellipsis. */
+.starci-knowledge-name {
+    position: absolute;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    color: var(--foreground);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-pill);
+    pointer-events: none;
+}
+
+.starci-knowledge-name-dot {
+    flex: none;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    background: var(--starci-knowledge-ink);
+    border-radius: var(--grammar-radius-round);
+}
+
+.starci-knowledge-name-text {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The name of a bubble on hover: drawn at a constant size whatever the zoom. */
+.starci-knowledge-tip {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    inline-size: max-content;
+    max-inline-size: 16rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--foreground);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-md);
+    transform: translate(-50%, -100%) scale(var(--starci-knowledge-scale));
+    transform-origin: 50% 100%;
+    pointer-events: none;
+}
+
+.starci-knowledge-tip[data-below="true"] {
+    transform: translate(-50%, 0) scale(var(--starci-knowledge-scale));
+    transform-origin: 50% 0;
+}
+
+
+/* The map: the shared zoom (the core's 40px IconButtons) in a row above the canvas, so nothing ever lies under it. */
+.starci-knowledge-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-block-size: 0;
+    background-image: radial-gradient(circle, var(--border) 1.4px, transparent 1.6px);
+    background-size: 22px 22px;
+}
+
+.starci-knowledge-zoom {
+    position: relative;
+    z-index: 3;
+    align-self: flex-start;
+    margin: 0.5rem 0 0 0.5rem;
+}
+
+.starci-knowledge-zoom .starci-graph-zoom {
+    flex-direction: row;
+    gap: 0;
+}
+
+/* The legend swatches. */
+.starci-knowledge-swatch {
+    flex: none;
+    box-sizing: border-box;
+    display: inline-block;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    background: var(--surface);
+    border: 2px solid var(--starci-knowledge-ink, var(--muted));
+    border-radius: var(--grammar-radius-round);
+}
+
+.starci-knowledge-swatch[data-kind="document"] {
+    background: var(--starci-knowledge-wash);
+}
+
+.starci-knowledge-legend-line {
+    inline-size: 1.75rem;
+    border-block-start: 1.25px solid var(--starci-graph-line, var(--muted));
+}
+
+.starci-knowledge-empty {
+    margin: 0;
+    padding: 2rem 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    font-size: var(--grammar-type-label-item-size);
+    line-height: var(--grammar-type-label-item-line);
+}
+
+/* Loading: bubble-shaped bones, no text. */
+.starci-knowledge-skeleton {
+    position: relative;
+    flex: 1;
+    min-block-size: 0;
+}
+
+/* Each bone is the core's Skeleton, a round box the size of a bubble; this only places it. */
+.starci-knowledge-bone {
+    position: absolute;
+}

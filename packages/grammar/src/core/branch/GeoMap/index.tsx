@@ -323,9 +323,9 @@ const GeoMapSurface = ({ label, points, labels, tiles, height, defaultView, onSe
                     })}
                 </div>
                 <div className="starci-core-geomap-controls" data-grammar-geomap-control="true">
-                    <HeroButton isIconOnly size="sm" variant="secondary" aria-label={labels.zoomIn} isDisabled={!canZoomIn} onPress={() => zoomBy(1)}><PlusIcon aria-hidden="true" /></HeroButton>
-                    <HeroButton isIconOnly size="sm" variant="secondary" aria-label={labels.zoomOut} isDisabled={!canZoomOut} onPress={() => zoomBy(-1)}><MinusIcon aria-hidden="true" /></HeroButton>
-                    <HeroButton isIconOnly size="sm" variant="secondary" aria-label={labels.showAll} onPress={() => { hasMoved.current = false; if (size !== null) animateTo(fitAll(size)) }}><ArrowsPointingOutIcon aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomIn} isDisabled={!canZoomIn} onPress={() => zoomBy(1)}><PlusIcon aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomOut} isDisabled={!canZoomOut} onPress={() => zoomBy(-1)}><MinusIcon aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.showAll} onPress={() => { hasMoved.current = false; if (size !== null) animateTo(fitAll(size)) }}><ArrowsPointingOutIcon aria-hidden="true" /></HeroButton>
                 </div>
                 {tiles === undefined ? null : <p className="starci-core-geomap-attribution">{tiles.attribution}</p>}
             </div>

@@ -30,22 +30,18 @@ its root from one place.
 
 ## Usage
 
-### Button intent
+### Button variant
 
-Applications declare `intent` on `Button` and `IconButton`: `commit`, `alternative`, `dismiss`,
-`neutral` or `destructive`. A destructive action may supply `step="entry" | "confirm"`; omitted
-step means entry. The type permits `step` only for destructive intent. The family DNA's `intent`
-mapping derives the variant. Explicit `variant` remains available to Grammar internals and stories.
-The [generated button props catalog](docs/button-intent-props.generated.md) lists the published values.
+`Button` and `IconButton` have three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"):
+`variant` is `primary` (solid, the ONE main action of a card or region), `border` (an outline, every secondary action; the default) or
+`danger` (a destructive action: delete, disconnect, stop for good). Grammar draws them with HeroUI's `primary`, `outline` and `danger`
+(`BUTTON_VENDOR_VARIANT`); there is no intent, step, placement, ghost, tertiary, secondary or soft-danger look, and a Button looks the
+same in a row, a bar or a dialog. `tone` (`accent`, `info`, `success`, `warning`) is only the colour of a `primary` (a toned notice's action);
+the types refuse it on `border` and `danger`. A text link is a `Link`, never a Button. The [button props catalog](docs/button-variant-props.md)
+lists the published values. Codemod `v0550` moves an app's intents and vendor variants onto `variant`.
 
-Collection rows supply item placement automatically; a repeated
-next action resolves to secondary. Bars and panel headers supply chrome placement; neutral commands
-are ghost there, while navbar icon actions stay tertiary. The default decision placement makes a
-neutral command outline. Dialogs and drawers restore decision placement inside their surfaces.
-
-Use a `Button` for final destructive confirmation. `AlertDialog` renders dismiss first, focuses it
-on entry, then renders its destructive confirm last. The `Leaves/Button intent` stories show
-the complete placement mapping in light and dark, including destination, pending and skeleton states.
+`AlertDialog` renders its border cancel first, focuses it on entry, then renders its danger confirm last. The `Leaves/Button variant`
+stories show the three looks in light and dark, including a toned primary, destination, pending and skeleton states.
 
 ### App shell
 
@@ -56,7 +52,7 @@ The `Compositions/App shell` stories show the fixed shell, grouped sidebar, icon
 - `SidebarItem.badge`, `badgeLabel` and `badgeMax` show and announce unread counts in both sidebar presentations. `SidebarGroup.placement="end"` places settings groups after the main groups and pushes them to the bottom.
 - The collapsed Sidebar uses Grammar's internal `AnchoredTooltip` on hover and focus. HeroUI Tooltip positions the annotation beside the selected collection item and portals it into the same family DOM scope, preserving HeroUI's collection anatomy. `onAction` runs for every activated destination, including the selected item, so a drawer can close consistently.
 - A fixed `WorkspaceShell` frames its `compactHeader` slot as the mobile opener band; pass a client `Drawer` with an ellipsis `IconButton` trigger. The `navigationDrawer` form owns the same band when it supplies the opener.
-- `AvatarButton seed` passes the stable identity id to Grammar's shared `Avatar`, which draws local DiceBear initials whenever `src` is absent; an uploaded `src` takes precedence.
+- `AvatarButton seed` passes the stable identity id to Grammar's shared `Avatar`, which draws two initials on a name-coloured plate whenever `src` is absent; an uploaded `src` takes precedence.
 - `DropdownMenuItem.mark` accepts a decorative identity mark and is mutually exclusive with `iconSource`. A destructive item uses `tone="danger"`.
 
 Compose the interactive shell in a Client Component, where its glyph functions, callbacks and
@@ -89,7 +85,7 @@ import "@starci/grammar/common/styles.css"
 export const App = () => (
   <GrammarRoot>
     <Page>
-      <SurfaceCard label="Welcome"><Button intent="commit">Start</Button></SurfaceCard>
+      <SurfaceCard label="Welcome"><Button variant="primary">Start</Button></SurfaceCard>
     </Page>
   </GrammarRoot>
 )
@@ -141,8 +137,7 @@ offset shadow and a pink decision accent. Text that uses the accent is drawn in 
 (`--accent-soft-foreground`). Reduced motion removes every transform. The DNA is
 `OFFSET_POP_DNA`, which has the same keys as Core's plus two groups: `offset` (`x`, `y`,
 `outlineWidth`, `ink`, `shadowInk`) and `palette` (`pink`, `blush`, `yellow`, `mint`,
-`critical`). It also exports `OFFSET_POP_SPACING_SCALE`, `OFFSET_POP_TOKEN_NAMES`,
-`OFFSET_POP_TOKEN_DEFAULTS`, `OFFSET_POP_DARK_TOKEN_DEFAULTS`, `OFFSET_POP_BAND_TOKEN_NAMES`,
+`critical`). It also exports `OFFSET_POP_SPACING_SCALE`, `OFFSET_POP_BAND_TOKEN_NAMES`,
 `offsetPopGrammar` and `offsetPopRuleConformance`.
 
 ## Client-side navigation
@@ -210,7 +205,7 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 ### Flat table, section head, scroll law, tab chips
 
 - `DataTable` has one flat look and is never a card: the column labels 12 / 500 muted over a `--border` line, hairline (`--separator`) rows, no fill, radius, shadow or outer edge; `footer` takes a `Pagination` with its `summary`. A table stands under its `Section`: `<Section title count filter={…}><DataTable … footer={<Pagination … />} /></Section>`. A selected row is `--default` with a 2px accent bar on its start edge.
-- A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
+- A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then the sliding Grammar arrow icon), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
 - The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat panes are full.
 - Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0.
 
@@ -303,7 +298,7 @@ paywall, a 404, a 500). Its `media` is `{ icon }` (a glyph on a soft brand-tone 
   media={{ illustration: { staticsKey: "illustrations/errors/not-found.webp" } }} actionLabel="Back to the home page" actionHref="/" />
 ```
 
-**Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
+**Forms (25).** Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, Input, NumberField, OtpInput,
 PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,
 Textarea, TimeField. Every Field-contract control takes `label`, `description`, `errorMessage`,
@@ -404,26 +399,23 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 <Pane area="head" surface>
   <PaneSection align="center">
     <PaneHeader title="Alex Morgan" headingLevel={1} description="Website chat, 5 min ago" status={<Badge tone="warning">Needs a decision</Badge>}
-      actions={<IconButton intent="neutral" source={EllipsisHorizontalIcon} label="More" />} back={{ label: "Back to the list", onPress: showList }} />
+      actions={<IconButton source={EllipsisHorizontalIcon} label="More" />} back={{ label: "Back to the list", onPress: showList }} />
   </PaneSection>
 </Pane>
 ```
 
 **Data views.** `Board` (`label`, `columns` of `{ id, title, count, items, empty }`), `ScheduleGrid` (`label`, `columns`, `rows`,
-`items` placed by `row` and `column`, `cellLabels`, `empty`) and `BarChart` (`label`, `bars`, `empty`) each take `isLoading` and `error`.
+`items` placed by `row` and `column`, `cellLabels`, `empty`) each take `isLoading` and `error`. Charts are the ext's: `BarChart`,
+`LineChart`, `AreaChart` (activity over time, `series` and `stacked`), `DonutChart` (parts of a whole: `centerFigure`, `centerCaption`,
+a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts` (core's hand-drawn `BarChart` and `Sparkline` are deleted in 0.55.0).
+A PDF document is shown ONLY with `PdfViewer` of `@starci/grammar/core/ext/pdf` (pdfjs-dist, an optional peer, loaded lazily; see `src/core/ext/pdf/README.md`).
 A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
 
 ```tsx
 <Board label="Sales pipeline" columns={stages} isLoading={isLoading} error={error} />
 <ScheduleGrid label="Appointments" columns={days} rows={hours} items={bookings} empty={<EmptyNotice message="No appointments" />} />
-<BarChart label="Engagement per day" bars={perDay} empty={<EmptyNotice message="No data yet" />} />
-<BarChart label="Revenue per month" bars={months} empty={...} valueAxis={{ format: (value) => `${value} M` }} highlightLast />
-<Sparkline label="Revenue, last 10 weeks" values={weekly} />
 ```
 
-`BarChart valueAxis={{ format }}` adds three ticks (the largest value, its half and 0) and light grid lines behind the bars;
-`highlightLast` draws the latest bar in the accent and the others soft; both are off by default. `Sparkline` (`label`, `values`,
-`isLoading`) is a 96 x 32 inline line chart: an accent stroke, a soft fill, no axis, named by `label` (`role="img"`).
 
 **A timeline, a key and a map (0.46.2).** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
 
@@ -512,7 +504,7 @@ IconButton of a bar), so a language button, a theme switch, a bell and an avatar
 isLabelHidden` keeps its label as the accessible name and draws nothing. `WorkspaceShell viewport="fixed"` is one
 viewport tall (`100dvh`) with the header on top and the navigation and primary regions scrolling on their own, so an
 app writes no viewport arithmetic; `navigationDrawer` adds the compact-width opener row (the bar's height, an
-edge-to-edge divider, a round tertiary icon button) and its left Sidebar drawer. Pass `defaultOpen`
+edge-to-edge divider, a round border icon button) and its left Sidebar drawer. Pass `defaultOpen`
 to let the Drawer own its state; no state hook or callback is needed in the layout. The shell
 reuses the shared overlay contract, so optional `isOpen` / `onOpenChange` remain available for
 coordinated client interactions. The opener is the Drawer's own trigger, which owns activation,
@@ -521,25 +513,37 @@ dismissal and focus return.
 `AvatarButton` is a circle-only avatar that is a pressable without a button look (no padding, background, border or
 shape in any state, no hover effect, a zoom-out on press, a focus ring, and no zoom under
 `prefers-reduced-motion`; an account-menu trigger) and `IdentityLockup` a mark beside a title and a muted subtitle with no caret (a workspace
-switcher trigger). Both work as the `trigger` of `DropdownMenu` and `Popover`. `IdentityLockup`'s uploaded mark has a transparent box; without an image it uses Avatar's local DiceBear initials. The mark is an uncropped square by default (`markShape="rounded"` opts in to a
+switcher trigger). Both work as the `trigger` of `DropdownMenu` and `Popover`. `IdentityLockup`'s uploaded mark has a transparent box; without an image it uses Avatar's initials. The mark is an uncropped square by default (`markShape="rounded"` opts in to a
 corner) and `Avatar` takes `shape="square" | "rounded"`.
 
-Personal avatars are circles. `Avatar`, `AvatarButton` and each `AvatarGroup` member render the
-bundled DiceBear `initials` style whenever `src` is absent. Initials use the first and last words
-of `name`: `Tran Minh Khoa` becomes `TK`, and a single word contributes one letter. Pass the user
-or entity id as `seed` for stable colours; otherwise the name determines the colour. Server and
-client render the same local data URI, with no network request. The image follows the requested
-Avatar shape and keeps contrasting text in light and dark themes. Images have `alt=""`; the
-avatar shell carries its name, or `isDecorative` hides it beside a visible name. `AvatarButton`
-names the button and keeps its inner avatar decorative. Apps install and import Grammar; its
-pinned DiceBear runtime dependencies and avatar drawing stay inside the package.
+Personal avatars are circles. `Avatar`, `AvatarButton` and each `AvatarGroup` member draw two
+initials whenever `src` is absent, drawn by DiceBear's Initials style (the potted-plant Sprouts style is gone), generated locally by `@dicebear/core` with the
+pinned `@dicebear/styles` Initials style (CC0): nothing is fetched and no name leaves the page; the SVG carries no dicebear.com URL. THE INITIALS
+RULE: the first letter of the first word plus the first letter of the last word, uppercased with
+its diacritic kept. A Vietnamese name is written family name first and given name last, so `Nguyễn
+Văn An` is `NA`, `Đỗ Thị Hoa` is `ĐH` and `Lê Quang Đạt` is `LĐ`; the middle words never count. One
+word gives its first two letters (`Nivo` is `NI`), a word with no letter or digit is skipped, and a
+name with nothing readable is `?`. Composed and decomposed Unicode give the same letters. The plate
+is a solid colour from the style's `backgroundColor` list, which Grammar fills with eight of its theme tones as hex (`--accent`, `--success`, `--warning`, `--danger`
+in light and the dark success, warning and danger, `--foreground`); a hash of `seed` (the stable member or agent id, so a rename keeps the colour), else the name, picks
+one, and the style draws white or black letters, at least 4.5:1 on every entry. The same seed is always the same colour.
+An uploaded `src` overrides the initials, which stay under it while it loads. The round crop and the size ramp are the Avatar's. Images have `alt=""`; the avatar shell carries its name, or `isDecorative`
+hides it beside a visible name. `AvatarButton` names the button and keeps its inner avatar
+decorative. `fallbackMark` is deprecated and ignored.
 
 `kind="person" | "agent"` defaults to `person` on `Avatar`, `AvatarButton` and `AvatarGroup` items.
-Agent names are free text and use the same first-and-last-word initials: `Thao Van Mkt` becomes
-`TM`. Agents add a bottom-right bot badge through HeroUI's Badge anchor, with a surface-colour
-ring and `AI` in the accessible name. The badge is hidden below 32px, including group grid cells;
-their initials and accessible identity remain available.
-The package requires Node 22 or newer, as does the pinned DiceBear engine.
+Agent names are free text and use the same initials rule. An agent's avatar is initials only, like a person's
+(owner 2026-11-22: the AI pill on the avatar is gone); `kind="agent"` only names it `Name (AI)` for assistive technology.
+The visible "AI" is the small neutral Chip that follows the NAME: `AgentName` (`isAgent`, `agentLabel` default `AI`), placed
+by `ListRow` (`isAgent` on the row), the card head (`CardHead.isAgent`), `MessageBubble` (`isAgent` beside `author`) and the
+members list (`ListBox` item `isAgent`). An app never places the Chip by hand.
+
+A MARK (`mark={{ icon, color?, ink?, tone? }}`) draws an icon on a round plate instead of initials, for a provider or a channel:
+a Grammar token by default (`--accent`; `tone` `accent` or `strong`) or a brand colour the app passes in as `color` (with `ink`
+for the icon). `tone="danger"` on an `Avatar` or a group item rings it in the danger token (a broken account), drawn as an
+outline in the avatar's own box. Two `Avatar` siblings, or an `Avatar` from `.map()`, are refused by
+`starci-grammar/avatar-row-uses-group`: use `AvatarGroup`.
+The package requires Node 22 or newer.
 
 ```tsx
 <Avatar name={user.name} seed={user.id} isDecorative />
@@ -575,7 +579,7 @@ complete step with a check; `SurfaceCard emphasis="accent"` rings the one card i
 
 A `Figure` may carry `trend` (`"up" | "down" | "flat"`, with `trendSense` `"higher-is-better"` by default, and `trendLabel` for the words):
 its meta line starts with a decorative triangle in the success or danger colour (a dash for `flat`) and says the direction in
-hidden words. `trendLine` (numbers, oldest first; `trendLineLabel`) draws a `Sparkline` under the value and meta.
+hidden words. `trendChart` takes a drawn `Sparkline` of `@starci/grammar/core/ext/recharts` under the value and meta (core never imports an ext).
 
 A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"`, ends in a muted chevron
 (`chevron-end` glyph, mirrored in RTL); a row with its own `action`, `menu` or `control`, or none of these, draws none.
@@ -583,7 +587,6 @@ A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"`, ends in a
 `Section kind="figures"` is the one strip of key figures, the ribbon, wherever it stands. Supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
 that heading. The headless form has no head controls. Media tiles use `TilePoster` (image or localized absence),
 plain `facts`, one or up to three badges and typed overflow commands; a whole-card action excludes inner controls.
-`ButtonGroup` borrows the vendor size and forwards each action's `isPending`; group `isLoading` is unresolved geometry.
 `IconButton.isPending` has the same native busy and duplicate-activation semantics as Button.
 `MessageStatus` belongs in the existing message footer: receipt facts (`sent`, `delivered`, `seen`, with typed readers)
 or transport outcomes (`queued`, `sent`, `failed`, `unknown`), with a localized visible label. `MessageBubble` gains no
@@ -618,7 +621,7 @@ band's bottom border, and both rows start on the content edge. Both are underlin
 `subTabs` takes `label`, `items` and `panelId` like `tabs` (the page body is the panel of both unless `panelId` names others).
 `header={{ title, tabs: { label, items, ... }, subTabs: { label, items, selectedKey, onSelect } }}`.
 
-**Tabs `end` slot.** `Tabs end={<Button intent="alternative" size="sm">Add region</Button>}` (secondary tabs; `ReactNode`, default
+**Tabs `end` slot.** `Tabs end={<Button size="sm">Add region</Button>}` (secondary tabs; `ReactNode`, default
 none) puts a command at the strip's end, inside the strip frame after the tab list and the fold menu, centred in the strip's
 height like a tab. The strip's own line (`own`) or the host's full-width line (`host`: a page header band) runs under the
 command to the column's end; never place a Cluster beside the strip for this. The fold fit subtracts the end's width.
@@ -682,13 +685,13 @@ sizes: the page title 18 and a big figure value 20 (`Text size="figure"`). Every
 `external` glyph; a row title is never a link when the row opens (lint `row-title-link`). `npm run check:type` pins the
 scale; lint `table-cell-type` and `same-line-size` allow only 14 and 12.
 
-**The button-icon rule.** Only the PRIMARY Button (`intent="commit"`, the CTA) carries a leading icon: it shows what it does at
-its start (`startGlyph`, e.g. `plus`, `upload`, `send`, `pencil`, or the app's `startContent`). Neutral, alternative, dismiss and
-destructive Buttons, suggestion pills and row actions are text only; the Button type refuses a start icon on any other intent
-(`EmptyNotice actionStartContent` needs the default `commit` action, `Alert` draws `action.icon` on its primary action only). `IconButton` (icon only, named by its label) is unaffected. A Button
-that leads somewhere, of any intent, ends with Grammar's arrow (`endArrow`; the arrow is not an icon under this rule), which
+**The button-icon rule.** Only the PRIMARY Button (`variant="primary"`, the CTA) carries a leading icon: it shows what it does at
+its start (`startGlyph`, e.g. `plus`, `upload`, `send`, `pencil`, or the app's `startContent`). `border` and `danger` Buttons,
+suggestion pills and row actions are text only; the Button type refuses a start icon on any other look
+(`EmptyNotice actionStartContent` needs the default `primary` action, `Alert` draws `action.icon` on a primary action only). `IconButton` (icon only, named by its label) is unaffected. A Button
+that leads somewhere, of any look, ends with Grammar's arrow (`endArrow`; the arrow is not an icon under this rule), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
-Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of neutral sm Buttons is the one
+Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of border sm Buttons is the one
 suggestion pattern. An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
 
@@ -710,7 +713,7 @@ refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollReg
 edge to edge across the sheet (the default `content` keeps the inset).
 
 **Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: one line at 40px, growing to 6, with `send` drawing its own 40px Send
-Button 12px after the box and `startAction` one icon button inside the box at its start (0.52.0). The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
+Button 12px after the box and `startAction` one icon button inside the box at its start (0.52.0). The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws DiceBear's Initials style: two letters on a solid Grammar tone. `Sublabel` is the 12 / 500 / muted
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 
@@ -833,17 +836,22 @@ or 3rem, respectively, so icons, avatars and group grids keep labels in one colu
 </SurfaceCard>
 ```
 
-For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, the chat-app
-reference). It is one round Avatar-sized mark at `sm`, `md`, `lg` or `control`: two members split
-the circle, three show one above two, and four use a 2 by 2 grid. With five or more
-members, three avatars remain and the fourth cell shows the total member count, such as `5` or `30`.
-Each cell has a ring in the surface colour. Each member uses Avatar's
-uploaded image or bundled DiceBear initials, accepts `seed`, `kind` and a custom uploaded-image `fallback`,
-and the count uses the shared avatar renderer. `overflowLabel` receives the number of hidden members
-in both layouts and names them accessibly; the grid's visible digits show the total. A group room
+For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, Zalo style). It is one
+round Avatar-sized mark at `sm`, `md`, `lg` or `control`, and each tile shows that member's initials on
+their own colour (or their image): one member fills it, two are halves, three are a half over two
+quarters, four are a 2 by 2 grid. From five members three remain and the fourth tile reads `+N`, the
+members that do not fit (`+2` for five). Each tile has a ring in the surface colour. Members accept
+`seed`, `kind`, a `mark` (an icon on a brand-colour circle, for a provider or a channel, mixed freely with people)
+`tone="danger"` (a ring for a broken account) and a custom `fallback` for the loading image. `max` is the number of slots,
+"+N" included (default 4): up to `max - 1` items show and the last slot is "+N", in both layouts (the grid never exceeds
+its 2 by 2); seven providers in a row with `max={6}` show five and "+2". `memberNames(allNames)` is the app's own list of
+EVERY name: the group's hover title (and, without `describe`, its accessible name). `overflowLabel` receives the number of
+hidden members in both layouts and names the `+N` tile. The group's accessible name is `label`, or,
+with `describe(shownNames, hiddenCount)`, the app's own list of the members ("A, B và 3 người khác"):
+Grammar writes no sentence. An agent among the members is initials like the others. A group room
 shows its members the same way in a `ListBoxItem.leading` (grid group of the row's `size`) and in a `PaneHeader mark`
 (both slots take nodes, so no extra prop); the row layout is wider than either slot. A single
-person uses Avatar. The default `layout="row"` keeps the overlapping member row and its `+N` overflow count.
+person uses Avatar. The default `layout="row"` keeps the overlapping member row and its `+N` tile, the one pattern for people and for provider or channel marks.
 
 ## Theming
 
@@ -874,7 +882,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   would shadow the app's value); every rule reads it with its fallback, which `npm run check:hooks` holds. They cover a card's edge
   on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
   cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
-  the toggle plates (ChoiceChips, FilterButtonGroup, RadioGroup rows, the Select pill), the destructive entry button's outline, the
+  the toggle plates (ChoiceChips, RadioGroup rows, the Select pill), the destructive entry button's outline, the
   chat faces, the Quote, and the Quote.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
@@ -954,9 +962,9 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
 - **53 new Common renderers.** Core, Heritage and Offset Pop all receive them. They are built on
   HeroUI v3 / React Aria, and each ships Common anatomy CSS and a spec that renders it under bare
   Common, Core and Offset Pop.
-  - Forms (20): Field, Fieldset, Form, Textarea, Select, ComboBox, SearchField, NumberField,
+  - Forms (19): Field, Fieldset, Form, Textarea, Select, ComboBox, SearchField, NumberField,
     Checkbox, CheckboxGroup, RadioGroup, Switch, Slider, SegmentedControl, DateField, DatePicker,
-    DateRangePicker, TimeField, FileDropzone, ButtonGroup. They share one Field contract and one
+    DateRangePicker, TimeField, FileDropzone. They share one Field contract and one
     44px touch floor.
   - Overlays and feedback (14): Dialog, AlertDialog, Drawer (side, and bottom sheet with a handle),
     Popover, DropdownMenu (sections, submenus, checkable items, shortcuts), Toast and Toaster

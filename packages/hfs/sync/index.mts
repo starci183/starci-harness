@@ -114,6 +114,8 @@ export interface AppSourceFacts {
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   /** The root workspace packages of the app: the names of the folders of packages/ that hold a package.json and a src/, sorted. */
   rootPackages?: readonly string[];
+  /** The root packages whose `src/` holds a `*.spec.ts`, a subset of rootPackages: their specs run in the unit run, measured or not. */
+  rootPackageSpecs?: readonly string[];
   /** The unmeasured globs of each root package the project declares sound slots for (ext/manifest.json packages, PROJECT-LINT-3), by app-relative folder. */
   packageScopes?: Readonly<Record<string, readonly string[]>>;
   /** The default locale the app declares in its i18n routing source (the gallery's UI language, ruleParams.gallery); absent when none is declared. */
@@ -355,6 +357,16 @@ function rootPackagesOf(root: string): string[] {
   } catch { return []; }
 }
 
+/** The root packages whose `src/` holds at least one `*.spec.ts` (a nested folder counts; build output and installed packages do not). */
+function rootPackageSpecsOf(root: string, names: readonly string[]): string[] {
+  const holdsSpec = (dir: string): boolean => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+    return entries.some(entry => entry.isDirectory() ? !SOURCE_SKIPPED.has(entry.name) && holdsSpec(path.join(dir, entry.name)) : entry.name.endsWith('.spec.ts'));
+  };
+  return names.filter(name => holdsSpec(path.join(root, 'packages', name, 'src')));
+}
+
 /** The app-relative folders of the root packages, whose logic the back end's unit run measures. */
 export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'rootPackages'>> | undefined): string[] =>
   (source?.rootPackages ?? []).map(name => `packages/${name}`);
@@ -413,6 +425,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
   for (const dir of ['apps', 'src']) walk(dir);
   return { runtimeExample: isRuntimeExampleApp(root), files: files.sort(byCodeUnit), read: (file: string) => fs.readFileSync(path.join(root, 'be', file), 'utf8'),
     rootPackages: rootPackagesOf(root),
+    rootPackageSpecs: rootPackageSpecsOf(root, rootPackagesOf(root)),
     packageScopes: Object.fromEntries(rootPackageFolders({ rootPackages: rootPackagesOf(root) }).flatMap((folder) => {
       const scope = declaredPackageScopes((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } })(folder);
       return scope === null ? [] : [[folder, scope]];
@@ -560,13 +573,13 @@ export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFact
  * The `packages` option of the managed be/jest.config.js (`starciJestConfig`), laid out as prettier lays it out (width 120, indent 4): the root packages whose
  * specs the unit run holds, with the files measured in them; an app without one has no such option.
  */
-export function jestPackagesSource(packages: PackagesCoverage): string {
-  if (packages.folders.length === 0) return '';
+export function jestPackagesSource(packages: PackagesCoverage, tests: readonly string[] = []): string {
+  if (packages.folders.length === 0 && tests.length === 0) return '';
   const list = (key: string, items: readonly string[]): string => {
     const one = `        ${key}: [${items.map(item => JSON.stringify(item)).join(', ')}],`;
     return one.length <= 120 ? one : [`        ${key}: [`, ...items.map(item => `            ${JSON.stringify(item)},`), '        ],'].join('\n');
   };
-  return ['', '    packages: {', list('folders', packages.folders), list('files', packages.files), list('excludes', packages.excludes), '    },'].join('\n');
+  return ['', '    packages: {', list('folders', packages.folders), list('files', packages.files), list('excludes', packages.excludes), ...(tests.length === 0 ? [] : [list('tests', tests)]), '    },'].join('\n');
 }
 
 
@@ -618,6 +631,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
   const rootPackages = packagesCoverage(libraryPackageFolders(app, source), (folder) => source.packageScopes?.[folder] ?? null);
   const moduleDirs = rootPackages.folders;
+  // A declared nivoos package has no coverage scope, but its specs (when it has any) run in the unit run with the library packages' (the preset's `tests`).
+  const specOnlyFolders = rootPackageFolders({ rootPackages: source.rootPackageSpecs ?? [] }).filter(folder => !moduleDirs.includes(folder));
   const modulesFirst = moduleDirs.length ? `${BUILD_MODULES} && ` : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
@@ -685,7 +700,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
     // The coverage scope is the same in both editions: measures exactly what full measures (R212).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
-    jestPackages: scope === 'be' ? jestPackagesSource(rootPackages) : '',
+    jestPackages: scope === 'be' ? jestPackagesSource(rootPackages, specOnlyFolders) : '',
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
     codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',

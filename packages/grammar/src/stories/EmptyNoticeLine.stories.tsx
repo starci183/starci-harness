@@ -28,7 +28,7 @@ export const PlainLineNoMatch: Story = {
         title="Khách hàng"
         filter={<G.SearchField label="Tìm khách hàng" defaultValue="zzz" />}
         items={[]}
-        empty={<G.EmptyNotice mark="none" message="Không có khách hàng nào khớp với “zzz”." actionLabel="Xoá bộ lọc" onAction={noop} actionIntent="neutral" />}
+        empty={<G.EmptyNotice mark="none" message="Không có khách hàng nào khớp với “zzz”." actionLabel="Xoá bộ lọc" onAction={noop} actionVariant="border" />}
       />
     </div>
   ),
@@ -71,12 +71,12 @@ export const PageErrorBack: Story = {
       expect(buttons.map((button) => button.textContent)).toEqual(['Thử lại', 'Về danh sách']);
       expect(buttons[1]?.getAttribute('href')).toBe('#customers');
       expect(buttons.every((button) => button.getAttribute('data-size') === 'md')).toBe(true);
-      expect(buttons[0]?.getAttribute('data-grammar-intent')).toBe('alternative');
+      expect(buttons[0]?.getAttribute('data-grammar-variant')).toBe('border');
     });
   },
 };
 
-/** "Thử lại" in a failed region and in a negative banner: one intent, one look (the outlined alternative), never the red fill. */
+/** "Thử lại" in a failed region and in a negative banner: one look (the outlined border), never the red fill. */
 export const RetryOneLook: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: 24, maxInlineSize: 560 }}>
@@ -88,7 +88,7 @@ export const RetryOneLook: Story = {
     await waitFor(() => {
       const retries = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"]')].filter((button) => button.textContent === 'Thử lại');
       expect(retries).toHaveLength(2);
-      expect(retries.map((button) => button.getAttribute('data-grammar-intent'))).toEqual(['alternative', 'alternative']);
+      expect(retries.map((button) => button.getAttribute('data-grammar-variant'))).toEqual(['border', 'border']);
       const [banner, region] = retries.map((button) => getComputedStyle(button));
       expect(banner?.borderTopWidth).toBe(region?.borderTopWidth);
       expect(banner?.color).toBe(region?.color);

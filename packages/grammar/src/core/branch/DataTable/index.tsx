@@ -3,7 +3,6 @@
 import { Checkbox as HeroCheckbox, Link as HeroLink, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
 import type { RowEdgeTone, RowGroundTone } from "../../surfaceCardData.js"
@@ -609,7 +608,7 @@ export const DataTable = <Row extends DataTableRow>({
                                                 },
                                             })}
                                         >
-                                            <ButtonPlacementProvider placement="item">
+                                            <>
                                             {interaction === undefined ? <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} {...(column.id === rowHeaderId && row.href !== undefined ? { href: row.href } : {})} /> : (
                                                 <div
                                                     className="starci-core-data-table-cell-content"
@@ -620,7 +619,7 @@ export const DataTable = <Row extends DataTableRow>({
                                                     <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} {...(column.id === rowHeaderId && row.href !== undefined ? { href: row.href } : {})} />
                                                 </div>
                                             )}
-                                            </ButtonPlacementProvider>
+                                            </>
                                         </HeroTable.Cell>
                                     })}
                             </HeroTable.Row>

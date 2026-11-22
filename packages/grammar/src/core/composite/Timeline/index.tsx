@@ -6,6 +6,7 @@ import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
+import { MARK_STATE_TONE, StatusGlyph, StatusTile, type MarkState } from "../../statusMark.js"
 
 export type TimelineItem = {
     readonly id: string
@@ -15,19 +16,23 @@ export type TimelineItem = {
     readonly timeLabel?: ReactNode
     readonly description?: ReactNode
     /**
-     * The entry's outcome. Its dot is neutral unless the entry `isCurrent` (0.48.0, the dot rule: colour marks a live state only); a past entry says its outcome in
-     * its words, and an entry that needs the reader takes `isAttention`.
+     * The entry's outcome as a presentation state. Without `status` it gives the mark (`timelineMarkState`): affirmative done, negative error,
+     * cautionary waiting, pending running, unavailable skipped, neutral and informative done (running when `isCurrent`).
      */
     readonly state?: PresentationState
-    /** The entry the reader is at now (`aria-current="step"`): its dot takes its state's tone, or the accent. */
+    /**
+     * The step's status (0.55.0, the status-mark rule, case 1 "how far along is it?"): the round 40px tile carries the STATUS glyph in the state's
+     * tone (the three status glyphs: circle-check done, circle-x error, the plain circle waiting, skipped or not run, spinning while running). The `title` names the step; time or meta
+     * trails, never a status word. Replaces the 0.48.0 dot rule ("past dots neutral, colour only on current").
+     */
+    readonly status?: MarkState
+    /** The entry the reader is at now (`aria-current="step"`). */
     readonly isCurrent?: boolean
     /**
      * The entry needs the reader (a failed step, a pending approval): the whole row takes a tone background, not just
      * the marker. The tone follows `state` (negative danger, affirmative success, informative accent, otherwise warning).
      */
     readonly isAttention?: boolean
-    /** App-owned marker glyph; defaults to a dot. */
-    readonly marker?: ReactNode
 }
 
 export type TimelineProps = NoChildren & {
@@ -44,11 +49,25 @@ export type TimelineProps = NoChildren & {
     readonly error?: ErrorData
 }
 
+/** The mark state of an entry: its `status`, else what its presentation state says (`isCurrent` makes a neutral or informative entry running). */
+export const timelineMarkState = (item: Pick<TimelineItem, "state" | "status" | "isCurrent">): MarkState => {
+    if (item.status !== undefined) return item.status
+    switch (item.state ?? "neutral") {
+        case "affirmative": return "done"
+        case "negative": return "error"
+        case "cautionary": return "waiting"
+        case "pending": return "running"
+        case "unavailable": return "skipped"
+        default: return item.isCurrent === true ? "running" : "done"
+    }
+}
+
 const DEFAULT_ENTRIES: ReadonlyArray<TimelineItem> = Array.from({ length: LOADING_ROWS }, (_, index) => ({ id: String(index), title: " ", timeLabel: " ", description: " " }))
 
 /**
  * An ordered history of events. Each entry exposes `data-grammar-timeline-state` from the Common
  * presentation states and `data-grammar-current`; the connector line is drawn by the stylesheet.
+ * Each marker is the round 40px status tile (0.55.0): the status glyph in the state's tone, the title names the step.
  * Contract: list HIERARCHY-3, entry STATE-1 TRUTH-1 (closed presentation states, neutral default), marker A11Y-2.
  */
 export const Timeline = ({ label, items, isLoading: ownLoading, error }: TimelineProps) => {
@@ -68,7 +87,7 @@ export const Timeline = ({ label, items, isLoading: ownLoading, error }: Timelin
     >
         {isLoading ? (items.length > 0 ? items : DEFAULT_ENTRIES).map((entry) => (
             <li key={entry.id} aria-hidden="true" className="starci-core-timeline-item" data-contract="STATE-1 STATE-8" data-grammar-timeline-state="neutral" data-grammar-current="false" data-grammar-skeleton="true">
-                <span aria-hidden="true" className="starci-core-timeline-marker starci-core-timeline-skeleton-marker" data-grammar-timeline-marker="true"><Skeleton shape="circle" size="sm" /></span>
+                <span aria-hidden="true" className="starci-core-timeline-marker starci-core-timeline-skeleton-marker" data-grammar-timeline-marker="true"><Skeleton shape="circle" size="md" /></span>
                 <div className="starci-core-timeline-copy">
                     <div className="starci-core-timeline-title"><Skeleton shape="text" /></div>
                     {entry.timeLabel === undefined ? null : <span className="starci-core-timeline-time"><Skeleton shape="text" /></span>}
@@ -78,6 +97,7 @@ export const Timeline = ({ label, items, isLoading: ownLoading, error }: Timelin
         )) : items.map((item) => {
             const state = item.state ?? "neutral"
             assertPresentationState(state)
+            const mark = timelineMarkState(item)
             return (
                 <li
                     key={item.id}
@@ -87,8 +107,11 @@ export const Timeline = ({ label, items, isLoading: ownLoading, error }: Timelin
                     data-grammar-timeline-state={state}
                     data-grammar-current={item.isCurrent ? "true" : "false"}
                     data-grammar-attention={item.isAttention ? "true" : undefined}
+                    data-grammar-mark-state={mark}
                 >
-                    <span aria-hidden="true" className="starci-core-timeline-marker" data-contract="A11Y-2" data-grammar-timeline-marker="true">{item.marker}</span>
+                    <span aria-hidden="true" className="starci-core-timeline-marker" data-contract="A11Y-2" data-grammar-timeline-marker="true">
+                        <StatusTile tone={MARK_STATE_TONE[mark]} state={mark}><StatusGlyph kind={mark} /></StatusTile>
+                    </span>
                     <div className="starci-core-timeline-copy">
                         <p className="starci-core-timeline-title">{item.title}</p>
                         {item.timeLabel === undefined ? null : (

@@ -66,7 +66,7 @@ export const InputRowHiddenLabel: Story = {
           <div style={{ flex: 1, minWidth: 0 }}>
             <G.Input id={`link-${n}`} name={`link-${n}`} label={`Link ${n}`} isLabelHidden {...(n === 2 ? { errorMessage: 'Enter a valid link.' } : {})} />
           </div>
-          <G.Button intent="alternative">Delete</G.Button>
+          <G.Button variant="border">Delete</G.Button>
         </div>
       ))}
     </div>
@@ -289,7 +289,7 @@ export const Switch: Story = {
       </State>
       <State label="Control height (2.5rem, 40px), label hidden but accessible">
         <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
-        <G.AvatarButton name="Alex Morgan" size="control" />
+        <G.AvatarButton name="Alex Morgan" size="md" />
         <G.IconButton source={SettingsGlyph} label="Settings" />
       </State>
       <State label="Invalid">
@@ -549,32 +549,6 @@ export const FieldFamilySecondary: Story = {
   ),
 };
 
-export const ButtonGroup: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Horizontal">
-        <G.ButtonGroup label="Text alignment" actions={[
-          { id: 'left', label: 'Left', intent: 'alternative' },
-          { id: 'centre', label: 'Centre', intent: 'alternative' },
-          { id: 'right', label: 'Right', intent: 'alternative' },
-        ]} />
-      </State>
-      <State label="Vertical">
-        <G.ButtonGroup label="Actions" orientation="vertical" actions={[
-          { id: 'duplicate', label: 'Duplicate', intent: 'neutral' },
-          { id: 'archive', label: 'Archive', intent: 'neutral' },
-        ]} />
-      </State>
-      <State label="Disabled">
-        <G.ButtonGroup label="History" isDisabled actions={[
-          { id: 'undo', label: 'Undo', intent: 'alternative' },
-          { id: 'redo', label: 'Redo', intent: 'alternative' },
-        ]} />
-      </State>
-    </Matrix>
-  ),
-};
-
 export const FileDropzone: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
@@ -657,7 +631,7 @@ export const Fieldset: Story = {
         </G.Fieldset>
       </State>
       <State label="Invalid with actions" direction="column">
-        <G.Fieldset legend="Address" errorMessage="Complete the address before saving." actions={<G.Button size="sm" intent="alternative">Reset</G.Button>}>
+        <G.Fieldset legend="Address" errorMessage="Complete the address before saving." actions={<G.Button size="sm" variant="border">Reset</G.Button>}>
           <G.Input id="fs-street" name="street" label="Street" isInvalid errorMessage="Required." />
         </G.Fieldset>
       </State>
@@ -683,8 +657,8 @@ const FormDemo = ({ label, isPending, withErrors }: { readonly label: string; re
       <G.Select label="Role" name="role" options={planOptions} defaultValue="team" />
       <G.Checkbox label="Send a copy to me" name="copy" />
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <G.Button type="submit" intent="commit" isPending={isPending === true}>Send invite</G.Button>
-        <G.Button type="reset" intent="neutral">Reset</G.Button>
+        <G.Button type="submit" variant="primary" isPending={isPending === true}>Send invite</G.Button>
+        <G.Button type="reset" variant="border">Reset</G.Button>
       </div>
       {submitted === null ? null : <G.Text live="polite">Submitted with role {submitted}.</G.Text>}
     </G.Form>
@@ -733,7 +707,7 @@ export const FieldRhythm: Story = {
           <G.Switch description="Short description." label="Dark mode" />
           <G.Slider label="Volume" defaultValue={40} />
           <G.Input id="rhythm-code" name="rhythm-code" label="Code" isInvalid errorMessage="Enter the six-digit code." />
-          <G.Fieldset legend="Address" description="Where we send the invoice." actions={<G.Button size="sm" intent="alternative">Reset</G.Button>}>
+          <G.Fieldset legend="Address" description="Where we send the invoice." actions={<G.Button size="sm" variant="border">Reset</G.Button>}>
             <G.Input id="rhythm-street" label="Street" name="rhythm-street" />
             <G.Input id="rhythm-city" label="City" name="rhythm-city" />
           </G.Fieldset>
@@ -764,7 +738,7 @@ const MentionComposer = () => {
         mentions={{ options: MENTION_PEOPLE, label: 'People to mention' }}
         onSubmitShortcut={() => { setSent((s) => [...s, value]); setValue(''); }}
       />
-      {sent.map((m, i) => <G.Text key={i} size="sm">{m}</G.Text>)}
+      {sent.map((m, i) => <G.Text key={i} role="body">{m}</G.Text>)}
     </div>
   );
 };

@@ -20,7 +20,7 @@ export type SkeletonProps = NoChildren & {
     readonly lines?: number
     /** `rect` only: the aspect the resolved media or surface will take. */
     readonly ratio?: SkeletonRatio
-    /** `circle`: avatar or glyph footprint. `button`: the Button size it stands for, `sm` 32 or `md` 40 (default `md`). */
+    /** `circle`: a round mark (an avatar), `md` 40 (default) or `sm` 24. `button`: the Button size it stands for, `sm` 32 or `md` 40 (default `md`). */
     readonly size?: SkeletonSize
     /** `box`, `field`, `button`: the width, a CSS length (`8rem`, `60%`). `box` and `field` default to the full width, `button` to 6rem. */
     readonly width?: string

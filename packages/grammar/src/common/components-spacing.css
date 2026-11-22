@@ -70,16 +70,17 @@
         padding-inline: var(--grammar-button-icon-padding);
     }
 
-    /* Alert and toast: a box inside a surface, the container inset on every side, glyph and copy an inline pair. */
-    .starci-core-alert[data-component="Alert"],
+    /* A toast: a box inside a surface, the container inset on every side, glyph and copy an inline pair. */
     .starci-core-toast[data-component="Toast"] {
         gap: var(--grammar-inline-gap);
         padding: var(--grammar-inset);
     }
 
-    /* An alert inside a card is one level in: the nested step on every side. */
+    /* An Alert, on a page or inside a card: 12 block by 16 inline, the tile a row step (12) from its copy. */
+    .starci-core-alert[data-component="Alert"],
     .starci-core-surface-content .starci-core-alert[data-component="Alert"] {
-        padding: var(--grammar-inset-nested);
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset) var(--grammar-inset-card);
     }
 
     /* The toast's end side holds its close action, which carries its own room: the nested step. */

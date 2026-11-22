@@ -43,6 +43,7 @@
 
     .starci-core-legend-mark[data-grammar-tone="accent"] { border-color: var(--accent); background: var(--accent-soft); }
     .starci-core-legend-mark[data-grammar-tone="success"] { border-color: var(--success); background: var(--success-soft); }
+    .starci-core-legend-mark[data-grammar-tone="info"] { border-color: var(--info); background: var(--info-soft); }
     .starci-core-legend-mark[data-grammar-tone="warning"] { border-color: var(--warning); background: var(--warning-soft); }
     .starci-core-legend-mark[data-grammar-tone="danger"] { border-color: var(--danger); background: var(--danger-soft); }
     .starci-core-legend-mark[data-grammar-skeleton="true"] { border-color: transparent; background: var(--surface-secondary); }

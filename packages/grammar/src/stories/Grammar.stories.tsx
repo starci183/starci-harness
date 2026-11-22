@@ -108,7 +108,7 @@ export const SignInScreen: Story = {
               <Input id="password" name="password" label="Password" kind="password" placeholder="Enter your password" />
             </div>
             <Text live="assertive">We couldn&apos;t sign you in. Check your email and password.</Text>
-            <Button type="submit" intent="commit" width="fill">Sign in</Button>
+            <Button type="submit" variant="primary" width="fill">Sign in</Button>
             <Text>New here? <Link href="#">Create an account</Link></Text>
           </form>
           <div style={{ marginTop: 'auto', display: 'flex', gap: '1rem' }}>
@@ -147,7 +147,7 @@ export const TasksScreen: Story = {
                 <div style={{ flex: 1 }}>
                   <Input id="new-task" name="title" label="New task" placeholder="What needs doing?" />
                 </div>
-                <Button type="submit" intent="commit">Add task</Button>
+                <Button type="submit" variant="primary">Add task</Button>
               </form>
             </SurfaceCard>
             <Section
@@ -180,13 +180,13 @@ export const Leaves: Story = {
     <Page>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 560 }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button intent="commit">Primary</Button>
-          <Button intent="alternative">Secondary</Button>
-          <Button intent="dismiss">Tertiary</Button>
-          <Button intent="neutral">Outline</Button>
-          <Button intent="neutral">Ghost</Button>
-          <Button intent="commit" isPending>Pending</Button>
-          <Button intent="commit" isDisabled>Disabled</Button>
+          <Button variant="primary">Primary</Button>
+          <Button variant="border">Secondary</Button>
+          <Button variant="border">Tertiary</Button>
+          <Button variant="border">Outline</Button>
+          <Button variant="border">Ghost</Button>
+          <Button variant="primary" isPending>Pending</Button>
+          <Button variant="primary" isDisabled>Disabled</Button>
         </div>
         <Divider label="or" />
         <Input id="i1" name="a" label="Email" kind="email" placeholder="you@example.com" />

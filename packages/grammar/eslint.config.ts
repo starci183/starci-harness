@@ -15,6 +15,8 @@ export default defineConfig(
             "src/stories/**", "src/**/*.stories.*",
             // The scale, the DNA data and the conformance prose own their numbers: that is what they are for.
             "src/common/spacing.ts", "src/*/dna.ts", "src/*/conformance.ts",
+            // The markdown ext's import-time SVG codec: Mermaid draws in sentinel colours that it swaps for the tokens; it renders no component.
+            "src/core/ext/markdown/prerender/**",
         ],
     },
     {
@@ -24,6 +26,7 @@ export default defineConfig(
         linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: "error" },
         rules: {
             "@typescript-eslint/ban-ts-comment": "error",
+            "starci-grammar/ext-boundary": "error",
             "starci-grammar/no-graph-or-animation-library": "error",
             "starci-grammar/no-literal-look": "error",
             "starci-grammar/tier-props": "error",

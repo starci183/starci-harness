@@ -94,7 +94,7 @@ const STUBS = {
     'export declare const SurfaceCard: (props: { readonly label: string; readonly children: ReactNode }) => ReactNode',
     'export declare const Text: (props: { readonly children?: ReactNode; readonly tone?: "default" | "muted" | "accent"; readonly isLoading?: boolean }) => ReactNode',
     'export declare const Badge: (props: { readonly children?: ReactNode; readonly isLoading?: boolean }) => ReactNode',
-    'export declare const Button: (props: { readonly intent?: "dismiss" | "neutral" | "alternative" | "commit"; readonly type?: "button" | "submit"; readonly form?: string; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
+    'export declare const Button: (props: { readonly variant?: "primary" | "border" | "danger"; readonly type?: "button" | "submit"; readonly form?: string; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
     'export declare const EmptyNotice: (props: { readonly isError?: boolean; readonly message: string; readonly actionLabel?: string; readonly onAction?: () => void }) => ReactNode',
     'type Crumb = { readonly id: string; readonly label: string; readonly href?: string }',
     'type PageTabs = { readonly label: string; readonly items: ReadonlyArray<{ readonly id: string; readonly label: string; readonly href?: string }>; readonly selectedKey?: string }',
@@ -285,9 +285,9 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   assert.doesNotMatch(accountOwner, /onSelect|selectedKey/, 'a server owner passes no state and no handler');
   assert.deepEqual(JSON.parse(read('src', 'modules', 'i18n', 'messages', 'en.json')).accountPage.tabs, { label: 'Account', items: { profile: 'Profile', security: 'Security' } });
   const modal = read('src', 'features', 'overlays', 'InviteMemberOverlay', 'component.tsx');
-  assert.match(modal, /<Dialog[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*intent="commit"/, 'the way out first, the commit last');
+  assert.match(modal, /<Dialog[\s\S]*footer=\{\(close\) => \([\s\S]*<Button onPress=\{close\}>[\s\S]*variant="primary"/, 'the way out first, the commit last');
   const drawer = read('src', 'features', 'overlays', 'EditDetailsOverlay', 'component.tsx');
-  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<Input id="edit-details-overlay-name"/, 'the footer carries the way out, then the submit naming the form');
+  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*<Button onPress=\{close\}>[\s\S]*type="submit" form="edit-details-overlay-form" variant="primary"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<Input id="edit-details-overlay-name"/, 'the footer carries the way out, then the submit naming the form');
   assert.doesNotMatch(drawer, /<Grid kind="form"/, 'the Form spaces its own fields; a form Grid inside it is refused by gap-proximity');
   assert.doesNotMatch(drawer.slice(drawer.indexOf('<Form ')), /<Button/, 'no decision inside the form');
   assert.match(read('src', 'features', 'overlays', 'EditDetailsOverlay', 'index.tsx'), /^"use client"[\s\S]*useState\(false\)/);

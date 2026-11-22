@@ -72,7 +72,9 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(Object.keys(ci.jobs).filter((id) => !['fast', 'lint', 'test', 'coverage', 'build', 'sonar'].includes(id)), ['plan', 'images', 'verdict', 'deploy-staging', 'deploy-production']);
     assert.deepEqual(ci.on.pull_request, { branches: ['main'] });
     assert.deepEqual(Object.keys(ci.on).sort(), ['pull_request', 'push', 'workflow_dispatch']);
-    assert.equal(ci.concurrency['cancel-in-progress'], "${{ github.event_name == 'pull_request' }}");
+    // A newer commit cancels the superseded run on every ref but a release tag, whose run deploys (a whole run is cancelled, never one job).
+    assert.equal(ci.concurrency.group, 'ci-${{ github.ref }}');
+    assert.equal(ci.concurrency['cancel-in-progress'], "${{ !startsWith(github.ref, 'refs/tags/') }}");
     assert.equal(ci.jobs.images.uses, './.github/workflows/images.yml');
     assert.deepEqual(ci.jobs.verdict.needs, ['plan', 'fast', 'lint', 'test', 'coverage', 'build', 'images', 'sonar']);
     assert.equal(ci.jobs.verdict.if, '${{ always() }}');

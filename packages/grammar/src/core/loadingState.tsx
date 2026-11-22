@@ -2,7 +2,6 @@
 
 import { usePaneContext } from "./paneContext.js"
 import { useSurfaceHost } from "./surfaceContext.js"
-import { ExclamationTriangleIcon } from "@heroicons/react/24/outline"
 import { Button } from "./leaf/Button/index.js"
 import { IconTile } from "./leaf/IconTile/index.js"
 import { Text } from "./leaf/Text/index.js"
@@ -44,11 +43,11 @@ export type ErrorData = {
 }
 
 /**
- * THE RETRY (0.48.0): "Try again" has one look everywhere a read failed, in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert`: the `alternative`
+ * THE RETRY (0.48.0): "Try again" has one look everywhere a read failed, in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert`: the `border`
  * (outlined) button, never the destructive red fill, since retrying destroys nothing. It is the `md` step, the 40px control height, at every scope (since this patch;
  * before, a region's retry took the 32px `sm` step), and so is the way back beside it.
  */
-export const RETRY_INTENT = "alternative" as const
+export const RETRY_VARIANT = "border" as const
 
 /**
  * How many placeholder rows a list draws when it was given no row to measure. The Grammar's choice; an app never passes a
@@ -79,17 +78,17 @@ export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
             data-grammar-empty-mark="glyph"
             {...(error.scope === "page" ? { "data-grammar-empty-scope": "page" } : {})}
         >
-            <IconTile source={ExclamationTriangleIcon} tone="danger" size="md" />
+            <IconTile state="error" />
             <div className="starci-core-notice-copy" data-contract="GAP-1">
-                <Text size="sm" isStrong>{error.message}</Text>
-                {error.description === undefined ? null : <Text size="sm" tone="muted">{error.description}</Text>}
+                <Text role="label.item">{error.message}</Text>
+                {error.description === undefined ? null : <Text role="body" tone="muted">{error.description}</Text>}
             </div>
             {error.actionLabel === undefined && error.back === undefined ? null : (
                 <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
                     {error.actionLabel === undefined ? null : (
-                        <Button intent={RETRY_INTENT} size="md" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
+                        <Button variant={RETRY_VARIANT} size="md" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
                     )}
-                    {error.back === undefined ? null : <Button intent="neutral" size="md" href={error.back.href}>{error.back.label}</Button>}
+                    {error.back === undefined ? null : <Button variant="border" size="md" href={error.back.href}>{error.back.label}</Button>}
                 </div>
             )}
         </div>

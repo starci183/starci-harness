@@ -57,11 +57,11 @@ export const Dialog: Story = {
       title="Rename project"
       description="The new name is visible to everyone on the team."
       closeLabel="Close"
-      trigger={<G.Button intent="alternative">Rename project</G.Button>}
+      trigger={<G.Button variant="border">Rename project</G.Button>}
       footer={(close) => (
         <>
-          <G.Button intent="neutral" onPress={close}>Cancel</G.Button>
-          <G.Button intent="commit" onPress={close}>Save</G.Button>
+          <G.Button variant="border" onPress={close}>Cancel</G.Button>
+          <G.Button variant="primary" onPress={close}>Save</G.Button>
         </>
       )}
     >
@@ -74,14 +74,14 @@ const ControlledDialogDemo = () => {
   const [open, setOpen] = useState(true);
   return (
     <>
-      <G.Button intent="alternative" onPress={() => setOpen(true)}>Rename project</G.Button>
+      <G.Button variant="border" onPress={() => setOpen(true)}>Rename project</G.Button>
       <G.Dialog
         isOpen={open}
         onOpenChange={setOpen}
         title="Rename project"
         description="App state owns this dialog; it mounts no trigger child and no trigger root."
         closeLabel="Close"
-        footer={(close) => <G.Button intent="commit" onPress={close}>Save</G.Button>}
+        footer={(close) => <G.Button variant="primary" onPress={close}>Save</G.Button>}
       >
         <G.Input id="dialog-controlled-name" name="name" label="Project name" defaultValue="Quarterly plan" />
       </G.Dialog>
@@ -107,7 +107,7 @@ export const DialogSmallNotDismissable: Story = {
       title="Session expired"
       description="Sign in again to continue."
       trigger={<G.Button>Show</G.Button>}
-      footer={(close) => <G.Button intent="commit" width="fill" onPress={close}>Sign in</G.Button>}
+      footer={(close) => <G.Button variant="primary" width="fill" onPress={close}>Sign in</G.Button>}
     />
   ),
 };
@@ -123,7 +123,7 @@ export const AlertDialog: Story = {
       confirmLabel="Delete project"
       cancelLabel="Keep project"
       onConfirm={noop}
-      trigger={<G.Button intent="neutral">Delete project</G.Button>}
+      trigger={<G.Button variant="border">Delete project</G.Button>}
     />
   ),
 };
@@ -132,7 +132,7 @@ const ControlledAlertDialogDemo = () => {
   const [open, setOpen] = useState(true);
   return (
     <>
-      <G.Button intent="neutral" onPress={() => setOpen(true)}>Delete project</G.Button>
+      <G.Button variant="border" onPress={() => setOpen(true)}>Delete project</G.Button>
       <G.AlertDialog
         isOpen={open}
         onOpenChange={setOpen}
@@ -166,7 +166,7 @@ export const AlertDialogPending: Story = {
       cancelLabel="Stay"
       isConfirmPending
       onConfirm={noop}
-      trigger={<G.Button intent="neutral">Leave team</G.Button>}
+      trigger={<G.Button variant="border">Leave team</G.Button>}
     />
   ),
 };
@@ -191,11 +191,11 @@ export const Drawer: Story = {
       title="Filters"
       description="Narrow the list."
       closeLabel="Close filters"
-      trigger={<G.Button intent="alternative">Filters</G.Button>}
+      trigger={<G.Button variant="border">Filters</G.Button>}
       footer={(close) => (
         <>
-          <G.Button intent="neutral" onPress={close}>Clear</G.Button>
-          <G.Button intent="commit" onPress={close}>Apply</G.Button>
+          <G.Button variant="border" onPress={close}>Clear</G.Button>
+          <G.Button variant="primary" onPress={close}>Apply</G.Button>
         </>
       )}
     >
@@ -208,7 +208,7 @@ const ControlledDrawerDemo = () => {
   const [open, setOpen] = useState(true);
   return (
     <>
-      <G.Button intent="alternative" onPress={() => setOpen(true)}>Filters</G.Button>
+      <G.Button variant="border" onPress={() => setOpen(true)}>Filters</G.Button>
       <G.Drawer
         isOpen={open}
         onOpenChange={setOpen}
@@ -216,7 +216,7 @@ const ControlledDrawerDemo = () => {
         title="Filters"
         description="App state owns this drawer; it mounts no trigger child and no trigger root."
         closeLabel="Close filters"
-        footer={(close) => <G.Button intent="commit" onPress={close}>Apply</G.Button>}
+        footer={(close) => <G.Button variant="primary" onPress={close}>Apply</G.Button>}
       >
         <FilterFields />
       </G.Drawer>
@@ -240,7 +240,7 @@ export const DrawerBottomSheet: Story = {
       showHandle
       title="Share"
       closeLabel="Close"
-      trigger={<G.Button intent="alternative">Share</G.Button>}
+      trigger={<G.Button variant="border">Share</G.Button>}
     >
       <G.Text>Anyone with the link can view.</G.Text>
     </G.Drawer>
@@ -254,7 +254,7 @@ const MenuDemo = () => {
   return (
     <G.DropdownMenu
       defaultOpen
-      trigger={<G.Button intent="alternative">Options</G.Button>}
+      trigger={<G.Button variant="border">Options</G.Button>}
       entries={[
         { id: 'profile', label: 'Profile', iconSource: UserGlyph, shortcut: ['command', 'P'] },
         { id: 'settings', label: 'Settings', iconSource: SettingsGlyph, description: 'Account and privacy' },
@@ -311,7 +311,7 @@ export const DropdownMenuMarks: Story = {
   render: () => (
     <G.DropdownMenu
       defaultOpen
-      trigger={<G.Button intent="alternative">Workspace</G.Button>}
+      trigger={<G.Button variant="border">Workspace</G.Button>}
       entries={[
         { id: 'studio', label: 'Studio', mark: workspaceMark },
         { id: 'design', label: 'Design team', description: 'Wide artwork stays contained', mark: wideMark },
@@ -411,11 +411,11 @@ export const Popover: Story = {
         defaultOpen
         showArrow
         title="Keyboard shortcuts"
-        trigger={<G.Button intent="alternative">Shortcuts</G.Button>}
+        trigger={<G.Button variant="border">Shortcuts</G.Button>}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <G.Text size="sm">Search <G.Kbd keys={['command', 'K']} /></G.Text>
-          <G.Text size="sm">New document <G.Kbd keys={['command', 'N']} /></G.Text>
+          <G.Text role="body">Search <G.Kbd keys={['command', 'K']} /></G.Text>
+          <G.Text role="body">New document <G.Kbd keys={['command', 'N']} /></G.Text>
         </div>
       </G.Popover>
     </div>
@@ -428,12 +428,12 @@ export const DisabledButtonReason: Story = {
     <Matrix>
       <State label="disabledReason: hover or focus the wrapper for the words; they are also its accessible description">
         <div style={{ paddingTop: '2.5rem' }}>
-          <G.Button intent="commit" isDisabled disabledReason="Add a title before publishing." onPress={noop}>Publish</G.Button>
+          <G.Button variant="primary" isDisabled disabledReason="Add a title before publishing." onPress={noop}>Publish</G.Button>
         </div>
       </State>
       <State label="Full width">
         <div style={{ paddingTop: '2.5rem', width: '16rem' }}>
-          <G.Button intent="commit" width="fill" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button>
+          <G.Button variant="primary" width="fill" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button>
         </div>
       </State>
     </Matrix>
@@ -471,7 +471,7 @@ export const Tooltip: Story = {
     <Matrix>
       <State label="Top (revealed on focus)">
         <div style={{ paddingTop: '2.5rem' }}>
-          <G.Tooltip content="Search everything" placement="top" trigger={<G.Button intent="alternative">Search</G.Button>} />
+          <G.Tooltip content="Search everything" placement="top" trigger={<G.Button variant="border">Search</G.Button>} />
         </div>
       </State>
       <State label="Bottom">
@@ -516,8 +516,8 @@ const ToasterDemo = () => {
   const [queue] = useState(seededQueue);
   return (
     <div style={{ display: 'flex', gap: '0.75rem' }}>
-      <G.Button intent="alternative" onPress={() => queue.add({ title: 'Reminder set', tone: 'informative' })}>Add toast</G.Button>
-      <G.Button intent="neutral" onPress={() => queue.clear()}>Clear</G.Button>
+      <G.Button variant="border" onPress={() => queue.add({ title: 'Reminder set', tone: 'informative' })}>Add toast</G.Button>
+      <G.Button variant="border" onPress={() => queue.clear()}>Clear</G.Button>
       <G.Toaster label="Notifications" dismissLabel="Dismiss notification" queue={queue} placement="bottom-end" />
     </div>
   );
@@ -535,9 +535,9 @@ const ToastStackDemo = () => {
   };
   return (
     <div style={{ display: 'flex', gap: '0.75rem' }}>
-      <G.Button intent="alternative" onPress={run}>Check</G.Button>
-      <G.Button intent="alternative" onPress={() => G.stackToast.show({ title: 'Check failed', description: 'The service refused the request.', tone: 'negative', action: { label: 'Retry', onAction: noop } })}>Fail</G.Button>
-      <G.Button intent="neutral" onPress={() => G.stackToast.clear()}>Clear</G.Button>
+      <G.Button variant="border" onPress={run}>Check</G.Button>
+      <G.Button variant="border" onPress={() => G.stackToast.show({ title: 'Check failed', description: 'The service refused the request.', tone: 'negative', action: { label: 'Retry', onAction: noop } })}>Fail</G.Button>
+      <G.Button variant="border" onPress={() => G.stackToast.clear()}>Clear</G.Button>
       <G.ToastStack />
     </div>
   );

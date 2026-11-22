@@ -17,7 +17,7 @@ const POLL_MS = 30_000
 
 /**
  * `starci lane land`: the one lander of an app's dev (contexts/project/branches.md PROJECT-BRANCH-2). Each loop takes every ready
- * lane, merges them in its own worktree, runs one `app check --env prod` and pushes dev through `app push`; a red batch drops the
+ * lane, merges them in its own worktree, runs one `app check --env prod --level dev` (the fast level; a newer registration of a lane cancels it and re-forms the batch), squashes the batch into ONE commit listing the lanes and their shas and pushes dev through `app push`; a red batch drops the
  * lanes its findings name and runs once more, never bisecting. `--once` runs one batch; `--dry-run` merges only. When this machine's local
  * settings turn on `devSync.afterLand` (harness/local-settings.ts, git-ignored, default off), a landed batch is followed by `starci dev sync
  * --execute` on the app's main dev checkout, debounced over consecutive batches, which restarts only the changed api or web of the running dev stack.
@@ -26,7 +26,7 @@ const POLL_MS = 30_000
  */
 export const laneLandVerb = defineVerb({
     path: ["lane", "land"],
-    summary: "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod, push dev; red drops the lanes its findings name and re-gates once, never bisects",
+    summary: "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod --level dev (the fast level; a lane registered again with a new sha cancels the running gate and re-forms the batch, its status says superseded by <sha>), squash the batch into ONE commit (its message lists the lanes and their shas), push dev; red drops the lanes its findings name and re-gates once, never bisects",
     effect: "remote",
     roles: ["owner", "coordinator", "lead", "release"],
     schema: "starci/lane-land@1",

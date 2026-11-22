@@ -51,16 +51,16 @@ export const Glyphs: Story = {
   render: () => (
     <Matrix>
       <State label="IconButton glyph: more, panel-end, pencil, send, close" direction="row">
-        <G.IconButton intent="neutral" glyph="more" label="More actions" />
-        <G.IconButton intent="neutral" glyph="panel-end" label="Hide the customer pane" />
-        <G.IconButton intent="neutral" glyph="pencil" label="Edit" />
-        <G.IconButton intent="commit" glyph="send" label="Send" />
-        <G.IconButton intent="dismiss" label="Close" />
+        <G.IconButton variant="border" glyph="more" label="More actions" />
+        <G.IconButton variant="border" glyph="panel-end" label="Hide the customer pane" />
+        <G.IconButton variant="border" glyph="pencil" label="Edit" />
+        <G.IconButton variant="primary" glyph="send" label="Send" />
+        <G.IconButton variant="border" label="Close" />
       </State>
       <State label="Button startGlyph" direction="row">
-        <G.Button intent="commit" startGlyph="send">Send</G.Button>
-        <G.Button intent="alternative">Edit</G.Button>
-        <G.Button intent="commit" startGlyph="send" isDisabled>Send</G.Button>
+        <G.Button variant="primary" startGlyph="send">Send</G.Button>
+        <G.Button variant="border">Edit</G.Button>
+        <G.Button variant="primary" startGlyph="send" isDisabled>Send</G.Button>
       </State>
     </Matrix>
   ),

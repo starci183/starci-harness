@@ -6,7 +6,6 @@ import type { PresentationState } from "../../../common/state.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { overlayOpenProps, resolveTriggerlessOpenProps, useOverlayContainer, vendorStatusFor, type OverlayOpenState } from "../../overlayScope.js"
 import { Button } from "../../leaf/Button/index.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 
 export type AlertDialogProps = OverlayOpenState & {
     /** The question being confirmed; the dialog's accessible name. */
@@ -130,7 +129,7 @@ export const AlertDialog = ({
                             )
                         }
                         return (
-                            <ButtonPlacementProvider placement="decision">
+                            <>
                             <SurfaceNesting host="overlay">
                                 <HeroAlertDialog.Header className="starci-core-overlay-header">
                                     <HeroAlertDialog.Icon status={vendorStatusFor(tone)} className="starci-core-alert-dialog-icon" />
@@ -146,16 +145,16 @@ export const AlertDialog = ({
                                 )}
                                 <HeroAlertDialog.Footer className="starci-core-overlay-footer">
                                     <SafeAction>
-                                        <Button intent="dismiss" isDisabled={pending} onPress={close}>{cancelLabel}</Button>
+                                        <Button variant="border" isDisabled={pending} onPress={close}>{cancelLabel}</Button>
                                     </SafeAction>
                                     <span data-grammar-overlay-action="confirm" data-grammar-tone={tone} data-contract="CTA-4 ACTION-2 FEEDBACK-3">
                                         {tone === "negative"
-                                            ? <Button intent="destructive" step="confirm" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>
-                                            : <Button intent="commit" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>}
+                                            ? <Button variant="danger" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>
+                                            : <Button variant="primary" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>}
                                     </span>
                                 </HeroAlertDialog.Footer>
                             </SurfaceNesting>
-                            </ButtonPlacementProvider>
+                            </>
                         )
                     }}
                 </HeroAlertDialog.Dialog>

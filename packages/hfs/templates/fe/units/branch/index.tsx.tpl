@@ -14,7 +14,7 @@ export const {{Name}} = (props: {{Name}}Props) => {
     const [isOpen, setIsOpen] = useState(false)
     return (
         <>
-            <Button intent="neutral" onPress={() => setIsOpen((current) => !current)}>
+            <Button onPress={() => setIsOpen((current) => !current)}>
                 {isOpen ? props.hideLabel : props.showLabel}
             </Button>
             {isOpen ? props.body : null}

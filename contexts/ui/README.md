@@ -18,6 +18,7 @@ product spec (.starciwork)
 
 | File | Holds | Read it when |
 | --- | --- | --- |
+| [content.md](content.md) | business first: the app's `audience`, business concepts never system internals, wrong versus right for each situation, "Chi tiết kỹ thuật" | writing any copy, a summary, or an error a reader sees |
 | [situations.md](situations.md) | one row per situation of a screen (the component, its spacing role, its story, what refuses the wrong version) and the loading table | starting any screen: say what it is, then follow the row |
 | [composition.md](composition.md) | hierarchy, action and CTA, accent, state and feedback, collection, layout, responsive, taste, coverage | writing a spec or a direction, choosing what goes on a page |
 | [loading.md](loading.md) | what drives a loading flag, who draws the skeleton, the laws of a loading state (R367) | drawing a region that waits for reads |
@@ -30,7 +31,7 @@ product spec (.starciwork)
 
 | Owner | Owns | Never holds |
 | --- | --- | --- |
-| `contexts/ui` | the choice and the reason: which component, which rank, which step of the ramp, which owner | a family's values, class names, the intent x placement map, lint logic |
+| `contexts/ui` | the choice and the reason: which component, which rank, which step of the ramp, which owner | a family's values, class names, the Button vendor mapping, lint logic |
 | the grammar contract ([../grammars/contract.md](../grammars/contract.md)) and the package that implements it (`@starci/grammar`, grammars `core` and `offset-pop`) | components, props, anatomy, token and role names, the size ramp values, the intent x placement map | product facts |
 | [../grammars/](../grammars/README.md) | why each family chooses its values, its departures | universal rules |
 | [../vendor/heroui.md](../vendor/heroui.md) | what HeroUI ships and what a grammar must keep | when to use a component |

@@ -7,7 +7,7 @@ import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The tone of one part: a HeroUI status or brand token, so a part is told from the next by more than its place. */
-export type ProportionBarTone = "accent" | "success" | "warning" | "danger" | "neutral"
+export type ProportionBarTone = "accent" | "info" | "success" | "warning" | "danger" | "neutral"
 
 /** One part of the whole: a label, an amount, and what the amount reads as. */
 export type ProportionBarPart = {
@@ -41,7 +41,7 @@ type SegmentStyle = CSSProperties & { readonly "--starci-core-proportion-share":
 /**
  * One track split into segments, each part's share of the whole, with a legend under it (a dot in the part's tone, its label and
  * its amount as real text). A list for assistive technology: every item reads "label, amount". It draws no axis, no percentage
- * and no animation; two or three parts of one whole are this, many columns on one scale are a `BarChart`.
+ * and no animation; two or three parts of one whole are this, many columns on one scale are the ext `BarChart`.
  */
 export const ProportionBar = ({ label, parts, empty, isLoading: ownLoading, error }: ProportionBarProps) => {
     const isLoading = useIsLoading(ownLoading)

@@ -146,28 +146,51 @@ export const tierProps: Rule.RuleModule = {
 
 
 /**
- * The libraries the Grammar never imports: a graph or flow toolkit and every animation library. Grammar motion is CSS transitions
- * its tokens drive (reduced motion honoured in the stylesheet), and a graph is not a Grammar component. An app that needs one
- * writes it in its own code inside `<Fragment reason="...">`. The same list is read by `scripts/check-libraries.mts`, which also
- * judges the stories and the manifest, and mirrored by the canon rule `starci-fe/fragment-only-library` for apps.
+ * The libraries of the Grammar (DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY). Motion is the CSS transitions its tokens drive, so no
+ * animation library is imported anywhere. The graph and markdown libraries are imported ONLY inside Grammar's core ext, each in its
+ * own ext (`src/core/ext/graph`, `src/core/ext/markdown`), and declared only as optional peers: an app that never imports an ext
+ * entry installs none of them. The same lists are read by `scripts/check-libraries.mts`, which also judges the stories and the
+ * manifest; apps never import these libraries themselves (they import `@starci/grammar/core/ext/graph` or `/markdown`).
  */
-export const BANNED_LIBRARIES: readonly RegExp[] = [
+export const MOTION_LIBRARIES: readonly RegExp[] = [
     /^(?:motion|framer-motion)(?:\/|$)/u,
-    /^(?:@xyflow\/react|reactflow|react-flow-renderer|@reactflow\/[^/]+)(?:\/|$)/u,
     /^(?:gsap|animejs|anime\.js|popmotion|react-transition-group|react-spring|@react-spring\/[^/]+|@formkit\/auto-animate|lottie-web|lottie-react|@lottiefiles\/[^/]+|velocity-animate)(?:\/|$)/u,
 ]
 
-/** True for a module specifier the Grammar never imports. */
-export const isBannedLibrary = (specifier: string): boolean => BANNED_LIBRARIES.some((pattern) => pattern.test(specifier))
+/** Each ext of the core and the libraries only it may import. */
+export const EXT_LIBRARIES: Readonly<Record<string, readonly RegExp[]>> = Object.freeze({
+    graph: [/^(?:@xyflow\/react|reactflow|react-flow-renderer|@reactflow\/[^/]+)(?:\/|$)/u, /^elkjs(?:\/|$)/u, /^d3-force(?:\/|$)/u],
+    markdown: [/^(?:unified|remark-[\w-]+|mdast-util-directive|shiki|@shikijs\/[^/]+|beautiful-mermaid)(?:\/|$)/u],
+    recharts: [/^recharts(?:\/|$)/u],
+    pdf: [/^pdfjs-dist(?:\/|$)/u],
+    dropzone: [/^react-dropzone(?:\/|$)/u],
+})
 
-/** The Grammar imports no graph toolkit and no animation library (static, re-export, dynamic or `require`). */
+/** The ext a source file belongs to (`src/core/ext/<name>/…`), or null for the core, the families and the stories. */
+export const extOf = (file: string): string | null => /(?:^|\/)src\/core\/ext\/([a-z-]+)\//u.exec(file.replaceAll("\\", "/"))?.[1] ?? null
+
+/** Why `file` may not import `specifier`, or null when it may. A file outside every ext imports no ext library. */
+export const libraryProblem = (file: string, specifier: string): string | null => {
+    if (MOTION_LIBRARIES.some((pattern) => pattern.test(specifier))) return `The Grammar never imports \`${specifier}\`: motion is the CSS transitions its tokens drive.`
+    // A `?url` import is a bundler asset (pdfjs's worker file for a Vite build), never the library's code.
+    if (/\?url$/u.test(specifier)) return null
+    const owner = Object.entries(EXT_LIBRARIES).find(([, patterns]) => patterns.some((pattern) => pattern.test(specifier)))?.[0]
+    if (owner === undefined || extOf(file) === owner) return null
+    return `\`${specifier}\` is a library of the core's ${owner} ext: only src/core/ext/${owner} imports it (an app draws through @starci/grammar/core/ext/${owner}).`
+}
+
+/** True for a module specifier no file of the Grammar outside its ext may import. */
+export const isBannedLibrary = (specifier: string): boolean => libraryProblem("src/core/index.ts", specifier) !== null
+
+/** The Grammar imports no animation library, and a graph or markdown library only inside its own ext (static, re-export, dynamic or `require`). */
 export const noGraphOrAnimationLibrary: Rule.RuleModule = {
-    meta: { type: "problem", schema: [], docs: { description: "The Grammar imports no graph toolkit and no animation library; an app uses one only inside Fragment." } },
+    meta: { type: "problem", schema: [], docs: { description: "No animation library; a graph or markdown library only inside its own core ext." } },
     create(context) {
+        const file = context.filename
         const judge = (node: Rule.Node, specifier: unknown): void => {
-            if (typeof specifier === "string" && isBannedLibrary(specifier)) {
-                context.report({ node, message: `The Grammar never imports \`${specifier}\`: motion is CSS transitions its tokens drive, and a graph is app code. An app uses such a library only inside <Fragment reason="...">.` })
-            }
+            if (typeof specifier !== "string") return
+            const problem = libraryProblem(file, specifier)
+            if (problem !== null) context.report({ node, message: problem })
         }
         return {
             ImportDeclaration(node) { judge(node, node.source.value) },
@@ -182,4 +205,49 @@ export const noGraphOrAnimationLibrary: Rule.RuleModule = {
     },
 }
 
-export default { rules: { "no-graph-or-animation-library": noGraphOrAnimationLibrary, "no-literal-look": noLiteralLook, "tier-props": tierProps } }
+/**
+ * The core's ext boundary (owner 2026-11-22: "ext import core vào để xài vì nó là 1 phần của core"): an ext imports the core (any
+ * tier, its tokens and its index) and its own files, never another ext, a family or the package by name; the core, the families and
+ * Common never import an ext. Paths are read from the relative specifier, so the rule needs no resolver.
+ */
+export const extBoundaryProblem = (file: string, specifier: string): string | null => {
+    const from = file.replaceAll("\\", "/")
+    const at = /^(?:.*\/)?src\/(.*)$/u.exec(from)
+    if (at === null) return null
+    const fromExt = extOf(from)
+    if (/^@starci\/grammar(?:\/|$)/u.test(specifier)) return fromExt === null ? null : `An ext imports the core by path, not \`${specifier}\`: it is part of the core.`
+    if (!specifier.startsWith(".")) return null
+    const parts = (at[1] ?? "").split("/").slice(0, -1)
+    for (const part of specifier.split("/")) {
+        if (part === "..") parts.pop()
+        else if (part !== ".") parts.push(part)
+    }
+    const target = parts.join("/")
+    const toExt = /^core\/ext\/([a-z-]+)(?:\/|$)/u.exec(target)?.[1] ?? null
+    // A story shows an ext as an app would; it is never published (package.json files).
+    if (fromExt === null && /(?:^|\/)src\/stories\/|\.stories\.[jt]sx?$/u.test(from)) return null
+    if (fromExt === null) return toExt === null ? null : `The core never imports an ext (src/core/ext/${toExt}): an ext is used only in its own situation, and the core entry stays free of its libraries.`
+    if (toExt !== null && toExt !== fromExt) return `The ${fromExt} ext imports no other ext (src/core/ext/${toExt}).`
+    if (!target.startsWith("core/")) return `The ${fromExt} ext imports only the core (src/core): \`${specifier}\` leaves it.`
+    return null
+}
+
+export const extBoundary: Rule.RuleModule = {
+    meta: { type: "problem", schema: [], docs: { description: "An ext imports only the core and itself; the core never imports an ext." } },
+    create(context) {
+        const file = context.filename
+        const judge = (node: Rule.Node, specifier: unknown): void => {
+            if (typeof specifier !== "string") return
+            const problem = extBoundaryProblem(file, specifier)
+            if (problem !== null) context.report({ node, message: problem })
+        }
+        return {
+            ImportDeclaration(node) { judge(node, node.source.value) },
+            ExportAllDeclaration(node) { judge(node, node.source.value) },
+            ExportNamedDeclaration(node) { if (node.source) judge(node, node.source.value) },
+            ImportExpression(node) { if (node.source.type === "Literal") judge(node, node.source.value) },
+        }
+    },
+}
+
+export default { rules: { "ext-boundary": extBoundary, "no-graph-or-animation-library": noGraphOrAnimationLibrary, "no-literal-look": noLiteralLook, "tier-props": tierProps } }

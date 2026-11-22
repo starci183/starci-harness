@@ -57,10 +57,10 @@ export const ConnectPageBase = (props: ConnectPageBaseProps) => {
                                 onValueChange={props.on.edit}
                             />
                             <div className="app-row">
-                                <Button intent="commit" type="submit">
+                                <Button variant="primary" type="submit">
                                     {labels.connect}
                                 </Button>
-                                <Button intent="alternative" onPress={props.on.fixtures}>
+                                <Button variant="border" onPress={props.on.fixtures}>
                                     {labels.fixtures}
                                 </Button>
                             </div>

@@ -112,7 +112,7 @@ const markup = async (family: Family): Promise<string> => {
             G.GrammarRoot,
             { "data-grammar-family": family },
             createElement(G.Input, { id: "email", name: "email", label: "Email", kind: "email" }),
-            createElement(G.Button, { intent: "commit" }, "Save"),
+            createElement(G.Button, { variant: "primary" }, "Save"),
             createElement(
                 G.SurfaceCard,
                 { label: "Overview" },

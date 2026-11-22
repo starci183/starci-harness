@@ -22,7 +22,7 @@ import { serviceFindings } from '../runtime/scripts/hfs/rules/services.mjs';
 import { declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { declaredPackagesHfsView } from '../runtime/scripts/hfs/view.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
-import { renderTargets, type AppSourceFacts } from '../sync/index.mjs';
+import { appSource, renderTargets, type AppSourceFacts } from '../sync/index.mjs';
 import { formatFindings } from '../sync/format.mjs';
 import { createRequire } from 'node:module';
 
@@ -228,9 +228,9 @@ test('an app that declares no nivoos package runs no check', async (t) => {
 const PRESETS = { sonarExclusions: '**/*.spec.ts' };
 const STACK = { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' };
 /** The root files sync renders for an app declaring the nivoos package `biz` (seed folder `out`) over source facts that list the folders `rootPackages`. */
-const rendered = (rootPackages: string[], out?: string) => {
+const rendered = (rootPackages: string[], out?: string, rootPackageSpecs?: string[]) => {
   const sides = { be: BE, nivoos: { packages: [{ name: 'biz', ...(out === undefined ? {} : { out }) }] } };
-  const source = { files: [], read: () => '', rootPackages, packageScopes: {}, stack: STACK, hasImage: () => true } as unknown as AppSourceFacts;
+  const source = { files: [], read: () => '', rootPackages, ...(rootPackageSpecs === undefined ? {} : { rootPackageSpecs }), packageScopes: {}, stack: STACK, hasImage: () => true } as unknown as AppSourceFacts;
   const targets = renderTargets(declarationOf(sides), PRESETS, { source });
   return (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
 };
@@ -245,6 +245,31 @@ test('sync: a declared package is no jest project, Codecov path or component, So
   }
   assert.match(render('sonar-project.properties'), /^sonar\.sources=be\/apps,be\/src,packages\/shared\/src$/m);
   assert.ok(render('codecov.yml').includes('package-shared') && render('be/jest.config.js').includes('packages/shared'), 'the library package is still measured');
+});
+
+test('sync: a declared package that holds specs runs them in the unit run (the preset tests option), measured nowhere; without specs, or without facts, the jest config is as before', () => {
+  const plain = rendered(['biz', 'shared'])('be/jest.config.js');
+  assert.equal(rendered(['biz', 'shared'], undefined, ['shared'])('be/jest.config.js'), plain, 'a library package with specs is already a project: nothing is added');
+  const withSpecs = rendered(['biz', 'shared'], undefined, ['biz', 'shared'])('be/jest.config.js');
+  const EOL = String.fromCharCode(10);
+  const testsLine = '        tests: ["packages/biz"],';
+  assert.ok(withSpecs.split(EOL).includes(testsLine), 'the declared package with specs is listed under tests');
+  assert.equal(withSpecs.split(EOL).filter(line => line !== testsLine).join(EOL), plain, 'only the tests list is added');
+  const only = rendered(['biz'], undefined, ['biz'])('be/jest.config.js');
+  assert.ok(only.includes(['    packages: {', '        folders: [],', '        files: [],', '        excludes: [],', testsLine, '    },'].join(EOL)), 'a project with only a declared package still gets the option');
+  assert.equal(rendered(['biz'], undefined, [])('be/jest.config.js'), rendered(['biz'])('be/jest.config.js'), 'no spec, no option');
+  assert.equal(rendered(['biz'])('be/jest.config.js').includes('packages'), false);
+  for (const file of ['codecov.yml', 'sonar-project.properties', 'package.json']) assert.equal(rendered(['biz', 'shared'], undefined, ['biz', 'shared'])(file), rendered(['biz', 'shared'])(file), `${file} is the same: the specs add no coverage scope`);
+});
+
+test('sync: appSource lists the root packages that hold a spec', (t) => {
+  const root = mkdtemp(t, 'starci-package-specs-');
+  const put = (file: string): void => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), '{}'); };
+  for (const name of ['with', 'nested', 'bare', 'built']) put(`packages/${name}/package.json`);
+  put('packages/with/src/a.spec.ts'); put('packages/nested/src/deep/er/b.spec.ts'); put('packages/bare/src/c.ts'); put('packages/built/src/dist/d.spec.ts');
+  const facts = appSource(root);
+  assert.deepEqual(facts.rootPackages, ['bare', 'built', 'nested', 'with']);
+  assert.deepEqual(facts.rootPackageSpecs, ['nested', 'with']);
 });
 
 test('sync: a project whose only package is a declared one has no library scope, yet its root eslint config still lints the package', () => {

@@ -254,7 +254,7 @@ const OutsideDemo = () => {
             key={item.id}
             isSelected={picked === item.id}
             onDragStart={(event: DragEvent<HTMLDivElement>) => G.startScheduleDrag(event, item.id)}
-            body={<G.Button intent="neutral" onPress={() => setPicked(picked === item.id ? null : item.id)}>{`${picked === item.id ? 'Picked' : 'Pick'}: ${item.title}`}</G.Button>}
+            body={<G.Button variant="border" onPress={() => setPicked(picked === item.id ? null : item.id)}>{`${picked === item.id ? 'Picked' : 'Pick'}: ${item.title}`}</G.Button>}
           />
         ))}
       </G.Cluster>

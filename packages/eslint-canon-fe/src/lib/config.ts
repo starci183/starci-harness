@@ -140,7 +140,7 @@ export const SLOT_FREE_RULES = Object.freeze([
   "no-bidirectional-character", "todo-tag", "no-duplicate-import", "no-useless-fragment", "no-nested-component", "no-children-prop", "use-state-destructured", "prefer-tag-over-role",
   "no-hand-built-panes", "no-table-in-card", "no-heading-above-card", "no-fill-command-in-header", "no-app-surface-paint", "control-height", "no-grammar-shim",
   "no-swr-default-array", "no-foreign-slot-status", "no-validating-as-loading", "no-placeholder-object", "no-hand-skeleton", "explicit-export-surface", "directive-first", "renderer-presentation-only",
-  "button-intent-required", "destructive-confirm-in-dialog", "single-commit-per-render", "no-commit-in-collection-item",
+  "single-commit-per-render", "no-commit-in-collection-item",
 ])
 
 /** The source of a plain front-end tree: its `src/`. */

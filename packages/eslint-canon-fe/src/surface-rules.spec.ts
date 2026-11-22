@@ -149,10 +149,10 @@ for (const edition of ['lite'] as const) {
         // a PaneGrid draws its own dividers
         panes + 'const A = () => <Page chrome="panes"><PaneGrid areas={{ base: ["rail main"] }}><Pane area="rail" /><Pane area="main" /></PaneGrid></Page>',
         // a short separator between controls of a toolbar is the app's own element
-        panes + 'const A = () => <div className="flex items-center gap-2"><Button intent="neutral" /><Divider orientation="vertical" /><Button intent="neutral" /></div>',
+        panes + 'const A = () => <div className="flex items-center gap-2"><Button /><Divider orientation="vertical" /><Button /></div>',
         // a horizontal divider stacks bands; a joined card stacks bands
         panes + 'const A = () => <SurfaceCard composition="joined" label="Run"><Divider /><div className="flex flex-col"><div /><div /></div></SurfaceCard>',
-        panes + 'const A = () => <SurfaceCard composition="joined" label="Run"><div className="flex items-center gap-2"><Button intent="neutral" /></div></SurfaceCard>',
+        panes + 'const A = () => <SurfaceCard composition="joined" label="Run"><div className="flex items-center gap-2"><Button /></div></SurfaceCard>',
         // a stack of blocks is not a row of columns, whatever it holds
         panes + 'const A = () => <div className="flex flex-col"><div /><div><Divider orientation="vertical" /></div></div>',
         // a column row in a plain card, not a joined one
@@ -227,17 +227,17 @@ for (const edition of ['lite'] as const) {
     const fill = { messageId: "fill" }
     assert.doesNotThrow(() => tester().run("no-fill-command-in-header", noFillCommandInHeader, {
       valid: [
-        head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit">Add</Button>} />',
-        head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="content">Edit</Button>} />',
-        head + 'const A = () => <Section kind="list" title="a" action={<Button intent="neutral" width="content">Edit</Button>} items={[]} empty={null} />',
+        head + 'const A = () => <PageHeader title="a" actions={<Button variant="primary">Add</Button>} />',
+        head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button width="content">Edit</Button>} />',
+        head + 'const A = () => <Section kind="list" title="a" action={<Button width="content">Edit</Button>} items={[]} empty={null} />',
         // a fill button in a form, a card body or a phone action bar is not a header command
-        head + 'const A = () => <Form><Button intent="commit" width="fill" type="submit">Save</Button></Form>',
-        head + 'const A = () => <SurfaceCard label="a"><Button intent="commit" width="fill">Continue</Button></SurfaceCard>',
+        head + 'const A = () => <Form><Button variant="primary" width="fill" type="submit">Save</Button></Form>',
+        head + 'const A = () => <SurfaceCard label="a"><Button variant="primary" width="fill">Continue</Button></SurfaceCard>',
         'import { Button } from "other-kit"; const A = () => <PageHeader title="a" actions={<Button width="fill" />} />',
       ],
       invalid: [
-        { code: head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit" width="fill">Add</Button>} />', errors: [fill] },
-        { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="fill">Edit</Button>} />', errors: [fill] },
+        { code: head + 'const A = () => <PageHeader title="a" actions={<Button variant="primary" width="fill">Add</Button>} />', errors: [fill] },
+        { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button width="fill">Edit</Button>} />', errors: [fill] },
         { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} />', errors: [fill] },
         { code: head + 'const A = () => <Section kind="list" title="a" action={<div><Button width={"fill"}>Add</Button></div>} items={[]} empty={null} />', errors: [fill] },
       ],

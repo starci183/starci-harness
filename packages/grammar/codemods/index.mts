@@ -6,6 +6,7 @@
  */
 import type Compiler from "typescript"
 import { runV0540, v0540Markdown, type V0540Report } from "./v0540/index.mts"
+import { runV0550, v0550Markdown, type V0550Report } from "./v0550/index.mts"
 
 /** What one codemod run reports: its findings are the cases left for a person. */
 export interface GrammarCodemodReport {
@@ -39,9 +40,17 @@ export const CODEMODS: readonly GrammarCodemod[] = Object.freeze([
         run: runV0540,
         markdown: (report) => v0540Markdown(report as V0540Report),
     },
+    {
+        id: "v0550",
+        version: "0.55.0",
+        summary: "the APIs deleted in 0.55.0 (IconTile size, Timeline marker, Stepper completeMarker, Text size, Avatar fallbackMark, Alert appearance, GrammarRoot theme dropped or moved; ButtonGroup and FilterButtonGroup marked) and the site group: the public site's display sizes become display.hero, display.section, display.figure, lead and title.card, its other raw sizes the role of their pixel size",
+        run: runV0550,
+        markdown: (report) => v0550Markdown(report as V0550Report),
+    },
 ])
 
-const parts = (version: string): number[] => version.split(".").map(Number)
+/** The x.y.z of a version; a prerelease (`0.55.0-display.1`) counts as its release, so it carries that release's codemod. */
+const parts = (version: string): number[] => (version.split("-")[0] ?? version).split(".").map(Number)
 
 /** -1, 0 or 1 as `a` is below, at or above `b` (x.y.z). */
 export const compareVersions = (a: string, b: string): number => {

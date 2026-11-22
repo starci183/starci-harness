@@ -50,7 +50,7 @@ const SettingsFormPage = () => {
         <G.TopBar
           position="static"
           brand={<G.Link href="#home">Studio</G.Link>}
-          actions={<G.Avatar name="Alex Morgan" size="sm" />}
+          actions={<G.Avatar name="Alex Morgan" size="md" />}
         />
       }
       navigation={<G.Sidebar label="Settings sections" groups={settingsNav} selectedKey={selected} onAction={setSelected} />}
@@ -85,8 +85,8 @@ const SettingsFormPage = () => {
                 </div>
               </G.SurfaceCard>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <G.Button type="reset" intent="neutral">Cancel</G.Button>
-                <G.Button type="submit" intent="commit">Save changes</G.Button>
+                <G.Button type="reset" variant="border">Cancel</G.Button>
+                <G.Button type="submit" variant="primary">Save changes</G.Button>
               </div>
             </G.Form>
             <G.SurfaceCard label="Danger zone" headingLevel={2} state="negative">
@@ -99,7 +99,7 @@ const SettingsFormPage = () => {
                   confirmLabel="Delete account"
                   cancelLabel="Keep account"
                   onConfirm={noop}
-                  trigger={<G.Button intent="neutral">Delete account</G.Button>}
+                  trigger={<G.Button variant="border">Delete account</G.Button>}
                 />
               </div>
             </G.SurfaceCard>
@@ -154,10 +154,10 @@ const DataListPage = () => {
 
   return (
     <G.WorkspaceShell
-      header={<G.TopBar position="static" brand={<G.Link href="#home">Studio</G.Link>} actions={<G.Avatar name="Alex Morgan" size="sm" />} />}
+      header={<G.TopBar position="static" brand={<G.Link href="#home">Studio</G.Link>} actions={<G.Avatar name="Alex Morgan" size="md" />} />}
       primaryLabel="Members"
       primary={
-        <G.Page header={{ title: 'Members', description: `${filtered.length} people in this workspace.`, actions: <G.Button intent="commit">Invite</G.Button> }}>
+        <G.Page header={{ title: 'Members', description: `${filtered.length} people in this workspace.`, actions: <G.Button variant="primary">Invite</G.Button> }}>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 16rem' }}>
                 <G.SearchField label="Search members" isLabelHidden placeholder="Search by name" value={query} onValueChange={(value) => { setQuery(value); setPage(1); }} clearLabel="Clear search" />
@@ -168,11 +168,11 @@ const DataListPage = () => {
                 placement="right"
                 title="Filter members"
                 closeLabel="Close filters"
-                trigger={<G.Button intent="alternative">{`Filters${roles.length === 0 ? '' : ` (${roles.length})`}`}</G.Button>}
+                trigger={<G.Button variant="border">{`Filters${roles.length === 0 ? '' : ` (${roles.length})`}`}</G.Button>}
                 footer={(close) => (
                   <>
-                    <G.Button intent="neutral" onPress={() => { setRoles([]); setPage(1); }}>Clear</G.Button>
-                    <G.Button intent="commit" onPress={close}>Show results</G.Button>
+                    <G.Button variant="border" onPress={() => { setRoles([]); setPage(1); }}>Clear</G.Button>
+                    <G.Button variant="primary" onPress={close}>Show results</G.Button>
                   </>
                 )}
               >

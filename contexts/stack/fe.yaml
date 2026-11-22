@@ -175,19 +175,19 @@ concerns:
     packages: [recharts]
     home: [fe.components]
     forbids: [chart.js, react-chartjs-2, '@nivo/core', d3, echarts, echarts-for-react]
-    why: one chart library, coloured by the grammar's tokens.
+    why: "one chart library, drawn on the grammar's tokens by @starci/grammar/core/ext/recharts; an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/recharts (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: flow
     tier: opt
-    packages: ['@xyflow/react']
+    packages: ['@xyflow/react', elkjs, d3-force]
     home: [fe.components]
     forbids: [reactflow, cytoscape]
-    why: an app draws a node graph itself with React Flow, only inside a Fragment region (Grammar has no graph component since 0.49.0).
+    why: "a node graph (a run's flow, a data ERD, a knowledge map) is drawn by @starci/grammar/core/ext/graph; an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/graph (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: markdown
     tier: opt
-    packages: [react-markdown, remark-gfm, remark-directive, mdast-util-from-markdown, mdast-util-gfm, micromark-extension-gfm]
+    packages: [react-markdown, remark-gfm, remark-directive, mdast-util-from-markdown, mdast-util-gfm, micromark-extension-gfm, unified, remark-parse, mdast-util-directive, shiki, beautiful-mermaid]
     home: [fe.components]
     forbids: [marked, markdown-it, showdown]
-    why: markdown renders to grammar elements, never as injected HTML; the grammar's Markdown parses to a syntax tree and maps it to its parts, apps never import the parser.
+    why: "markdown renders to grammar elements, never as injected HTML; a long authored document is drawn by @starci/grammar/core/ext/markdown (unified, remark-parse, remark-gfm, remark-directive, mdast-util-directive, shiki, beautiful-mermaid are its optional peers): an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/markdown (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: code
     tier: opt
     packages: [react-shiki, '@monaco-editor/react']
@@ -212,13 +212,13 @@ concerns:
     home: [fe.components, fe.modules.api]
     pattern: FE-UPLOAD
     forbids: [react-dropzone-uploader, filepond, react-filepond, uppy]
-    why: a drop zone and a presigned PUT straight to storage.
+    why: "every upload is the Dropzone of @starci/grammar/core/ext/dropzone and a presigned PUT straight to storage; react-dropzone: an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/dropzone (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: pdf
     tier: opt
-    packages: [react-pdf]
+    packages: [pdfjs-dist]
     home: [fe.components]
-    forbids: ['@react-pdf-viewer/core', pdfjs-dist]
-    why: one viewer with its worker configured once.
+    forbids: ['@react-pdf-viewer/core', react-pdf]
+    why: "a PDF document is shown only by the PdfViewer of @starci/grammar/core/ext/pdf (its worker configured once); pdfjs-dist: an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/pdf (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: device-id
     tier: opt
     packages: ['@fingerprintjs/fingerprintjs']

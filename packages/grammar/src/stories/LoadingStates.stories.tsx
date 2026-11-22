@@ -157,8 +157,8 @@ export const SurfaceCardBodyStates: Story = {
 /* ------------------------------------------------------------------ ListBox, Timeline, DataTable */
 
 const conversations: ReadonlyArray<G.ListBoxItem> = [
-    { id: "a", label: "Alex Morgan", description: "Can we move the call to Friday?", leading: <G.Avatar name="Alex Morgan" size="sm" isDecorative />, trailing: <G.Text size="xs" tone="muted">09:12</G.Text> },
-    { id: "b", label: "Sam Rivera", description: "Sent the invoice", leading: <G.Avatar name="Sam Rivera" size="sm" isDecorative />, trailing: <G.Text size="xs" tone="muted">Mon</G.Text> },
+    { id: "a", label: "Alex Morgan", description: "Can we move the call to Friday?", leading: <G.Avatar name="Alex Morgan" size="md" isDecorative />, trailing: <G.Text role="caption">09:12</G.Text> },
+    { id: "b", label: "Sam Rivera", description: "Sent the invoice", leading: <G.Avatar name="Sam Rivera" size="md" isDecorative />, trailing: <G.Text role="caption">Mon</G.Text> },
 ]
 const placeholderConversations: ReadonlyArray<G.ListBoxItem> = conversations.map((item) => ({ ...item, label: " ", description: " " }))
 
@@ -221,7 +221,7 @@ export const MessageBubbleStates: Story = {
         <Matrix maxWidth={520}>
             <State label="Loading (a thread)" direction="column"><G.MessageBubble isLoading hasAvatar /></State>
             <State label="Content" direction="column">
-                <G.MessageBubble body="Can we move the call to Friday?" author="Alex Morgan" meta="09:12" avatar={<G.Avatar name="Alex Morgan" size="sm" isDecorative />} />
+                <G.MessageBubble body="Can we move the call to Friday?" author="Alex Morgan" meta="09:12" avatar={<G.Avatar name="Alex Morgan" size="md" isDecorative />} />
                 <G.MessageBubble side="outgoing" body="Friday works." meta="09:14" />
             </State>
             <State label="Error" direction="column"><G.MessageBubble error={failure} /></State>

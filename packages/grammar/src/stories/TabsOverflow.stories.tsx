@@ -49,7 +49,7 @@ const ChipsRows = () => (
     <State label="Quick prompts: scroll to either edge" direction="column">
       <G.HorizontalScrollRegion aria-label="Quick prompts" overflow="needed" isFocusable={false}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {prompts.map((prompt) => <G.Button key={prompt} intent="alternative" size="sm">{prompt}</G.Button>)}
+          {prompts.map((prompt) => <G.Button key={prompt} variant="border" size="sm">{prompt}</G.Button>)}
         </div>
       </G.HorizontalScrollRegion>
     </State>
@@ -57,7 +57,7 @@ const ChipsRows = () => (
       <State label="Right-to-left prompts" direction="column">
         <G.HorizontalScrollRegion aria-label="Right-to-left quick prompts" overflow="needed" isFocusable={false}>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {prompts.map((prompt) => <G.Button key={prompt} intent="alternative" size="sm">{prompt}</G.Button>)}
+            {prompts.map((prompt) => <G.Button key={prompt} variant="border" size="sm">{prompt}</G.Button>)}
           </div>
         </G.HorizontalScrollRegion>
       </State>

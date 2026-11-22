@@ -3,11 +3,16 @@ import { captureGitSync } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { appRootOf } from "../../harness/memory-plan.js"
+import { levelOfTarget, pushTargetOfArgs } from "./fast-check.js"
+import type { CheckLevel } from "./fast-check.js"
 
 /** The committed cache folder of an app. */
 const CACHE_DIR = ".starcistacks/cache"
 /** The check runs a push may take to settle the cache: the run that writes it, the run that proves it (a record can move once the cache commit changes HEAD), one spare. */
 const MAX_RUNS = 3
+
+/** The check a push of main, a release tag or another branch runs before it pushes: the FULL level, every gate. */
+export const FULL_CHECK_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "full", "--json"]
 
 /** A tool run as the verb sees it: exit code and the text it printed (empty when it streamed to the terminal). */
 export interface PushRun {
@@ -18,7 +23,7 @@ export interface PushRun {
 /** What the verb touches, so a spec drives it without a repository: git, the check, and the push. */
 export interface PushPorts {
     readonly git: (args: readonly string[]) => PushRun
-    /** `app check --env prod --json` of the app: exit code and its json report. */
+    /** `app check --env prod --level full --json` of the app: exit code and its json report. */
     readonly check: () => PushRun
     /** `git push <args>`, streaming its hook's output. */
     readonly push: (args: readonly string[]) => number
@@ -83,7 +88,7 @@ const dirtyCache = (ports: PushPorts): string[] =>
  * nothing, and then `git push` runs, whose hook finds a warm cache and passes. A tree with uncommitted work outside the cache is
  * refused: the records would describe files the push does not carry. Any blocking finding stops the verb before the push, as the hook would.
  */
-export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[]): PushOutcome => {
+export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[], level: CheckLevel = "full"): PushOutcome => {
     const commits: string[] = []
     const dirty = dirtyOutsideCache(ports)
     if (dirty.length > 0) {
@@ -91,8 +96,14 @@ export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[]): Push
         ports.say(refusal)
         return { pushed: false, exitCode: 2, commits, runs: 0, refusal }
     }
+    // A landing on dev (every ref dev or a lane branch): the pre-push hook runs the fast level ONCE (app check --level dev), which needs no warm cache, so the verb runs no check of its own.
+    if (level === "dev") {
+        ports.say("app push: a landing on dev: the pre-push hook runs app check --level dev once; no warm-up run, the full gate runs at the main cut")
+        const exitCode = ports.push(pushArgs)
+        return { pushed: exitCode === 0, exitCode, commits, runs: 0 }
+    }
     for (let runs = 1; runs <= MAX_RUNS; runs += 1) {
-        ports.say(`app push: check run ${String(runs)} (app check --env prod)`)
+        ports.say(`app push: check run ${String(runs)} (app check --env prod --level full)`)
         const run = ports.check()
         const findings = blocking(run.stdout)
         if (findings === null || findings.length > 0 || run.exitCode !== 0) {
@@ -131,7 +142,7 @@ const realPorts = (cwd: string, say: (line: string) => void): PushPorts => {
             return { exitCode: run.exitCode, stdout: run.exitCode === 0 ? run.stdout : `${run.stdout}\n${run.stderr}` }
         },
         check: () => {
-            const run = spawnSync(process.execPath, [process.argv[1] ?? "", "app", "check", "--env", "prod", "--json"], { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] })
+            const run = spawnSync(process.execPath, [process.argv[1] ?? "", ...FULL_CHECK_ARGS], { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] })
             return { exitCode: run.status ?? 1, stdout: run.stdout }
         },
         push: (args) => {
@@ -150,13 +161,16 @@ const FLAGS = {
 /** `starci app push`: run the push gate's check first, commit the cache records it writes, then `git push` once. */
 export const appPushVerb = defineVerb({
     path: ["app", "push"],
-    summary: "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
+    summary: "push once: a landing on dev (every pushed ref dev or a lane branch) runs no check of its own, and its pre-push hook runs the fast level once (app check --level dev); any other push (main, a release tag, another branch) first runs app check --env prod --level full, commits the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/app-push@1",
     flags: FLAGS,
     run: (context: VerbContext, flags): Promise<VerbResult<PushOutcome>> => {
-        const outcome = warmAndPush(realPorts(context.cwd, context.progress), flags.args)
+        const ports = realPorts(context.cwd, context.progress)
+        const branch = ports.git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim()
+        const level = levelOfTarget(pushTargetOfArgs(flags.args, branch === "" || branch === "HEAD" ? undefined : branch))
+        const outcome = warmAndPush(ports, flags.args, level)
         return Promise.resolve({ data: outcome, message: outcome.pushed ? "pushed" : (outcome.refusal ?? "not pushed"), exitCode: outcome.exitCode })
     },
 })

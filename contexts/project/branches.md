@@ -62,6 +62,10 @@ rule; every other page links to it.
    default), a landed batch is followed by `starci dev sync --execute` on the app's main dev checkout, debounced over consecutive
    batches: it fast-forwards that checkout, installs, and rebuilds and restarts only the changed api or web of the running dev stack
    ([cicd.md](cicd.md) "Dev and prod"). A refused or failed sync is logged and never stops the lander.
+8. Local first (owner 2026-11-22: "merge hết vô local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa
+   thời gian code local"): a lane that needs a harness change installs its local-registry build (`starci deps install-local`) and
+   commits those pins when the app declares `deps.devAllowsLocalRegistry`; it lands on `dev` without waiting for npm. Only main and a
+   prod cut need npm pins (`deps install-local --restore`, then each pin bumped to its npm version, once per release).
 
 **Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
 `LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder

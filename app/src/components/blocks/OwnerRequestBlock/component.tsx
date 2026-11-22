@@ -89,7 +89,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                             />
                             <div className="app-pair">
                                 <span className="app-row">
-                                    <Button intent="commit" onPress={props.on.send} isDisabled={!props.props.canSend} isPending={isPending} isLoading={isLoading}>
+                                    <Button variant="primary" onPress={props.on.send} isDisabled={!props.props.canSend} isPending={isPending} isLoading={isLoading}>
                                         {labels.send}
                                     </Button>
                                 </span>

@@ -175,12 +175,12 @@ test('upgrade is dry by default and --execute applies', async (t) => {
 test('codemod takes --execute, --out and --json', async (t) => {
   const root = temp(t, 'hfs-canonical-codemod-');
   fs.mkdirSync(path.join(root, 'fe'));
-  const executed = await run(['codemod', 'button-intent', '--execute', '--json', '--out', 'migration.json'], { cwd: root });
+  const executed = await run(['codemod', 'spacing-roles', '--execute', '--json', '--out', 'migration.json'], { cwd: root });
   assert.deepEqual([executed.code, executed.err], [0, '']);
   const report = JSON.parse(fs.readFileSync(path.join(root, 'migration.json'), 'utf8'));
   assert.equal(report.write, true);
   assert.equal(executed.out, fs.readFileSync(path.join(root, 'migration.json'), 'utf8'));
-  const dry = await run(['codemod', 'button-intent'], { cwd: root });
+  const dry = await run(['codemod', 'spacing-roles'], { cwd: root });
   assert.equal(dry.code, 0, dry.err);
   assert.match(dry.out, /Dry run/);
 });
@@ -193,7 +193,7 @@ test('an old spelling is an unknown verb or flag: exit 2, nothing written or mis
   const before = files(root);
   for (const argv of [['explain', 'hfs.json'], ['hygiene'], ['new', 'image'], ['sonar'], ['sonar', '--write'], ['stack', 'up'],
     ['sync', '--write'], ['sync', '--check'], ['lint', '--format', 'json'], ['lint', '--sonar', 'r.json'], ['upgrade', '--plan'],
-    ['codemod', 'button-intent', '--write'], ['codemod', 'button-intent', '--report', 'r.json'], ['scaffold', 'again', '--into', 'x']]) {
+    ['codemod', 'spacing-roles', '--write'], ['codemod', 'spacing-roles', '--report', 'r.json'], ['scaffold', 'again', '--into', 'x']]) {
     const result = await run(argv, { cwd: root, stackMain: async () => { throw new Error('the test world must not run'); } });
     assert.equal(result.code, 2, `${argv.join(' ')}: ${result.out}${result.err}`);
   }

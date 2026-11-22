@@ -8,7 +8,7 @@ import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The tone of one stage: a HeroUI status or brand token pair, so a stage is told from the next by more than its place. */
-export type FunnelChartTone = "accent" | "success" | "warning" | "danger" | "neutral"
+export type FunnelChartTone = "accent" | "info" | "success" | "warning" | "danger" | "neutral"
 
 /** One stage, in the order the reader goes through them: a name and how many reached it. */
 export type FunnelChartStage = {

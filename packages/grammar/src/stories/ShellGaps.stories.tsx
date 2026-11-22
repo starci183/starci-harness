@@ -6,7 +6,7 @@ import { BellGlyph, ChartGlyph, GroupGlyph, HomeGlyph, MenuGlyph, SearchGlyph, S
 
 /**
  * SHELL GAPS (0.46.0), each from NIVO's console shell canvas (`nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html`): a strong and a solid avatar plate and an
- * `AvatarButton` that forwards `fallbackMark` (`:20-24`, the account avatar), `IdentityLockup markTone="solid"` (`:9`, the brand mark), a Sidebar collapse row at the foot of the rail
+ * `AvatarButton` (`:20-24`, the account avatar), `IdentityLockup markTone="solid"` (`:9`, the brand mark), a Sidebar collapse row at the foot of the rail
  * (`:208`, "Thu gon"), a `TopBar density="adaptive"` (`:71`, `:186`, `:216`: 56px at 1440, 52px at 390) and a quiet `Meter` reading (`:208`, "Credit thang nay").
  */
 const meta: Meta = { title: 'Navigation/Shell gaps (0.46.0)', parameters: { layout: 'padded' } };
@@ -19,14 +19,14 @@ const plate = (root: ParentNode, tone: string): HTMLElement => {
   return element;
 };
 
-/** Four plates side by side: generated, accent soft, solid brand, neutral strong; the account `AvatarButton` carries `fallbackMark="initials"` and `tone="strong"`. */
+/** Four plates side by side: generated, accent soft, solid brand, neutral strong; the account `AvatarButton` carries `tone="strong"`. */
 export const AvatarPlates: Story = {
   render: () => (
     <G.Cluster gap="inline">
       <G.Avatar name="Hoa Moc Spa" tone="accent" />
       <G.Avatar name="Hoa Moc Spa" tone="solid" />
       <G.Avatar name="Le Nguyen" tone="strong" />
-      <G.AvatarButton name="Le Nguyen" fallbackMark="initials" tone="strong" size="control" />
+      <G.AvatarButton name="Le Nguyen" tone="strong" size="md" />
       <G.IdentityLockup title="NIVO" subtitle="Owner" markTone="solid" size="control" />
     </G.Cluster>
   ),
@@ -99,7 +99,7 @@ const Bar = () => (
   <G.TopBar
     density="adaptive"
     brand={<G.IdentityLockup title="Hoa Moc Spa" markTone="solid" size="control" />}
-    actions={<G.Cluster gap="inline"><G.IconButton label="Search" source={SearchGlyph} /><G.IconButton label="Notifications" source={BellGlyph} badge={7} badgeLabel="7 unread" /><G.AvatarButton name="Le Nguyen" fallbackMark="initials" tone="strong" size="control" /></G.Cluster>}
+    actions={<G.Cluster gap="inline"><G.IconButton label="Search" source={SearchGlyph} /><G.IconButton label="Notifications" source={BellGlyph} badge={7} badgeLabel="7 unread" /><G.AvatarButton name="Le Nguyen" tone="strong" size="md" /></G.Cluster>}
   />
 );
 

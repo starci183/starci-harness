@@ -300,7 +300,7 @@ const HeroDemo = () => (
       <G.Stack gap="section">
         <G.Heading level={1} scale="display">Plan the work, not the paperwork</G.Heading>
         <G.Text tone="muted">One calm place for your team to decide what happens next.</G.Text>
-        <G.Cluster gap="inline"><G.Button intent="commit" size="lg">Start free</G.Button></G.Cluster>
+        <G.Cluster gap="inline"><G.Button variant="primary" size="lg">Start free</G.Button></G.Cluster>
       </G.Stack>
     }
     trailing={

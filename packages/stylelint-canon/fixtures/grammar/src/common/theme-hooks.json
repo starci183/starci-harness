@@ -19,8 +19,6 @@
     { "name": "--starci-core-plate-selected", "fallback": "var(--accent-soft)", "kind": "color", "part": "ChoiceChips, FilterButtonGroup, RadioGroup appearance=\"rows\"", "means": "the fill of the selected plate" },
     { "name": "--starci-core-plate-selected-foreground", "fallback": "var(--accent-soft-foreground)", "kind": "color", "part": "ChoiceChips, FilterButtonGroup, RadioGroup appearance=\"rows\"", "means": "the words of the selected plate" },
     { "name": "--starci-core-plate-selected-border", "fallback": "var(--starci-core-plate-border, 0)", "kind": "border", "part": "ChoiceChips, FilterButtonGroup, RadioGroup appearance=\"rows\"", "means": "the edge of the selected plate" },
-    { "name": "--starci-core-button-danger-soft", "fallback": "var(--danger-soft)", "kind": "color", "part": "Button intent=\"destructive\" step=\"entry\" (HeroUI danger-soft)", "means": "the fill of the destructive entry button" },
-    { "name": "--starci-core-button-danger-soft-border", "fallback": "0", "kind": "border", "part": "Button intent=\"destructive\" step=\"entry\"", "means": "its edge, to draw it as an outline" },
     { "name": "--starci-core-bubble-incoming", "fallback": "var(--surface)", "kind": "color", "part": "MessageBubble (incoming)", "means": "the fill of the other party's message" },
     { "name": "--starci-core-bubble-incoming-foreground", "fallback": "var(--surface-foreground)", "kind": "color", "part": "MessageBubble (incoming), MessageCard", "means": "its words" },
     { "name": "--starci-core-bubble-incoming-border", "fallback": "0", "kind": "border", "part": "MessageBubble (incoming), in a thread and out of one", "means": "its edge (outside a thread a white host still adds the 1px separator edge)" },

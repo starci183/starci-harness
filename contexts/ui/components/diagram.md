@@ -14,7 +14,7 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | authored | the structure is Mermaid text the content carries (an article's `mermaid` code fence, a lesson body) | `MermaidDiagram` with the fence's text as `source` and a `label` naming what it shows | `DNA-COMMON-DIAGRAM-NAMED` |
-| data | the app holds the nodes and edges as data, or the reader selects, follows links or zooms (a workflow map, a value-sized map of bubbles) | not Grammar since 0.49.0: the app owns the graph and draws it with the library of its choice inside a `Fragment` region (see [fragment](fragment.md)); `FlowGraph` and `BubbleMap` are removed | judgement |
+| data | the reader must SEE a structure of steps, relations or clusters held as data: a run's flow, a data ERD, a knowledge map | the core's graph ext, `@starci/grammar/core/ext/graph` (`FlowGraph`, `SchemaMap`, `ErdMap`, `KnowledgeMap`; see [graph](graph.md)); no `Fragment`, it is Grammar | judgement |
 | list | the structure is a sequence of steps with no branches | not a diagram: `Stepper` or `Timeline` | judgement |
 
 ## Variants

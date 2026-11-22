@@ -195,6 +195,16 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
     return peakMb === undefined ? ran : { ...ran, peakMb }
 }
 
+/** Sets on this process what @starci/hfs reads from its environment: the limits of ops/liveness.yaml and what a branch profile may lower (policy/loosening.yaml). */
+export const applyHfsEnv = (context: Pick<VerbContext, "treeRoot">): void => {
+    const policy = loadPolicy(context.treeRoot)
+    Object.assign(process.env, hfsLimitsEnv(), {
+        STARCI_PROFILE_BRANCHES: policy.loosening.branchProfiles.branches.join(","),
+        STARCI_PROFILE_GATES: policy.loosening.branchProfiles.gates.join(","),
+        STARCI_OPTIONAL_GATES: policy.loosening.optionalGates.gates.join(","),
+    })
+}
+
 /**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. Its stderr (an app check's progress) streams
  * as it prints it in either mode; in human mode its stdout streams too and the CLI adds nothing, and under `--json` the CLI passes
@@ -220,12 +230,7 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     let stderr = ""
     // What an app's branch profile may lower (policy/loosening.yaml branchProfiles, after the
     // app's own overlay narrowed it), which @starci/hfs reads from its environment.
-    const policy = loadPolicy(context.treeRoot)
-    Object.assign(process.env, hfsLimitsEnv(), {
-        STARCI_PROFILE_BRANCHES: policy.loosening.branchProfiles.branches.join(","),
-        STARCI_PROFILE_GATES: policy.loosening.branchProfiles.gates.join(","),
-        STARCI_OPTIONAL_GATES: policy.loosening.optionalGates.gates.join(","),
-    })
+    applyHfsEnv(context)
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const runHeavyNode = hfsNodeRunner()

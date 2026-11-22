@@ -69,7 +69,7 @@ export const ScrollingIdentityColumns: Story = {
             <G.NavLandmark label="Conversation list" layout="scrolling" style={{ maxHeight: "8rem", overflowY: "auto", alignItems: "start" }}>
                 <G.ListBox label="Conversations" descriptionLines={1} inset="panel" defaultSelectedIds={["group"]} items={[
                     { id: "group", label: "Design team", description: "A 40px group identity", leading: <G.AvatarGroup label="Design team" layout="grid" items={[{ id: "mina", name: "Mina Nguyen" }, { id: "alex", name: "Alex Tran" }, { id: "kim", name: "Kim Le" }, { id: "robin", name: "Robin Park" }]} overflowLabel={(count) => `${count} more members`} /> },
-                    { id: "person", label: "Mina Nguyen", description: "A smaller avatar in the same column", leading: <G.Avatar name="Mina Nguyen" size="sm" /> },
+                    { id: "person", label: "Mina Nguyen", description: "A smaller avatar in the same column", leading: <G.Avatar name="Mina Nguyen" size="md" /> },
                     { id: "icon", label: "Pinned conversations", description: "A glyph in the same column", leading: <G.Icon source={GroupGlyph} usage="leading" /> },
                 ]} />
             </G.NavLandmark>
@@ -83,7 +83,7 @@ export const LeadingSlotSizes: Story = {
         <>
             {(["sm", "md", "lg"] as const).map((size) => (
                 <G.ListBox key={size} label={`${size} identity slots`} size={size} items={[
-                    { id: "person", label: "Mina Nguyen", leading: <G.Avatar name="Mina Nguyen" size={size} /> },
+                    { id: "person", label: "Mina Nguyen", leading: <G.Avatar name="Mina Nguyen" size={size === "sm" ? "sm" : "md"} /> },
                     { id: "glyph", label: "Pinned conversations", leading: <G.Icon source={GroupGlyph} usage="leading" /> },
                 ]} />
             ))}
@@ -114,15 +114,15 @@ const roomMembers: ReadonlyArray<G.AvatarGroupItem> = [
     { id: "sam", name: "Sam Lee" },
 ]
 
-/** Group rooms in a list: `leading` takes an `AvatarGroup layout="grid"` of the row's size (sm 32, md 40, lg 48), beside a person's Avatar. */
+/** Group rooms in a list: `leading` takes an `AvatarGroup layout="grid"` (sm 24 in a dense list, md 40 otherwise), beside a person's Avatar. */
 export const GroupRoomRows: Story = {
     render: () => (
         <>
             {(["sm", "md", "lg"] as const).map((size) => (
                 <G.ListBox key={size} label={`${size} rooms`} size={size} inset="panel" items={[
-                    { id: "pair", label: "Mina and Alex", description: "Two members", leading: <G.AvatarGroup label="Mina and Alex" layout="grid" size={size} items={roomMembers.slice(0, 2)} overflowLabel={(hidden) => `${hidden} more members`} /> },
-                    { id: "team", label: "Design team", description: "Five members, the count in the fourth cell", emphasis: "unread", leading: <G.AvatarGroup label="Design team" layout="grid" size={size} items={roomMembers} overflowLabel={(hidden) => `${hidden} more members`} /> },
-                    { id: "person", label: "Kim Le", description: "A person", leading: <G.Avatar name="Kim Le" size={size} /> },
+                    { id: "pair", label: "Mina and Alex", description: "Two members", leading: <G.AvatarGroup label="Mina and Alex" layout="grid" size={size === "sm" ? "sm" : "md"} items={roomMembers.slice(0, 2)} overflowLabel={(hidden) => `${hidden} more members`} /> },
+                    { id: "team", label: "Design team", description: "Five members, the count in the fourth cell", emphasis: "unread", leading: <G.AvatarGroup label="Design team" layout="grid" size={size === "sm" ? "sm" : "md"} items={roomMembers} overflowLabel={(hidden) => `${hidden} more members`} /> },
+                    { id: "person", label: "Kim Le", description: "A person", leading: <G.Avatar name="Kim Le" size={size === "sm" ? "sm" : "md"} /> },
                 ]} />
             ))}
         </>

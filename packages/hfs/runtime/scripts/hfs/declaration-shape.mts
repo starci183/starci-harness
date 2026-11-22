@@ -46,7 +46,14 @@ function dbBlockProblems(block: Parsed): string[] {
 }
 
 /** The keys of one app entry: its folder name and kind, and for a client cli the npm package it is published as and the command it installs. */
-const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot', 'signIn'];
+const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot', 'signIn', 'audience'];
+
+/** Shape problems of a next app's reader (contexts/ui/content.md CONTENT-2): `audience` is business or technical. A concept the audit reads; no check reads the copy. */
+function contentShapeProblems(app: Parsed, at: string, side: Parsed): string[] {
+  if (app.audience === undefined) return [];
+  if (side !== 'fe' || app.kind !== 'next') return [`${at}.audience is declared by a next app of fe only`];
+  return app.audience === 'business' || app.audience === 'technical' ? [] : [`${at}.audience is business or technical (contexts/ui/content.md)`];
+}
 
 /** Shape problems of one app's `boot` (R448): the back-end module file the check composes, the export that is its root (or the factory that returns it) and the stub env it runs with. */
 function bootShapeProblems(boot: Parsed, at: string, side: Parsed): string[] {
@@ -74,6 +81,7 @@ function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed)
     else if (app.package !== undefined && !(typeof app.package === 'string' && app.package.length <= 214 && PACKAGE_NAME.test(app.package))) bad.push(`${at}.apps[${index}].package must be an npm package name`);
     else if (app.bin !== undefined && !(typeof app.bin === 'string' && NAME.test(app.bin))) bad.push(`${at}.apps[${index}].bin must be a command name`);
     else if (app.boot !== undefined && bootShapeProblems(app.boot, `${at}.apps[${index}]`, side).length > 0) bad.push(...bootShapeProblems(app.boot, `${at}.apps[${index}]`, side));
+    else if (contentShapeProblems(app, `${at}.apps[${index}]`, side).length > 0) bad.push(...contentShapeProblems(app, `${at}.apps[${index}]`, side));
     else if (names.has(app.name)) bad.push(`app ${app.name} is declared twice (${names.get(app.name)} and ${side})`);
     else names.set(app.name, side);
   });
@@ -163,13 +171,27 @@ function publishesProblems(publishes: Parsed): string[] {
   return [];
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'observe', 'publishes']);
+/**
+ * The app's dependency policy (`"deps": { "devAllowsLocalRegistry": true }`): its dev branch, and a lane branch that lands on it, may carry exact
+ * local-registry pins of the harness packages and their lockfile entries (`starci deps check` on such a push accepts DEPS_PIN_UNPUBLISHED,
+ * DEPS_LOCAL_REGISTRY_COMMITTED and DEPS_LOCK_INTEGRITY for the local registry; a release, a prod cut and main keep refusing them).
+ */
+function depsBlockProblems(deps: Parsed): string[] {
+  if (deps === undefined) return [];
+  if (!isPlainObject(deps)) return ['deps must be an object'];
+  const bad: string[] = [];
+  for (const key of Object.keys(deps)) if (key !== 'devAllowsLocalRegistry') bad.push(`deps has unknown key ${key}`);
+  if (deps.devAllowsLocalRegistry !== undefined && deps.devAllowsLocalRegistry !== true) bad.push('deps.devAllowsLocalRegistry is `true` when the dev branch may carry local-registry pins, and is left out otherwise');
+  return bad;
+}
+
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'observe', 'publishes', 'deps']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
   const bad: string[] = [];
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' || key === 'checks' ? `unknown key ${key}: a project adds its own laws and checks in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json` : `unknown key ${key}`);
-  bad.push(...dbBlockProblems(declaration.db), ...observeBlockProblems(declaration.observe), ...publishesProblems(declaration.publishes));
+  bad.push(...dbBlockProblems(declaration.db), ...observeBlockProblems(declaration.observe), ...publishesProblems(declaration.publishes), ...depsBlockProblems(declaration.deps));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository of the sides it declares) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
   const sides = sidesProblems(declaration.sides);

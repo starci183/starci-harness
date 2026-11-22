@@ -11,7 +11,7 @@ import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-
  * mirrored in RTL); a typed `→` or a passed-in arrow icon does neither.
  *
  * WHAT IT READS. A `Button` bound to `@starci/grammar`:
- *   - a label (children) that states an arrow literally: `→ ← ➜ ➔ ⟶ › »` or ASCII `->`;
+ *   - a label (children) that states `›` or `»` (a typed arrow anywhere is `no-typed-arrow`, below);
  *   - an `endContent` that is an arrow: an element named `Arrow*` or `ChevronRight*`, or any element whose `source` / `glyph` / `name`
  *     is such an identifier or a string that names `arrow`, `chevron-right` or `chevron-end`;
  *   - `endArrow` together with `startGlyph` or `startContent` (the Button type refuses it as well).
@@ -19,8 +19,17 @@ import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-
  * in and no `endArrow`; `TextAction` takes `endContent` but not `endArrow`, so neither is judged.
  */
 
-/** A label arrow: a character that points, or the ASCII `->`. */
-const LABEL_ARROW = /[→←➜➔⟶›»]|->/u
+/** A Button label's pointing quote marks: `›` and `»` (a typed arrow character is `no-typed-arrow`, for every element). */
+const LABEL_ARROW = /[›»]/u
+
+/**
+ * A typed arrow (owner 2026-11-22: no arrow characters in ANY rendered text; "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar"):
+ * the Unicode Arrows block U+2190-U+21FF, the dingbat arrows U+2794-U+27BF, the long arrows U+27F0-U+27FF, and the ASCII `->`.
+ */
+export const TYPED_ARROW = /[\u2190-\u21FF\u2794-\u27BF\u27F0-\u27FF]|->/u
+
+/** JSX attributes whose string value is never rendered text: a class, a URL, an id, a key, a role, a data or style hook, a handler. */
+const NOT_TEXT_ATTRIBUTE = /^(?:className|class|href|src|srcSet|id|key|htmlFor|role|type|name|value|style|target|rel|data-.*|on[A-Z].*)$/u
 
 /** A glyph or icon name that is an arrow or an end-pointing chevron, whatever its case and separators. */
 const isArrowName = (name: string): boolean => {
@@ -94,7 +103,7 @@ export const buttonArrow: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       label:
-        "The Button label types an arrow (`{{text}}`). A Button that leads somewhere takes `endArrow`: the Grammar arrow slides toward the reading end on hover and is mirrored in RTL. Remove the character from the label and add `endArrow`; keep the start side (`startGlyph`) for what the action does and the end side for where it goes.",
+        "The Button label types a pointing mark (`{{text}}`). A Button that leads somewhere takes `endArrow`: the Grammar arrow slides toward the reading end on hover and is mirrored in RTL. Remove the character from the label and add `endArrow`; keep the start side (`startGlyph`) for what the action does and the end side for where it goes.",
       endContent:
         "The Button passes an arrow icon as `endContent`. A Button that leads somewhere takes `endArrow` (the Grammar arrow that slides on hover and is mirrored in RTL). Replace the `endContent` arrow with `endArrow`.",
       both:
@@ -133,9 +142,47 @@ export const buttonArrow: Rule.RuleModule = defineRule({
   },
 })
 
+/**
+ * No typed arrow in ANY rendered text (`FE_NO_TYPED_ARROW`, owner 2026-11-22). In product source, JSX text, a string or template literal
+ * rendered as a child (and the branches of a conditional), and a string attribute that is rendered text (`label`, `title`, `aria-label`,
+ * `description`, ...) holding an arrow character is an error: direction is the Grammar's arrow or link icon, `Link`'s own arrow or
+ * `Button endArrow`. i18n message values are JSON the lint does not read; the content concept (contexts/ui/content.md) holds them.
+ */
+export const noTypedArrow: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "FE_NO_TYPED_ARROW: no typed arrow character in rendered text; direction is a Grammar icon, Link's arrow or Button endArrow." },
+    schema: [],
+    messages: {
+      typed:
+        "Rendered text types an arrow (`{{text}}`). Direction is shown by the Grammar: `Button endArrow`, `Link`'s own arrow, or the Grammar arrow or chevron icon; they slide on hover and mirror in RTL. Remove the character.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    const report = (node: TSESTree.Node, text: string): void => {
+      const found = TYPED_ARROW.exec(text)
+      if (found) context.report({ node, messageId: "typed", data: { text: found[0] } })
+    }
+    return {
+      JSXElement(element: TSESTree.JSXElement) {
+        for (const child of element.children) for (const { node, text } of literalTexts(child)) report(node, text)
+      },
+      JSXFragment(fragment: TSESTree.JSXFragment) {
+        for (const child of fragment.children) for (const { node, text } of literalTexts(child)) report(node, text)
+      },
+      JSXAttribute(attribute: TSESTree.JSXAttribute) {
+        if (attribute.name.type !== "JSXIdentifier" || NOT_TEXT_ATTRIBUTE.test(attribute.name.name)) return
+        for (const { node, text } of literalTexts(attribute.value)) report(node, text)
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
   "button-arrow": buttonArrow,
+  "no-typed-arrow": noTypedArrow,
 }
 
 defineFamilyRules(rules, "knowledge/ui/presentation/grammar-laws.yaml#BUTTON-ARROW")

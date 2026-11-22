@@ -341,12 +341,12 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
                         visibility="always"
                         summary={labels.pendingSummary}
                         dismiss={
-                            <Button intent="dismiss" onPress={props.on.discard} isDisabled={props.props.isSaving}>
+                            <Button variant="border" onPress={props.on.discard} isDisabled={props.props.isSaving}>
                                 {labels.discard}
                             </Button>
                         }
                         commit={
-                            <Button intent="commit" onPress={props.on.save} isPending={props.props.isSaving}>
+                            <Button variant="primary" onPress={props.on.save} isPending={props.props.isSaving}>
                                 {labels.save}
                             </Button>
                         }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.9 - 2026-11-22
+
+- Changed (vocabulary, with Grammar 0.55.0): the Button danger-soft hooks `--starci-core-button-danger-soft*` are gone (Button has three looks: primary, border, danger).
+
 ## 2.9.8 - 2026-11-21
 
 - Removed: the special-case lint rules of the junk-check cleanup (one-off cases, owner 2026-11-21).

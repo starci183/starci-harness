@@ -239,7 +239,7 @@ weights):
   | table header | md 14 / 500 muted | the table's own header |
 
 - **FONT-7a Label over content (owner, 2026-11-19, 0.48.0).** In a list body, a settings row and a description list the LABEL (a row title, a key, a settings title) is 16 / 400 in the primary colour and the CONTENT under it (a description, a value, a hint) is 14 in the secondary colour. The full scale: page title 18 / 500; section title and empty-state title 16 / 500; label 16 / 400; content 14 / 400 secondary (values, descriptions, hints, the page subtitle, nav items, buttons); meta 12 / 400 secondary (breadcrumbs, timestamps, chip counts, sidebar group labels, captions, badges). Laws `DNA-COMMON-LABEL-16`, `DNA-COMMON-CONTENT-14-SECONDARY`, `DNA-COMMON-SECTION-TITLE-SIZE`. This amends FONT-7 (14 for all UI text) and FONT-9 (a list row is 14 only) for these three places.
-- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site keeps its own display tokens. Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm". The app-side ban on raw font utilities is `starci-grammar/no-raw-type-size` (0.54.0, see "The type roles").
+- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site has its own roles, the site group (0.55.0, see "The site group"). Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm". The app-side ban on raw font utilities is `starci-grammar/no-raw-type-size` (0.54.0, see "The type roles").
 - **FONT-8 One line, one size.** Words that stand side by side on one line share one size step: 14 (`md`, and `sm`, which is
   the same step), 12 (`xs`) or a display size (`figure`). A chip or `Badge` beside the words is below the ramp and exempt.
   Lint: `starci-grammar/same-line-size` (no mixed `Text` steps among the direct children of one `Cluster`; `sm` next to `md`
@@ -289,6 +289,31 @@ refuse the Grammar's private type tokens (`starci/no-grammar-private-token`). Me
 `DNA-COMMON-SECTION-TITLE-SIZE`, `DNA-COMMON-TYPE-ROW-TITLE`, `DNA-COMMON-TYPE-FIELD-LABEL` and `DNA-COMMON-TYPE-STAT`.
 Where the older rows above disagree with this table (FONT-7, FONT-7a, FONT-7b and FONT-9 on row titles, section titles, table
 headers and figures), this table wins.
+
+### The site group (0.55.0)
+
+On 2026-11-21 the owner decided to add a display group to the type roles: "3. THÊM NHÓM". It is for the public marketing site
+only, never the console. The coordinator's recommendations for its numbers then stood on the owner's word "cook". The values
+were measured on the NIVO site (`D:/starci-lanes/_display-roles/measure.md`) and held to the owner's ranges: a hero of about 40
+to 48, a section heading of about 28 to 32, and a lead of about 18. Weights stay 400 and 500, and every line height is at least
+1.33 times its size for Vietnamese diacritics.
+
+| Role | 390 | from 48rem | from 64rem | Weight | Tracking | Site element |
+| --- | --- | --- | --- | --- | --- | --- |
+| `display.hero` | 36 / 48 | 40 / 54 | 48 / 64 | 500 | -0.02em | the page heading of a hero, a closing band heading |
+| `display.section` | 28 / 38 | 28 / 38 | 32 / 44 | 500 | -0.02em | a section heading (`SiteHead` level 2), a 24-to-30 heading |
+| `display.figure` | 36 / 48 | 48 / 64 | 56 / 76 | 500 | -0.02em | a big number or a price, tabular figures |
+| `lead` | 16 / 26 | 16 / 26 | 18 / 28 | 400 | | the line under a heading; its tone stays on the element |
+| `title.card` | 18 / 28 | 18 / 28 | 18 / 28 | 500 | | a card or tile title of the site |
+
+The steps live in the tokens, `--grammar-type-<role>-size|line|weight|tracking` in `ramps.css`, which two `@media` blocks redefine
+from 48rem and 64rem. The app writes `<Text role="display.hero">` or the class `starci-type-display-hero` and never a breakpoint.
+`starci-grammar/site-type-role` (`FE_SITE_TYPE_ROLE`) refuses the group outside the site. No hfs slot marks the public site yet:
+the proposed slot is `fe.site`, and until it exists a file is the site when it is a `Site…` or `Marketing…` owner of
+`fe.components` or `fe.feature`, a route under the `(site)` or `(marketing)` group, or a `site…` capability of `fe.modules`.
+The codemod `v0550` (`starci app codemod --from 0.54.0 --to 0.55.0`) moves the site's raw sizes onto the group, and the other raw
+sizes of the site onto the ten roles by pixel size. It leaves a product drawing raw (a component folder that uses a size under
+12px), and it marks a real ambiguity with `TODO(type-role)`. Measure: `check:type`.
 
 Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](proof/thresholds.yaml)):
 

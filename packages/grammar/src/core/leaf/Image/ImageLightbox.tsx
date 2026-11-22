@@ -44,7 +44,7 @@ export const ImageLightbox = ({ isOpen, onOpenChange, title, closeLabel, src, sr
                         >
                             {({ close }) => (
                                 <>
-                                    <span className="starci-core-lightbox-close"><IconButton intent="dismiss" label={closeLabel} onPress={close} /></span>
+                                    <span className="starci-core-lightbox-close"><IconButton variant="border" label={closeLabel} onPress={close} /></span>
                                     <img
                                         alt={alt}
                                         className="starci-core-lightbox-image"

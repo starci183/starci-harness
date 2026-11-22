@@ -29,7 +29,7 @@ const suggestions = [
 const Suggestions = () => (
   <G.Cluster gap="inline" label="Suggested replies">
     {suggestions.map((text) => (
-      <G.Button key={text} intent="neutral" size="sm" width="wrap" onPress={noop}>
+      <G.Button key={text} variant="border" size="sm" width="wrap" onPress={noop}>
         {text}
       </G.Button>
     ))}
@@ -41,7 +41,7 @@ const Composer = () => (
     <div style={{ flex: 1, minWidth: 0 }}>
       <G.Textarea label="Reply" isLabelHidden placeholder="Reply to the assistant..." />
     </div>
-    <G.Button intent="commit" startGlyph="send" onPress={noop}>
+    <G.Button variant="primary" startGlyph="send" onPress={noop}>
       Send
     </G.Button>
   </G.Cluster>
@@ -62,7 +62,7 @@ export const NestedListAndComposer: Story = {
       <G.MessageCard
         measure="wide"
         author="Assistant"
-        avatar={<G.Avatar name="Assistant" size="sm" />}
+        avatar={<G.Avatar name="Assistant" size="md" />}
         title="Workflow paused"
         chip={<G.Badge tone="warning">Needs your decision</G.Badge>}
         body={stopBody}

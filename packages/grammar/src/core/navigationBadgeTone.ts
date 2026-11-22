@@ -4,4 +4,4 @@
  * reads `default` with `default-foreground`), the pairs a `Badge` of the same tone uses. The count is always printed, so the tone
  * is never the only signal.
  */
-export type NavigationBadgeTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type NavigationBadgeTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"

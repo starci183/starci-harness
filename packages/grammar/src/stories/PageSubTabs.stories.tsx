@@ -25,9 +25,9 @@ const Demo = () => {
       header={{
         title: 'Workspace',
         description: 'Channels by region.',
-        actions: <G.Button intent="commit">Add channel</G.Button>,
+        actions: <G.Button variant="primary">Add channel</G.Button>,
         tabs: { label: 'Workspace views', items: pageTabs, selectedKey: tab, onSelect: setTab },
-        subTabs: { label: 'Regions', items: subTabs, selectedKey: sub, onSelect: setSub, end: <G.Button intent="alternative" size="sm">Add region</G.Button> },
+        subTabs: { label: 'Regions', items: subTabs, selectedKey: sub, onSelect: setSub, end: <G.Button variant="border" size="sm">Add region</G.Button> },
       }}
     >
       <G.Text>{`${pageTabs.find((item) => item.id === tab)?.label} / ${subTabs.find((item) => item.id === sub)?.label}`}</G.Text>

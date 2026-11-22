@@ -8,7 +8,7 @@ import { navigationClassName } from "../../navigationClassNames.js"
 import { StatusDotMark, type StatusDotTone } from "../StatusDot/index.js"
 import type { NoChildren } from "../../tier.js"
 
-/** `floating` is 56px, the launcher that floats over a page (the assistant); the others are the Avatar sizes. */
+/** The Avatar sizes (`md` 40px, the bar's control height; `sm` 24px), and `floating`, the 56px launcher that floats over a page (the assistant), a launcher, not a mark. */
 export type AvatarButtonSize = AvatarSize | "floating"
 
 /** The status drawn as a dot badge at the avatar's top end corner; `label` is the status in words, read as the button's description. */
@@ -26,11 +26,9 @@ export type AvatarButtonProps = NoChildren & {
     readonly kind?: AvatarKind
     /** Custom uploaded-image loading/error fallback; the default is the same DiceBear initials image. */
     readonly fallback?: ReactNode
-    /** What an avatar with no `src` draws (0.46.0, forwarded to the `Avatar`): `sprout` (default) or the name's `initials`. */
-    readonly fallbackMark?: AvatarProps["fallbackMark"]
     /** The plate of the initials (0.46.0, forwarded to the `Avatar`): `default`, `accent`, `solid`, `strong`. */
     readonly tone?: AvatarProps["tone"]
-    /** `md` is 40px; `floating` is 56px with an elevated shadow, for a launcher that floats over the page. */
+    /** `md` (default) is 40px, the bar's control height; `sm` 24px; `floating` is 56px with an elevated shadow, for a launcher that floats over the page. */
     readonly size?: AvatarButtonSize
     /** A StatusDot badge at the top end corner (mirrored in RTL) on a surface ring; its `label` describes the button. Only with `size="floating"`. */
     readonly status?: AvatarButtonStatus
@@ -43,21 +41,21 @@ export type AvatarButtonProps = NoChildren & {
  * press and a round focus ring. Pass it as the `trigger` of a DropdownMenu or Popover (the account menu).
  * Contract: A11Y-2 (the button is named once; the avatar inside is decorative).
  */
-const AvatarButtonInner = ({ name, src, seed, kind = "person", fallback, fallbackMark, tone, size = "md", status, onPress, isDisabled }: AvatarButtonProps) => {
+const AvatarButtonInner = ({ name, src, seed, kind = "person", fallback, tone, size = "md", status, onPress, isDisabled }: AvatarButtonProps) => {
     const statusId = useId()
     const isFloating = size === "floating"
-    const avatarSize: AvatarSize = isFloating ? "lg" : size
+    const avatarSize: AvatarSize = isFloating ? "md" : size
     const hasStatus = isFloating && status !== undefined
     const button = (
         <PlainPressable
             aria-label={avatarAccessibleName(name, kind)}
             shape="circle"
-            {...(size === "control" ? { size } : {})}
+            {...(size === "md" ? { size: "control" as const } : {})}
             {...(hasStatus ? { "aria-describedby": statusId } : {})}
             {...(onPress === undefined ? {} : { onPress })}
             {...(isDisabled === undefined ? {} : { isDisabled })}
         >
-            <Avatar name={name} kind={kind} isDecorative size={avatarSize} {...(src === undefined ? {} : { src })} {...(seed === undefined ? {} : { seed })} {...(fallback === undefined ? {} : { fallback })} {...(fallbackMark === undefined ? {} : { fallbackMark })} {...(tone === undefined ? {} : { tone })} />
+            <Avatar name={name} kind={kind} isDecorative size={avatarSize} {...(src === undefined ? {} : { src })} {...(seed === undefined ? {} : { seed })} {...(fallback === undefined ? {} : { fallback })} {...(tone === undefined ? {} : { tone })} />
         </PlainPressable>
     )
     if (!isFloating) return button

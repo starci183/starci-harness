@@ -2036,16 +2036,12 @@ rules:
       - {kind: eslint-fe, id: no-grammar-internal-selector}
   - id: R319
     code: FE_BUTTON_INTENT
-    law: An app Button declares an intent, never a variant; a destructive confirm lives in a confirmation dialog, a render holds at most one commit and a collection item none.
+    law: An app Button takes one of three looks (variant primary, border or danger); a render holds at most one primary and a collection item none.
     failureCodes:
       - FE_BUTTON_INTENT
-      - FE_BUTTON_INTENT_REQUIRED
-      - FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
       - FE_SINGLE_COMMIT_PER_RENDER
       - FE_NO_COMMIT_IN_COLLECTION_ITEM
     enforcers:
-      - {kind: eslint-fe, id: button-intent-required}
-      - {kind: eslint-fe, id: destructive-confirm-in-dialog}
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}
   - id: R320
@@ -2433,7 +2429,7 @@ rules:
       - {kind: hfs, id: lint-ratchet}
   - id: R380
     code: FE_GROUPED_CHOICE_CONTROL
-    law: "The Grammar draws no group of attached buttons: a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source is refused and the message names the replacement by meaning, `Tabs` to switch a view or filter a list (`kind=\"filter\"`), `ChoiceChips` or `RadioGroup` to choose a value of a form, separate `Button`s or a `DropdownMenu` for actions. The three components stay exported and deprecated for one release."
+    law: "The Grammar draws no group of attached buttons: a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source is refused and the message names the replacement by meaning, `Tabs` to switch a view or filter a list (`kind=\"filter\"`), `ChoiceChips` or `RadioGroup` to choose a value of a form, separate `Button`s or a `DropdownMenu` for actions. The components are deleted (ButtonGroup and FilterButtonGroup in Grammar 0.55.0); the rule still names the replacement for a source that keeps one."
     failureCodes:
       - FE_GROUPED_CHOICE_CONTROL
     enforcers:

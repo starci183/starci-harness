@@ -51,6 +51,8 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the 1px `--border` edge with no fill and `--foreground` words (no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-OUTLINE` |
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
 
+Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent` (and `agentLabel`, the Chip's word in the app's language, `AI` by default): the bubble draws the small neutral "AI" Chip right after the name (`AgentName`; owner 2026-11-22: the AI is a Chip at the end of the name, never a pill on the avatar). The app never places a `Badge` for it by hand.
+
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
 words (an attachment, an approval card, a reaction row) goes in `footer`, outside the bubble face.
@@ -77,7 +79,7 @@ Choice `message-bubble.choose.content`: what the bubble body is. The first row t
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | text | the message is words | `MessageBubble content="text"` (the default) | judgement |
-| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width; its content column fills the card, so a flat list (`Section kind="list"`) or a composer in `body` spans the card's inner width while the head, actions and meta start at the reading edge | story `Navigation & Data/Chat parts/MessageCards`, `Navigation & Data/Message card fill (0.37.30)`; `check:type` |
+| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`; its `tone` draws the card face's 1px edge in `--<tone>-border`, the fill unchanged, by the `SurfaceCard tone` rule: an approval card that waits is `tone="warning"`, "card chờ duyệt có viền vàng"): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width; its content column fills the card, so a flat list (`Section kind="list"`) or a composer in `body` spans the card's inner width while the head, actions and meta start at the reading edge | story `Navigation & Data/Chat parts/MessageCards`, `Navigation & Data/Message card fill (0.37.30)`; `check:type` |
 
 Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
 `MessageBubble`s) draws no card surface (no fill, border, radius or shadow; detected by context, no prop), and the head band of a
@@ -97,6 +99,21 @@ buttons wrap inside the row, so it never covers the bubble above nor runs past t
 corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
 `BubbleGrouping`, `Reactions`.
+
+## The hover rail: MessageActions (owner, 2026-11-21)
+
+Modelled on Messenger. The owner asked for "hover ra icon… như facebook, 3 cái icon bên phải/trái từng đoạn chat", then corrected it to "icon thôi size 16 đi, không có border", and then to "kiểu nút ghost size sm á … nút ghost của heroui á trò". The owner's words win:
+
+- **Three actions** beside a bubble: react (a smile), reply (a back arrow), more (three dots). Each is **HeroUI's own `Button variant="ghost" size="sm" isIconOnly`, used as shipped, with a 16px icon**. No custom colour, radius or hover style: HeroUI's ghost look is the look. No border and no fill until the ghost hover fill; the open trigger keeps that fill. The gap between them is about 10px (one inline gap on Grammar's scale, 8), centred on the bubble.
+- **Side:** on the right of another person's or an agent's bubble (`side="incoming"`), on the left of the viewer's own (`side="outgoing"`). `MessageBubble messageActions` gives the rail its side.
+- **Shown only** on hover (desktop), on a long press (touch) or when the message has keyboard focus inside. Opacity fades in 120ms, with no motion under reduced motion.
+- **The reaction picker** is a floating popover pill: the popover's elevation, no border, the surface ground, fully rounded. It opens ABOVE the react button, anchored by its end to that button, and extends over the bubble (toward the start for others' messages, toward the end for the viewer's own). Emojis are about 28px in 40px cells (❤️ 😆 😮 😢 😡 👍) with a slight scale on hover, then a "+" that calls the app's `onMore` to open the full picker. An outside press or Esc closes it.
+- **The chosen reaction** shows as a small chip overlapping the bubble's bottom corner: `MessageBubble reactions`.
+- **More** opens a `DropdownMenu` of the app's `menu` items (copy, pin; recall on the viewer's own; create a task from this message on an agent's). Reply puts the composer in reply mode; that is the app's.
+- **Names** are the app's i18n (`labels`): "Bày tỏ cảm xúc", "Trả lời", "Thêm".
+- **Not on engine cards** (approval, stop): they keep their own buttons.
+
+Story `Navigation & Data/Avatar initials and message actions`; specs `specs/message-actions.spec.mts` and `specs/message-actions.browser.spec.mts`.
 
 ## Variants
 None. `side` is whose message it is, not a style.

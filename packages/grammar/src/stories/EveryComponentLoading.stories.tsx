@@ -27,9 +27,9 @@ const rows: ReadonlyArray<G.ListRowData> = [
 const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
     <G.SurfaceCard label="Customer" {...(isLoading === undefined ? {} : { isLoading })}>
         <G.Cluster gap="inline">
-            <G.Button intent="alternative" onPress={noop}>Cancel</G.Button>
-            <G.Button intent="commit" onPress={noop} {...(isLoading === undefined ? {} : { isLoading })}>Approve 3 orders</G.Button>
-            <G.IconButton label="Refresh" intent="neutral" source={BellIcon} onPress={noop} />
+            <G.Button variant="border" onPress={noop}>Cancel</G.Button>
+            <G.Button variant="primary" onPress={noop} {...(isLoading === undefined ? {} : { isLoading })}>Approve 3 orders</G.Button>
+            <G.IconButton label="Refresh" variant="border" source={BellIcon} onPress={noop} />
             <G.TextAction onPress={noop}>View history</G.TextAction>
             <G.Link href="#details">Details</G.Link>
         </G.Cluster>

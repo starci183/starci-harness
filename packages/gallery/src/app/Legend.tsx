@@ -13,7 +13,7 @@ export function Legend({ labels }: { readonly labels: Labels }): ReactElement {
         <Popover
             title={labels.legend}
             placement="bottom"
-            trigger={<Tooltip content={labels.legend} trigger={<IconButton glyph="info" label={labels.legend} intent="neutral" size="sm" />} />}
+            trigger={<Tooltip content={labels.legend} trigger={<IconButton glyph="info" label={labels.legend} variant="border" size="sm" />} />}
         >
             <ul className="sg-legend">
                 {ROWS.map((status) => (

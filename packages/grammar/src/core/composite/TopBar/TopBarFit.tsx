@@ -133,9 +133,9 @@ export const TopBarFitRow = ({ navigationItems = [], actionItems = [], overflowL
                     {entry.kind === "navigation" ? (
                         <Link href={entry.item.href} variant="plain" isCurrent={entry.item.isCurrent === true}>{entry.item.label}</Link>
                     ) : entry.item.href === undefined ? (
-                        <Button intent={entry.item.emphasis === "primary" ? "commit" : "neutral"} onPress={entry.item.onPress}>{entry.item.label}</Button>
+                        <Button variant={entry.item.emphasis === "primary" ? "primary" : "border"} onPress={entry.item.onPress}>{entry.item.label}</Button>
                     ) : (
-                        <Button intent={entry.item.emphasis === "primary" ? "commit" : "neutral"} href={entry.item.href}>{entry.item.label}</Button>
+                        <Button variant={entry.item.emphasis === "primary" ? "primary" : "border"} href={entry.item.href}>{entry.item.label}</Button>
                     )}
                 </span>
             ))}
@@ -143,7 +143,7 @@ export const TopBarFitRow = ({ navigationItems = [], actionItems = [], overflowL
                 <DropdownMenu
                     placement="bottom end"
                     entries={inMenu.map(menuEntry)}
-                    trigger={<IconButton intent="neutral" glyph="menu" label={overflowLabel} />}
+                    trigger={<IconButton variant="border" glyph="menu" label={overflowLabel} />}
                 />
             )}
         </div>

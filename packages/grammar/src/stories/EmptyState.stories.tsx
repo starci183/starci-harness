@@ -26,7 +26,7 @@ export const RegionState: Story = {
         <G.EmptyNotice message="No customers yet" description="Add the first customer to see them here." media={{ icon: BookGlyph }} actionLabel="Add customer" onAction={noop} />
       </State>
       <State label="no match after a filter: primary and secondary" direction="column">
-        <G.EmptyNotice message="No results for these filters" description="Try a wider date range." actionLabel="Clear filters" actionIntent="neutral" onAction={noop} secondary={{ label: 'Change the range', onPress: noop }} />
+        <G.EmptyNotice message="No results for these filters" description="Try a wider date range." actionLabel="Clear filters" actionVariant="border" onAction={noop} secondary={{ label: 'Change the range', onPress: noop }} />
       </State>
     </Matrix>
   ),
@@ -153,7 +153,7 @@ export const FirstRunSteps: Story = {
         <G.EmptyNotice message="Set up your workspace" description="Three steps and your customers appear here." media={{ icon: BookGlyph }} steps={FIRST_RUN_STEPS} actionLabel="Pick the sheet" onAction={noop} secondary={{ label: 'Skip for now', onPress: noop }} />
       </State>
       <State label="every step done: the action stands where a plain notice draws it" direction="column">
-        <G.EmptyNotice message="All set up" steps={FIRST_RUN_STEPS.slice(0, 2).map((step) => ({ ...step, isDone: true }))} actionLabel="Open the customers" actionIntent="neutral" onAction={noop} />
+        <G.EmptyNotice message="All set up" steps={FIRST_RUN_STEPS.slice(0, 2).map((step) => ({ ...step, isDone: true }))} actionLabel="Open the customers" actionVariant="border" onAction={noop} />
       </State>
     </Matrix>
   ),

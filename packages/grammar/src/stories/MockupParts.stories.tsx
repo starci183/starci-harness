@@ -108,12 +108,12 @@ export const FiguresInPaneRow: Story = {
     ),
 }
 
-/** The alternative button is outlined, its words in the default foreground, not the brand accent (DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE). */
+/** The border button is outlined, its words in the default foreground, not the brand accent (DNA-CORE-BUTTON-BORDER-OUTLINE). */
 export const AlternativeButtonInk: Story = {
     render: () => (
         <div style={{ "--accent-soft-foreground": "rgb(190 24 93)" } as CSSProperties}>
             <Matrix>
-                <State label="alternative in a brand-coloured app"><G.Button intent="alternative" onPress={noop}>Try again</G.Button></State>
+                <State label="alternative in a brand-coloured app"><G.Button variant="border" onPress={noop}>Try again</G.Button></State>
             </Matrix>
         </div>
     ),
@@ -238,19 +238,19 @@ export const FilterTabsLoading: Story = {
     ),
 }
 
-/** Separate buttons that mean one thing stand in a labelled group; not a ButtonGroup (DNA-COMMON-CLUSTER-GROUP-NAMED). */
+/** Separate buttons that mean one thing stand in a labelled group; never attached buttons (DNA-COMMON-CLUSTER-GROUP-NAMED). */
 export const LabelledActionRow: Story = {
     render: () => (
         <Matrix>
             <State label="less / more and a row of actions">
                 <G.Cluster gap="inline" label="Quantity">
-                    <G.IconButton label="Less" source={PlusGlyph} intent="neutral" onPress={noop} />
+                    <G.IconButton label="Less" source={PlusGlyph} variant="border" onPress={noop} />
                     <G.Text>2</G.Text>
-                    <G.IconButton label="More" source={PlusGlyph} intent="neutral" onPress={noop} />
+                    <G.IconButton label="More" source={PlusGlyph} variant="border" onPress={noop} />
                 </G.Cluster>
                 <G.Cluster gap="inline" label="Actions on this order">
-                    <G.Button intent="alternative" onPress={noop}>Edit</G.Button>
-                    <G.Button intent="commit" onPress={noop}>Confirm</G.Button>
+                    <G.Button variant="border" onPress={noop}>Edit</G.Button>
+                    <G.Button variant="primary" onPress={noop}>Confirm</G.Button>
                 </G.Cluster>
             </State>
         </Matrix>
@@ -468,9 +468,9 @@ export const PaneFooterRule: Story = {
                     <G.PaneSection grow scroll={{ label: "Document" }}><G.Text>The open public document.</G.Text></G.PaneSection>
                     <G.PaneSection as="footer" rule="start">
                         <G.Cluster gap="inline" justify="end" label="Decisions">
-                            <G.Button intent="dismiss" onPress={noop}>Later</G.Button>
-                            <G.Button intent="alternative" onPress={noop}>Rewrite</G.Button>
-                            <G.Button intent="commit" onPress={noop}>Approve and publish</G.Button>
+                            <G.Button variant="border" onPress={noop}>Later</G.Button>
+                            <G.Button variant="border" onPress={noop}>Rewrite</G.Button>
+                            <G.Button variant="primary" onPress={noop}>Approve and publish</G.Button>
                         </G.Cluster>
                     </G.PaneSection>
                 </G.Pane>

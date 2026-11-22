@@ -3,6 +3,7 @@ import type { ESLint, Linter, Rule } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { SOURCE_FILES, linterOptions as canonLinterOptions, scopeToPackages } from "@starci/eslint-canon-fe/lib/config.mjs"
 import { rules as appShellRules } from "./app-shell.ts"
+import { rules as avatarRowUsesGroupRules } from "./avatar-row-uses-group.ts"
 import { rules as buttonArrowRules } from "./button-arrow.ts"
 import { rules as cardContentRules } from "./card-content.ts"
 import { rules as cardIsObjectRules } from "./card-is-object.ts"
@@ -31,6 +32,7 @@ import { rules as rowsInCardRules } from "./rows-in-card.ts"
 import { rules as noCardLeadDescriptionRules } from "./no-card-lead-description.ts"
 import { rules as noNestedLabelRules } from "./no-nested-label.ts"
 import { rules as sectionHeadActionRules } from "./section-head-action.ts"
+import { rules as siteTypeRoleRules } from "./site-type-role.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
@@ -71,6 +73,7 @@ const JUDGES_FRAGMENT_ITSELF: ReadonlySet<string> = new Set(["fragment"])
 const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record<string, Rule.RuleModule>> }[] = [
   { law: "fragment", rules: fragmentRules },
   { law: "app-shell", rules: appShellRules },
+  { law: "avatar-row-uses-group", rules: avatarRowUsesGroupRules },
   { law: "button-arrow", rules: buttonArrowRules },
   { law: "card-content", rules: cardContentRules },
   { law: "card-is-object", rules: cardIsObjectRules },
@@ -99,6 +102,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "no-card-lead-description", rules: noCardLeadDescriptionRules },
   { law: "no-nested-label", rules: noNestedLabelRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
+  { law: "site-type-role", rules: siteTypeRoleRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },

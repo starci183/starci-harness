@@ -27,7 +27,7 @@ const panelWidth = (canvasElement: HTMLElement) => {
 export const Panel: Story = {
   render: () => (
     <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem' }}>
-      <G.Popover defaultOpen placement="bottom" title="Notifications" trigger={<G.IconButton label="Notifications" source={BellGlyph} intent="dismiss" />}>
+      <G.Popover defaultOpen placement="bottom" title="Notifications" trigger={<G.IconButton label="Notifications" source={BellGlyph} variant="border" />}>
         <G.Section kind="list" ariaLabel="Notifications" items={NOTICES} empty={<G.EmptyNotice message="Nothing new." />} />
       </G.Popover>
     </div>
@@ -48,8 +48,8 @@ export const Panel: Story = {
 export const Short: Story = {
   render: () => (
     <div style={{ paddingTop: '1rem' }}>
-      <G.Popover defaultOpen label="Shortcut" trigger={<G.Button intent="alternative">Shortcut</G.Button>}>
-        <G.Text size="sm">Press Ctrl K to search.</G.Text>
+      <G.Popover defaultOpen label="Shortcut" trigger={<G.Button variant="border">Shortcut</G.Button>}>
+        <G.Text role="body">Press Ctrl K to search.</G.Text>
       </G.Popover>
     </div>
   ),
@@ -69,8 +69,8 @@ export const Sizes: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: '1rem', paddingTop: '1rem', flexWrap: 'wrap' }}>
       {(['sm', 'md', 'lg'] as const).map((size) => (
-        <G.Popover key={size} size={size} label={`Size ${size}`} trigger={<G.IconButton label={`Open ${size}`} source={BellGlyph} intent="dismiss" />}>
-          <G.Text size="sm">{`Panel of size ${size}`}</G.Text>
+        <G.Popover key={size} size={size} label={`Size ${size}`} trigger={<G.IconButton label={`Open ${size}`} source={BellGlyph} variant="border" />}>
+          <G.Text role="body">{`Panel of size ${size}`}</G.Text>
         </G.Popover>
       ))}
     </div>

@@ -41,9 +41,9 @@ export const PageIntro = ({ title, headingLevel = 1, mark, lines = [], descripti
             <div className="starci-core-page-intro-copy" data-contract="GAP-1">
                 <Heading level={headingLevel} isLoading={isLoading}>{title}</Heading>
                 {lines.map((line) => (
-                    <Text key={line.id} size="xs" tone="muted" isLoading={isLoading} startContent={line.icon === undefined ? undefined : <Icon source={line.icon} usage="leading" />}>{line.text}</Text>
+                    <Text key={line.id} role="caption" isLoading={isLoading} startContent={line.icon === undefined ? undefined : <Icon source={line.icon} usage="chip" />}>{line.text}</Text>
                 ))}
-                {description === undefined ? null : <Text size="sm" tone="muted" isLoading={isLoading}>{description}</Text>}
+                {description === undefined ? null : <Text role="body" tone="muted" isLoading={isLoading}>{description}</Text>}
             </div>
         </div>
     )

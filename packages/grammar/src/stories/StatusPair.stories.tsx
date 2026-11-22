@@ -34,7 +34,7 @@ const dialogTone = (tone: 'negative' | 'affirmative' | 'cautionary' | 'informati
       confirmLabel="Apply"
       cancelLabel="Not now"
       onConfirm={noop}
-      trigger={<G.Button intent="neutral">Open</G.Button>}
+      trigger={<G.Button variant="border">Open</G.Button>}
     />
   ),
 });
@@ -50,7 +50,7 @@ export const SurfaceCardFooter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-footer-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} data-story-footer-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: a plain-text footer`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
               <G.Section
@@ -92,7 +92,7 @@ export const FiguresStripWithMeter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-bands-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} data-story-bands-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: the figures and a Meter`} direction="column">
             <div style={{ width: 672, maxWidth: '100%' }}>
               <G.Stack gap="region">
@@ -112,7 +112,7 @@ export const BareMarks: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-marks-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} data-story-marks-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: step error and paused, connection lost`} direction="column">
             <G.Stepper
               label={`Setup ${theme}`}
@@ -139,7 +139,7 @@ export const MessageBubbles: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-chat-theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
+        <G.GrammarRoot key={theme} {...familyScope(globals)} data-story-chat-theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: both sides`} direction="column">
             <G.MessageBubble author="Linh" meta="09:12" body={<>
               <G.Text as="span" isStrong>@You</G.Text> can the order for table 4 move to 19:30? See <G.Link href="#menu">the booking sheet</G.Link> and <G.Code>T4-1930</G.Code>.
@@ -156,24 +156,3 @@ export const MessageBubbles: Story = {
   ),
 };
 
-const providers = ['All', 'Billing', 'Sales', 'Support', 'Marketing', 'Operations', 'Warehouse', 'Hiring', 'Legal', 'Finance'].map((label, index) => ({ value: label, label, count: index === 0 ? 124 : index * 3 }));
-
-/** The filter row at one width and another: one row, a "+n" button for what does not fit, the chosen hidden option swapped in. */
-export const FilterButtonGroup: Story = {
-  render: (_, { globals }) => (
-    <Matrix maxWidth={1400}>
-      {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
-          {([['wide', 1100], ['mid', 560], ['narrow', 300]] as const).map(([name, width]) => (
-            <State key={name} label={`${theme}: ${name} (${width}px)`} direction="column">
-              <div style={{ width, maxWidth: '100%' }}>
-                <G.FilterButtonGroup label="Team" options={providers} defaultValue="All" moreLabel={(count) => `${count} more filters`} searchLabel="Search teams" emptyLabel="No team found" />
-              </div>
-            </State>
-          ))}
-          <State label={`${theme}: loading`} direction="column"><G.FilterButtonGroup label="Team" options={providers} isLoading /></State>
-        </G.GrammarRoot>
-      ))}
-    </Matrix>
-  ),
-};

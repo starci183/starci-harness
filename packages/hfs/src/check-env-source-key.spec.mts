@@ -176,7 +176,8 @@ test('local tolerates exactly the listed local findings, prod blocks them, and a
 test('the managed hook, the CI templates and the release gate judge as prod', () => {
   const templates = new URL('../templates/app/', import.meta.url);
   const read = (file: string): string => fs.readFileSync(new URL(file, templates), 'utf8');
-  assert.match(read('hooks/husky/pre-push'), /^STARCI_PUSH_GATE=1 node node_modules\/starci-harness\/dist\/main\.js app check --env prod$/mu);
+  assert.match(read('hooks/husky/pre-push'), /^STARCI_PUSH_GATE=1 node node_modules\/starci-harness\/dist\/main\.js app check --env prod --level full$/mu);
+  assert.match(read('hooks/husky/pre-push'), /^  node node_modules\/starci-harness\/dist\/main\.js app check --env prod --level dev --push-refs "\$refs"$/mu, 'the fast level of a landing on dev judges as prod too');
   for (const flavour of ['ci-workflows']) {
     const verify = read(`${flavour}/github/workflows/cache-verify.yml`);
     assert.match(verify, /starci app check --env prod --fresh \$\{\{ matrix\.args \}\}$/mu, 'every shard of the verify judges as prod');

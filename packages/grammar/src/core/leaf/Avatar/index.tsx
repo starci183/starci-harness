@@ -1,39 +1,40 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { Avatar as HeroAvatar, Badge as HeroBadge } from "@heroui/react"
-import { CpuChipIcon } from "@heroicons/react/24/outline"
-import { Avatar as DiceAvatar, Style } from "@dicebear/core"
-import initials from "@dicebear/styles/initials.json" with { type: "json" }
-import { avatarSproutUri } from "./sprout.js"
-import { useMemo, type CSSProperties, type ReactNode } from "react"
-import { STARCI_CORE_DNA } from "../../dna.js"
-import { navigationClassName } from "../../navigationClassNames.js"
+import { Avatar as HeroAvatar } from "@heroui/react"
+import { ChatBubbleOvalLeftEllipsisIcon } from "@heroicons/react/24/outline"
+import { createElement, isValidElement, useMemo, type ComponentType, type CSSProperties, type ReactNode } from "react"
+import { avatarDataUri } from "./dicebear.js"
+import { avatarHue, avatarInitials } from "./identity.js"
 import { Skeleton } from "../Skeleton/index.js"
+import type { IconSource } from "../Icon/index.js"
 import type { NoChildren } from "../../tier.js"
 
-/** `control` follows the shared 2.5rem (40px) control height. */
-export type AvatarSize = "sm" | "md" | "lg" | "control"
+/**
+ * The two round-mark sizes (owner 2026-11-22: "giữ 2 size phổ biến 40 và 24 thôi, không có 32. 24 là size icon, avatargroup lúc này như icon, còn 40 là size phổ thông"):
+ * `md` 40px, the common size (a header, a detail view, a list lead, the control height of a bar), and `sm` 24px, the icon size (inline beside text, in a table cell or
+ * a chip, the agents on an account row). No other size exists.
+ */
+export type AvatarSize = "sm" | "md"
 export type AvatarKind = "person" | "agent"
 export type AvatarShape = "circle" | "square" | "rounded"
 
-/** The control size is drawn by the sheet over vendor `lg`. */
-export const vendorAvatarSize = (size: AvatarSize): "sm" | "md" | "lg" => size === "control" ? "lg" : size
+/** The vendor size each step stands on; the sheet draws `sm` at 24px (`--grammar-avatar-sm-size`) and `md` at 40px (`--grammar-avatar-md-size`). */
+export const vendorAvatarSize = (size: AvatarSize): "sm" | "md" => size
 
 export type AvatarProps = NoChildren & {
     /** Free-text person or entity name; agents follow the same initials rule. */
     readonly name: string
     readonly src?: string
-    /** Stable identity id seeds the generated mark (the sprout); otherwise `name` does. The same seed always draws the same image. */
+    /** Stable identity id that picks the plate colour; otherwise `name` does. The same seed or name always gets the same colour. */
     readonly seed?: string
+    /** `agent` only names the avatar for assistive technology ("Name (AI)"); the avatar draws no badge. The visible "AI" is the Chip `AgentName` puts after the name. */
     readonly kind?: AvatarKind
-    /** Custom uploaded-image fallback; otherwise the generated mark remains. */
+    /** A MARK instead of initials: an icon on a brand-colour circle, for a provider or a channel. `name` still names it. */
+    readonly mark?: AvatarMark
+    /** Replaces the initials while an uploaded `src` loads or fails. */
     readonly fallback?: ReactNode
-    /**
-     * What an avatar with no `src` draws. `sprout` (default): a DiceBear Sprouts image seeded by the name, for a person, an agent, a product or a
-     * shop alike. `initials`: the explicit opt-in, the name's first letters.
-     */
-    readonly fallbackMark?: "sprout" | "initials"
+    /** `md` 40px (default) or `sm` 24px; see `AvatarSize`. */
     readonly size?: AvatarSize
     /** Circle by default; square keeps an uploaded brand mark un-clipped and contained. */
     readonly shape?: AvatarShape
@@ -43,71 +44,70 @@ export type AvatarProps = NoChildren & {
      * `accent`: the initials on the accent soft pair (a shop or workspace mark that belongs to the brand) instead of a generated colour
      * from the name. `solid` (0.46.0): the initials on the solid accent plate (`--accent` with `--accent-foreground`), the brand mark. `strong` (0.46.0): the initials on the
      * neutral strong plate (`--foreground` with `--background`), the signed-in person among the others. Default `default`: the generated colour that tells people apart.
+     * `danger`: the default plate (or the mark) with a ring in the danger token, for a broken account; it is drawn in the avatar's own box, never as a wider hit area.
      */
     readonly tone?: AvatarTone
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
     readonly isLoading?: boolean
 }
 
-/** First and last whitespace-delimited word; a one-word name contributes one initial. */
-export const avatarInitials = (name: string): string => {
-    const words = name.trim().split(/\s+/).filter(Boolean)
-    const edges = words.length < 2 ? words : [words[0] ?? "", words[words.length - 1] ?? ""]
-    return edges.map((word) => Array.from(word)[0] ?? "").join("").toUpperCase()
-}
+export { avatarInitials, avatarHue, avatarGroupTiles, avatarGroupSlots, AVATAR_PALETTE, type AvatarTile } from "./identity.js"
 
-const avatarStyles = { initials }
-const avatarStyleDefinition = avatarStyles[STARCI_CORE_DNA.avatar.style]
-
-/** Replace DiceBear's seed-derived text with name-derived text, preserving its style and contrast resolver. */
-export const avatarDataUri = (name: string, seed?: string, text = avatarInitials(name)): string => {
-    const style = new Style({
-        ...avatarStyleDefinition,
-        components: {
-            ...avatarStyleDefinition.components,
-            letters: {
-                ...avatarStyleDefinition.components.letters,
-                variants: {
-                    literal: {
-                        elements: [{
-                            ...avatarStyleDefinition.components.letters.variants.double.elements[0],
-                            // Two wide capitals ("MW") at the style's size of 50 run past the circle; 40 keeps both letters inside it.
-                            attributes: { ...avatarStyleDefinition.components.letters.variants.double.elements[0]?.attributes, "font-size": "40", dy: "14.2" },
-                            children: [{ type: "text", value: text }],
-                        }],
-                    },
-                },
-            },
-        },
-    })
-    return new DiceAvatar(style, {
-        seed: seed ?? name,
-        borderRadius: STARCI_CORE_DNA.avatar.borderRadius,
-        idRandomization: STARCI_CORE_DNA.avatar.idRandomization,
-        initialsVariant: "alt",
-        lettersVariant: "literal",
-    }).toDataUri()
-}
-
-/** The default mark of an avatar with no image: a sprout seeded by the name. The avatar's own shape clips it (circle or rounded square). */
-export const AvatarSproutImage = ({ name, seed }: { readonly name: string; readonly seed?: string }) => {
-    const imageSrc = useMemo(() => avatarSproutUri(name, seed), [name, seed])
-    return <img alt="" aria-hidden="true" className="starci-core-avatar-initials starci-core-avatar-sprout" src={imageSrc} style={{ "--starci-avatar-initials-src": `url("${imageSrc}")` } as CSSProperties} />
-}
-
-/** The generated image also fills the loading/error fallback; its contrast is independent of page theme. */
+/**
+ * The generated avatar image (DiceBear Initials, drawn locally): two letters on a solid Grammar tone, the colour from `seed` (else the name). The same image
+ * is exposed as a variable so a narrow group tile can letterbox it and keep its solid background.
+ */
 export const AvatarInitialsImage = ({ name, seed, text }: { readonly name: string; readonly seed?: string; readonly text?: string }) => {
     const imageSrc = useMemo(() => avatarDataUri(name, seed, text), [name, seed, text])
-    // The same generated image is exposed as a variable so a narrow group cell can letterbox it and keep its solid background.
     return <img alt="" aria-hidden="true" className="starci-core-avatar-initials" src={imageSrc} style={{ "--starci-avatar-initials-src": `url("${imageSrc}")` } as CSSProperties} />
 }
 
-/** All entry points use the same local initials generator; an uploaded src wins. */
-export const avatarParts = (name: string, src: string | undefined, fallback: ReactNode | undefined, seed?: string, mark: "sprout" | "initials" = "sprout") => <>
-    {src === undefined ? null : <HeroAvatar.Image alt="" src={src} />}
-    <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true">
-        {src !== undefined && fallback !== undefined ? fallback : mark === "initials" ? <AvatarInitialsImage name={name} {...(seed === undefined ? {} : { seed })} /> : <AvatarSproutImage name={name} {...(seed === undefined ? {} : { seed })} />}
+/** What an avatar with no image draws: the generated image, or, on an explicit plate `tone`, the letters in CSS. */
+export const AvatarInitials = ({ name, seed, tone = "default" }: { readonly name: string; readonly seed?: string; readonly tone?: AvatarTone }) => {
+    const plate = plateOf(tone)
+    return (
+        <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true" {...(plate === "default" ? { "data-grammar-avatar-hue": avatarHue(seed ?? name) } : {})}>
+            {plate === "default" ? <AvatarInitialsImage name={name} {...(seed === undefined ? {} : { seed })} /> : <span className="starci-core-avatar-letters">{avatarInitials(name)}</span>}
+        </HeroAvatar.Fallback>
+    )
+}
+
+/**
+ * What a MARK draws: its icon, centred on a circle of one colour. The colour is a Grammar token by default (`--accent` with `--accent-foreground`; `tone` picks
+ * `accent`, `strong`) or a brand colour the app passes in as `color` (content, like `ColorSwatch`'s), with `ink` for the icon on it.
+ */
+export const AvatarMarkPlate = ({ mark }: { readonly mark: AvatarMark }) => (
+    <HeroAvatar.Fallback
+        aria-hidden="true"
+        data-grammar-avatar-fallback="true"
+        data-grammar-avatar-mark={mark.color === undefined ? mark.tone ?? "solid" : "brand"}
+        style={{
+            ...(mark.color === undefined ? {} : { "--starci-avatar-mark-plate": mark.color }),
+            ...(mark.ink === undefined ? {} : { "--starci-avatar-mark-ink": mark.ink }),
+        } as CSSProperties}
+    >
+        <span className="starci-core-avatar-mark-icon" data-grammar-avatar-logo={mark.logo === undefined ? "generic" : "app"}>{markLogo(mark.logo)}</span>
     </HeroAvatar.Fallback>
+)
+
+/** The logo of a mark: the app's node, the app's icon source drawn as a decorative glyph, or (none passed) the generic channel glyph; never initials. */
+const markLogo = (logo: AvatarMark["logo"]): ReactNode => {
+    if (logo === undefined) return <ChatBubbleOvalLeftEllipsisIcon aria-hidden="true" focusable="false" />
+    // An icon source is a component: a function, or a forwardRef or memo object (Heroicons), never an element.
+    if (typeof logo === "function" || (typeof logo === "object" && logo !== null && !isValidElement(logo) && "$$typeof" in logo)) {
+        return createElement(logo as unknown as ComponentType<{ "aria-hidden": boolean; focusable: "false" }>, { "aria-hidden": true, focusable: "false" })
+    }
+    return logo as ReactNode
+}
+
+/** An uploaded image wins over the initials or the mark; those stay under it while it loads or fails. A custom `fallback` replaces them. */
+export const avatarParts = (name: string, src: string | undefined, fallback: ReactNode | undefined, seed?: string, tone: AvatarTone = "default", mark?: AvatarMark) => <>
+    {src === undefined ? null : <HeroAvatar.Image alt="" src={src} />}
+    {src !== undefined && fallback !== undefined
+        ? <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true">{fallback}</HeroAvatar.Fallback>
+        : mark !== undefined
+            ? <AvatarMarkPlate mark={mark} />
+            : <AvatarInitials name={name} tone={tone} {...(seed === undefined ? {} : { seed })} />}
 </>
 
 export const avatarAccessibleName = (name: string, kind: AvatarKind = "person"): string => kind === "agent" ? `${name} (AI)` : name
@@ -116,26 +116,32 @@ export const avatarA11yProps = (name: string, isDecorative: boolean, kind: Avata
     ? { "aria-hidden": true as const }
     : { role: "img" as const, "aria-label": avatarAccessibleName(name, kind) }
 
-const avatarPixels: Readonly<Record<AvatarSize, number>> = { sm: 32, md: 40, lg: 48, control: 40 }
+/** The plate an avatar with no image puts its initials on (0.46.0 adds `solid` and `strong`); `danger` is the default plate with a danger ring. */
+export type AvatarTone = "default" | "accent" | "solid" | "strong" | "danger"
 
-/** Multicolumn group cells pass their half-size scale; badges disappear below the DNA floor. */
-export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, className }: {
-    readonly children: ReactNode; readonly kind: AvatarKind; readonly size: AvatarSize
-    readonly renderedScale?: number; readonly className?: string
-}) => kind !== "agent" || avatarPixels[size] * renderedScale < STARCI_CORE_DNA.avatar.agentBadgeMinSize ? children : (
-    <HeroBadge.Anchor className={navigationClassName(`avatar avatar--${vendorAvatarSize(size)} starci-core-avatar-agent-anchor`, className)} data-grammar-avatar-size={size}>
-        {children}
-        <HeroBadge aria-hidden="true" className="starci-core-avatar-agent-badge" placement="bottom-right" size="sm">
-            <HeroBadge.Label><CpuChipIcon aria-hidden="true" className="starci-core-avatar-agent-glyph" /></HeroBadge.Label>
-        </HeroBadge>
-    </HeroBadge.Anchor>
-)
+/** The plate of a tone: `danger` only adds the ring, the plate stays the generated one. */
+const plateOf = (tone: AvatarTone): Exclude<AvatarTone, "danger"> => tone === "danger" ? "default" : tone
 
-/** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-/** The plate an avatar with no image puts its initials on (0.46.0 adds `solid` and `strong`). */
-export type AvatarTone = "default" | "accent" | "solid" | "strong"
+/**
+ * A MARK (0.55.0): the round identity of a provider or a channel, its brand LOGO on a circle of one colour, shown beside people in the same `AvatarGroup`. It is
+ * decorative (the avatar's `name` names it). A provider always shows its real brand logo, never initials ("ZA", "FA"): Grammar ships no brand logos, the app
+ * passes its own through `logo` (owner 2026-11-22, overview-v2).
+ */
+export type AvatarMark = {
+    /**
+     * The app's brand logo (Zalo, Facebook, TikTok, Messenger, Google…), drawn at the avatar's own size share and centred: a node (an inline SVG, an image) or an
+     * icon source. Omitted, the mark draws the generic channel glyph, never initials.
+     */
+    readonly logo?: ReactNode | IconSource
+    /** A brand colour as the circle's fill, passed in as content (a CSS colour such as `#1877f2`); it wins over `tone`. Give `ink` for the icon on it. */
+    readonly color?: string
+    /** The icon's colour on a brand `color`; `--accent-foreground` when omitted. */
+    readonly ink?: string
+    /** A Grammar token plate when there is no brand `color`: `solid` (the default, `--accent`), `accent` (the soft pair) or `strong` (`--foreground`). */
+    readonly tone?: Exclude<AvatarTone, "default" | "danger">
+}
 
-const AvatarInner = ({ name, src, seed, kind = "person", fallback, fallbackMark = "sprout", size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
+const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
@@ -145,19 +151,19 @@ const AvatarInner = ({ name, src, seed, kind = "person", fallback, fallbackMark 
         </span>
     )
     return (
-        <AvatarAgentBadge kind={kind} size={size}>
-            <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
-                data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
-                data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
-                data-grammar-avatar-tone={tone}
-                size={vendorAvatarSize(size)}>
-                {tone !== "default" && src === undefined
-                    ? <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true"><span className="starci-core-avatar-letters">{avatarInitials(name)}</span></HeroAvatar.Fallback>
-                    : avatarParts(name, src, fallback, seed, fallbackMark)}
-            </HeroAvatar>
-        </AvatarAgentBadge>
+        <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
+            data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
+            data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
+            data-grammar-avatar-tone={tone}
+            size={vendorAvatarSize(size)}>
+            {avatarParts(name, src, fallback, seed, tone, mark)}
+        </HeroAvatar>
     )
 }
 
-/** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
+/**
+ * An uploaded image, else two initials from DiceBear's Initials style on a colour the seed always gets (the rule and palette are in `identity.ts`), or a MARK (an
+ * icon on a brand-colour circle). It carries no AI badge: an agent's "AI" is the Chip after its name (`AgentName`).
+ * Contract: A11Y-2 (named once; the initials and the mark are silent).
+ */
 export const Avatar = withRegionLoading(AvatarInner)

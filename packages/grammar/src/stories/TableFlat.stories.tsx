@@ -222,7 +222,7 @@ export const FactBalancedAndNoticeLink: Story = {
         <G.EmptyNotice message="No projects yet" description="Create the first project." actionLabel="Back to overview" actionHref="#home" />
       </G.Section>
       <G.Grid kind="cards" columns="balanced">
-        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} label={name}><G.Text size="figure">$199.00</G.Text></G.SurfaceCard>)}
+        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} label={name}><G.Text role="figure">$199.00</G.Text></G.SurfaceCard>)}
       </G.Grid>
     </div>
   ),

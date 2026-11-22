@@ -191,38 +191,6 @@
         border-color: var(--danger);
     }
 
-    /* --- ButtonGroup: one shadow for the unit, joined outlines --- */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"] {
-        border-radius: var(--radius);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transition:
-            transform var(--offset-pop-transition),
-            box-shadow var(--offset-pop-transition);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"] [data-component="Button"] {
-        box-shadow: none;
-        transform: none;
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"][data-grammar-orientation="horizontal"] [data-component="Button"] + [data-component="Button"] {
-        margin-inline-start: calc(-1 * var(--offset-pop-outline-width));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"][data-grammar-orientation="vertical"] [data-component="Button"] + [data-component="Button"] {
-        margin-block-start: calc(-1 * var(--offset-pop-outline-width));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"]:has([data-component="Button"]:active:not([disabled])) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"][data-grammar-disabled="true"] {
-        box-shadow: none;
-        opacity: var(--disabled-opacity);
-    }
-
     /* --- Slider: outlined track, pink fill, offset-shadow thumb --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-field-control="true"] {
         border: var(--offset-pop-outline-width) solid var(--foreground);
@@ -355,7 +323,6 @@
     @media (prefers-reduced-motion: reduce) {
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-control="true"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-choice-control],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="FileDropzone"] [data-grammar-field-control="true"] {
             transform: none;
             transition: none;
@@ -375,7 +342,6 @@
     @media (forced-colors: active) {
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-control="true"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-choice-control],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-slider-thumb],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] {
             border-color: CanvasText;

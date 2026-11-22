@@ -38,7 +38,7 @@ export const PaneTabsLine: Story = { render: () => <TabsPaneDemo /> }
 
 const thread = (
     <>
-        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Can the order for table 4 move to 19:30?" />
+        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="md" />} body="Can the order for table 4 move to 19:30?" />
         <G.MessageBubble side="outgoing" meta="09:14" body="Yes, I moved it." />
     </>
 )
@@ -50,7 +50,7 @@ export const ChatPaneHeadLine: Story = {
             <G.PaneGrid label="Chat" areas={{ base: ["chat"], medium: ["chat"] }} columns={{ base: ["fill"], medium: ["fill"] }} rows={{ base: ["fill"], medium: ["fill"] }}>
                 <G.Pane area="chat" surface>
                     <G.PaneSection align="center">
-                        <G.PaneHeader title="Support agent" description="Replies in a minute" mark={<G.Avatar name="Support agent" size="sm" />} />
+                        <G.PaneHeader title="Support agent" description="Replies in a minute" mark={<G.Avatar name="Support agent" size="md" />} />
                     </G.PaneSection>
                     <G.PaneSection scroll={{ label: "Conversation", role: "log", align: "end" }}>{thread}</G.PaneSection>
                 </G.Pane>
@@ -70,10 +70,10 @@ export const MessageCards: Story = {
   parameters: { grammar: { catalog: true } },
     render: () => (
         <div style={{ display: "grid", gap: "0.75rem", maxWidth: "64rem" }}>
-            <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Can you check the order for table 4?" />
+            <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="md" />} body="Can you check the order for table 4?" />
             <G.MessageCard
                 author="Agent"
-                avatar={<G.Avatar name="Agent" size="sm" />}
+                avatar={<G.Avatar name="Agent" size="md" />}
                 title="Order #1042 awaiting approval"
                 chip={<G.Badge tone="warning">Pending</G.Badge>}
                 body="The customer booked table 4 at 19:30; the kitchen needs the new time before the first dish."
@@ -83,7 +83,7 @@ export const MessageCards: Story = {
             <G.MessageCard
                 measure="wide"
                 author="Agent"
-                avatar={<G.Avatar name="Agent" size="sm" />}
+                avatar={<G.Avatar name="Agent" size="md" />}
                 title="Table 4 booking"
                 chip={<G.Badge>New</G.Badge>}
                 details={[{ id: "time", term: "Time", description: "19:30" }, { id: "guests", term: "Guests", description: "4 people" }, { id: "owner", term: "Owner", description: "Maria" }]}
@@ -113,11 +113,11 @@ export const EmptyNoticeInThread: Story = {
 export const BubbleGrouping: Story = {
     render: () => (
         <div style={{ display: "grid", gap: "0.25rem", maxWidth: "40rem" }}>
-            <G.MessageBubble groupPosition="single" body="A lone bubble: fully rounded." avatar={<G.Avatar name="Maria" size="sm" />} />
+            <G.MessageBubble groupPosition="single" body="A lone bubble: fully rounded." avatar={<G.Avatar name="Maria" size="md" />} />
             <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
-                <G.MessageBubble groupPosition="first" author="Maria" meta="09:12" body="First of a run." avatar={<G.Avatar name="Maria" size="sm" />} />
-                <G.MessageBubble groupPosition="middle" body="Middle: both start corners squared." avatar={<G.Avatar name="Maria" size="sm" />} />
-                <G.MessageBubble groupPosition="last" body="Last: the avatar sits beside it." avatar={<G.Avatar name="Maria" size="sm" />} />
+                <G.MessageBubble groupPosition="first" author="Maria" meta="09:12" body="First of a run." avatar={<G.Avatar name="Maria" size="md" />} />
+                <G.MessageBubble groupPosition="middle" body="Middle: both start corners squared." avatar={<G.Avatar name="Maria" size="md" />} />
+                <G.MessageBubble groupPosition="last" body="Last: the avatar sits beside it." avatar={<G.Avatar name="Maria" size="md" />} />
             </div>
             <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
                 <G.MessageBubble side="outgoing" groupPosition="first" body="Outgoing first." />
@@ -137,9 +137,9 @@ const ReactionsDemo = () => {
     })
     return (
         <div style={{ display: "grid", gap: "2.5rem", maxWidth: "40rem", paddingBlock: "3rem" }}>
-            <G.MessageBubble author="Maria" avatar={<G.Avatar name="Maria" size="sm" />} body="Hover (or long-press) for the toolbar; press the pill to add one more." reactions={reactions} onReact={react} onReply={noop} onShare={noop} />
+            <G.MessageBubble author="Maria" avatar={<G.Avatar name="Maria" size="md" />} body="Hover (or long-press) for the toolbar; press the pill to add one more." reactions={reactions} onReact={react} onReply={noop} onShare={noop} />
             <G.MessageBubble side="outgoing" body="Outgoing: the pill sits on the start corner." reactions={reactions} onReact={react} onReply={noop} />
-            <G.MessageCard author="Agent" avatar={<G.Avatar name="Agent" size="sm" />} title="Order #1042" body="The same lifted card with the same pill." reactions={reactions} onReact={react} onShare={noop} />
+            <G.MessageCard author="Agent" avatar={<G.Avatar name="Agent" size="md" />} title="Order #1042" body="The same lifted card with the same pill." reactions={reactions} onReact={react} onShare={noop} />
         </div>
     )
 }

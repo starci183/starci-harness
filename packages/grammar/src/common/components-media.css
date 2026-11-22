@@ -199,8 +199,6 @@
     }
 
     /* ---------- EmptyNotice: the media and the actions of the one empty state ---------- */
-    /* An in-page state wears its icon on a soft brand-tone circle (the accent soft pair, which IconTile paints). */
-    .starci-core-empty-notice > .starci-core-icon-tile { border-radius: var(--grammar-radius-pill); }
 
     /* A page-level state wears an Illustration at the state step: 160px at 1440, 120px below 48rem. */
     .starci-core-notice-art {
@@ -227,8 +225,8 @@
     }
 
     /*
-     * A first-run notice with steps (0.46.2): two to five numbered steps under the copy, read from the start edge (the stack is centred, the list is not), each a 24px step mark
-     * (a check when done, the accent number on the first open step, a grey number after it) and its words. The first open step carries the one action under its words.
+     * A first-run notice with steps (0.46.2): two to five numbered steps under the copy, read from the start edge (the stack is centred, the list is not), each a 40px status tile
+     * (0.55.0, the status-mark rule: the check when done, the accent number on the first open step, the dashed circle after it) and its words. The first open step carries the one action under its words.
      */
     .starci-core-notice-steps {
         display: flex;
@@ -257,7 +255,7 @@
         flex: 1 1 auto;
         flex-direction: column;
         gap: var(--grammar-identity-gap);
-        padding-block-start: var(--grammar-identity-gap);
+        padding-block-start: var(--grammar-inline-gap);
     }
 
     .starci-core-notice-step-action {

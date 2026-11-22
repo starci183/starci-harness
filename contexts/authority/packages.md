@@ -53,7 +53,8 @@ The flow, in order:
    resolved from the registry are listed `LOCAL, REPORT ONLY` and the run ends `green for local (not pushable)`
    ([check-cache.md](../project/check-cache.md) "The operating procedure"). The pre-push hook, CI and the release gate run `--env prod`,
    which blocks on them.
-4. Before a commit, `starci deps install-local --restore` puts the recorded npm pins back, drops every lock entry resolved on this
+4. Before a commit to main or a prod cut (on `dev` and lane branches of an app declaring `deps.devAllowsLocalRegistry`, the local pins are
+   committed as they are: local first, a lane never waits for npm), `starci deps install-local --restore` puts the recorded npm pins back, drops every lock entry resolved on this
    machine and reinstalls from npmjs with the registry named on the command, so the lockfile's `resolved` and `integrity` are npm's (a
    version the local build shared included). GitHub CI cannot reach 127.0.0.1 and installs npm's tarballs, so `starci deps check` refuses a
    lockfile or `.npmrc` that names the registry (`DEPS_LOCAL_REGISTRY_COMMITTED`), a lockfile that holds a `@starci` package or
@@ -62,8 +63,15 @@ The flow, in order:
    manifest) at exactly that member's version is not unpublished: `npm ci` links it (`"link": true` in the committed lockfile), so the
    workspace satisfies the pin and the urgent push can put the commit on main; the member still publishes through the normal release. A
    pin on a member at another version, a lock that installs the name from a registry, and a name that is no member and not on npm stay refused.
-5. CI publishes the release to npm ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the app's verification. The
-   app pins the version npm serves, which is the version it already pinned for the local build.
+   **Dev-only local pins** (owner 2026-11-22: "test local là nhánh dev mà nó dùng local để test output chứ ci gì ở đâu ông"): an app that
+   declares `"deps": { "devAllowsLocalRegistry": true }` in its committed `hfs.json` may commit exact local-registry pins and their lockfile
+   entries to `dev` and to lane branches (which land on dev). On such a push, `starci deps check --push-refs "<the pre-push hook's stdin>"`
+   accepts `DEPS_PIN_UNPUBLISHED` for an exact version the local registry (127.0.0.1:4873) serves, `DEPS_LOCAL_REGISTRY_COMMITTED` for
+   references to that registry only, and `DEPS_LOCK_INTEGRITY`, and prints one `dev-local:` note naming them. A push with any other ref
+   (main, a release branch, a tag), `release push`, `release cut`, `app release` and a prod deploy pass no dev target and keep refusing:
+   a prod cut holds npm versions, so `deps install-local --restore` still comes before the release. No environment variable widens it.
+5. CI publishes to npm once per release train, for prod only ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the
+   app's verification nor a lane. At the prod cut the app pins npm versions ONCE: each local pin is bumped to the version npm serves.
 
 It is no publication: nothing in the registry reaches npm.
 

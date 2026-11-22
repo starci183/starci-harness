@@ -14,7 +14,7 @@ const FILE = at("apps/web/src/features/layouts/AppShell/component.tsx")
 const PAGE = at("apps/web/src/components/branches/Article/index.tsx")
 const SITE_IMPORTS = 'import { Button, Image, NavLandmark, SegmentedControl, TextAction, TopBar, WorkspaceShell } from "@starci/grammar/common";'
 const SITE_LANGUAGE = '<SegmentedControl label={props.language.label} isLabelHidden size="control" value={props.language.locale} onValueChange={props.on.choose} options={props.language.options} />'
-const SITE_ACTIONS = `<>${SITE_LANGUAGE}<Button intent="neutral" size="control" href={props.accountHref}>{props.accountLabel}</Button><Button intent="alternative" size="control" href={props.tryHref}>{props.tryLabel}</Button></>`
+const SITE_ACTIONS = `<>${SITE_LANGUAGE}<Button variant="border" size="control" href={props.accountHref}>{props.accountLabel}</Button><Button variant="border" size="control" href={props.tryHref}>{props.tryLabel}</Button></>`
 const SITE_BAR = `<TopBar position="sticky" brand={<TextAction href={props.homeHref} size="control"><Image src={props.logo} alt={props.home} width={102} height={36} /></TextAction>} navigation={<NavLandmark label={props.navLabel} layout="bar"><TextAction href={props.anchor} appearance="route" size="control">{props.anchorLabel}</TextAction></NavLandmark>} actions={${SITE_ACTIONS}} />`
 
 for (const lite of [false, true]) {

@@ -57,17 +57,38 @@ unpushed lane commit, and releases. A migration a lane adds is additive and appl
 
 ## Gate and land
 
+The owner's rules for the gate of a lane, in his words:
+
+> "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"
+
+> "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"
+
+A lane lands on dev, so every gate of this section is the FAST level, `app check --env prod --level dev`, once per push: the deps
+check (local-registry pins allowed where hfs.json declares `deps.devAllowsLocalRegistry`), types with its package builds and codegen,
+the lane's own tests (the unit specs its diff touches and the ones whose closure reaches a changed file), db and the owner's design
+approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED still blocks). The hfs rule sweep, the rule-188 first audits, the ui-audit
+stale and missing blocks, the nivoos package checks, the whole test suite, sonar and coverage run once at the main cut
+(`--level full`); a red full run is fixed in a hardening lane before the cut. screen.yaml and audit records may be completed there.
+
 One verb runs the local gate, one registers, one lander lands (PROJECT-BRANCH-2):
 
 1. `starci lane gate --push --ready` in the worktree, tree committed: it merges `origin/dev`, runs `npm ci` under an `npm` slot when
    the merge changed a manifest or lockfile (`--install` forces it), runs `codegen` (and `build:modules` after an install), then
-   under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, which runs `app check --env prod`, commits the cache
-   records the run writes and pushes once, and registers the pushed sha with the lander. Without `--push` it runs the check only
-   and reports the findings. A merge conflict refuses `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
+   under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, whose pre-push hook runs the fast level once, and
+   registers the pushed sha with the lander. Without `--push` it runs `app check --env prod --level dev` only and reports the
+   findings. A new `lane gate` of the same lane first cancels the lane's running gate: its process tree is killed, its slot
+   released and its status says `superseded by <sha>`. A merge conflict refuses `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
 2. Monitor `<lanes>/_land-status/<lane>.json` (`starci lane status <lane>`): `queued`, `landed` (`sha`, `migrations`), `conflict`
    (`requeued: true` means wait for the next batch), `rejected` (`findings`) or `parked` (out of memory, register again).
    A rejection or a conflict with `origin/dev` is fixed in the lane, gated again and registered again.
-3. `starci lane withdraw <lane>` takes the lane out before a batch picks it up. The lander (`starci lane land`) is one process per
+3. `starci lane withdraw <lane>` takes the lane out, also while a batch has it: status `withdrawn` (`fromBatch`), and that batch aborts
+   (the lander re-reads the ready set before each gate run, after it and right before the push) and re-forms without it; the other
+   lanes read `re-formed` and are gated again. A withdrawn lane never lands. A lane registered again with a new sha does the same to
+   its old batch: the running batch gate is cancelled (its process tree killed), the batch re-forms, and the lane's status reads
+   `queued` at the new sha with `supersededBy`.
+4. The lander lands a batch as ONE commit on `dev`: the merges it gated become one commit with the same tree and `origin/dev` as
+   its parent, whose message lists every lane with its branch and sha and carries one `Landed-lane: <lane> <sha>` trailer each.
+   Every landed lane's status points at that commit. The lander (`starci lane land`) is one process per
    lanes folder that the coordinator starts; a lane never starts it, never pushes `dev` and never takes the dev lock.
 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the

@@ -1,0 +1,132 @@
+/*
+ * @starci/grammar/core/ext/markdown draws every element with Grammar core components and their CSS; this sheet holds only what Grammar has no part
+ * for: the Shiki colours mapped onto Grammar tokens, the line grid of a code block (gutter, highlighted line, diff row), the compare's
+ * two columns, the highlight marks, and the mermaid figure (the one Grammar Fragment). Every colour is a Grammar token, unmixed.
+ * Import it after the Grammar's styles.
+ */
+@layer starci-markdown {
+    .starci-md {
+        --shiki-foreground: var(--foreground);
+        --shiki-background: transparent;
+        --shiki-token-comment: var(--muted);
+        --shiki-token-punctuation: var(--muted);
+        --shiki-token-keyword: var(--accent-soft-foreground);
+        --shiki-token-string: var(--success-soft-foreground);
+        --shiki-token-string-expression: var(--success-soft-foreground);
+        --shiki-token-constant: var(--info-soft-foreground);
+        --shiki-token-function: var(--warning-soft-foreground);
+        --shiki-token-parameter: var(--foreground);
+        --shiki-token-link: var(--info-soft-foreground);
+        --shiki-token-inserted: var(--success-soft-foreground);
+        --shiki-token-deleted: var(--danger-soft-foreground);
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-md-visually-hidden {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    /* ---------------------------------------------------------------- the line grid of a code block and a diff */
+    .starci-md-pre code {
+        display: grid;
+        min-inline-size: max-content;
+        white-space: pre;
+    }
+
+    .starci-md-line {
+        display: grid;
+        grid-template-columns: 2.5rem 1fr;
+    }
+
+    .starci-md-pre[data-kind="diff"] .starci-md-line {
+        grid-template-columns: 1.5rem 1fr;
+    }
+
+    .starci-md-gutter {
+        padding-inline-end: var(--grammar-inline-gap);
+        color: var(--muted);
+        text-align: end;
+        user-select: none;
+    }
+
+    .starci-md-line[data-highlighted="true"] { background: var(--warning-soft); }
+    .starci-md-line[data-sign="add"] { background: var(--success-soft); }
+    .starci-md-line[data-sign="remove"] { background: var(--danger-soft); }
+    .starci-md-line[data-sign="add"] .starci-md-gutter { color: var(--success-soft-foreground); }
+    .starci-md-line[data-sign="remove"] .starci-md-gutter { color: var(--danger-soft-foreground); }
+
+    /* ---------------------------------------------------------------- compare: two columns, the differing part tinted */
+    .starci-md-compare {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--grammar-row-gap);
+    }
+
+    @media (max-width: 30rem) {
+        .starci-md-compare { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .starci-md-compare-side { min-width: 0; }
+    .starci-md-compare-change { color: inherit; }
+    .starci-md-compare-side[data-side="expected"] .starci-md-compare-change { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-md-compare-side[data-side="received"] .starci-md-compare-change { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+
+    /* ---------------------------------------------------------------- highlights: a Grammar soft pair per tone */
+    .starci-md-highlight {
+        border-radius: var(--grammar-radius-xs);
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+    }
+
+    .starci-md-highlight[role="button"] { cursor: pointer; }
+    .starci-md-highlight[role="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+    .starci-md-highlight[data-tone="neutral"] { background: var(--default-soft); color: var(--default-soft-foreground); }
+    .starci-md-highlight[data-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    .starci-md-highlight[data-tone="info"] { background: var(--info-soft); color: var(--info-soft-foreground); }
+    .starci-md-highlight[data-tone="success"] { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-md-highlight[data-tone="warning"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
+    .starci-md-highlight[data-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+
+    /* A note line under the block where its highlight ends, in the tone's ink. */
+    .starci-md-highlight-note[data-tone="neutral"] { color: var(--default-soft-foreground); }
+    .starci-md-highlight-note[data-tone="accent"] { color: var(--accent-soft-foreground); }
+    .starci-md-highlight-note[data-tone="info"] { color: var(--info-soft-foreground); }
+    .starci-md-highlight-note[data-tone="success"] { color: var(--success-soft-foreground); }
+    .starci-md-highlight-note[data-tone="warning"] { color: var(--warning-soft-foreground); }
+    .starci-md-highlight-note[data-tone="danger"] { color: var(--danger-soft-foreground); }
+    .starci-md-highlight-note > p { margin: 0; color: inherit; }
+
+    /* ---------------------------------------------------------------- the mermaid figure (a Grammar Fragment) */
+    .starci-md-figure {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+        margin: 0;
+    }
+
+    .starci-md-figure-art {
+        overflow-x: auto;
+        padding: var(--grammar-inset-card);
+        border: 1px solid var(--border);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface);
+        text-align: center;
+    }
+
+    .starci-md-figure-art svg { max-inline-size: 100%; block-size: auto; }
+    .starci-md-figure-art svg text { font-family: var(--font-sans); }
+    .starci-md-figure figcaption { color: var(--muted); text-align: center; }
+
+    .starci-md-accordion { display: flex; min-width: 0; flex-direction: column; }
+}

@@ -6,7 +6,6 @@ import { SurfaceNesting } from "../../surfaceContext.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { glyphSource, type GlyphName } from "../../leaf/Icon/glyphs.js"
 import type { DropdownMenuItem } from "../../branch/DropdownMenu/index.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { NoChildren } from "../../tier.js"
 import { TopBarFitRow, type TopBarActionItem, type TopBarNavigationItem } from "./TopBarFit.js"
 
@@ -72,8 +71,8 @@ const CustomButtons = ({ buttons }: { readonly buttons: readonly TopBarCustomBut
         {buttons.map((button) => (
             <span key={button.id} className="starci-core-top-bar-custom-item" data-grammar-top-bar-custom-item={button.id} data-grammar-attention={button.badge === true ? "true" : undefined}>
                 {button.href === undefined
-                    ? <IconButton intent="dismiss" source={glyphSource(button.glyph)} label={button.label} onPress={button.onPress} />
-                    : <IconButton intent="dismiss" source={glyphSource(button.glyph)} label={button.label} href={button.href} />}
+                    ? <IconButton variant="border" source={glyphSource(button.glyph)} label={button.label} onPress={button.onPress} />
+                    : <IconButton variant="border" source={glyphSource(button.glyph)} label={button.label} href={button.href} />}
                 {button.badge === true ? <span aria-hidden="true" className="starci-core-top-bar-custom-dot" data-grammar-top-bar-dot="true" /> : null}
             </span>
         ))}
@@ -144,7 +143,7 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
 export const TopBar = ({ brand, navigation, actions, customButtons, menu, search, startInset = "page", subnavigation, subnavigationLabel, fit, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
-    <ButtonPlacementProvider placement="chrome" navbar>
+    <>
     <TopBarOverflowContext.Provider value={customButtons ?? []}>
     <SurfaceNesting>
     <header
@@ -169,7 +168,7 @@ export const TopBar = ({ brand, navigation, actions, customButtons, menu, search
                 isIconOnly
                 onPress={() => menu.onOpenChange(!menu.isOpen)}
                 type="button"
-                variant="tertiary"
+                variant="outline"
                 {...(menu.controls === undefined ? {} : { "aria-controls": menu.controls })}
             >
                 {menu.icon}
@@ -204,5 +203,5 @@ export const TopBar = ({ brand, navigation, actions, customButtons, menu, search
     </header>
     </SurfaceNesting>
     </TopBarOverflowContext.Provider>
-    </ButtonPlacementProvider>
+    </>
 )

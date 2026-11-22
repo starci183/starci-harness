@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.55.0 - 2026-11-22
+
+- Changed: versioned with @starci/grammar 0.55.0 and @starci/eslint-grammar-core 0.55.0 (`avatar-row-uses-group`, an error; the Alert's final soft-pair look).
+- No rule of its own changed: versioned with @starci/grammar 0.55.0 and @starci/eslint-grammar-core 0.55.0 (the site group and `site-type-role`).
+
 ## 0.54.1 - 2026-11-21
 
 - No rule changed: versioned with @starci/grammar 0.54.1 and @starci/eslint-grammar-core 0.54.1.

@@ -1,6 +1,6 @@
 // screen-yaml.mts - the one structured file of a gallery screen (contexts/project/gallery.md PROJECT-GALLERY-8): `gallery/pages/<area>/<screen>/screen.yaml` replaces `explain.md`
 // and `audit.json`. It holds the screen's identity (title, route, area, summary, code), the shot hashes, the sections (what each region shows and why), the options weighed
-// (`considered`) and the UI audit (`audit`: builder, auditor, rounds of seven lenses). Pure functions: the validator (HFS_APP_GALLERY_SCREEN_INVALID, the document and its
+// (`considered`) and the UI audit (`audit`: builder, auditor, rounds of the ten lenses: seven core, three content). Pure functions: the validator (HFS_APP_GALLERY_SCREEN_INVALID, the document and its
 // audit block alike), the reader that gives the older rules the explanation they already know, the skeleton and brief of `starci app uiaudit run`, the new cycle of
 // `starci app uiaudit cycle`, and the converter from an explain.md.
 // The first pass is the baseline, later drift is evidence (owner, 2026-11-21, train 188, the version that wins): "lần đầu ghi screen.yaml thì phải audit đến pass ghi bằng chứng.
@@ -16,8 +16,13 @@ import { EXPLAIN_FIELDS, hasOptionsSection, parseExplain, SHOT_WIDTHS, UNCLEAR_V
 
 export const SCREEN_FILE = 'screen.yaml';
 export const SCREEN_SCHEMA = 1;
-/** The seven lenses of the UI audit, in order, with what each asks. */
-export const LENSES = ['order', 'layout', 'actionable', 'live', 'words', 'states', 'truth'] as const;
+/**
+ * The seven core lenses of the UI audit, in order, then the three content lenses (t195, contexts/ui/content.md): a round has all ten. A round written before the content lenses
+ * existed carries the seven alone and stays valid; a round with any content lens carries all three. `starci audit run` writes all ten.
+ */
+export const CORE_LENSES = ['order', 'layout', 'actionable', 'live', 'words', 'states', 'truth'] as const;
+export const CONTENT_LENSES = ['business', 'hand-composed', 'tech-leak'] as const;
+export const LENSES = [...CORE_LENSES, ...CONTENT_LENSES] as const;
 export type Lens = (typeof LENSES)[number];
 export const LENS_MEANING: Readonly<Record<Lens, string>> = Object.freeze({
   order: 'Content order: what the user needs first comes first.',
@@ -27,7 +32,12 @@ export const LENS_MEANING: Readonly<Record<Lens, string>> = Object.freeze({
   words: 'No mixed English or raw ids; one term per concept.',
   states: 'Empty, loading, error and no-permission states exist at 1440 and 390.',
   truth: 'The data is real, or marked "cần API".',
+  business: 'Which of the 2-3 owner questions in screen.yaml does each region answer (results, what needs me, who), in plain Vietnamese? A summary showing run counts, trigger kinds, provider keys, raw codes or step chains fails (contexts/ui/content.md).',
+  'hand-composed': 'Is a known situation (contexts/ui/situations.md) built from primitives instead of its Grammar component: a summary card from Text and Stack, a hand-drawn status circle, an avatar row with no AvatarGroup?',
+  'tech-leak': 'Per the app audience (contexts/ui/content.md): a business app shows no raw error or refusal code, English engine text, internal id or jargon outside a collapsed "Chi tiết kỹ thuật"; a technical app puts the human sentence first.',
 });
+/** The lenses a round carries: all ten, or the seven core ones for a round from before the content lenses. */
+export const lensesOf = (lenses: Readonly<Record<string, unknown>> | undefined): readonly Lens[] => (lenses !== undefined && CONTENT_LENSES.some((lens) => lens in lenses) ? LENSES : CORE_LENSES);
 /**
  * The layout lens's explicit checklist (owner, 2026-11-19: a phone header wrapped a label and drew buttons under 40px because the audit read a scaled-down full-page shot). Each item is
  * checked on the full-resolution crops at 390 and 1440, never on the shrunk full-page shot, and answered in the layout notes.
@@ -111,9 +121,9 @@ export function auditProblems(audit: unknown): string[] {
     const lenses = round['lenses'];
     if (!plain(lenses)) { problems.push(`${at}.lenses is not a mapping`); return; }
     for (const key of Object.keys(lenses)) if (!(LENSES as readonly string[]).includes(key)) problems.push(`${at}.lenses.${key} is no lens (${LENSES.join(', ')})`);
-    for (const lens of LENSES) {
+    for (const lens of lensesOf(lenses)) {
       const entry = lenses[lens];
-      if (!plain(entry)) { problems.push(`${at}.lenses.${lens} is missing: every round runs all seven lenses`); continue; }
+      if (!plain(entry)) { problems.push(`${at}.lenses.${lens} is missing: every round runs all ${LENSES.length} lenses (a round from before the content lenses runs the ${CORE_LENSES.length} core ones)`); continue; }
       const verdict = entry['verdict'];
       if (typeof verdict !== 'string' || !(VERDICTS as readonly string[]).includes(verdict)) problems.push(`${at}.lenses.${lens}.verdict is ${JSON.stringify(verdict)}, not pass, fixed or open`);
       else if (verdict !== 'pass' && !text(entry['notes'])) problems.push(`${at}.lenses.${lens} is ${verdict} with no notes: say what was found or changed`);
@@ -170,7 +180,9 @@ export function docProblems(value: unknown, id: string): string[] {
   else considered.forEach((entry, index) => { if (!plain(entry) || !text(entry['option']) || typeof entry['chosen'] !== 'boolean' || typeof entry['why'] !== 'string') problems.push(`considered[${index}] needs option, chosen (true or false) and why`); });
   if (!('audit' in value)) problems.push('audit is missing: null for a screen not audited yet (grandfathered)');
   if ('app' in value && !text(value['app'])) problems.push('app is not a front-end app name (the app that serves the route; omit it when one app does)');
-  const known = new Set(['schema', 'screen', 'title', 'route', 'app', 'area', 'summary', 'code', 'shots', 'sections', 'considered', 'audit']);
+  // the owner's questions the screen answers (contexts/ui/content.md, t195): two or three plain sentences, read by the business lens
+  if ('questions' in value && !(strings(value['questions']) && (value['questions'] as string[]).length >= 2 && (value['questions'] as string[]).length <= 3 && (value['questions'] as string[]).every((question) => text(question)))) problems.push('questions is the 2 or 3 owner questions the screen answers, each a text (contexts/ui/content.md)');
+  const known = new Set(['schema', 'screen', 'title', 'route', 'app', 'area', 'summary', 'questions', 'code', 'shots', 'sections', 'considered', 'audit']);
   const unknown = Object.keys(value).filter((key) => !known.has(key));
   if (unknown.length > 0) problems.push(`has the unknown key${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}`);
   return problems;
@@ -219,7 +231,7 @@ export const causeOf = (changed: readonly string[] | undefined): string => (chan
 export function auditPasses(audit: Audit): boolean {
   const last = audit.rounds.at(-1);
   if (last === undefined || audit.rounds.length < MIN_ROUNDS || norm(audit.builder.agent) === norm(audit.auditor.agent)) return false;
-  return LENSES.every((lens) => last.lenses[lens].verdict !== 'open' && !last.lenses[lens].notes?.startsWith('auditor: fill this lens'));
+  return lensesOf(last.lenses).every((lens) => last.lenses[lens].verdict !== 'open' && !last.lenses[lens].notes?.startsWith('auditor: fill this lens'));
 }
 
 /** Whether the screen has passed once: its audit records a baseline, or its current rounds pass (an audit that passed before `baseline` existed). */
@@ -251,7 +263,7 @@ export function judgeAudit(facts: AuditFacts): AuditFinding[] {
   if (norm(audit.builder.agent) === norm(audit.auditor.agent)) findings.push({ code: AUDIT_CODES.self, message: `${folder}: the auditor (${audit.auditor.agent}) is the builder: another agent audits (PROJECT-GALLERY-8)` });
   if (audit.rounds.length < MIN_ROUNDS) findings.push({ code: AUDIT_CODES.few, message: `${folder} has ${audit.rounds.length} audit round${audit.rounds.length === 1 ? '' : 's'}, at least ${MIN_ROUNDS}: round 1 finds, the fixes land, round 2 checks (PROJECT-GALLERY-8)` });
   const last = audit.rounds.at(-1);
-  const open = last === undefined ? [] : LENSES.filter((lens) => last.lenses[lens].verdict === 'open');
+  const open = last === undefined ? [] : lensesOf(last.lenses).filter((lens) => last.lenses[lens].verdict === 'open');
   if (open.length > 0) {
     findings.push(audit.rounds.length >= MAX_ROUNDS
       ? { code: AUDIT_CODES.owner, message: `${folder} still has open lenses (${open.join(', ')}) after round ${MAX_ROUNDS} of its first cycle: fix and open the next cycle with \`starci audit cycle ${id} --reason <why>\`, or the owner decides${audit.escalate === null ? ' (write audit.escalate)' : `: ${audit.escalate}`} (PROJECT-GALLERY-8)` }
@@ -320,7 +332,7 @@ export function nextRound(value: Record<string, unknown>, { disk, builder, audit
   if (builder !== undefined) audit.builder = { agent: builder };
   if (auditor !== undefined) audit.auditor = { agent: auditor };
   const last = audit.rounds.at(-1);
-  const pending = last !== undefined && LENSES.some((lens) => last.lenses[lens].notes?.startsWith('auditor: fill this lens'));
+  const pending = last !== undefined && lensesOf(last.lenses).some((lens) => last.lenses[lens].notes?.startsWith('auditor: fill this lens'));
   let note: string;
   // the first time the rounds pass, the pass is the screen's baseline: written once, kept by every later cycle
   if (!plain(audit.baseline) && auditPasses(audit) && last !== undefined) audit.baseline = { at: last.at, rounds: audit.rounds.length };
@@ -343,7 +355,7 @@ export function nextCycle(read: Record<string, unknown>, { reason }: { reason: s
   const rounds = Array.isArray(audit.rounds) ? audit.rounds : [];
   if (rounds.length === 0) return { error: 'has an audit with no round: run `starci audit run` instead' };
   const last = rounds.at(-1) as Round;
-  const verdicts = LENSES.map((lens) => `${lens} ${last.lenses?.[lens]?.verdict ?? '?'}`).join(', ');
+  const verdicts = lensesOf(last.lenses).map((lens) => `${lens} ${last.lenses?.[lens]?.verdict ?? '?'}`).join(', ');
   const next = structuredClone(value);
   const considered = Array.isArray(next['considered']) ? (next['considered'] as unknown[]) : [];
   considered.push({
@@ -357,7 +369,7 @@ export function nextCycle(read: Record<string, unknown>, { reason }: { reason: s
   return { value: next, note: `cycle of ${rounds.length} round${rounds.length === 1 ? '' : 's'} closed into considered; run \`starci audit run\` for round 1 of the new cycle` };
 }
 
-/** The brief an auditor agent reads: the shots to open at full size, the screen's own words, the seven lenses and the laws. */
+/** The brief an auditor agent reads: the shots to open at full size, the screen's own words, the ten lenses and the laws. */
 export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws }: { id: string; folder: string; value: Record<string, unknown>; shotPaths: readonly string[]; cropPaths?: readonly string[]; laws: readonly string[] }): string {
   const audit = plain(value['audit']) ? (value['audit'] as unknown as Audit) : null;
   return [
@@ -370,7 +382,7 @@ export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws 
     ...shotPaths.map((shot) => `- ${shot}`),
     `- ${folder}/${SCREEN_FILE}: the screen's identity, sections, the options considered and the audit you fill`,
     '',
-    '## The seven lenses (every round runs all seven; verdict pass | fixed | open, with notes)',
+    `## The ${LENSES.length} lenses (every round runs all of them; verdict pass | fixed | open, with notes)`,
     ...LENSES.map((lens, index) => `${index + 1}. ${lens}: ${LENS_MEANING[lens]}`),
     '',
     '## The layout lens checklist (answer each item in the layout notes, on the crops)',
@@ -384,7 +396,7 @@ export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws 
     ...laws.map((law) => `- ${law}`),
     '',
     '## The screen as its builder described it',
-    stringifyYaml({ title: value['title'], route: value['route'], ...('app' in value ? { app: value['app'] } : {}), summary: value['summary'], code: value['code'], sections: value['sections'], considered: value['considered'] }).trimEnd(),
+    stringifyYaml({ title: value['title'], route: value['route'], ...('app' in value ? { app: value['app'] } : {}), summary: value['summary'], ...('questions' in value ? { questions: value['questions'] } : {}), code: value['code'], sections: value['sections'], considered: value['considered'] }).trimEnd(),
     '',
     audit === null ? 'No audit yet: this run wrote the skeleton.' : `Builder: ${audit.builder.agent || '(not named)'}; rounds so far: ${audit.rounds.length}.`,
   ].join('\n');

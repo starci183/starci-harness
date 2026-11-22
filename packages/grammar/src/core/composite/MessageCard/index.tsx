@@ -6,6 +6,7 @@ import { Text } from "../../leaf/Text/index.js"
 import { DescriptionList, type DescriptionListItem } from "../DescriptionList/index.js"
 import { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleMeasure, type MessageReaction, type MessageReactionLabels } from "../MessageBubble/index.js"
 import type { NoChildren } from "../../tier.js"
+import type { ToneEdge } from "../../toneEdge.js"
 
 /**
  * One action of a message card. `primary` (at most one) stands first as the commit Button; `neutral` (default) actions follow;
@@ -38,6 +39,8 @@ export type MessageCardProps = NoChildren & MessageCardBody & {
     readonly meta?: string
     /** The card's widest reach; `standard` (40rem or 85%) when omitted, `wide` (70%) for a chat stack that uses it. */
     readonly measure?: MessageBubbleMeasure
+    /** The card face's 1px edge in the tone's `--<tone>-border` (0.55.0; an approval card that waits is `warning`), as `MessageBubble content="card" tone`. */
+    readonly tone?: ToneEdge
     readonly id?: string
     /** As `MessageBubble groupPosition`. */
     readonly groupPosition?: MessageBubbleGroupPosition
@@ -54,7 +57,7 @@ const ORDER = { primary: 0, neutral: 1, open: 2 } as const
 const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
     const kind = action.kind ?? "neutral"
     const destination = action.href === undefined ? (action.onPress === undefined ? {} : { onPress: action.onPress }) : { href: action.href }
-    const shared = { intent: kind === "primary" ? "commit" as const : "neutral" as const, size: "sm" as const, isPending: action.isPending === true, ...destination }
+    const shared = { variant: kind === "primary" ? "primary" as const : "border" as const, size: "sm" as const, isPending: action.isPending === true, ...destination }
     return kind === "open" ? <Button {...shared} endArrow>{action.label}</Button> : <Button {...shared}>{action.label}</Button>
 }
 
@@ -65,7 +68,7 @@ const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
  * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (no border, no shadow) on the thread;
  * the replies it offers are `Section kind="list" layout="suggestions"` in `body` (flat rows, a pressable plain-text row per reply).
  */
-export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
+export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, tone, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
     const ordered = actions === undefined ? [] : [...actions].sort((a, b) => ORDER[a.kind ?? "neutral"] - ORDER[b.kind ?? "neutral"])
     return (
         <MessageBubble
@@ -74,6 +77,7 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
             {...(author === undefined ? {} : { author })}
             {...(avatar === undefined ? {} : { avatar })}
             {...(measure === undefined ? {} : { measure })}
+            {...(tone === undefined ? {} : { tone })}
             {...(groupPosition === undefined ? {} : { groupPosition })}
             {...(reactions === undefined ? {} : { reactions })}
             {...(onReact === undefined ? {} : { onReact })}
@@ -83,7 +87,7 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
             body={
                 <div className="starci-core-message-card" data-component="MessageCard" data-tier="composite" data-contract="GAP-2 PADDING-4">
                     <div className="starci-core-message-card-head">
-                        <Text size="md" isStrong>{title}</Text>
+                        <Text role="label.item">{title}</Text>
                         {chip}
                     </div>
                     {body == null ? null : <div className="starci-core-message-card-body">{body}</div>}
@@ -93,7 +97,7 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
                             {ordered.map((action) => <ActionButton key={action.id} action={action} />)}
                         </div>
                     )}
-                    {meta === undefined ? null : <Text size="xs" tone="muted">{meta}</Text>}
+                    {meta === undefined ? null : <Text role="caption">{meta}</Text>}
                 </div>
             }
         />

@@ -7,7 +7,7 @@ import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The tone of one row: a HeroUI status or brand token pair, so a row is told from the next by more than its place. */
-export type IntervalChartTone = "accent" | "success" | "warning" | "danger" | "neutral"
+export type IntervalChartTone = "accent" | "info" | "success" | "warning" | "danger" | "neutral"
 
 /** One row: a name, the range it was measured in, the point inside it, and what the row reads as. */
 export type IntervalChartRow = {

@@ -22,7 +22,7 @@ export const SignInFormBase = (props: SignInFormBaseProps) => (
             <Input id="sign-in-email" name="email" label={props.props.emailLabel} kind="email" isRequired />
             <Input id="sign-in-password" name="password" label={props.props.passwordLabel} kind="password" isRequired />
             {props.props.errorMessage === undefined ? null : <Text live="assertive">{props.props.errorMessage}</Text>}
-            <Button type="submit" intent="commit" isPending={props.props.pending}>
+            <Button type="submit" variant="primary" isPending={props.props.pending}>
                 {props.props.submitLabel}
             </Button>
         </Form>

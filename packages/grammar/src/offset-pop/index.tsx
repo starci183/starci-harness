@@ -15,17 +15,12 @@ export * from "../common/index.js"
 
 export {
     OFFSET_POP_BAND_TOKEN_NAMES,
-    OFFSET_POP_DARK_TOKEN_DEFAULTS,
     OFFSET_POP_DNA,
     OFFSET_POP_SPACING_SCALE,
-    OFFSET_POP_TOKEN_DEFAULTS,
-    OFFSET_POP_TOKEN_NAMES,
     type OffsetPopBandTokenName,
     type OffsetPopDna,
     type OffsetPopSpacingStep,
     type OffsetPopSpacingValue,
-    type OffsetPopTokenDefaults,
-    type OffsetPopTokenName,
 } from "./dna.js"
 
 export { OFFSET_POP_FAMILY_EVIDENCE, offsetPopRuleConformance } from "./conformance.js"

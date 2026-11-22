@@ -1,0 +1,25 @@
+/*
+ * The built-in INFO tone (0.55.0, owner 2026-11-22: "Thêm info mà? Mặc định có info chứ? Là màu xanh, tất cả grammar kế thừa đều có info").
+ * HeroUI 3.2.6 ships no info token, so Grammar defines its own blue pair in the lowest layer: every family and every app inherits
+ * `--info`, `--info-foreground`, `--info-soft` and `--info-soft-foreground` without writing a line, and an app that writes its own
+ * (unlayered, or later in the theme layer) wins. Info is "in progress / for your information"; accent stays the brand (selection, links,
+ * the primary action). AA: the foreground on info and the soft foreground on soft reach 4.5:1 in both themes (specs/info-tone.spec.mts).
+ */
+@layer starci-grammar-theme {
+    :root,
+    .light,
+    [data-theme="light"] {
+        --info: oklch(54% 0.18 255);
+        --info-foreground: oklch(99.11% 0 0);
+        --info-soft: oklch(95.5% 0.03 250);
+        --info-soft-foreground: oklch(45% 0.16 255);
+    }
+
+    .dark,
+    [data-theme="dark"] {
+        --info: oklch(72% 0.15 250);
+        --info-foreground: oklch(21.03% 0.0059 250);
+        --info-soft: oklch(30% 0.07 250);
+        --info-soft-foreground: oklch(82% 0.1 250);
+    }
+}

@@ -1,0 +1,332 @@
+/*
+ * The look of @starci/grammar/core/ext/graph, drawn only from the tokens of the Grammar theme in the page (no colour, radius or type size of its own).
+ * The ext's styles.css imports it after xyflow's base sheet.
+ */
+.starci-graph {
+    /* Until the theme has the info tokens (Grammar 0.55.0) a running node is this blue, never the brand accent. */
+    --starci-graph-info: var(--info);
+    --starci-graph-info-soft: var(--info-soft);
+    --starci-graph-info-ink: var(--info-soft-foreground);
+    --starci-graph-tone: var(--border);
+    --starci-graph-tone-soft: var(--default);
+    --starci-graph-tone-ink: var(--default-foreground);
+    --starci-graph-line: color-mix(in oklab, var(--foreground) 28%, var(--surface));
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    inline-size: 100%;
+    block-size: 100%;
+    min-block-size: 20rem;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-lg);
+}
+
+/* A card on the panel is the surface and its border: no shadow, in any mode. */
+.starci-graph :is(.starci-graph-node, .starci-graph-entity, .starci-graph-container) {
+    box-shadow: none;
+}
+
+.starci-graph-canvas {
+    position: relative;
+    flex: 1;
+    min-block-size: 0;
+}
+
+.starci-graph .react-flow {
+    --xy-background-color-default: transparent;
+    background: transparent;
+    font-family: inherit;
+}
+
+.starci-graph-empty {
+    margin: 0;
+    padding: 2rem 0.75rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: var(--grammar-type-label-item-size);
+    line-height: var(--grammar-type-label-item-line);
+}
+
+/* The handles only anchor the edges: neither seen nor hit. */
+.starci-graph .react-flow__handle.starci-graph-handle {
+    inline-size: 1px;
+    block-size: 1px;
+    min-inline-size: 0;
+    min-block-size: 0;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+}
+
+.starci-graph .react-flow__handle.starci-graph-handle-center {
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+}
+
+.starci-graph .react-flow__node {
+    cursor: pointer;
+}
+
+.starci-graph[data-editable="true"] .react-flow__node {
+    cursor: grab;
+}
+
+/* Edges: a quiet line with an arrow and a dot where it leaves. The run draws them: they flow while their source runs (blue), wait (amber, still), */
+/* are taken (solid success), fall back (dashed), or were not taken (faded and dotted). */
+.starci-graph .react-flow__edge-path {
+    stroke: var(--starci-graph-line);
+    stroke-width: 1.5;
+}
+
+.starci-graph .react-flow__edge {
+    color: var(--starci-graph-line);
+}
+
+.starci-graph-edge-dot {
+    fill: var(--surface);
+    stroke: currentcolor;
+    stroke-width: 1.5;
+}
+
+.starci-graph-edge-arrow {
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.starci-graph .starci-graph-edge--running {
+    color: var(--starci-graph-info);
+}
+
+.starci-graph .starci-graph-edge--wait {
+    color: var(--warning);
+}
+
+.starci-graph .starci-graph-edge--taken {
+    color: var(--success);
+}
+
+.starci-graph .starci-graph-edge--pending {
+    color: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+
+.starci-graph .starci-graph-edge--danger {
+    color: var(--danger);
+}
+
+/* Flowing into the running step: a solid info line with dots that move along it. */
+.starci-graph .starci-graph-edge--running .react-flow__edge-path {
+    stroke: var(--starci-graph-info);
+    stroke-dasharray: none;
+    animation: none;
+}
+
+.starci-graph .react-flow__edge.animated .starci-graph-edge-flow,
+.starci-graph-edge-flow {
+    fill: none;
+    stroke: var(--starci-graph-info);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 0.1 14;
+    animation: starci-graph-dash var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
+    stroke-dasharray: 0.1 14;
+    pointer-events: none;
+}
+
+/* Into a waiting step: solid amber, nothing moves. */
+.starci-graph .starci-graph-edge--wait .react-flow__edge-path {
+    stroke: var(--warning);
+    stroke-dasharray: none;
+    animation: none;
+}
+
+.starci-graph .starci-graph-edge--taken .react-flow__edge-path {
+    stroke: var(--success);
+    stroke-width: 2;
+    stroke-dasharray: none;
+}
+
+.starci-graph .starci-graph-edge--fallback .react-flow__edge-path {
+    stroke-dasharray: 8 5;
+}
+
+.starci-graph .starci-graph-edge--skipped .react-flow__edge-path {
+    stroke-dasharray: 1.5 5;
+    stroke-linecap: round;
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph .starci-graph-edge--pending .react-flow__edge-path {
+    stroke: color-mix(in oklab, var(--muted) 55%, transparent);
+    stroke-dasharray: 5 5;
+}
+
+.starci-graph .starci-graph-edge--back .react-flow__edge-path {
+    stroke-dasharray: 6 4;
+}
+
+.starci-graph .starci-graph-edge--placeholder .react-flow__edge-path {
+    stroke-dasharray: 2 4;
+}
+
+.starci-graph .starci-graph-edge--danger .react-flow__edge-path {
+    stroke: var(--danger);
+}
+
+.starci-graph .starci-graph-edge--dimmed {
+    opacity: var(--grammar-opacity-faded);
+}
+
+/* The box an edge's words stand in (placed by the layout); the words are the core's Badge, on the surface. */
+.starci-graph-edge-pill {
+    position: absolute;
+    inset: 0 auto auto 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--surface);
+    border-radius: var(--grammar-radius-pill);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* The words of an edge stand above every line (a frame's children raise their edges), on an opaque ground. */
+.starci-graph .react-flow__edgelabel-renderer {
+    z-index: 1000;
+}
+
+/* The zoom of every mode: the core's 40px IconButtons in a column at the canvas's bottom left. */
+.starci-graph-zoom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* The overview map: the cards as small muted blocks, the part in view cut out of a veil, in the surface and border tokens. */
+.starci-graph .starci-graph-minimap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-md);
+    overflow: hidden;
+    --xy-minimap-mask-background-color: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.starci-graph .starci-graph-minimap .react-flow__minimap-node {
+    fill: var(--muted);
+    stroke: none;
+}
+
+@media (width < 48rem) {
+    .starci-graph .starci-graph-minimap {
+        display: none;
+    }
+}
+
+/* The legend under the canvas: swatches in the same tones, quiet words. */
+.starci-graph-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    list-style: none;
+    color: var(--muted);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+.starci-graph-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.starci-graph-legend-kind {
+    box-sizing: border-box;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    background: var(--starci-graph-tile-soft);
+    border: 1px solid var(--starci-graph-tile-ink);
+    border-radius: var(--grammar-radius-2xs);
+}
+
+.starci-graph-legend-kind[data-shape="diamond"] {
+    transform: rotate(45deg) scale(0.8);
+}
+
+.starci-graph-legend-loop {
+    box-sizing: border-box;
+    inline-size: 1.125rem;
+    block-size: 0.75rem;
+    border: 1.5px dashed var(--muted);
+    border-radius: var(--grammar-radius-xs);
+}
+
+
+.starci-graph-legend-edge {
+    display: inline-flex;
+}
+
+/* Loading: node-shaped bones and the lines between them, no text. */
+.starci-graph-skeleton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 100%;
+    block-size: 100%;
+    min-block-size: inherit;
+}
+
+.starci-graph-skeleton-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.starci-graph-skeleton-line {
+    inline-size: 4rem;
+    border-block-start: 1.5px solid var(--starci-graph-line);
+}
+
+.starci-graph-skeleton-node {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    inline-size: 248px;
+    block-size: 64px;
+    padding-inline: 0.75rem;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-skeleton-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.starci-graph-skeleton-tile {
+    display: inline-flex;
+    flex: none;
+}
+
+@keyframes starci-graph-dash {
+    to {
+        stroke-dashoffset: -14.1;
+    }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .starci-graph-edge-flow {
+        animation: none;
+    }
+}

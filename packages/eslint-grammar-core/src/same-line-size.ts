@@ -21,6 +21,7 @@ const LINES: ReadonlySet<string> = new Set(["Cluster", "Text"])
 const ROLE_STEP: Readonly<Record<string, string>> = {
   figure: "figure", "title.page": "title.page", "title.section": "title.section", "label.item": "md", body: "md",
   "label.field": "label.field", "label.group": "xs", caption: "xs", badge: "xs", code: "xs",
+  "display.hero": "display.hero", "display.section": "display.section", "display.figure": "display.figure", lead: "lead", "title.card": "title.card",
 }
 
 const sizeOf = (opening: TSESTree.JSXOpeningElement): string | null => {

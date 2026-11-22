@@ -52,7 +52,7 @@ export { TagGroup, type TagGroupItem, type TagGroupProps } from "../core/composi
 export { Timeline, type TimelineItem, type TimelineProps } from "../core/composite/Timeline/index.js"
 export { Footer, type FooterLink, type FooterLinkGroup, type FooterProps } from "../core/composite/Footer/index.js"
 export { TopBar, useTopBarOverflowEntries, type TopBarActionItem, type TopBarCustomButton, type TopBarFit, type TopBarMenu, type TopBarNavigationItem, type TopBarProps, type TopBarSearch } from "../core/composite/TopBar/index.js"
-export { Avatar, avatarInitials, type AvatarKind, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
+export { Avatar, avatarInitials, type AvatarKind, type AvatarMark, type AvatarTone, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
 export { Image, renditionSrcSet, type AssetSlotProps, type ImageFacts, type ImageLoadState, type ImageProps, type ImageRatio, type ImageRendition, type ImageZoom, type MediaSourceRef } from "../core/leaf/Image/index.js"
 export { Illustration, type IllustrationCompact, type IllustrationProps, type IllustrationRatio } from "../core/leaf/Illustration/index.js"
 export { StaticsProvider, isStaticsKey, staticsUrl } from "../core/staticsScope.js"

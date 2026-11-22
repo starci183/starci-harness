@@ -1,0 +1,163 @@
+/*
+ * The look of the ERD map (ErdMap): an entity box with a round tile head and a row per field, a line per relation with a crow's foot or two bars at each end.
+ * Drawn only from the tokens of the Grammar theme (the blue of a lit relation is Grammar's info tone); the zoom is the shared one.
+ */
+.starci-graph[data-mode="erd"] {
+    --starci-erd-info: var(--info);
+    --starci-erd-info-soft: var(--info-soft);
+    --starci-erd-info-ink: var(--info-soft-foreground);
+}
+
+.starci-graph-entity.starci-erd {
+    box-sizing: border-box;
+    position: relative;
+    inline-size: 264px;
+    min-block-size: 0;
+    border: 0;
+    box-shadow: none;
+    border-radius: var(--grammar-radius-lg);
+    background: var(--surface);
+    color: var(--foreground);
+    cursor: pointer;
+}
+
+/* The border is drawn over the content, so the rows inside keep the exact heights the layout reserved. */
+.starci-graph-entity.starci-erd::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border: 1.5px solid var(--border);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.starci-graph-entity.starci-erd[data-lit="true"]::after {
+    border-color: var(--starci-erd-info);
+    border-width: 2px;
+}
+
+.starci-erd:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.starci-erd-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-sizing: border-box;
+    block-size: 64px;
+    padding-inline: 0.75rem;
+}
+
+.starci-erd-text {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+}
+
+.starci-erd-rows {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 4px 0.75rem;
+    list-style: none;
+    border-block-start: 1px solid var(--border);
+}
+
+.starci-erd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    box-sizing: border-box;
+    block-size: 32px;
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--grammar-radius-sm);
+    font-size: var(--grammar-type-caption-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+.starci-erd-row[data-lit="true"] {
+    background: var(--starci-erd-info-soft);
+    color: var(--starci-erd-info-ink);
+}
+
+.starci-erd-field {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.starci-erd-type {
+    flex: none;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.starci-erd-row[data-link="true"] .starci-erd-type {
+    color: var(--starci-erd-info-ink);
+}
+
+.starci-erd-row.starci-erd-more {
+    block-size: 28px;
+    color: var(--muted);
+}
+
+/* A relation: a quiet line, the ends marked; lit, it is the info blue. */
+.starci-erd-edge {
+    color: var(--starci-graph-line);
+}
+
+.starci-erd-edge[data-lit="true"] {
+    color: var(--starci-erd-info);
+}
+
+.starci-graph .starci-erd-edge .react-flow__edge-path {
+    stroke: currentcolor;
+    stroke-width: 1.5;
+}
+
+.starci-graph .starci-erd-edge[data-lit="true"] .react-flow__edge-path {
+    stroke-width: 2;
+}
+
+.starci-erd-mark line,
+.starci-erd-mark circle {
+    stroke: currentcolor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.starci-erd-mark .starci-erd-ring {
+    fill: var(--surface);
+}
+
+.starci-erd-pill[data-lit="true"] {
+    color: var(--starci-erd-info-ink);
+    border-color: var(--starci-erd-info);
+}
+
+
+.starci-erd-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+
+.starci-erd-type .starci-core-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* On a phone the panel is a window onto the same map: about 70vh high, so the page still scrolls past it; a finger drags the map and two fingers zoom it. */
+@media (width < 48rem) {
+    .starci-graph[data-mode="erd"] {
+        block-size: 70vh;
+    }
+}

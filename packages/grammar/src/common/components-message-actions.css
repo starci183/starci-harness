@@ -1,0 +1,160 @@
+@layer starci-grammar-common {
+    /*
+     * MessageActions: the hover rail of a chat message (owner 2026-11-21). Three HeroUI ghost `sm` icon-only Buttons, drawn exactly as the vendor ships them:
+     * this sheet adds no colour, radius or hover style to a button, only the rail's place, its fade and the picker.
+     *
+     * Place: beside the bubble on the side away from the avatar (the end of an incoming bubble, the start of an outgoing one; logical, so RTL mirrors), one
+     * inline gap off it, centred on it. It is absolutely placed in its host (the bubble line, or any row marked `data-grammar-message-actions-host`), so it
+     * takes no width and moves nothing.
+     */
+    [data-grammar-message-actions-host] {
+        position: relative;
+    }
+
+    /* Each action is a HeroUI sm icon-only Button: its glyph keeps the Button's sm scale (16), not the text icon sizes. */
+    .starci-core-message-actions .starci-core-icon {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .starci-core-message-actions {
+        position: absolute;
+        z-index: 1;
+        inset-block: 0;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--grammar-message-actions-fade) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-message-actions[data-grammar-message-actions-edge="end"] {
+        inset-inline-start: calc(100% + var(--grammar-inline-gap));
+    }
+
+    .starci-core-message-actions[data-grammar-message-actions-edge="start"] {
+        inset-inline-end: calc(100% + var(--grammar-inline-gap));
+    }
+
+    /*
+     * Shown on: hover of the message (a pointer that can hover), a long press (the bubble's picking state, or `isVisible`), keyboard focus anywhere inside the
+     * message or the rail, and while the picker or the menu is open. Hidden, the buttons stay in the tab order (opacity, never visibility), so focus reveals them.
+     */
+    .starci-core-message-actions:is(:focus-within, [data-grammar-message-actions-open="true"], [data-grammar-message-actions-visible="true"]),
+    :is(.starci-core-message-bubble, [data-grammar-message-actions-host]):focus-within .starci-core-message-actions,
+    .starci-core-message-bubble[data-grammar-bubble-picking="true"] .starci-core-message-actions {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @media (hover: hover) {
+        :is(.starci-core-message-bubble, [data-grammar-message-actions-host]):hover .starci-core-message-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-message-actions {
+            transition: none;
+        }
+    }
+
+    /* The open trigger keeps the ghost hover fill (the vendor's own hover token), so the button that owns the open picker or menu does not go blank. */
+    .starci-core-message-actions [data-grammar-message-action][aria-expanded="true"] {
+        background: var(--button-bg-hover);
+    }
+
+    /* The bubble line: the body and its rail. It is the bubble's own width, so "centred on the bubble" is centred on the body, not on the author line above it. */
+    .starci-core-message-bubble-line {
+        display: flex;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+    }
+
+    .starci-core-message-bubble-line > .starci-core-message-bubble-body {
+        flex: 0 1 auto;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-line {
+        align-self: stretch;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-line > .starci-core-message-bubble-body {
+        flex: 1 1 auto;
+    }
+
+    /*
+     * The reaction picker: a floating popover pill. The popover's own elevation, no border, the surface ground, fully rounded; six emoji (28px) in 40px
+     * cells, each growing slightly on hover or focus, then the "+" that opens the full picker. It portals into the Grammar root and opens above the react
+     * button (placement from the side), over the bubble.
+     */
+    .starci-core-message-reactions {
+        border: 0;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+        box-shadow: var(--grammar-shadow-popover) !important;
+        color: var(--surface-foreground);
+        outline: none;
+    }
+
+    .starci-core-message-reactions-dialog {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 0;
+        outline: none;
+    }
+
+    .starci-core-message-reactions-emoji,
+    .starci-core-message-reactions-more {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        inline-size: var(--grammar-message-emoji-cell);
+        block-size: var(--grammar-message-emoji-cell);
+        padding: 0;
+        border: 0;
+        border-radius: var(--grammar-radius-pill);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+    }
+
+    .starci-core-message-reactions-emoji {
+        font-size: var(--grammar-message-emoji-size);
+        line-height: var(--grammar-leading-none);
+    }
+
+    .starci-core-message-reactions-emoji > span {
+        transition: transform var(--grammar-message-actions-fade) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-message-reactions-emoji:is(:hover, :focus-visible) > span {
+        transform: scale(var(--grammar-message-emoji-grow));
+    }
+
+    .starci-core-message-reactions-emoji[aria-pressed="true"],
+    .starci-core-message-reactions-more:is(:hover, :focus-visible) {
+        background: var(--default);
+    }
+
+    .starci-core-message-reactions :is(button):focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-message-reactions-emoji > span {
+            transition: none;
+        }
+
+        .starci-core-message-reactions-emoji:is(:hover, :focus-visible) > span {
+            transform: none;
+        }
+    }
+}

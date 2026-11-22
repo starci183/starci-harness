@@ -21,15 +21,17 @@ const commit = (root: string, text: string): string => {
   return git(root, 'rev-parse', 'HEAD');
 };
 
-test('the happy path: main fast-forwards to a commit on dev, judged as main by the full gate; dev and a lane branch run under their own branch', t => {
+test('the happy path: main fast-forwards to a commit on dev, judged as main by the full gate; dev runs the fast level, another branch its own profile', t => {
   const repo = fixture(t);
   const released = push(repo, [ref('refs/heads/main', repo.head, repo.older)]);
   assert.equal(released.status, 0, released.stderr);
   assert.match(released.stdout, /app check judged branch: main/);
   const worked = push(repo, [ref('refs/heads/dev', repo.head, repo.older)]);
   assert.equal(worked.status, 0, worked.stderr);
-  assert.match(worked.stdout, /judged branch: \(the checkout\)/);
-  assert.equal(push(repo, [ref('refs/heads/ui/3', repo.head)]).status, 0);
+  assert.match(worked.stdout, /app check level dev/);
+  const other = push(repo, [ref('refs/heads/ui/3', repo.head)]);
+  assert.equal(other.status, 0);
+  assert.match(other.stdout, /judged branch: \(the checkout\).*level full/);
 });
 
 test('a push of main from a dev checkout, and a release tag, are judged as main whatever branch is checked out', t => {

@@ -10,7 +10,7 @@ import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
 /**
- * `inline` (default): a text link in prose and meta, the accent colour, underlined on hover. It ends in the anchor icon `↗` ONLY when it is `kind="external"` (0.37.14): an internal
+ * `inline` (default): a text link in prose and meta, the accent colour, underlined on hover. It ends in the external anchor icon ONLY when it is `kind="external"` (0.37.14): an internal
  * destination never draws it. `plain` (0.37.14): a destination named by its label where the surrounding component owns the affordance (a navigation list row, the brand in a shell,
  * a nav entry): the text colour, no underline, no icon; a row draws its own chevron. `head`: the section-head navigation (0.36.0): the label
  * ends in the outline arrow-right icon (16px, currentColor; never the typed glyph) that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
@@ -39,7 +39,7 @@ type MediaLinkContent = NoChildren & {
 
 export type LinkProps = (TextLinkContent | MediaLinkContent) & {
     readonly href: string
-    /** `inline` (default) is a prose link, with the anchor icon `↗` only when `kind="external"`; `head` is the section-head link that ends in a sliding arrow `→`; `plain` is a destination with no colour, underline or icon (a navigation row's title, a brand). Text links only. */
+    /** `inline` (default) is a prose link, with the external anchor icon only when `kind="external"`; `head` is the section-head link that ends in the sliding Grammar arrow icon; `plain` is a destination with no colour, underline or icon (a navigation row's title, a brand). Text links only. */
     readonly variant?: LinkVariant
     /** `external` leaves the app in a new browsing context with `noopener noreferrer`. */
     readonly kind?: LinkKind

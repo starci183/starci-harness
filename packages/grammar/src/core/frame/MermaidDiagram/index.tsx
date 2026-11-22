@@ -163,7 +163,7 @@ export const MermaidDiagram = ({
         >
             {state === "error" ? (
                 <div className="starci-core-mermaid-diagram-error" data-grammar-mermaid-error="true">
-                    <Alert tone="negative" appearance="soft" title={errorTitle} />
+                    <Alert tone="negative" title={errorTitle} />
                     <FencedCodeBlock language="mermaid" label={sourceLabel ?? `${label} source`} code={source} />
                 </div>
             ) : (

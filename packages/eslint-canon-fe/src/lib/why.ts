@@ -49,11 +49,6 @@ export const why = {
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",
     fix: "Plain rows with a few facts are a Section kind=\"list\" with its title on the section and the note as its caption, no card around it; a table is a Section holding a DataTable (title and count on the section, footer={<Pagination />} on the table), with no card around it.",
   },
-  "button-intent-required": {
-    code: "FE_BUTTON_INTENT_REQUIRED",
-    en: "`<file>` renders a Button or IconButton without the command's intent.",
-    fix: "Declare intent from the command's consequence and rank so Grammar supplies its variant.",
-  },
   "control-height": {
     code: "FE_CONTROL_HEIGHT",
     en: "`<file>` picks a larger control size or mixes control sizes in one row.",
@@ -104,20 +99,15 @@ export const why = {
     en: "`<file>` exports `<what>` with a type left to inference.",
     fix: "Write the type where it is exported: the return type after the parameter list, the type of the exported variable, or the type of the parameter.",
   },
-  "destructive-confirm-in-dialog": {
-    code: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG",
-    en: "`<file>` renders a final destructive press outside its confirmation dialog.",
-    fix: "Place the destructive confirm inside the same-file AlertDialog or ConfirmDialog; use entry on its trigger.",
-  },
   "single-commit-per-render": {
     code: "FE_SINGLE_COMMIT_PER_RENDER",
-    en: "`<file>` renders more than one commit in the same component render path.",
-    fix: "Keep the next action as commit and assign the other commands their consequence-based intents.",
+    en: "`<file>` renders more than one variant=\"primary\" Button in the same component render path.",
+    fix: "Keep the one main action primary; every other command is border (the default) and a destruction danger.",
   },
   "no-commit-in-collection-item": {
     code: "FE_NO_COMMIT_IN_COLLECTION_ITEM",
-    en: "`<file>` repeats a commit inside a collection item render.",
-    fix: "Use alternative for the item's next action and keep the enclosing view's commit unique.",
+    en: "`<file>` repeats a variant=\"primary\" Button inside a collection item render.",
+    fix: "An item's command is border (the default); keep the enclosing view's one primary unique.",
   },
   "no-app-surface-paint": {
     code: "FE_GRAMMAR_LAYOUT_ONLY",

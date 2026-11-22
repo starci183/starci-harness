@@ -6,7 +6,7 @@ import * as G from '../common/index.js';
 /**
  * THE WHITE-THEME RESHOOT FIXES (0.42.0). One page with every part the NIVO reshoot named:
  * a pill Select in a Cluster sized to its value; a `Grid kind="sections"` whose columns
- * take the section divider hook; disabled buttons of every intent drawn neutral; a table whose action cell keeps its buttons on one line.
+ * take the section divider hook; disabled buttons of every look drawn neutral; a table whose action cell keeps its buttons on one line.
  * `Defaults` sets no hook; `White` sets `--starci-core-grid-section-divider` on the root, as an app's brand.css sets it on `:root`.
  */
 const meta: Meta = {
@@ -37,8 +37,8 @@ const renderCell = (row: Member, columnId: string) => {
   if (columnId === 'role') return row.role;
   return (
     <G.Cluster gap="inline" justify="end">
-      <G.Button intent="neutral" size="sm" isDisabled={row.role === 'Owner'} disabledReason="The owner cannot be disabled." onPress={noop}>Disable access</G.Button>
-      <G.Button intent="destructive" size="sm" onPress={noop}>Remove</G.Button>
+      <G.Button variant="border" size="sm" isDisabled={row.role === 'Owner'} disabledReason="The owner cannot be disabled." onPress={noop}>Disable access</G.Button>
+      <G.Button variant="danger" size="sm" onPress={noop}>Remove</G.Button>
     </G.Cluster>
   );
 };
@@ -64,13 +64,13 @@ const Body = () => (
     </G.Grid>
     <G.Section title="Disabled buttons">
       <G.Cluster gap="inline" align="center">
-        <G.Button intent="commit" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button>
-        <G.Button intent="alternative" isDisabled onPress={noop}>Save draft</G.Button>
-        <G.Button intent="neutral" isDisabled onPress={noop}>Export</G.Button>
-        <G.Button intent="dismiss" isDisabled onPress={noop}>Cancel</G.Button>
-        <G.Button intent="destructive" step="entry" isDisabled onPress={noop}>Delete</G.Button>
-        <G.Button intent="destructive" step="confirm" isDisabled onPress={noop}>Delete permanently</G.Button>
-        <G.Button intent="commit" isPending onPress={noop}>Saving</G.Button>
+        <G.Button variant="primary" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button>
+        <G.Button variant="border" isDisabled onPress={noop}>Save draft</G.Button>
+        <G.Button variant="border" isDisabled onPress={noop}>Export</G.Button>
+        <G.Button variant="border" isDisabled onPress={noop}>Cancel</G.Button>
+        <G.Button variant="danger" isDisabled onPress={noop}>Delete</G.Button>
+        <G.Button variant="danger" isDisabled onPress={noop}>Delete permanently</G.Button>
+        <G.Button variant="primary" isPending onPress={noop}>Saving</G.Button>
       </G.Cluster>
     </G.Section>
     <G.Section title="Members">
@@ -85,7 +85,7 @@ const play: Story['play'] = async ({ canvasElement }) => {
     const cluster = pill?.parentElement;
     if (pill === null || pill === undefined || cluster === null || cluster === undefined) throw new Error('the pill renders');
     expect(pill.getBoundingClientRect().width).toBeLessThan(cluster.getBoundingClientRect().width / 2);
-    const commit = canvasElement.querySelector<HTMLElement>('[data-component="Button"][data-grammar-intent="commit"][data-action-pending="false"]');
+    const commit = canvasElement.querySelector<HTMLElement>('[data-component="Button"][data-grammar-variant="primary"][data-action-pending="false"]');
     if (commit === null) throw new Error('the disabled commit renders');
     expect(getComputedStyle(commit).opacity).toBe('1');
     const actions = canvasElement.querySelector<HTMLElement>('[data-component="DataTable"] .starci-core-cluster');

@@ -20,9 +20,9 @@
 
     /* informative is NEUTRAL on a toast and an alert dialog, as on an Alert: the default soft pair, the mark in --muted; an app that writes the optional --informative tokens keeps its own. */
     :is(.starci-core-toast, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        --starci-core-overlay-tone: var(--informative, var(--muted));
-        --starci-core-overlay-soft: var(--informative-soft, var(--default-soft));
-        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--default-soft-foreground));
+        --starci-core-overlay-tone: var(--informative, var(--info));
+        --starci-core-overlay-soft: var(--informative-soft, var(--info-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--info-soft-foreground));
     }
 
     /* A Meter's informative fill is a measure, not a notice: it stays the accent unless the app writes --informative. */
@@ -701,10 +701,13 @@
 
     /* ---------------------------------------------------------------- alert banner */
     /*
-     * One look, the tone's soft pair: the row is `--<tone>-soft` at full strength and its glyph,
-     * title and description are `--<tone>-soft-foreground`; no shadow, no border, the HeroUI row's radius and anatomy. The
-     * tone maps informative, neutral, pending and unavailable -> default (informative is neutral, never the accent pair),
-     * affirmative -> success, cautionary -> warning, negative -> danger. The row wraps at a narrow width so the action stays inside it.
+     * One look, the tone's soft pair, like a big chip (owner 2026-11-22: "alert nói rõ là icon 24 soft-foreground trên nền soft thôi mà?"): the row is
+     * `--<tone>-soft` at full strength and its glyph, title and description are all `--<tone>-soft-foreground`, in every tone; no tile, no plate, no
+     * shadow, no border, radius 12 (`--grammar-radius-md`), 12 by 16 inset and a 12 gap. The glyph is the original Heroicons 24 outline mark at its
+     * native size and stroke, pulled up 2px onto the centre of the 20px title line; pending's spinner is 24px too. The copy is the label.item role:
+     * the title 14/20 at 500, the description 14/20 at 400. The tone maps informative -> info (0.55.0, blue), neutral, pending and unavailable ->
+     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its action Button is SOLID in the same tone
+     * (Button `tone`). The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
         --starci-core-alert-soft: var(--default-soft);
@@ -712,13 +715,14 @@
         min-width: 0;
         flex-wrap: wrap;
         border: 0;
+        border-radius: var(--grammar-radius-md);
         background: var(--starci-core-alert-soft);
         box-shadow: none;
         color: var(--starci-core-alert-ink);
     }
 
-    /* An informative notice is NEUTRAL: HeroUI's default soft pair, glyph and text in the foreground. The accent pair reads as an error and spends the red budget; accent stays its own tone for "new" and "selected". */
-    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--default-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--default-soft-foreground)); }
+    /* An informative notice is the built-in info tone (0.55.0, blue); an app that writes --informative* keeps its own. Accent stays the brand for "new" and "selected". */
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--info-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--info-soft-foreground)); }
     /* A tone the app declared: its soft pair, read through the component variables customToneProps sets. */
     .starci-core-alert[data-grammar-tone-custom="true"] { --starci-core-alert-soft: var(--grammar-tone-soft); --starci-core-alert-ink: var(--grammar-tone-soft-foreground); }
     /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
@@ -726,7 +730,6 @@
     .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
     .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
     .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }
-    .starci-core-alert[data-grammar-tone="informative"] .starci-core-alert-indicator { color: var(--muted); }
 
     .starci-core-alert .starci-core-alert-indicator,
     .starci-core-alert .starci-core-alert-title,
@@ -744,8 +747,24 @@
     .starci-core-alert-row-press-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .starci-core-alert-chevron { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--starci-core-alert-ink); }
 
-    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-alert :is(.starci-core-alert-title, .starci-core-alert-description) {
+        font-size: var(--grammar-type-label-item-size);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); }
     .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
+
+    /* The glyph at its own 24px, no tile: HeroUI's p-1 goes, the 24px box rides 2px above the 20px title line so their centres meet. */
+    .starci-core-alert .starci-core-alert-indicator {
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        margin-block-start: -2px;
+        padding: 0;
+    }
+
+    /* The original Heroicons 24 outline mark at its native size and stroke, never restyled. */
+    .starci-core-alert .starci-core-alert-glyph { inline-size: 1.5rem; block-size: 1.5rem; flex: none; }
 
     /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
        surface, so the content takes its own height. Where the banner's own height is definite (a Stack in a height-bound
@@ -789,6 +808,14 @@
             order: 1;
             flex: 1 1 100%;
         }
+    }
+
+    /*
+     * A border action on a negative banner ("Try again") draws its edge in the banner's danger ink: the neutral edge disappears on the danger soft
+     * box (owner shots 2026-11-22). The fill stays transparent, so it is still the border look, not a second danger button.
+     */
+    [data-component="Alert"][data-grammar-tone="negative"] .starci-core-alert-actions > [data-component="Button"][data-grammar-variant="border"] {
+        border-color: var(--danger);
     }
 
     .starci-core-alert-actions {
@@ -1025,7 +1052,7 @@
     :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
 
     /* A button skeleton takes the corner of the button it stands for: the vendor's own, which the shimmer class would otherwise replace with its small corner. */
-    .starci-core-button[data-loading="true"]:not(.starci-core-button-group > *) {
+    .starci-core-button[data-loading="true"] {
         border-radius: calc(var(--radius) * 3);
     }
 
@@ -1052,14 +1079,10 @@
         height: 2.5rem;
     }
 
+    /* A round mark has two sizes (40 and 24, no 32): the circle is md 40px by default and sm 24px, the icon size. */
     .starci-core-skeleton[data-shape="circle"][data-size="sm"] {
-        width: 2rem;
-        height: 2rem;
-    }
-
-    .starci-core-skeleton[data-shape="circle"][data-size="lg"] {
-        width: 3rem;
-        height: 3rem;
+        width: var(--grammar-avatar-sm-size);
+        height: var(--grammar-avatar-sm-size);
     }
 
     /* ---------------------------------------------------------------- progress circle */

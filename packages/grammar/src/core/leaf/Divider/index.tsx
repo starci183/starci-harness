@@ -67,7 +67,7 @@ export const Divider = (props: DividerProps) => {
             className="starci-core-divider"
         >
             <Separator aria-label={props.label} data-contract="BOUNDARY-5" className="starci-core-divider-rule" />
-            <span aria-hidden="true"><Text as="span" size="sm" tone="muted">{props.label}</Text></span>
+            <span aria-hidden="true"><Text as="span" role="body" tone="muted">{props.label}</Text></span>
             <Separator aria-hidden="true" data-contract="BOUNDARY-5" className="starci-core-divider-rule" />
         </div>
     )

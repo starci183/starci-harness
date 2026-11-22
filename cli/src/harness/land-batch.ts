@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { freemem } from "node:os"
 import { join } from "node:path"
 import { captureGit } from "../shared/git.js"
-import { captureNpm, captureTool } from "../shared/exec.js"
+import { captureNpm, captureTool, killPidTree } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import {
-    CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
+    CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, notReadyAny, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
 } from "./land-queue.js"
 import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
 import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
@@ -164,18 +164,57 @@ export interface GateRun {
     readonly exitCode: number
     readonly stdout: string
     readonly stderr: string
+    /** The run was cancelled because a lane of the batch was registered again or withdrawn while it ran: it has no verdict. */
+    readonly cancelled?: boolean
 }
 
-/** One `app check --env prod --json` under a gate slot; `attempt` numbers a run repeated after it ran out of memory. */
-const gate = async (options: BatchOptions, folder: string, round: number, attempt: number): Promise<GateRun> => {
+/** The batch gate's check: the FAST level, since a batch lands on dev (the full gate runs once at the main cut). */
+export const LANDER_GATE_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "dev", "--json"]
+
+/** How often a running batch gate looks whether a lane of its batch was registered again (superseded) or withdrawn. */
+export const SUPERSEDE_POLL_MS = 15_000
+
+/**
+ * Runs `start` and, every `pollMs` while it runs, asks `superseded`: once it says yes the run's process tree is killed (`kill`) and the run
+ * comes back `cancelled` (owner: "nếu push commit mới thì cancel lun commit cũ"). The seam of the batch gate and of its spec.
+ */
+export const cancellableRun = async (
+    start: (onSpawn: (pid: number) => void) => Promise<Omit<GateRun, "cancelled">>,
+    superseded: () => boolean,
+    kill: (pid: number) => boolean = killPidTree,
+    pollMs = SUPERSEDE_POLL_MS,
+): Promise<GateRun> => {
+    const state: { pid: number | undefined; cancelled: boolean } = { pid: undefined, cancelled: false }
+    const timer = setInterval(() => {
+        if (state.cancelled || state.pid === undefined || !superseded()) return
+        state.cancelled = true
+        kill(state.pid)
+    }, pollMs)
+    try {
+        const run = await start((spawned) => {
+            state.pid = spawned
+        })
+        const result = { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr }
+        return state.cancelled ? { ...result, cancelled: true } : result
+    } finally {
+        clearInterval(timer)
+    }
+}
+
+/**
+ * One `app check --env prod --level dev --json` under a gate slot (the FAST level: a batch lands on dev, the full gate runs once at the main cut); `attempt`
+ * numbers a run repeated after it ran out of memory. `superseded` says whether a lane of the batch was registered again or withdrawn: the run is then cancelled.
+ */
+const gate = async (options: BatchOptions, folder: string, round: number, attempt: number, superseded: () => boolean = () => false): Promise<GateRun> => {
     const slot = await takeSlot(options.dir, "gate", options.gateSlots)
     try {
         const name = attempt === 0 ? String(round) : `${String(round)}-retry${String(attempt)}`
         options.say(`gate round ${name} (${slot})`)
-        const run = await captureTool(process.execPath, [appCli(options.worktree), "app", "check", "--env", "prod", "--json"], options.worktree)
+        const run = await cancellableRun((onSpawn) => captureTool(process.execPath, [appCli(options.worktree), ...LANDER_GATE_ARGS], options.worktree, { onSpawn }), superseded)
         writeFileSync(join(folder, `check-${name}.json`), run.stdout)
         writeFileSync(join(folder, `check-${name}.log`), run.stderr)
-        return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr }
+        if (run.cancelled === true) options.say(`gate round ${name}: cancelled, a lane of the batch was registered again or withdrawn`)
+        return run
     } finally {
         releaseLockFile(slot, process.pid)
     }
@@ -215,6 +254,8 @@ export const judgeWithOomRetry = async (
     let oomRuns = 0
     for (let attempt = 0; ; attempt += 1) {
         const run = await runGate(attempt)
+        // A cancelled run (a lane superseded or withdrawn) has no verdict, and is never an out-of-memory run whatever its kill's exit code.
+        if (run.cancelled === true) return { verdict: { kind: "no-verdict" }, run, oomRuns }
         const verdict = judge(run)
         if (verdict.kind !== "oom") return { verdict, run, oomRuns }
         oomRuns += 1
@@ -224,19 +265,84 @@ export const judgeWithOomRetry = async (
     }
 }
 
+/** The trailer the batch commit carries for each lane it lands: how a later batch knows the lane's sha is on dev although its commits are not. */
+export const LANDED_TRAILER = "Landed-lane"
+
+/** The message of a batch's one commit: the lanes and their shas, and one `Landed-lane: <lane> <sha>` trailer per lane. */
+export const squashMessage = (batch: string, lanes: readonly ReadyEntry[]): string =>
+    [
+        `land batch ${batch}: ${String(lanes.length)} lane(s) onto dev (${lanes.map((lane) => lane.lane).join(", ")})`,
+        "",
+        ...lanes.map((lane) => `- ${lane.lane} (${lane.branch} ${lane.sha})`),
+        "",
+        ...lanes.map((lane) => `${LANDED_TRAILER}: ${lane.lane} ${lane.sha}`),
+    ].join("\n")
+
+/** The git port of the squash: a spec drives it without a repository. */
+export type GitPort = (cwd: string, args: readonly string[]) => Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }>
+
 /**
- * `app push origin HEAD:dev` with the app's CLI: it commits the cache records the run writes, then pushes once through the hook.
- * `oom` when the push's own check ran out of memory.
+ * Squashes the batch's merges into ONE commit on `base` with the tree the gate judged (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất"): `git commit-tree`
+ * of HEAD's tree with `base` as its only parent, then HEAD moves there (the work tree already is that tree). Returns the new commit.
  */
-const push = async (options: BatchOptions, folder: string): Promise<{ readonly pushed: boolean; readonly oom: boolean }> => {
+export const squashBatch = async (wt: string, base: string, batch: string, lanes: readonly ReadyEntry[], run: GitPort = gitIn): Promise<string> => {
+    const made = await run(wt, ["commit-tree", "HEAD^{tree}", "-p", base, "-m", squashMessage(batch, lanes)])
+    if (!made.ok || made.out === "") throw new Error(`squash: git commit-tree: ${made.err}`)
+    const moved = await run(wt, ["reset", "--soft", made.out])
+    if (!moved.ok) throw new Error(`squash: git reset --soft ${made.out}: ${moved.err}`)
+    return made.out
+}
+
+/** Whether `base` already carries the lane at `sha`: an ancestor (a merge landed it), or a batch commit whose trailer names it (a squash landed it). */
+export const onBase = async (wt: string, base: string, lane: ReadyEntry, run: GitPort = gitIn): Promise<boolean> => {
+    if ((await run(wt, ["merge-base", "--is-ancestor", lane.sha, base])).ok) return true
+    const found = await run(wt, ["log", "-1", "--format=%H", "--fixed-strings", `--grep=${LANDED_TRAILER}: ${lane.lane} ${lane.sha}`, base])
+    return found.ok && found.out !== ""
+}
+
+/**
+ * `app push origin HEAD:dev` with the app's CLI, once the batch is squashed: a landing on dev, so it runs no check of its own and the pre-push hook runs
+ * the fast level once (the tree the batch gate judged green is not judged again). `oom` when the hook's check ran out of memory.
+ */
+const push = async (options: BatchOptions, folder: string, stillReady: () => boolean, squash: () => Promise<unknown> = () => Promise.resolve()): Promise<{ readonly pushed: boolean; readonly oom: boolean; readonly aborted?: true }> => {
     const slot = await takeSlot(options.dir, "gate", options.gateSlots)
     try {
+        // The land-time check: after the wait for the slot, the last moment before dev moves.
+        if (!stillReady()) return { pushed: false, oom: false, aborted: true }
+        await squash()
         const run = await captureTool(process.execPath, [appCli(options.worktree), "app", "push", "origin", "HEAD:dev"], options.worktree)
         writeFileSync(join(folder, "push.log"), `${run.stdout}\n${run.stderr}`)
         return { pushed: run.exitCode === 0, oom: run.exitCode !== 0 && isOutOfMemory(run.exitCode, `${run.stdout}\n${run.stderr}`) }
     } finally {
         releaseLockFile(slot, process.pid)
     }
+}
+
+/**
+ * The re-check a batch makes before each gate run, after it and right before the push: whether every lane of the tree is still ready
+ * as the batch took it. When one is not (withdrawn mid-batch, or registered again) the batch is aborted, never pushed: the others stay
+ * ready with a status that says so, and the next batch forms from the ready set and gates it again (the gate that ran covered a tree
+ * holding a lane nobody wants landed). The withdrawn lane's status is its own (`lane withdraw` wrote it); only lanes that kept their
+ * registration are told. Returns the batch outcome when aborted, undefined when every lane is still ready.
+ */
+export const abortIfNotReady = (dir: string, batch: string, tree: readonly ReadyEntry[], say: (line: string) => void, dryRun = false): string | undefined => {
+    const gone = notReadyAny(dir, tree)
+    if (gone.withdrawn.length === 0 && gone.replaced.length === 0) return undefined
+    const out = new Set([...gone.withdrawn, ...gone.replaced].map((lane) => lane.lane))
+    const newer = new Map(readyEntries(dir).map((entry) => [entry.lane, entry]))
+    const superseded = gone.replaced.map((lane) => `${lane.lane} superseded by ${(newer.get(lane.lane)?.sha ?? "").slice(0, 10)}`)
+    const why = `${[...out].join(", ")} ${gone.withdrawn.length > 0 ? "withdrawn" : "registered again"} from batch ${batch}${superseded.length > 0 ? ` (${superseded.join(", ")})` : ""}`
+    say(`${why}: the batch is aborted, nothing is pushed; the others stay ready and are gated again in the next batch`)
+    for (const lane of tree.filter((entry) => !out.has(entry.lane))) {
+        if (!dryRun) writeStatus(dir, { lane: lane.lane, laneSha: lane.sha, branch: lane.branch, state: "queued", sha: lane.sha, reason: `re-formed: ${why}; gated again in the next batch`, reformedFrom: batch })
+    }
+    // The lane registered again: its old sha's batch gate is cancelled and the newer sha is queued for the next batch.
+    for (const lane of gone.replaced) {
+        const now = newer.get(lane.lane)
+        if (now === undefined || dryRun) continue
+        writeStatus(dir, { lane: lane.lane, laneSha: now.sha, branch: now.branch, state: "queued", sha: now.sha, reason: `superseded by ${now.sha}: the gate of batch ${batch} (with ${lane.sha.slice(0, 10)}) is cancelled and re-formed; the new sha is gated in the next batch`, supersededBy: now.sha, reformedFrom: batch })
+    }
+    return `aborted, re-formed: ${why}; ${String(tree.length - out.size)} lane(s) stay ready`
 }
 
 /**
@@ -272,6 +378,12 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
         dropReady(dir, lane.lane, lane.sha)
         status(lane, { state: "rejected", sha: lane.sha, reason, findings })
     }
+    const reformed = (): boolean => {
+        const aborted = abortIfNotReady(dir, batch, merged, say, options.dryRun)
+        if (aborted === undefined) return false
+        outcome = aborted
+        return true
+    }
     const body = async (): Promise<void> => {
         await ensureWorktree(options)
         const fetched = await gitIn(options.worktree, ["fetch", "-q", "origin"])
@@ -282,7 +394,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
             const has = async (): Promise<boolean> => (await gitIn(options.worktree, ["cat-file", "-e", `${lane.sha}^{commit}`])).ok
             if (!(await has())) await gitIn(options.worktree, ["fetch", "-q", "origin", lane.branch])
             if (!(await has())) reject(lane, `sha ${lane.sha.slice(0, 10)} is not on origin`, [])
-            else if ((await gitIn(options.worktree, ["merge-base", "--is-ancestor", lane.sha, base])).ok) {
+            else if (await onBase(options.worktree, base, lane)) {
                 landedLanes.push(lane.lane)
                 if (!options.dryRun) dropReady(dir, lane.lane, lane.sha)
                 status(lane, { state: "landed", sha: base, reason: "already on dev", migrations: [] })
@@ -316,14 +428,17 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
             }
             for (const lane of merged) status(lane, { state: "queued", sha: lane.sha, reason: `in batch ${batch}, gate round ${String(round)}` })
             await prepare(options, log)
+            if (reformed()) return
             const inBatch = new Map([...changed].filter(([lane]) => merged.some((entry) => entry.lane === lane)))
             const waitRam = (): Promise<void> => waitForFreeRam(OOM_FREE_MB, say)
             const judged = await judgeWithOomRetry(
-                (attempt) => gate(options, folder, round, attempt),
+                (attempt) => gate(options, folder, round, attempt, () => { const gone = notReadyAny(dir, merged); return gone.withdrawn.length > 0 || gone.replaced.length > 0 }),
                 (run) => judgeRound(round, run.exitCode, run.stdout, inBatch, run.stderr),
                 waitRam,
                 say,
             )
+            // A lane withdrawn while the gate ran: no verdict of this run counts, no push, nobody is rejected for it.
+            if (reformed()) return
             const { verdict, run } = judged
             rounds.push({ round, lanes: merged.map((lane) => lane.lane), exitCode: run.exitCode, verdict: verdict.kind, ...(judged.oomRuns > 0 ? { oomRuns: judged.oomRuns } : {}) })
             say(`gate round ${String(round)}: exit ${String(run.exitCode)}, ${verdict.kind}`)
@@ -341,7 +456,9 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
                 return
             }
             if (verdict.kind === "green") {
-                const pushed = await push(options, folder)
+                // ONE commit per batch: the merges the gate judged become one commit on base with the same tree, listing the lanes and their shas.
+                const pushed = await push(options, folder, () => !reformed(), () => squashBatch(options.worktree, base, batch, merged))
+                if (pushed.aborted) return
                 if (!pushed.pushed) {
                     // Every lane stays ready; a push whose check ran out of memory waits for RAM first, so the next batch does not crash the same way.
                     if (pushed.oom) await waitRam()

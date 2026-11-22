@@ -51,11 +51,11 @@ export const Reasons: Story = {
   render: () => (
     <G.Stack gap="section">
       <G.Cluster gap="inline">
-        <G.Button intent="dismiss" onPress={noop}>Back</G.Button>
-        <G.Button intent="commit" isDisabled disabledReason={REASON} onPress={noop}>Continue</G.Button>
+        <G.Button variant="border" onPress={noop}>Back</G.Button>
+        <G.Button variant="primary" isDisabled disabledReason={REASON} onPress={noop}>Continue</G.Button>
       </G.Cluster>
-      <G.Button intent="neutral" isDisabled disabledReason={LONG_REASON} onPress={noop}>Upgrade workspace</G.Button>
-      <G.Button intent="commit" width="fill" type="submit" isDisabled disabledReason={REASON} onPress={noop}>Create account</G.Button>
+      <G.Button variant="border" isDisabled disabledReason={LONG_REASON} onPress={noop}>Upgrade workspace</G.Button>
+      <G.Button variant="primary" width="fill" type="submit" isDisabled disabledReason={REASON} onPress={noop}>Create account</G.Button>
     </G.Stack>
   ),
   play: async ({ canvasElement }) => {

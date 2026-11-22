@@ -30,7 +30,7 @@ export const CopyAction = (props: CopyActionProps) => {
     }
     return (
         <>
-            <Button intent="neutral" size="sm" onPress={copy}>{state === "copied" ? props.copiedLabel : props.copyLabel}</Button>
+            <Button variant="border" size="sm" onPress={copy}>{state === "copied" ? props.copiedLabel : props.copyLabel}</Button>
             <span role="status" className="starci-core-nav-visually-hidden">{state === "copied" ? props.copiedLabel : state === "failed" ? props.copyErrorLabel : ""}</span>
         </>
     )

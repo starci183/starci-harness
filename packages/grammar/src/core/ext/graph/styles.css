@@ -1,0 +1,477 @@
+/* xyflow's base sheet travels with the ext, so an app imports nothing from xyflow. */
+@import "@xyflow/react/dist/style.css";
+@import "./shared/styles.css";
+@import "./erd/styles.css";
+@import "./knowledge/styles.css";
+
+/* The tones. A status sets the tone of a node's border; a kind (or a `tone`) sets the tone of its icon tile. */
+.starci-graph-node[data-tone="success"],
+.starci-graph-container[data-tone="success"] {
+    --starci-graph-tone: var(--success);
+    --starci-graph-tone-soft: var(--success-soft);
+    --starci-graph-tone-ink: var(--success-soft-foreground);
+}
+
+.starci-graph-node[data-tone="accent"],
+.starci-graph-container[data-tone="accent"] {
+    --starci-graph-tone: var(--accent);
+    --starci-graph-tone-soft: var(--accent-soft);
+    --starci-graph-tone-ink: var(--accent-soft-foreground);
+}
+
+.starci-graph-node[data-tone="info"],
+.starci-graph-container[data-tone="info"] {
+    --starci-graph-tone: var(--starci-graph-info);
+    --starci-graph-tone-soft: var(--starci-graph-info-soft);
+    --starci-graph-tone-ink: var(--starci-graph-info-ink);
+}
+
+.starci-graph-node[data-tone="warning"],
+.starci-graph-container[data-tone="warning"] {
+    --starci-graph-tone: var(--warning);
+    --starci-graph-tone-soft: var(--warning-soft);
+    --starci-graph-tone-ink: var(--warning-soft-foreground);
+}
+
+.starci-graph-node[data-tone="danger"],
+.starci-graph-container[data-tone="danger"] {
+    --starci-graph-tone: var(--danger);
+    --starci-graph-tone-soft: var(--danger-soft);
+    --starci-graph-tone-ink: var(--danger-soft-foreground);
+}
+
+.starci-graph-node[data-tone="muted"] {
+    --starci-graph-tone: color-mix(in oklab, var(--muted) 70%, var(--border));
+}
+
+.starci-graph-node {
+    --starci-graph-tile-soft: var(--starci-graph-tone-soft);
+    --starci-graph-tile-ink: var(--starci-graph-tone-ink);
+}
+
+[data-tile-tone="accent"] {
+    --starci-graph-tile-soft: var(--accent-soft);
+    --starci-graph-tile-ink: var(--accent-soft-foreground);
+}
+
+[data-tile-tone="info"] {
+    --starci-graph-tile-soft: var(--starci-graph-info-soft);
+    --starci-graph-tile-ink: var(--starci-graph-info-ink);
+}
+
+[data-tile-tone="success"] {
+    --starci-graph-tile-soft: var(--success-soft);
+    --starci-graph-tile-ink: var(--success-soft-foreground);
+}
+
+[data-tile-tone="warning"] {
+    --starci-graph-tile-soft: var(--warning-soft);
+    --starci-graph-tile-ink: var(--warning-soft-foreground);
+}
+
+[data-tile-tone="danger"] {
+    --starci-graph-tile-soft: var(--danger-soft);
+    --starci-graph-tile-ink: var(--danger-soft-foreground);
+}
+
+[data-tile-tone="muted"],
+[data-tile-tone="default"] {
+    --starci-graph-tile-soft: var(--default);
+    --starci-graph-tile-ink: var(--default-foreground);
+}
+
+/* A flow node: 248 wide, radius 16, a status border, the soft shadow of the flow map. */
+.starci-graph-node,
+.starci-graph-entity {
+    box-sizing: border-box;
+    position: relative;
+    inline-size: 248px;
+    background: var(--surface);
+    color: var(--foreground);
+    border: 1.5px solid var(--starci-graph-tone);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-node {
+    min-block-size: 64px;
+}
+
+/* The body fills the card, so a link node is pressed anywhere on its card (the hit area is the drawn card). */
+.starci-graph-node-body {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: inherit;
+}
+
+.starci-graph-node[data-direction="LR"][data-ports="true"] .starci-graph-node-body {
+    padding-inline-end: var(--starci-graph-ports-inline);
+}
+
+.starci-graph-node[data-direction="TB"][data-ports="true"] .starci-graph-node-body {
+    padding-block-end: var(--starci-graph-ports-block);
+}
+
+.starci-graph-node-link:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+}
+
+.starci-graph-node-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-inline-size: 0;
+}
+
+/* A node that has not been reached is the dashed, quieter state box; a skipped one is faded and dotted. */
+.starci-graph-node--todo {
+    --starci-graph-tone: color-mix(in oklab, var(--muted) 60%, var(--border));
+    border-style: dashed;
+    box-shadow: none;
+    opacity: var(--grammar-opacity-hover);
+}
+
+.starci-graph-node--skipped {
+    box-shadow: none;
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-node[data-dimmed="true"] {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-node[data-placeholder="true"] {
+    border-style: dashed;
+    box-shadow: none;
+    color: var(--muted);
+}
+
+/* Selected: one 2px border in the node's own tone (the foreground for a plain one) and a soft tint of it; never a second ring. */
+.starci-graph-node[data-selected="true"],
+.starci-graph-entity[data-selected="true"] {
+    border-width: 2px;
+    border-style: solid;
+    border-color: var(--starci-graph-tone-select, var(--starci-graph-tone));
+    background: color-mix(in oklab, var(--starci-graph-tone-select, var(--starci-graph-tone)) 8%, var(--surface));
+}
+
+.starci-graph-node--todo[data-selected="true"],
+.starci-graph-node--skipped[data-selected="true"],
+.starci-graph-entity[data-selected="true"] {
+    --starci-graph-tone-select: var(--foreground);
+}
+
+/* The round tile: 40px, the node's own glyph on a plate in the soft pair of the state's tone. A running node's tile carries a turning ring. */
+/* The node's mark is the core's IconTile (state and the node's icon); this box only places it. */
+.starci-graph-node-icon {
+    display: inline-flex;
+    flex: none;
+}
+
+/* The status: a small chip that cuts the card's top edge, a glyph and a word in the tone of the state (the card ground behind it only keeps the border from running through the words). */
+/* The status is the core's InlineStatus, set on the card's top edge on the surface (so the border never runs through its words). */
+.starci-graph-status {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 1rem;
+    z-index: 1;
+    display: inline-flex;
+    padding-inline: 0.25rem;
+    background: var(--surface);
+    border-radius: var(--grammar-radius-pill);
+    white-space: nowrap;
+    transform: translateY(-50%);
+}
+
+.starci-graph-node[data-shape="diamond"] .starci-graph-status {
+    inset-inline-start: 0;
+}
+
+/* The tag is the core's Badge on the card's top edge, on the surface. */
+.starci-graph-node-tag {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0.75rem;
+    display: inline-flex;
+    background: var(--surface);
+    border-radius: var(--grammar-radius-pill);
+    transform: translateY(-50%);
+}
+
+.starci-graph-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    min-inline-size: 0;
+}
+
+.starci-graph-agent {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-inline-size: 0;
+    color: var(--muted);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-leading-xs);
+}
+
+.starci-graph-agent-avatar {
+    display: inline-flex;
+    flex: none;
+    overflow: hidden;
+    inline-size: 1rem;
+    block-size: 1rem;
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-agent-avatar > * {
+    inline-size: 100%;
+    block-size: 100%;
+}
+
+/* A schema entity: a head like a flow node, then a row per field. */
+.starci-graph-entity-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    block-size: 56px;
+    padding-inline: 0.75rem;
+}
+
+.starci-graph-entity-count {
+    flex: none;
+    color: var(--muted);
+    font-size: var(--grammar-type-label-item-size);
+    line-height: var(--grammar-type-label-item-line);
+    font-weight: var(--grammar-type-label-item-weight);
+}
+
+.starci-graph-entity-fields {
+    margin: 0;
+    padding: 0 0.75rem 0.5rem;
+    list-style: none;
+    border-block-start: 1px solid var(--border);
+}
+
+.starci-graph-entity-field {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    block-size: 24px;
+    align-items: center;
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+.starci-graph-entity-type,
+.starci-graph-entity-more {
+    color: var(--muted);
+}
+
+/* Output ports of a card: a row along the bottom (TB) or a column down the end side (LR), each pill with the handle its edge leaves from. */
+.starci-graph-ports {
+    position: absolute;
+    display: flex;
+    border-radius: inherit;
+}
+
+.starci-graph-node[data-direction="TB"] .starci-graph-ports {
+    inset-inline: 0;
+    inset-block-end: 0;
+    block-size: 2rem;
+    border-block-start: 1px solid var(--border);
+}
+
+.starci-graph-node[data-direction="LR"] .starci-graph-ports {
+    inset-block: 0.5rem;
+    inset-inline-end: 0;
+    inline-size: 6.5rem;
+    flex-direction: column;
+    border-inline-start: 1px solid var(--border);
+}
+
+/* Each port is the core's Badge, centred in its cell beside the handle its edge leaves from. */
+.starci-graph-ports > .starci-graph-port {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 0;
+    padding-inline: 0.5rem;
+}
+
+/* A decision diamond: its outline is an SVG polygon, its label inside, the label of each port beside the vertex its branch leaves. */
+.starci-graph-node[data-shape="diamond"] {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.starci-graph-node[data-shape="diamond"][data-selected="true"] {
+    background: transparent;
+}
+
+.starci-graph-diamond-shape {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+}
+
+.starci-graph-diamond-shape polygon {
+    fill: var(--surface);
+    stroke: var(--starci-graph-tone);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.starci-graph-node--todo .starci-graph-diamond-shape polygon {
+    stroke-dasharray: 5 4;
+}
+
+
+.starci-graph-node[data-shape="diamond"][data-selected="true"] .starci-graph-diamond-shape polygon {
+    stroke: var(--starci-graph-tone-select, var(--starci-graph-tone));
+    stroke-width: 2;
+    stroke-dasharray: none;
+    fill: color-mix(in oklab, var(--starci-graph-tone-select, var(--starci-graph-tone)) 8%, var(--surface));
+}
+
+.starci-graph-diamond-text {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.starci-graph-diamond-link {
+    position: absolute;
+    inset: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.starci-graph-diamond-label {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    font-size: var(--grammar-type-label-item-size);
+    line-height: var(--grammar-type-label-item-line);
+    font-weight: var(--grammar-type-label-item-weight);
+}
+
+/* A container: a group is a solid box with a header, a loop is a dashed frame with its exits on its end edge. */
+.starci-graph-container {
+    box-sizing: border-box;
+    position: relative;
+    color: var(--foreground);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-container {
+    --starci-graph-tone: var(--border);
+}
+
+.starci-graph-container[data-tone="default"] {
+    --starci-graph-tone: color-mix(in oklab, var(--muted) 60%, var(--border));
+}
+
+.starci-graph-container[data-tone="muted"] {
+    --starci-graph-tone: color-mix(in oklab, var(--muted) 70%, var(--border));
+}
+
+.starci-graph-container[data-container] {
+    border: 1px solid var(--starci-graph-tone);
+    background: color-mix(in oklab, var(--starci-graph-tone) 5%, transparent);
+}
+
+.starci-graph-container[data-status="todo"] {
+    opacity: var(--grammar-opacity-hover);
+}
+
+.starci-graph-container[data-status="skipped"] {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-container[data-selected="true"] {
+    border-style: solid;
+    border-width: 2px;
+}
+
+.starci-graph-container[data-dimmed="true"] {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-container-head {
+    position: absolute;
+    inset-block-start: 0.375rem;
+    inset-inline: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    block-size: 2.5rem;
+    padding-inline: var(--grammar-inset-card);
+    min-inline-size: 0;
+}
+
+.starci-graph-container-label {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--grammar-type-label-item-size);
+    line-height: var(--grammar-type-label-item-line);
+    font-weight: var(--grammar-type-label-item-weight);
+}
+
+.starci-graph-container-description,
+.starci-graph-container-note {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+.starci-graph-container-note {
+    position: absolute;
+    inset-block-end: 0.5rem;
+    inset-inline: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .starci-graph .starci-graph-edge--running .react-flow__edge-path,
+    .starci-graph-skeleton-bone {
+        animation: none;
+    }
+}
+
+.starci-graph-node-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-inline-size: 0;
+}
+
+.starci-graph-node-count {
+    flex: none;
+}
+

@@ -33,7 +33,7 @@ const CSS_FONT_SIZE = /(?:^|[\s;{])font-size\s*:/
 /** The theme layer of an app: its tokens, never judged here. */
 const TOKEN_FILE = /(?:^|\/)modules\/brand\//
 
-const ROLES = "figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code"
+const ROLES = "figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code (the public site also has display.hero, display.section, display.figure, lead, title.card)"
 
 const isTokenFile = (context: ReaderContext): boolean => TOKEN_FILE.test(context.filename.replaceAll("\\", "/"))
 

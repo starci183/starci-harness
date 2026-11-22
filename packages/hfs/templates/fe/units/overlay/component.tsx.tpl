@@ -20,7 +20,7 @@ export const {{Name}}Base = (props: {{Name}}BaseProps) => (
         isOpen={props.props.isOpen}
         onOpenChange={props.on.openChange}
         title={props.props.title}
-{{shellAttributes}}        trigger={<Button intent="neutral">{props.props.triggerLabel}</Button>}
+{{shellAttributes}}        trigger={<Button>{props.props.triggerLabel}</Button>}
 {{footer}}    >
 {{body}}
     </{{shell}}>

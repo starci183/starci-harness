@@ -81,6 +81,12 @@
         color: var(--danger-foreground);
     }
 
+    /* The 0.55.0 status tile inside a marker keeps the family's filled disc: the tile lends its glyph and leaves the plate to the marker. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-marker] > .starci-core-icon-tile {
+        background: transparent;
+        color: inherit;
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-label] {
         font-weight: var(--grammar-weight-extrabold);
     }

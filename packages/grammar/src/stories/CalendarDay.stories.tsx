@@ -17,7 +17,7 @@ export const DateStates: Story = {
             <G.Stack gap="identity">
                 <CalendarDay value={parseDate("2026-11-02")} label="Today, Monday, 2 November 2026" isToday />
                 <G.Text>Scheduled product update</G.Text>
-                <G.Button intent="neutral">Pick this post to move</G.Button>
+                <G.Button variant="border">Pick this post to move</G.Button>
             </G.Stack>
         </State>
     </Matrix>,

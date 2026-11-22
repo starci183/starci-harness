@@ -60,6 +60,6 @@ when the body holds a form: the form carries an `id` and the footer's commit is 
 - **App author decides:** the trigger, title, body content, the actions' facts, open state when coordinated.
 
 ## Rules
-CTA-1, CTA-4, CTA-5, LAYOUT-1, RESPONSIVE-1, FIELD-3, BOUNDARY-7. Lint: `starci-fe/destructive-confirm-in-dialog`,
+CTA-1, CTA-4, CTA-5, LAYOUT-1, RESPONSIVE-1, FIELD-3, BOUNDARY-7. Lint:
 `starci-grammar/surface-in-surface`. Proof: FOCUS-3,
 UX-2, UX-6.

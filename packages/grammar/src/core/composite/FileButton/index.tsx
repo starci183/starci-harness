@@ -51,11 +51,11 @@ export const FileButton = ({ label, source, accept, multiple = false, text, desc
     const note = errorMessage ?? description
     const control = isLoading
         ? text === undefined
-            ? <IconButton source={source as IconSource} label={label} intent="neutral" isLoading />
-            : <Button intent="alternative" size="sm" isLoading>{text}</Button>
+            ? <IconButton source={source as IconSource} label={label} variant="border" isLoading />
+            : <Button variant="border" size="sm" isLoading>{text}</Button>
         : text === undefined
-            ? <IconButton source={source as IconSource} label={label} intent="neutral" isDisabled={isDisabled} onPress={() => input.current?.click()} />
-            : <Button intent="alternative" size="sm" isDisabled={isDisabled} aria-label={label} onPress={() => input.current?.click()} {...(note === undefined ? {} : { "aria-describedby": noteId })}>{text}</Button>
+            ? <IconButton source={source as IconSource} label={label} variant="border" isDisabled={isDisabled} onPress={() => input.current?.click()} />
+            : <Button variant="border" size="sm" isDisabled={isDisabled} aria-label={label} onPress={() => input.current?.click()} {...(note === undefined ? {} : { "aria-describedby": noteId })}>{text}</Button>
     return (
         <span className="starci-core-file-button" data-tier="composite" data-component="FileButton" {...(isLoading ? { "data-loading": "true" } : {})} {...(note === undefined ? {} : { "data-grammar-file-button-note": errorMessage === undefined ? "description" : "error" })}>
             {control}
@@ -77,7 +77,7 @@ export const FileButton = ({ label, source, accept, multiple = false, text, desc
             )}
             {note === undefined ? null : (
                 <span id={noteId} className="starci-core-file-button-note" data-tone={errorMessage === undefined ? "muted" : "danger"} {...(errorMessage === undefined ? {} : { role: "alert" })}>
-                    {isLoading ? <Text size="xs" tone="muted" isLoading>{note}</Text> : note}
+                    {isLoading ? <Text role="caption" isLoading>{note}</Text> : note}
                 </span>
             )}
         </span>

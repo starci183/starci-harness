@@ -158,7 +158,7 @@ export const Toast = ({ toast, dismissLabel, onDismiss, isPaused = false }: Toas
                 <span className="starci-core-toast-action" data-grammar-toast-action="true">
                     <Button
                         size="sm"
-                        intent="alternative"
+                        variant="border"
                         onPress={() => {
                             toast.action?.onAction()
                             onDismiss()
@@ -168,7 +168,7 @@ export const Toast = ({ toast, dismissLabel, onDismiss, isPaused = false }: Toas
                     </Button>
                 </span>
             )}
-            <IconButton intent="dismiss" label={dismissLabel} size="sm" onPress={onDismiss} />
+            <IconButton variant="border" label={dismissLabel} size="sm" onPress={onDismiss} />
         </div>
     )
 }

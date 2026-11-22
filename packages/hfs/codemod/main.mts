@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { accountDoorsMarkdown, migrateAccountDoors } from './account-doors.mjs';
-import { codemodMain as buttonIntentMain } from './button-intent.mjs';
 import { migratePageNavigation, pageNavigationMarkdown } from './page-navigation.mjs';
 import { loadingStatesMarkdown, migrateLoadingStates } from './loading-states.mjs';
 import { migrateSectionFrame, sectionFrameMarkdown } from './section-frame.mjs';
@@ -24,7 +23,7 @@ import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 import { GRAMMAR_CODEMOD_ID, installedGrammar, listMarkdown, loadGrammarCodemods, rangeArguments, runGrammarCodemods } from './grammar.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery', 'common-base', 'auth-merge']);
+export const CODEMODS = Object.freeze(['spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery', 'common-base', 'auth-merge']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -49,7 +48,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors' | 'module-definition' | 'passport-module' | 'self-recovery'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'explicit-surface' | 'account-doors' | 'module-definition' | 'passport-module' | 'self-recovery'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'auth-merge') {
     const report = migrateAuthMerge({ root, write });
     return { report, markdown: authMergeMarkdown(report) };
@@ -176,7 +175,6 @@ export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   const [name, ...rest] = argv;
   if (name === '--list') return grammarListMain(rest, io);
   if (name !== undefined && (GRAMMAR_CODEMOD_ID.test(name) || name === '--from' || name.startsWith('--from=') || name === '--to' || name.startsWith('--to='))) return grammarCodemodMain(argv, io);
-  if (name === 'button-intent') return buttonIntentMain(argv, io);
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
   if (name === 'account-doors') return accountDoorsMain(rest, io);
   if (name === 'module-definition') return moduleDefinitionMain(rest, io);

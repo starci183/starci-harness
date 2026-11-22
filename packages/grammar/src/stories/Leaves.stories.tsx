@@ -185,7 +185,7 @@ const TerminalDemo = () => {
     <Matrix maxWidth={520}>
       <State label="Log tail (follows the end)" direction="column">
         <G.Terminal title="Deploy log" lines={lines} />
-        <G.Button intent="neutral" onPress={() => setCount((value) => value + 5)}>Append lines</G.Button>
+        <G.Button variant="border" onPress={() => setCount((value) => value + 5)}>Append lines</G.Button>
       </State>
       <State label="Without a title" direction="column">
         <G.Terminal label="Build output" lines={['$ npm run build', 'ok']} />
@@ -210,13 +210,13 @@ export const Button: Story = {
   render: () => (
     <Matrix>
       <State label="Variants">
-        <G.Button intent="commit">Primary</G.Button>
-        <G.Button intent="alternative">Secondary</G.Button>
-        <G.Button intent="dismiss">Tertiary</G.Button>
-        <G.Button intent="neutral">Outline</G.Button>
-        <G.Button intent="neutral">Ghost</G.Button>
-        <G.Button intent="destructive" step="confirm">Danger</G.Button>
-        <G.Button intent="destructive">Danger soft</G.Button>
+        <G.Button variant="primary">Primary</G.Button>
+        <G.Button variant="border">Secondary</G.Button>
+        <G.Button variant="border">Tertiary</G.Button>
+        <G.Button variant="border">Outline</G.Button>
+        <G.Button variant="border">Ghost</G.Button>
+        <G.Button variant="danger">Danger</G.Button>
+        <G.Button variant="danger">Danger soft</G.Button>
       </State>
       <State label="Sizes">
         <G.Button size="sm">Small</G.Button>
@@ -224,21 +224,21 @@ export const Button: Story = {
         <G.Button size="lg">Large</G.Button>
       </State>
       <State label="Disabled">
-        <G.Button intent="commit" isDisabled>Primary</G.Button>
-        <G.Button intent="alternative" isDisabled>Secondary</G.Button>
-        <G.Button intent="neutral" isDisabled>Outline</G.Button>
+        <G.Button variant="primary" isDisabled>Primary</G.Button>
+        <G.Button variant="border" isDisabled>Secondary</G.Button>
+        <G.Button variant="border" isDisabled>Outline</G.Button>
       </State>
       <State label="Pending">
-        <G.Button intent="commit" isPending>Saving</G.Button>
-        <G.Button intent="alternative" isPending>Loading</G.Button>
+        <G.Button variant="primary" isPending>Saving</G.Button>
+        <G.Button variant="border" isPending>Loading</G.Button>
       </State>
       <State label="Skeleton">
         <G.Button isLoading>Loading</G.Button>
       </State>
       <State label="With icons, destination and fill width" direction="column">
-        <G.Button intent="alternative">Search</G.Button>
-        <G.Button href="#destination" intent="neutral">Destination link</G.Button>
-        <G.Button intent="commit" width="fill">Full width</G.Button>
+        <G.Button variant="border">Search</G.Button>
+        <G.Button href="#destination" variant="border">Destination link</G.Button>
+        <G.Button variant="primary" width="fill">Full width</G.Button>
       </State>
     </Matrix>
   ),
@@ -326,19 +326,19 @@ export const IconButton: Story = {
         <G.IconButton source={SearchGlyph} label="Search (a destination)" href="#search" />
       </State>
       <State label="Dismiss (draws the close glyph itself)">
-        <G.IconButton intent="dismiss" label="Close" size="sm" onPress={noop} />
-        <G.IconButton intent="dismiss" label="Close" onPress={noop} />
-        <G.IconButton intent="dismiss" label="Close" isDisabled />
+        <G.IconButton variant="border" label="Close" size="sm" onPress={noop} />
+        <G.IconButton variant="border" label="Close" onPress={noop} />
+        <G.IconButton variant="border" label="Close" isDisabled />
       </State>
       <State label="Active (selected)">
         <G.IconButton source={BellGlyph} label="Notifications" isActive onPress={noop} />
       </State>
       <State label="Quiet (ghost) - an overflow menu glyph">
-        <G.IconButton source={SettingsGlyph} label="More actions" intent="neutral" onPress={noop} />
+        <G.IconButton source={SettingsGlyph} label="More actions" variant="border" onPress={noop} />
       </State>
       <State label="Danger-soft - a reversible or row-level delete (an AlertDialog confirm uses the solid danger Button)">
-        <G.IconButton source={TrashGlyph} label="Delete row" intent="destructive" onPress={noop} />
-        <G.IconButton source={TrashGlyph} label="Delete row unavailable" intent="destructive" isDisabled />
+        <G.IconButton source={TrashGlyph} label="Delete row" variant="danger" onPress={noop} />
+        <G.IconButton source={TrashGlyph} label="Delete row unavailable" variant="danger" isDisabled />
       </State>
       <State label="Disabled">
         <G.IconButton source={SearchGlyph} label="Search unavailable" isDisabled />
@@ -361,8 +361,7 @@ export const IconTile: Story = {
         <G.IconTile source={SettingsGlyph} tone="danger" ariaLabel="Needs attention" />
       </State>
       <State label="Sizes">
-        <G.IconTile source={StarGlyph} size="sm" tone="accent" />
-        <G.IconTile source={StarGlyph} size="md" tone="accent" />
+        <G.IconTile source={StarGlyph} tone="accent" />
       </State>
       <State label="Skeleton">
         <G.IconTile source={StarGlyph} isLoading />
@@ -403,7 +402,7 @@ export const StateMark: Story = {
         {G.PRESENTATION_STATES.map((state) => (
           <span key={state} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
             <G.StateMark state={state} />
-            <G.Text size="sm">{state}</G.Text>
+            <G.Text role="body">{state}</G.Text>
           </span>
         ))}
       </State>
@@ -419,14 +418,14 @@ export const Text: Story = {
         <G.Text tone="muted">Muted supporting text.</G.Text>
       </State>
       <State label="Sizes and the strong weight" direction="column">
-        <G.Text size="xs">Extra small</G.Text>
-        <G.Text size="sm" isStrong>Small strong</G.Text>
-        <G.Text size="md" isStrong>Medium strong</G.Text>
+        <G.Text role="caption">Extra small</G.Text>
+        <G.Text role="label.item">Small strong</G.Text>
+        <G.Text role="label.item">Medium strong</G.Text>
       </State>
       <State label="Monospace, tabular figures and inline code" direction="column">
         <G.Text mono>0f3a9c1 · packages/grammar/src</G.Text>
         <G.Text tabular>1,111 / 8,888 — digits keep one width</G.Text>
-        <G.Text mono tabular size="sm">00:01:07.250</G.Text>
+        <G.Text role="code" tabular>00:01:07.250</G.Text>
         <G.Text>Run <G.Code>npm run build</G.Code> before you publish.</G.Text>
       </State>
       <State label="Overflow" direction="column">
@@ -550,7 +549,7 @@ export const ColorSwatch: Story = {
           {[{ name: 'Brand blue', color: '#0485F7' }, { name: 'Ink', color: '#111111' }, { name: 'Paper', color: '#FFFFFF' }, { name: 'Translucent accent', color: '#0485F780' }].map((item) => (
             <G.Cluster key={item.name} gap="identity">
               <G.ColorSwatch color={item.color} label={item.name} />
-              <G.Text size="sm">{`${item.name} · ${item.color}`}</G.Text>
+              <G.Text role="body">{`${item.name} · ${item.color}`}</G.Text>
             </G.Cluster>
           ))}
         </G.Cluster>
@@ -569,9 +568,8 @@ export const Avatar: Story = {
       <State label="Loading (isLoading)">
         <G.Avatar name="Alex Morgan" isLoading size="sm" />
         <G.Avatar name="Alex Morgan" isLoading />
-        <G.Avatar name="Alex Morgan" isLoading size="lg" />
       </State>
-      <State label="Local DiceBear initials by default, and uploaded image">
+      <State label="Two initials on a name-coloured plate by default, and uploaded image">
         <G.Avatar name="Zoë Ångström" />
         <G.Avatar name="Sam Lee" src={placeholderImage('S', 200)} />
       </State>
@@ -583,15 +581,14 @@ export const Avatar: Story = {
       <State label="An uploaded src wins over seed">
         <G.Avatar name="Alex Morgan" seed="user-alex" src={placeholderImage('A', 40)} />
       </State>
-      <State label="Agents: free names, same initials rule, bottom-right AI bot badge">
+      <State label="Agents: free names, same initials rule; the AI Chip follows the name (AgentName)">
         <G.Avatar name="Renée Dupré Mkt" kind="agent" seed="agent-1" />
         <G.Avatar name="Cat" kind="agent" seed="agent-2" size="sm" />
-        <G.Avatar name="Blue Dog" kind="agent" src={placeholderImage('BD', 290)} size="lg" />
+        <G.Avatar name="Blue Dog" kind="agent" src={placeholderImage('BD', 290)} size="md" />
       </State>
-      <State label="Sizes">
+      <State label="The two sizes: sm 24 (the icon size), md 40 (the common size)">
         <G.Avatar name="Robin Park" size="sm" />
         <G.Avatar name="Robin Park" size="md" />
-        <G.Avatar name="Robin Park" size="lg" />
       </State>
       <State label="Current (selected)">
         <G.Avatar name="Jordan Kim" isCurrent />
@@ -688,7 +685,6 @@ export const Skeleton: Story = {
       <State label="Circles">
         <G.Skeleton shape="circle" size="sm" />
         <G.Skeleton shape="circle" size="md" />
-        <G.Skeleton shape="circle" size="lg" />
       </State>
     </Matrix>
   ),
@@ -747,9 +743,9 @@ export const GrammarRoot: Story = {
       <Matrix>
         <State label="Nested explicit themes in the toolbar family (the outer root comes from the toolbar)">
           {(['light', 'dark', 'system'] as const).map((theme) => (
-            <G.GrammarRoot key={theme} theme={theme} {...scope} style={{ padding: '1rem', borderRadius: '0.75rem', minWidth: 160 }}>
+            <G.GrammarRoot key={theme} {...scope} style={{ padding: '1rem', borderRadius: '0.75rem', minWidth: 160 }}>
               <G.Text isStrong>{theme} scope</G.Text>
-              <G.Text tone="muted" size="sm">Tokens resolve here.</G.Text>
+              <G.Text tone="muted" role="body">Tokens resolve here.</G.Text>
               <div style={{ marginTop: '0.5rem' }}><G.Button size="sm">Action</G.Button></div>
             </G.GrammarRoot>
           ))}
@@ -765,7 +761,7 @@ export const IconButtonBadge: Story = {
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
       <G.IconButton source={BellGlyph} label="Notifications" badge={3} badgeLabel="3 unread" onPress={noop} />
       <G.IconButton source={BellGlyph} label="Notifications" badge={240} badgeLabel="240 unread" onPress={noop} />
-      <G.IconButton source={BellGlyph} label="Notifications" intent="neutral" badge="New" badgeLabel="new items" onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Notifications" variant="border" badge="New" badgeLabel="new items" onPress={noop} />
       <G.IconButton source={BellGlyph} label="Notifications" badge={0} badgeLabel="0 unread" onPress={noop} />
     </div>
   ),
@@ -786,8 +782,8 @@ export const ProgressSteps: Story = {
 export const IconButtonFloating: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', padding: '1rem' }}>
-      <G.IconButton source={BellGlyph} label="Ask the assistant" intent="commit" size="lg" isFloating onPress={noop} />
-      <G.IconButton source={BellGlyph} label="Ask the assistant" intent="commit" onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Ask the assistant" variant="primary" size="lg" isFloating onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Ask the assistant" variant="primary" onPress={noop} />
     </div>
   ),
 };

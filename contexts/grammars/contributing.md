@@ -41,7 +41,7 @@ two components, or one frame with a typed `kind`. A `layout` whose item type cha
 ## Naming
 
 The name says what it does as a UI role, in English, never a product feature. `PaneGrid`, not a chat
-layout. A prop name states a fact (`isDisabled`, `tone`, `intent`), never a look (`rounded`, `big`, `primary`). Vendor names stay when the vendor has
+layout. A prop name states a fact (`isDisabled`, `tone`), never a look (`rounded`, `big`), except the Button's one `variant` (primary, border, danger: owner 2026-11-22). Vendor names stay when the vendor has
 one. No two names mean the same, and nothing is aliased: a renamed thing is removed and migrated, and the old spelling goes to the removed vocabulary (`@starci/hfs` `runtime/modules/kernel/removed-vocabulary.yaml`, kind `grammar`).
 
 ## Which tier
@@ -79,7 +79,7 @@ frame's, so overlays need no exception.
 - **Data before slots, slots before children.** A typed field if the content has a shape, a named slot if it does not, `children` only on a frame.
 - **A budget.** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
   parity do not count. Over budget means two components.
-- **No look props.** No `variant`, `className`, `style`, colour, radius or size in pixels. A look is resolved from intent, context or kind.
+- **No look props.** No `variant` (the Button's three looks excepted), `className`, `style`, colour, radius or size in pixels. A look is resolved from context or kind.
 - **Illegal states do not compile.** Use a discriminated union, and make a field required when the look depends on it, as `empty` on a list.
 - **Default right.** The component with no optional prop looks correct. A prop that almost everyone sets is a wrong default.
 - **No render callbacks on anything a server component may use.** Pre-rendered `ReactNode` fields cross the client boundary; functions do not.

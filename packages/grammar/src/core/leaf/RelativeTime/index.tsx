@@ -110,7 +110,7 @@ const RelativeTimeInner = ({ dateTime, locale, mode = "relative", format = "rela
 
     return (
         <time id={id} dateTime={instant?.iso} title={instant?.iso} data-tier="leaf" data-component="RelativeTime" data-mode={mode} data-format={format} data-style={style}>
-            <Text as="span" size={size} tone={tone}>{label}</Text>
+            <Text as="span" role={size === "xs" ? "caption" : "body"} tone={tone}>{label}</Text>
         </time>
     )
 }

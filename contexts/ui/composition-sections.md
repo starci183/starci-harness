@@ -19,10 +19,10 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - ACTION-1 One activation, one effect · `ACTION-1` · 1 KB — One node owns each effect: a `Button`, or a `TextAction` where the command reads as text.
     - CTA-2 Command or destination · `CTA-2` · 1 KB — Consequence picks the element: going to an address is an anchor (`href`), changing state is a button with a real handler.
     - CTA-3 Disabled, pending and skeleton are three conditions · `CTA-3` · 1 KB — This is the one statement of this distinction; other rules cite it.
-    - CTA-6 Intent from facts · `CTA-6` · 1 KB — The app never chooses a button's look.
-    - CTA-1 One commit per view · `CTA-1` · 1 KB — A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `commit`.
-    - CTA-4 Destructive needs its own authority · `CTA-4` · 1 KB — Destructive is `danger-soft` at entry and solid `danger` only at confirm, inside an `AlertDialog` that holds no commit and puts initial focus on `dismiss`.
-    - CTA-5 Group order · `CTA-5` · 1 KB — A decision group runs **way out, alternative, commit**: `dismiss` first, the commit last, as separate buttons at the inline gap (GAP-2).
+    - CTA-6 Three looks · `CTA-6` · 1 KB — A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary` (solid, the one main action of the card ...
+    - CTA-1 One primary per view · `CTA-1` · 1 KB — A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `variant="primary"` (the commit).
+    - CTA-4 Destructive needs its own authority · `CTA-4` · 1 KB — Destructive is `variant="danger"`, at the entry and at the confirm, which stands inside an `AlertDialog` that holds no primary and puts initial focus on its `border` cancel.
+    - CTA-5 Group order · `CTA-5` · 1 KB — A decision group runs **way out, alternative, primary**: the `border` way out first, the primary last, as separate buttons at the inline gap (GAP-2).
   - 3. Accent · `contexts/ui/composition.md#3-accent` · 1 KB — Accent is an allocation, not a paint.
     - ACCENT-2 Identity is neutral · `ACCENT-2` · 1 KB — A compact identity anchor (an `IconTile`, an avatar) is neutral.
     - ACCENT-3 Selection, destination, command and focus stay distinct · `ACCENT-3` · 1 KB — Each resolves to its own owner and treatment, and each carries a non-colour cue (state attribute, outline, indicator geometry, underline).

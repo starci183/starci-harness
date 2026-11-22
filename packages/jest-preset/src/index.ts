@@ -44,6 +44,8 @@ export interface StarciPackagesScope {
   readonly folders: readonly string[]
   readonly files: readonly string[]
   readonly excludes: readonly string[]
+  /** Package folders whose specs run in the unit projects without their files being measured (a declared nivoos package); absent when none. */
+  readonly tests?: readonly string[]
 }
 export interface StarciJestOptions {
   readonly coverage: StarciCoverageScope
@@ -339,10 +341,11 @@ function packagesOf(options: unknown): StarciPackagesScope {
   const folders = fieldOf(packages, "folders")
   const files = fieldOf(packages, "files")
   const excludes = fieldOf(packages, "excludes")
-  if (!isList(folders) || !isList(files) || !isList(excludes)) {
+  const tests = fieldOf(packages, "tests") ?? []
+  if (!isList(folders) || !isList(files) || !isList(excludes) || !isList(tests)) {
     throw new Error("starciJestConfig({ packages: { folders, files, excludes } }) needs the root packages starci app sync renders; run \"npx starci app sync --execute\"")
   }
-  return { folders, files, excludes }
+  return { folders, files, excludes, tests }
 }
 
 /**
@@ -357,7 +360,8 @@ function packageUnitProjects(
   shared: { preset: string; testEnvironment: string; transformIgnorePatterns: string[] },
   unitRuntime: { runtime?: string },
 ): StarciJestProject[] {
-  const own = packages.folders.filter((folder) => existsSync(join(root, APP_ROOT, folder, "tsconfig.json")))
+  const every = [...new Set([...packages.folders, ...(packages.tests ?? [])])]
+  const own = every.filter((folder) => existsSync(join(root, APP_ROOT, folder, "tsconfig.json")))
   const common = {
     preset: shared.preset,
     testEnvironment: shared.testEnvironment,
@@ -369,8 +373,10 @@ function packageUnitProjects(
     setupFilesAfterEnv: [require.resolve("./matchers.js")],
     testMatch: ["**/*.spec.ts"],
     testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+    // A package source imports its own files with `.ts`, which ts-jest rewrites to `.js`: the resolver maps the request back (ts-extension-resolver.ts).
+    resolver: require.resolve("./ts-extension-resolver.js"),
   }
-  const rest = packages.folders.filter((folder) => !own.includes(folder))
+  const rest = every.filter((folder) => !own.includes(folder))
   return [
     // The shared project keeps the back end's options for the packages without a tsconfig of their own; the rootDir is the app root because jest keeps the v8 coverage of the files below a project's rootDir only.
     ...(rest.length === 0 ? [] : [{ ...common, roots: rest.map((folder) => `<rootDir>/${folder}/src`), transform: unitTransform(packagesCompilerOptions(root)) } satisfies StarciJestProject]),

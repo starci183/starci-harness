@@ -15,9 +15,9 @@ const noop = () => undefined;
 const muted = (text: string) => <span style={{ display: 'block', color: 'var(--muted)', fontSize: 'var(--grammar-text-sm)' }}>{text}</span>;
 
 const ROWS = [
-  { id: 'fee', title: 'City delivery fee', description: <G.Text as="span" size="xs" tone="muted">Document · Shop rules</G.Text>, value: <span>$3.00 per order</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
-  { id: 'fast', title: 'Express delivery after 18:00', description: <G.Text as="span" size="xs" tone="muted">No source yet</G.Text>, value: <span>Not set</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Set', press: noop } },
-  { id: 'two', title: 'Returns', description: <G.Text as="span" size="xs" tone="muted">Returns policy</G.Text>, value: <span>Within 7 days{muted('from 01/11')}</span>, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
+  { id: 'fee', title: 'City delivery fee', description: <G.Text as="span" role="caption">Document · Shop rules</G.Text>, value: <span>$3.00 per order</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
+  { id: 'fast', title: 'Express delivery after 18:00', description: <G.Text as="span" role="caption">No source yet</G.Text>, value: <span>Not set</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Set', press: noop } },
+  { id: 'two', title: 'Returns', description: <G.Text as="span" role="caption">Returns policy</G.Text>, value: <span>Within 7 days{muted('from 01/11')}</span>, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
 ];
 
 const rowsAreOneLine = (canvasElement: HTMLElement) => {

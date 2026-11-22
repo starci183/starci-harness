@@ -97,8 +97,8 @@ const SelectionDemo = ({ initial, scrolling }: { readonly initial: string; reado
   return (
     <div data-story-select="true">
       <G.Tabs label="Reports" selectedKey={tab} onSelect={setTab} items={reports} {...(scrolling ? {} : { overflowLabel: 'More' })} />
-      <G.Button intent="alternative" size="sm" onPress={() => setTab('finished')}>Select the last</G.Button>
-      <G.Button intent="alternative" size="sm" onPress={() => setTab('orders')}>Select the first</G.Button>
+      <G.Button variant="border" size="sm" onPress={() => setTab('finished')}>Select the last</G.Button>
+      <G.Button variant="border" size="sm" onPress={() => setTab('orders')}>Select the first</G.Button>
     </div>
   );
 };

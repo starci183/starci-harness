@@ -14,10 +14,10 @@ on:
 permissions:
   contents: read
 
-# One run per ref: a dispatch on dev never waits for the night run of main, and a run is never cancelled.
+# One run per ref: a dispatch on dev never waits for the night run of main, and a newer run cancels the one it supersedes (it only checks).
 concurrency:
   group: cache-verify-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

@@ -76,8 +76,8 @@ rules:
           The order is language, theme, notifications, account. The language menu makes the current
           choice clear and names each supported language by its autonym. The theme control exposes its
           current setting accessibly. Notifications expose an unread count and open their own region.
-          The account control shows the user's uploaded identity or the selected Grammar's bundled DiceBear
-          initials fallback: the first and last words of the name
+          The account control shows the user's uploaded identity or the selected Grammar's initials
+          fallback: the first letters of the first and last words of the name
           supply its letters, and the user id seeds its colour, falling back to the name when no id exists.
       - id: case-2
         when: The account control opens its menu

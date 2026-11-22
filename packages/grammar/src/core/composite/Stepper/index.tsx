@@ -4,8 +4,7 @@ import { withRegionInert } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { Icon } from "../../leaf/Icon/index.js"
-import { CheckIcon } from "@heroicons/react/24/outline"
+import { InlineStatusGlyph, MARK_STATE_TONE, StatusGlyph, StatusTile, type MarkState } from "../../statusMark.js"
 import { StepperBar } from "./StepperBar.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -46,13 +45,8 @@ type MarkerStepperProps = StepperBaseProps & {
     readonly orientation?: "horizontal" | "vertical"
     /** `dense` fits the stepper inside a list row. Defaults to `md`. */
     readonly size?: StepperSize
-    /** App-owned marker; defaults to the 1-based step number. */
+    /** App-owned content of the CURRENT step's tile (the reader's own step); defaults to its 1-based number. The other steps carry their status glyph. */
     readonly renderMarker?: (step: StepperStep, index: number, state: StepperStepState) => ReactNode
-    /**
-     * What a complete step's marker shows without `renderMarker`: its number (`number`, the default) or a check (`check`), the
-     * mark of a finished first-run step. Declarative, so a server component can choose it.
-     */
-    readonly completeMarker?: "number" | "check"
 }
 
 /**
@@ -65,7 +59,6 @@ type BarStepperProps = StepperBaseProps & {
     readonly orientation?: "horizontal"
     readonly size?: never
     readonly renderMarker?: never
-    readonly completeMarker?: never
 }
 
 export type StepperProps = MarkerStepperProps | BarStepperProps
@@ -91,17 +84,27 @@ const StepperInner = (props: StepperProps) => {
     return <StepperMarkers {...props} />
 }
 
-/** The marker of one step: the app's own, a check on a complete step when asked, else the 1-based number. */
+/** The mark state of a step (0.55.0, the status-mark rule, case 1): complete done, error error, paused waiting, upcoming not run. The current step is the reader's own. */
+export const stepperMarkState = (state: StepperStepState): MarkState | "current" => state === "complete" ? "done" : state === "error" ? "error" : state === "paused" ? "waiting" : state === "upcoming" ? "notRun" : "current"
+
+/**
+ * The marker of one step (0.55.0): the round 40px status tile with the STATUS glyph in the state's tone (check, x, the small ring for paused and upcoming); the current
+ * step, the reader's own, is its number (or `renderMarker`) on the accent plate. A dense stepper (a list row) is inline: the bare 20px glyph (its 12px labels), no plate.
+ */
 const markerOf = (
     step: StepperStep,
     index: number,
     state: StepperStepState,
     renderMarker: MarkerStepperProps["renderMarker"],
-    completeMarker: "number" | "check",
+    size: StepperSize,
 ): ReactNode => {
-    if (renderMarker !== undefined) return renderMarker(step, index, state)
-    if (completeMarker === "check" && state === "complete") return <Icon source={CheckIcon} usage="chip" />
-    return index + 1
+    const mark = stepperMarkState(state)
+    if (mark === "current") {
+        const content = renderMarker === undefined ? index + 1 : renderMarker(step, index, state)
+        return size === "dense" ? content : <StatusTile tone="info">{content}</StatusTile>
+    }
+    if (size === "dense") return <InlineStatusGlyph state={mark} />
+    return <StatusTile tone={MARK_STATE_TONE[mark]} state={mark}><StatusGlyph kind={mark} /></StatusTile>
 }
 
 const StepperMarkers = ({
@@ -113,7 +116,6 @@ const StepperMarkers = ({
     onStepSelect,
     stateLabel,
     renderMarker,
-    completeMarker = "number",
     isLoading = false,
 }: MarkerStepperProps) => isLoading ? (
     <nav
@@ -131,7 +133,7 @@ const StepperMarkers = ({
             {steps.map((step) => (
                 <li key={step.id} className="starci-core-step" data-contract="STATE-1" data-grammar-step-state="upcoming" data-grammar-current="false" data-grammar-skeleton="true">
                     <span className="starci-core-step-body">
-                        <span aria-hidden="true" className="starci-core-step-marker starci-core-step-skeleton-marker" data-grammar-step-marker="true"><Skeleton shape="circle" size="sm" /></span>
+                        <span aria-hidden="true" className="starci-core-step-marker starci-core-step-skeleton-marker" data-grammar-step-marker="true"><Skeleton shape="circle" size={size === "dense" ? "sm" : "md"} /></span>
                         <span className="starci-core-step-copy">
                             {step.label === "" ? <span aria-hidden="true" className="starci-core-step-skeleton-label"><Skeleton shape="text" /></span> : <span className="starci-core-step-label" data-grammar-step-label="true">{step.label}</span>}
                         </span>
@@ -160,7 +162,7 @@ const StepperMarkers = ({
                 const announcement = stateLabel?.(state)
                 const content = <>
                     <span aria-hidden="true" className="starci-core-step-marker" data-contract="A11Y-2" data-grammar-step-marker="true">
-                        {markerOf(step, index, state, renderMarker, completeMarker)}
+                        {markerOf(step, index, state, renderMarker, size)}
                     </span>
                     <span className="starci-core-step-copy">
                         <span className="starci-core-step-label" data-grammar-step-label="true">{step.label}</span>

@@ -15,11 +15,11 @@ export const Sizes: Story = {
   render: () => (
     <G.Stack gap="section">
       <G.Cluster gap="row">
-        <G.Button intent="commit" size="md" startGlyph="plus">Add</G.Button>
-        <G.Button intent="commit" size="lg" startGlyph="plus">Add</G.Button>
-        <G.Button intent="commit" size="md">Add</G.Button>
-        <G.Button intent="neutral" size="md" endArrow>Open</G.Button>
-        <G.Button intent="neutral" size="sm" endArrow>Open</G.Button>
+        <G.Button variant="primary" size="md" startGlyph="plus">Add</G.Button>
+        <G.Button variant="primary" size="lg" startGlyph="plus">Add</G.Button>
+        <G.Button variant="primary" size="md">Add</G.Button>
+        <G.Button variant="border" size="md" endArrow>Open</G.Button>
+        <G.Button variant="border" size="sm" endArrow>Open</G.Button>
       </G.Cluster>
     </G.Stack>
   ),

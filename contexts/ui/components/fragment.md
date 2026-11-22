@@ -4,7 +4,7 @@ Contract: [Fragment](../../grammars/contract.md#fragment). Vendor: none (a Commo
 
 ## Job
 Give the app and its fans one sanctioned place where anything goes: any markup, any class name and any library (a graph
-editor, an animation library, a chart toolkit) when no grammar component fits. The Grammar draws nothing inside it and its
+editor, an animation library; a chart is NOT such a case: [charts](charts.md)) when no grammar component fits. The Grammar draws nothing inside it and its
 lint reports nothing inside it. It is a last resort: the rest of the page stays on the grammar, and every use is listed for audit.
 
 `Fragment` renders NO wrapper element, only its children, like React's `Fragment`: there is no `as`, no `className` and no
@@ -20,10 +20,11 @@ Choice `fragment.choose.region`: whether a region is written by hand.
 | --- | --- | --- | --- |
 | grammar | a grammar component or composition expresses the region | that component, never `Fragment` | judgement |
 | freestyle | the region needs only the app's own plain elements and CSS | `Freestyle` | judgement; lint `starci-grammar/freestyle-has-reason` |
-| fragment | the region needs a library the Grammar does not ship (a graph editor such as `@xyflow/react`, an animation library such as `motion`), or markup and classes no other hatch allows | `Fragment` with a `reason` that names why nothing fits, around that region only | judgement; lint `starci-grammar/fragment-has-reason` |
+| fragment | the region needs a library the Grammar does not ship (an animation library such as `motion`), or markup and classes no other hatch allows | `Fragment` with a `reason` that names why nothing fits, around that region only | judgement; lint `starci-grammar/fragment-has-reason` |
 
-Wrap the one region, not the page. Graph drawings (workflow editors, schema maps, bubble maps) are app code: the Grammar ships
-no graph component, so the app writes it with its own library inside `Fragment`.
+Wrap the one region, not the page. A graph (a run's flow, a data ERD, a knowledge map) is no Fragment: it is the core's graph ext,
+`@starci/grammar/core/ext/graph` ([graph](graph.md)), drawn in the Grammar's tokens; long authored markdown is the markdown ext
+([markdown](markdown.md)).
 
 ## Variants
 None. The only props are `reason` (required string) and `children`.
@@ -62,9 +63,10 @@ open no region, and neither does an app component that is merely named `Fragment
 ## Rules
 - `starci-grammar/fragment-has-reason`: the `reason` is a non-empty string literal.
 - `starci-fe/fragment-only-library`: `motion`, `motion/react`, `framer-motion`, `@xyflow/react`, `reactflow` and `@reactflow/*` are imported only
-  for use inside a `Fragment` (a type-only import is free). The Grammar never imports them: `starci-grammar/no-graph-or-animation-library`
-  and `npm run check:libraries` in `packages/grammar` (DNA `DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY`). Grammar's own motion is the CSS
-  transitions its tokens drive and stays.
+  for use inside a `Fragment` (a type-only import is free). An app has no reason to import the graph toolkits any more: the core's graph
+  ext draws its graphs. The Grammar imports an animation library nowhere, and a graph or markdown library only inside its own core ext
+  (`starci-grammar/no-graph-or-animation-library`, `starci-grammar/ext-boundary` and `npm run check:libraries` in `packages/grammar`;
+  DNA `DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY`). Grammar's own motion is the CSS transitions its tokens drive and stays.
 
 ## Inventory (audit, never a failure)
 `node node_modules/@starci/eslint-grammar-core/dist/lib/fragment-inventory-cli.js [root] [--json]` lists every `<Fragment reason="...">`

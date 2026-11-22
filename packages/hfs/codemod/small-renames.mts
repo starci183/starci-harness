@@ -241,7 +241,6 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
     const sizeValue = literal(props.get('size'));
 
     if (VARIANT_REMOVED.has(name)) drop('variant', 'VARIANT_REMOVED');
-    if ((name === 'Button' || name === 'IconButton') && has('variant')) flag(props.get('variant') ?? opening, 'BUTTON_VARIANT', 'run `starci app codemod button-intent` first: that codemod owns variant', component);
     if (CONTROL_SIZED.has(name) && sizeValue === 'control') drop('size', 'SIZE_CONTROL_REMOVED');
     if (CONTROL_IS_LG.has(name) && sizeValue === 'control' && !inBar(opening)) { const attribute = props.get('size'); if (attribute) { change(attribute, 'SIZE_CONTROL_LG', attribute.getText(source), 'size="lg"'); edit(attribute.getStart(source), attribute.end, 'size="lg"'); } }
 
@@ -305,8 +304,8 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
       case 'CloseButton': {
         const tag = use('IconButton', reference);
         if (tag === null) { conflict(element, 'IconButton', component); break; }
-        retag(element, opening, tag, has('intent') ? '' : ' intent="dismiss"');
-        change(element, 'CLOSE_BUTTON_ICON_BUTTON', 'CloseButton', 'IconButton intent="dismiss"');
+        retag(element, opening, tag, '');
+        change(element, 'CLOSE_BUTTON_ICON_BUTTON', 'CloseButton', 'IconButton');
         break;
       }
       case 'TextAction': {

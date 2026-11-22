@@ -1,7 +1,7 @@
 // cli.mts - `starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`, `starci app uiaudit cycle <area>/<screen> --reason <why>`,
 // `starci app uiaudit status [--json]` and `starci app gallery migrate-explain [--execute]` (reached as `starci audit run|cycle|status` and `starci gallery migrate-explain`;
 // contexts/project/gallery.md PROJECT-GALLERY-8). The harness itself never calls a model: `run` prepares the round (the shot hashes taken now, the next round written as a
-// skeleton of seven open lenses in the screen's screen.yaml) and prints the brief an auditor agent, a different agent from the builder, reads and fills. The rounds are evidence
+// skeleton of ten open lenses in the screen's screen.yaml) and prints the brief an auditor agent, a different agent from the builder, reads and fills. The rounds are evidence
 // for later fixes, never a gate (owner, 2026-11-21): no check judges what the auditor wrote. `cycle` closes a cycle into `considered` and opens the next, the lawful way back
 // after round 4. `status` lists every screen with its audit state.
 // `migrate-explain` turns each explain.md into a screen.yaml (audit: null: the screen is grandfathered until the diff touches it) and deletes the explain.md.
@@ -12,13 +12,13 @@ import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, resolveScreenRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { cropShots } from '../runtime/scripts/hfs/shot-crops.mjs';
-import { auditBrief, docProblems, LENSES, nextCycle, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { auditBrief, docProblems, lensesOf, nextCycle, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 
 export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit cycle <area>/<screen> --reason <why> | starci audit status [--json] | starci gallery migrate-explain [--execute]';
 
 /** The laws an auditor holds a screen to: where they live in the repository the harness serves. */
 const LAWS = [
-  'contexts/project/gallery.md PROJECT-GALLERY-7 (canvas first, the critique rounds) and PROJECT-GALLERY-8 (this audit, the seven lenses)',
+  'contexts/project/gallery.md PROJECT-GALLERY-7 (canvas first, the critique rounds) and PROJECT-GALLERY-8 (this audit, the seven core lenses and the three content lenses)', 'contexts/ui/content.md (business-first: the audience, the never-render list, the words map)',
   'contexts/grammars/contract.yaml mustKeep (the DNA laws of every grammar, `starci contexts anchor <id>` prints one) and the Grammar of the app (hfs.json sides.fe.grammar)',
   'skills/starci/references/ui-on-grammar.md (which Grammar component, rank, step and state; no component the Grammar lacks: say "cần Grammar")',
   'the owner rules: one look per element, no segmented control for a value pick, BottomNav only in the compact slot, the console illustration rule, Vietnamese words with one term per concept',
@@ -82,9 +82,9 @@ export function stateOf(repoRoot: string, folder: string, id: string): { state: 
   const disk = shotsOnDisk(repoRoot, folder);
   const shots = (parsed.value?.['shots'] ?? {}) as Record<string, { sha256: string | null } | undefined>;
   if (last === undefined) return { state: 'pending', detail: 'no round yet' };
-  if (LENSES.some((lens) => last.lenses[lens].notes?.startsWith('auditor: fill this lens'))) return { state: 'pending', detail: `round ${last.n} waits for the auditor` };
+  if (lensesOf(last.lenses).some((lens) => last.lenses[lens].notes?.startsWith('auditor: fill this lens'))) return { state: 'pending', detail: `round ${last.n} waits for the auditor` };
   if (['1440', '390'].some((width) => disk[width] !== undefined && shots[width]?.sha256 !== disk[width])) return { state: 'stale', detail: 'the shots on disk are not the audited ones' };
-  const open = LENSES.filter((lens) => last.lenses[lens].verdict === 'open');
+  const open = lensesOf(last.lenses).filter((lens) => last.lenses[lens].verdict === 'open');
   if (open.length > 0) return a.rounds.length >= MAX_ROUNDS ? { state: 'needs-owner', detail: `open after round ${MAX_ROUNDS}: ${open.join(', ')}` } : { state: 'open', detail: `round ${last.n}: ${open.join(', ')}` };
   if (a.rounds.length < MIN_ROUNDS) return { state: 'few-rounds', detail: `${a.rounds.length} of ${MIN_ROUNDS} rounds` };
   return { state: 'ok', detail: `${a.rounds.length} rounds, auditor ${a.auditor.agent}` };

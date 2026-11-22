@@ -81,6 +81,29 @@
         --grammar-type-code-size: 0.75rem;
         --grammar-type-code-line: 1.125rem;
         --grammar-type-code-weight: var(--grammar-weight-regular);
+        /* THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM", then "cook"): five roles for the public marketing site only,
+           never the console (`starci-grammar/site-type-role`). Measured on the NIVO site (D:/starci-lanes/_display-roles/measure.md) and
+           held to the owner's ranges: hero about 40-48, section about 28-32, lead about 18. Weights 400 and 500 only; every line is at
+           least 1.33x its size. The values below are the 390 phone; the two @media blocks after this rule step them up from 48rem and
+           64rem, so an app writes the role and never a breakpoint. The display roles carry one tracking, -0.02em. */
+        --grammar-type-display-hero-size: 2.25rem;
+        --grammar-type-display-hero-line: 3rem;
+        --grammar-type-display-hero-weight: var(--grammar-weight-medium);
+        --grammar-type-display-hero-tracking: -0.02em;
+        --grammar-type-display-section-size: 1.75rem;
+        --grammar-type-display-section-line: 2.375rem;
+        --grammar-type-display-section-weight: var(--grammar-weight-medium);
+        --grammar-type-display-section-tracking: -0.02em;
+        --grammar-type-display-figure-size: 2.25rem;
+        --grammar-type-display-figure-line: 3rem;
+        --grammar-type-display-figure-weight: var(--grammar-weight-medium);
+        --grammar-type-display-figure-tracking: -0.02em;
+        --grammar-type-lead-size: 1rem;
+        --grammar-type-lead-line: 1.625rem;
+        --grammar-type-lead-weight: var(--grammar-weight-regular);
+        --grammar-type-title-card-size: 1.125rem;
+        --grammar-type-title-card-line: 1.75rem;
+        --grammar-type-title-card-weight: var(--grammar-weight-medium);
         --grammar-tracking-display: -0.045em;
         --grammar-tracking-tight: -0.025em;
         --grammar-tracking-snug: -0.015em;
@@ -265,16 +288,57 @@
         --starci-core-top-bar-z: 40;
         --starci-core-workspace-floating-z: 40;
         --starci-core-geomap-height: 24rem;
-        /* A Sparkline: the inline trend line, 96 x 32. */
-        --grammar-sparkline-width: 6rem;
-        --grammar-sparkline-height: 2rem;
         --avatar-size: var(--starci-core-control-min-size);
+        /* The two round-mark sizes: md 40px (the common size, the control height), sm 24px (the icon size). No 32px round mark exists. */
+        --grammar-avatar-md-size: 2.5rem;
+        --grammar-avatar-sm-size: 1.5rem;
         /* The floating launcher: an AvatarButton size="floating", 56px. */
         --grammar-avatar-floating-size: 3.5rem;
-        /* A connection logo in a LogoStack: the 20px icon step (size-5, Icon `leading`). */
-        --grammar-logo-stack-size: 1.25rem;
+        /* The initials of an Avatar: a share of the avatar's own size, so the two letters fill it at every step; a Zalo group tile gets a smaller share. */
+        --grammar-avatar-initials-ratio: 0.36;
+        --grammar-avatar-tile-initials-ratio: 0.3;
+        /* The icon of an Avatar mark (a provider or a channel on its brand circle): a share of the avatar's size; a Zalo group tile gets a smaller share. */
+        --grammar-avatar-mark-ratio: 0.5;
+        --grammar-avatar-tile-mark-ratio: 0.45;
+        /* The message hover rail (owner 2026-11-21): the opacity fade, and the reaction picker's emoji (28px) in their cells (the 40px control step) with the small hover grow. */
+        --grammar-message-actions-fade: 120ms;
+        --grammar-message-emoji-size: 1.75rem;
+        --grammar-message-emoji-cell: var(--starci-core-control-min-size);
+        --grammar-message-emoji-grow: 1.15;
+        /*
+         * THE TWO ICON SIZES (owner 2026-11-22): 24px before body text (text-sm, 14px: Icon `heading` and `leading`, InlineStatus beside a 14px
+         * line), 20px inside a chip or badge and before text-xs (12px: Icon `chip`, InlineStatus inside a 12px role, the 40px IconTile's glyph).
+         * No other icon size exists; a Button's own glyph keeps the Button's scale (20 on a phone, 16 from 640px and on sm).
+         */
+        --grammar-icon-md: 1.5rem;
+        --grammar-icon-sm: 1.25rem;
+        /* A connection logo in a LogoStack: the 20px icon step. */
+        --grammar-logo-stack-size: var(--grammar-icon-sm);
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
         --grammar-bubble-measure-standard: min(40rem, 85%);
         --grammar-bubble-measure-wide: 70%;
+    }
+
+    /* The site group's steps (0.55.0): from 48rem the hero and the figure grow; from 64rem (the desktop) every stepped role takes its
+       desktop size. title.card does not step. */
+    @media (min-width: 48rem) {
+        .grammar-common-root {
+            --grammar-type-display-hero-size: 2.5rem;
+            --grammar-type-display-hero-line: 3.375rem;
+            --grammar-type-display-figure-size: 3rem;
+            --grammar-type-display-figure-line: 4rem;
+        }
+    }
+    @media (min-width: 64rem) {
+        .grammar-common-root {
+            --grammar-type-display-hero-size: 3rem;
+            --grammar-type-display-hero-line: 4rem;
+            --grammar-type-display-section-size: 2rem;
+            --grammar-type-display-section-line: 2.75rem;
+            --grammar-type-display-figure-size: 3.5rem;
+            --grammar-type-display-figure-line: 4.75rem;
+            --grammar-type-lead-size: 1.125rem;
+            --grammar-type-lead-line: 1.75rem;
+        }
     }
 }

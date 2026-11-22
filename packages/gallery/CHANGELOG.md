@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.20 - 2026-11-22
+
+- Changed: requires @starci/grammar 0.55.0 (Button variant, the deleted APIs, the core ext).
+
 ## 0.1.19 - 2026-11-21
 
 - Changed: requires @starci/grammar 0.54.1 (the Switch track is its press target).

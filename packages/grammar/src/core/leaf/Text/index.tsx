@@ -1,13 +1,12 @@
 import { skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
-import { TEXT_ROLES, typeRoleClassName, type TextRole } from "../../../common/typeRoles.js"
+import { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole } from "../../../common/typeRoles.js"
 
-export { TEXT_ROLES, typeRoleClassName, type TextRole }
+export { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole }
 
 export type TextAs = "div" | "p" | "span"
 export type TextTone = "default" | "muted"
 /** `figure` is the leading value of a region (FONT-5): a price, a total, a count read first, in tabular figures. */
-export type TextSize = "xs" | "sm" | "md" | "figure"
 export type TextLive = "off" | "polite" | "assertive"
 export type TextOverflow = "wrap" | "truncate" | "clamp-2"
 
@@ -18,10 +17,8 @@ export type TextProps = {
     readonly children?: ReactNode
     /** App-owned glyph or other inline meaning placed before the copy. */
     readonly startContent?: ReactNode
-    /** The type role of the line: its size, line height, weight and (for the muted roles) its tone. Wins over `size`. */
+    /** The type role of the line: its size, line height, weight and (for the muted roles) its tone. Without one the line is `body`. */
     readonly role?: TextRole
-    /** @deprecated Use `role`: `xs` is `caption`, `md` and `sm` are `body`, `figure` is `figure`. `size` keeps working. */
-    readonly size?: TextSize
     readonly tone?: TextTone
     /** One stronger weight for a value or a term inside a line (never a title: a title comes from the frame that owns it). */
     readonly isStrong?: boolean
@@ -30,7 +27,7 @@ export type TextProps = {
     /**
      * How the line answers copy longer than its box: wrap it, cut it with an ellipsis, or clamp it
      * to two lines. Shipped by `.starci-core-text[data-overflow]`, so no consumer has to reach
-     * through the boundary with a descendant selector on `[data-size]` to force one.
+     * through the boundary with a descendant selector to force one.
      */
     readonly overflow?: TextOverflow
     /** Set the copy in the monospace stack: identifiers, hashes, paths, figures that line up. */
@@ -44,7 +41,7 @@ export type TextProps = {
 /**
  * Copy geometry and paint are SHIPPED.
  *
- * `.starci-core-text` in `src/common/styles.css` reads the `data-size`, `data-tone`, `data-strong`,
+ * `.starci-core-text` in `src/common/styles.css` reads the `data-role`, `data-tone`, `data-strong`,
  * `data-start-content`, `data-superseded` and `data-loading` attributes this
  * element already emits, so a consumer gets the scale without scanning this package with Tailwind.
  */
@@ -65,14 +62,13 @@ const FONT_RULE_BY_ROLE: Record<TextRole, string> = {
     caption: "FONT-1",
     badge: "FONT-1",
     code: "FONT-1",
+    "display.hero": "FONT-6",
+    "display.section": "FONT-6",
+    "display.figure": "FONT-5",
+    lead: "FONT-3",
+    "title.card": "FONT-3",
 }
 
-const FONT_RULE_BY_SIZE: Record<TextSize, string> = {
-    xs: "FONT-1",
-    sm: "FONT-2",
-    md: "FONT-3",
-    figure: "FONT-5",
-}
 
 const TONE_RULE_BY_RESOLVED_TONE: Record<TextTone, string> = {
     default: "TONE-1",
@@ -81,8 +77,8 @@ const TONE_RULE_BY_RESOLVED_TONE: Record<TextTone, string> = {
 
 /**
  * Rule ids this element can claim from its resolved size and tone.
- * `role` (or the deprecated `size`) selects the exact scale row in font.md `## Scale` (FONT-1 to 5); the
- * resolved tone (forced `muted` at `size="xs"` and for the muted roles) selects the exact row in
+ * `role` (none is `body`) selects the exact scale row in font.md `## Scale` (FONT-1 to 5); the
+ * resolved tone (forced `muted` for the muted roles) selects the exact row in
  * tone.md `## Scale` (TONE-1/2/3). the 0.5rem inline gap fires only while `startContent`
  * is shown, matching the `Text` with `startContent` row in gap.md's
  * "Gaps Common already owns" table (GAP-2). The strong weight carries no rule
@@ -115,7 +111,6 @@ export const Text = ({
     children,
     startContent,
     role,
-    size = "md",
     tone,
     isStrong = false,
     live = "off",
@@ -125,16 +120,15 @@ export const Text = ({
     isLoading = false,
     isSuperseded = false,
 }: TextProps) => {
-    const resolvedTone = role === undefined ? (size === "xs" ? "muted" : tone ?? "default") : MUTED_ROLES.has(role) ? "muted" : tone ?? "default"
+    const resolvedTone = role !== undefined && MUTED_ROLES.has(role) ? "muted" : tone ?? "default"
     const showsStartContent = startContent != null
-    const font = role === undefined ? FONT_RULE_BY_SIZE[size] : FONT_RULE_BY_ROLE[role]
+    const font = FONT_RULE_BY_ROLE[role ?? "body"]
 
     return (
         <Element
             id={id}
             data-tier="leaf"
             data-component="Text"
-            data-size={role === undefined ? size : undefined}
             data-role={role}
             data-tone={resolvedTone}
             data-strong={isStrong ? "true" : undefined}

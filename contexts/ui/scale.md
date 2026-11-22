@@ -56,10 +56,9 @@ calendar days and the stepper and clear glyphs of fields. Proof: A11Y-4, TASTE-1
 | Input, text field, search, number, date, time | `md` only | `md` | a field is read and typed into; a smaller field costs legibility, and mobile text must stay at the size that prevents focus zoom |
 | Select, ComboBox trigger | `md` only | `md` | a field: same reason |
 | Tabs | none: the bar is `md` | `md` | a tab bar aligns with the controls beside it; region tabs' pill track and page tabs' bar both land on `md`; every label is one size, 14, in every layer |
-| FilterButtonGroup (filter buttons) | `sm` | `sm` | filter rows are dense: one row of `sm` toggle buttons (32px, the vendor ToggleButton `sm`) |
 | Switch, Checkbox, Radio | the row (label included) is the target | `md` row | the glyph is small, the labelled row is what is pressed |
 | ListBox and Menu rows | `sm`, `md`, `lg` leading slot | `md` | the step sizes the row's leading identity (glyph, avatar); the row height is that slot plus the vendor row inset, so the leading mark and the row stay aligned |
-| Avatar | `sm`, `md`, `lg`, `control` | `md` | the identity ramp is the control ramp, so an avatar in a bar or a row matches the controls beside it |
+| Avatar, AvatarButton, AvatarGroup | `sm` 24, `md` 40 | `md` | two round-mark sizes, no 32 (owner 2026-11-22): `md` 40 is the common size and the bar's control height, so an avatar in a bar matches the controls beside it; `sm` 24 is the icon size, inline beside text, in a cell or a chip |
 | IconTile | `sm`, `md` | by its copy | a tile matches the line box of the copy it anchors: `sm` beside a one-line title, `md` beside a title with a description |
 | Badge, display Chip, StatusDot | below the ramp; a Badge takes the Chip's `sm`, a StatusDot's hit area follows `sm`, `md`, `lg` | StatusDot `md` | labels, not targets: sized to the text line they annotate, never pressed |
 | Spinner, glyphs | the glyph scale | by host | a glyph follows its host control's step |

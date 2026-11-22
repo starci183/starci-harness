@@ -83,18 +83,18 @@ for (const edition of ['lite'] as const)
     ));
   });
 
-test("CTA-6 repeated commands declare neutral and never commit or a filled variant", () => {
+test("CTA-6 repeated commands are border and never primary", () => {
   assert.doesNotThrow(() => slotTester().run(
     "no-commit-in-collection-item",
     buttonRules["no-commit-in-collection-item"],
     {
       valid: [
         grammar +
-          'const C=()=> rows.map(row=> <Button key={row.id} intent="neutral" />)',
+          'const C=()=> rows.map(row=> <Button key={row.id} variant="border" />)',
       ],
       invalid: [
         fixture(
-          'const C=()=> rows.map(row=> <Button key={row.id} intent="commit" />)',
+          'const C=()=> rows.map(row=> <Button key={row.id} variant="primary" />)',
           "FE_NO_COMMIT_IN_COLLECTION_ITEM",
         ),
       ],

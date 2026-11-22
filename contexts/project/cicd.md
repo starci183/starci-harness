@@ -33,13 +33,16 @@ An app has two delivery flows, and neither waits for the other. The owner's rule
 
 > "dev thì chạy trên nhánh dev, code xong cứ merge vào dev, mở server local ra test (build từ code dev hiện tại và chạy để tránh hot-reload), trong quá trình làm có thể upgrade grammars,hfs,... nhưng mà đơn giản là publish local nên dev trơn tru. và cứ từ từ đưa lên .claude các bản vá, đưa lên code, check kĩ, build docker, app check,.. để dần dần lên prod sau dev"
 
+> "merge hết vô local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa thời gian code local"
+
 Dev is the fast path and comes first; prod is the slow, careful path and may run later the same day. They share no
 checkout and no lock: prod work never moves the dev checkout, and a dev batch never waits for a release.
 
 | | dev | prod |
 |---|---|---|
 | source | lanes -> the batch lander -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
-| harness packages | the local npm registry: `starci deps publish-local --execute` in the harness, `starci dev sync --local <pkg> --execute` (or `deps install-local`) in the app | npm only: harness fixes are published first (`release push`, CI publish), the app pins them, `deps install-local --restore` before a commit |
+| harness packages | local first: every harness change goes to the local registry at once (`starci deps publish-local --execute` in the harness); the app adopts it on dev at once (`deps install-local` in a lane, `devSync.local` on the dev checkout); a lane never waits for npm | npm, published once per release train for prod only (`release push`, CI publish); the cut pins npm versions ONCE: `deps install-local --restore`, then each local pin bumped to its npm version |
+| local pins | committed on `dev` and lane branches when `hfs.json` declares `deps.devAllowsLocalRegistry` (the default for an app on local-first dev) (`deps check` accepts the local-registry codes there, [authority/packages.md](../authority/packages.md) "Dev-only local pins") | refused: `release push`, `release cut`, `app release`, a prod deploy and a push of main hold npm versions |
 | checks | the lander's one `app check --env prod` per batch | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
 | runs on | the app's main dev checkout and its dev stack (`starci app stack up --env dev`), exposed through the dev tunnel (Cloudflare, PROJECT-STACKS-15) | staging, then prod (Docker Swarm, below) |
 | moves by | `starci dev sync --execute`, by hand or by the lander after a landed batch | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
@@ -89,6 +92,12 @@ state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
   }
 }
 ```
+
+`devSync.local` is this machine's standing overlay and the default way dev runs harness builds: the builds that dev keeps running from the
+local registry (e.g. `["grammar@0.55.0-content.4", "eslint-grammar-core@0.55.0-content.4"]`). Every sync installs it, the lander's auto-sync and a
+plain `starci dev sync` alike, until the setting is emptied, so dev runs the newest harness without waiting for npm. An app without
+`deps.devAllowsLocalRegistry` keeps its committed pins on npm (its push gate refuses `DEPS_LOCAL_REGISTRY_COMMITTED`); with it, `dev` and lane
+branches carry the local pins too. `--local` on the verb overrides it for one sync.
 
 `afterLand` (default `false`) makes `starci lane land` run `dev sync --execute` on `checkout` (default: the lander's app main
 checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
@@ -150,8 +159,15 @@ the same sha on its candidate branch, found through the API, whose run id become
 other job's `if:`; a skipped check job never means a green one, because the deploy gate below reads the evidence, not
 the job graph.
 
-**Concurrency.** The run is grouped `ci-${{ github.ref }}` with `cancel-in-progress` true for pull requests only and false
-for every other ref (a release run is never cancelled). Each deploy job has its own group `deploy-<app>-<env>`,
+**Concurrency.** A newer commit cancels the run it supersedes (owner 2026-11-22: "dồn!!! nhiều changes thì gộp 1 commit duy
+nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"). The run is grouped `ci-${{ github.ref }}` with
+`cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}`: a pull request, main, dev, every profile branch and a
+release candidate cancel their older run; `cache-verify.yml` does the same. The one exception is a run that deploys or
+publishes, because a half-done deploy or publish is worse than a stale run: a release tag run carries the deploy jobs and
+GitHub cancels a whole run (a job's own group cannot shield it from the workflow's), so a tag run is never cancelled; a tag
+takes no new commit, so no newer run supersedes it anyway. `stack-deploy.yml`, `stack-key-restore.yml`,
+`desktop-release.yml` and the harness's `publish.yml` keep `cancel-in-progress: false`. `images.yml` has no trigger of its
+own and is cancelled with the `ci.yml` run that calls it. Each deploy job has its own group `deploy-<app>-<env>`,
 `cancel-in-progress: false`: at most one deploy runs per environment, and a newer waiting release replaces an older
 waiting one, which is the behaviour a deploy wants (the latest green release wins; [concurrency]). The Actions group
 does not cover the owner's urgent deploy from his machine, so the deploy verb also takes a lock on the manager (below).
@@ -351,6 +367,25 @@ several databases, and the owner confirms it holds no data to keep; the next dep
   works; an app that wants a human gate sets `deploy.approval: reviewers` and the environment's reviewers.
 
 ## Gates
+
+### Gate levels
+
+The owner's rule: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn". A landing on dev runs the FAST level once per push. The main cut runs the FULL level once,
+and what it finds is fixed once, in a hardening lane before the cut. `app check --level dev|full` (default full) picks the
+level; the target decides which one a push gets.
+
+| Level | Runs on | Gates | Skips |
+|---|---|---|---|
+| dev (fast) | a push whose every ref is `dev` or `lane/*` (the managed pre-push hook), `app push` of such a target, `lane gate`, the batch lander's gate | the deps check (dev-local pins allowed where declared), types with its package builds and codegen, the lane's own tests (the changed specs and those whose closure reaches a changed file), db, the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) | the hfs rule sweep (structure, machine, unused-symbol, contract-emit, secrets), the rule-188 first audits and the ui-audit stale and missing blocks, the project and nivoos package checks, the whole test suite and coverage, lint, format, wiring, sonar, the CI build and the audit |
+| full | a push of `main` or a `v*` tag, any other branch, `release cut`, `release push`, `app release` (its `app-check` row) | every gate: every hfs rule, the first audits of every screen changed since the last main, the full test suite and coverage, sonar, the CI parity families | nothing |
+
+The fast level prints one line first naming what it skips and that those gates run at the main cut. One pass per push: a green
+fast run on a clean tree is remembered by its content (outside `.starcistacks/cache`), the env, the harness version and
+`origin/dev`, beside the repository's git objects, so the hook of the push that follows the lander's gate does not run it again.
+The design approval stays at dev because it is a product decision. screen.yaml and audit records may be completed at the main cut.
+
+The lander lands each batch as ONE commit (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and a newer push or registration of a lane cancels the lane's
+running local gate or its batch gate (`superseded by <sha>` in the status).
 
 - **Branch and tag rules.** `main`: no force push, no deletion, updates only by the owner and the release push; a pull
   request needs the `verdict` check. Tags `v*`: creation only by the same, never moved or deleted. The canon pre-push hook

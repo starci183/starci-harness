@@ -35,7 +35,7 @@ export const PaneDrawerOpener = ({ pane, icon, label }: PaneDrawerOpenerProps) =
             data-grammar-pane-opener={pane}
             style={{ "--starci-core-pane-opener-base": displays.base, "--starci-core-pane-opener-medium": displays.medium, "--starci-core-pane-opener-wide": displays.wide } as CSSProperties}
         >
-            <IconButton intent="neutral" source={icon} label={label} onPress={() => opener.open(pane)} />
+            <IconButton variant="border" source={icon} label={label} onPress={() => opener.open(pane)} />
         </span>
     )
 }

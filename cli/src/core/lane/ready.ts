@@ -35,7 +35,7 @@ export const registerReady = async (cwd: string, flags: { readonly lane?: string
 
 /**
  * `starci lane ready [lane]`: register this worktree's pushed sha with the batch lander (contexts/project/branches.md PROJECT-BRANCH-2).
- * Run after the lane's own `app check --env prod` is green and its branch is pushed; it replaces taking a turn on
+ * Run after the lane's own `app check --env prod --level dev` is green and its branch is pushed; it replaces taking a turn on
  * the dev lock. Refuses a dirty tree and a sha origin does not hold as the branch tip.
  */
 export const laneReadyVerb = defineVerb({

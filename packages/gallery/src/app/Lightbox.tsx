@@ -79,14 +79,14 @@ export function Lightbox({ screen, kind, width, labels, onClose }: LightboxProps
             size="full"
             footer={
                 <div className="sg-zoom">
-                    <Button intent="neutral" size="sm" isDisabled={step === 0} onPress={() => { clamp(step - 1) }}>
+                    <Button variant="border" size="sm" isDisabled={step === 0} onPress={() => { clamp(step - 1) }}>
                         {labels.zoomOut}
                     </Button>
                     <Text role="body" tabular>{`${String(Math.round(zoom * 100))}%`}</Text>
-                    <Button intent="neutral" size="sm" isDisabled={step === STEPS.length - 1} onPress={() => { clamp(step + 1) }}>
+                    <Button variant="border" size="sm" isDisabled={step === STEPS.length - 1} onPress={() => { clamp(step + 1) }}>
                         {labels.zoomIn}
                     </Button>
-                    <Button intent="neutral" size="sm" onPress={() => { setStep(2) }}>
+                    <Button variant="border" size="sm" onPress={() => { setStep(2) }}>
                         {labels.zoomFit}
                     </Button>
                 </div>

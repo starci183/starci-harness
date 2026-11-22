@@ -8,6 +8,8 @@ import { withHeavySlot } from "../../harness/heavy.js"
 import { blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
 import type { LaneFinding } from "../../harness/land-queue.js"
 import { loadSlotRules, slotRoot, withSlot } from "../../harness/slots.js"
+import { cancelLaneGate, markSuperseded } from "../../harness/supersede.js"
+import { lanesDir } from "../../harness/land-queue.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { registerReady } from "./ready.js"
 import type { Registered } from "./ready.js"
@@ -16,6 +18,9 @@ import type { Registered } from "./ready.js"
 const INSTALL_MARK = join("node_modules", ".starci-lane-gate-lock")
 /** A file whose change in the merge means node_modules no longer matches the tree. */
 const INSTALL_INPUT = /(?:^|\/)package(?:-lock)?\.json$/
+
+/** The check of `lane gate` (no --push): the FAST level, since a lane lands on dev. */
+export const LANE_CHECK_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "dev", "--json"]
 
 /** How the gate ended: green, red with findings, out of memory (nobody's fault), or no readable verdict. */
 export type GateVerdict = "green" | "red" | "oom" | "no-verdict"
@@ -74,12 +79,12 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
 /**
  * `starci lane gate [lane]`: the local gate a lane runs before it lands (contexts/authority/lanes.md). It merges the base ref
  * (origin/dev), installs under an npm slot when the merge changed a manifest or lockfile, runs codegen (and build:modules after an
- * install), then, under a gate slot, the app's own `app check --env prod` (an unwarmed cache is info, never red) or, with --push, `app push origin
- * HEAD:<branch>`, which commits the cache records and pushes once. --ready registers the pushed sha with the batch lander.
+ * install), then, under a gate slot, the app's own `app check --env prod --level dev` (the fast level of a landing on dev) or, with --push, `app push origin
+ * HEAD:<branch>`, whose pre-push hook runs the fast level once. A new gate of the same lane cancels the lane's running one (harness/supersede.ts). --ready registers the pushed sha with the batch lander.
  */
 export const laneGateVerb = defineVerb({
     path: ["lane", "gate"],
-    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green on its findings alone; the cache records it wrote are not a finding), or --push app push, and --ready register with the batch lander",
+    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --ready register with the batch lander; a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot, writes superseded by <sha> into its status)",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/lane-gate@1",
@@ -108,6 +113,17 @@ export const laneGateVerb = defineVerb({
         const rules = loadSlotRules()
         const slots = slotRoot(flags.dir, rules)
         const wait = waitSeconds(flags.wait)
+        // A new gate of the lane supersedes its running one (owner: "nếu push commit mới thì cancel lun commit cũ"): its process tree is killed and its slot released.
+        const head = (await gitOut(root, ["rev-parse", "HEAD"])).out
+        const cancelled = cancelLaneGate(slots, rules, lane)
+        if (cancelled.length > 0) {
+            say(`superseded by ${head.slice(0, 10)}: cancelled the running gate of ${lane} (${cancelled.map((run) => `pid ${String(run.pid)}`).join(", ")}) and released its slot`)
+            try {
+                markSuperseded(lanesDir(flags.dir), lane, head, `the running gate of ${lane} was cancelled by a newer push`)
+            } catch {
+                // the status file is the monitor's courtesy; the cancel itself happened
+            }
+        }
         const merged = merging ? await mergeRef(root, flags.ref ?? "origin/dev", say) : null
         const installed = await needsInstall(root, merged, flags.install)
         if (installed) {
@@ -126,9 +142,10 @@ export const laneGateVerb = defineVerb({
         }
         if (!existsSync(appCli(root))) throw new Refusal("LANE_GATE_NO_APP_CLI", `${appCli(root)} is missing: the app pins starci-harness; run lane gate --install`)
         const mode = flags.push ? "push" : "check"
-        const args = flags.push ? ["app", "push", "--json", "origin", `HEAD:${branch}`] : ["app", "check", "--env", "prod", "--json"]
+        // A lane lands on dev: the check is the FAST level (app check --level dev), and a push of the lane branch runs it once, in its pre-push hook.
+        const args = flags.push ? ["app", "push", "--json", "origin", `HEAD:${branch}`] : [...LANE_CHECK_ARGS]
         const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
-            say(`${mode === "push" ? `app push origin HEAD:${branch}` : "app check --env prod"} (gate slot ${String(taken.n)})`)
+            say(`${mode === "push" ? `app push origin HEAD:${branch}` : "app check --env prod --level dev"} (gate slot ${String(taken.n)})`)
             return captureTool(process.execPath, [appCli(root), ...args], root)
         })
         const oom = isOutOfMemory(run.exitCode, run.stderr)

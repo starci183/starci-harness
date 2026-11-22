@@ -67,17 +67,17 @@ export type EmptyNoticeSecondary = { readonly label: string } & (
     | { readonly onPress: () => void; readonly href?: never }
 )
 
-/** The action's weight and its start icon: only the primary action (`commit`, the default) may carry one (the button-icon rule). */
+/** The action's look and its start icon: only the primary action (`primary`, the default) may carry one (the button-icon rule). */
 type EmptyNoticeAction =
     | {
-        /** `commit` (default) is the region's one primary. */
-        readonly actionIntent?: "commit"
+        /** `primary` (default) is the region's one primary. */
+        readonly actionVariant?: "primary"
         /** What the action does, at its start. Primary only. Not with `actionEndArrow` (a Button does something or leads somewhere, never both). */
         readonly actionStartContent?: ReactNode
     }
     | {
-        /** `neutral` is the outlined button, for an empty notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header. Text only. */
-        readonly actionIntent: "neutral"
+        /** `border` is the outlined button, for an empty notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header. Text only. */
+        readonly actionVariant: "border"
         readonly actionStartContent?: never
     }
 
@@ -115,7 +115,7 @@ type EmptyNoticeAllClear = {
     readonly scope?: "region"
     readonly mark?: never
     readonly media?: never
-    readonly actionIntent?: never
+    readonly actionVariant?: never
     readonly actionStartContent?: never
     readonly actionLabel?: never
     readonly actionHref?: never
@@ -167,7 +167,7 @@ export const EmptyNotice = ({
     secondary,
     actionLabel,
     actionHref,
-    actionIntent = "commit",
+    actionVariant = "primary",
     actionStartContent,
     actionEndArrow = false,
     isActionPending = false,
@@ -185,12 +185,12 @@ export const EmptyNotice = ({
     const inCard = useSurfaceHost() === "card"
     const framed = frame === "card" && !inCard
     const primary = actionLabel === undefined ? null : actionHref !== undefined && scope === "page" ? (
-        <Button size="md" intent={actionIntent} href={actionHref}>{actionLabel}</Button>
+        <Button size="md" variant={actionVariant} href={actionHref}>{actionLabel}</Button>
     ) : actionHref !== undefined ? (
         <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
     ) : (
         <Button
-            {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, intent: actionIntent })}
+            {...(actionEndArrow ? { size: "sm" as const, variant: actionVariant, endArrow: true as const } : actionVariant === "primary" && actionStartContent !== undefined ? { size: "md" as const, variant: actionVariant, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, variant: actionVariant })}
             isPending={isActionPending}
             {...(onAction === undefined ? {} : { onPress: onAction })}
         >
@@ -213,10 +213,10 @@ export const EmptyNotice = ({
         {...(framed ? {} : { "data-grammar-empty-frame": "none" })}
         className="starci-core-empty-notice"
     >
-        {isLine ? null : isAllClear ? <IconTile source={glyphSource("success")} tone="success" size="md" /> : media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
+        {isLine ? null : isAllClear ? <IconTile state="done" /> : media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
         <div className="starci-core-notice-copy" data-contract="GAP-1">
-            <Text size="sm" {...(isLine ? { tone: "muted" as const } : { isStrong: true })}>{message}</Text>
-            {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
+            <Text {...(isLine ? { role: "body" as const, tone: "muted" as const } : { role: "label.item" as const })}>{message}</Text>
+            {description === undefined ? null : <Text role="body" tone="muted">{description}</Text>}
         </div>
         {steps === undefined ? null : (
             <ol className="starci-core-notice-steps" data-grammar-notice-steps="true">
@@ -226,8 +226,8 @@ export const EmptyNotice = ({
                         <li key={step.id} className="starci-core-notice-step" data-grammar-step-state={state} {...(state === "current" ? { "aria-current": "step" as const } : {})}>
                             <StepMark state={state} position={index + 1} />
                             <span className="starci-core-notice-step-body">
-                                <Text size="sm" isStrong={state === "current"}>{step.label}</Text>
-                                {step.description === undefined ? null : <Text size="sm" tone="muted">{step.description}</Text>}
+                                <Text role={state === "current" ? "label.item" : "body"}>{step.label}</Text>
+                                {step.description === undefined ? null : <Text role="body" tone="muted">{step.description}</Text>}
                                 {state === "current" && primaryInStep ? <span className="starci-core-notice-step-action" data-grammar-notice-actions="true">{primary}</span> : null}
                             </span>
                         </li>
@@ -239,9 +239,9 @@ export const EmptyNotice = ({
             <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
                 {primaryInStep ? null : primary}
                 {secondary === undefined ? null : secondary.href === undefined ? (
-                    <Button size={scope === "page" ? "md" : "sm"} intent="neutral" onPress={secondary.onPress}>{secondary.label}</Button>
+                    <Button size={scope === "page" ? "md" : "sm"} variant="border" onPress={secondary.onPress}>{secondary.label}</Button>
                 ) : (
-                    <Button size={scope === "page" ? "md" : "sm"} intent="neutral" href={secondary.href}>{secondary.label}</Button>
+                    <Button size={scope === "page" ? "md" : "sm"} variant="border" href={secondary.href}>{secondary.label}</Button>
                 )}
             </div>
         ) : null}

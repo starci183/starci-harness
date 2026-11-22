@@ -1,0 +1,120 @@
+@layer starci-grammar-common {
+    /*
+     * --- Dropzone (`@starci/grammar/core/ext/dropzone`): the upload zone and its list. ---
+     * The zone is a surface with a 1px dashed edge and no shadow; drag-over paints the info soft surface, a refused drop the danger
+     * soft surface. Its box keeps one minimum height in every state (and as its Skeleton), so the list under it never moves.
+     */
+    .starci-core-dropzone {
+        --starci-core-dropzone-height: 11rem;
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-dropzone-zone {
+        display: flex;
+        min-width: 0;
+        min-height: var(--starci-core-dropzone-height);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-inline-gap);
+        border: var(--grammar-hairline) dashed var(--border);
+        border-radius: var(--grammar-radius-md);
+        padding: var(--grammar-inset-open);
+        background: var(--surface);
+        box-shadow: none;
+        color: var(--foreground);
+        text-align: center;
+        cursor: pointer;
+        transition:
+            border-color var(--starci-core-motion-duration) var(--starci-core-motion-easing),
+            background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-dropzone-zone:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+    }
+
+    .starci-core-dropzone-zone[data-grammar-dropzone-state="over"] {
+        border-color: var(--info-border);
+        background: var(--info-soft);
+        color: var(--info-soft-foreground);
+    }
+
+    .starci-core-dropzone-zone[data-grammar-dropzone-state="rejected"] {
+        border-color: var(--danger-border);
+        background: var(--danger-soft);
+        color: var(--danger-soft-foreground);
+    }
+
+    .starci-core-dropzone-zone:is([data-grammar-dropzone-state="over"], [data-grammar-dropzone-state="rejected"]) .starci-core-text {
+        color: inherit;
+    }
+
+    .starci-core-dropzone-zone[data-disabled="true"] {
+        cursor: default;
+        opacity: var(--disabled-opacity);
+    }
+
+    .starci-core-dropzone-detail {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-dropzone-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--grammar-inline-gap);
+        margin-block-start: var(--grammar-inline-gap);
+    }
+
+    .starci-core-dropzone-list {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border: var(--grammar-hairline) solid var(--separator);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface);
+    }
+
+    .starci-core-dropzone-row {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset);
+    }
+
+    .starci-core-dropzone-row + .starci-core-dropzone-row {
+        border-block-start: var(--grammar-hairline) solid var(--separator);
+    }
+
+    .starci-core-dropzone-row > .starci-core-icon {
+        color: var(--muted);
+    }
+
+    .starci-core-dropzone-row-main {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-dropzone-row-status {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+}

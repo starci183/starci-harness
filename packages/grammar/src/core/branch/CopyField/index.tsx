@@ -1,7 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { CheckIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline"
+import { CheckCircleIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline"
 import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroTooltip } from "@heroui/react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
@@ -142,7 +142,7 @@ const CopyFieldControl = (props: CopyFieldProps) => {
 
     const describedBy = [descriptionId, failed ? errorId : undefined].filter((part) => part !== undefined).join(" ")
     const actionName = state === "copied" ? copiedLabel : copyLabel
-    const Glyph = state === "copied" ? CheckIcon : failed ? ExclamationCircleIcon : DocumentDuplicateIcon
+    const Glyph = state === "copied" ? CheckCircleIcon : failed ? ExclamationCircleIcon : DocumentDuplicateIcon
     const announcement = state === "copied" ? copiedLabel : failed ? copyErrorLabel : ""
     const showsTooltip = props.masked !== true && isTruncated && !isLoading
 

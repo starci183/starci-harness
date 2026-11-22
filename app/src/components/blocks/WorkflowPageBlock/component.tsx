@@ -104,13 +104,13 @@ const WorkflowActions = (props: WorkflowPageBlockBaseProps) => {
                 description={labels.changeGoalHint}
                 closeLabel={labels.close}
                 trigger={
-                    <Button intent="neutral" isDisabled={isStopped}>
+                    <Button variant="border" isDisabled={isStopped}>
                         {labels.changeGoal}
                     </Button>
                 }
                 footer={(close) => (
                     <Button
-                        intent="commit"
+                        variant="primary"
                         isPending={props.props.isPending}
                         isDisabled={!props.props.canSaveGoal}
                         onPress={() => {
@@ -126,7 +126,7 @@ const WorkflowActions = (props: WorkflowPageBlockBaseProps) => {
                 <Textarea label={labels.goalField} rows={5} value={props.props.goalDraft} onValueChange={props.on.setGoal} isRequired />
             </Dialog>
             <Button
-                intent="neutral"
+                variant="border"
                 isPending={props.props.isPending}
                 isDisabled={toggle.isDisabled}
                 onPress={props.on.toggle}
@@ -139,7 +139,7 @@ const WorkflowActions = (props: WorkflowPageBlockBaseProps) => {
                 confirmLabel={labels.stopConfirm}
                 cancelLabel={labels.cancel}
                 trigger={
-                    <Button intent="destructive" step="entry" isDisabled={isStopped}>
+                    <Button variant="danger" isDisabled={isStopped}>
                         {labels.stop}
                     </Button>
                 }

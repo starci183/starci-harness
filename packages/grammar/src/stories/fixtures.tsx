@@ -119,11 +119,9 @@ export const familyScope = (globals: Readonly<Record<string, unknown>>): { 'data
  */
 export const MemoryRouterRoot = ({ globals, children }: { readonly globals: Readonly<Record<string, unknown>>; readonly children: ReactNode }) => {
   const [path, setPath] = useState('/');
-  const theme = globals['grammarTheme'];
   return (
     <GrammarRoot
       {...familyScope(globals)}
-      theme={theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'light'}
       navigate={setPath}
       useHref={(href: string) => href}
     >

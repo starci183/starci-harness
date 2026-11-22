@@ -12,9 +12,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 8 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+- [authority/lanes.md](../authority/lanes.md) · 10 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
   - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Shots · Processes and cleanup
-- [authority/packages.md](../authority/packages.md) · 10 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
+- [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
@@ -148,11 +148,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/README.md](../grammars/README.md) · 14 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
-  - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 49 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
-  - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 184 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUTTON-GROUND-CONTRAST, DNA-COMMON-BUTTON-ONE-LINE and 273 more
+  - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and the Button looks · One root · Idioms · Playbook shapes
+- [grammars/contract.md](../grammars/contract.md) · 51 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+  - sections: What a grammar provides · The shared scale · Button variant · Roles
+- [grammars/contract.yaml](../grammars/contract.yaml) · 193 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-SOLID, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-ONE-HEIGHT and 282 more
 - [grammars/contributing.md](../grammars/contributing.md) · 16 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -174,8 +174,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
-- [hfs/harness.yaml](../hfs/harness.yaml) · 21 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 42 more
+- [hfs/harness.yaml](../hfs/harness.yaml) · 22 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 44 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 173 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13, R14 and 302 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
@@ -184,7 +184,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 7 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
+- [project/branches.md](../project/branches.md) · 8 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander
 - [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
@@ -193,14 +193,14 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [project/check-cache.md](../project/check-cache.md) · 79 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
   - ids: Machine-local
-- [project/cicd.md](../project/cicd.md) · 50 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/cicd.md](../project/cicd.md) · 55 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Dev and prod · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/desktop.md](../project/desktop.md) · 12 KB — A project that offers its web app as an installable program (macOS, Windows, Linux) declares a desktop app.
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
 - [project/edition.md](../project/edition.md) · 14 KB — What the one app edition runs beyond the shared project model (README.md): the code structure, the front-end standard, the queue (BullMQ on Redis) and the three realtime doors are ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Resetting the chain to one baseline · Read with
-- [project/gallery.md](../project/gallery.md) · 47 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
-  - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval · PROJECT-GALLERY-7 A UI change goes board first, then code, then the gallery, then one review · PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes · PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar
+- [project/gallery.md](../project/gallery.md) · 49 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
+  - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval · PROJECT-GALLERY-7 A UI change goes board first, then code, then the gallery, then one review · PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes · PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar · PROJECT-GALLERY-10 A screen's lane brief maps it to the Grammar first, and its screen.yaml waits for the owner's OK
   - ids: customers/import, customers/list
 - [project/lint.md](../project/lint.md) · 33 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · PROJECT-LINT-5 A production audit exception is time-boxed and the owner's · Read with
@@ -221,32 +221,34 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [project/work.md](../project/work.md) · 9 KB — `.starciwork/` at the app root holds the product's Work: the concepts the owner ruled, the brand, and what a run of the product resolves.
   - sections: The tree · PROJECT-WORK-4 An integration is designed from the provider's current documentation · PROJECT-WORK-5 Each writer writes only its part · PROJECT-WORK-7 A product's concepts hold its persistent shared context and are read before its code · Lanes · Read with
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
-- [stack/fe.yaml](../stack/fe.yaml) · 11 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
+- [stack/fe.yaml](../stack/fe.yaml) · 13 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 18 more
-- [stack/pins.yaml](../stack/pins.yaml) · 30 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
+- [stack/pins.yaml](../stack/pins.yaml) · 32 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
   - ids: CONTRIB-20, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
-- [ui/components/README.md](../ui/components/README.md) · 6 KB — One page per component role: **when and how** to use it.
+- [ui/components/README.md](../ui/components/README.md) · 7 KB — One page per component role: **when and how** to use it.
   - sections: The Choose format · Choosing a role
-- [ui/components/action-group.md](../ui/components/action-group.md) · 4 KB — Contract: ButtonGroup.
+- [ui/components/action-group.md](../ui/components/action-group.md) · 3 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/bottom-nav.md](../ui/components/bottom-nav.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/button.md](../ui/components/button.md) · 15 KB — Contract: Button.
+- [ui/components/button.md](../ui/components/button.md) · 16 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules · Icons inside Grammar are outline (0.37.4) · Icon measures (0.37.5) · App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15) · A Button on a band, and the head link's hit area (0.48.0)
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 11 KB — Contract: Card.
-  - sections: Job · Choose · Actions · Look · Icons are outline (ICONS-OUTLINE) · Size · States · Owner split · Rules · Rows and labels
+- [ui/components/card.md](../ui/components/card.md) · 12 KB — Contract: Card.
+  - sections: Job · Choose · Actions · Look · Icons are outline (ICONS-OUTLINE) · Size · States · Owner split · Rules · Rows and labels · A card that waits on the reader, and an agent's tile (0.55.0)
   - ids: CHOICE-ROW-CONTROL, LABEL-SUBLABEL-HIERARCHY, LIST-ROW-NAVIGATION, ROW-TITLES-NOUNS
+- [ui/components/charts.md](../ui/components/charts.md) · 4 KB — Contract: Charts.
+  - sections: Job · Where it lives · Choose · API · Look
 - [ui/components/chip.md](../ui/components/chip.md) · 6 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/command-palette.md](../ui/components/command-palette.md) · 5 KB — Contract: dialog.
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
-- [ui/components/data-views.md](../ui/components/data-views.md) · 7 KB — Contract: data-views.
+- [ui/components/data-views.md](../ui/components/data-views.md) · 8 KB — Contract: data-views.
   - sections: Meter reading voice (0.46.0) · Job · Choose
 - [ui/components/diagram.md](../ui/components/diagram.md) · 2 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -256,32 +258,41 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · First-run steps and the all-clear state (0.46.2) · Variants · Size · States · The plain line, the page title and the way back (0.48.0) · Owner split · Frame · Page-level states every web app carries · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
-- [ui/components/field.md](../ui/components/field.md) · 6 KB — Contract: Input.
+- [ui/components/field.md](../ui/components/field.md) · 7 KB — Contract: Input.
   - sections: Job · Choose · The rhythm · Variants · Size · States · Owner split · Rules · A labelled Switch needs its description (SWITCH-LABEL-DESCRIPTION) · A Switch has two kinds (SWITCH-KIND)
 - [ui/components/fragment.md](../ui/components/fragment.md) · 5 KB — Contract: Fragment.
   - sections: Job · Choose · Variants · Size and states · Name clash with React's Fragment · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 5 KB — Contract: Avatar and IconTile.
-  - sections: Job · Choose · Variants · Plates of an initials mark (0.46.0) · Size · States · Owner split · Initials fit the circle · Rules
+- [ui/components/graph-from-nivo.md](../ui/components/graph-from-nivo.md) · 3 KB — Where each prop of the nivo-lite app's own `FlowGraph` went.
+  - ids: nivo-lite
+- [ui/components/graph.md](../ui/components/graph.md) · 20 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+  - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · Look · Migrating from an app's own graph · Layout and helpers · The demo and the browser proof
+  - ids: string;
+- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 15 KB — Contract: Avatar and IconTile.
+  - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile (0.55.0, owner "chốt") · Variants · Plates of an initials mark (0.46.0) · Size · States · Owner split · Initials, marks and the AI Chip · Rules
 - [ui/components/illustration.md](../ui/components/illustration.md) · 3 KB — Contract: Illustration.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/image.md](../ui/components/image.md) · 5 KB — Contract: Image.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · Eager pictures and the fetch priority (0.48.0)
-- [ui/components/list-table.md](../ui/components/list-table.md) · 19 KB — Contract: List and Table.
-  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.46.2) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5) · Phone fixes for rows, figures, tables and timelines (0.48.0)
+- [ui/components/list-table.md](../ui/components/list-table.md) · 20 KB — Contract: List and Table.
+  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.46.2) · Section head (0.36.0) · Version diff rows (0.37.28; blocks since 0.55.0) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5) · Phone fixes for rows, figures, tables and timelines (0.48.0)
+- [ui/components/markdown.md](../ui/components/markdown.md) · 5 KB — `@starci/grammar/core/ext/markdown` is part of Grammar core, used ONLY for long authored documents (an article, a lesson, a report written as markdown).
+  - sections: Minimal use · Entries · `<Markdown>` props · Highlights · What a text may hold · Built on Grammar core
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 3 KB — Contract: Menu.
   - sections: Job · Choose · Variants · Size · States · Owner split · The header menu (TopBar fit, 0.47.5) · Rules
-- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 11 KB — Contract: MessageBubble.
-  - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 14 KB — Contract: MessageBubble.
+  - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · The hover rail: MessageActions (owner, 2026-11-21) · Variants · Size · States · Owner split · Rules
 - [ui/components/motion.md](../ui/components/motion.md) · 6 KB — Contract: motion.
   - sections: Job · Choose · Variants · How each one behaves · Size · States · Owner split · Rules
-- [ui/components/page-header.md](../ui/components/page-header.md) · 9 KB — Contract: Page, Section.
+- [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
   - sections: Job · Choose · Variants · Size · States · Owner split · One start edge: band and body share the cap (MEASURE-8) · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 14 KB — Contract: PaneGrid.
   - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · The grid owns scroll and height (0.37.5) · The shared head row (layout B) · Pane footer (0.37.5) · Drawer opener · Rules · Pane head slot (0.37.5) · Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14) · A pane grid from a server component (0.48.0)
+- [ui/components/pdf.md](../ui/components/pdf.md) · 3 KB — Contract: PDF.
+  - sections: Job · Where it lives · API · Look
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 3 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, tabs ...
@@ -296,16 +307,20 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
 - [ui/components/text.md](../ui/components/text.md) · 7 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
   - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules · Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14) · Course content is a markdown string (`Markdown`) · A one-line command has no language label (CODE-BLOCK-LANGUAGE, 0.37.15)
-- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 6 KB — Contract: Toast and Alert.
+- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 7 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Alert form slot (0.46.2) · Variants · Size · States · Owner split · Rules · The retry of a negative banner (0.48.0) · ToastStack and stackToast (0.49.1)
+- [ui/components/upload.md](../ui/components/upload.md) · 4 KB — Contract: Upload.
+  - sections: Job · Where it lives · Choose · API · States · Keyboard and announcements · Look
 - [ui/components/video.md](../ui/components/video.md) · 3 KB — Contract: Video.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/composition.md](../ui/composition.md) · 37 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COLLECTION-5, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, DISCIPLINE-4, FE-APP-SHELL-1..6, FEEDBACK-1 and 26 more
+- [ui/content.md](../ui/content.md) · 5 KB — What a screen SAYS, before how it looks.
+  - sections: CONTENT-1 The reader sees business concepts, never system internals · CONTENT-2 The app declares its audience · CONTENT-3 Wrong versus right, situation by situation · How it is held
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
-- [ui/presentation.md](../ui/presentation.md) · 41 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
+- [ui/presentation.md](../ui/presentation.md) · 43 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
 - [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)
@@ -314,8 +329,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
-- [ui/situations.md](../ui/situations.md) · 22 KB — An author says what the thing is; the grammar decides how it looks.
-  - sections: The situations · Loading · Where the other decision tables live
+- [ui/situations.md](../ui/situations.md) · 31 KB — An author says what the thing is; the grammar decides how it looks.
+  - sections: The situations · Icon and mark sizes · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here
 - [vendor/heroui.md](../vendor/heroui.md) · 11 KB — HeroUI v3 is a set of compound components over React Aria: each component is a root plus named parts, the behaviour and accessibility come from React Aria, and the paint is vendor ...

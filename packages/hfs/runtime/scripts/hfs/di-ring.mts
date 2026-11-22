@@ -55,7 +55,9 @@ const isForward = (raw: unknown): boolean => typeof raw === 'object' && raw !== 
 const optionalEntry = (raw: unknown): { token: unknown; optional: boolean } | null =>
   typeof raw === 'object' && raw !== null && 'token' in raw && !isForward(raw) ? { token: (raw as { token: unknown }).token, optional: (raw as { optional?: unknown }).optional === true } : null;
 
-const metadata = (key: string, target: object): unknown => Reflect.getMetadata(key, target);
+/** `reflect-metadata`'s reader, typed here: the polyfill is loaded at run time by the wiring worker (app-wiring.mts), so this module needs no global augmentation from whatever tsconfig compiles it. */
+type MetadataReflect = typeof Reflect & { getMetadata: (key: string, target: object) => unknown };
+const metadata = (key: string, target: object): unknown => (Reflect as MetadataReflect).getMetadata(key, target);
 
 /** The construction edges of one provider, before resolution; forwardRef dependencies are left out (see the head comment). */
 export function injectionsOf(wrapper: ScannedWrapper, keys: NestConstants): Injection[] {

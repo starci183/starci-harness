@@ -1,0 +1,4 @@
+/* The Grammar root of an ERD story fills the demo frame, as the panel does. */
+.demo-frame > .grammar-common-root {
+    block-size: 100%;
+}

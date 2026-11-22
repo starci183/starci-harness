@@ -3,21 +3,46 @@
 import { HiddenSkeleton, withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, Tooltip as HeroTooltip, buttonVariants, skeletonVariants } from "@heroui/react"
 import { useId, type ReactNode } from "react"
-import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
 import { Icon } from "../Icon/index.js"
 import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 
 /**
- * The vendor's own Button variants, one to one (HeroUI v3 `buttonVariants`: primary, secondary, tertiary,
- * outline, ghost, danger, danger-soft). `danger` / `danger-soft` are a destructive or failure-recovery action
- * (HeroUI's danger Alert carries a `danger` Button "Retry"); they paint the vendor `--danger` tokens.
+ * THE THREE LOOKS (owner, 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"). A Button is exactly one of:
+ *
+ *   - `primary`: solid, the ONE main action of a card or region (the CTA; lint `single-commit-per-render` counts it);
+ *   - `border`: an outline, every secondary action (the default; a retry, a cancel, a row action, a head action);
+ *   - `danger`: a destructive action (delete, disconnect, stop for good).
+ *
+ * Grammar maps them onto the vendor (HeroUI v3 `buttonVariants`) internally: primary is `primary`, border is `outline`, danger is `danger`.
+ * There is no quiet, ghost, tertiary, secondary or soft-danger look. A text link is a `Link`, never a Button.
  */
-export type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft"
+export type ButtonVariant = "primary" | "border" | "danger"
 export type ButtonSize = "sm" | "md" | "lg"
 export type ButtonType = "button" | "submit" | "reset"
 export type ButtonWidth = "content" | "fill" | "fill-narrow" | "wrap"
+/** The colour a `primary` is filled with when it is not the accent (0.55.0): the action of a toned notice (an Alert's action wears its banner's tone). */
+export type ButtonTone = "accent" | "info" | "success" | "warning"
+
+/** The vendor variant each look draws with. */
+export const BUTTON_VENDOR_VARIANT = Object.freeze({ primary: "primary", border: "outline", danger: "danger" } as const satisfies Record<ButtonVariant, string>)
+
+/** The look of a Button: `border` by default. `tone` colours a `primary` only; it is not a fourth look. */
+export type ButtonLook =
+    | {
+        readonly variant: "primary"
+        /**
+         * The colour of the solid fill (0.55.0, owner: "button phải là màu tương ứng, ko phải border"): `--<tone>` inked `--<tone>-foreground` (HeroUI ships
+         * no success, warning or info variant, so Grammar paints its primary). Default: the accent. Not with `ground`.
+         */
+        readonly tone?: ButtonTone
+    }
+    | {
+        /** `border` (default): an outline, any secondary action. `danger`: a destructive action. A computed look takes this branch, untoned. */
+        readonly variant?: ButtonVariant
+        readonly tone?: never
+    }
 
 type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
@@ -28,8 +53,8 @@ type ButtonBase = {
     readonly isDisabled?: boolean
     /**
      * The ground the button stands on when it is not the page's (0.48.0): `accent` a band in the brand colour (a site's burgundy call-to-action band), `inverse` a
-     * dark band (`--foreground` as the ground). The intents keep their rank and take that ground's contrast: `commit` is the ground's foreground filled with the
-     * ground's colour as ink, every other intent the ground's foreground as an outline and its ink, so the label never sinks into the band. An app writes no class.
+     * dark band (`--foreground` as the ground). The looks keep their rank and take that ground's contrast: `primary` is the ground's foreground filled with the
+     * ground's colour as ink, `border` and `danger` the ground's foreground as an outline and its ink, so the label never sinks into the band. An app writes no class.
      */
     readonly ground?: "accent" | "inverse"
     /**
@@ -65,12 +90,12 @@ type ButtonBase = {
 }
 
 /**
- * THE BUTTON-ICON RULE (owner, 2026-11-09). Only the PRIMARY button (`intent="commit"`, the CTA) carries a leading icon: it may show what
- * it does at its start (`startGlyph`, or the app's own `startContent`). Every other Button (neutral, alternative, dismiss, destructive,
- * a suggestion pill, a row action) is text only, and the types refuse a start icon on it. A Button that LEADS somewhere ends with
- * Grammar's arrow (`endArrow`); the arrow is not an icon under this rule, so any intent may use it, but a Button never carries the
+ * THE BUTTON-ICON RULE (owner, 2026-11-09). Only the PRIMARY button (`variant="primary"`, the CTA) carries a leading icon: it may show what
+ * it does at its start (`startGlyph`, or the app's own `startContent`). Every other Button (`border`, `danger`, a suggestion pill, a row
+ * action) is text only, and the types refuse a start icon on it. A Button that LEADS somewhere ends with
+ * Grammar's arrow (`endArrow`); the arrow is not an icon under this rule, so any look may use it, but a Button never carries the
  * arrow and a start icon together. `IconButton` (icon only, named by its label) is unaffected.
- * A `sm` Button is text only at every intent (owner, 2026-11-09): the types refuse a start icon at `size="sm"`.
+ * A `sm` Button is text only at every look (owner, 2026-11-09): the types refuse a start icon at `size="sm"`.
  * Both glyphs take the same inline gap (8) and the control's glyph padding on their side.
  */
 type ButtonText = {
@@ -79,13 +104,13 @@ type ButtonText = {
     /**
      * The label leads somewhere (a page, a tab, a next step): Grammar draws its arrow after the label, and the arrow slides toward the
      * reading end while the button is hovered or focused (still under reduced motion), mirrored right to left. `endContent` wins when
-     * both are given. Any intent may lead.
+     * both are given. Any look may lead.
      */
     readonly endArrow?: boolean
 }
 
 type ButtonPrimaryDoes = {
-    readonly intent: "commit"
+    readonly variant: "primary"
     /** A leading icon is for the primary at `md` or `lg`: a `sm` Button never carries one, not even the primary. */
     readonly size?: "md" | "lg"
     /** Decorative or explanatory content before the label: what the action does. Product icon identity stays with the app. Primary only. */
@@ -95,7 +120,7 @@ type ButtonPrimaryDoes = {
     readonly endArrow?: false
 }
 
-/** What a Button shows beside its label: nothing or the arrow of where it goes (any intent), or, on the primary alone, the glyph of what it does. */
+/** What a Button shows beside its label: nothing or the arrow of where it goes (any look), or, on the primary alone, the glyph of what it does. */
 export type ButtonIcons = ButtonText | ButtonPrimaryDoes
 
 /**
@@ -138,17 +163,7 @@ type CommandButton = {
  * The button-shaped action. The element is decided by which of `href` or `onPress` is present, and
  * the type forbids both, so a destination cannot be written as a button by choosing the wrong leaf.
  */
-export type ButtonProps = ButtonBase & ButtonIcons & ButtonIntentProps & (DestinationButton | CommandButton)
-
-const VARIANTS = {
-    primary: "primary",
-    secondary: "secondary",
-    tertiary: "tertiary",
-    outline: "outline",
-    ghost: "ghost",
-    danger: "danger",
-    "danger-soft": "danger-soft",
-} as const
+export type ButtonProps = ButtonBase & ButtonLook & ButtonIcons & (DestinationButton | CommandButton)
 
 const SIZES = { sm: "sm", md: "md", lg: "lg" } as const
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
@@ -218,7 +233,9 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
         width = "content",
         reasonId,
     } = props
-    const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
+    const variant: ButtonVariant = props.variant ?? "border"
+    const tone = props.ground === undefined && props.variant === "primary" ? props.tone : undefined
+    const toneAttr = tone === undefined ? {} : { "data-grammar-button-tone": tone }
     const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
     const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : undefined)
     const unavailable = isDisabled || isPending || isLoading
@@ -241,8 +258,9 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
             <HeroLink
                 data-tier="leaf"
                 data-component="Button"
-                data-grammar-intent={props.intent}
+                data-grammar-variant={variant}
                 {...(props.ground === undefined ? {} : { "data-grammar-button-ground": props.ground })}
+                {...toneAttr}
                 data-size={size}
                 {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
@@ -254,7 +272,7 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
                 aria-hidden={isLoading || undefined}
                 data-width={width}
                 data-contract={width === "fill" ? "MEASURE-2" : undefined}
-                className={buttonVariants({ variant: VARIANTS[variant], size: SIZES[size], fullWidth: width === "fill", className: isLoading ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button" })}
+                className={buttonVariants({ variant: BUTTON_VENDOR_VARIANT[variant], size: SIZES[size], fullWidth: width === "fill", className: isLoading ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button" })}
                 {...(unavailable ? {} : { href })}
                 {...(target === undefined ? {} : { target })}
                 {...(rel === undefined ? target === "_blank" ? { rel: "noopener noreferrer" } : {} : { rel })}
@@ -271,8 +289,9 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
         <HeroButton
             data-tier="leaf"
             data-component="Button"
-            data-grammar-intent={props.intent}
+            data-grammar-variant={variant}
             {...(props.ground === undefined ? {} : { "data-grammar-button-ground": props.ground })}
+            {...toneAttr}
             data-size={size}
             {...glyphSides}
             data-element="button"
@@ -280,7 +299,7 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-action-pending={isPending ? "true" : "false"}
             type={type}
             {...(form === undefined ? {} : { form })}
-            variant={VARIANTS[variant]}
+            variant={BUTTON_VENDOR_VARIANT[variant]}
             size={SIZES[size]}
             isDisabled={unavailable}
             {...(reasonId === undefined ? {} : { "aria-describedby": reasonId })}

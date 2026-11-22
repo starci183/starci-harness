@@ -65,7 +65,7 @@ disjoint boundaries (STATE-8). In a form the spec names `Button.type`.
 
 ### CTA-2 Command or destination
 Consequence picks the element: going to an address is an anchor (`href`), changing state is a button with a real
-handler. A destination may look like a button; it stays an anchor and takes the same intent as the command it
+handler. A destination may look like a button; it stays an anchor and takes the same look as the command it
 stands for. An anchor with a click handler and no address does not exist. The dominant action keeps a visible text
 label; glyphs only support it.
 
@@ -82,48 +82,38 @@ Pending is never page-wide, never on a peer that started nothing, and never swap
 inside an empty or failed region forwards pending through that region's owner (`EmptyNotice.isActionPending`).
 An owner that publishes no pending prop is a grammar gap, not an app substitute.
 
-### CTA-6 Intent from facts
-The app never chooses a button's look. It declares three objective facts from the spec, and the grammar resolves
-the variant from the declared intent and the placement it reads from context.
+### CTA-6 Three looks
+A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary`
+(solid, the one main action of the card or region), `border` (an outline, every other action; the default) or `danger` (a destructive action).
+The app picks the look from the spec's facts by the decision table `button.choose.variant`
+([components/button.md](components/button.md#choose)): the press destroys something, it is `danger`; it is the region's one next step, it is
+`primary`; anything else is `border`. There is no intent, step, placement, ghost, tertiary, secondary or soft-danger look, and the look never
+depends on where the Button sits ([../grammars/contract.md](../grammars/contract.md#button-variant)).
 
-| Fact | Values | Decides |
-| --- | --- | --- |
-| consequence | none, neutral, negative, destructive | whether it is a way out, an ordinary command or destructive |
-| rank in its decision | next, alternative, way-out | whether it is the decision's commit |
-| step (destructive only) | entry (opens the confirm, or removes an unsubmitted row), confirm (the final irreversible press) | soft or solid danger |
-
-The facts give the intent by the decision table `button.choose.intent`
-([components/button.md](components/button.md#choose)). Placement (`decision`, `item`, `chrome`) is read by the
-grammar from the surrounding composition, never declared by the app; the intent x placement -> variant map and
-its logic are the grammar contract's
-([../grammars/contract.md](../grammars/contract.md#intent-x-placement---variant)).
-Lint: `starci-fe/button-intent-required`; the prop types have no `variant`.
-
-### CTA-1 One commit per view
-A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `commit`. It is the
-next step of the page's one job. Every other next step on that view is `neutral`. While a collection is empty, its
-`EmptyNotice` owns the command as the commit and the header omits it; once content exists the header owns it.
+### CTA-1 One primary per view
+A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `variant="primary"` (the commit). It is the
+next step of the page's one job. Every other next step on that view is `border`. While a collection is empty, its
+`EmptyNotice` owns the command as the primary and the header omits it; once content exists the header owns it.
 Equal-consequence peers get no commit at all: no paint breaks a tie. A landing may repeat its one conversion
 command once, never in the same viewport (`budgets.commitPerView`).
 Peer choices are not buttons and there is one component for each meaning: `Tabs` switches a view or filters a list that stays in place
 (`kind="filter"`), `ChoiceChips` or `RadioGroup` chooses a value of a form, a `Calendar` with `ChoiceChips` picks a date and a time,
 and separate `Button`s or a `DropdownMenu` carry actions. The Grammar draws no group of attached buttons (`ButtonGroup`,
-`FilterButtonGroup`, `SegmentedControl`: deprecated, refused by R380), chosen by [components/tabs.md](components/tabs.md), and no commit
+`FilterButtonGroup` and `SegmentedControl` are deleted; R380 names the replacement), chosen by [components/tabs.md](components/tabs.md), and no commit
 sits among them.
 Lint: `starci-fe/single-commit-per-render`, `starci-fe/no-commit-in-collection-item`.
 
 ### CTA-4 Destructive needs its own authority
-Destructive is `danger-soft` at entry and solid `danger` only at confirm, inside an `AlertDialog` that holds no
-commit and puts initial focus on `dismiss`. Stored data needs that confirm; an unsubmitted row (a pasted link, a
-queued file) is removed at once by a `danger-soft` icon button named for screen readers ("Remove link 2"). The
-grammar's danger treatment is the only red on a destructive control; a destructive verb on a neutral or
-alternative look is a defect. Lint: `starci-fe/destructive-confirm-in-dialog`,
-`starci-grammar/destructive-menu-entry-needs-danger-tone`.
+Destructive is `variant="danger"`, at the entry and at the confirm, which stands inside an `AlertDialog` that holds no
+primary and puts initial focus on its `border` cancel. Stored data needs that confirm; an unsubmitted row (a pasted link, a
+queued file) is removed at once by a `danger` icon button named for screen readers ("Remove link 2"). The
+grammar's danger treatment is the only red on a destructive control; a destructive verb on a `border` look is a defect.
+Lint: `starci-grammar/destructive-menu-entry-needs-danger-tone`.
 
 ### CTA-5 Group order
-A decision group runs **way out, alternative, commit**: `dismiss` first, the commit last, as separate buttons at
+A decision group runs **way out, alternative, primary**: the `border` way out first, the primary last, as separate buttons at
 the inline gap (GAP-2). The order is identical at every width; when the group stacks, the commit lands last,
-nearest the thumb. A decision and its way out never share a `ButtonGroup` (see
+nearest the thumb. A decision and its way out are never attached buttons (see
 [components/action-group.md](components/action-group.md)). The commit's label never shows an empty count, and an
 empty input does not leave it disabled and faded: it names the command and explains the missing input when
 pressed. The spec names the longest translated label the group must hold; the group wraps, never overlaps.

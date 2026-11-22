@@ -19,7 +19,9 @@ export const git = (cwd: string, ...args: string[]): string => {
 
 /**
  * Install a package-resolution wrapper so the rendered hook runs the actual bundled gate in a disposable Git repository, beside a
- * stand-in for the harness's `starci deps check` that exits with `depsExit` and its `starci app check --env prod` that exits with `freshExit`.
+ * stand-in for the harness's `starci deps check --push-refs <the hook's stdin>` that exits with `depsExit` and its `starci app check --env prod --level full` that exits with `freshExit`.
+ * The fast level of a landing on dev (`app check --env prod --level dev --push-refs <stdin>`) is the CLI's deps check (off when `depsMode` is off) then the check: it exits
+ * with `depsExit`, else `freshExit`.
  */
 export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0, freshExit = 0, depsMode = 'blocking' }: { depsExit?: number; freshExit?: number; depsMode?: 'blocking' | 'off' } = {}): PrePushRepository {
   const root = mkdtemp(t, 'hfs-pre-push-');
@@ -41,9 +43,12 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
   fs.mkdirSync(harness, { recursive: true });
   fs.writeFileSync(path.join(harness, 'main.js'), [
     "const verb = process.argv.slice(2).join(' ');",
-    `if (verb === 'app check --env prod') { console.log('app check judged branch: ' + (process.env.STARCI_JUDGED_BRANCH || '(the checkout)') + ', push gate: ' + (process.env.STARCI_PUSH_GATE || '(not set)')); if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
+    `if (verb === 'app check --env prod --level full') { console.log('app check judged branch: ' + (process.env.STARCI_JUDGED_BRANCH || '(the checkout)') + ', push gate: ' + (process.env.STARCI_PUSH_GATE || '(not set)') + ', level full'); if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
+    "const fast = process.argv.slice(2);",
+    `if (fast.slice(0, 7).join(' ') === 'app check --env prod --level dev --push-refs' && fast.length === 8) { console.log('app check level dev, push refs: ' + fast[7].split(/\\r?\\n/).join(' | ')); if ('${depsMode}' === 'off') console.log('deps: off by declaration (gates of .starcistacks/application-stacks.yaml), not run'); else if (${depsExit} !== 0) { console.error('DEPS_PIN_UNPUBLISHED: stand-in'); process.exit(${depsExit}); } process.exit(${freshExit}); }`,
     `if (verb === 'app check --profile --gate deps') { console.log('${depsMode}'); process.exit(0); }`,
-    "if (verb !== 'deps check') process.exit(2);",
+    "const args = process.argv.slice(2);",
+    "if (args[0] !== 'deps' || args[1] !== 'check' || args[2] !== '--push-refs' || !(args[3] || '').includes(' refs/') || args.length !== 4) process.exit(2);",
     `if (${depsExit} !== 0) console.error('DEPS_PIN_UNPUBLISHED: stand-in');`,
     `process.exit(${depsExit});`,
     '',

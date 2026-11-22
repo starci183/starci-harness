@@ -9,7 +9,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  * `ChoiceChips` for a date and a time.
  *
  * WHAT IT READS. A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source, written
- * bare or as a member (`Grammar.ButtonGroup`). The components stay exported and deprecated for one release.
+ * bare or as a member (`Grammar.ButtonGroup`). ButtonGroup and FilterButtonGroup were deleted in Grammar 0.55.0; the rule still names the replacement.
  *
  * A second rule holds the same law for loose buttons: two or more adjacent `Button` or `IconButton` elements (or one written in a
  * `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons acting as tabs, a pill toggle ("This month / Last

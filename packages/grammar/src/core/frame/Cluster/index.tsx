@@ -19,7 +19,7 @@ export type ClusterProps = {
     readonly justify?: ClusterJustify
     /**
      * Names the row as one labelled group (`role="group"`, `aria-label`) when separate controls stand together and mean one thing: a
-     * less/more pair, a row of actions on one record. Not a ButtonGroup: the controls stay separate, spaced buttons; the label only
+     * less/more pair, a row of actions on one record. Not attached buttons: the controls stay separate, spaced buttons; the label only
      * gives assistive technology the set's name.
      */
     readonly label?: string

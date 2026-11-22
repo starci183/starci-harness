@@ -281,8 +281,9 @@
 
 - Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
 
-## Unreleased
+## 9.22.0 - 2026-11-22
 
+- Changed (CTA-6, with Grammar 0.55.0: Button has three looks, `variant` primary | border | danger): `single-commit-per-render` counts `variant="primary"`, `no-commit-in-collection-item` refuses a primary in an item. Removed: `button-intent-required` and `destructive-confirm-in-dialog` (FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG): there is no intent to require; `starci app codemod v0550` migrates an app (the old `button-intent` harness codemod is deleted).
 ## 9.9.5 - 2026-11-02
 
 - Changed: synchronized the canonical function-provenance runtime and HFS 5.0.1 cohort pins; the Grammar component runtime stays at 0.21.3.

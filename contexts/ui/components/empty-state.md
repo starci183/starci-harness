@@ -40,9 +40,9 @@ Choice `empty-state.choose.actions`: what the notice offers.
 | none | the state is information (a forbidden region with no way forward) | no action | judgement |
 
 ## First-run steps and the all-clear state (0.46.2)
-`EmptyNotice steps` is a first-run notice with two to five numbered steps (`{ id, label, description?, isDone? }`; a development error outside that range): a finished step wears a check, the FIRST OPEN step is the current one (accent number, `aria-current="step"`) and carries the notice's one primary action (`actionLabel` with `onAction` or `actionHref`) under its words, later steps are grey numbers, `secondary` stays at the foot. With every step done the action stands where a plain notice draws it. It is a prop of `EmptyNotice`, not a component.
+`EmptyNotice steps` is a first-run notice with two to five numbered steps (`{ id, label, description?, isDone? }`; a development error outside that range): each step's mark is the round 40px status tile (0.55.0, the status-mark rule, case 1): a finished step the check, the FIRST OPEN step the current one (its number on the info tile, `aria-current="step"`) and carries the notice's one primary action (`actionLabel` with `onAction` or `actionHref`) under its words, later steps the dashed not-run circle, `secondary` stays at the foot. With every step done the action stands where a plain notice draws it. It is a prop of `EmptyNotice`, not a component.
 
-`EmptyNotice isAllClear` is the good-news state for a region that is empty because nothing needs the reader ("You are all caught up"): the success mark (`IconTile tone="success"`), the words, and no action. The type refuses every action prop, `steps`, `media`, `scope="page"` and `isError` with it. An empty region that the reader can fill is a plain notice with its one action; an all-clear has nothing to do. Stories `Media/Empty state` (FirstRunSteps, AllClear).
+`EmptyNotice isAllClear` is the good-news state for a region that is empty because nothing needs the reader ("You are all caught up"): the success mark (`IconTile state="done"`: the check on the success plate, the one status mark with no subject of its own), the words, and no action. The type refuses every action prop, `steps`, `media`, `scope="page"` and `isError` with it. An empty region that the reader can fill is a plain notice with its one action; an all-clear has nothing to do. Stories `Media/Empty state` (FirstRunSteps, AllClear).
 
 ## Variants
 Inside a chat thread (a `PaneSection scroll role="log"` band or a stack of `MessageBubble`s) an `EmptyNotice` draws no card surface: no fill, border, radius or shadow, detected by context ([message-bubble](message-bubble.md)).
@@ -66,7 +66,7 @@ The illustration rule: a picture only for an empty main region, onboarding or a 
 
 A failed read (`EmptyNotice isError`, an `ErrorView`) takes a way back: `secondary={{ label, href }}` on the notice (`ErrorData.back` on a component's `error`) draws a neutral button after the retry ("Về danh sách"), and both take the md step, the 40px control height, at every scope (a region's retry was the 32px `sm` step; `DNA-COMMON-RETRY-CONTROL-HEIGHT`, story `Chat surfaces / Failed thread`). The app's `SlotView` passes it as `back` (template `fe/units/slot/SlotView.tsx.tpl`).
 
-"Thử lại" has ONE look wherever a read failed: the outlined `alternative` button (`RETRY_INTENT`) in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert` alike; a retry destroys nothing, so it never wears the destructive fill (`DNA-COMMON-RETRY-ONE-LOOK`). Stories `Media/Empty notice line, page title and the retry (0.48.0)`.
+"Thử lại" has ONE look wherever a read failed: the outlined `border` button (`RETRY_VARIANT`) in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert` alike; a retry destroys nothing, so it never wears the destructive fill (`DNA-COMMON-RETRY-ONE-LOOK`). Stories `Media/Empty notice line, page title and the retry (0.48.0)`.
 
 ## Owner split
 - **Grammar owns:** notice anatomy, its inset, the media step and its circle, the actions row, pending forwarding, the illustration's

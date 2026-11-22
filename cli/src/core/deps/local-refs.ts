@@ -96,12 +96,13 @@ export const committedFiles = async (root: string, revision: string, wanted: (ba
 /**
  * Refuses DEPS_LOCAL_REGISTRY_COMMITTED when a lockfile or `.npmrc` committed at `revision` names a registry on this machine
  * (`starci deps install-local` writes such a `resolved` into package-lock.json): CI and production cannot reach it, so
- * the app would stop installing. It judges every repository, an app or the harness alike.
+ * the app would stop installing. It judges every repository, an app or the harness alike. `accept` (a declared dev push, dev-local.ts) may
+ * let the found references through.
  */
-export const judgeLocalRegistry = async (root: string, revision: string): Promise<void> => {
+export const judgeLocalRegistry = async (root: string, revision: string, accept: (found: readonly LocalReference[]) => boolean = () => false): Promise<void> => {
     const files = await committedFiles(root, revision, (base) => LOCKFILE.test(base) || base === ".npmrc")
     const found = (await inOrder(files, async (file) => localReferences(file, await git(root, ["show", `${revision}:${file}`])))).flat()
-    if (found.length === 0) return
+    if (found.length === 0 || accept(found)) return
     const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")
     const more = found.length > 5 ? ` and ${String(found.length - 5)} more` : ""
     throw new Refusal("DEPS_LOCAL_REGISTRY_COMMITTED", `committed files point npm at this machine: ${listed}${more}. CI cannot install from it. Run starci deps install-local --restore to put the npm pins back, then commit that`)

@@ -15,7 +15,7 @@
 // proves: HFS_APP_GALLERY_SCREEN_INVALID
 // proves: HFS_APP_GALLERY_SCREEN_INVALID
 // The UI Audit gate (cache/uiaudit-family.mts, rules/screen-yaml.mts; contexts/project/gallery.md PROJECT-GALLERY-8; owner 2026-11-21, train 188): a screen the diff touches carries a
-// screen.yaml audit whose first cycle passes (2 to 4 rounds of seven lenses by an auditor who is not the builder, on the shots it records, with the options considered); that pass is its
+// screen.yaml audit whose first cycle passes (2 to 4 rounds of the ten lenses by an auditor who is not the builder, on the shots it records, with the options considered); that pass is its
 // baseline, and after it nothing about the audit (drift, later cycles) is a finding. A malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID for every screen. An unchanged screen is
 // grandfathered; `audit run` prepares the next round and records the baseline; `audit cycle` opens the next cycle; `migrate-explain` turns explain.md into screen.yaml.
 import { test } from 'node:test';
@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { starterDeclaration } from '../scaffold/app.mjs';
 import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { appGalleryFindings } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { isoInstant, LENSES, parseScreen, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { CONTENT_LENSES, CORE_LENSES, isoInstant, LENS_MEANING, LENSES, parseScreen, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { uiAuditFindings } from '../cache/uiaudit-family.mjs';
 import { galleryMain, uiauditMain } from '../uiaudit/cli.mjs';
 
@@ -173,6 +173,29 @@ for (const edition of ['lite'] as const) {
     assert.match(doc({ builder: { agent: 'a' }, rounds: 'x' }).audit.join('; '), /auditor\.agent is missing/);
   });
 
+  test(`the three content lenses (business, hand-composed, tech-leak): a round carries all ten; a round from before them carries the seven core ones`, () => {
+    assert.deepEqual([...CONTENT_LENSES], ['business', 'hand-composed', 'tech-leak']);
+    assert.equal(LENSES.length, CORE_LENSES.length + CONTENT_LENSES.length);
+    for (const lens of CONTENT_LENSES) assert.match(LENS_MEANING[lens], /content\.md|situations\.md/);
+    const doc = (rounds: unknown[]) => parseScreen(screen({ audit: { builder: { agent: 'Lane-A' }, auditor: { agent: 'lane-b' }, rounds, escalate: null } }), 'customers/list').audit;
+    const legacy = (n: number) => ({ n, at: '2026-11-19T12:00:00Z', lenses: Object.fromEntries(Object.entries(round(n).lenses).filter(([lens]) => !(CONTENT_LENSES as readonly string[]).includes(lens))) });
+    assert.deepEqual(doc([legacy(1), legacy(2)]), [], 'a round from before the content lenses stays valid');
+    const partial = { n: 2, at: '2026-11-19T12:00:00Z', lenses: { ...legacy(2).lenses, business: { verdict: 'pass' } } };
+    assert.match(doc([legacy(1), partial]).join('; '), /lenses\.hand-composed is missing/);
+    const judged = (rounds: unknown[]) => judgeAudit({ id: 'customers/list', value: { shots: { 1440: { sha256: sha('a') }, 390: { sha256: sha('b') } }, considered: [{ option: 'a', chosen: true, why: 'b' }], audit: { builder: { agent: 'Lane-A' }, auditor: { agent: 'lane-b' }, rounds, escalate: null } }, disk: {}, unrecorded: false }).map((finding) => finding.code);
+    assert.deepEqual(judged([round(1), round(2, { 'tech-leak': 'open' })]), ['UI_AUDIT_OPEN'], 'an open content lens keeps the first cycle open');
+    assert.deepEqual(judged([legacy(1), legacy(2)]), [], 'a legacy pass on the seven core lenses passes');
+  });
+
+  test(`screen.yaml questions (contexts/ui/content.md): optional, and when present the 2 or 3 owner questions as texts`, () => {
+    const doc = (questions: unknown) => parseScreen(screen({ questions }), 'customers/list').doc.join('; ');
+    assert.doesNotMatch(doc(['Hôm nay bán được bao nhiêu?', 'Việc gì cần tôi?']), /questions/);
+    assert.doesNotMatch(parseScreen(screen(), 'customers/list').doc.join('; '), /questions/, 'a screen from before the rule passes');
+    assert.match(doc(['Một câu?']), /questions is the 2 or 3 owner questions/);
+    assert.match(doc(['a?', 'b?', 'c?', 'd?']), /questions is the 2 or 3/);
+    assert.match(doc('Một câu'), /questions is the 2 or 3/);
+  });
+
   test(`a timestamp PyYAML rewrote (space, microseconds, +00:00) is still an instant with its zone, and audit run writes it back as ISO`, (t) => {
     const pyyaml = '2026-11-19 12:00:00.425000+00:00';
     const doc = (at: string) => parseScreen(screen({ audit: { builder: { agent: 'lane-a' }, auditor: { agent: 'lane-b' }, rounds: [{ ...round(1), at }, round(2)], escalate: null, baseline: { at, rounds: 2 } } }), 'customers/list').audit;
@@ -260,7 +283,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(!legacy.includes('HFS_APP_GALLERY_EXPLAIN_MISSING') && !legacy.includes('HFS_APP_GALLERY_ROUTE_MISSING'), legacy.join(','));
   });
 
-  test(`audit run records the shots and writes seven open lenses; status lists it; migrate-explain converts and deletes`, (t) => {
+  test(`audit run records the shots and writes ten open lenses; status lists it; migrate-explain converts and deletes`, (t) => {
     const { root } = app(t, edition, screen({ audit: null }));
     write(root, `${FOLDER}/1440.png`, 'x');
     write(root, `${FOLDER}/390.png`, 'y');

@@ -18,7 +18,7 @@ const Account = () => {
     <G.DropdownMenu
       placement="bottom end"
       entries={[{ id: 'account', label: 'Account' }, ...overflow]}
-      trigger={<G.AvatarButton name="Alex Morgan" size="control" />}
+      trigger={<G.AvatarButton name="Alex Morgan" size="md" />}
     />
   );
 };

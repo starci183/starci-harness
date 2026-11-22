@@ -33,7 +33,7 @@ destructive. Pressing scales the button slightly, less for larger buttons. Sizes
 4px from the `md` breakpoint. Icon-only is the same square at the size, the glyph one step smaller at `sm`. The
 corner is `rounded-3xl`, three times `--radius`, so with a mid-size radius every Button is a pill.
 
-House: apps declare `intent` and the grammar resolves the variant; sizes are held at every breakpoint; `href`
+House: a Grammar Button takes one of three looks, `variant` primary, border or danger, which the grammar draws with the vendor's `primary`, `outline` and `danger` (no secondary, tertiary, ghost or danger-soft); sizes are held at every breakpoint; `href`
 renders the vendor Link with button paint ([contract](../grammars/contract.md#roles)).
 
 ## ColorSwatch
@@ -146,7 +146,7 @@ bar avatar is `control` size, and a group identity is one composite at one size.
 
 ## Small members
 
-Spinner `sm` to `xl`, 16 to 40px; the vendor's CloseButton and Kbd 24px (the grammar wraps no CloseButton: a dismiss is `IconButton intent="dismiss"`); Checkbox control 16px; Pagination links one step under Button; ProgressBar and Meter tracks thin; Label small, Description
+Spinner `sm` to `xl`, 16 to 40px; the vendor's CloseButton and Kbd 24px (the grammar wraps no CloseButton: a dismiss is a border `IconButton`, which draws the close glyph by default); Checkbox control 16px; Pagination links one step under Button; ProgressBar and Meter tracks thin; Label small, Description
 and errors extra small and muted.
 
 ## How sizes align

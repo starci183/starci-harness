@@ -51,9 +51,9 @@ const ReceiptUpdates = () => {
     const [index, setIndex] = useState(0)
     return <G.Stack gap="row">
         <G.MessageBubble side="outgoing" body="Can you confirm the new time?" footer={<MessageStatus {...(receipts[index] ?? fallbackReceipt)} />} />
-        <G.Button intent="neutral" onPress={() => setIndex((current) => (current + 1) % receipts.length)}>Show the next receipt</G.Button>
+        <G.Button variant="border" onPress={() => setIndex((current) => (current + 1) % receipts.length)}>Show the next receipt</G.Button>
     </G.Stack>
 }
 
 /** A changing receipt retains its polite atomic announcement and native mark. */
-export const ReceiptChanges: Story = { render: () => <Matrix><State label="Sent → delivered → seen" direction="column"><ReceiptUpdates /></State></Matrix> }
+export const ReceiptChanges: Story = { render: () => <Matrix><State label="Sent, then delivered, then seen" direction="column"><ReceiptUpdates /></State></Matrix> }

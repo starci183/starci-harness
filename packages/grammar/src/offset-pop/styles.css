@@ -72,7 +72,7 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"]:not(.starci-core-button-group > *) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
         border-radius: var(--radius);
     }
 
@@ -179,13 +179,13 @@
         border-inline-end: var(--offset-pop-outline-width) solid var(--border);
     }
 
-    /* IconButton "danger-soft" (a destructive row action): the danger tint plate wears the family's ink outline and a small hard offset, pressed flat. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"] {
+    /* IconButton "danger" (a destructive action): the danger plate wears the family's ink outline and a small hard offset, pressed flat. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"]:active:not([disabled]) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger"]:active:not([disabled]) {
         box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-x));
     }

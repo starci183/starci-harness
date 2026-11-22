@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Text, type TextSize, type TextTone } from "../../leaf/Text/index.js"
+import { Text, type TextRole, type TextTone } from "../../leaf/Text/index.js"
 import { TextAction } from "../../leaf/TextAction/index.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -12,7 +12,8 @@ export type ExpandableTextProps = NoChildren & {
     readonly moreLabel: string
     /** The command that closes it again ("Thu gọn"). */
     readonly lessLabel: string
-    readonly size?: TextSize
+    /** The type role of the copy (default `body`). */
+    readonly role?: TextRole
     readonly tone?: TextTone
 }
 
@@ -20,7 +21,7 @@ export type ExpandableTextProps = NoChildren & {
  * Body copy clamped to two lines with a "Xem thêm" command (0.48.0, _TYPOGRAPHY.md: body is clamped to 2 lines, followed by "Xem thêm" where needed).
  * The command exists only while the copy overflows its two lines; it toggles the clamp and keeps the full text in the DOM.
  */
-export const ExpandableText = ({ text, moreLabel, lessLabel, size, tone }: ExpandableTextProps) => {
+export const ExpandableText = ({ text, moreLabel, lessLabel, role, tone }: ExpandableTextProps) => {
     const ref = useRef<HTMLSpanElement>(null)
     const [isOpen, setIsOpen] = useState(false)
     const [isLong, setIsLong] = useState(false)
@@ -31,7 +32,7 @@ export const ExpandableText = ({ text, moreLabel, lessLabel, size, tone }: Expan
     }, [text, isOpen])
     return (
         <span ref={ref} className="starci-core-expandable-text" data-component="ExpandableText" data-tier="branch" data-grammar-expanded={isOpen ? "true" : "false"}>
-            <Text {...(size === undefined ? {} : { size })} {...(tone === undefined ? {} : { tone })} {...(isOpen ? {} : { overflow: "clamp-2" as const })}>{text}</Text>
+            <Text {...(role === undefined ? {} : { role })} {...(tone === undefined ? {} : { tone })} {...(isOpen ? {} : { overflow: "clamp-2" as const })}>{text}</Text>
             {isLong || isOpen ? <TextAction appearance="inline" onPress={() => setIsOpen(!isOpen)}>{isOpen ? lessLabel : moreLabel}</TextAction> : null}
         </span>
     )

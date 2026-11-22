@@ -58,7 +58,7 @@ export const PinnedActionBar: Story = {
         <div style={{ maxWidth: 390 }}>
           <Placeholder label="Page content" height={80} />
           <G.PinnedActionBar label="Install a module" visibility="always">
-            <G.Button intent="commit" width="fill" onPress={noop}>Install module</G.Button>
+            <G.Button variant="primary" width="fill" onPress={noop}>Install module</G.Button>
           </G.PinnedActionBar>
         </div>
       </State>
@@ -77,14 +77,14 @@ export const PinnedActionBarSummary: Story = {
             label="Unsaved changes"
             visibility="always"
             summary="3 documents changed"
-            dismiss={<G.Button intent="dismiss" onPress={noop}>Discard</G.Button>}
-            commit={<G.Button intent="commit" onPress={noop}>Save changes</G.Button>}
+            dismiss={<G.Button variant="border" onPress={noop}>Discard</G.Button>}
+            commit={<G.Button variant="primary" onPress={noop}>Save changes</G.Button>}
           />
         </div>
       </State>
       <State label="Summary node with a commit only" direction="column">
         <div style={{ maxWidth: 390 }}>
-          <G.PinnedActionBar label="Cart" visibility="always" summary={<G.Text>Total <strong>$48.00</strong></G.Text>} commit={<G.Button intent="commit" onPress={noop}>Check out</G.Button>} />
+          <G.PinnedActionBar label="Cart" visibility="always" summary={<G.Text>Total <strong>$48.00</strong></G.Text>} commit={<G.Button variant="primary" onPress={noop}>Check out</G.Button>} />
         </div>
       </State>
     </div>
@@ -104,7 +104,7 @@ const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
           status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode · not posted</G.Badge></>,
           meta: 'Wire transfer · ****6789',
           description: 'Payments arrive by webhook and are matched to invoices.',
-          actions: <><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>,
+          actions: <><G.Button variant="border" onPress={noop}>Switch to live</G.Button><G.Button variant="danger" onPress={noop}>Disconnect</G.Button></>,
           ...(withTabs ? { tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }, { id: 'test', label: 'Test' }, { id: 'agents', label: 'Agents' }] } } : {}),
         }}
       >
@@ -203,7 +203,7 @@ const PageDemo = ({ withHeader, isLoading = false }: { readonly withHeader: bool
           breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] },
           title: 'Main account',
           description: 'Payments arrive by webhook and are matched to invoices.',
-          actions: <G.Button intent="neutral" onPress={noop}>Switch to live</G.Button>,
+          actions: <G.Button variant="border" onPress={noop}>Switch to live</G.Button>,
           tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }] },
         },
       } : {})}
@@ -344,7 +344,7 @@ export const Footer: Story = {
         { id: 'product', label: 'Product', links: [{ id: 'features', label: 'Features', href: '#features', isCurrent: true }, { id: 'pricing', label: 'Pricing', href: '#pricing' }] },
         { id: 'support', label: 'Support', links: [{ id: 'help', label: 'Help centre', href: '#help' }, { id: 'status', label: 'Status', href: 'https://status.example.com', kind: 'external' }] },
       ]}
-      legal={<G.Text size="xs" tone="muted">© 2026 Studio. All rights reserved.</G.Text>}
+      legal={<G.Text role="caption">© 2026 Studio. All rights reserved.</G.Text>}
     />
   ),
 };
@@ -356,7 +356,7 @@ export const TopBarSubnavigation: Story = {
       position="static"
       brand={<strong>Studio</strong>}
       navigation={inlineLinks}
-      actions={<G.Avatar name="Alex Morgan" size="sm" />}
+      actions={<G.Avatar name="Alex Morgan" size="md" />}
       menu={{ icon: <G.Icon source={MenuGlyph} />, openLabel: 'Open navigation', closeLabel: 'Close navigation', isOpen: false, onOpenChange: noop }}
       subnavigation={<G.Link href="#new">What is new</G.Link>}
       subnavigationLabel="Features"
@@ -438,7 +438,7 @@ const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolea
             <>
               <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={UserGlyph} />
               <G.IconButton source={BellGlyph} label="Notifications" onPress={noop} />
-              <G.AvatarButton name="Alex Morgan" size="control" />
+              <G.AvatarButton name="Alex Morgan" size="md" />
             </>
           }
         />
@@ -751,7 +751,7 @@ const PaneInsetDemo = () => {
           <G.PaneSection bleed="inline">
             <G.HorizontalScrollRegion aria-label="Quick replies" overflow="needed" carets={false}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {chipLabels.map((chip) => <G.Button key={chip} size="sm" intent="alternative" onPress={noop}>{chip}</G.Button>)}
+                {chipLabels.map((chip) => <G.Button key={chip} size="sm" variant="border" onPress={noop}>{chip}</G.Button>)}
               </div>
             </G.HorizontalScrollRegion>
           </G.PaneSection>
@@ -761,7 +761,7 @@ const PaneInsetDemo = () => {
               <div style={{ flex: 1, minWidth: 0 }}><G.Textarea label="Message" isLabelHidden rows={1} /></div>
               <G.Button onPress={noop}>Send</G.Button>
             </div>
-            <G.Text size="sm" tone="muted">Enter sends, Shift+Enter breaks the line</G.Text>
+            <G.Text role="body" tone="muted">Enter sends, Shift+Enter breaks the line</G.Text>
           </G.PaneSection>
         </G.Pane>
         <G.Pane
@@ -928,24 +928,24 @@ export const MessageBubble: Story = {
       <G.MessageBubble
         author="Sam"
         meta="09:12"
-        avatar={<G.Avatar name="Sam" size="sm" />}
+        avatar={<G.Avatar name="Sam" size="md" />}
         actions={
           <>
-            <G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />
-            <G.Tooltip content="Reply" trigger={<G.IconButton intent="neutral" source={BellGlyph} label="Reply" onPress={noop} />} />
+            <G.Tooltip content="Copy" trigger={<G.IconButton variant="border" source={BookGlyph} label="Copy" onPress={noop} />} />
+            <G.Tooltip content="Reply" trigger={<G.IconButton variant="border" source={BellGlyph} label="Reply" onPress={noop} />} />
           </>
         } body={"Can the order for table 4 move to 19:30?"} />
       <G.MessageBubble
         side="outgoing"
         meta="09:13"
-        actions={<G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />} body={"Yes, moved. The kitchen has the new time."} />
+        actions={<G.Tooltip content="Copy" trigger={<G.IconButton variant="border" source={BookGlyph} label="Copy" onPress={noop} />} />} body={"Yes, moved. The kitchen has the new time."} />
       <G.MessageBubble
         author="Assistant"
         status={<G.Badge>AI</G.Badge>}
         meta="09:13"
-        avatar={<G.IconTile source={BellGlyph} size="sm" />}
+        avatar={<G.IconTile source={BellGlyph} />}
         isHighlight
-        footer={<G.Button intent="alternative" size="sm" onPress={noop}>Approve draft</G.Button>} body={'Draft reply ready.\nIt keeps the original price.'} />
+        footer={<G.Button variant="border" size="sm" onPress={noop}>Approve draft</G.Button>} body={'Draft reply ready.\nIt keeps the original price.'} />
       <G.MessageBubble isLoading side="outgoing" />
       <G.MessageBubble isLoading hasAvatar />
     </div>
@@ -1036,8 +1036,8 @@ export const GridWeekSummary: Story = {
 
 const copyReply = (
   <>
-    <G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />
-    <G.Tooltip content="Reply" trigger={<G.IconButton intent="neutral" source={BellGlyph} label="Reply" onPress={noop} />} />
+    <G.Tooltip content="Copy" trigger={<G.IconButton variant="border" source={BookGlyph} label="Copy" onPress={noop} />} />
+    <G.Tooltip content="Reply" trigger={<G.IconButton variant="border" source={BellGlyph} label="Reply" onPress={noop} />} />
   </>
 );
 
@@ -1045,7 +1045,7 @@ const copyReply = (
 export const MessageBubbleInlineActions: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '40rem' }}>
-      <G.MessageBubble author="Sam" meta="09:12" avatar={<G.Avatar name="Sam" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'Can the order for table 4 move to 19:30?'} />
+      <G.MessageBubble author="Sam" meta="09:12" avatar={<G.Avatar name="Sam" size="md" />} actionsPlacement="inline" actions={copyReply} body={'Can the order for table 4 move to 19:30?'} />
       <G.MessageBubble side="outgoing" meta="09:13" actionsPlacement="inline" actions={copyReply} body={'Yes, moved. The kitchen has the new time.'} />
       <G.MessageBubble author="Sam" meta="09:14" actionsPlacement="floating" actions={copyReply} body={'The floating default, for comparison.'} />
     </div>
@@ -1058,7 +1058,7 @@ export const MessageBubbleMeasure: Story = {
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '64rem' }}>
       {(['standard', 'wide'] as const).map((measure) => (
         <Fragment key={measure}>
-          <G.MessageBubble measure={measure} author="Sam" meta={measure} avatar={<G.Avatar name="Sam" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'The booking for table 4 moves to 19:30 and the kitchen needs the new time before the first order goes in, so please confirm with the floor lead and tell the guests the table is ready from 19:25.'} />
+          <G.MessageBubble measure={measure} author="Sam" meta={measure} avatar={<G.Avatar name="Sam" size="md" />} actionsPlacement="inline" actions={copyReply} body={'The booking for table 4 moves to 19:30 and the kitchen needs the new time before the first order goes in, so please confirm with the floor lead and tell the guests the table is ready from 19:25.'} />
           <G.MessageBubble measure={measure} side="outgoing" meta={measure} body={'Confirmed with the floor lead, the guests are told. The kitchen has the 19:30 time and the first order goes in at 19:35 once everyone is seated at the table.'} />
         </Fragment>
       ))}

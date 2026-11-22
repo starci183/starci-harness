@@ -21,8 +21,8 @@ import { attributeOf, descendants, elementOf, grammarBindings, isListRow, keyNam
 /** The Text sizes a cell or row takes: 14 (md, sm) and 12 (xs). */
 const CELL_SIZES: ReadonlySet<string> = new Set(["xs", "sm", "md"])
 
-/** The type roles above the row sizes (0.54.0): a figure or a title in a cell or a row is a heading drawn in a list. */
-const HEADING_ROLES: ReadonlySet<string> = new Set(["figure", "title.page", "title.section"])
+/** The type roles above the row sizes (0.54.0, and the site group of 0.55.0): a figure or a title in a cell or a row is a heading drawn in a list. */
+const HEADING_ROLES: ReadonlySet<string> = new Set(["figure", "title.page", "title.section", "display.hero", "display.section", "display.figure", "lead", "title.card"])
 
 const HEADING_TAGS: ReadonlySet<string> = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
 

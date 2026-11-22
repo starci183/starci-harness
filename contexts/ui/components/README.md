@@ -1,7 +1,7 @@
 # Components
 
 One page per component role: **when and how** to use it. What the role *is* in every grammar (anatomy,
-variants, the intent x placement map, the size set, states, what a grammar keeps or may change) is the grammar
+variants, the three Button looks, the size set, states, what a grammar keeps or may change) is the grammar
 contract's entry for that role ([../../grammars/contract.md](../../grammars/contract.md)); what HeroUI ships
 underneath is [../../vendor/heroui.md](../../vendor/heroui.md). These pages link both and restate neither.
 
@@ -30,7 +30,7 @@ Choice `<role>.choose.<decision>`: <the question the table answers>
 | --- | --- |
 | Row | a short lowercase key, stable like the anchor; a row is cited, never renumbered |
 | When | the condition, stated as facts the spec or the placement already settled (never a look) |
-| Choose | the component, intent, step or composition that condition takes |
+| Choose | the component, variant, step or composition that condition takes |
 | Measure | `DNA-...` when a DNA gate already measures the row's outcome; `candidate: <what to count or measure>` when it could be measured; `judgement` when only a reader can tell |
 
 Rules of the format:
@@ -38,7 +38,7 @@ Rules of the format:
 - **Exactly one row applies.** The rows of one table exclude each other; when two could apply, the earlier row
   wins and the table says so. A condition no row covers is a gap the owner closes with a row, not improvised.
 - **Cite the row.** A spec, a draw record or a code review names each choice it made as `<anchor>:<row>`, for
-  example `tabs.choose.level:region` or `button.choose.intent:dismiss`. The anchor is stable: a renamed decision
+  example `tabs.choose.level:region` or `button.choose.variant:border`. The anchor is stable: a renamed decision
   keeps its anchor, a removed one is never reused.
 - **One owner per decision.** A decision has one table in the whole tree; a page that depends on another
   page's decision links its anchor and does not copy its rows. Composition rules (`CTA-*`, `COLLECTION-*`) state
@@ -77,6 +77,9 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | show items as stages, as entries on two axes, or as a few amounts to compare | [data-views](data-views.md) |
+| draw a chart or a sparkline (a measure over a category or a date) | [charts](charts.md) |
+| show a PDF document, a page at a time | [pdf](pdf.md) |
+| take files or folders to upload, and show each upload until it is done | [upload](upload.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |
@@ -90,3 +93,5 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
 | move a public marketing page: a section rising into view, a loop of names, a figure counting up, a picture that follows the text | [motion](motion.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |
+| ONLY when the reader must see a structure of steps, relations or clusters (a run's flow, a data ERD, a knowledge map): the core's graph ext | [graph](graph.md) |
+| ONLY for a long authored document written as markdown: the core's markdown ext | [markdown](markdown.md) |

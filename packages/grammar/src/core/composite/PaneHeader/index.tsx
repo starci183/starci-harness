@@ -63,7 +63,7 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
         >
             {back === undefined ? null : (
                 <span className="starci-core-pane-header-back" data-grammar-back-placement={back.placement ?? "narrow"}>
-                    <IconButton intent="dismiss" source={ArrowLeftIcon} label={back.label} onPress={back.onPress} />
+                    <IconButton variant="border" source={ArrowLeftIcon} label={back.label} onPress={back.onPress} />
                 </span>
             )}
             {mark === undefined ? null : <span className="starci-core-pane-header-mark" aria-hidden={isLoading || undefined}>{isLoading ? <SkeletonPlaceholder shape="block">{mark}</SkeletonPlaceholder> : mark}</span>}
@@ -74,13 +74,13 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
                     </div>
                     {status === undefined ? null : <span className="starci-core-pane-header-status" aria-hidden={isLoading || undefined}>{isLoading ? <SkeletonPlaceholder>{status}</SkeletonPlaceholder> : status}</span>}
                 </div>
-                {description === undefined ? null : <Text size="xs" tone="muted" isLoading={isLoading}>{description}</Text>}
+                {description === undefined ? null : <Text role="caption" isLoading={isLoading}>{description}</Text>}
             </div>
             {actions === undefined && openerButton === null && close === undefined ? null : (
                 <span className="starci-core-pane-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>
                     {actions === undefined ? null : isLoading ? <SkeletonPlaceholder shape="block">{actions}</SkeletonPlaceholder> : actions}
                     {isLoading ? null : openerButton}
-                    {close === undefined || isLoading ? null : <IconButton intent="dismiss" label={close.label} onPress={close.onPress} />}
+                    {close === undefined || isLoading ? null : <IconButton variant="border" label={close.label} onPress={close.onPress} />}
                 </span>
             )}
         </div>

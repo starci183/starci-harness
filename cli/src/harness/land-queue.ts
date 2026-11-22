@@ -90,6 +90,12 @@ export interface LaneStatus {
     readonly requeued?: boolean
     /** Migration files the lane added, to apply once landed. */
     readonly migrations?: readonly string[]
+    /** A withdrawn lane only: the batch it was in (queued or gating) when it was withdrawn; absent when it was only waiting. */
+    readonly fromBatch?: string
+    /** A lane whose batch was aborted because a batch-mate was withdrawn: that batch. The lane stays ready and is gated again in the next one. */
+    readonly reformedFrom?: string
+    /** The newer sha of the lane whose push or registration cancelled the run this status described (harness/supersede.ts). */
+    readonly supersededBy?: string
 }
 
 /** The folders and files of a lanes folder. */
@@ -165,6 +171,23 @@ export const dropReady = (dir: string, lane: string, sha?: string): boolean => {
     if (!isReady(current) || (sha !== undefined && current.sha !== sha)) return false
     unlinkSync(file)
     return true
+}
+
+/**
+ * The lanes of a batch that are no longer ready as the batch took them: `withdrawn` (no registration left: `lane withdraw`) and
+ * `replaced` (registered again with another sha, which belongs to the next batch). The lander asks this before each gate run, after
+ * it and right before the push, so a lane withdrawn mid-gate is never landed.
+ */
+export const notReadyAny = (dir: string, lanes: readonly ReadyEntry[]): { readonly withdrawn: readonly ReadyEntry[]; readonly replaced: readonly ReadyEntry[] } => {
+    const now = new Map(readyEntries(dir).map((entry) => [entry.lane, entry]))
+    const withdrawn: ReadyEntry[] = []
+    const replaced: ReadyEntry[] = []
+    for (const lane of lanes) {
+        const current = now.get(lane.lane)
+        if (current === undefined) withdrawn.push(lane)
+        else if (current.sha !== lane.sha) replaced.push(lane)
+    }
+    return { withdrawn, replaced }
 }
 
 /** The status a lane monitors. */

@@ -90,14 +90,14 @@ Invalid:
 
 ```tsx
 import { PageHeader, Button } from "@starci/grammar/core"
-const Head = () => <PageHeader title="Agents" actions={<Button intent="commit" width="fill">Add agent</Button>} />
+const Head = () => <PageHeader title="Agents" actions={<Button variant="primary" width="fill">Add agent</Button>} />
 ```
 
 Valid:
 
 ```tsx
 import { PageHeader, Button } from "@starci/grammar/core"
-const Head = () => <PageHeader title="Agents" actions={<Button intent="commit">Add agent</Button>} />
+const Head = () => <PageHeader title="Agents" actions={<Button variant="primary">Add agent</Button>} />
 ```
 
 ## `starci-fe/no-heading-above-card`

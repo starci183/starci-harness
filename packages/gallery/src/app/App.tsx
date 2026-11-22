@@ -102,7 +102,7 @@ export function App(): ReactElement {
                     {screen !== null && !route.flows && !narrow ? (
                         <Tooltip
                             content={explainOpen ? labels.hideExplain : labels.showExplain}
-                            trigger={<IconButton glyph="panel-end" intent="neutral" size="sm" label={explainOpen ? labels.hideExplain : labels.showExplain} isActive={explainOpen} aria-expanded={explainOpen} onPress={toggleExplain} />}
+                            trigger={<IconButton glyph="panel-end" variant="border" size="sm" label={explainOpen ? labels.hideExplain : labels.showExplain} isActive={explainOpen} aria-expanded={explainOpen} onPress={toggleExplain} />}
                         />
                     ) : null}
                 </header>

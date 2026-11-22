@@ -8,14 +8,14 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 ## `starci-grammar/section-head-action`
 
-- A Grammar `Button` inside a `Section`'s `action` prop that is not exactly `intent="neutral" size="sm"` (message `button`), or that carries an icon prop (`startGlyph`, `startContent`, `endContent`, `icon`; message `icon`).
+- A Grammar `Button` inside a `Section`'s `action` prop that is not exactly a border `size="sm"` Button (no `variant`, or `variant="border"`) (message `button`), or that carries an icon prop (`startGlyph`, `startContent`, `endContent`, `icon`; message `icon`).
 - More than one Grammar `Button`, `Link`, `IconButton` or `TextAction` inside that `action` (message `many`).
 
 **Invalid**
 
 ```tsx
-<Section title="Runs" action={<Button intent="commit" size="sm" onPress={open}>Open</Button>}>...</Section>
-<Section title="Runs" action={<Button intent="neutral" size="sm" startGlyph="plus" onPress={open}>Add</Button>}>...</Section>
+<Section title="Runs" action={<Button variant="primary" size="sm" onPress={open}>Open</Button>}>...</Section>
+<Section title="Runs" action={<Button size="sm" startGlyph="plus" onPress={open}>Add</Button>}>...</Section>
 <Section title="Runs" action={<><Link href="/a">A</Link><IconButton label="About" glyph="more" /></>}>...</Section>
 ```
 
@@ -24,7 +24,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 ```tsx
 <Section title="Runs" count={3} action={<Link variant="head" href="/runs">All runs</Link>}>...</Section>
 <Section title="Runs" action={<IconButton label="About runs" glyph="more" />}>...</Section>
-<Section title="Provider" count={2} action={<Button intent="neutral" size="sm" onPress={add}>Add provider</Button>}>...</Section>
+<Section title="Provider" count={2} action={<Button size="sm" onPress={add}>Add provider</Button>}>...</Section>
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

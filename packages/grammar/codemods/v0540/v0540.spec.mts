@@ -10,15 +10,15 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 import ts from "typescript"
-import { TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
+import { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
 import { CODEMODS, codemodId, codemodsBetween } from "../index.mts"
 import { MARK, ROLES, mapClassList, roleClass, runV0540, sourceRoots, transformSource, v0540Markdown } from "./index.mts"
 
 const FIXTURES = fileURLToPath(new URL("./fixtures/", import.meta.url))
 const read = (side: "before" | "after", name: string): string => readFileSync(join(FIXTURES, side, name), "utf8")
 
-test("the roles and their classes are Grammar 0.54.0's", () => {
-    assert.deepEqual([...ROLES], [...TEXT_ROLES])
+test("the roles and their classes are Grammar 0.54.0's (the site group of 0.55.0 is v0550's)", () => {
+    assert.deepEqual([...ROLES], TEXT_ROLES.filter((role) => !SITE_TEXT_ROLES.includes(role)))
     for (const role of ROLES) assert.equal(roleClass(role), typeRoleClassName(role))
 })
 
@@ -74,7 +74,7 @@ test("codemods are named after their Grammar version and run in version order be
     assert.equal(codemodId("0.54.0"), "v0540")
     for (const codemod of CODEMODS) assert.equal(codemod.id, codemodId(codemod.version))
     assert.deepEqual(codemodsBetween("0.52.3", "0.54.0").map((c) => c.id), ["v0540"])
-    assert.deepEqual(codemodsBetween("0.54.0", "0.55.0").map((c) => c.id), [])
+    assert.deepEqual(codemodsBetween("0.54.0", "0.54.1").map((c) => c.id), [])
     assert.deepEqual(codemodsBetween("0.53.0", "0.53.9").map((c) => c.id), [])
 })
 

@@ -2100,26 +2100,15 @@ FE_BLOCK_PRODUCT_HOOK_DEFINITION:
   kind: check-finding
 
 FE_BUTTON_INTENT:
-  title: "Button variant is chosen by hand instead of by intent"
-  title_vi: "Variant của nút được chọn thủ công thay vì theo intent"
-  meaning_vi: "Button hoặc IconButton của ứng dụng thiếu intent, truyền variant, đặt nút xác nhận xoá ngoài hộp thoại xác nhận, có nhiều hơn một nút commit trong một lần render, hoặc đặt nút commit trong từng phần tử của danh sách."
+  title: "Button takes a look outside primary, border and danger"
+  title_vi: "Nút dùng kiểu ngoài primary, border và danger"
+  meaning_vi: "Button hoặc IconButton của ứng dụng dùng một kiểu ngoài ba kiểu primary, border, danger, có nhiều hơn một nút primary trong một lần render, hoặc đặt nút primary trong từng phần tử của danh sách."
   causes_vi:
-    - "Truyền variant thay vì intent cho Button hoặc IconButton"
-    - "Đặt intent destructive với step confirm ngoài AlertDialog hoặc ConfirmDialog"
-    - "Đặt hai nút commit trong cùng một lần render hoặc một nút commit trong mỗi thẻ của danh sách"
-  nextStep_vi: "Khai báo intent (và step cho destructive) theo hệ quả của hành động, bỏ variant để Grammar tự suy ra, và chạy codemod button-intent cho các nút cũ."
+    - "Dùng variant cũ (secondary, tertiary, ghost, danger-soft) hoặc intent đã bị xoá"
+    - "Đặt hai nút primary trong cùng một lần render hoặc một nút primary trong mỗi thẻ của danh sách"
+  nextStep_vi: "Chọn variant primary, border hoặc danger theo vai trò của nút, và chạy `starci app codemod v0550` cho các nút cũ."
   owner: "op-retry"
   kind: "check-finding"
-
-FE_BUTTON_INTENT_REQUIRED:
-  title: "A button has no declared intent"
-  title_vi: "Nút chưa khai báo intent"
-  meaning_vi: "Button hoặc IconButton tại <file> chưa nêu ý định của lệnh."
-  causes_vi:
-    - "Bỏ intent nên Grammar không có dữ kiện để chọn variant."
-  nextStep_vi: "Khai báo intent theo hệ quả và thứ hạng của lệnh trong quyết định (CTA-6)."
-  owner: op-retry
-  kind: check-finding
 
 
 FE_CLIENT_BOUNDARY:
@@ -2290,16 +2279,6 @@ FE_DANGEROUS_HTML:
   causes_vi:
     - "Vi phạm luật R55: Chỉ được `dangerouslySetInnerHTML` trên `<script>` mang JSON-LD hoặc mã khởi tạo theme từ hằng số do app viết; nội dung khác render thành phần tử."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; nợ cũ được chia thành các lane sửa cơ học, op không thêm ngoại lệ và không tắt luật."
-  owner: op-retry
-  kind: check-finding
-
-FE_DESTRUCTIVE_CONFIRM_IN_DIALOG:
-  title: "A destructive confirm is outside its confirmation dialog"
-  title_vi: "Lệnh xác nhận phá hủy nằm ngoài hộp thoại xác nhận"
-  meaning_vi: "Nút destructive confirm tại <file> không nằm trong nội dung AlertDialog hoặc ConfirmDialog cùng tệp."
-  causes_vi:
-    - "Đặt lần nhấn cuối ngoài hộp thoại hoặc trên trigger."
-  nextStep_vi: "Đặt confirm trong nội dung hộp thoại cùng tệp; trigger dùng step entry (CTA-6)."
   owner: op-retry
   kind: check-finding
 
@@ -3475,7 +3454,7 @@ HFS_APP_GALLERY_SCREEN_INVALID:
   meaning_vi: "screen.yaml của màn hình sai khuôn (thiếu khóa bắt buộc, sai id, ảnh, section hoặc considered)."
   causes_vi:
     - "Vi phạm PROJECT-GALLERY-8: screen.yaml thay explain.md và audit.json, phải đủ schema, screen, title, route, area, summary, code, shots, sections, considered, audit."
-    - "Khối audit sai khuôn: mỗi vòng đủ bảy lens (order, layout, actionable, live, words, states, truth), verdict pass, fixed hoặc open, fixed/open có notes, n liên tiếp, at là ISO có múi giờ, baseline (nếu có) là { at, rounds }."
+    - "Khối audit sai khuôn: mỗi vòng đủ mười lens (bảy lens lõi order, layout, actionable, live, words, states, truth và ba lens nội dung business, hand-composed, tech-leak; vòng ghi trước khi có lens nội dung chỉ cần bảy lens lõi), verdict pass, fixed hoặc open, fixed/open có notes, n liên tiếp, at là ISO có múi giờ, baseline (nếu có) là { at, rounds }."
   nextStep_vi: "Mở tệp, sửa theo danh sách lỗi của finding; `starci audit run <màn>` ghi lại khung chuẩn, `starci audit cycle <màn> --reason <lý do>` mở chu kỳ mới."
   owner: op-retry
   kind: check-finding

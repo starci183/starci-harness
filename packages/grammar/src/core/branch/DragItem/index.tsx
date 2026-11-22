@@ -3,7 +3,7 @@
 import type { DragEventHandler, ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
 
-export type DragItemTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type DragItemTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
 
 export type DragItemProps = NoChildren & {
     /** What the item holds. Include a published control that provides the same operation without dragging. */

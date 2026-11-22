@@ -1,11 +1,11 @@
 "use client"
 
+import { AgentName } from "../../leaf/AgentName/index.js"
 import { Description as HeroDescription, Header as HeroHeader, Label as HeroLabel, ListBox as HeroListBox, Separator as HeroSeparator, type Selection } from "@heroui/react"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
-import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { ItemDescriptionLines } from "../../collectionItem.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
@@ -19,6 +19,10 @@ type ListBoxItemFields = {
     readonly id: string
     /** The row's title, its accessible name and its typeahead text. */
     readonly label: string
+    /** The row names an AI agent (a member of the members pane): a small neutral "AI" Chip follows the label (`AgentName`). Not part of the accessible name or the typeahead text. */
+    readonly isAgent?: boolean
+    /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
+    readonly agentLabel?: string
     /**
      * An optional decorative glyph in the title line, inside HeroUI's `Label` before `label`.
      * It sits on the text baseline in the shared leading wrapper, is `aria-hidden` (A11Y-2) and never
@@ -32,7 +36,7 @@ type ListBoxItemFields = {
     readonly emphasis?: "unread"
     /**
      * Decorative identity content centred in the fixed slot for this item's size. A group room passes an
-     * `AvatarGroup layout="grid"` of the same `size` as the row (sm 32, md 40, lg 48), which fills the slot exactly.
+     * `AvatarGroup layout="grid"` (`md` 40px, the round-mark size of a list lead), centred in the slot.
      */
     readonly leading?: ReactNode
     /** Overrides the list's leading slot size for this item. */
@@ -151,7 +155,7 @@ export const ListBox = ({
             {item.labelLeading === undefined ? null : (
                 <><span aria-hidden="true" data-grammar-list-leading="label" data-contract="A11Y-2">{item.labelLeading}</span>{" "}</>
             )}
-            {item.label}
+            <AgentName isAgent={item.isAgent === true} {...(item.agentLabel === undefined ? {} : { agentLabel: item.agentLabel })} name={item.label} />
         </HeroLabel>
     )
     const renderItem = (item: ListBoxItem) => (
@@ -167,7 +171,7 @@ export const ListBox = ({
             {...(item.href === undefined || selectionMode !== "none" ? {} : { href: item.href, "data-grammar-list-link": "true" })}
             {...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled })}
         >
-            <ButtonPlacementProvider placement="item">
+            <>
             {item.leading === undefined ? null : <span aria-hidden="true" data-grammar-list-leading="true" data-contract="A11Y-2">{item.leading}</span>}
             {item.description === undefined && item.footer === undefined && item.meta === undefined ? renderLabel(item) : (
                 <div data-grammar-list-copy="true">
@@ -185,7 +189,7 @@ export const ListBox = ({
             )}
             {item.trailing === undefined ? null : <span data-grammar-list-trailing="true">{item.trailing}</span>}
             {selectionMode === "none" || selectionIndicator === "none" ? null : <HeroListBox.ItemIndicator />}
-            </ButtonPlacementProvider>
+            </>
         </HeroListBox.Item>
     )
     return (

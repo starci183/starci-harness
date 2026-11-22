@@ -18,9 +18,9 @@ const Replay = ({ shape = "rounded", isBlock = false }: { readonly shape?: G.Spo
   return (
     <G.Cluster gap="inline">
       <G.Spotlight isActive={isActive} shape={shape} isBlock={isBlock} onEnd={() => { setIsActive(false); setEnded((count) => count + 1) }}>
-        {shape === "circle" ? <G.AvatarButton name="Alex Morgan" /> : <G.Button intent="commit">Start here</G.Button>}
+        {shape === "circle" ? <G.AvatarButton name="Alex Morgan" /> : <G.Button variant="primary">Start here</G.Button>}
       </G.Spotlight>
-      <G.Button size="sm" intent="neutral" onPress={() => setIsActive(true)}>{`Point again (ended ${ended}x)`}</G.Button>
+      <G.Button size="sm" variant="border" onPress={() => setIsActive(true)}>{`Point again (ended ${ended}x)`}</G.Button>
     </G.Cluster>
   )
 }
@@ -33,14 +33,14 @@ export const SpotlightStates: Story = {
         <Replay />
       </State>
       <State label="Pill and circle targets">
-        <G.Spotlight isActive shape="pill"><G.Button intent="commit">Pill</G.Button></G.Spotlight>
+        <G.Spotlight isActive shape="pill"><G.Button variant="primary">Pill</G.Button></G.Spotlight>
         <Replay shape="circle" />
       </State>
       <State label="Reduced motion: the ring stays static for the same 3s with no pulse (set prefers-reduced-motion: reduce in the browser to see it)">
         <G.Text tone="muted">Same ring, same time, no pulse.</G.Text>
       </State>
       <State label="Ended (isActive false): no ring, no layout space was taken">
-        <G.Spotlight isActive={false}><G.Button intent="commit">Start here</G.Button></G.Spotlight>
+        <G.Spotlight isActive={false}><G.Button variant="primary">Start here</G.Button></G.Spotlight>
       </State>
     </Matrix>
   ),

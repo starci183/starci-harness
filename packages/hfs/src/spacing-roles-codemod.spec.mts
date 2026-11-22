@@ -76,5 +76,5 @@ test('the arguments refuse what the verb does not take', () => {
   assert.deepEqual(spacingRolesArguments(['--format', 'json', '--out', 'r.json']), { write: false, format: 'json', out: 'r.json' });
   assert.throws(() => spacingRolesArguments(['--format=xml']), /json or markdown/);
   assert.throws(() => spacingRolesArguments(['--nope']), /unknown codemod option/);
-  assert.throws(() => codemodMain(['other'], { cwd: '.', stdout: () => undefined }), /button-intent or spacing-roles/);
+  assert.throws(() => codemodMain(['other'], { cwd: '.', stdout: () => undefined }), /spacing-roles or theme-tokens/);
 });

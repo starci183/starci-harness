@@ -163,7 +163,7 @@ export const TrailingEdges: Story = {
         kind="list"
         title="Luồng"
         items={[
-          { id: 'a', title: 'Luồng 1', description: 'Khi có tin Zalo mới', meta: { text: '3 lượt chạy xong' }, action: { label: 'Mở quy trình', intent: 'neutral', href: '#a' }, onPress: () => undefined },
+          { id: 'a', title: 'Luồng 1', description: 'Khi có tin Zalo mới', meta: { text: '3 lượt chạy xong' }, action: { label: 'Mở quy trình', variant: 'border', href: '#a' }, onPress: () => undefined },
           { id: 'b', title: 'Luồng 2', description: 'Mỗi sáng 8:00', href: '#b' },
         ]}
         empty={<G.EmptyNotice message="Empty" />}

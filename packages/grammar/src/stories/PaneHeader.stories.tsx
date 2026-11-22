@@ -12,7 +12,7 @@ const meta: Meta = { title: "Navigation & Data/Pane header" }
 export default meta
 type Story = StoryObj
 
-const actions = <G.IconButton intent="neutral" source={EllipsisGlyph} label="More actions" />
+const actions = <G.IconButton variant="border" source={EllipsisGlyph} label="More actions" />
 
 const row = (title: string, isLoading = false) => (
     <div style={{ blockSize: "14rem" }}>

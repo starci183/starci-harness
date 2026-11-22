@@ -114,20 +114,20 @@ const onePhase = (group: string, phase: Phase, pairs: () => ReadonlyArray<Pair>)
 /* ------------------------------------------------------------------ typography */
 
 const typography = (): ReadonlyArray<Pair> => [
-    ...(["xs", "sm", "md"] as const).map((size) => ({
-        id: `text-${size}`,
-        ready: <G.Text size={size}>Quarterly revenue</G.Text>,
-        loading: <G.Text size={size} isLoading>Quarterly revenue</G.Text>,
+    ...(["caption", "body", "label.item"] as const).map((role) => ({
+        id: `text-${role}`,
+        ready: <G.Text role={role}>Quarterly revenue</G.Text>,
+        loading: <G.Text role={role} isLoading>Quarterly revenue</G.Text>,
     })),
     {
         id: "text-inline-span",
-        ready: <p style={{ margin: 0 }}><G.Text as="span" size="sm">Due today</G.Text></p>,
-        loading: <p style={{ margin: 0 }}><G.Text as="span" size="sm" isLoading>Due today</G.Text></p>,
+        ready: <p style={{ margin: 0 }}><G.Text as="span" role="body">Due today</G.Text></p>,
+        loading: <p style={{ margin: 0 }}><G.Text as="span" role="body" isLoading>Due today</G.Text></p>,
     },
     {
         id: "text-start-content",
-        ready: <G.Text size="sm" startContent={<StarGlyph />}>Starred</G.Text>,
-        loading: <G.Text size="sm" startContent={<StarGlyph />} isLoading>Starred</G.Text>,
+        ready: <G.Text role="body" startContent={<StarGlyph />}>Starred</G.Text>,
+        loading: <G.Text role="body" startContent={<StarGlyph />} isLoading>Starred</G.Text>,
     },
     {
         id: "text-truncate",
@@ -178,8 +178,8 @@ const actions = (): ReadonlyArray<Pair> => [
     })),
     {
         id: "button-start-end-content",
-        ready: <G.Button intent="commit" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop}>Search</G.Button>,
-        loading: <G.Button intent="commit" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop} isLoading>Search</G.Button>,
+        ready: <G.Button variant="primary" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop}>Search</G.Button>,
+        loading: <G.Button variant="primary" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop} isLoading>Search</G.Button>,
     },
     {
         id: "button-fill",
@@ -246,7 +246,7 @@ export const StatusLoading: Story = onePhase("grammar-status", "loading", status
 /* ------------------------------------------------------------------ identity */
 
 const identity = (): ReadonlyArray<Pair> => [
-    ...(["sm", "md", "lg"] as const).map((size) => ({
+    ...(["sm", "md"] as const).map((size) => ({
         id: `avatar-${size}`,
         ready: <G.Avatar name="Alex Morgan" size={size} />,
         loading: <G.Avatar name="Alex Morgan" size={size} isLoading />,
@@ -256,11 +256,11 @@ const identity = (): ReadonlyArray<Pair> => [
         ready: <G.Icon source={SettingsGlyph} usage={usage} />,
         loading: <G.Icon source={SettingsGlyph} usage={usage} isLoading />,
     })),
-    ...(["sm", "md"] as const).map((size) => ({
-        id: `icon-tile-${size}`,
-        ready: <G.IconTile source={UserGlyph} size={size} />,
-        loading: <G.IconTile source={UserGlyph} size={size} isLoading />,
-    })),
+    {
+        id: "icon-tile",
+        ready: <G.IconTile source={UserGlyph} />,
+        loading: <G.IconTile source={UserGlyph} isLoading />,
+    },
 ]
 
 /** Avatar, Icon and IconTile. */
@@ -285,7 +285,7 @@ const pageHeader = (withTabs: boolean, isLoading: boolean) => (
             mark: <G.Avatar name="Acme" shape="rounded" isDecorative />,
             status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode</G.Badge></>,
             meta: "Wire transfer · ****6789",
-            actions: <G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>,
+            actions: <G.Button variant="border" onPress={noop}>Disconnect</G.Button>,
             ...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {}),
         }}
     >

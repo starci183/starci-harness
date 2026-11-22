@@ -15,7 +15,7 @@ Choice `menu.choose.placement`: whether a command is visible or in a menu. The f
 | commit | the command is the view's commit | never in a menu: a visible `Button` (CTA-1) | judgement |
 | value | the entries are form values | `select.choose.role` | judgement |
 | nav | the entries are navigation destinations | links in the sidebar or a list, not a menu | judgement |
-| visible | the item's most frequent command | a visible `neutral` button on the row | candidate: at most one visible command per item |
+| visible | the item's most frequent command | a visible `border` button on the row | candidate: at most one visible command per item |
 | overflow | every other row command | a menu behind one icon button named for its item ("More actions for X") | judgement |
 
 ## Variants

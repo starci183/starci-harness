@@ -5,7 +5,7 @@ import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The tone of one key: the same five the entries it explains take (`ScheduleGrid` items, `IntervalChart` rows). */
-export type LegendTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type LegendTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
 
 /** One key: the mark of a tone and the words it stands for. */
 export type LegendItem = {

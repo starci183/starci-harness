@@ -1,6 +1,6 @@
 {
   "name": "@starci/grammar",
-  "version": "0.54.1",
+  "version": "0.55.0",
   "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
   "keywords": [
     "starci",
@@ -40,9 +40,43 @@
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js"
     },
+    "./core/ext/recharts": {
+      "types": "./dist/core/ext/recharts/index.d.ts",
+      "import": "./dist/core/ext/recharts/index.js"
+    },
+    "./core/ext/pdf": {
+      "types": "./dist/core/ext/pdf/index.d.ts",
+      "import": "./dist/core/ext/pdf/index.js"
+    },
+    "./core/ext/dropzone": {
+      "types": "./dist/core/ext/dropzone/index.d.ts",
+      "import": "./dist/core/ext/dropzone/index.js"
+    },
     "./core.css": "./dist/core/styles.css",
     "./core/styles.css": "./dist/core/styles.css",
     "./core/theme.css": "./dist/core/theme.css",
+    "./core/ext/graph": {
+      "types": "./dist/core/ext/graph/index.d.ts",
+      "import": "./dist/core/ext/graph/index.js"
+    },
+    "./core/ext/graph.css": "./dist/core/ext/graph/styles.css",
+    "./core/ext/markdown": {
+      "types": "./dist/core/ext/markdown/index.d.ts",
+      "import": "./dist/core/ext/markdown/index.js"
+    },
+    "./core/ext/markdown/react": {
+      "types": "./dist/core/ext/markdown/react/index.d.ts",
+      "import": "./dist/core/ext/markdown/react/index.js"
+    },
+    "./core/ext/markdown/server": {
+      "types": "./dist/core/ext/markdown/server/index.d.ts",
+      "import": "./dist/core/ext/markdown/server/index.js"
+    },
+    "./core/ext/markdown/prerender": {
+      "types": "./dist/core/ext/markdown/prerender/index.d.ts",
+      "import": "./dist/core/ext/markdown/prerender/index.js"
+    },
+    "./core/ext/markdown.css": "./dist/core/ext/markdown/styles.css",
     "./theme-hooks.json": "./dist/common/theme-hooks.json",
     "./offset-pop": {
       "types": "./dist/offset-pop/index.d.ts",
@@ -59,18 +93,18 @@
   },
   "scripts": {
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && tsc -p tsconfig.codemods.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.codemods-spec.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.codemods-spec.json && tsc -p tsconfig.specs.json && tsc -p tsconfig.ext-demo.json",
     "prove-theme": "node scripts/prove-theme.mts",
     "audit:gap": "node scripts/audit-gap.mts",
     "check:loading": "node scripts/check-region-loading.mts",
     "check:client": "node scripts/check-client-boundary.mts",
     "check:tones": "node scripts/check-tone-tokens.mts",
     "check:type": "node scripts/check-type-roles.mts",
-    "check:avatar": "node scripts/check-avatar-mark.mts",
     "check:hooks": "node scripts/check-theme-hooks.mts",
     "check:libraries": "node scripts/check-libraries.mts",
     "test:codemods": "node --test \"codemods/**/*.spec.mts\"",
-    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:avatar && npm run check:hooks && npm run check:libraries && npm run test:codemods && npm run lint && npm run build",
+    "test:specs": "node --import ./specs/support/register.mts --test \"specs/*.spec.mts\"",
+    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:hooks && npm run check:libraries && npm run test:codemods && npm run test:specs && npm run lint && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",
     "storybook": "storybook dev -p 6006",
@@ -79,7 +113,9 @@
     "prove-plays": "node scripts/run-plays.mts",
     "prove-render": "playwright test",
     "prove-render:accept": "playwright test --update-snapshots --grep-invert @approved",
-    "prove-render:approve": "playwright test --update-snapshots --grep @approved"
+    "prove-render:approve": "playwright test --update-snapshots --grep @approved",
+    "ext:demo": "vite ext-demo/graph",
+    "ext:e2e": "playwright test -c ext-demo/graph/playwright.config.ts"
   },
   "engines": {
     "node": ">=22"
@@ -96,36 +132,107 @@
     "micromark-extension-gfm": "3.0.0"
   },
   "peerDependencies": {
-    "react": ">=18",
     "@heroui/react": ">=3.2.0",
-    "react-aria-components": "^1.21.1"
+    "@xyflow/react": "^12.11.6",
+    "beautiful-mermaid": "^1.1.3",
+    "d3-force": "^3.0.0",
+    "elkjs": "^0.12.0",
+    "mdast-util-directive": "^3.2.0",
+    "pdfjs-dist": "6.5.438",
+    "react": ">=18",
+    "react-aria-components": "^1.21.1",
+    "react-dropzone": "15.0.0",
+    "recharts": "^3.8.1",
+    "remark-directive": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "shiki": "^4.6.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
-    "@types/mdast": "4.0.4",
-    "@types/react": "^19.0.0",
-    "react": "^19.0.0",
-    "typescript": "^5.0.0",
-    "storybook": "^10.6.0",
-    "@storybook/react-vite": "^10.6.0",
     "@chromatic-com/storybook": "latest",
+    "@eslint/js": "10.0.1",
+    "@internationalized/date": "^3.12.4",
+    "@playwright/test": "1.63.0",
+    "@starci/tsconfig": "2.0.7",
     "@storybook/addon-a11y": "^10.6.0",
     "@storybook/addon-docs": "^10.6.0",
     "@storybook/addon-mcp": "^10.6.0",
-    "eslint-plugin-storybook": "^10.6.0",
-    "react-dom": "^19.0.0",
-    "@internationalized/date": "^3.12.4",
-    "vite": "^8.3.0",
+    "@storybook/react-vite": "^10.6.0",
+    "@types/d3-force": "3.0.10",
+    "@types/jsdom": "21.1.7",
+    "@types/mdast": "4.0.4",
     "@types/node": "^22.0.0",
-    "@starci/tsconfig": "2.0.7",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.3.0",
+    "@xyflow/react": "12.11.6",
     "aria-query": "5.3.0",
-    "@eslint/js": "10.0.1",
+    "beautiful-mermaid": "1.1.3",
+    "d3-force": "3.0.0",
+    "elkjs": "0.12.0",
     "eslint": "10.13.0",
-    "stylelint": "17.15.0",
+    "eslint-plugin-storybook": "^10.6.0",
+    "jsdom": "26.1.0",
+    "mdast-util-directive": "3.2.0",
+    "pdfjs-dist": "6.5.438",
     "postcss-value-parser": "4.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-dropzone": "15.0.0",
+    "recharts": "3.8.1",
+    "remark-directive": "4.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "shiki": "4.6.0",
+    "storybook": "^10.6.0",
+    "stylelint": "17.15.0",
+    "typescript": "^5.0.0",
     "typescript-eslint": "8.72.0",
-    "@playwright/test": "1.63.0"
+    "unified": "11.0.5",
+    "vite": "^8.3.0"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependenciesMeta": {
+    "@xyflow/react": {
+      "optional": true
+    },
+    "elkjs": {
+      "optional": true
+    },
+    "d3-force": {
+      "optional": true
+    },
+    "unified": {
+      "optional": true
+    },
+    "remark-parse": {
+      "optional": true
+    },
+    "remark-gfm": {
+      "optional": true
+    },
+    "remark-directive": {
+      "optional": true
+    },
+    "mdast-util-directive": {
+      "optional": true
+    },
+    "shiki": {
+      "optional": true
+    },
+    "beautiful-mermaid": {
+      "optional": true
+    },
+    "recharts": {
+      "optional": true
+    },
+    "pdfjs-dist": {
+      "optional": true
+    },
+    "react-dropzone": {
+      "optional": true
+    }
   }
 }
