@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (`.husky/pre-push` template): the dev/full level choice is an explicit `if ... then echo dev; else echo full; fi` (same behaviour); the `&& echo dev || echo full` form tripped HFS_BYPASS_MARKER (or-true) on `starci app check --staged` and blocked every app's adopt commit. Apps pick it up with `starci app sync`. New guard `src/shipped-templates-bypass.spec.mts`: every managed template (enumerated by `targetsOf` over every scope, rendered by `render`), the managed render of an app declaration (judged by HFS_BYPASS_MARKER whole, markers and relaxed gate configuration) and every other file under `templates/` must spell no bypass marker.
+
 ## 6.17.8 - 2026-11-22
 
 - Changed (canon pins): the Grammar family is 0.55.0 (`~0.55.0`), @starci/gallery 0.1.20, @starci/eslint-canon-fe 9.22.0, @starci/jest-preset 2.12.0, @starci/stylelint-canon 2.9.9.
