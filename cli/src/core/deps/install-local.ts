@@ -144,16 +144,23 @@ export interface InstallPlan {
     readonly originals: ReadonlyMap<string, string>
     readonly packages: InstallRecord["packages"]
     readonly units: readonly InstallUnit[]
+    /** The named packages this app neither pins nor has in its root lockfile: an `overrides` entry installs nothing, so they are left out. */
+    readonly absent: readonly string[]
 }
 
 /**
  * Plans the pins of an install: every requirement of a named package in the repository's manifests is raised to its local version in the
- * manifest that holds it, and a package nothing requires (hfs, brought in by starci-harness) gets an `overrides` entry in the root manifest.
+ * manifest that holds it, and a package nothing requires but the root lockfile holds (hfs, brought in by starci-harness) gets an `overrides`
+ * entry in the root manifest. A package neither pinned nor locked is not in the app's tree at all (a canon of another Grammar in the dev line):
+ * an override cannot add it, so it is left out and named in `absent`.
  * Each edited manifest belongs to the install unit that owns it (`installUnitOf`). A package an earlier install already replaced keeps the
  * original specs that install recorded.
  */
 export const planInstall = async (root: string, versions: readonly { readonly name: string; readonly version: string }[], before: InstallRecord | undefined): Promise<InstallPlan> => {
     const pins = await workingPins(root)
+    const rootLock = join(root, "package-lock.json")
+    const locked = new Set(existsSync(rootLock) ? lockedPackages(readFileSync(rootLock, "utf8"), "package-lock.json").map((one) => one.name) : [])
+    const absent = versions.filter(({ name }) => !pins.some((pin) => pin.name === name) && !locked.has(name)).map(({ name }) => name)
     const texts = new Map<string, string>()
     const originals = new Map<string, string>()
     const sites: { file: string; name: string }[] = []
@@ -163,7 +170,7 @@ export const planInstall = async (root: string, versions: readonly { readonly na
         texts.set(file, withPin(textOf(file), field, name, spec))
         sites.push({ file, name })
     }
-    const packages = versions.map(({ name, version }) => {
+    const packages = versions.filter(({ name }) => !absent.includes(name)).map(({ name, version }) => {
         const own = pins.filter((pin) => pin.name === name)
         const targets = own.length > 0 ? own.map((pin) => ({ file: pin.file, field: pin.field })) : [{ file: "package.json", field: "overrides" }]
         for (const site of targets) edit(site.file, site.field, name, version)
@@ -171,7 +178,7 @@ export const planInstall = async (root: string, versions: readonly { readonly na
         const replaced = recorded ?? (own.length > 0 ? own.map((pin) => ({ file: pin.file, field: pin.field, spec: pin.spec })) : [{ file: "package.json", field: "overrides", spec: null }])
         return { name, version, pins: replaced }
     })
-    return { texts, originals, packages, units: unitsOf(root, sites) }
+    return { texts, originals, packages, units: unitsOf(root, sites), absent }
 }
 
 const writeTexts = (root: string, texts: ReadonlyMap<string, string>): void => {
@@ -244,17 +251,18 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     const versions = await versionsFor(root, requested, port)
     const before = readInstallRecord(root)
     const plan = await planInstall(root, versions, before)
-    const lines = versions.map((one) => `${one.name}@${one.version}`)
+    const lines = versions.filter((one) => !plan.absent.includes(one.name)).map((one) => `${one.name}@${one.version}`)
+    const absentLine = plan.absent.length === 0 ? [] : [`left out ${plan.absent.join(", ")}: this app neither pins it nor has it in package-lock.json, so there is nothing to install`]
     const lockfiles = plan.units.map((unit) => lockPath(unit.folder)).join(", ")
     if (!execute) {
-        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} into ${lockfiles} (plan only, add --execute)`, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
+        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} into ${lockfiles} (plan only, add --execute)`, ...absentLine, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
     }
     await applyInstall(root, plan, port, npm)
     const kept = (before?.packages ?? []).filter((entry) => !plan.packages.some((one) => one.name === entry.name))
     writeInstallRecord(root, { schema: "starci/deps-install-local@1", registry: registryUrl(port), packages: [...kept, ...plan.packages].toSorted((left, right) => left.name.localeCompare(right.name)) })
     return {
         data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], record: installRecordFile(root) },
-        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and ${lockfiles} name them, and ${installRecordFile(root)} records what they replaced`, ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null), RESTORE_STEP].join("\n"),
+        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and ${lockfiles} name them, and ${installRecordFile(root)} records what they replaced`, ...absentLine, ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null), RESTORE_STEP].join("\n"),
     }
 }
 
