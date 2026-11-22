@@ -353,8 +353,8 @@ const LinkOn = ({ ground, label }: { readonly ground: string; readonly label: st
     </div>
 )
 
-/** A text link is the accent as text, underlined, on every ground (DNA-CORE-LINK-ACCENT-TEXT). */
-export const LinkAccentOnEveryGround: Story = {
+/** A text link is HeroUI v3's own link on every ground: the foreground, weight 500, no underline until hovered (DNA-CORE-LINK-ACCENT-TEXT). */
+export const LinkOnEveryGround: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="background / surface / secondary / tertiary" direction="column">

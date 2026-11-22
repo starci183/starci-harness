@@ -99,9 +99,9 @@ Two steps each (owner 2026-11-22). Nothing else exists: an icon, a mark or a But
 
 | What | `md` | `sm` |
 | --- | --- | --- |
-| Icon (ramps `--grammar-icon-md`, `--grammar-icon-sm`) | 24: before 14px text (Icon `heading`, `leading`; `InlineStatus` beside its own words; a menu, nav or field glyph) | 20: in a Chip or Badge and before 12px text (Icon `chip`; `InlineStatus` in a caption or badge line; the glyph of a 40px tile; a dense Stepper) |
+| Icon (ramps `--grammar-icon-md`, `--grammar-icon-sm`; the icon size table of `ramps.css`) | 24: a left navigation entry and a section or heading lead (Icon `heading`, `leading`); the glyph of an empty state's 48 tile | 20: beside text, in a Chip, Badge, field or menu (Icon `chip`; the search field; the glyph of a 40px tile; a dense Stepper). A caret (a disclosure, select or menu trigger, the "goes somewhere" cue of a figure or row), a breadcrumb separator and a status mark inside a line (`InlineStatus`, a receipt) are neither: they are text-sized, 1em of the words beside them in their colour (Icon `text`, `--grammar-icon-text`) |
 | Round mark (Avatar, AvatarGroup, IconTile, provider mark) | 40: the common size (a header, a detail view, a list lead, every IconTile) | 24: inline like an icon (beside text in a row, a table cell, a chip) |
-| Button, IconButton | 40 | 32; a Button's own glyph keeps the Button's scale (20 on a phone, 16 from 640px and on `sm`), an IconButton's glyph is 20 |
+| Button, IconButton | 40, its glyph 20 | 32, its glyph 16 (`--grammar-icon-xs`) |
 
 ## Loading
 

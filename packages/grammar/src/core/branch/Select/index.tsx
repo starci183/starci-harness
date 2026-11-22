@@ -170,7 +170,7 @@ const SelectControl = ({
                 <HeroSelect.Value />
                 {isPending
                     ? <HeroSpinner size="sm" color="current" aria-hidden="true" className="starci-core-field-spinner" />
-                    : <HeroSelect.Indicator className="starci-core-select-indicator">{inlineGlyph("chevron-down")}</HeroSelect.Indicator>}
+                    : <HeroSelect.Indicator className="starci-core-select-indicator">{inlineGlyph("chevron-down", {}, "text")}</HeroSelect.Indicator>}
             </HeroSelect.Trigger>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>

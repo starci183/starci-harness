@@ -20,7 +20,7 @@ const one = (root: ParentNode, selector: string): HTMLElement => {
   return found;
 };
 
-/** Three figures, the first two links: their terms end with the chevron of a pressable row; the third, not a link, has none. */
+/** Three figures, the first two links: their terms end with the chevron of a pressable row, text-sized (1em of the term); the third, not a link, has none. */
 export const FigureLinkCue: Story = {
   render: () => (
     <div style={{ maxInlineSize: 720 }}>
@@ -40,8 +40,14 @@ export const FigureLinkCue: Story = {
       const pairs = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-description-pair')];
       expect(pairs.map((pair) => pair.querySelector('[data-grammar-figure-cue="true"]') !== null)).toEqual([true, true, false]);
       expect(getComputedStyle(pairs[0] as HTMLElement).cursor).toBe('pointer');
-      const cue = one(pairs[0] as HTMLElement, '[data-grammar-figure-cue="true"]');
-      expect(cue.getBoundingClientRect().width).toBeGreaterThan(8);
+      // The cue is a caret, text-sized: its glyph box is exactly the term's font size (1em of label.group, 12), centred on the term's line.
+      const term = one(pairs[0] as HTMLElement, '.starci-core-description-stat-term');
+      const fontSize = Number.parseFloat(getComputedStyle(term).fontSize);
+      const glyph = one(pairs[0] as HTMLElement, '[data-grammar-figure-cue="true"] svg').getBoundingClientRect();
+      expect(glyph.width).toBeCloseTo(fontSize, 1);
+      expect(glyph.height).toBeCloseTo(fontSize, 1);
+      const words = one(term, ':scope > span:not([data-grammar-figure-cue])').getBoundingClientRect();
+      expect(Math.abs((glyph.top + glyph.bottom) / 2 - (words.top + words.bottom) / 2)).toBeLessThanOrEqual(1);
     });
   },
 };

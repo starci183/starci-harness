@@ -38,6 +38,8 @@
         --grammar-section-gap: 1.5rem;
         --grammar-section-head-size: 2rem;
         --grammar-region-gap: 2rem;
+        /* The tab line step (owner 2026-11-23): what stands under an underline tab row (the page header's tabs, a second tab row) starts 16 below its line. */
+        --grammar-tab-line-gap: var(--grammar-inset-card);
         /*
          * THE PROXIMITY LAW (owner, 2026-11-09): inside any container, its children stand at least ONE step closer than
          * the container stands to its siblings, so what belongs together reads together. Each container default below
@@ -132,8 +134,7 @@
     /*
      * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
      * accent as TEXT on the page (the current tab), that element reads the soft foreground in place of the fill, so each
-     * rule reads `--accent` unchanged. A text link is the one exception: it is the exact brand `--accent`, underlined
-     * (components-navigation.css), so it keeps the fill's value.
+     * rule reads `--accent` unchanged. A text link paints no accent: it is `--link`, the foreground (components-navigation.css).
      */
     .starci-core-text-action[data-appearance="tab"][data-current="true"] {
         --accent: var(--accent-soft-foreground);
@@ -592,6 +593,15 @@
         margin-block-end: 0;
     }
 
+    /*
+     * Under a header band that carries tabs, the body starts one tab line step (16) below the band's bottom border, the line the page tabs stand
+     * on (owner 2026-11-23): the tabs belong to the header, and a second tab row at the top of the body starts 16 below them, its own line under it,
+     * never a region step (32) away. The page keeps its region rhythm everywhere else.
+     */
+    .starci-core-page[data-grammar-page-chrome="standard"] > .starci-core-page-header[data-grammar-page-header-tabs="true"] + .starci-core-page-body {
+        margin-block-start: calc(var(--grammar-tab-line-gap) - var(--grammar-region-gap));
+    }
+
     .starci-core-page[data-grammar-page-header="false"]:not([data-grammar-page-trail="true"]) {
         padding-block-start: var(--grammar-region-gap);
     }
@@ -1013,8 +1023,8 @@
         .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button { transition: none; }
     }
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon {
-        width: 1rem;
-        height: 1rem;
+        width: var(--grammar-icon-xs);
+        height: var(--grammar-icon-xs);
     }
 
     .starci-core-horizontal-scroll-region {
@@ -1539,11 +1549,6 @@
     }
     .starci-core-tab-count[data-grammar-attention="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
 
-    /*
-     * Filter tabs: the page tabs' underline one size smaller, inside the list pane under the search field. 13px labels, a tighter
-     * gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row; the tabs that do not fit fold into
-     * a "+n" menu at the end.
-     */
     /* A list row's title line carries a short fact at its end, and its marks sit in one wrapping row under the description. */
     .starci-core-list-box-item [data-grammar-list-head="true"] { display: flex; align-items: baseline; justify-content: space-between; gap: var(--grammar-inline-gap); min-inline-size: 0; }
     .starci-core-list-box-item [data-grammar-list-meta="true"] { flex: none; color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); font-variant-numeric: tabular-nums; }
@@ -1581,7 +1586,8 @@
     .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs .tabs__list,
     .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs .tabs__list-container { overflow: visible; }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="views"] .starci-core-tabs .tabs__tab[aria-selected="true"] {
+    /* The selected underline tab, page (views) and filter alike: one look for every underline row (owner 2026-11-23: a second tab row is never a smaller variant). */
+    .starci-core-tabs-frame:is([data-grammar-tabs-kind="views"], [data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"])) .starci-core-tabs .tabs__tab[aria-selected="true"] {
         color: var(--accent-soft-foreground);
         font-weight: var(--grammar-weight-medium);
     }
@@ -1593,22 +1599,12 @@
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-measuring-fit="true"] { overflow: hidden; visibility: hidden; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    /*
+     * An underline filter strip is drawn exactly as the page tabs (owner 2026-11-23): the same text role, 40 height, padding, underline and count chip, its
+     * first label on the content edge; it differs only in what it does (it narrows a list in place and scrolls sideways instead of folding).
+     */
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__list,
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__list-container { gap: var(--grammar-identity-gap); overflow: visible; }
-    /* Every tab is one size and one height: 14, 40 high (the control step), the selected one 500 over its underline. */
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab {
-        min-height: var(--starci-core-control-min-size);
-        padding-inline: var(--grammar-inline-gap) !important;
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
-    /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it; in a section's filter row, on the section title's edge. */
-    .starci-core-section-filter .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__list-container { overflow: visible; }
 
     /*
      * A filter strip as pills (`shape="pill"`, 0.46.2): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
@@ -1654,7 +1650,6 @@
         background: var(--starci-core-tabs-indicator, var(--accent));
     }
     .starci-core-tabs-more-label { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
-    .starci-core-tabs-more-caret { inline-size: 1em; block-size: 1em; }
 
     /*
      * The `end` slot: a command at the strip's end, inside the frame, so the strip's line (its own border, or the host's under the frame)
@@ -4428,6 +4423,14 @@
      */
     .starci-core-choice-chip { border: var(--starci-core-plate-border, 0); background: var(--starci-core-plate, var(--surface-secondary)); color: var(--foreground); }
     .starci-core-choice-chip[data-selected="true"] { border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0)); background: var(--starci-core-plate-selected, var(--accent-soft)); color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground)); }
+    /*
+     * ChoiceButtons' selected option is the accent soft pair with no edge of its own (owner 2026-11-23): the plate hooks dress ChoiceChips and radio rows,
+     * never the selected button, so an app's dark selected edge cannot reach it; the edge keeps its width, transparent, so selecting moves nothing.
+     */
+    [data-grammar-choice-look="button"] .starci-core-choice-chip[data-selected="true"] { border-color: transparent; background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    /* The focus ring is the keyboard's alone (FOCUS-2): a pointer press focuses the option and paints no ring; keyboard focus draws the one --focus ring. */
+    .starci-core-choice-chip:is(:focus, [data-focused="true"]):not(:focus-visible, [data-focus-visible="true"]) { outline: none; box-shadow: none; }
+    .starci-core-choice-chip:is(:focus-visible, [data-focus-visible="true"]) { outline: 2px solid var(--focus); outline-offset: 2px; }
     /* width="fill": the chips grow evenly from their own width and wrap only when they cannot fit (G-batch6). */
     .starci-core-choice-chips[data-grammar-width="fill"] :is(.starci-core-choice-chip, .starci-core-choice-chips-skeleton, .starci-core-tooltip-disabled-trigger) { flex: 1 0 auto; justify-content: center; }
     .starci-core-choice-chips[data-grammar-width="fill"] .starci-core-tooltip-disabled-trigger > .starci-core-choice-chip { inline-size: 100%; }
@@ -4695,11 +4698,16 @@
         flex-wrap: nowrap;
     }
 
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="identity"] { gap: var(--grammar-identity-gap); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="inline"] { gap: var(--grammar-inline-gap); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="row"] { gap: var(--grammar-row-gap); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="section"] { gap: var(--grammar-section-gap); }
-    .starci-core-stack[data-grammar-gap="region"] { gap: var(--grammar-region-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="identity"] { --starci-core-flow-gap: var(--grammar-identity-gap); gap: var(--grammar-identity-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="inline"] { --starci-core-flow-gap: var(--grammar-inline-gap); gap: var(--grammar-inline-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="row"] { --starci-core-flow-gap: var(--grammar-row-gap); gap: var(--grammar-row-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="section"] { --starci-core-flow-gap: var(--grammar-section-gap); gap: var(--grammar-section-gap); }
+    .starci-core-stack[data-grammar-gap="region"] { --starci-core-flow-gap: var(--grammar-region-gap); gap: var(--grammar-region-gap); }
+
+    /* What follows an underline tab row in a stack (the search and selects under a filter strip) starts one tab line step (16) below its line, whatever the stack's gap. */
+    .starci-core-stack > .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"][data-grammar-tabs-line="own"] + * {
+        margin-block-start: max(0px, calc(var(--grammar-tab-line-gap) - var(--starci-core-flow-gap)));
+    }
 
     .starci-core-stack[data-grammar-align="start"] { align-items: flex-start; }
     .starci-core-stack[data-grammar-align="center"] { align-items: center; }
@@ -4967,28 +4975,21 @@
         flex: none;
     }
 
-    /* The two icon sizes (ramps.css): 24 before 14px text (`heading`, `leading`), 20 in a chip or badge and before 12px text (`chip`). */
+    /* The icon size table (ramps.css): `heading` and `leading` 24 (a left navigation entry, a section or heading lead), `chip` 20 (beside text, a chip, a badge, a field), `text` 1em. */
     .starci-core-icon:is([data-usage="heading"], [data-usage="leading"]) {
         width: var(--grammar-icon-md);
         height: var(--grammar-icon-md);
     }
 
-    /* The icon of a Button takes HeroUI's scale (0.37.5): 20px on a phone, 16px from 640px, 16px on sm. Here, in the common layer, so it outranks the usage box above. */
+    /* The icon of a Button follows the Button's height (owner 2026-11-23): 20 in a 40 (md) or larger button, 16 in a 32 (sm) one. Here, in the common layer, so it outranks the usage box above. */
     .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
-        width: 1.25rem;
-        height: 1.25rem;
-    }
-
-    @media (min-width: 40rem) {
-        .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
-            width: 1rem;
-            height: 1rem;
-        }
+        width: var(--grammar-icon-sm);
+        height: var(--grammar-icon-sm);
     }
 
     .starci-core-button[data-size="sm"]:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
-        width: 1rem;
-        height: 1rem;
+        width: var(--grammar-icon-xs);
+        height: var(--grammar-icon-xs);
     }
 
     .starci-core-icon[data-usage="chip"] {
@@ -4996,10 +4997,47 @@
         height: var(--grammar-icon-sm);
     }
 
-    /* 20 whatever the usage: a chip's or badge's icon, a 40px tile's glyph, a logo, and an icon button's glyph (its scale is unchanged; the lg step sizes its own). */
+    /* 20 whatever the usage: a chip's or badge's icon, a 40px tile's glyph, a logo, and a 40 icon button's glyph; a 32 (sm) icon button's glyph is 16, the lg step sizes its own. */
     :is(.starci-core-icon-button, .starci-core-icon-tile, .starci-core-logo-stack-logo, [data-component="Badge"]) .starci-core-icon {
         width: var(--grammar-icon-sm);
         height: var(--grammar-icon-sm);
+    }
+
+    .starci-core-icon-button[data-size="sm"] .starci-core-icon {
+        width: var(--grammar-icon-xs);
+        height: var(--grammar-icon-xs);
+    }
+
+    /*
+     * TEXT-SIZED GLYPHS (owner 2026-11-23): a caret (a Disclosure or Accordion chevron, the "goes somewhere" cue of a figure or a pressable
+     * row, a Select trigger caret, a submenu caret, the fold caret of a tab strip, an Alert's row chevron, a schedule group's chevron), a
+     * breadcrumb separator and a status mark inside a line (InlineStatus, a message receipt) are 1em of the text beside them, in that text's
+     * colour, centred on its line. One rule sizes all of them: Icon `text`, and the vendor slots Grammar does not draw through Icon. `!important`:
+     * the vendor sizes its own indicators (size-3, size-4) and some consumers load its sheet unlayered.
+     */
+    :is(
+        .starci-core-icon[data-usage="text"],
+        .starci-core-disclosure-indicator,
+        .starci-core-generic-accordion-indicator,
+        .starci-core-select-indicator,
+        [data-slot="submenu-indicator"],
+        .starci-core-tabs-more-caret,
+        .starci-core-alert-chevron,
+        .starci-core-schedule-group-chevron,
+        .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"],
+        .starci-core-inline-status .starci-core-inline-status-glyph,
+        .starci-core-inline-status .starci-core-inline-status-spinner
+    ),
+    :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator, .starci-core-select-indicator, [data-slot="submenu-indicator"], .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"]) > svg {
+        flex: none;
+        width: var(--grammar-icon-text) !important;
+        height: var(--grammar-icon-text) !important;
+        vertical-align: middle;
+    }
+
+    /* The vendor paints its own indicators muted or placeholder-grey; a caret takes the colour of the words it follows. */
+    :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator, .starci-core-select-indicator, [data-slot="submenu-indicator"]) {
+        color: inherit !important;
     }
 
     /* The resting glyph keeps the usage box of the glyph it stands for (skeleton parity); the size comes from data-usage. */
@@ -5150,6 +5188,17 @@
         pointer-events: none;
     }
 
+    /* The tile of an empty state is the 48 one, its glyph 24 (the icon size table, ramps.css); every other tile is the round 40 below. */
+    .starci-core-empty-notice > .starci-core-icon-tile {
+        width: var(--grammar-empty-tile-size);
+        height: var(--grammar-empty-tile-size);
+    }
+
+    .starci-core-empty-notice > .starci-core-icon-tile :is(.starci-core-icon, .starci-core-status-glyph) {
+        width: var(--grammar-icon-md);
+        height: var(--grammar-icon-md);
+    }
+
     /* --- Icon tile --- */
     /* One tile, everywhere (owner, 2026-11-22: "alert và icon và icontile … đồng bộ là tròn size40"): a round 40px plate. */
     .starci-core-icon-tile {
@@ -5202,7 +5251,7 @@
     /*
      * --- Status marks (0.55.0, owner "chốt"): (B) the round 40px tile, `data-grammar-mark="status"`, always `data-size="md"`; its plate tone is
      * the state's. Case 1 carries the status glyph at 20px (check, x or a small ring; the ring spins while running); case 2 the subject icon, and a running subject wears a
-     * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (24 beside 14px words, 20 in a 12px line) and its words in the state's ink, no plate.
+     * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (1em of the words beside it, the text-sized glyph rule) and its words in the state's ink, no plate.
      */
     .starci-core-icon-tile[data-grammar-mark="status"] { position: relative; }
     .starci-core-icon-tile .starci-core-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); flex: none; }
@@ -5244,14 +5293,12 @@
     .starci-core-inline-status[data-tone="accent"] { color: var(--accent-soft-foreground); }
     .starci-core-inline-status[data-tone="warning"] { color: var(--warning-soft-foreground); }
     .starci-core-inline-status[data-tone="danger"] { color: var(--danger-soft-foreground); }
-    /* The glyph follows the text it sits beside (ramps.css, the two icon sizes): 24 beside its own 14px words, 20 when the status stands in a 12px line. */
-    .starci-core-inline-status :is(.starci-core-inline-status-glyph, .starci-core-inline-status-spinner) { width: var(--grammar-icon-md); height: var(--grammar-icon-md); flex: none; }
+    /* The glyph is text-sized (the text-sized glyph rule): 1em of the words beside it, its own 14px or the 12px line it stands in. */
     :is(.starci-type-caption, .starci-type-label-group, .starci-type-badge, .starci-type-code, [data-component="Badge"]) .starci-core-inline-status {
         font-size: inherit;
         font-weight: inherit;
         line-height: inherit;
     }
-    :is(.starci-type-caption, .starci-type-label-group, .starci-type-badge, .starci-type-code, [data-component="Badge"]) .starci-core-inline-status :is(.starci-core-inline-status-glyph, .starci-core-inline-status-spinner) { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); }
     .starci-core-inline-status-meta { color: var(--muted); font-weight: var(--grammar-weight-regular); }
     .starci-core-inline-status[data-loading="true"] { inline-size: 6rem; }
 

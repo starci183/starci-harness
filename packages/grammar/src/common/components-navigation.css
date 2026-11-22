@@ -23,33 +23,17 @@
      */
     .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
-    /* HeroUI v3's own link: the vendor's underline on hover and press, the anchor icon at the end. */
+    /*
+     * A Link is HeroUI v3's own link, exactly (owner 2026-11-23): `--link` (the theme sets it to the foreground, never the accent), weight 500, no
+     * underline at rest; on hover a 1.5px underline 4px below the text in the muted colour, on press the full muted colour (the vendor's `.link`).
+     * Grammar draws none of it: it only lets the text wrap and paints `--link` where the vendor's utility class may be missing. A Link only ever goes
+     * to another page; a command is a Button. A current link keeps its own look (below).
+     */
     .starci-core-link {
         overflow-wrap: anywhere;
     }
 
-    /*
-     * An inline link is underlined at rest (0.41.0, COLOR-3: a destination in body copy is identifiable at rest, with colour removed too). The line is a
-     * hairline in the link's own colour at 40%, set off below the text, and turns to the full colour on hover and press. The head variant keeps the
-     * vendor's hover-only underline (its arrow is the affordance) and plain stays undecorated (its host is). The rules below win by order: a media, current or
-     * disabled link and a footer link draw no line at rest.
-     */
-    .starci-core-link[data-grammar-link-variant="inline"] {
-        text-decoration-line: underline;
-        text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
-        text-decoration-thickness: var(--grammar-hairline);
-        text-underline-offset: var(--grammar-link-underline-offset);
-    }
-
-    .starci-core-link[data-grammar-link-variant="inline"]:is(:hover, [data-hovered="true"], :active, [data-pressed="true"]) {
-        text-decoration-color: currentColor;
-    }
-
-    /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of a rose-accent theme,
-     * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
-     */
-    .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
+    .starci-core-link[data-grammar-link-content="text"] { color: var(--link); }
 
     /* The plain variant (0.37.14): a destination with no accent, no underline and no icon; the component around it (a navigation row with its chevron, a shell brand) is the affordance. */
     .starci-core-link[data-grammar-link-content="text"][data-grammar-link-variant="plain"] { color: inherit; text-decoration-line: none; }
@@ -120,7 +104,8 @@
 
     /* The trail reads small and muted, the separator a slash, and the current page is the one strong crumb. */
     .starci-core-breadcrumbs-list { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
-    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { color: var(--muted); font-size: var(--grammar-text-xs); }
+    /* The separator is text-sized (the text-sized glyph rule, styles.css): a 1em box of the crumbs' 12px, centred on their line. */
+    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--grammar-text-xs); }
 
     .starci-core-breadcrumb {
         display: inline-flex;
@@ -1957,7 +1942,8 @@
     }
 
     /*
-     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, pushed to the cell's end, and the cell takes the
+     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, a caret 1em of the term (12, the text-sized glyph rule
+     * of styles.css), pushed to the term's end (the term hugs its words, so it stands right after them), and the cell takes the
      * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
      */
     .starci-core-description-stat-term > .starci-core-figure-cue {

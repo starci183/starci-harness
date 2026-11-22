@@ -135,9 +135,9 @@ export const DropdownMenu = ({
 
     const renderItem = (item: DropdownMenuItem, selectionMode?: DropdownMenuSelection["mode"]): ReactNode => {
         const tone = item.tone ?? "neutral"
-        const icon = item.iconSource !== undefined ? <Icon source={item.iconSource} usage="leading" />
+        const icon = item.iconSource !== undefined ? <Icon source={item.iconSource} usage="chip" />
             : item.mark === undefined || item.mark === null || item.mark === false || item.mark === "" ? null : (
-                <span aria-hidden="true" className="starci-core-icon" data-usage="leading" data-grammar-menu-mark="true">{item.mark}</span>
+                <span aria-hidden="true" className="starci-core-icon" data-usage="chip" data-grammar-menu-mark="true">{item.mark}</span>
             )
         const content = (
             <>
@@ -222,7 +222,7 @@ export const DropdownMenu = ({
                 data-contract="FOCUS-1 STATE-1"
                 data-grammar-tone="neutral"
             >
-                {entry.iconSource === undefined ? null : entry.description === undefined ? <Icon source={entry.iconSource} usage="leading" /> : <div data-grammar-menu-icon-slot="true"><Icon source={entry.iconSource} usage="leading" /></div>}
+                {entry.iconSource === undefined ? null : entry.description === undefined ? <Icon source={entry.iconSource} usage="chip" /> : <div data-grammar-menu-icon-slot="true"><Icon source={entry.iconSource} usage="chip" /></div>}
                 {entry.description === undefined ? <HeroLabel>{entry.label}</HeroLabel> : (
                     <div data-grammar-menu-copy="true">
                         <HeroLabel>{entry.label}</HeroLabel>

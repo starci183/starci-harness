@@ -25,7 +25,8 @@
         --accent-soft: oklch(95.5% 0.03 287);
         --accent-soft-foreground: #6a3cf2;
         --focus: #7248ff;
-        --link: var(--accent-soft-foreground);
+        /* A link is the foreground (owner 2026-11-23: HeroUI v3's link, never the accent). */
+        --link: var(--foreground);
         --success: oklch(62.8% 0.1941 162.85);
         --success-foreground: oklch(21.03% 0.0059 162.85);
         --warning: oklch(67% 0.159 84.37);

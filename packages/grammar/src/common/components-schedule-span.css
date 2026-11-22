@@ -81,7 +81,7 @@
     }
 
     .starci-core-schedule-group-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .starci-core-schedule-group-chevron { flex: none; inline-size: 1rem; block-size: 1rem; }
+    /* The group chevron is a caret, text-sized (the text-sized glyph rule, styles.css). */
     .starci-core-schedule-group-chevron[data-grammar-collapsed="true"] { transform: rotate(-90deg); }
     .starci-core-schedule-group-label { min-width: 0; overflow-wrap: anywhere; }
 

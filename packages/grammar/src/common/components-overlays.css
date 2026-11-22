@@ -532,7 +532,7 @@
         color: var(--danger);
     }
 
-    /* Marks reuse Icon's leading box; artwork fits that box without a second size rule. */
+    /* Marks reuse Icon's chip box (20, an icon beside text); artwork fits that box without a second size rule. */
     [data-grammar-menu-mark] {
         display: inline-flex;
         align-items: center;
@@ -745,7 +745,7 @@
     .starci-core-alert-row-press:focus-visible { outline: none; }
     .starci-core-alert-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-alert-row-press-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .starci-core-alert-chevron { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--starci-core-alert-ink); }
+    .starci-core-alert-chevron { color: var(--starci-core-alert-ink); }
 
     .starci-core-alert :is(.starci-core-alert-title, .starci-core-alert-description) {
         font-size: var(--grammar-type-label-item-size);

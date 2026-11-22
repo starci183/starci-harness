@@ -26,7 +26,8 @@
         --accent-soft: #f8dbe8;
         --accent-soft-foreground: #b8005f;
         --focus: #ff3593;
-        --link: var(--accent-soft-foreground);
+        /* A link is ink, the foreground (DNA-OFFSET-POP-LINK-INK). */
+        --link: var(--foreground);
         --success: #91e4ca;
         --success-foreground: #1c1524;
         --warning: #ffd447;

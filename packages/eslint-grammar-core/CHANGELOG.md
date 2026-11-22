@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed (`no-icon-size-class`, wording only; Grammar 0.55.1's icon size table, owner 2026-11-23): the message names the table: 24 for a navigation entry or a heading lead (`heading`, `leading`), 20 beside text and in a chip, badge or field (`chip`), 1em of its text for a caret or an inline status mark (`text`). The rule reads the same calls as before.
+
 ## 0.55.0 - 2026-11-22
 
 - Changed (`navbar-control-size`, with Grammar 0.55.0's two round-mark sizes): an `AvatarButton` with no `size` or `size="md"` (40px) has the bar's control height; its `control` size is deleted.

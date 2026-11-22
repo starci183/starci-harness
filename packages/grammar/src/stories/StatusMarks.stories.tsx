@@ -247,16 +247,16 @@ export const TileGlyphVariants: Story = {
 };
 
 /*
- * THE TWO ICON SIZES (owner 2026-11-22): 24px before 14px text, 20px in a chip or badge and before 12px text. The inline status takes the size of
- * the text it sits beside: 24 by its own 14px words, 20 inside a caption line; never a per-call size.
+ * THE ICON SIZE TABLE (owner 2026-11-23, ramps.css): an inline status mark is text-sized, 1em of the words it sits beside: 14 by its own 14px
+ * words, 12 inside a caption line; never a per-call size. An icon beside text, in a chip or a badge is 20.
  */
 export const IconSizes: Story = {
   render: () => (
     <Matrix maxWidth={880}>
-      <State label="InlineStatus beside 14px text: the 24px glyph">
+      <State label="InlineStatus beside 14px text: a 14px glyph">
         {G.MARK_STATES.map((state) => <G.InlineStatus key={state} state={state} label={{ done: 'Đã xong', running: 'Đang chạy', waiting: 'Chờ duyệt', error: 'Lỗi', skipped: 'Bỏ qua', notRun: 'Chưa chạy' }[state]} meta="09:12" />)}
       </State>
-      <State label="InlineStatus in a 12px caption line: the 20px glyph">
+      <State label="InlineStatus in a 12px caption line: a 12px glyph">
         <G.Text role="caption">Cập nhật lúc 09:12 · <G.InlineStatus state="done" label="Đã xong" /></G.Text>
         <G.Text role="caption">Đồng bộ · <G.InlineStatus state="running" label="Đang chạy" /></G.Text>
         <G.Text role="caption">Zalo · <G.InlineStatus state="error" label="Lỗi" /></G.Text>

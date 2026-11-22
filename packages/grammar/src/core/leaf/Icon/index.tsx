@@ -2,7 +2,12 @@ import { skeletonVariants } from "@heroui/react"
 import type { ComponentType, SVGProps } from "react"
 import type { NoChildren } from "../../tier.js"
 
-export type IconUsage = "heading" | "leading" | "chip"
+/**
+ * Where a glyph stands, which sets its box (the icon size table, `src/common/ramps.css`): `heading` and `leading` 24 (a left navigation entry, a
+ * section or heading lead), `chip` 20 (beside text, in a chip, a badge or a field), `text` 1em of the text it sits in, in that text's colour (a caret: a
+ * disclosure, a select or menu trigger, the "goes somewhere" cue of a figure or a row; a status mark inside a line).
+ */
+export type IconUsage = "heading" | "leading" | "chip" | "text"
 /**
  * Minimal structural contract passed to an app-owned SVG glyph.
  *

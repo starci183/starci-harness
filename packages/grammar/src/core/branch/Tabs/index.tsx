@@ -72,8 +72,8 @@ type TabsCommon = NoChildren & {
 
 /**
  * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
- * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: the same underline one size
- * smaller (13px, tighter), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
+ * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: drawn exactly as the page tabs (the same text
+ * role, height, underline and count chip; a second tab row is never a smaller variant), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
  * its edges fade where more tabs wait and the selected one is scrolled into view.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
  * form is `ChoiceChips` or `RadioGroup`.

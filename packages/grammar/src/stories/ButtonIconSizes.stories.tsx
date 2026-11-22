@@ -3,8 +3,9 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * A Button with an icon takes HeroUI v3's measures (0.37.5): padding-inline px-3 on sm and px-4 on md and lg on both sides, an 8px gap, the icon 16px from 640px
- * (20px on a phone) with the vendor's -2px inline margin. `sm` carries no icon in the app and is shown here only for the measure.
+ * A Button with an icon takes HeroUI v3's padding (0.37.5): padding-inline px-3 on sm and px-4 on md and lg on both sides, an 8px gap, the vendor's -2px inline margin.
+ * Its icon follows the Button's height (the icon size table, owner 2026-11-23): 20 in a 40 (md) or 48 (lg) button at every width, 16 in a 32 (sm) one. `sm` carries no
+ * start icon in the app and is shown here only for the measure.
  */
 const meta: Meta = { title: 'Controls/Button icon sizes' };
 export default meta;
@@ -27,10 +28,10 @@ export const Sizes: Story = {
     await waitFor(() => {
       const buttons = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"]'));
       const expected = [
-        { pad: 16, icon: 16 },
-        { pad: 16, icon: 16 },
+        { pad: 16, icon: 20 },
+        { pad: 16, icon: 20 },
         { pad: 12, icon: 0 },
-        { pad: 16, icon: 16 },
+        { pad: 16, icon: 20 },
         { pad: 12, icon: 16 },
       ];
       expect(buttons.length).toBe(5);
