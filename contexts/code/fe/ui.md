@@ -40,7 +40,8 @@ Enforced by: R92 (`no-inline-class-name`, `class-names-in-colocated-file`, `cn-a
 
 `app/globals.css` holds only `@import` and `@source`, in this order: `tailwindcss`, `@heroui/styles/css`, the
 selected grammar's stylesheet, `modules/brand/brand.css`, then `@source` lines that each resolve to a real directory
-(the grammar's `dist` included). It is the app's one global stylesheet ([FE-CSS-4](#fe-css-4-one-global-stylesheet-per-web-app)): it loads the brand file, and no layout or module imports `brand.css` itself.
+(the grammar's `dist` included). A core-ext stylesheet the app draws with (`@starci/grammar/core/ext/graph.css`, `core/ext/markdown.css`)
+is imported right after the selected grammar's stylesheet; R93 accepts a `core/ext/<name>.css` the installed Grammar exports and refuses any other Grammar CSS path. It is the app's one global stylesheet ([FE-CSS-4](#fe-css-4-one-global-stylesheet-per-web-app)): it loads the brand file, and no layout or module imports `brand.css` itself.
 
 Why: the order is the cascade, so brand tokens win deterministically, and an unresolved `@source` silently drops
 classes.

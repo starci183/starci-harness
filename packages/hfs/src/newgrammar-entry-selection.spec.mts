@@ -101,6 +101,58 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]!.message, /selected peers @fixture\/primitives, react/);
   });
 
+  test(`architecture ignores optional peers and still refuses a required-peer mismatch (${edition})`, context => {
+    selectedCatalog(context);
+    const root = fixture(context, edition, 'alternate');
+    const config = loadArchitectureConfig(root);
+    const installed = path.join(path.dirname(root), 'node_modules', genericContract.package, 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(installed, 'utf8'));
+    manifest.peerDependencies = { ...manifest.peerDependencies, '@fixture/graph-lib': '^1.0.0', '@fixture/chart-lib': '^2.0.0' };
+    manifest.peerDependenciesMeta = { '@fixture/graph-lib': { optional: true }, '@fixture/chart-lib': { optional: true } };
+    fs.writeFileSync(installed, JSON.stringify(manifest));
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'optional peers are no part of the contract');
+
+    const required = { ...manifest, peerDependenciesMeta: { '@fixture/graph-lib': { optional: true } } };
+    fs.writeFileSync(installed, JSON.stringify(required));
+    const extra = checkGrammar(config, EMPTY_CONTEXT, sourceFinding);
+    assert.deepEqual(extra.map(finding => finding.ruleId), ['ARCH_GRAMMAR_CONTRACT_INVALID'], 'a required peer beyond the selected ones is refused');
+    assert.match(extra[0]!.message, /required peerDependencies .* selected peers @fixture\/primitives, react/);
+
+    const optionalSelected = { ...manifest, peerDependenciesMeta: { ...manifest.peerDependenciesMeta, '@fixture/primitives': { optional: true } } };
+    fs.writeFileSync(installed, JSON.stringify(optionalSelected));
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId), ['ARCH_GRAMMAR_CONTRACT_INVALID'],
+      'a selected peer made optional is a required-peer mismatch');
+  });
+
+  test(`architecture accepts an exported core-ext stylesheet beside the style entry and refuses other Grammar css (${edition})`, context => {
+    selectedCatalog(context);
+    const { package: name, styleEntry } = genericContract;
+    const root = fixture(context, edition, 'alternate', genericContract, {
+      'apps/web/src/app/globals.css': `@import "${styleEntry}";\n@import "${name}/core/ext/graph.css";\n@import "${name}/core/ext/markdown.css";\n`,
+    });
+    const installed = path.join(path.dirname(root), 'node_modules', name, 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(installed, 'utf8'));
+    manifest.exports['./core/ext/graph.css'] = './dist/core/ext/graph/styles.css';
+    manifest.exports['./core/ext/markdown.css'] = './dist/core/ext/markdown/styles.css';
+    fs.writeFileSync(installed, JSON.stringify(manifest));
+    const config = loadArchitectureConfig(root);
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'declared core-ext stylesheets are accepted');
+
+    const globals = path.join(root, 'apps/web/src/app/globals.css');
+    const refused = (css: string): string[] => {
+      fs.writeFileSync(globals, css);
+      return checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort();
+    };
+    assert.deepEqual(refused(`@import "${styleEntry}";\n@import "${name}/core/ext/pdf.css";\n`),
+      ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'a core-ext stylesheet the install does not export is refused');
+    assert.deepEqual(refused(`@import "${styleEntry}";\n@import "${name}/internal/theme.css";\n`),
+      ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'any other Grammar css path is refused');
+    assert.deepEqual(refused(`@import "${styleEntry}";\n@import "${name}/core/ext/graph/../../../internal.css";\n`),
+      ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'a path escaping the ext folder is refused');
+    assert.deepEqual(refused(`@import "${name}/core/ext/graph.css";\n`), ['ARCH_GRAMMAR_CONTRACT_INVALID'],
+      'an ext stylesheet never replaces the selected style entry');
+  });
+
   test(`architecture refuses absent or unsupported selection when styles need a contract (${edition})`, context => {
     for (const family of [undefined, 'unlisted']) {
       const root = fixture(context, edition, family);

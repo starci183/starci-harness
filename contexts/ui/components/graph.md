@@ -42,7 +42,7 @@ The package has no words, icons or routes of its own and no default language; th
 
 ## Use it
 
-A graph is a Grammar component, so it needs no `Fragment` (decision 2026-11-22: the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's; it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
+A graph is a Grammar component, so it needs no `Fragment` (decision 2026-11-22: the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's (in an app, in `globals.css` right after the Grammar stylesheet, [FE-CSS-2](../../code/fe/ui.md#fe-css-2-globalscss-imports-in-the-cascade-order); R93 accepts an exported `core/ext/<name>.css` there); it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
 
 ```tsx
 import "@starci/grammar/core/ext/graph.css"

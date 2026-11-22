@@ -17,6 +17,22 @@ interface GrammarManifest {
   exports?: Record<string, unknown>;
   dependencies?: Record<string, unknown>;
   peerDependencies?: Record<string, unknown>;
+  peerDependenciesMeta?: Record<string, unknown>;
+}
+
+/** A core-ext stylesheet of the grammar package (`<package>/core/ext/<name>.css`, e.g. graph.css, markdown.css). */
+function coreExtStylesheet(packageName: string, specifier: string): boolean {
+  const prefix = `${packageName}/core/ext/`;
+  return specifier.startsWith(prefix) && /^[a-z0-9][a-z0-9-]*\.css$/u.test(specifier.slice(prefix.length));
+}
+
+/** The peers an install requires: every declared peer not marked `optional: true` in peerDependenciesMeta. */
+function requiredPeers(manifest: GrammarManifest | null | undefined): string[] {
+  const meta = manifest?.peerDependenciesMeta ?? {};
+  return Object.keys(manifest?.peerDependencies ?? {}).filter(peer => {
+    const entry = meta[peer];
+    return !(entry !== null && typeof entry === 'object' && (entry as { optional?: unknown }).optional === true);
+  });
 }
 
 /** One string-literal module name a source file references. */
@@ -127,10 +143,12 @@ function addInstallContractProblems(install: GrammarConsumer, installs: GrammarC
   if (install.packageManifest?.name !== grammar.package) problems.push(`installed package ${grammar.package} is unavailable or has a different name${where}`);
   if (!grammarExport(install.packageManifest, grammar.package, grammar.entry)) problems.push(`${grammar.entry} is not a safe declared package export${where}`);
   if (!grammarExport(install.packageManifest, grammar.package, grammar.styleEntry)) problems.push(`${grammar.styleEntry} is not a safe declared style export${where}`);
-  const actualPeers = Object.keys(install.packageManifest?.peerDependencies ?? {}).sort(byCodeUnit);
+  // Optional peers (peerDependenciesMeta optional: true, the core ext's libraries) are no part of the contract;
+  // the required ones must equal the selected peers exactly.
+  const actualPeers = requiredPeers(install.packageManifest).sort(byCodeUnit);
   const selectedPeers = [...grammar.peers].sort(byCodeUnit);
   if (JSON.stringify(actualPeers) !== JSON.stringify(selectedPeers)) {
-    problems.push(`${grammar.package} peerDependencies must exactly match the selected peers ${selectedPeers.join(', ')}${where}`);
+    problems.push(`${grammar.package} required peerDependencies (those not optional in peerDependenciesMeta) must exactly match the selected peers ${selectedPeers.join(', ')}${where}`);
   }
 }
 
@@ -145,16 +163,30 @@ function addConsumerDependencyProblems(grammar: GrammarContext, consumers: Gramm
   }
 }
 
-function addGrammarStyleProblems(config: ArchitectureConfig, grammar: GrammarContext, problems: string[], styleBypasses: ArchitectureViolation[]): void {
+/**
+ * Beside the selected style entry, a style source may import a core-ext stylesheet (`<package>/core/ext/<name>.css`)
+ * that the Grammar install it resolves declares as a safe package export (graph.css, markdown.css). The install is the
+ * one of the consumer owning the source; a source no consumer owns needs every install to declare it.
+ */
+function extStylesheetAllowed(grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], sourceFile: string, specifier: string): boolean {
+  if (!coreExtStylesheet(grammar.package, specifier)) return false;
+  const owner = grammarOwner(consumers, sourceFile);
+  const judged = owner ? [owner] : installs;
+  return judged.length > 0 && judged.every(install => grammarExport(install.packageManifest, grammar.package, specifier));
+}
+
+function addGrammarStyleProblems(config: ArchitectureConfig, grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], problems: string[], styleBypasses: ArchitectureViolation[]): void {
   for (const source of grammar.styleSources) {
-    const content = fs.readFileSync(path.join(config.root, ...source.split('/')), 'utf8');
+    const sourceFile = path.join(config.root, ...source.split('/'));
+    const content = fs.readFileSync(sourceFile, 'utf8');
     const grammarStyles = cssImports(content).filter(item => item.specifier === grammar.package || item.specifier.startsWith(`${grammar.package}/`));
     if (!grammarStyles.some(item => item.specifier === grammar.styleEntry)) problems.push(`${source} does not import ${grammar.styleEntry}`);
-    for (const imported of grammarStyles) if (imported.specifier !== grammar.styleEntry) {
-      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entry`);
+    for (const imported of grammarStyles) {
+      if (imported.specifier === grammar.styleEntry || extStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)) continue;
+      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entry and the declared core-ext stylesheets`);
       styleBypasses.push({ ruleId: 'ARCH_GRAMMAR_EXPORT_BYPASS', path: source,
         line: content.slice(0, imported.index).split(/\r?\n/u).length, column: 1, package: grammar.package, specifier: imported.specifier,
-        message: `Style source must use the selected Grammar style entry ${grammar.styleEntry}; ${imported.specifier} is outside that contract.` });
+        message: `Style source must use the selected Grammar style entry ${grammar.styleEntry}, beside which only a core-ext stylesheet (${grammar.package}/core/ext/<name>.css) the installed Grammar exports may be imported; ${imported.specifier} is outside that contract.` });
     }
   }
 }
@@ -225,7 +257,7 @@ export function checkGrammar(config: ArchitectureConfig, context: TypeContext, m
   const styleBypasses: ArchitectureViolation[] = [];
   for (const install of installs) addInstallContractProblems(install, installs, grammar, config.root, contractProblems);
   addConsumerDependencyProblems(grammar, consumers, contractProblems);
-  addGrammarStyleProblems(config, grammar, contractProblems, styleBypasses);
+  addGrammarStyleProblems(config, grammar, consumers, installs, contractProblems, styleBypasses);
   addGrammarContractFinding(config, grammar, manifestFile, contractProblems, violations);
   const allowed = new Set([grammar.entry, grammar.styleEntry]);
   violations.push(...styleBypasses);
