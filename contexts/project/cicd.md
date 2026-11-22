@@ -70,13 +70,18 @@ to `origin/dev` and its running dev stack onto that code:
    `DEV_SYNC_BUILD` with its output; the next sync builds again and restarts both sides though the checkout has not moved. The
    stopped processes restart after the install and the build, with the changed ones, even under `--no-restart`, and alone when the
    install or the build failed.
-4. The changed side restarts: a change under `be/` restarts the api, under `fe/` the web, anything else a process reads (the root
+4. When the fast-forward brought files under `db/migrations/` (`MIGRATIONS_FOLDER`), the database is migrated before anything restarts
+   on that code, by the stack's own migrate step and its receipt: `starci app stack up --env <env> --execute` with the app's pinned
+   CLI (idempotent: what runs is kept, and the processes stopped for the install start again on the new code). A migration that
+   fails is `DEV_SYNC_MIGRATE` with its output: no process restarts on the new code (only the stopped ones come back), and the next
+   sync migrates again and restarts both sides though the checkout has not moved.
+5. The changed side restarts: a change under `be/` restarts the api, under `fe/` the web, anything else a process reads (the root
    manifests, `packages/`, `db/`, the stack declaration, an overlay) both; docs and cache records restart nothing. It runs the app's
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
    checkout's code and runs the built artifact (the process's `serve` block: `next build` then `next start`, the api build then
    `node dist/...`), never a watcher, waits for its health on the loopback and over each tunnel hostname that routes its port, and
    keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6).
-5. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
+6. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
 
 Hot reload is opt-in for live coding: `starci app stack up --env dev --execute --watch` (or `stack restart --watch`) runs the
 process's own watcher argv.

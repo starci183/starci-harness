@@ -8,7 +8,7 @@ import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
 import { landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
-import { landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
+import { MIGRATIONS_FOLDER, landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
@@ -62,7 +62,7 @@ export const laneLandVerb = defineVerb({
             profile: landProfile(profileName, join(runningCliRoot(), "dist", "main.js")),
             ...(ownRemote === "" ? {} : { ownRemote }),
             worktree: resolve(flags.worktree ?? join(dir, `${dryRun ? "_batch-lander-dry" : "_batch-lander"}${scope === "" ? "" : `-${scope}`}`)),
-            migrations: flags.migrations ?? "db/migrations/",
+            migrations: flags.migrations ?? MIGRATIONS_FOLDER,
         }
         if (!dryRun) {
             // The harness lander runs the CLI it was started with, the harness checkout's own build: its npm install of the same version would

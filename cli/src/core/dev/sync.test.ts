@@ -429,6 +429,66 @@ void test("a build of the workspace packages that fails restarts the stopped pro
     assert.deepEqual(quiet, [], "a passing build clears the mark: nothing moved, nothing runs")
 })
 
+/** Pushes a new migration file (and, with `lockfile`, a lockfile change) to dev. */
+const migrationPushed = (pusher: string, name: string): void => {
+    mkdirSync(join(pusher, "db", "migrations"), { recursive: true })
+    writeFileSync(join(pusher, "db", "migrations", name), "alter table webhooks add column expires_at timestamptz;\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", name)
+    gitIn(pusher, "push", "-q", "origin", "dev")
+}
+
+/** Fake seams whose appRun logs `up` for `app stack up` and fails it while `failUp` holds. */
+const migratingDeps = (log: string[], failUp: { now: boolean }): DevSyncDeps => fakeDeps(log, {
+    appRun: (_root, args) => {
+        if (args.includes("up")) {
+            log.push(failUp.now ? "up fails" : "up")
+            return Promise.resolve({ exitCode: failUp.now ? 1 : 0, stdout: failUp.now ? "STACK_LOCAL_MIGRATE: starci app db migrate exited 1: column card_figures already exists" : "migrate: applied, receipt abc", stderr: "", timedOut: false })
+        }
+        log.push(`restart ${args[args.indexOf("--process") + 1] ?? ""}`)
+        return Promise.resolve({ exitCode: 0, stdout: "", stderr: "", timedOut: false })
+    },
+})
+
+void test("new migrations are applied by the stack's migrate step (app stack up) after the build and before the api restarts on the code that needs them", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    migrationPushed(pusher, "20261122090000_webhook_expiry.sql")
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /would migrate the dev database before the restart \(1 migration file\(s\) changed\): app stack up --env dev --execute/u)
+    const log: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(log, { now: false }))
+    assert.deepEqual(log, ["prepare", "up", "restart api,web"])
+    assert.equal(done.data.migrated, true)
+    // With an install, the processes stopped for it are started again by stack up on the new code: not restarted twice.
+    const { checkout: other, pusher: second } = scratch(t)
+    migrationPushed(second, "20261122100000_card_figures.sql")
+    lockfileMoved(second, other)
+    const installed: string[] = []
+    const both = await devSync(request(other, { execute: true, restart: true }), migratingDeps(installed, { now: false }))
+    assert.deepEqual(installed.slice(-3), ["rename trash", "prepare", "up"])
+    assert.deepEqual(both.data.restarted, ["api", "web"])
+    assert.equal(both.data.restart, "done")
+})
+
+void test("a failed migration refuses DEV_SYNC_MIGRATE, restarts nothing new, and the next sync migrates again though nothing moved", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    migrationPushed(pusher, "20261122130000_card_figures.sql")
+    const failUp = { now: true }
+    const log: string[] = []
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), migratingDeps(log, failUp)), refused("DEV_SYNC_MIGRATE", "column card_figures already exists"))
+    assert.deepEqual(log, ["prepare", "up fails"], "no process restarts on code whose migration failed")
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /the last sync's migration failed/u)
+    failUp.now = false
+    const again: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(again, failUp))
+    assert.deepEqual(again, ["prepare", "up", "restart api,web"], "nothing moved, yet the migration runs again and the api restarts on the code that needs it")
+    assert.equal(done.data.migrated, true)
+    const quiet: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(quiet, failUp))
+    assert.deepEqual(quiet, [], "a migration that passed clears the mark")
+})
+
 void test("prepareTree runs codegen then build:modules and stops at the first that fails, quoting its output", async () => {
     const ran: string[] = []
     const runner = (exits: Record<string, number>) => (_root: string, script: string) => {

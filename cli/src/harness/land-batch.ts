@@ -28,7 +28,7 @@ export interface BatchOptions {
     readonly repo: string
     /** The lander's own worktree, reset to the base before each batch; node_modules stays between batches. */
     readonly worktree: string
-    /** The folder under `db/migrations/`-like paths a landed lane is told to apply. */
+    /** The migrations folder (MIGRATIONS_FOLDER by default) whose files a landed lane is told it added. */
     readonly migrations: string
     readonly gateSlots: number
     readonly npmSlots: number
