@@ -346,7 +346,8 @@ negative one, stays until dismissed.
 A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below
 the surface that hosts it. It is not a surface: it has no shadow, no outline and no action, so it stands in a pane, a card
 or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
-when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble).
+when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble). Its `line`
+variant is one muted, ellipsized line with a rule on its start edge and no ground: the line a chat answer quotes, over that answer.
 
 `Inset` is the same ground around anything else: a tinted box at the nested inset, one radius below the surface, with an optional
 muted label above its content that also names the group. It is not a surface (a card inside it is refused like a card in a card). A

@@ -209,7 +209,7 @@ roles:
     renderers: [Quote, Inset]
     vendorParity: []
     slots: [children (the words), source (a short word: Brain, Chat, Template), byline (where and when), "Inset: children (rows or a block), label, isLoading"]
-    variants: none
+    variants: [block, "line (one muted ellipsized line with a start rule, no ground: the line a chat answer quotes)"]
     sizes: none
     states: [skeleton]
     grammarMayChange: [ground tint through tokens]
