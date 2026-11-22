@@ -127,7 +127,7 @@ install) runs as it is.
 
 **The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
 "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` through the
-same batch lander under the harness profile (the FAST gate `starci release gate --level dev`, then `git push origin HEAD:dev`), and with
+same batch lander under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks and publish checks, no test suite; then `git push origin HEAD:dev`), and with
 `devSync.publishLocal` each landed batch goes to the local registry as the dev line and into the app's dev checkout at once. npm sees only the
 train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
 `starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on

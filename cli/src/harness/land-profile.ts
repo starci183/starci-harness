@@ -7,7 +7,7 @@ import { isHarnessCheckout } from "../core/release/harness-checkout.js"
  * `npm ci`, codegen and `build:modules` at its root, `app check --env prod --level dev`, then `app push origin HEAD:dev`, whose pre-push hook
  * runs the fast level once. The harness repository itself (owner 2026-11-22: "bản thân .claude cũng tách thành dev main được không? dev code
  * xong merge nhanh để xài local") has no root install and no app hook: its gate is the harness FAST gate (`release gate --level dev`: the
- * build, typecheck and tests of the packages the batch changed and of their dependents) run by the lander's own CLI, and its push is a plain
+ * build and typecheck of the packages the batch changed and of their dependents and the publish checks, no test suite) run by the lander's own CLI, and its push is a plain
  * `git push origin HEAD:dev`. The batch squash, the cancel on a newer registration and the status files are the same for both.
  */
 export type LandProfileName = "app" | "harness"

@@ -94,8 +94,8 @@ One verb runs the local gate, one registers, one lander lands (PROJECT-BRANCH-2)
 
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same three
 verbs. `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
-gate slot the harness FAST gate `starci release gate --level dev` (the build, typecheck and tests of the packages the lane changed and of their
-dependents, the CLI and the desktop app when affected) and with `--push` pushes `lane/<lane>` with git once it is green. The harness lander
+gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
+dependents, the CLI and the desktop app when affected, and the publish checks; no test suite, which runs only in the train's full gate) and with `--push` pushes `lane/<lane>` with git once it is green. The harness lander
 (`starci lane land` started in the harness checkout) takes only the harness's lanes from the shared lanes folder, gates the batch the same way and
 pushes `dev` with `git push origin HEAD:dev`; the squash, the cancel on a newer registration and the status files are the app lander's. With
 `devSync.publishLocal` it publishes the landed packages to the local registry (`deps publish-dev`) and the app's dev sync installs them.
