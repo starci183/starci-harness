@@ -4,6 +4,7 @@
 
 codemod: v0551 (`starci app codemod v0551`, or `--from 0.55.0 --to 0.55.1`); v0550 is fixed in place, so an app re-runs it.
 
+- Docs (Tabs, owner 2026-11-23): views are secondary: whatever navigates or switches a block's views is the underline; the pill is only a non-navigating period or mode toggle ("List / Board" is no longer a primary example). A primary item already refuses `href` by type and development throw.
 - Added (MermaidDiagram, a lesson's diagram, owner 2026-11-23): `tones` (`{ id: "danger" | "success" | "accent" }`) and Mermaid's own `class X danger` paint a flowchart node in the tone's soft pair and edge from the tokens (a colour the source writes never paints); `caption`, one caption line under the drawing; a press on the drawing or its corner control opens a full-screen `Dialog` to pan (drag, arrows) and zoom (wheel, pinch, + -, 0; `zoomLabels`); below a 480px frame a `sequenceDiagram` is a numbered list of its messages and a flowchart drawn across is drawn down. Types `MermaidTone`, `MermaidZoomLabels`.
 - Added (FencedCodeBlock): `path` (the file, in the header in place of the language), `lineNumbers` (a gutter nobody selects or copies), `highlightLines` (`CodeLineRange[]`, the accent soft band across the block) and `note` (one caption line under the code).
 - Added (`GlossaryTerm`, leaf): an inline term with a dotted underline whose one-line definition shows on hover, focus and tap and is its accessible description. Story `Content/Lesson parts (0.55.1)`.

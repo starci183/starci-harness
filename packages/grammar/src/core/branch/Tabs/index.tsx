@@ -121,8 +121,9 @@ export type PrimaryTabItems =
     | readonly [PrimaryTabItem, PrimaryTabItem, PrimaryTabItem, PrimaryTabItem]
 
 /**
- * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It switches a mode or period of the same data ("This
- * month / Last month", "Day / Week / Month", "List / Board") among 2 to 4 short, fixed options, and never navigates: no `count`, no
+ * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It toggles a period or mode of the same data ("7 days /
+ * 30 days", "Day / Week / Month") among 2 to 4 short, fixed options, and never navigates (owner 2026-11-23: whatever changes the route or
+ * switches a block's views, "Board / Calendar / List", is the underline, secondary): no `count`, no
  * `href`, no more than four items (refused by the types, and by a development throw for what the types cannot see). It has no
  * line; it stands at the trailing edge of the head it switches (a `Section` `action`).
  */
