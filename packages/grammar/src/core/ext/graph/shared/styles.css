@@ -11,6 +11,10 @@
     --starci-graph-tone-soft: var(--default);
     --starci-graph-tone-ink: var(--default-foreground);
     --starci-graph-line: color-mix(in oklab, var(--foreground) 28%, var(--surface));
+    /* The dot grid of the panel: quiet but seen on the surface in light and dark alike (the border colour vanishes in a 1.4px dot). */
+    --starci-graph-grid: color-mix(in oklab, var(--foreground) 22%, var(--surface));
+    /* A graph's words are never under 13px: its core Badges (chips, tags, ports, the words on a line) take the label.field size, the size the layout measures them at. */
+    --grammar-type-badge-size: var(--grammar-type-label-field-size);
     position: relative;
     display: flex;
     flex-direction: column;

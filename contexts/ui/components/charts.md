@@ -27,7 +27,8 @@ core's components and tokens; core never imports it. `recharts` is an OPTIONAL p
 - `tone`: `default | accent | info | success | warning | danger`, painted by that tone's token. Default `accent`.
 - `ariaLabel` (required): the chart is one image named by it. `emptyLabel` (required): the words shown when `data` is empty.
 - `xAxisLabel`, `yAxisLabel`, `seriesLabel` (tooltip), `formatX`, `formatY`: words and number/date formatting come from the app, never from the chart.
-- `height` (px, default 240; width is the container's). `Sparkline` has no axes, grid or tooltip and a fixed height.
+- `height` (px, default 240; width is the container's). `Sparkline` has no axes, grid or tooltip and a fixed height; it takes the full width of its box, in a figure cell too (`Figure.trendChart`), so it needs no fixed-width wrapper.
+- `BarChart highlightLast`: the latest period apart, the last bar in the full tone and the others in its soft pair (`chartToneSoftColor`); the chart's name ends with the latest value (`ariaLabel`, then `formatX` and `formatY` of the last row). Use it for a weekly or daily series whose question is the latest period.
 - `isLoading` draws a Grammar `Skeleton` of the chart's box; inside a loading region it follows the region.
 - `AreaChart`: the `LineChart` props (`data`, `xKey`, `yKey`, `tone`, the axis words) plus `series` (further `{ key, label, tone? }`
   of the same rows, an untoned one taking the next tone of the categorical order `accent, success, warning, danger, info`) and

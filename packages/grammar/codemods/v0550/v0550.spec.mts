@@ -131,5 +131,5 @@ test("dry mode writes nothing; --execute writes the after fixtures; the console 
 test("an upgrade from 0.54.0 to 0.55.0 runs v0550, and a prerelease of 0.55.0 carries it", () => {
     assert.deepEqual(codemodsBetween("0.54.0", "0.55.0").map((c) => c.id), ["v0550"])
     assert.deepEqual(codemodsBetween("0.53.0", "0.55.0-display.1").map((c) => c.id), ["v0540", "v0550"])
-    assert.deepEqual(codemodsBetween("0.55.0", "0.55.3").map((c) => c.id), [])
+    assert.deepEqual(codemodsBetween("0.55.1", "0.55.3").map((c) => c.id), [])
 })

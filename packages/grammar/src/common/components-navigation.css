@@ -2000,8 +2000,8 @@
     .starci-core-description-trend[data-grammar-trend-tone="info"] { color: var(--info); }
     .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
 
-    /* The trend line stands under the value and meta, at the start of the cell. */
-    .starci-core-description-trend-line { margin: 0; line-height: 0; }
+    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). */
+    .starci-core-description-trend-line { align-self: stretch; min-width: 0; margin: 0; line-height: 0; }
 
     @container starci-core-description-strip (min-width: 18rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {

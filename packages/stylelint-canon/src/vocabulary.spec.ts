@@ -29,7 +29,7 @@ test("the generated vocabulary equals what the grammar CSS declares and reads", 
 
 test("the four family namespaces and the semantic layer are grammar tokens", () => {
   assert.deepEqual(FAMILY_PREFIXES, ["--grammar-", "--starci-core-", "--offset-pop-"])
-  for (const name of ["--grammar-inline-gap", "--starci-core-anything", "--offset-pop-shadow", "--accent", "--surface", "--radius-lg", "--font-mono", "--font-sans"]) {
+  for (const name of ["--grammar-inline-gap", "--starci-core-anything", "--offset-pop-shadow", "--accent", "--surface", "--radius-3xl", "--font-mono", "--font-sans"]) {
     assert.ok(isGrammarToken(name), name)
   }
 })

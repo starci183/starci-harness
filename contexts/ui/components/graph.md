@@ -2,9 +2,9 @@
 
 `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model (`SchemaMap`, `ErdMap`) or a knowledge map (`KnowledgeMap`). Everything else is core: a list, `Timeline`, `Stepper`, cards ([situations](../situations.md)). The ext imports the core and its tokens; the core entry never imports the ext, so an app that draws no graph installs none of its libraries (`@xyflow/react`, `elkjs`, `d3-force` are optional peers of `@starci/grammar`). An app never imports those libraries itself.
 
-The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. Both are laid out by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, fit the view on load, select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
+The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. Both are laid out by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, open at 100% on the step that matters (never fitted; fitting is the zoom group's fit button), select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
 
-They draw only from the tokens of the Grammar theme in the page (`--surface`, `--border`, `--muted`, `--accent*`, `--info`, `--success*`, `--warning*`, `--danger*`, `--default*`, `--grammar-radius-*`, `--grammar-type-*`), so they follow the app's brand and its dark mode. They carry no icon and no text of their own: the icons, the words of the states, the labels of the controls and the legend are the app's.
+They draw only from the tokens of the Grammar theme in the page (`--surface`, `--foreground` (the dot grid of the panel is `--foreground` mixed 22% into `--surface`, quiet but seen in light and dark), `--border`, `--muted`, `--accent*`, `--info`, `--success*`, `--warning*`, `--danger*`, `--default*`, `--grammar-radius-*`, `--grammar-type-*`), so they follow the app's brand and its dark mode. They carry no icon and no text of their own: the icons, the words of the states, the labels of the controls and the legend are the app's.
 
 ## Minimal usage (any app)
 
@@ -77,7 +77,7 @@ The graph fills its parent, so the parent has a height.
 
 ## Built from core
 
-The ext draws nothing core already has (owner 2026-11-22, "ext is built from core"): a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s, the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
+The ext draws nothing core already has (owner 2026-11-22, "ext is built from core"): a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s (at the label.field size, 13px: no word of a graph is under 13px), the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
 
 ## The six states
 
@@ -110,7 +110,7 @@ interface FlowGraphProps extends GraphCanvasProps {
 }
 ```
 
-`GraphCanvasProps` (shared with `SchemaMap`): `label`, `direction` (`LR` default, `TB`), `isLoading`, `emptyLabel`, `selectedId` and `onSelect(id | null)`, `onNodePress(id)`, `interactive` (default on), `showControls`, `minimap` and `minimapLabel`, `ariaLabelConfig`, `editable`, `positions`, `onPositionsChange`, `resetLabel`, `islands`, `islandsWidth`, `className`.
+`GraphCanvasProps` (shared with `SchemaMap`): `label`, `direction` (`LR` default, `TB`), `isLoading`, `emptyLabel`, `selectedId` and `onSelect(id | null)`, `onNodePress(id)`, `focusId` (the node the first view is centred on), `interactive` (default on; `false` is a still picture, fitted, with no zoom group), `showControls`, `minimap` and `minimapLabel`, `ariaLabelConfig`, `editable`, `positions`, `onPositionsChange`, `resetLabel`, `islands`, `islandsWidth`, `className`.
 
 ### Nodes
 
@@ -169,9 +169,9 @@ interface GraphEdge {
 
 Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, routed round the outside of both ends (it places nothing). A label is a pill on the line, except a branch's port label.
 
-### On a phone
+### The first view, on every screen
 
-Under 768px the graph is the desktop graph at 100% (no fit to the width, no relayout, text never under 13px), centred on the running step, else a failed one, else a waiting one, else the first not done; one finger pans, two fingers pinch, a double tap zooms in. The zoom buttons are 40px and include fit; their words are the app's (`ariaLabelConfig`). Give the graph a fixed height (about 70vh) so the page still scrolls past it.
+A node is the same size on every screen and a person drags the graph by hand: at every width the graph opens at 100% (no fit to the width, no relayout, text never under 13px). A graph that fits its frame at 100% stands in its middle; a larger one is centred on its focus step, held so that its start never stands further in than the inset (the zoom buttons' room on the left, 16px at the top). The focus step is `focusId` when the app names one, else the running step, else a failed one, else a waiting one, else the first not done, else the first (`focusStep`). The view is set once per layout: a status change, a resize or a pan never moves it. One finger pans, two fingers pinch, a double tap zooms in. The zoom buttons are 40px and include fit, the only way the graph is fitted; their words are the app's (`ariaLabelConfig`). Give the graph a fixed height (about 70vh on a phone) so the page still scrolls past it.
 
 ### Line styles
 
@@ -227,7 +227,7 @@ export const Library = () => (
 )
 ```
 
-The line runs from the field's own port to the head of the other entity, with a crow's foot where many stand and two bars where one stands (a ring beyond either when the end may be empty). Hovering a relation or an entity lights both ends. A link is drawn with an icon, never a typed arrow. On a phone the map is the same map at 100%, in a panel about 70vh high: a finger drags it, two fingers zoom it, and the 40px controls fit it (the words of the controls are `ariaLabelConfig`).
+The line runs from the field's own port to the head of the other entity, with a crow's foot where many stand and two bars where one stands (a ring beyond either when the end may be empty). Hovering a relation or an entity lights both ends. A link is drawn with an icon, never a typed arrow. On every screen the map opens at 100%: a map that fits stands in the middle of its panel, a larger one at its top-left corner past the controls, or centred on `focusId` (an entity id) when the app names one. A finger drags it, two fingers zoom it, and the 40px controls fit it (the words of the controls are `ariaLabelConfig`); on a phone give the panel about 70vh.
 ## KnowledgeMap
 
 A map of what an app knows, for any app: topic clusters with names, a bubble for each item sized by its weight, and a line from an item to the item it came from. It is not tied to one product: the data is neutral (clusters, items with a weight, links) and every word is the app's.
@@ -251,8 +251,8 @@ import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
 ```
 
 - Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
-- Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name of a bubble on hover, `onOpen(id)` on click or Enter, a legend.
-- Every screen: the map is the same graph on a phone as on a desktop, at 100% when it opens (no fit-to-width, no list). A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
+- Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name card of a bubble on hover or focus (the Grammar Tooltip), `onOpen(id)` on click or Enter, a legend.
+- Every screen: the map is the same graph on a phone as on a desktop, at 100% when it opens (no fit-to-width, no list): a map that fits its canvas stands in its middle, a larger one is centred on `focusId` (an item id) or, left out, on the heaviest item. A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
 - Words: `kindLabels`, `stateLabels`, `weightLabel`, `sourceLabel`, `zoomLabels`, `emptyLabel` and the `legend` are all passed in; the package has none of its own.
 
 ## Look

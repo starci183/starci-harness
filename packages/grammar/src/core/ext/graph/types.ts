@@ -191,6 +191,11 @@ export interface GraphCanvasProps {
     readonly onSelect?: (id: string | null) => void
     /** Fires with the node id when a node is pressed (click, Enter or Space); never with `null`. */
     readonly onNodePress?: (id: string) => void
+    /**
+     * The node the first view is centred on. The graph opens at 100% on every screen (never fitted; the fit button fits): a graph larger than its frame is
+     * centred on this node, left out on the running step, else a failed one, else a waiting one, else the first not done, else the first (`focusStep`).
+     */
+    readonly focusId?: string | undefined
     /** Pan and zoom. Default on; `false` draws a still picture (fitted on load, no zoom buttons or overview map). Selection and editing still work. */
     readonly interactive?: boolean
     /** The zoom buttons, 32px. Default on while `interactive`. */
