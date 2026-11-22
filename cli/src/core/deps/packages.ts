@@ -116,8 +116,17 @@ export const assertNpm = (root: string): void => {
     throw new Refusal("DEPS_NO_LOCKFILE", `${root} has no package-lock.json; run it at the app root`)
 }
 
-/** The last lines of an npm run's output, for a refusal. */
-export const tail = (stdout: string, stderr: string): string => [stdout, stderr].join("\n").trim().split("\n").slice(-15).join("\n")
+/** A line of output that says nothing about why a run failed: a blank line, or a stack frame inside node's own runtime (`node:internal/...`). */
+const NO_CAUSE = /^\s*$|^\s*at (?:async )?(?:.* \()?node:/
+
+/** The last lines of an npm run's output that can say why it failed, for a refusal or a gate finding. */
+export const tail = (stdout: string, stderr: string): string =>
+    [stdout, stderr]
+        .join("\n")
+        .split("\n")
+        .filter((line) => !NO_CAUSE.test(line))
+        .slice(-15)
+        .join("\n")
 
 /**
  * A package folder's install is stale when it does not hold the lockfile's packages. npm's record of the install (read through the folder's

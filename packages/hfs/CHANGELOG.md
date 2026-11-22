@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed (t1943, the spec run `scripts/node-test.mts`): the specs run without the caller's repository-local git variables (`withoutGitLocalEnv`), so a `GIT_CONFIG_PARAMETERS` the launching terminal set (`'safe.bareRepository=explicit'`, inherited by the harness lander) no longer makes git die with exit 128 inside a fixture's bare remote and turn `release-urgent.spec.mts` red in the lander's gate only.
 - Fixed (`.husky/pre-push` template): the dev/full level choice is an explicit `if ... then echo dev; else echo full; fi` (same behaviour); the `&& echo dev || echo full` form tripped HFS_BYPASS_MARKER (or-true) on `starci app check --staged` and blocked every app's adopt commit. Apps pick it up with `starci app sync`. New guard `src/shipped-templates-bypass.spec.mts`: every managed template (enumerated by `targetsOf` over every scope, rendered by `render`), the managed render of an app declaration (judged by HFS_BYPASS_MARKER whole, markers and relaxed gate configuration) and every other file under `templates/` must spell no bypass marker.
 
 ## 6.17.8 - 2026-11-22

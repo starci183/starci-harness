@@ -20,7 +20,7 @@ export const unquoteDiffPath = (value: string): string =>
 
 // git's repository-local variables (git rev-parse --local-env-vars). A hook or alias run in a linked worktree exports
 // GIT_DIR=<main>/.git/worktrees/<wt>; a spec inheriting it pointed every fixture git at the LIVE .claude repo and re-inited
-// it core.bare=true. e2e/setup/isolated-registry.mjs drops the same list.
+// it core.bare=true. The package's spec run (scripts/node-test.mjs) and e2e/setup/isolated-registry.mjs drop the same list.
 export const GIT_LOCAL_ENV_VARS = ['GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_IMPLICIT_WORK_TREE', 'GIT_PREFIX', 'GIT_CONFIG', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT', 'GIT_GRAFT_FILE', 'GIT_NO_REPLACE_OBJECTS', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_INTERNAL_SUPER_PREFIX'];
 /** `parent` (the caller's env) without git's repository-local variables (GIT_CONFIG_KEY_n/VALUE_n go with GIT_CONFIG_COUNT). Pure. */
 export function withoutGitLocalEnv<E extends Record<string, string | undefined>>(parent: E): E {
