@@ -3,7 +3,9 @@
 // the archive. The runner is a double; the shell scripts are syntax-checked with bash where bash exists.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { readPath, withPath } from '../runtime/scripts/lib/env.mjs';
 import { backupFolder, decryptScript, dumpScript, managerBackup, managerDecrypt, measureScript } from '../stack/manager-backup.mjs';
 import { backupProblems } from '../stack/db-phases.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
@@ -126,7 +128,7 @@ test('the dump script, run under bash with doubles for docker and age, writes a 
     const write = (name: string, body: string) => spawnSync('bash', ['-c', `cat > ${work}/bin/${name} && chmod +x ${work}/bin/${name}`], { input: `${body}\n` });
     write('docker', FAKE_DOCKER);
     write('age', FAKE_AGE);
-    const dump = (fail: boolean) => spawnSync('bash', ['-c', dumpScript({ dir: `${work}/out`, file: 'shop-1.tar.age', container: CONTAINER, url: URL, recipients: [RECIPIENT] })], { encoding: 'utf8', env: { ...process.env, PATH: `${work}/bin:${process.env.PATH}`, ...(fail ? { FAKE_FAIL: '1' } : {}) } });
+    const dump = (fail: boolean) => spawnSync('bash', ['-c', dumpScript({ dir: `${work}/out`, file: 'shop-1.tar.age', container: CONTAINER, url: URL, recipients: [RECIPIENT] })], { encoding: 'utf8', env: { ...withPath(process.env, `${work}/bin${path.delimiter}${readPath()}`), ...(fail ? { FAKE_FAIL: '1' } : {}) } });
     const good = dump(false);
     assert.equal(good.status, 0, good.stderr);
     const [sha, bytes, ...rest] = good.stdout.split('\n');

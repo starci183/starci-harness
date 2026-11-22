@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readPath, withPath } from '../runtime/scripts/lib/env.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -33,7 +34,7 @@ function scene(t: TestContext) {
   fs.writeFileSync(path.join(dir, 'bin', 'docker'), '#!/bin/sh\necho "docker $*"\n', { mode: 0o755 });
   // the forced command: sshd runs the gate with the client's command in SSH_ORIGINAL_COMMAND
   const viaGate = (command: string | undefined, input?: string): RemoteResult => {
-    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${path.join(dir, 'bin')}${path.delimiter}${process.env.PATH ?? ''}` };
+    const env: NodeJS.ProcessEnv = withPath(process.env, `${path.join(dir, 'bin')}${path.delimiter}${readPath()}`);
     if (command === undefined) delete env.SSH_ORIGINAL_COMMAND; else env.SSH_ORIGINAL_COMMAND = command;
     const run = spawnSync('sh', [posix(gate)], { env, input, encoding: 'utf8', windowsHide: true });
     return { status: run.status ?? 1, stdout: run.stdout, stderr: run.stderr };
