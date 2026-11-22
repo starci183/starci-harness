@@ -10,6 +10,7 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { captureGitSync } from "../../shared/git.js"
 import { writeInstallRecord } from "../deps/install-local.js"
+import type { InstallRecord } from "../deps/install-local.js"
 import { ASIDE, installPlaces, realInstallFs } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { parseStackStatus, stopTargets } from "./stack-stop.js"
@@ -35,6 +36,9 @@ void test("the overlay is printed whether or not one is in effect, and names the
     const record = { schema: "starci/deps-install-local@1" as const, registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/grammar", version: "0.52.4-local.1", pins: [{ file: "fe/package.json", field: "dependencies", spec: "0.52.3" }] }] }
     assert.deepEqual(overlayOf(record), ["@starci/grammar@0.52.4-local.1"])
     assert.deepEqual(overlayFiles(record), ["fe/package.json", "package-lock.json"])
+    // a pin in a subfolder package with its own lockfile (gallery/) owns that lockfile too, so the next sync never reads it as a stray change
+    const gallery: InstallRecord = { ...record, packages: [...record.packages, { name: "@starci/gallery", version: "0.1.21-dev.2", pins: [{ file: "gallery/package.json", field: "devDependencies", spec: "0.1.20" }] }] }
+    assert.deepEqual(overlayFiles(gallery, (file) => (file.startsWith("gallery/") ? "gallery" : "")), ["fe/package.json", "gallery/package-lock.json", "gallery/package.json", "package-lock.json"])
     assert.deepEqual(overlayOf(undefined), [])
     assert.match(overlayLine([]), /local overlay: none/u)
     assert.match(overlayLine(overlayOf(record)), /local overlay in effect: @starci\/grammar@0\.52\.4-local\.1/u)

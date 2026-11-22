@@ -7,7 +7,7 @@ import { captureGit, currentBranch, git, repositoryRoot, resolveSha, trackedChan
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
-import { installLocal, installRecordFile, parseRequested, readInstallRecord } from "../deps/install-local.js"
+import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord } from "../deps/install-local.js"
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm } from "../deps/packages.js"
@@ -46,7 +46,13 @@ export const overlayOf = (record: InstallRecord | undefined): string[] => (recor
 export const processesFor = (sides: readonly Side[], processes: DevSyncSettings["processes"]): string[] => [...new Set(sides.flatMap((side) => processes[side]))]
 
 /** The files an install-local overlay changed: the manifests its pins live in and the lockfile. Pure. */
-export const overlayFiles = (record: InstallRecord | undefined): string[] => (record === undefined ? [] : [...new Set([...record.packages.flatMap((one) => one.pins.map((pin) => pin.file)), LOCKFILE])].toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0)))
+export const overlayFiles = (record: InstallRecord | undefined, unitOf: (file: string) => string = () => ""): string[] =>
+    record === undefined
+        ? []
+        : [...new Set([...record.packages.flatMap((one) => one.pins.flatMap((pin) => [pin.file, unitLockfile(unitOf(pin.file))])), LOCKFILE])].toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+
+/** The lockfile of an install unit: the root's, or the one of a subfolder package with its own lockfile (an app's gallery/). Pure. */
+const unitLockfile = (folder: string): string => (folder === "" ? LOCKFILE : `${folder}/${LOCKFILE}`)
 
 /** What one `dev sync` did or would do. */
 export interface DevSyncData {
@@ -131,7 +137,7 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     }
     const record = readInstallRecord(root)
     const overlayBefore = overlayOf(record)
-    const ownFiles = overlayFiles(record)
+    const ownFiles = overlayFiles(record, (file) => installUnitOf(root, file))
     const dirty = (await trackedChanges(root)).filter((file) => !ownFiles.includes(file))
     if (dirty.length > 0) throw new Refusal("DEV_SYNC_DIRTY", `${root} has tracked changes that are not a local overlay's: ${dirty.slice(0, 5).join(", ")}; the dev checkout only follows origin/dev, commit them on a lane instead`)
     const branch = await currentBranch(root)
