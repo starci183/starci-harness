@@ -32,7 +32,7 @@ const fixture = (t: { after: (fn: () => void) => void }): string => {
         writeFileSync(join(root, file), text)
     }
     write("package.json", '{\n  "name": "app",\n  "private": true,\n  "workspaces": ["packages/*"]\n}\n')
-    write("package-lock.json", lock({ "@starci/grammar": { version: "0.55.0", resolved: tarball(NPMJS, "@starci/grammar", "0.55.0") } }))
+    write("package-lock.json", lock({ "@starci/grammar": { version: "0.55.0", resolved: tarball(NPMJS, "@starci/grammar", "0.55.0") }, "@starci/hfs": { version: "6.17.8", resolved: tarball(NPMJS, "@starci/hfs", "6.17.8") } }))
     write("packages/web/package.json", '{\n  "name": "web",\n  "version": "1.0.0",\n  "dependencies": {\n    "@starci/grammar": "0.55.0"\n  }\n}\n')
     write("gallery/package.json", '{\n  "name": "app-gallery",\n  "private": true,\n  "devDependencies": {\n    "@starci/gallery": "0.1.20"\n  }\n}\n')
     write("gallery/package-lock.json", lock({ "@starci/gallery": { version: "0.1.20", resolved: tarball(NPMJS, "@starci/gallery", "0.1.20") } }))
@@ -75,6 +75,18 @@ void test("the plan edits each pin in the unit that owns it, and a name pinned n
     const hfs = await planInstall(root, [{ name: "@starci/hfs", version: "6.17.9-dev.1" }], undefined)
     assert.deepEqual(hfs.units, [{ folder: "", names: ["@starci/hfs"] }])
     assert.deepEqual(hfs.packages[0]?.pins, [{ file: "package.json", field: "overrides", spec: null }])
+})
+
+void test("a name neither pinned nor locked is left out: an override cannot add a package the tree never installs", async (t) => {
+    const root = fixture(t)
+    const plan = await planInstall(root, [{ name: "@starci/eslint-grammar-offset-pop", version: "0.55.1-dev.1" }, { name: "@starci/grammar", version: "0.55.1-dev.1" }], undefined)
+    assert.deepEqual(plan.absent, ["@starci/eslint-grammar-offset-pop"])
+    assert.deepEqual(plan.packages.map((one) => one.name), ["@starci/grammar"])
+    assert.deepEqual(plan.units, [{ folder: "", names: ["@starci/grammar"] }])
+    assert.doesNotMatch(plan.texts.get("package.json") ?? "", /offset-pop/)
+    const calls: string[] = []
+    await applyInstall(root, plan, PORT, fakeNpm(root, { "@starci/grammar": "" }, () => LOCAL, calls))
+    assert.deepEqual(calls, [""])
 })
 
 void test("an install runs npm in each unit's folder and checks each unit's lockfile", async (t) => {
