@@ -20,7 +20,7 @@ export interface Report {
  * across a frame it does not start or end at; 4 an edge end (its hollow circle, its open triangle) more than 2 off its port; 5 the spine off one x centre by more
  * than 2; 6 a decision whose branches are not symmetric about it within 4; 7 a loop edge that leaves its frame; 8 more edge crossings than allowed; 9 a scroll at
  * desktop width, a first view not at 100%, or the running step (or every node) out of the view; 11 a back edge more than one card and its gutter (320) outside
- * the box of its two ends; plus text over an edge. The positions come back for rule 10, the snapshot.
+ * the box of its two ends, or a back edge or its label more than its gutter (40) outside the box of all the nodes (it would widen the layout); plus text over an edge. The positions come back for rule 10, the snapshot.
  */
 export const measure = (page: Page, allowed: number): Promise<Report> =>
     page.evaluate((maxCrossings) => {
@@ -34,6 +34,8 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         const hits: { rule: string; a: string; b: string }[] = []
         /** Rule 11: how far a back edge may run outside the box of its two ends, in graph units: one card (280) and its gutter (40). */
         const BACK_DETOUR = 320
+        /** Rule 11: how far a back edge and its label may stand outside the box of all the nodes, in graph units: the gutter a lane keeps from the side it passes. */
+        const BACK_GUTTER = 40
         const positions: Record<string, [number, number]> = {}
         const canvas = document.querySelector(".react-flow")
         if (canvas === null) return { hits, positions }
@@ -66,6 +68,8 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         const byId = new Map(nodes.map((node) => [node.id, node]))
         const cards = nodes.filter((node) => !node.frame)
         const frames = nodes.filter((node) => node.frame)
+        /** The layout's own content: the box of every node. */
+        const content = { l: Math.min(...nodes.map((node) => node.box.l)), t: Math.min(...nodes.map((node) => node.box.t)), r: Math.max(...nodes.map((node) => node.box.r)), b: Math.max(...nodes.map((node) => node.box.b)) }
 
         const edges = [...canvas.querySelectorAll<SVGGElement>(".react-flow__edge")].map((group) => {
             const path = group.querySelector<SVGPathElement>(".react-flow__edge-path")
@@ -194,6 +198,14 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
                     const ys = edge.points.map((p) => p[1])
                     const detour = Math.max(span.l - Math.min(...xs), Math.max(...xs) - span.r, span.t - Math.min(...ys), Math.max(...ys) - span.b)
                     if (detour > u(BACK_DETOUR)) hits.push({ rule: "11 back edge detour", a: edge.id, b: `${String(Math.round(detour / zoom))} > ${String(BACK_DETOUR)}` })
+                    // and neither it nor its label stands more than its gutter outside the layout's own content (the box of every node), where the first view never shows it
+                    const own = pills.filter((pill) => pill.edge === edge.id).map((pill) => pill.box)
+                    const lefts = [...xs, ...own.map((box) => box.l)]
+                    const rights = [...xs, ...own.map((box) => box.r)]
+                    const tops = [...ys, ...own.map((box) => box.t)]
+                    const bottoms = [...ys, ...own.map((box) => box.b)]
+                    const out = Math.max(content.l - Math.min(...lefts), Math.max(...rights) - content.r, content.t - Math.min(...tops), Math.max(...bottoms) - content.b)
+                    if (out > u(BACK_GUTTER) + 1) hits.push({ rule: "11 back edge outside the layout", a: edge.id, b: `${String(Math.round(out / zoom))} > ${String(BACK_GUTTER)}` })
                 }
             }
         }
