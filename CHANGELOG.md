@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed (t1943, `release gate` findings and every refusal that quotes a failed npm run, `tail` in `core/deps/packages.ts`): the quoted last 15 lines skip blank lines and node's own stack frames (`node:internal/...`), so a failed spec's message, with the git stderr its assertion carries, stays in the finding instead of being pushed out by runtime frames.
 - Fixed (t1943, `starci dev sync`): the lockfile of a subfolder package with its own lockfile (an app's `gallery/package-lock.json`) that a local overlay pinned counts as the overlay's own file, so the next sync puts it back instead of refusing DEV_SYNC_DIRTY on it.
 - Fixed (t1943, `starci deps install-local` and the dev sync that runs it): a named package the app neither pins nor has in its root package-lock.json is left out and named ("left out …: nothing to install"), since an `overrides` entry cannot add a package the tree never installs. Before, every dev sync of an app without `@starci/eslint-grammar-offset-pop` in its tree refused INSTALL_LOCAL_NOT_RESOLVED for it, because devSync.local lists every package of the dev line.
 - Added (t1942; owner OK 2026-11-22, CONTRIB-10: "Ok, cho land"): `lane land`, `lane gate` and `release gate` refuse HOST_POSIX_SH_MISSING at start when no POSIX `sh` resolves on PATH (a PowerShell session with Git's cmd/ and WSL's bash only), with the fix: Git for Windows' usr/bin first on PATH. Before, an hfs spec that spawns `sh` failed mid-gate and the lane was rejected as HARNESS_GATE_TEST.
