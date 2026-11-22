@@ -8,20 +8,21 @@ import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
 import { landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
-import { landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
+import { MIGRATIONS_FOLDER, landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
 import { listWorktrees } from "../../harness/worktree-remove.js"
 import { cliPackageName, packageVersion } from "../version.js"
 
-/** How long an idle lander waits before it reads the ready set again. */
+/** How long an idle lander waits before it reads the ready set again, and after a batch that failed before it judged its lanes. */
 const POLL_MS = 30_000
 
 /**
  * `starci lane land`: the one lander of an app's dev (contexts/project/branches.md PROJECT-BRANCH-2). Each loop takes every ready
  * lane, merges them in its own worktree, runs one `app check --env prod --level dev` (the fast level; a newer registration of a lane cancels it and re-forms the batch), squashes the batch into ONE commit listing the lanes and their shas and pushes dev through `app push`; a red batch drops the
- * lanes its findings name and runs once more, never bisecting. `--once` runs one batch; `--dry-run` merges only. When this machine's local
+ * lanes its findings name and runs once more, never bisecting; a tree that fails to prepare (npm ci, codegen, build:modules) tries each lane alone
+ * and rejects the ones that break it (harness/land-batch.ts judgePrepare). `--once` runs one batch; `--dry-run` merges only. When this machine's local
  * settings turn on `devSync.afterLand` (harness/local-settings.ts, git-ignored, default off), a landed batch is followed by `starci dev sync
  * --execute` on the app's main dev checkout, debounced over consecutive batches, which restarts only the changed api or web of the running dev stack.
  * A lander started from inside a worktree of the app (`npx starci lane land` in its checkout) runs itself again from its own install of the
@@ -61,7 +62,7 @@ export const laneLandVerb = defineVerb({
             profile: landProfile(profileName, join(runningCliRoot(), "dist", "main.js")),
             ...(ownRemote === "" ? {} : { ownRemote }),
             worktree: resolve(flags.worktree ?? join(dir, `${dryRun ? "_batch-lander-dry" : "_batch-lander"}${scope === "" ? "" : `-${scope}`}`)),
-            migrations: flags.migrations ?? "db/migrations/",
+            migrations: flags.migrations ?? MIGRATIONS_FOLDER,
         }
         if (!dryRun) {
             // The harness lander runs the CLI it was started with, the harness checkout's own build: its npm install of the same version would
@@ -96,7 +97,8 @@ export const laneLandVerb = defineVerb({
                 if (autoSync !== undefined && (autoSync.debounce.due(Date.now()) || ((flags.once || dryRun) && autoSync.debounce.pending))) await autoSync.run()
                 if (flags.once || dryRun) break
                 const wait = autoSync?.debounce.waitMs(Date.now())
-                await new Promise((settle) => setTimeout(settle, record === undefined ? Math.min(POLL_MS, wait ?? POLL_MS) : 1000))
+                // A batch that failed before it judged its lanes would form again the same way at once: it waits a full poll, never a tight loop.
+                await new Promise((settle) => setTimeout(settle, record === undefined ? Math.min(POLL_MS, wait ?? POLL_MS) : record.failed === true ? POLL_MS : 1000))
             }
         } finally {
             clearInterval(heartbeat)
