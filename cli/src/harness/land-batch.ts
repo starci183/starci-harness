@@ -11,7 +11,8 @@ import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-q
 import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
 import { APP_PROFILE, LANDER_GATE_ARGS, lockScope, takesEntry } from "./land-profile.js"
 import type { LandProfile } from "./land-profile.js"
-import { outputTail, prepareTree } from "./prepare-tree.js"
+import { tail } from "../core/deps/packages.js"
+import { prepareTree } from "./prepare-tree.js"
 import type { PrepareFailure } from "./prepare-tree.js"
 
 export { LANDER_GATE_ARGS }
@@ -184,7 +185,7 @@ export const prepareBatchTree = async (options: BatchOptions, log: string[]): Pr
             options.say(`npm ci (${slot})`)
             const run = await withHeavySlot("install", "lane land: npm ci", wt, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], wt, held.options))
             log.push(run.stdout, run.stderr)
-            if (run.exitCode !== 0) return outOfMemoryThrows({ command: "npm ci", exitCode: run.exitCode, output: outputTail(run) })
+            if (run.exitCode !== 0) return outOfMemoryThrows({ command: "npm ci", exitCode: run.exitCode, output: tail(run.stdout, run.stderr) })
         } finally {
             releaseLockFile(slot, process.pid)
         }

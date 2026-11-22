@@ -1,3 +1,4 @@
+import { tail } from "../core/deps/packages.js"
 import { captureNpm } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
@@ -10,7 +11,7 @@ import { withHeavySlot } from "./heavy.js"
  */
 export const PREPARE_SCRIPTS: readonly string[] = ["codegen", "build:modules"]
 
-/** A prepare step that failed: the command (`npm run build:modules`, the lander's `npm ci`), its exit code and the tail of what it printed. */
+/** A prepare step that failed: the command (`npm run build:modules`, the lander's `npm ci`), its exit code and the tail of what it printed (`tail`). */
 export interface PrepareFailure {
     readonly command: string
     readonly exitCode: number
@@ -24,12 +25,6 @@ export type ScriptRunner = (root: string, script: string, label: string) => Prom
 export const runPrepareScript: ScriptRunner = (root, script, label) =>
     withHeavySlot("build", `${label}: npm run ${script}`, root, {}, (held) => captureNpm(["run", script, "--silent", "--if-present"], root, held.options))
 
-/** The last `lines` lines of a run's output, stdout then stderr, at most `chars` characters: what a finding or a refusal quotes. Pure. */
-export const outputTail = (run: Pick<ToolRun, "stdout" | "stderr">, lines = 30, chars = 2400): string => {
-    const tail = `${run.stdout}\n${run.stderr}`.split("\n").map((line) => line.trimEnd()).filter((line) => line !== "").slice(-lines).join("\n")
-    return tail.length > chars ? tail.slice(-chars) : tail
-}
-
 /**
  * Runs `scripts` in order at `root` and stops at the first that fails. Returns the scripts that ran green, the failure (undefined when all
  * passed) and every run's output for the caller's log. `label` names the caller in the governor's queue.
@@ -40,7 +35,7 @@ export const prepareTree = async (root: string, label: string, scripts: readonly
     for (const script of scripts) {
         const done = await run(root, script, label)
         log.push(done.stdout, done.stderr)
-        if (done.exitCode !== 0) return { ran, failure: { command: `npm run ${script}`, exitCode: done.exitCode, output: outputTail(done) }, log }
+        if (done.exitCode !== 0) return { ran, failure: { command: `npm run ${script}`, exitCode: done.exitCode, output: tail(done.stdout, done.stderr) }, log }
         ran.push(script)
     }
     return { ran, log }
