@@ -8,6 +8,7 @@ import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import { readSecretBytes, CREDENTIAL_FILE_MAX_BYTES, sopsIdentityEnv, type SopsIdentity } from '../../../engine/secrets.mjs';
 import { selectedAgeEnvelope } from '../../lib/sops-envelope.mjs';
 import { errorCode } from '../fs/lib.mjs';
+import { readPath } from '../../lib/env.mjs';
 
 type PathModule = typeof path.posix;
 type SopsFilesystem = Pick<typeof fs, 'readdirSync' | 'statSync'>;
@@ -104,7 +105,7 @@ export function resolveSops(env: NodeJS.ProcessEnv = process.env, { platform = p
   const win = platform === 'win32';
   const paths = win ? path.win32 : path.posix;
   const names = sopsNames(env, win, pathext);
-  const dirs = String(env.PATH ?? '').split(win ? ';' : ':').filter(Boolean);
+  const dirs = readPath(env).split(win ? ';' : ':').filter(Boolean);
   if (win) dirs.push(...wingetDirs(filesystem, paths, env, wingetPackageTree));
   for (const directory of dirs) for (const name of names) {
     const file = paths.join(directory, name);

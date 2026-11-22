@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { readPath } from '../../lib/env.mjs';
 
 /** The file-system seams a spec injects: stat (default fs.statSync) and realpath (default fs.realpathSync.native). */
 export interface RealToolOptions {
@@ -12,11 +13,6 @@ export interface RealToolOptions {
   realpath?: (path: string) => string;
 }
 type Realpath = (path: string) => string;
-
-const pathValue = (env: NodeJS.ProcessEnv | undefined): string => {
-  const key = Object.keys(env ?? {}).find((name) => name.toLowerCase() === 'path');
-  return key && env ? String(env[key] ?? '') : '';
-};
 
 const canonical = (value: string, { platform, realpath }: { platform: NodeJS.Platform; realpath: Realpath }): string => {
   let resolved = path.resolve(value);
@@ -52,7 +48,7 @@ export function resolveRealTool(program: unknown, { env = process.env, home = os
   const delimiter = platform === 'win32' ? ';' : ':';
   const shimKey = canonical(path.join(home, '.starci', 'bin'), { platform, realpath });
   const names = executableNames(name, { env, platform });
-  for (const rawEntry of pathValue(env).split(delimiter).filter(Boolean)) {
+  for (const rawEntry of readPath(env ?? {}).split(delimiter).filter(Boolean)) {
     const entry = rawEntry.replace(/^"(.*)"$/, '$1');
     if (canonical(entry, { platform, realpath }) === shimKey) continue;
     const hit = firstExecutableHit(entry, names, stat, realpath);
