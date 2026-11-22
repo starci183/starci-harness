@@ -5,7 +5,7 @@ import { captureGit } from "../shared/git.js"
 import { captureNpm, captureTool, killPidTree } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import {
-    CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, notReadyAny, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
+    CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, notReadyAny, readyEntries, releaseLockFile, takeLiveLock, writeJsonWhole, writeStatus,
 } from "./land-queue.js"
 import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
 import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
@@ -90,13 +90,13 @@ export const releaseLaneSlotsOf = (dir: string, lane: string, state: string, say
     }
 }
 
-/** Waits for the dev lock (of the lander's scope) and holds it for the batch. */
-const takeDevLock = async (dir: string, say: (line: string) => void, scope = ""): Promise<void> => {
+/** Waits for the dev lock (of the lander's scope) and holds it for the batch; a lock whose pid is not alive is taken over at once (`takeLiveLock`). */
+export const takeDevLock = async (dir: string, say: (line: string) => void, scope = "", pollMs = 5000): Promise<void> => {
     let waited = false
-    while (!takeLockFile(landPaths(dir, scope).devLock, holderLine())) {
+    while (!takeLiveLock(landPaths(dir, scope).devLock, holderLine(), say)) {
         if (!waited) say(`waiting for ${landPaths(dir, scope).devLock}`)
         waited = true
-        await sleep(5000)
+        await sleep(pollMs)
     }
 }
 

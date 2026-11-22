@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { configuredSlotRoot } from "../../harness/slots.js"
-import { holderLine, landPaths, releaseLockFile, takeLockFile } from "../../harness/land-queue.js"
+import { holderLine, landPaths, releaseLockFile, takeLiveLock } from "../../harness/land-queue.js"
 import { lockScope, profileNameFor } from "../../harness/land-profile.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, repositoryRoot } from "../../shared/git.js"
@@ -110,7 +110,7 @@ export const releaseBackMergeVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         const dir = flags.dir ?? configuredSlotRoot()
         const lock = flags.execute && dir !== undefined && dir !== "" ? landPaths(dir, lockScope(profileNameFor(root, undefined))).devLock : undefined
-        if (lock !== undefined && !takeLockFile(lock, holderLine())) throw new Refusal("RELEASE_BACKMERGE_LOCKED", `${lock} is held (the batch lander is pushing dev): run it again in a moment`)
+        if (lock !== undefined && !takeLiveLock(lock, holderLine(), context.progress)) throw new Refusal("RELEASE_BACKMERGE_LOCKED", `${lock} is held (the batch lander is pushing dev): run it again in a moment`)
         try {
             const data = await backMerge({ root, remote: flags.remote, execute: flags.execute, say: context.progress })
             const what = data.kind === "in-sync" ? "dev already holds main: nothing to merge" : `${String(data.missing.length)} commit(s) on main that dev lacks (${data.kind})`
