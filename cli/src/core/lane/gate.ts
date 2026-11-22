@@ -4,7 +4,6 @@ import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
 import { captureGit, currentBranch, repositoryRoot, trackedChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
-import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
 import type { LaneFinding } from "../../harness/land-queue.js"
@@ -147,7 +146,6 @@ export const laneGateVerb = defineVerb({
     },
     run: async (context, flags) => {
         if (flags.ready && !flags.push) throw new Refusal("CLI_USAGE", "--ready registers a pushed sha: give --push too")
-        assertPosixSh("lane gate")
         const say = context.progress
         const root = await repositoryRoot(context.cwd)
         const lane = await laneHolder(root, flags.lane)

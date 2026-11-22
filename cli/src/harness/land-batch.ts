@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { freemem } from "node:os"
 import { join } from "node:path"
 import { captureGit } from "../shared/git.js"
@@ -110,6 +110,25 @@ const ensureWorktree = async (options: BatchOptions): Promise<void> => {
 
 const mergeMessage = (lane: ReadyEntry, batch: string, note = ""): string => `land lane ${lane.lane} (${lane.branch} ${lane.sha.slice(0, 10)}) in batch ${batch}${note}`
 
+/** A build output of a package: a `dist` folder or a `.tsbuildinfo` file, as git lists an ignored entry (folders end with a slash). Pure. */
+export const isBuildOutput = (entry: string): boolean => {
+    const segments = entry.replace(/\/$/u, "").split("/")
+    const last = segments.at(-1) ?? ""
+    return !segments.includes("node_modules") && ((entry.endsWith("/") && last === "dist") || last.endsWith(".tsbuildinfo"))
+}
+
+/**
+ * Deletes every build output of the worktree (the ignored `dist` folders and `.tsbuildinfo` files git lists, node_modules never), so a batch
+ * builds from its own tree: `git clean -fd` keeps ignored files, and the compiled tests of an aborted batch then ran again in the next gate
+ * (the compiled `*.test.js` under `dist` that `node --test` globs) and turned it red. Returns the entries removed.
+ */
+export const clearBuildOutputs = async (wt: string): Promise<string[]> => {
+    const listed = await gitIn(wt, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory"])
+    const outputs = listed.out.split("\n").map((line) => line.trim()).filter((line) => line !== "" && isBuildOutput(line))
+    for (const entry of outputs) rmSync(join(wt, entry), { recursive: true, force: true })
+    return outputs
+}
+
 /**
  * Resets the worktree to `base` and merges `lanes` in order. A lane whose merge conflicts is left out and named with the batch-mates
  * whose changes it met (or origin/dev). A conflict in cache records alone is no conflict: the merge is redone keeping the batch's
@@ -120,6 +139,7 @@ const buildTree = async (wt: string, base: string, lanes: readonly ReadyEntry[],
     const reset = await gitIn(wt, ["checkout", "--detach", "--force", base])
     if (!reset.ok) throw new Error(`checkout ${base}: ${reset.err}`)
     await gitIn(wt, ["clean", "-fd", "-q"])
+    await clearBuildOutputs(wt)
     const merged: ReadyEntry[] = []
     const conflicts: Conflict[] = []
     for (const lane of lanes) {

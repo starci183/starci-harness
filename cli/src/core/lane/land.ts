@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process"
 import { join, resolve } from "node:path"
 import { captureGit, mainCheckout } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
-import { assertPosixSh } from "../../shared/posix-sh.js"
 import { holdLander, landPaths, lanesDir, releaseLockFile, touchLander } from "../../harness/land-queue.js"
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
@@ -44,8 +43,6 @@ export const laneLandVerb = defineVerb({
         profile: { kind: "string", summary: "app or harness (default: harness when the repository is the harness checkout, else app): the harness gates with release gate --level dev, pushes with git push origin HEAD:dev and, with devSync.publishLocal, publishes its dev line after each landed batch" },
     },
     run: async (context, flags) => {
-        // Every batch gate spawns sh (hfs specs, npm scripts): a lander started without one would reject every lane as a red gate.
-        assertPosixSh("the batch lander")
         const dir = lanesDir(flags.dir)
         const dryRun = flags["dry-run"]
         // The gate and npm slots of the lanes folder the lander may take: the counts of ops/slots.yaml, never its burst.
