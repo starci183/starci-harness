@@ -14,6 +14,7 @@ import type { SealedSession, SshOptions } from './remote.mjs';
 import { controlSettings, createSshSession, sessionDirectory } from './ssh-session.mjs';
 import type { Argv, SshConnection } from './ssh-session.mjs';
 import { failure } from './errors.mjs';
+import { readPath, withPath } from '../runtime/scripts/lib/env.mjs';
 
 const ALIAS = 'stack-vps';
 const forward = (file: string): string => file.replaceAll('\\', '/');
@@ -70,14 +71,14 @@ function privateSshEnvironment(ctx: StackContext, env: NodeJS.ProcessEnv, dir: s
     const include = originalHome ? `Include ${configPath(path.join(originalHome, '.ssh', 'config'))}\n` : '';
     writePrivate(ctx, config, ['Host *', ...controlLines(controlPath), 'Host *', include].join('\n'));
   }
-  const executable = ctx.sshPath ?? findSsh(ctx.env.PATH);
+  const executable = ctx.sshPath ?? findSsh(readPath(ctx.env));
   const bin = path.join(home, 'bin');
   fs.mkdirSync(bin, { mode: 0o700 });
   const shim = path.join(bin, 'ssh');
   writePrivate(ctx, shim, `#!/bin/sh\nexec ${posixQuote(executable)} -F ${posixQuote(config)} "$@"\n`);
   fs.chmodSync(shim, 0o700);
   const dockerConfig = env.DOCKER_CONFIG ?? (originalHome ? path.join(originalHome, '.docker') : undefined);
-  return { env: { ...env, HOME: home, PATH: `${bin}:${env.PATH ?? ctx.env.PATH ?? ''}`, ...(dockerConfig ? { DOCKER_CONFIG: dockerConfig } : {}) }, executable };
+  return { env: { ...withPath(env, `${bin}:${readPath(env) || readPath(ctx.env)}`), HOME: home, ...(dockerConfig ? { DOCKER_CONFIG: dockerConfig } : {}) }, executable };
 }
 
 const posixQuote = (value: string): string => "'" + value.replaceAll("'", "'\\''") + "'";

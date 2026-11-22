@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, type SpawnSyncOptions, type SpawnSyncOptionsWithStringEncoding, type SpawnSyncReturns } from 'node:child_process';
 import { withoutGitLocalEnv } from '../../lib/git.mjs';
+import { readPath } from '../../lib/env.mjs';
 import { withTempEnv } from '../../../engine/temp-root.mjs';
 
 /** The spawnSync options a git call takes; encoding 'buffer' is a request for raw bytes (see gitSpawn). */
@@ -70,11 +71,10 @@ export const gitRunner = (git: GitRunnerFn | null = null) => (args: string[], op
 let cachedGit: string | null | undefined;
 const gitPathOf = ({ env, platform, home, exists }: GitPathInputs): string | null => {
   const p = platform === 'win32' ? path.win32 : path.posix;
-  const pathKey = Object.keys(env).find((name) => name.toLowerCase() === 'path');
   const shim = p.join(home, '.starci', 'bin');
   const same = (a: string, b: string): boolean => (platform === 'win32' ? p.resolve(a).toLowerCase() === p.resolve(b).toLowerCase() : p.resolve(a) === p.resolve(b));
   const binary = platform === 'win32' ? 'git.exe' : 'git';
-  for (const raw of String(pathKey ? env[pathKey] : '').split(platform === 'win32' ? ';' : ':')) {
+  for (const raw of readPath(env).split(platform === 'win32' ? ';' : ':')) {
     const dir = raw.replace(/^"(.*)"$/, '$1');
     const file = dir && p.isAbsolute(dir) && !same(dir, shim) ? p.join(dir, binary) : null;
     if (file && exists(file)) return file;

@@ -6,6 +6,22 @@
 /** The value of the environment variable `name` in `env` (default: the process environment), or undefined. */
 export const readEnv = (name: string, env: NodeJS.ProcessEnv = process.env): string | undefined => env[name];
 
+/**
+ * The executable search path of `env` (default: the process environment), or ''. Windows spells the variable `Path`, and a plain copy of
+ * process.env (`{ ...process.env }`, the env a verb or a spec hands down) keeps that spelling with case-sensitive keys, so `env.PATH` of the copy
+ * is undefined: `PATH` is read first, else the key that is `path` in any case.
+ */
+export const readPath = (env: NodeJS.ProcessEnv = process.env): string => {
+  const key = env.PATH === undefined ? Object.keys(env).find((name) => name.toLowerCase() === 'path') : 'PATH';
+  return key === undefined ? '' : String(env[key] ?? '');
+};
+
+/** `env` as a copy whose search path is `value` under the one key `PATH`: every other spelling is dropped, since a Windows child handed both `Path` and `PATH` takes either. */
+export const withPath = (env: NodeJS.ProcessEnv, value: string): NodeJS.ProcessEnv => ({
+  ...Object.fromEntries(Object.entries(env).filter(([name]) => name.toLowerCase() !== 'path')),
+  PATH: value,
+});
+
 /** True when `env` (default: the process environment) belongs to a spec run (`node --test` marks its children with NODE_TEST_CONTEXT). */
 export const isSpecRun = (env = process.env) => Boolean(env.NODE_TEST_CONTEXT);
 
