@@ -30,6 +30,7 @@ const ICONS: Readonly<Record<string, Readonly<Record<string, ReactElement>>>> = 
     "error-reason": { a: <BoltIcon />, b: <ChatIcon />, c: <BellIcon /> },
     big: bigIcons(),
     "wait-loops": { start: <BoltIcon />, note: <DocIcon />, wait: <ClockIcon />, br1: <BranchIcon />, br2: <BranchIcon />, order: <CardIcon />, ask: <ChatIcon />, remind: <BellIcon />, again: <MailIcon />, close: <FlagIcon /> },
+    "wait-replies": { open: <BoltIcon />, request: <DocIcon />, await: <ClockIcon />, got: <BranchIcon />, decide: <SearchIcon />, "check-stop": <BranchIcon />, cancel: <DocIcon />, "remind-check": <BranchIcon />, remind: <DocIcon />, confirmed: <FlagIcon />, cancelled: <FlagIcon />, unanswered: <FlagIcon /> },
     "order-approval": { placed: <BoltIcon />, approve: <UserIcon />, auto: <CardIcon />, ship: <TruckIcon />, done: <FlagIcon /> },
 }
 
@@ -64,6 +65,9 @@ export interface Flow {
     /** The most edge crossings the flow may have (default 0). */
     readonly crossings?: number
 }
+
+/** The avatar slot of a step an agent owns. */
+const AGENT = <span style={{ display: "block", inlineSize: "100%", blockSize: "100%", background: "var(--accent)" }} />
 
 const n = (id: string, label: string, extra: Partial<FlowNode> = {}): FlowNode => ({ id, label, kind: "action", ...extra })
 const e = (source: string, target: string, extra: Partial<GraphEdge> = {}): GraphEdge => ({ source, target, ...extra })
@@ -281,6 +285,46 @@ export const FLOWS: readonly Flow[] = [
         spine: ["start", "note", "wait"],
         decisions: [],
         // Each loop-back crosses the line from its branch to the step beside it: the lane between two columns is the nearest free one.
+        crossings: 2,
+    },
+    {
+        id: "wait-replies",
+        title: "Gửi yêu cầu, chờ xác nhận hoặc tin nhắn",
+        note: "Dáng thật của một luồng việc: bước chờ rẽ hai ngả, nhánh trái rẽ ba tầng rồi quay lại chờ, nhánh phải nhắc khách rồi quay lại chờ. Nút, cạnh, nhãn và độ rộng như bản thật.",
+        nodes: [
+            n("open", "Khởi động", { kind: "event", description: "23:23 17-11" }),
+            n("request", "Gửi một ghi chú", { description: "00:23 18-11", agent: AGENT, agentName: "Bán hàng" }),
+            n("await", "Chờ sự kiện", { kind: "wait", wait: { kind: "person", label: "Đang chờ bạn", detail: "01:38 18-11" } }),
+            n("got", "Rẽ nhánh", { kind: "condition" }),
+            n("decide", "Quyết định có dừng không", { agent: AGENT, agentName: "Bán hàng" }),
+            n("check-stop", "Rẽ nhánh", { kind: "condition" }),
+            n("cancel", "Gửi một ghi chú", { agent: AGENT, agentName: "Bán hàng" }),
+            n("remind-check", "Rẽ nhánh", { kind: "condition" }),
+            n("remind", "Gửi một ghi chú", { agent: AGENT, agentName: "Bán hàng" }),
+            n("confirmed", "Kết thúc: khách đã xác nhận", { kind: "end" }),
+            n("cancelled", "Kết thúc: đã huỷ", { kind: "end" }),
+            n("unanswered", "Kết thúc: khách chưa trả lời", { kind: "end" }),
+        ],
+        // In the order the steps list them, each with the word of the outcome it is taken on; a road back to the wait is a back edge.
+        edges: [
+            e("open", "request", { label: "có sự kiện" }),
+            e("request", "await", { label: "xong" }),
+            e("await", "got", { label: "có sự kiện" }),
+            e("await", "remind-check", { label: "quá hạn" }),
+            e("got", "confirmed", { label: "có" }),
+            e("got", "decide", { label: "không" }),
+            e("decide", "check-stop", { label: "xong" }),
+            e("check-stop", "cancel", { label: "có" }),
+            e("check-stop", "await", { label: "không", variant: "back" }),
+            e("cancel", "cancelled", { label: "xong" }),
+            e("remind-check", "unanswered", { label: "có" }),
+            e("remind-check", "remind", { label: "không" }),
+            e("remind", "await", { label: "xong", variant: "back" }),
+        ],
+        order: ["open", "request", "await", "got", "confirmed"],
+        skip: ["decide", "check-stop", "cancel", "cancelled", "remind-check", "remind", "unanswered"],
+        spine: ["open", "request", "await"],
+        decisions: [],
         crossings: 2,
     },
     big(),

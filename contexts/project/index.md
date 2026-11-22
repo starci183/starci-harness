@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 10 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+- [authority/lanes.md](../authority/lanes.md) · 11 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
   - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Shots · Processes and cleanup
 - [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
@@ -184,7 +184,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 8 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
+- [project/branches.md](../project/branches.md) · 12 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander · PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
 - [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
@@ -193,7 +193,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [project/check-cache.md](../project/check-cache.md) · 79 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
   - ids: Machine-local
-- [project/cicd.md](../project/cicd.md) · 55 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/cicd.md](../project/cicd.md) · 56 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Dev and prod · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/desktop.md](../project/desktop.md) · 12 KB — A project that offers its web app as an installable program (macOS, Windows, Linux) declares a desktop app.
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
@@ -266,7 +266,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/graph-from-nivo.md](../ui/components/graph-from-nivo.md) · 3 KB — Where each prop of the nivo-lite app's own `FlowGraph` went.
   - ids: nivo-lite
-- [ui/components/graph.md](../ui/components/graph.md) · 20 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+- [ui/components/graph.md](../ui/components/graph.md) · 22 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · Look · Migrating from an app's own graph · Layout and helpers · The demo and the browser proof
   - ids: string;
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 15 KB — Contract: Avatar and IconTile.

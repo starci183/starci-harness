@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs"
+import { existsSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
@@ -10,9 +10,12 @@ import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord } from "../deps/install-local.js"
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
-import { appNpm, assertNpm } from "../deps/packages.js"
+import { appNpm, assertNpm, tail } from "../deps/packages.js"
 import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
+import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
+import type { PrepareFailure } from "../../harness/prepare-tree.js"
+import { MIGRATIONS_FOLDER } from "../../harness/land-profile.js"
 import { appCli, readStackProcesses, stopStackProcesses } from "./stack-stop.js"
 import type { StackProcesses, StackStop } from "./stack-stop.js"
 
@@ -20,6 +23,12 @@ import type { StackProcesses, StackStop } from "./stack-stop.js"
 export type Side = "be" | "fe"
 
 const LOCKFILE = "package-lock.json"
+
+/** Written when a sync's build of the workspace packages failed, removed once one passes: the next sync builds and restarts both sides even if nothing moved. */
+const UNPREPARED = join("node_modules", ".starci-dev-sync-unprepared")
+
+/** Written in the git folder when a sync's migration failed, removed once one passes: the next sync migrates again even if nothing moved. */
+const UNMIGRATED = "starci-dev-sync-unmigrated"
 
 /** Files no running process reads: a change of these alone restarts nothing. */
 const INERT = (file: string): boolean => file.endsWith(".md") || file.startsWith(".starciwork/") || file.startsWith(".github/") || file.startsWith("gallery/")
@@ -64,6 +73,8 @@ export interface DevSyncData {
     readonly overlayBefore: readonly string[]
     readonly overlay: readonly string[]
     readonly installed: boolean
+    /** The stack's migrate step ran (`app stack up`): the sync brought migration files, or the last sync's migration failed. */
+    readonly migrated: boolean
     /** The dev stack processes ended before the install, restarted after it. */
     readonly stopped: readonly string[]
     readonly sides: readonly Side[]
@@ -90,10 +101,12 @@ export interface DevSyncDeps {
     readonly stop: (processes: StackProcesses) => Promise<StackStop>
     /** The clean install of the checkout. */
     readonly npmCi: (root: string) => Promise<void>
+    /** The app's prepare scripts (harness/prepare-tree.ts: codegen, then build:modules, the build of its workspace packages): the failure, or undefined. */
+    readonly prepare: (root: string) => Promise<PrepareFailure | undefined>
     /** The renames and removals of the install. */
     readonly fs: InstallFs
     readonly pause: (ms: number) => Promise<void>
-    /** One run of the app's pinned CLI (`app stack restart`). */
+    /** One run of the app's pinned CLI (`app stack up` to migrate, `app stack restart`). */
     readonly appRun: (root: string, args: readonly string[]) => Promise<ToolRun>
 }
 
@@ -101,6 +114,7 @@ export const realDevSyncDeps: DevSyncDeps = {
     stackProcesses: readStackProcesses,
     stop: stopStackProcesses,
     npmCi: (root) => appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci"),
+    prepare: async (root) => (await prepareTree(root, "dev sync")).failure,
     fs: realInstallFs,
     pause: (ms) => new Promise((done) => setTimeout(done, ms)),
     appRun: (root, args) => captureTool(process.execPath, [appCli(root), ...args], root),
@@ -121,11 +135,13 @@ export const overlayLine = (overlay: readonly string[]): string =>
 /**
  * One `dev sync` of an app's dev checkout: refuse any tracked change but a recorded overlay's; put a recorded overlay back to the committed
  * pins (the overlay never survives a sync that does not name it again); fast-forward the checkout to origin/dev; npm ci; install the `local`
- * packages from the local registry (deps install-local); and restart the changed side of the running dev stack (`app stack restart`, which
+ * packages from the local registry (deps install-local); prepare the tree (harness/prepare-tree.ts: the app's codegen and build:modules, the build of
+ * its workspace packages; a failure refuses DEV_SYNC_BUILD); migrate the database when files under db/migrations/ arrived (`app stack up`, the stack's
+ * migrate step and its receipt; a failure refuses DEV_SYNC_MIGRATE and restarts nothing new); and restart the changed side of the running dev stack (`app stack restart`, which
  * builds and serves the built artifact). Before anything writes node_modules, the dev stack processes the checkout's local state records
  * are ended and seen gone (a process that loaded a file of node_modules makes npm fail halfway on Windows); a stop that fails refuses
  * DEV_SYNC_STOP before anything moved. The install runs with the old node_modules moved aside and put back on failure (safe-install.ts),
- * and the stopped processes are restarted after it with the changed ones. Dry until `execute`: the dry run fetches and prints the plan.
+ * and the stopped processes are restarted after it with the changed ones, or alone when the install or the build failed. Dry until `execute`: the dry run fetches and prints the plan.
  */
 export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     const root = await repositoryRoot(request.checkout)
@@ -156,25 +172,40 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const files = from === to ? [] : (await git(root, ["diff", "--name-only", from, to])).split("\n").filter((file) => file !== "")
     const requested = request.local.map(parseRequested)
     const overlayChanged = overlayBefore.length > 0 || requested.length > 0
-    const sides = changedSides([...files, ...(overlayChanged ? [LOCKFILE] : [])])
+    // A tree the last sync could not build or migrate is built and restarted again whole, though the checkout has not moved since.
+    const unprepared = existsSync(join(root, UNPREPARED))
+    const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
+    const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
+    const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
     const processes = processesFor(sides, request.processes)
     const lockChanged = files.includes(LOCKFILE)
     const aside = leftAside(root, deps.fs)
     const needInstall = lockChanged || overlayBefore.length > 0 || aside.length > 0 || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
+    // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
+    // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
+    const prepares = writesModules || processes.length > 0
+    // New migration files are applied before the api restarts on code that needs them, by the stack's own migrate step and its receipt
+    // (`app stack up`, idempotent: what runs is kept). A migration that failed last time is tried again though nothing moved.
+    const newMigrations = files.filter((file) => file.startsWith(MIGRATIONS_FOLDER))
+    const migrates = newMigrations.length > 0 || unmigrated
+    const upArgs = ["app", "stack", "up", "--env", request.env, "--execute"]
     const restartArgs = (names: readonly string[]): string[] => ["app", "stack", "restart", "--env", request.env, "--process", names.join(","), "--execute"]
-    const base: Omit<DevSyncData, "overlay" | "installed" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
+    const base: Omit<DevSyncData, "overlay" | "installed" | "migrated" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
     if (!request.execute) {
         say(detached ? `would put ${root} back on dev at origin/dev ${to.slice(0, 9)} (detached at ${from.slice(0, 9)}, ${String(commits)} commit(s) behind)` : `would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
+        if (unprepared) say(`the last sync could not build the workspace packages (${UNPREPARED}): would build them and restart both sides`)
         if (overlayBefore.length > 0) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
         if (aside.length > 0) say(`would move back the copy an earlier sync left aside: ${aside.join(", ")}`)
         if (writesModules) say(`would stop the dev stack processes the ${request.env} environment records before node_modules is written, and restart them after`)
         say(needInstall ? "would run npm ci (the old node_modules moved aside until it passes)" : "npm ci: the lockfile did not change, skipped")
         if (requested.length > 0) say(`would install from the local registry: ${requested.map((one) => one.name + (one.version === undefined ? "" : `@${one.version}`)).join(", ")}`)
+        if (prepares) say(`would run the app's ${PREPARE_SCRIPTS.join(" and ")} (each one it declares) before the restart`)
+        if (migrates) say(`would migrate the ${request.env} database before the restart (${newMigrations.length > 0 ? `${String(newMigrations.length)} migration file(s) changed` : "the last sync's migration failed"}): ${upArgs.join(" ")}`)
         say(processes.length === 0 ? "restart: nothing a running process reads changed" : request.restart ? `would rebuild and restart ${processes.join(", ")}: ${restartArgs(processes).join(" ")}` : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
         say(overlayLine(overlayBefore))
         say("dry run: nothing moved; add --execute")
-        return { data: { ...base, overlay: overlayBefore, installed: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
+        return { data: { ...base, overlay: overlayBefore, installed: false, migrated: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
     }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
     if (record !== undefined) {
@@ -210,18 +241,40 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
             const installed = await installLocal(root, requested, PORT, true)
             say(installed.message.split("\n")[0] ?? "installed the local packages")
         }
+        if (prepares) {
+            const failed = await deps.prepare(root)
+            if (failed !== undefined) {
+                writeFileSync(join(root, UNPREPARED), `${to}\n`)
+                throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the workspace packages are not built, so the changed side was not rebuilt (only the processes stopped for the install come back); fix it on a lane (the lander's gate runs the same script) and sync again:\n${failed.output}`)
+            }
+            rmSync(join(root, UNPREPARED), { force: true })
+            say(`prepared the tree: ${PREPARE_SCRIPTS.join(", ")} (each the app declares)`)
+        }
+        if (migrates) {
+            say(`migrating the ${request.env} database before the restart (${newMigrations.length > 0 ? newMigrations.join(", ") : "the last sync's migration failed"}): ${upArgs.join(" ")}`)
+            const up = await deps.appRun(root, upArgs)
+            for (const line of `${up.stdout}\n${up.stderr}`.split("\n").map((one) => one.trimEnd()).filter((one) => one !== "")) say(`  ${line}`)
+            if (up.exitCode !== 0) {
+                if (unmigratedMark !== "") writeFileSync(unmigratedMark, `${to}\n`)
+                throw new Refusal("DEV_SYNC_MIGRATE", `starci app stack up --env ${request.env} --execute exited ${String(up.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the database is not migrated, so no process restarts on the new code (only the processes stopped for the install come back); fix the migration on a lane and sync again (the next sync migrates again):\n${tail(up.stdout, up.stderr)}`)
+            }
+            if (unmigrated) rmSync(unmigratedMark, { force: true })
+        }
     } catch (error) {
-        // The install failed with the previous node_modules back in place: the stopped processes come back on it before the refusal is said.
-        if (stopped.length > 0 && !(await restartNames(stopped, "the install failed; restarting the stopped"))) say(`the stopped ${stopped.join(", ")} did not come back: starci app stack up --env ${request.env} --execute`)
+        // The install, the build of the workspace packages or the migration failed: the stopped processes come back before the refusal is said
+        // (after a failed install, on the previous node_modules put back in place); nothing else restarts on the new code.
+        if (stopped.length > 0 && !(await restartNames(stopped, "the install, the build or the migration failed; restarting the stopped"))) say(`the stopped ${stopped.join(", ")} did not come back: starci app stack up --env ${request.env} --execute`)
         throw error
     }
     const overlay = overlayOf(readInstallRecord(root))
-    const done = { ...base, overlay, installed: needInstall || requested.length > 0, stopped }
-    const restart = request.restart ? [...new Set([...stopped, ...processes])] : stopped
+    const done = { ...base, overlay, installed: needInstall || requested.length > 0, migrated: migrates, stopped }
+    // `stack up` started the stopped processes again on the new code (it starts what does not run): they are not restarted a second time.
+    const restart = migrates ? (request.restart ? processes.filter((name) => !stopped.includes(name)) : []) : request.restart ? [...new Set([...stopped, ...processes])] : stopped
     if (restart.length === 0) {
-        say(processes.length === 0 ? "restart: nothing a running process reads changed" : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
+        const started = migrates ? stopped : []
+        say(started.length > 0 ? `restart: ${started.join(", ")} started again on the new code by stack up` : processes.length === 0 ? "restart: nothing a running process reads changed" : `restart skipped (--no-restart): ${processes.join(", ")} changed`)
         say(overlayLine(overlay))
-        return { data: { ...done, restarted: [], restart: processes.length === 0 ? "none" : "skipped" }, message: lines.join("\n") }
+        return { data: { ...done, restarted: started, restart: started.length > 0 ? "done" : processes.length === 0 ? "none" : "skipped" }, message: lines.join("\n") }
     }
     const ok = await restartNames(restart, request.restart ? "rebuilding and restarting" : "restarting the processes stopped for the install (--no-restart restarts nothing else):")
     say(overlayLine(overlay))
@@ -262,7 +315,7 @@ export const summaryLine = (data: DevSyncData): string => {
  */
 export const devSyncVerb = defineVerb({
     path: ["dev", "sync"],
-    summary: "fast-forward the app's dev checkout to origin/dev, npm ci, install each --local harness package from the local registry, then rebuild and restart only the changed api/web of the running dev stack; a plain sync drops any local overlay (dry until --execute)",
+    summary: "fast-forward the app's dev checkout to origin/dev, npm ci, install each --local harness package from the local registry, run the app's codegen and build:modules (its workspace packages), migrate the dev database through app stack up when new migrations arrived, then rebuild and restart only the changed api/web of the running dev stack; a plain sync drops any local overlay (dry until --execute)",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/dev-sync@1",

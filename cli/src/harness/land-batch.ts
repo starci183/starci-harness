@@ -11,6 +11,9 @@ import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-q
 import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
 import { APP_PROFILE, LANDER_GATE_ARGS, lockScope, takesEntry } from "./land-profile.js"
 import type { LandProfile } from "./land-profile.js"
+import { tail } from "../core/deps/packages.js"
+import { prepareTree } from "./prepare-tree.js"
+import type { PrepareFailure } from "./prepare-tree.js"
 
 export { LANDER_GATE_ARGS }
 
@@ -25,7 +28,7 @@ export interface BatchOptions {
     readonly repo: string
     /** The lander's own worktree, reset to the base before each batch; node_modules stays between batches. */
     readonly worktree: string
-    /** The folder under `db/migrations/`-like paths a landed lane is told to apply. */
+    /** The migrations folder (MIGRATIONS_FOLDER by default) whose files a landed lane is told it added. */
     readonly migrations: string
     readonly gateSlots: number
     readonly npmSlots: number
@@ -36,6 +39,8 @@ export interface BatchOptions {
     readonly profile?: LandProfile
     /** The origin URL of the repository: the lander takes only the ready lanes that name it (an app lander also takes the lanes that name none). */
     readonly ownRemote?: string
+    /** How the merged tree is prepared before the gate when the profile `prepares`; default `prepareBatchTree`. The seam of the spec. */
+    readonly prepare?: (options: BatchOptions, log: string[]) => Promise<PrepareFailure | undefined>
 }
 
 const profileOf = (options: BatchOptions): LandProfile => options.profile ?? APP_PROFILE
@@ -53,6 +58,8 @@ export interface BatchRecord {
     readonly landedLanes: readonly string[]
     readonly rejected: readonly string[]
     readonly outcome: string
+    /** The batch failed before it judged its lanes (a fetch, the worktree, dev itself failing to prepare): the lander waits a full poll before the next one. */
+    readonly failed?: true
 }
 
 interface Conflict {
@@ -162,8 +169,12 @@ const buildTree = async (wt: string, base: string, lanes: readonly ReadyEntry[],
     return { merged, conflicts }
 }
 
-/** npm ci when the lockfile is not the one node_modules was installed from (under an npm slot), then codegen and build:modules. */
-const prepare = async (options: BatchOptions, log: string[]): Promise<void> => {
+/**
+ * Prepares the merged tree before the gate: npm ci when the lockfile is not the one node_modules was installed from (under an npm slot), then
+ * the app's prepare scripts (harness/prepare-tree.ts: codegen, build:modules). A step that fails comes back with its output for the batch to
+ * judge (`judgePrepare`), as a red gate is: a lane's code broke it. A step that ran out of memory throws: no lane is to blame.
+ */
+export const prepareBatchTree = async (options: BatchOptions, log: string[]): Promise<PrepareFailure | undefined> => {
     const wt = options.worktree
     const mark = join(wt, "node_modules", ".batch-lander-lock")
     const hash = (await gitIn(wt, ["hash-object", "package-lock.json"])).out
@@ -174,16 +185,68 @@ const prepare = async (options: BatchOptions, log: string[]): Promise<void> => {
             options.say(`npm ci (${slot})`)
             const run = await withHeavySlot("install", "lane land: npm ci", wt, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], wt, held.options))
             log.push(run.stdout, run.stderr)
-            if (run.exitCode !== 0) throw new Error(`npm ci exited ${String(run.exitCode)}`)
+            if (run.exitCode !== 0) return outOfMemoryThrows({ command: "npm ci", exitCode: run.exitCode, output: tail(run.stdout, run.stderr) })
         } finally {
             releaseLockFile(slot, process.pid)
         }
         writeFileSync(mark, hash)
     }
-    for (const script of ["codegen", "build:modules"]) {
-        const run = await withHeavySlot("build", `lane land: npm run ${script}`, wt, {}, (held) => captureNpm(["run", script, "--silent", "--if-present"], wt, held.options))
-        log.push(run.stdout, run.stderr)
-        if (run.exitCode !== 0) throw new Error(`npm run ${script} exited ${String(run.exitCode)}`)
+    const done = await prepareTree(wt, "lane land")
+    log.push(...done.log)
+    return done.failure === undefined ? undefined : outOfMemoryThrows(done.failure)
+}
+
+/** A prepare step that ran out of memory is no lane's fault: it throws, and the batch waits for RAM. Any other failure is returned to be judged. */
+const outOfMemoryThrows = (failure: PrepareFailure): PrepareFailure => {
+    if (isOutOfMemory(failure.exitCode, failure.output)) throw new Error(`${failure.command} exited ${String(failure.exitCode)}`)
+    return failure
+}
+
+/** How a batch whose tree failed to prepare is judged: the lanes to reject with their findings, or dev itself failing (nobody is blamed). */
+export type PrepareVerdict =
+    | { readonly kind: "blame"; readonly why: string; readonly blamed: ReadonlyMap<string, readonly LaneFinding[]> }
+    | { readonly kind: "dev"; readonly failure: PrepareFailure }
+
+/** The finding a lane is rejected with when a prepare step fails on it: the command, its exit, which tree, and the output. Pure. */
+const prepareFinding = (failure: PrepareFailure, tree: string): LaneFinding => ({
+    code: "LANE_LAND_PREPARE",
+    path: "",
+    message: `${failure.command} exited ${String(failure.exitCode)} ${tree}:\n${failure.output}`,
+})
+
+/**
+ * Judges a batch whose merged tree failed to prepare (`failure`) the way a red gate is attributed, so the same failing batch never forms
+ * again: each lane of a batch of several is prepared alone on dev (`alone`: undefined when it passes, or cannot merge alone) and every lane
+ * that fails alone is blamed with its own output. When every lane fails alone, or the batch is one lane, dev itself is prepared (`dev`): a
+ * dev that fails too blames nobody. A batch whose every lane passes alone but that fails together blames them all (nothing landed).
+ */
+export const judgePrepare = async (
+    lanes: readonly ReadyEntry[],
+    failure: PrepareFailure,
+    alone: (lane: ReadyEntry) => Promise<PrepareFailure | undefined>,
+    dev: () => Promise<PrepareFailure | undefined>,
+): Promise<PrepareVerdict> => {
+    const failedAlone = new Map<string, PrepareFailure>()
+    const only = lanes.length === 1 ? lanes[0] : undefined
+    if (only !== undefined) failedAlone.set(only.lane, failure)
+    else {
+        for (const lane of lanes) {
+            const own = await alone(lane)
+            if (own !== undefined) failedAlone.set(lane.lane, own)
+        }
+    }
+    if (failedAlone.size === lanes.length) {
+        const onDev = await dev()
+        if (onDev !== undefined) return { kind: "dev", failure: onDev }
+    }
+    if (failedAlone.size > 0) {
+        return { kind: "blame", why: `${failure.command} fails with only the lane merged onto dev`, blamed: new Map([...failedAlone].map(([lane, own]) => [lane, [prepareFinding(own, "with only your lane merged onto dev")]])) }
+    }
+    const names = lanes.map((lane) => lane.lane).join(", ")
+    return {
+        kind: "blame",
+        why: `nothing landed: ${failure.command} fails on the batch (${names}) though each lane passes it alone`,
+        blamed: new Map(lanes.map((lane) => [lane.lane, [prepareFinding(failure, `with the batch (${names}) merged onto dev, though each lane passes it alone`)]])),
     }
 }
 
@@ -374,7 +437,8 @@ export const abortIfNotReady = (dir: string, batch: string, tree: readonly Ready
 
 /**
  * Runs one batch over every ready lane: merge, one gate, push or drop and re-gate once, and a status for every lane. Returns undefined
- * when no lane is ready. Never bisects: a batch takes at most GATE_ROUNDS gate runs.
+ * when no lane is ready. A red gate never bisects: a batch takes at most GATE_ROUNDS gate runs. A tree that fails to prepare tries each lane alone
+ * (`judgePrepare`) and rejects the lanes that break it.
  */
 export const runBatch = async (options: BatchOptions): Promise<BatchRecord | undefined> => {
     const profile = profileOf(options)
@@ -394,6 +458,8 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
     let conflicts: Conflict[] = []
     let landed: string | undefined
     let outcome = "nothing to merge"
+    let failed = false
+    const prepare = options.prepare ?? prepareBatchTree
     const status = (lane: ReadyEntry, rest: StatusFields): void => {
         if (options.dryRun) return
         writeStatus(dir, { lane: lane.lane, laneSha: lane.sha, branch: lane.branch, batch, ...rest })
@@ -455,7 +521,40 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
                 if (merged.length === 0) break
             }
             for (const lane of merged) status(lane, { state: "queued", sha: lane.sha, reason: `in batch ${batch}, gate round ${String(round)}` })
-            if (profile.prepares) await prepare(options, log)
+            // A tree that fails to prepare (npm ci, codegen, build:modules) is judged like a red gate: the lanes that break it are rejected with
+            // its output and the rest prepared again, so the same failing batch never forms twice.
+            for (let failure = profile.prepares ? await prepare(options, log) : undefined; failure !== undefined; failure = await prepare(options, log)) {
+                if (reformed()) return
+                say(`gate round ${String(round)}: ${failure.command} exited ${String(failure.exitCode)} on the batch; preparing each lane alone on dev to find the one that breaks it`)
+                const prepareAlone = async (lanes: readonly ReadyEntry[]): Promise<PrepareFailure | undefined> => {
+                    const alone = await buildTree(options.worktree, base, lanes, batch, changed)
+                    return alone.merged.length < lanes.length ? undefined : prepare(options, log)
+                }
+                const judged = await judgePrepare(merged, failure, (lane) => prepareAlone([lane]), () => prepareAlone([]))
+                if (reformed()) return
+                rounds.push({ round, lanes: merged.map((lane) => lane.lane), exitCode: failure.exitCode, verdict: `prepare-${judged.kind}` })
+                if (judged.kind === "dev") {
+                    const why = `dev itself fails ${judged.failure.command} (exit ${String(judged.failure.exitCode)})`
+                    for (const lane of merged) status(lane, { state: "queued", sha: lane.sha, reason: `${why}: no lane is blamed; the batch forms again on the next poll` })
+                    outcome = `${why}; no lane is blamed, every lane stays ready`
+                    failed = true
+                    return
+                }
+                for (const lane of merged.filter((entry) => judged.blamed.has(entry.lane))) reject(lane, judged.why, judged.blamed.get(lane.lane) ?? [])
+                merged = merged.filter((entry) => !judged.blamed.has(entry.lane))
+                say(`gate round ${String(round)}: rejected ${[...judged.blamed.keys()].join(", ")} (${judged.why})${merged.length > 0 ? `; preparing ${merged.map((lane) => lane.lane).join(", ")} again` : ""}`)
+                if (merged.length === 0) {
+                    outcome = judged.why
+                    return
+                }
+                const again = await buildTree(options.worktree, base, merged, batch, changed)
+                for (const conflict of again.conflicts) status(conflict.lane, { state: "conflict", sha: conflict.lane.sha, reason: `conflict with ${conflict.with.join(", ")} once the batch dropped lanes`, files: conflict.files, requeued: true })
+                merged = again.merged
+                if (merged.length === 0) {
+                    outcome = "no lane left in the batch"
+                    return
+                }
+            }
             if (reformed()) return
             const inBatch = new Map([...changed].filter(([lane]) => merged.some((entry) => entry.lane === lane)))
             const waitRam = (): Promise<void> => waitForFreeRam(OOM_FREE_MB, say)
@@ -522,6 +621,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
         const message = error instanceof Error ? error.message : String(error)
         waitForRam = isOutOfMemory(undefined, `${message}\n${log.slice(-4).join("\n")}`)
         outcome = `batch failed (${message})${waitForRam ? " (out of memory)" : ""}; every lane not yet judged stays ready`
+        failed = true
     } finally {
         if (!options.dryRun) releaseLockFile(landPaths(dir, scopeOf(options)).devLock, process.pid)
         writeFileSync(join(folder, "lander.log"), log.join("\n"))
@@ -530,7 +630,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
     const record: BatchRecord = {
         batch, base, lanes: ready.map((lane) => lane.lane), merged: merged.map((lane) => lane.lane),
         conflicts: conflicts.map((conflict) => ({ lane: conflict.lane.lane, with: conflict.with, files: conflict.files })),
-        rounds, ...(landed === undefined ? {} : { landed }), landedLanes, rejected, outcome,
+        rounds, ...(landed === undefined ? {} : { landed }), landedLanes, rejected, outcome, ...(failed ? { failed: true as const } : {}),
     }
     writeJsonWhole(join(folder, "batch.json"), record)
     say(`batch ${batch}: ${outcome}`)

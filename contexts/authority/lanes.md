@@ -79,7 +79,8 @@ One verb runs the local gate, one registers, one lander lands (PROJECT-BRANCH-2)
    findings. A new `lane gate` of the same lane first cancels the lane's running gate: its process tree is killed, its slot
    released and its status says `superseded by <sha>`. A merge conflict refuses `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
 2. Monitor `<lanes>/_land-status/<lane>.json` (`starci lane status <lane>`): `queued`, `landed` (`sha`, `migrations`), `conflict`
-   (`requeued: true` means wait for the next batch), `rejected` (`findings`) or `parked` (out of memory, register again).
+   (`requeued: true` means wait for the next batch), `rejected` (`findings`; `LANE_LAND_PREPARE` when the lane alone fails the batch's
+   npm ci, codegen or `build:modules`) or `parked` (out of memory, register again).
    A rejection or a conflict with `origin/dev` is fixed in the lane, gated again and registered again.
 3. `starci lane withdraw <lane>` takes the lane out, also while a batch has it: status `withdrawn` (`fromBatch`), and that batch aborts
    (the lander re-reads the ready set before each gate run, after it and right before the push) and re-forms without it; the other

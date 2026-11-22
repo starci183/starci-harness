@@ -494,7 +494,8 @@ const commonParent = (tree: Tree, a: string, b: string): string | undefined => {
 /**
  * The route of a back edge: out of the west or east side of its source, along a lane, and into the west or east side of its target. Every lane the
  * span of its ends allows is tried (beside both ends, between them, in each gap between the nodes it would pass) and the shortest that passes no
- * node, frame or label wins; a crossing with another edge, and a side of the target another back edge already enters, cost extra. So a loop-back
+ * node, frame or label wins; a crossing with another edge, a side of the target another back edge already enters, and a lane or label outside the box
+ * of all the nodes (it would widen the layout) cost extra. So a loop-back
  * runs close to the steps it joins, on their nearest free side, never down the far side of the whole graph, and inside the frame that holds both
  * its ends. Its label stands on the lane, at the free place nearest the middle.
  */
@@ -511,6 +512,9 @@ const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string
         if ((tree.kids.get(id)?.length ?? 0) > 0 && (isAncestor(tree, id, link.source) || isAncestor(tree, id, link.target))) continue
         nodes.push(rectOf(absolute(tree, id, positions), box))
     }
+    // The layout's own content, the box of all the nodes: a lane that leaves it widens the layout, so it is a near last resort.
+    const tops = tree.roots.filter((id) => boxes[id] !== undefined).map((id) => rectOf(absolute(tree, id, positions), boxes[id] as Box))
+    const content: Rect = { l: Math.min(...tops.map((rect) => rect.l)), t: Math.min(...tops.map((rect) => rect.t)), r: Math.max(...tops.map((rect) => rect.r)), b: Math.max(...tops.map((rect) => rect.b)) }
     const holder = commonParent(tree, link.source, link.target)
     const holderBox = holder === undefined ? undefined : boxes[holder]
     const bound = holder === undefined || holderBox === undefined ? undefined : rectOf(absolute(tree, holder, positions), holderBox)
@@ -587,6 +591,12 @@ const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string
             if (best !== undefined && cost >= best.cost) continue
             const label = placeLabel(g, runs)
             if (words !== undefined && label === undefined) cost += BREACH_COST
+            const half = words === undefined ? 0 : words.width / 2
+            const outside = Math.max(content.l - Math.min(g - half, label?.l ?? g), Math.max(g + half, label?.r ?? g) - content.r, 0)
+            // Outside the box of all the nodes a lane or its words widen the layout, and the first view, centred on a step, leaves them out: each unit
+            // out costs its length, and more than the lane's gutter out is a near last resort.
+            if (outside > 0) cost += outside
+            if (outside > LANE_LEAD) cost += BREACH_COST / 10
             if (best === undefined || cost < best.cost) best = { cost, points, side: into, lane, ...(label === undefined ? {} : { label }) }
         }
     }

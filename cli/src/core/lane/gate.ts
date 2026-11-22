@@ -16,6 +16,7 @@ import type { LandProfileName } from "../../harness/land-profile.js"
 import { runningCliRoot } from "../../harness/lander-install.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { registerReady } from "./ready.js"
+import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import type { Registered } from "./ready.js"
 
 /** The mark of the lockfile a lane's node_modules was installed from by this verb. */
@@ -190,12 +191,10 @@ export const laneGateVerb = defineVerb({
             })
             writeFileSync(join(root, INSTALL_MARK), (await gitOut(root, ["hash-object", "package-lock.json"])).out)
         }
-        const prepared: string[] = []
-        for (const script of installed ? ["codegen", "build:modules"] : ["codegen"]) {
-            const run = await withHeavySlot("build", `lane gate ${lane}: npm run ${script}`, root, {}, (held) => captureNpm(["run", script, "--silent", "--if-present"], root, held.options))
-            if (run.exitCode !== 0) throw new Refusal("LANE_GATE_PREPARE", `npm run ${script} exited ${String(run.exitCode)}: ${run.stderr.split("\n").slice(-3).join(" ")}`)
-            prepared.push(script)
-        }
+        // The workspace packages are built after an install only: a tree whose install did not move keeps the builds it already has.
+        const preparing = await prepareTree(root, `lane gate ${lane}`, installed ? PREPARE_SCRIPTS : PREPARE_SCRIPTS.filter((script) => script === "codegen"))
+        if (preparing.failure !== undefined) throw new Refusal("LANE_GATE_PREPARE", `${preparing.failure.command} exited ${String(preparing.failure.exitCode)}: ${preparing.failure.output.split("\n").slice(-3).join(" ")}`)
+        const prepared = [...preparing.ran]
         if (!existsSync(appCli(root))) throw new Refusal("LANE_GATE_NO_APP_CLI", `${appCli(root)} is missing: the app pins starci-harness; run lane gate --install`)
         const mode = flags.push ? "push" : "check"
         // A lane lands on dev: the check is the FAST level (app check --level dev), and a push of the lane branch runs it once, in its pre-push hook.

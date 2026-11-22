@@ -31,6 +31,9 @@ export interface LandProfile {
     readonly gateLabel: string
 }
 
+/** The folder of an app's database migrations (the one its stack's migrate step applies and receipts): a landed lane is told the files it added there, and `dev sync` migrates when it moved. */
+export const MIGRATIONS_FOLDER = "db/migrations/"
+
 /** The batch gate's check of an app: the FAST level, since a batch lands on dev (the full gate runs once at the main cut). */
 export const LANDER_GATE_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "dev", "--json"]
 
