@@ -60,6 +60,8 @@ export interface KnowledgeMapProps {
     readonly weightLabel?: (weight: number) => string
     /** The words before the source of an item in its name card. */
     readonly sourceLabel?: string
+    /** The item the first view is centred on when the map is larger than its canvas (it opens at 100% on every screen); left out, the heaviest item. */
+    readonly focusId?: string
     /** Shown instead of the map when there are no bubbles. */
     readonly emptyLabel?: string
     /** True while the data is fetched: a skeleton with no text. */

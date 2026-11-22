@@ -3,7 +3,7 @@
  * hollow circle and open triangle, the skeleton, the status, tone and glyph maps, and the ELK helpers. A mode imports them from here and never edits them.
  */
 export { GraphCanvas, measureLabel, type CanvasInput, type Placement } from "./canvas.js"
-export { PHONE_WIDTH, usePhone } from "./touch.js"
+export { clearOfControls, openView, type OpenView, type ViewInsets, type ViewRect } from "./view.js"
 export { FlowZoom, ZoomButtons, zoomWords, type ZoomButtonsProps, type ZoomWords } from "./zoom.js"
 export { FlowLegend, type FlowLegendProps } from "./legend.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./skeleton.js"

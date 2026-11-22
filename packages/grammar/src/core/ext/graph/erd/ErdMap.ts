@@ -4,7 +4,7 @@ import { Background, BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, R
 import { createElement as h, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
 import { LinkIcon } from "@heroicons/react/24/outline"
 import { Badge, Icon, IconTile, Link, Text } from "../../../index.js"
-import { GraphSkeleton, PHONE_WIDTH, measureLabel, roundedPath } from "../shared/index.js"
+import { GraphSkeleton, measureLabel, openView, roundedPath, type ViewRect } from "../shared/index.js"
 import { FlowZoom, zoomWords } from "../shared/zoom.js"
 import { erdBounds, layoutErd, type ErdLayout, type ErdRoute, type Point } from "./layout.js"
 import { NO_GLYPH } from "./glyphs.js"
@@ -13,9 +13,8 @@ import { ERD_DEFAULT_FIELDS, ERD_WIDTH, HEAD_PORT, erdPortId, erdPortY, erdStruc
 import type { ErdMapProps } from "./types.js"
 
 const CORNER = 12
-/** Where the graph starts from the left of a phone: past the 40px zoom controls and their gap. */
-const PHONE_CLEAR = 72
-const PHONE_TOP = 16
+/** The first view's room round the map: on the left the 40px zoom controls and their gap. */
+const OPEN_INSETS = { top: 16, right: 16, bottom: 16, left: 72 } as const
 
 interface Lit {
     readonly edge: string | undefined
@@ -164,11 +163,21 @@ const shapesOf = (model: ErdModel, layout: ErdLayout): readonly Rect[] => {
 const CONTROLS_GAP = 16
 
 /**
- * The view of the map and its zoom controls. A wide page opens fitted to `bounds` (and, when something of the graph would stand under the controls, fitted again with their room
- * added at the left, a few passes at most since the zoom changes with each). A phone opens at 100% on the same layout, the left edge of the graph past the controls: the
- * person drags it with a finger and pinches to zoom. The fit button of the controls fits the whole graph either way. Swappable for the shared touch and initial-view logic.
+ * The box of the entity the first view is centred on: the app's `focusId`. Left out, a map larger than its frame opens at its top-left corner, where its reading
+ * starts, past the zoom controls (so they cover nothing).
  */
-const Viewport = ({ bounds, shapes, token, words }: { readonly bounds: Rect; readonly shapes: readonly Rect[]; readonly token: string; readonly words: ReturnType<typeof zoomWords> }): ReactElement => {
+const focusOf = (model: ErdModel, layout: ErdLayout, focusId: string | undefined): ViewRect | undefined => {
+    const node = model.nodes.find((each) => each.id === focusId)
+    const at = node === undefined ? undefined : layout.positions[node.id]
+    return node === undefined || at === undefined ? undefined : { x: at.x, y: at.y, width: ERD_WIDTH, height: node.height }
+}
+
+/**
+ * The view of the map and its zoom controls. Every screen opens at 100% (`openView`): a map that fits stands in the middle, a larger one opens at its top-left corner (or centred on `focusId`), and
+ * the person drags it and pinches to zoom. The fit button fits `bounds` (and, when something of the graph would stand under the controls, fits again with their room added at
+ * the left, a few passes at most since the zoom changes with each).
+ */
+const Viewport = ({ bounds, focus, shapes, token, words }: { readonly bounds: Rect; readonly focus: ViewRect | undefined; readonly shapes: readonly Rect[]; readonly token: string; readonly words: ReturnType<typeof zoomWords> }): ReactElement => {
     const flow = useReactFlow()
     const store = useStoreApi()
     const fit = async (): Promise<void> => {
@@ -190,9 +199,9 @@ const Viewport = ({ bounds, shapes, token, words }: { readonly bounds: Rect; rea
         }
     }
     useEffect(() => {
-        const width = store.getState().domNode?.getBoundingClientRect().width ?? 0
-        if (width < PHONE_WIDTH) void flow.setViewport({ x: PHONE_CLEAR - bounds.x, y: PHONE_TOP - bounds.y, zoom: 1 })
-        else void fit()
+        const frame = store.getState().domNode?.getBoundingClientRect()
+        // At 100% on every screen (never fitted on load): a map larger than its frame is centred on its focus entity.
+        if (frame !== undefined) void flow.setViewport(openView(frame, bounds, focus, OPEN_INSETS))
         // The view is set when a layout lands (its token changes), never while the person pans.
     }, [token])
     // The shared zoom (Grammar's 40px IconButtons); its fit is the ERD's own, clear of the buttons.
@@ -322,8 +331,8 @@ const Canvas = (props: ErdMapProps): ReactElement => {
                     proOptions: { hideAttribution: true },
                     ...(props.ariaLabelConfig === undefined ? {} : { ariaLabelConfig: props.ariaLabelConfig }),
                 },
-                h(Background, { gap: 22, size: 1.4, color: "var(--border)" }),
-                h(Viewport, { bounds, shapes: shapesOf(model, ready), token: key, words: zoomWords(props.ariaLabelConfig) }),
+                h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),
+                h(Viewport, { bounds, focus: focusOf(model, ready, props.focusId), shapes: shapesOf(model, ready), token: key, words: zoomWords(props.ariaLabelConfig) }),
             ),
         ),
     )

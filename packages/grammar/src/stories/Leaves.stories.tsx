@@ -743,11 +743,13 @@ export const GrammarRoot: Story = {
       <Matrix>
         <State label="Nested explicit themes in the toolbar family (the outer root comes from the toolbar)">
           {(['light', 'dark', 'system'] as const).map((theme) => (
-            <G.GrammarRoot key={theme} {...scope} style={{ padding: '1rem', borderRadius: '0.75rem', minWidth: 160 }}>
+            <div key={theme} className={theme === 'system' ? undefined : theme} data-theme={theme === 'system' ? undefined : theme} style={{ padding: '1rem', borderRadius: '0.75rem', minWidth: 160, background: 'var(--background)', color: 'var(--foreground)' }}>
+            <G.GrammarRoot {...scope}>
               <G.Text isStrong>{theme} scope</G.Text>
               <G.Text tone="muted" role="body">Tokens resolve here.</G.Text>
               <div style={{ marginTop: '0.5rem' }}><G.Button size="sm">Action</G.Button></div>
             </G.GrammarRoot>
+            </div>
           ))}
         </State>
       </Matrix>

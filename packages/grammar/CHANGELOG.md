@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased - The graph opens at 100% on its step, a dot grid you can see, a trend line as wide as its cell, the codemod reads only Grammar elements
+
+codemod: v0551 (`starci app codemod v0551`, or `--from 0.55.0 --to 0.55.1`); v0550 is fixed in place, so an app re-runs it.
+
+- Changed (ext/graph, the first view; owner: "size vẫn vậy chỉ có điều kéo = tay thôi"): `FlowGraph`, `SchemaMap`, `ErdMap` and `KnowledgeMap` open at 100% on every width, never fitted (it fitted a wide page down to 0.15, and an app could not stop it). A graph that fits its frame stands in its middle; a larger one is centred on its focus, its start never further in than the inset (`openView` of the shared parts). The focus is the new optional `focusId` (on `GraphCanvasProps`, `ErdMapProps`, `KnowledgeMapProps`), else for a flow the running step, then a failed one, a waiting one, the first not done, the first (`focusStep`); an ERD opens at its top-left corner past the controls; a knowledge map on its heaviest item. It is set once per layout: a status change, a resize or a pan never moves it. Fit ("Vừa khung") is the 40px fit button only; `interactive: false` (a still picture) is still fitted.
+- Removed (ext/graph; codemod v0551 marks each use `TODO(grammar-0.55.1)`): `shared.PHONE_WIDTH` and `shared.usePhone` (the graph no longer differs on a phone).
+- Fixed (ext/graph, the dot grid): the panel's 1.4px dots were the border colour, about rgb 251 on white, unseen. They are `--starci-graph-grid` (the foreground mixed 22% into the surface), quiet but seen in light (about rgb 208) and dark.
+- Fixed (ext/graph, 13px words): the core Badges of a graph (chips, tag, ports, the words on a line) were 12px; inside a graph they take the label.field size, 13px, the size the layout measures them at. The collision spec checks them.
+- Changed (KnowledgeMap): a bubble's name card is the Grammar Tooltip (`AnchoredTooltip`, which takes `placement: "top"`), not a box of its own.
+- Fixed (FigureCells and the recharts ext): a `Figure.trendChart` Sparkline measured 0px wide (the cell aligns its rows to the start, so the line's row shrank to nothing). The row stretches, and every ext chart's box stretches in a flex column; the line takes the cell's full width, with no fixed box around it. Spec `specs/figure-sparkline.browser.spec.mts` (Chromium; `GRAPH_CHROMIUM` names one).
+- Added (`BarChart highlightLast`, ext/recharts): the latest bar in the full tone, the others in its soft pair (`chartToneSoftColor`, `barFills`); the chart's name ends with the latest value through `formatX` and `formatY`. Story `Navigation & Data/Recharts` `BarChartHighlightLast`.
+- Fixed (codemod v0550, in place): a step touches a JSX element only when its tag resolves to an import from `@starci/grammar` (any entry; an alias such as `Button as GButton`, or a member of a Grammar namespace). A HeroUI `Button` (whose `ghost` it turned into `border`), another library's chart or avatar and an app's own component of the same name are left. `core-chart` now maps `empty` to `emptyLabel`, `valueAxis={{ format }}` to `formatY`, and keeps a BarChart's `highlightLast`; what it cannot map is marked `TODO(chart)` in the ext's real prop names, and an earlier `TODO(chart)` note is rewritten to what is still open. Specs in `codemods/v0550/api.spec.mts`.
+- Fixed (AvatarGroup row): a member's initials or mark were clipped by the next member; each one but the last moves its letters by half of the cover, and a 24px row overlaps a quarter of the avatar.
+- Fixed (stories): the dark halves of `Leaves/Button variant` and `Leaves/GrammarRoot` rendered light (they passed the deleted `GrammarRoot theme`); they scope `.dark` on a wrapper, and Storybook's preview no longer passes `theme` to the root.
+
 ## 0.55.0 - 2026-11-22
 
 codemod: v0550 (`starci app codemod v0550`, or `--from 0.54.1 --to 0.55.0`).

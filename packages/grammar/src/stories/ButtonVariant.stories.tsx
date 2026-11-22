@@ -35,7 +35,9 @@ const tonedPrimaries = (
     </>
 )
 
+/** A theme scope: the mode is `.dark` (or `data-theme`) on an ancestor, as HeroUI reads it; GrammarRoot takes no theme. */
 const VariantMatrix = ({ scope, theme }: { readonly scope: { readonly "data-grammar-family"?: string }; readonly theme: "light" | "dark" }) => (
+    <div className={theme} data-theme={theme} style={{ padding: "1rem", borderRadius: "0.75rem", background: "var(--background)", color: "var(--foreground)" }}>
     <G.GrammarRoot {...scope}>
         <Matrix>
             <State label={`${theme}: the three looks`}>{actions}{glyphActions}</State>
@@ -45,6 +47,7 @@ const VariantMatrix = ({ scope, theme }: { readonly scope: { readonly "data-gram
             } />
         </Matrix>
     </G.GrammarRoot>
+    </div>
 )
 
 /** Every look, in both theme scopes together. */

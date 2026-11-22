@@ -150,34 +150,91 @@ export const CHART_MODULE = "@starci/grammar/core/ext/recharts"
 
 /**
  * Core's hand-drawn `BarChart` and `Sparkline` are deleted (owner: "every chart or sparkline uses the ext, never hand-drawn SVG"). The
- * import moves to the ext (MOVED_EXPORTS); this step maps the props: `label` is `ariaLabel`, `bars` is `data` with `xKey="label"`
- * `yKey="value"`, a Sparkline's `values` become rows `{ index, value }`. What has no equal (`empty` as a node, `valueAxis`,
- * `highlightLast`, `error`, the required `emptyLabel` string) is marked `TODO(chart)`. An element already on the ext's props is left.
+ * import moves to the ext (MOVED_EXPORTS); this step maps the props onto the ext's: `label` is `ariaLabel`, `bars` is `data` with
+ * `xKey="label"` `yKey="value"`, a Sparkline's `values` become rows `{ index, value }`, `empty` is `emptyLabel` (its words), a
+ * `valueAxis={{ format }}` is `formatY={format}`, and a BarChart's `highlightLast` stays (the ext BarChart has it). What it cannot map
+ * (an `empty` that is an element, a `valueAxis` with no function, `error`, a missing `emptyLabel`, a Sparkline's `highlightLast`) is
+ * marked `TODO(chart)` with the ext's real prop names. It runs again cleanly: an element already on the ext's props is left, and its
+ * earlier `TODO(chart)` note is rewritten to what is still open.
  */
 const coreChart: ApiStep = {
     id: "core-chart",
-    summary: "core BarChart and Sparkline are deleted: imports move to @starci/grammar/core/ext/recharts, label becomes ariaLabel, bars and values become data with xKey and yKey; empty, valueAxis, highlightLast and error are marked TODO(chart)",
+    summary: "core BarChart and Sparkline are deleted: imports move to @starci/grammar/core/ext/recharts; label becomes ariaLabel, bars and values become data with xKey and yKey, empty becomes emptyLabel, valueAxis={{ format }} becomes formatY, a BarChart's highlightLast stays; an element empty, a valueAxis without a function, error and a missing emptyLabel are marked TODO(chart)",
     elements: ["BarChart", "Sparkline"],
     apply: (ctx) => {
+        const { ts, sf } = ctx
         const label = ctx.attr("label")
         const series = ctx.attr(ctx.name === "BarChart" ? "bars" : "values")
-        if (series === undefined && (label === undefined || ctx.attr("ariaLabel") !== undefined)) return
+        const empty = ctx.attr("empty")
+        const valueAxis = ctx.attr("valueAxis")
+        const error = ctx.attr("error")
+        const highlightLast = ctx.attr("highlightLast")
+        const stale = staleChartNote(ctx)
+        const old = label !== undefined || series !== undefined || empty !== undefined || valueAxis !== undefined || error !== undefined || (highlightLast !== undefined && ctx.name === "Sparkline")
+        if (!old && stale === undefined) return
         const done: string[] = []
-        if (label) {
-            ctx.replace(label, `ariaLabel${label.initializer ? `=${label.initializer.getText(ctx.sf)}` : ""}`)
+        const open: string[] = []
+        if (label && ctx.attr("ariaLabel") === undefined) {
+            ctx.replace(label, `ariaLabel${label.initializer ? `=${label.initializer.getText(sf)}` : ""}`)
             done.push("ariaLabel")
         }
-        if (series?.initializer && ctx.ts.isJsxExpression(series.initializer) && series.initializer.expression) {
-            const value = series.initializer.expression.getText(ctx.sf)
+        if (series?.initializer && ts.isJsxExpression(series.initializer) && series.initializer.expression) {
+            const value = series.initializer.expression.getText(sf)
             ctx.replace(series, ctx.name === "BarChart" ? `data={${value}} xKey="label" yKey="value"` : `data={(${value}).map((value, index) => ({ index, value }))} xKey="index" yKey="value"`)
             done.push("data, xKey, yKey")
         }
-        const open = ["empty", "valueAxis", "highlightLast", "error"].filter((prop) => ctx.attr(prop) !== undefined)
-        if (ctx.attr("emptyLabel") === undefined) open.push("emptyLabel (required, a string)")
-        if (ctx.ts.isPropertyAccessExpression(ctx.el.tagName)) open.unshift(`import ${ctx.name} from ${CHART_MODULE} (the namespace no longer has it)`)
+        let hasEmptyLabel = ctx.attr("emptyLabel") !== undefined
+        if (empty !== undefined) {
+            const init = empty.initializer
+            let words: Ts.Expression | undefined = init === undefined ? undefined : ts.isStringLiteral(init) ? init : ts.isJsxExpression(init) ? init.expression : undefined
+            while (words !== undefined && (ts.isParenthesizedExpression(words) || ts.isAsExpression(words))) words = words.expression
+            const isNode = words === undefined || ts.isJsxElement(words) || ts.isJsxSelfClosingElement(words) || ts.isJsxFragment(words)
+            if (hasEmptyLabel) {
+                ctx.drop(empty)
+                done.push("empty dropped (emptyLabel is set)")
+            } else if (isNode) {
+                open.push("emptyLabel (a string: the words of the empty chart; empty was an element)")
+            } else {
+                ctx.edit(empty.name.getStart(sf), empty.name.getEnd(), "emptyLabel")
+                done.push("emptyLabel")
+                hasEmptyLabel = true
+            }
+        }
+        if (valueAxis !== undefined) {
+            const axis = ctx.expression(valueAxis)
+            const format = axis !== undefined && ts.isObjectLiteralExpression(axis) ? axis.properties.find((p) => p.name !== undefined && ts.isIdentifier(p.name) && p.name.text === "format") : undefined
+            const fn = format === undefined ? undefined : ts.isShorthandPropertyAssignment(format) ? format.name : ts.isPropertyAssignment(format) ? format.initializer : ts.isMethodDeclaration(format) ? format : undefined
+            const isFunction = fn !== undefined && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn) || ts.isIdentifier(fn) || ts.isPropertyAccessExpression(fn) || ts.isMethodDeclaration(fn))
+            if (ctx.attr("formatY") !== undefined) {
+                ctx.drop(valueAxis)
+                done.push("valueAxis dropped (formatY is set)")
+            } else if (isFunction && ctx.name === "BarChart") {
+                const text = ts.isMethodDeclaration(fn) ? `function ${fn.getText(sf)}` : fn.getText(sf)
+                ctx.replace(valueAxis, `formatY={${text}}`)
+                done.push("formatY")
+            } else {
+                open.push(ctx.name === "BarChart" ? "formatY (a function of the value; valueAxis had no format function)" : "nothing for valueAxis (a Sparkline has no axis: drop it)")
+            }
+        }
+        if (highlightLast !== undefined && ctx.name === "Sparkline") open.push("nothing for highlightLast (a Sparkline has none: drop it)")
+        if (error !== undefined) open.push(`nothing for error (the ext ${ctx.name} has no error prop: draw the failed read in its place; it takes isLoading and emptyLabel)`)
+        if (!hasEmptyLabel && !open.some((item) => item.startsWith("emptyLabel"))) open.push("emptyLabel (required, a string)")
+        if (ts.isPropertyAccessExpression(ctx.el.tagName)) open.unshift(`import ${ctx.name} from ${CHART_MODULE} (the namespace no longer has it)`)
+        const reason = open.length ? `${ctx.name} is the ext chart now; set ${open.join(", ")}` : undefined
+        // An earlier note goes unless it already says what is open (the mark is then not doubled).
+        if (stale !== undefined && (reason === undefined || !sf.text.slice(stale.pos, stale.end).includes(`${CHART_MARK}: ${reason} `))) ctx.edit(stale.pos, stale.end, "")
         if (done.length) ctx.changed(done.join(", "))
-        if (open.length) ctx.mark(`${ctx.name} is the ext chart now; set ${open.join(", ")}`, CHART_MARK)
+        if (reason !== undefined) ctx.mark(reason, CHART_MARK)
     },
+}
+
+/** An earlier run's `TODO(chart)` note right before the element (a JSX comment or a line comment, with its line break and indent): rewritten on each run. */
+const staleChartNote = (ctx: StepContext): { readonly pos: number; readonly end: number } | undefined => {
+    const owner = ctx.ts.isJsxOpeningElement(ctx.el) ? ctx.el.parent : ctx.el
+    const start = owner.getStart(ctx.sf)
+    const before = ctx.sf.text.slice(Math.max(0, start - 600), start)
+    const note = /(?:\{\/\* TODO\(chart\): (?:BarChart|Sparkline) is the ext chart now; set [^\n]*? \*\/\}\n[ \t]*|\/\/ TODO\(chart\): (?:BarChart|Sparkline) is the ext chart now; set [^\n]*\n[ \t]*|\/\* TODO\(chart\): (?:BarChart|Sparkline) is the ext chart now; set [^\n]*? \*\/ )$/u.exec(before)
+    return note === null ? undefined : { pos: start - note[0].length, end: start }
 }
 
 /**
@@ -287,6 +344,45 @@ const lastName = (ts: typeof Compiler, sf: Ts.SourceFile, el: Element): string =
     return ts.isPropertyAccessExpression(tag) ? tag.name.getText(sf) : tag.getText(sf)
 }
 
+/** The Grammar's bindings in a file: each local name imported from `@starci/grammar` (any entry) with the name it exports, and each namespace. */
+export interface GrammarBindings {
+    readonly named: ReadonlyMap<string, string>
+    readonly namespaces: ReadonlySet<string>
+}
+
+export const grammarBindings = (ts: typeof Compiler, sf: Ts.SourceFile): GrammarBindings => {
+    const named = new Map<string, string>()
+    const namespaces = new Set<string>()
+    for (const st of sf.statements) {
+        if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier)) continue
+        const module = st.moduleSpecifier.text
+        if (module !== "@starci/grammar" && !module.startsWith("@starci/grammar/")) continue
+        const clause = st.importClause
+        if (clause?.name !== undefined) namespaces.add(clause.name.text)
+        const bindings = clause?.namedBindings
+        if (bindings === undefined) continue
+        if (ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text)
+        else for (const spec of bindings.elements) named.set(spec.name.text, (spec.propertyName ?? spec.name).text)
+    }
+    return { named, namespaces }
+}
+
+/**
+ * The Grammar component an element is, by the import its tag resolves to: `<Button>` imported from `@starci/grammar` (or an alias of it,
+ * `import { Button as GButton }`), or `<G.Button>` of a Grammar namespace. `undefined` for any other element: another library's Button
+ * (`@heroui/react`), a local component of the same name, or a tag the file never imports from the Grammar.
+ */
+export const grammarElementName = (ts: typeof Compiler, bindings: GrammarBindings, el: Element): string | undefined => {
+    const tag = el.tagName
+    if (ts.isIdentifier(tag)) return bindings.named.get(tag.text)
+    if (ts.isPropertyAccessExpression(tag)) {
+        let root: Ts.Expression = tag.expression
+        while (ts.isPropertyAccessExpression(root)) root = root.expression
+        return ts.isIdentifier(root) && bindings.namespaces.has(root.text) ? tag.name.text : undefined
+    }
+    return undefined
+}
+
 /** The slots that hold a mark on its own: a list lead, a bubble's avatar, a header's mark or actions. */
 const STANDALONE_SLOTS = new Set(["leading", "avatar", "media", "header", "mark", "actions"])
 
@@ -315,7 +411,8 @@ export function transformApiSource(ts: typeof Compiler, file: string, original: 
     const visit = (n: Ts.Node): void => {
         if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
             const el = n
-            const name = lastName(ts, sf, el)
+            // Only a Grammar element: another library's component of the same name, or the app's own, is never touched.
+            const name = grammarElementName(ts, bindings, el) ?? ""
             const before = (el.getText(sf).split("\n")[0] ?? "").slice(0, 120)
             for (const step of steps) {
                 if (!step.elements.includes(name)) continue
@@ -441,6 +538,7 @@ export function transformApiSource(ts: typeof Compiler, file: string, original: 
         }
         ts.forEachChild(n, visit)
     }
+    const bindings = grammarBindings(ts, sf)
     const grammarFile = sf.statements.some((st) => ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier) && st.moduleSpecifier.text.startsWith("@starci/grammar"))
     visit(sf)
     edits.sort((a, b) => a.pos - b.pos || a.end - b.end)

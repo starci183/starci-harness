@@ -196,5 +196,5 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         for (const [from, to] of findConcurrentRunning(nodes, edges)) globalThis.console.warn(`@starci/grammar/core/ext/graph: "${from}" and "${to}" are both running on one path; a path has one active node, so check the states the app passes.`)
     }, [nodes, edges])
     const footer = legend === undefined || legend.length === 0 ? undefined : h(FlowLegend, { items: legend, ...(kindTones === undefined ? {} : { kindTones }) })
-    return h(GraphCanvas, { ...props, focusId: focusStep(nodes), sizes: model.sizes, links: model.links, rfEdges, makeNodes, nodeTypes, edgeTypes: EDGE_TYPES, ...(footer === undefined ? {} : { footer }) })
+    return h(GraphCanvas, { ...props, focusId: props.focusId ?? focusStep(nodes), sizes: model.sizes, links: model.links, rfEdges, makeNodes, nodeTypes, edgeTypes: EDGE_TYPES, ...(footer === undefined ? {} : { footer }) })
 }

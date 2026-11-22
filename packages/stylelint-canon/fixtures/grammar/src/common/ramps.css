@@ -2,18 +2,26 @@
  * THE RAMPS. The one place a type size, a corner, a stroke, a duration, an opacity or a part's geometry has a number.
  * Every component rule reads one of these by name and holds no literal (`scripts/lint/stylelint-plugin.mts`,
  * `starci-grammar/no-literal`); a family overrides a ramp step on its own root, never inside a component rule.
- * Spacing is not here: it is the scale 0 4 8 12 24 32 in `styles.css`. Colour is not here either: the app sets
- * HeroUI's tokens and every rule reads them; the few colours that are art (the rank medals) are `--grammar-art-*`.
+ * Spacing is not here: it is the scale 0 4 8 12 16 24 32 in `styles.css`. Colour is not here either: the app sets
+ * HeroUI's tokens and every rule reads them.
  */
 @layer starci-grammar-common {
     .grammar-common-root {
         /* TYPE. Sizes in rem, named by step; the leading beside a size is the rem step of the same name or a ratio. */
         --grammar-text-2xs: 0.6875rem;
         --grammar-text-xs: 0.75rem;
-        --grammar-text-sm: 0.8125rem;
+        /* THE FINAL TYPE SCALE (owner, 2026-11-09): no 13 anywhere. `sm` is retired into the UI step (14) and kept as a name. */
+        --grammar-text-sm: 0.875rem;
         --grammar-text-md: 0.875rem;
         --grammar-text-lg: 1rem;
         --grammar-text-xl: 1.125rem;
+        /* THE CONSOLE SCALE (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): five roles, size / line / weight; Inter; only 400 and 500.
+           title 18 / 26 / 500 (page h1, dialog and drawer titles) · heading 16 / 24 / 500 (section, empty-state and card titles) · label 16 / 24 / 400 primary (row title, key, setting name, field label)
+           · body 14 / 20 / 400 (primary alone, secondary under a label) · meta 12 / 16 / 400 secondary (breadcrumbs, timestamps, chip counts, group labels, captions, table headers). */
+        --grammar-leading-page-title: 1.625rem;
+        /* A section's title (0.48.0, owner 2026-11-19): the 16 step at the semibold weight, set apart from the 16 / 400 labels under it by weight and place. */
+        --grammar-text-title: var(--grammar-text-lg);
+        --grammar-leading-title: var(--grammar-leading-lg);
         --grammar-text-2xl: 1.25rem;
         --grammar-text-3xl: 1.5rem;
         --grammar-text-4xl: 1.875rem;
@@ -21,7 +29,7 @@
         /* Inline code and counts follow the size of the text around them. */
         --grammar-text-relative: 0.875em;
         --grammar-leading-xs: 1rem;
-        --grammar-leading-sm: 1.125rem;
+        --grammar-leading-sm: 1.25rem;
         --grammar-leading-md: 1.25rem;
         --grammar-leading-lg: 1.5rem;
         --grammar-leading-xl: 1.75rem;
@@ -34,10 +42,68 @@
         --grammar-leading-relaxed: 1.65;
         --grammar-weight-regular: 400;
         --grammar-weight-medium: 500;
-        --grammar-weight-semibold: 600;
-        --grammar-weight-bold: 700;
-        --grammar-weight-extrabold: 800;
-        --grammar-weight-black: 900;
+        /* The console has two weights, 400 and 500 (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): the heavier steps keep their names and resolve to 500, so nothing in a console is bold. */
+        --grammar-weight-semibold: 500;
+        --grammar-weight-bold: 500;
+        --grammar-weight-extrabold: 500;
+        --grammar-weight-black: 500;
+        /* THE TYPE ROLES (0.54.0, owner 2026-11-21, "ok chốt vậy đi"): ten roles, each a size, a line height and a weight (400 or 500 only).
+           `<Text role>` and the public classes `starci-type-<role>` (styles.css) read these; a Grammar part reads the role it draws.
+           title.page 22 / 28 is the one role under the 1.33x line height Vietnamese diacritics want (1.27): the owner's numbers stand. */
+        --grammar-type-figure-size: 1.5rem;
+        --grammar-type-figure-line: 2rem;
+        --grammar-type-figure-weight: var(--grammar-weight-medium);
+        --grammar-type-title-page-size: 1.375rem;
+        --grammar-type-title-page-line: 1.75rem;
+        --grammar-type-title-page-weight: var(--grammar-weight-medium);
+        --grammar-type-title-section-size: 1rem;
+        --grammar-type-title-section-line: 1.5rem;
+        --grammar-type-title-section-weight: var(--grammar-weight-medium);
+        --grammar-type-label-item-size: 0.875rem;
+        --grammar-type-label-item-line: 1.25rem;
+        --grammar-type-label-item-weight: var(--grammar-weight-medium);
+        --grammar-type-body-size: 0.875rem;
+        --grammar-type-body-line: 1.375rem;
+        --grammar-type-body-weight: var(--grammar-weight-regular);
+        --grammar-type-label-field-size: 0.8125rem;
+        --grammar-type-label-field-line: 1.125rem;
+        --grammar-type-label-field-weight: var(--grammar-weight-medium);
+        --grammar-type-label-group-size: 0.75rem;
+        --grammar-type-label-group-line: 1rem;
+        --grammar-type-label-group-weight: var(--grammar-weight-medium);
+        --grammar-type-caption-size: 0.75rem;
+        --grammar-type-caption-line: 1rem;
+        --grammar-type-caption-weight: var(--grammar-weight-regular);
+        --grammar-type-badge-size: 0.75rem;
+        --grammar-type-badge-line: 1rem;
+        --grammar-type-badge-weight: var(--grammar-weight-medium);
+        /* code names no weight in the owner's table: it reads the regular weight, in the mono stack. */
+        --grammar-type-code-size: 0.75rem;
+        --grammar-type-code-line: 1.125rem;
+        --grammar-type-code-weight: var(--grammar-weight-regular);
+        /* THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM", then "cook"): five roles for the public marketing site only,
+           never the console (`starci-grammar/site-type-role`). Measured on the NIVO site (D:/starci-lanes/_display-roles/measure.md) and
+           held to the owner's ranges: hero about 40-48, section about 28-32, lead about 18. Weights 400 and 500 only; every line is at
+           least 1.33x its size. The values below are the 390 phone; the two @media blocks after this rule step them up from 48rem and
+           64rem, so an app writes the role and never a breakpoint. The display roles carry one tracking, -0.02em. */
+        --grammar-type-display-hero-size: 2.25rem;
+        --grammar-type-display-hero-line: 3rem;
+        --grammar-type-display-hero-weight: var(--grammar-weight-medium);
+        --grammar-type-display-hero-tracking: -0.02em;
+        --grammar-type-display-section-size: 1.75rem;
+        --grammar-type-display-section-line: 2.375rem;
+        --grammar-type-display-section-weight: var(--grammar-weight-medium);
+        --grammar-type-display-section-tracking: -0.02em;
+        --grammar-type-display-figure-size: 2.25rem;
+        --grammar-type-display-figure-line: 3rem;
+        --grammar-type-display-figure-weight: var(--grammar-weight-medium);
+        --grammar-type-display-figure-tracking: -0.02em;
+        --grammar-type-lead-size: 1rem;
+        --grammar-type-lead-line: 1.625rem;
+        --grammar-type-lead-weight: var(--grammar-weight-regular);
+        --grammar-type-title-card-size: 1.125rem;
+        --grammar-type-title-card-line: 1.75rem;
+        --grammar-type-title-card-weight: var(--grammar-weight-medium);
         --grammar-tracking-display: -0.045em;
         --grammar-tracking-tight: -0.025em;
         --grammar-tracking-snug: -0.015em;
@@ -56,41 +122,117 @@
         --grammar-radius-xl: calc(var(--radius) * 3 / 2);
         --grammar-radius-pill: 999px;
         --grammar-radius-round: 50%;
+        /* The corner of a Button and of its loading skeleton: a pill in Core, the family control radius in Offset Pop (--grammar-button-radius in styles.css of the family). */
+        --grammar-button-radius: var(--grammar-radius-pill);
         --starci-core-control-radius: var(--grammar-radius-md);
-        --starci-core-surface-radius: var(--grammar-radius-lg);
+        /* The radius of every card surface (SurfaceCard of every kind, Board and its columns, the block surfaces): HeroUI's own Card radius, 24px at --radius 0.5rem.
+           A theme tightens it through the theme hook `--starci-core-card-radius` on its root (0.41.0; a hook, because this token is declared on the grammar root and
+           an app's `:root` value of it never reached the cards); every card rule reads only this token. */
+        --grammar-radius-card: min(32px, var(--radius-3xl));
+        --starci-core-surface-radius: var(--starci-core-card-radius, var(--grammar-radius-card));
+        --grammar-link-arrow-travel: 0.1875rem;
+        /* How far an inline link's resting underline sits below its text: clear of the descenders, at any inherited size. */
+        --grammar-link-underline-offset: 0.2em;
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
         --grammar-hairline: 1px;
         --grammar-stroke-fine: 1.5px;
         --grammar-ring-width: 2px;
+        /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
+        --grammar-separator-edge: var(--grammar-hairline) solid var(--separator);
+        /* The 1px border edge of an outlined part with no fill (0.52.0: the other party's message), as one border value. */
+        --grammar-border-edge: var(--grammar-hairline) solid var(--border);
         --grammar-shadow-lift: 0 var(--grammar-hairline) 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+        /* The soft shadow of a popover panel (0.48.0) and the scrim a phone sheet spreads over the page around it. */
+        --grammar-shadow-popover: 0 4px 16px -4px color-mix(in oklab, var(--foreground) 14%, transparent), 0 var(--grammar-hairline) 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+        --grammar-shadow-scrim: 0 0 0 100vmax color-mix(in srgb, var(--foreground) 40%, transparent);
 
         /* The distance an overlay rises or a part slides in from. */
         --grammar-motion-travel: 0.5rem;
+        /* The reaction burst: one rise of 4.5rem over a second, the drift and turn each emoji overrides. */
+        --grammar-reaction-rise: -4.5rem;
+        --grammar-loop-burst: 1s;
+        --starci-reaction-drift: 0px;
+        --starci-reaction-turn: 0deg;
 
         /* OPACITY. A disabled part is HeroUI's `--disabled-opacity`; these are the other three steps a part uses. */
         --grammar-opacity-hover: 0.7;
         --grammar-opacity-secondary: 0.8;
         --grammar-opacity-dimmed: 0.2;
+        /* A skipped step of a run and an edge the run did not take. */
+        --grammar-opacity-faded: 0.45;
 
         /* MOTION. One duration and one easing for a state change; loops have a cycle of their own. */
         --starci-core-motion-duration: 180ms;
         --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+        /* A Switch thumb crossing its track (both kinds); none under reduced motion. */
+        --grammar-switch-travel: 150ms;
         --grammar-loop-skeleton: 2s;
         --grammar-loop-spin: 1s;
         --grammar-loop-spin-fast: 0.8s;
         --grammar-loop-pulse: 1.6s;
-        --grammar-loop-orbit: 3s;
+        /* How long a Spotlight rings its target before it settles. */
+        --grammar-spotlight-duration: 3s;
         --grammar-loop-easing: linear;
         --grammar-loop-pulse-easing: ease-in-out;
         --grammar-loop-echo-easing: ease-out;
 
-        /* The ink band reads its text from the band's lightness: above the pivot the ink is dark, below it light. */
-        --grammar-ink-band-pivot: 0.62;
+        /*
+         * MARKETING MOTION (0.47.3). The durations, the easing and the distances of Reveal, Marquee, CountUp and StickyStory, read by name
+         * and held in no component rule. A family overrides a step on its own root; every one is cancelled by reduced motion in the
+         * rules that read it (the pieces then draw their content static and complete).
+         */
+        --grammar-motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --grammar-motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+        --grammar-motion-duration-base: 240ms;
+        --grammar-motion-duration-reveal: 600ms;
+        --grammar-motion-duration-count: 1200ms;
+        /* One child of a staggered Reveal starts this much after the one before it. */
+        --grammar-motion-stagger: 80ms;
+        /* How far a Reveal rises, and how far a StickyStory panel travels as it changes. */
+        --grammar-motion-distance-reveal: 1.5rem;
+        --grammar-motion-distance-step: 1rem;
+        /* The seconds a Marquee takes for one full run of its content; the shorter cycle is for a phone. */
+        --grammar-loop-marquee: 40s;
+        --grammar-loop-marquee-compact: 28s;
+        /* How wide the edge of a Marquee fades into the page. */
+        --grammar-marquee-fade: 4rem;
+        /* StickyStory: how far from the top the stage pins, and the height of the stage and of each step beside it. */
+        --grammar-story-pin-top: 7rem;
+        --grammar-story-height: 32.5rem;
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
+        /* The compact Switch: a 32x18 track, a 14px thumb, the thumb 2px in from the track on every side. */
+        --grammar-switch-compact-width: 2rem;
+        --grammar-switch-compact-height: 1.125rem;
+        --grammar-switch-compact-thumb: 0.875rem;
+        --grammar-switch-compact-inset: calc(var(--grammar-hairline) * 2);
+        /* The toggle Switch track: 72 wide at the control height (the Switch's `control` size). */
+        --grammar-switch-toggle-width: 4.5rem;
+        /* The Skeleton box shapes (0.52.2): a sm Button's height, a button's default width, a bare box's default height. */
+        --grammar-skeleton-button-sm-height: 2rem;
+        --grammar-skeleton-button-width: 6rem;
+        --grammar-skeleton-box-height: 1rem;
+        /* The loading field's shapes (STATE-8 as if/else): a label or description line by its length, a text area, a slider track, a drop zone, a check box, a pill, a mark. */
+        --grammar-skeleton-line-s: 5rem;
+        --grammar-skeleton-line-m: 9rem;
+        --grammar-skeleton-line-l: 14rem;
+        --grammar-skeleton-area-height: 5.5rem;
+        --grammar-skeleton-track-height: 0.375rem;
+        --grammar-skeleton-zone-height: 8rem;
+        --grammar-skeleton-check-size: 1.25rem;
+        --grammar-skeleton-pill-width: 5rem;
+        --grammar-skeleton-mark-size: 2rem;
+        /* What a Skeleton box shape reads when its caller names no size (the caller's width and height are set on the element itself). */
+        --starci-core-skeleton-width: 100%;
+        --starci-core-skeleton-height: var(--grammar-skeleton-box-height);
+        --starci-core-skeleton-button-width: var(--grammar-skeleton-button-width);
+        /* Expandable clamp: the lines a folded text shows (the element sets its own). */
+        --starci-core-expandable-lines: 3;
+        /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
+        --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
         --grammar-touch-size: 2.75rem;
         --starci-core-field-gap: var(--grammar-inline-gap);
@@ -98,29 +240,43 @@
         --starci-core-row-gap-compact: var(--grammar-inline-gap);
         --starci-core-rail-gap-compact: var(--grammar-row-gap);
         --starci-core-workspace-floating-inset: var(--grammar-inset);
-        --starci-core-page-measure: 80rem;
+        /* The widest the content of a page or of a workspace's main column grows: a wide screen never stretches the blocks. Centered, with the existing inline padding. */
+        --grammar-content-max: 80rem;
+        --starci-core-page-measure: var(--grammar-content-max);
         --starci-core-reading-measure: 72ch;
         --starci-core-form-measure: 30rem;
         --starci-core-form-compact-measure: 28rem;
+        --starci-core-narrow-measure: 30rem;
+        --grammar-entry-form-measure: 24rem;
+        --grammar-entry-intro-measure: 36rem;
         --starci-core-rail-compact-min: 14rem;
         --starci-core-rail-standard-min: 16rem;
         --starci-core-rail-wide-min: 20rem;
-        --starci-core-tabs-pending-height: 3rem;
+        --starci-core-tabs-pending-height: var(--starci-core-control-min-size);
+        /* The line under a tab strip (its own, or the host divider it stands on): one stroke; a family may thicken it on its own root. */
+        --starci-core-tabs-line-width: 1px;
+        /* The width of one digit of a figure, as a share of its font size (tabular numerals, semibold), so a cell can be sized from its value. */
+        --starci-core-figure-digit: 0.66;
+        /* The number of characters of a figure value, set by each cell from its value (the cell is sized from it); one until a cell says. */
+        --starci-core-figure-chars: 1;
         --starci-core-rail-compact: 16rem;
         --starci-core-rail-standard: 20rem;
         --starci-core-rail-wide: 24rem;
         --starci-core-rail-collapsed: 4rem;
+        /* 0.37.5: the aside track is clamp(320px, 26%, 420px) of its grid, a list pane track clamp(280px, 24%, 360px). */
+        --starci-core-pane-aside-track: clamp(20rem, 26%, 26.25rem);
+        --starci-core-pane-list-track: clamp(17.5rem, 24%, 22.5rem);
         --starci-core-sidebar-width: 16rem;
         --starci-core-sidebar-collapsed-width: 4rem;
         --starci-core-workspace-navigation-width: 18rem;
         --starci-core-workspace-floating-max: 22rem;
         --starci-core-workspace-leading-seam: 2rem;
         --starci-core-data-table-max-block-size: 24rem;
+        /* The intrinsic width of a Progress in a list row control (0.37.21). */
+        --grammar-row-progress-width: 7rem;
         --starci-core-contained-max-height: calc(100dvh - 3rem);
         --starci-core-band-height: 0rem;
-        --starci-core-band-subnav-height: 0rem;
         --starci-core-band-offset: 5.5rem;
-        --starci-core-subnav-rest: 4rem;
         --starci-core-skeleton-line: var(--grammar-text-relative);
         --starci-core-fill-top: 0px;
         --starci-core-fill-bottom: 0px;
@@ -129,28 +285,60 @@
         --starci-core-pane-inset-inline: 0px;
         --starci-core-pane-inset-block-start: 0px;
         --starci-core-pane-inset-block-end: 0px;
-        --starci-core-bottom-nav-count: 4;
         --starci-core-top-bar-z: 40;
-        --starci-core-navbar-z: 50;
-        --starci-core-subnav-z: 40;
-        --starci-core-bottom-nav-z: 40;
         --starci-core-workspace-floating-z: 40;
-        --starci-flow-diameter: 3rem;
-        --starci-flow-height: 24rem;
-        --starci-flow-zoom: 1;
+        --starci-core-geomap-height: 24rem;
         --avatar-size: var(--starci-core-control-min-size);
+        /* The two round-mark sizes: md 40px (the common size, the control height), sm 24px (the icon size). No 32px round mark exists. */
+        --grammar-avatar-md-size: 2.5rem;
+        --grammar-avatar-sm-size: 1.5rem;
+        /* The floating launcher: an AvatarButton size="floating", 56px. */
+        --grammar-avatar-floating-size: 3.5rem;
+        /* The initials of an Avatar: a share of the avatar's own size, so the two letters fill it at every step; a Zalo group tile gets a smaller share. */
+        --grammar-avatar-initials-ratio: 0.36;
+        --grammar-avatar-tile-initials-ratio: 0.3;
+        /* The icon of an Avatar mark (a provider or a channel on its brand circle): a share of the avatar's size; a Zalo group tile gets a smaller share. */
+        --grammar-avatar-mark-ratio: 0.5;
+        --grammar-avatar-tile-mark-ratio: 0.45;
+        /* The message hover rail (owner 2026-11-21): the opacity fade, and the reaction picker's emoji (28px) in their cells (the 40px control step) with the small hover grow. */
+        --grammar-message-actions-fade: 120ms;
+        --grammar-message-emoji-size: 1.75rem;
+        --grammar-message-emoji-cell: var(--starci-core-control-min-size);
+        --grammar-message-emoji-grow: 1.15;
+        /*
+         * THE TWO ICON SIZES (owner 2026-11-22): 24px before body text (text-sm, 14px: Icon `heading` and `leading`, InlineStatus beside a 14px
+         * line), 20px inside a chip or badge and before text-xs (12px: Icon `chip`, InlineStatus inside a 12px role, the 40px IconTile's glyph).
+         * No other icon size exists; a Button's own glyph keeps the Button's scale (20 on a phone, 16 from 640px and on sm).
+         */
+        --grammar-icon-md: 1.5rem;
+        --grammar-icon-sm: 1.25rem;
+        /* A connection logo in a LogoStack: the 20px icon step. */
+        --grammar-logo-stack-size: var(--grammar-icon-sm);
+        /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
+        --grammar-bubble-measure-standard: min(40rem, 85%);
+        --grammar-bubble-measure-wide: 70%;
+    }
 
-        /* ART. Fixed colours of the rank medals: art that no theme restyles, named once so no component carries a hex. */
-        --grammar-art-blue: #0074ba;
-        --grammar-art-sky: #00a6ed;
-        --grammar-art-orange: #ffb02e;
-        --grammar-art-brown: #6d4534;
-        --grammar-art-yellow: #fcd53f;
-        --grammar-art-steel: #636363;
-        --grammar-art-silver: #bebebe;
-        --grammar-art-pearl: #e6e6e6;
-        --grammar-art-bronze: #d3883e;
-        --grammar-art-copper: #f3ad61;
-        --grammar-art-umber: #402a32;
+    /* The site group's steps (0.55.0): from 48rem the hero and the figure grow; from 64rem (the desktop) every stepped role takes its
+       desktop size. title.card does not step. */
+    @media (min-width: 48rem) {
+        .grammar-common-root {
+            --grammar-type-display-hero-size: 2.5rem;
+            --grammar-type-display-hero-line: 3.375rem;
+            --grammar-type-display-figure-size: 3rem;
+            --grammar-type-display-figure-line: 4rem;
+        }
+    }
+    @media (min-width: 64rem) {
+        .grammar-common-root {
+            --grammar-type-display-hero-size: 3rem;
+            --grammar-type-display-hero-line: 4rem;
+            --grammar-type-display-section-size: 2rem;
+            --grammar-type-display-section-line: 2.75rem;
+            --grammar-type-display-figure-size: 3.5rem;
+            --grammar-type-display-figure-line: 4.75rem;
+            --grammar-type-lead-size: 1.125rem;
+            --grammar-type-lead-line: 1.75rem;
+        }
     }
 }

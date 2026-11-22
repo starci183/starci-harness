@@ -13,7 +13,7 @@ test("accepts grammar tokens, family tokens, math over tokens and neutral keywor
   padding: var(--grammar-inline-gap);
   gap: calc(var(--grammar-row-gap) * 2);
   margin: 0 auto;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-3xl);
   font-family: var(--font-mono);
   border-color: transparent;
   outline: none;

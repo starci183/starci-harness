@@ -20,6 +20,9 @@ export const CHART_TONE_TOKEN: Readonly<Record<ChartTone, string>> = {
 /** The CSS colour of a tone (a `var()` of its token). An unknown tone from an untyped caller falls back to the accent. */
 export const chartToneColor = (tone: ChartTone): string => CHART_TONE_TOKEN[tone] ?? CHART_TONE_TOKEN.accent
 
+/** A tone's soft pair for a mark set back (the bars before the latest of a `highlightLast` BarChart): the tone mixed into the surface. */
+export const chartToneSoftColor = (tone: ChartTone): string => `color-mix(in oklab, ${chartToneColor(tone)} 32%, var(--surface))`
+
 /**
  * The fixed order a chart hands tones to series or segments that name none: the categorical order, never cycled. `default` (muted) is
  * held back for the folded "Other" segment, so a chart has at most five coloured series plus Other. `info` comes last: in the

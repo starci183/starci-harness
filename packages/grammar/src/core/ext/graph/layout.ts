@@ -430,7 +430,8 @@ const absolute = (tree: Tree, id: string, positions: Readonly<Record<string, Gra
 
 /**
  * The route of a back edge: out of the west or east side of its source, along the gutter on the side its branch lies (the left one for the spine itself), and into the
- * same side of its target. The gutter lies outside every sibling node, so the line never crosses the spine or another branch; its label stands on the line.
+ * same side of its target. The gutter lies outside every sibling node beside the lane (overlapping the rows between its ends), so the line never crosses the spine
+ * or a branch it passes, and stays near the steps it joins; its label stands on the line.
  */
 const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, measure: Measure): Route | undefined => {
     const sourceBox = boxes[link.source]
@@ -440,8 +441,16 @@ const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string
     const to = absolute(tree, link.target, positions)
     const parent = tree.parent.get(link.source)
     const siblings = (parent === undefined ? tree.roots : (tree.kids.get(parent) ?? [])).filter((id) => boxes[id] !== undefined)
-    const lefts = siblings.map((id) => absolute(tree, id, positions).x)
-    const rights = siblings.map((id) => absolute(tree, id, positions).x + (boxes[id]?.width ?? 0))
+    // The gutter keeps clear of the siblings the lane runs beside (those that overlap the rows between its ends), not of the whole graph: a back edge stays
+    // near the steps it joins instead of running down the far side of every branch.
+    const top = Math.min(from.y, to.y)
+    const bottom = Math.max(from.y + sourceBox.height, to.y + targetBox.height)
+    const beside = siblings.filter((id) => {
+        const y = absolute(tree, id, positions).y
+        return id === link.source || id === link.target || (y < bottom && y + (boxes[id]?.height ?? 0) > top)
+    })
+    const lefts = beside.map((id) => absolute(tree, id, positions).x)
+    const rights = beside.map((id) => absolute(tree, id, positions).x + (boxes[id]?.width ?? 0))
     const spineId = [...siblings].sort((a, b) => absolute(tree, a, positions).y - absolute(tree, b, positions).y)[0]
     const spineX = spineId === undefined ? 0 : absolute(tree, spineId, positions).x + (boxes[spineId]?.width ?? 0) / 2
     const centre = (from.x + sourceBox.width / 2 + to.x + targetBox.width / 2) / 2

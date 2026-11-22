@@ -19,7 +19,7 @@ export interface Report {
  * 1 a node within 8 of another node; 2 a label within 8 of a node, a frame border, a status chip or another label; 3 an edge through a node or a frame header, or
  * across a frame it does not start or end at; 4 an edge end (its hollow circle, its open triangle) more than 2 off its port; 5 the spine off one x centre by more
  * than 2; 6 a decision whose branches are not symmetric about it within 4; 7 a loop edge that leaves its frame; 8 more edge crossings than allowed; 9 a scroll at
- * desktop width or a node out of the view; plus text over an edge. The positions come back for rule 10, the snapshot.
+ * desktop width, a first view not at 100%, or the running step (or every node) out of the view; plus text over an edge. The positions come back for rule 10, the snapshot.
  */
 export const measure = (page: Page, allowed: number): Promise<Report> =>
     page.evaluate((maxCrossings) => {
@@ -112,6 +112,11 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         for (const el of canvas.querySelectorAll('.starci-graph-node-text [data-component=Text]')) {
             const size = Number.parseFloat(getComputedStyle(el).fontSize)
             if (size < 13 || (el.matches('.starci-graph-node-text > :first-child') && size !== 14)) hits.push({ rule: 'text size', a: String(size), b: el.getAttribute("class") ?? el.tagName })
+        }
+        // the core Badges of a graph (chips, tags, ports, the words on a line) are 13px too
+        for (const el of canvas.querySelectorAll('[data-component=Badge]')) {
+            const size = Number.parseFloat(getComputedStyle(el).fontSize)
+            if (size < 13) hits.push({ rule: 'badge text size', a: String(size), b: el.textContent.slice(0, 20) })
         }
         // a phone sees the same graph; its layout is checked once, at desktop size
         if (window.innerWidth < 1000) return { hits, positions }
@@ -228,7 +233,11 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         {
             const doc = document.documentElement
             if (doc.scrollHeight > window.innerHeight + 1 || doc.scrollWidth > window.innerWidth + 1) hits.push({ rule: "9 page scrolls", a: `${String(doc.scrollHeight)} > ${String(window.innerHeight)}`, b: "" })
-            for (const node of nodes) if (!contains(grow(view, 1), node.box)) hits.push({ rule: "9 node out of view", a: node.id, b: "" })
+            // The first view is the graph at 100% on every screen (never fitted): the running step, when there is one, stands wholly in view, and so does at least one node.
+            if (Math.abs(zoom - 1) > 0.001) hits.push({ rule: "9 first view not at 100%", a: String(zoom), b: "" })
+            const running = nodes.find((node) => !node.frame && node.el.querySelector('[data-status="running"]') !== null)
+            if (running !== undefined && !contains(grow(view, 1), running.box)) hits.push({ rule: "9 running step out of view", a: running.id, b: "" })
+            if (!nodes.some((node) => contains(grow(view, 1), node.box))) hits.push({ rule: "9 no node in view", a: "", b: "" })
         }
         return { hits, positions }
     }, allowed)
