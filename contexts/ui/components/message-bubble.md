@@ -123,7 +123,7 @@ It takes no step; the words use the body step (14) and the author line and meta 
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here); a render highlights one thing (lint `one-highlight-per-render`, R359). Loading draws the face with two skeleton lines
-(`isLoading`, STATE-8): incoming the outlined face, outgoing the brand's SOFT pair (`--accent-soft`, its lines in `--accent-soft-foreground` at a tint), never the solid fill a real message wears (`DNA-COMMON-CHAT-SKELETON-SOFT`, story `Chat surfaces / Loading thread`); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
+(`isLoading`, STATE-8): incoming the outlined face, outgoing the brand's SOFT pair (`--accent-soft`, its lines in `--accent-soft-foreground` at a tint), never the solid fill a real message wears (`DNA-COMMON-CHAT-SKELETON-SOFT`, story `Chat surfaces / Loading thread`); a whole loading thread is the thread's own bubbles with `isLoading`. While a party writes its answer, its bubble (its avatar, name and meta line) holds `TypingDots` as its body, and the answer replaces that body in place. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split
 - **Grammar owns:** the thread ground, the faces (flat surface, accent), the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton, the card's suggestion list.
