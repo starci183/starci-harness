@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { LOCAL_ROOT_ENV, LegacyStateHeld, adoptLegacyState, installedRoot, installedStateBase, runtimeStateDir, starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
+import { LOCAL_ROOT_ENV, LegacyStateHeld, adoptLegacyState, formerStateBase, installedRoot, installedStateBase, runtimeStateDir, starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
 import { main } from './main.mjs';
 
 const temp = (t: { after(fn: () => void): void }): string => {
@@ -20,7 +20,7 @@ const installed = (t: { after(fn: () => void): void }) => {
   const dir = temp(t);
   const root = path.join(dir, 'app', 'node_modules', '@starci', 'hfs', 'runtime');
   fs.mkdirSync(root, { recursive: true });
-  const env = { LOCALAPPDATA: path.join(dir, 'user') };
+  const env = { XDG_STATE_HOME: path.join(dir, 'user') };
   return { dir, root, env, base: path.join(dir, 'user', 'starci-harness', 'state') };
 };
 
@@ -39,7 +39,8 @@ test('a checkout keeps its state in .runtime, an installed copy outside every pa
   assert.equal(starciLocalRoot({ ...env, [LOCAL_ROOT_ENV]: path.join(dir, 'probe') }, root), path.join(dir, 'probe'));
 });
 
-test('without LOCALAPPDATA the base is XDG_STATE_HOME, else ~/.local/state', () => {
+test('the base is XDG_STATE_HOME, else ~/.local/state, on every platform: never %LOCALAPPDATA%, which an MSIX-packaged app virtualizes', () => {
+  assert.equal(installedStateBase({ LOCALAPPDATA: path.join(os.tmpdir(), 'appdata') }), path.join(os.homedir(), '.local', 'state', 'starci-harness', 'state'));
   assert.equal(installedStateBase({ XDG_STATE_HOME: path.join(os.tmpdir(), 'xdg') }), path.join(os.tmpdir(), 'xdg', 'starci-harness', 'state'));
   assert.equal(installedStateBase({}), path.join(os.homedir(), '.local', 'state', 'starci-harness', 'state'));
 });
@@ -50,25 +51,68 @@ test('the state an installed copy kept inside itself moves out once, an entry th
   write(path.join(root, '.runtime', 'machine.sqlite'), 'legacy');
   write(path.join(base, 'machine.sqlite'), 'current');
   const adopted = adoptLegacyState(env, root, () => new Date('2026-11-04T01:02:03.000Z'));
-  assert.deepEqual(adopted, { from: path.join(root, '.runtime'), to: base, moved: ['stack'], kept: ['machine.sqlite'] });
+  assert.deepEqual(adopted, [{ from: path.join(root, '.runtime'), to: base, moved: ['stack'], kept: ['machine.sqlite'] }]);
   assert.equal(fs.readFileSync(path.join(base, 'stack', 'demo', 'dev', 'state.json'), 'utf8'), '{}\n');
   assert.equal(fs.readFileSync(path.join(base, 'machine.sqlite'), 'utf8'), 'current');
   assert.equal(fs.readFileSync(path.join(base, 'legacy-20261104010203', 'machine.sqlite'), 'utf8'), 'legacy');
   assert.equal(fs.existsSync(path.join(root, '.runtime')), false);
   assert.equal(fs.existsSync(path.join(root, '.runtime.adopting')), false);
-  assert.equal(adoptLegacyState(env, root), null);
+  assert.deepEqual(adoptLegacyState(env, root), []);
+});
+
+test('a copy that ships .runtime/data/standards again over a base that already has data/standards merges it in and keeps nothing aside, run after run', (t) => {
+  const { root, env, base } = installed(t);
+  write(path.join(base, 'data', 'standards', 'app-standard.git', 'HEAD'), 'ref: refs/heads/main\n');
+  write(path.join(base, 'stack', 'app', 'dev', 'data', 'relay-dev', 'manifest-signing.pem'), 'key');
+  for (const [run, repo] of [[1, 'spec-repo-a.git'], [2, 'spec-repo-b.git']] as const) {
+    write(path.join(root, '.runtime', 'data', 'standards', repo, 'HEAD'), 'ref: refs/heads/main\n');
+    write(path.join(root, '.runtime', 'data', 'standards', 'app-standard.git', 'HEAD'), 'ref: refs/heads/main\n');
+    const adopted = adoptLegacyState(env, root, () => new Date(`2026-11-2${String(run)}T00:00:00.000Z`));
+    assert.deepEqual(adopted.map((item) => item.kept), [[]], `run ${String(run)} keeps nothing aside`);
+    assert.equal(fs.existsSync(path.join(base, 'data', 'standards', repo, 'HEAD')), true);
+  }
+  assert.deepEqual(fs.readdirSync(base).filter((name) => name.startsWith('legacy-')), [], 'no legacy-* folder for data already there');
+  assert.equal(fs.readFileSync(path.join(base, 'stack', 'app', 'dev', 'data', 'relay-dev', 'manifest-signing.pem'), 'utf8'), 'key');
+});
+
+test('on Windows the former %LOCALAPPDATA% base, where an MSIX-packaged app and the host each saw their own files, merges into the one base', (t) => {
+  const { dir, root, env, base } = installed(t);
+  const winEnv = { ...env, LOCALAPPDATA: path.join(dir, 'appdata') };
+  const former = path.join(dir, 'appdata', 'starci-harness', 'state');
+  assert.equal(formerStateBase(winEnv, 'win32'), former);
+  assert.equal(formerStateBase(winEnv, 'linux'), null);
+  assert.equal(formerStateBase({ ...winEnv, XDG_STATE_HOME: path.join(dir, 'appdata') }, 'win32'), null, 'never itself');
+  // The door's key the packaged app's process wrote, the receipts the host's process wrote, and one file both hold with other bytes.
+  write(path.join(former, 'stack', 'app', 'dev', 'data', 'relay-dev', 'manifest-signing.pem'), 'key');
+  write(path.join(former, 'stack', 'app', 'dev', 'state.json'), '{"host":true}');
+  write(path.join(former, 'data', 'standards', 'app-standard.git', 'HEAD'), 'same');
+  write(path.join(base, 'data', 'standards', 'app-standard.git', 'HEAD'), 'same');
+  write(path.join(base, 'stack', 'app', 'dev', 'state.json'), '{"base":true}');
+  const adopted = adoptLegacyState(winEnv, root, () => new Date('2026-11-23T00:00:00.000Z'), 'win32');
+  assert.deepEqual(adopted, [{ from: former, to: base, moved: [], kept: ['stack/app/dev/state.json'] }]);
+  assert.equal(fs.readFileSync(path.join(base, 'stack', 'app', 'dev', 'data', 'relay-dev', 'manifest-signing.pem'), 'utf8'), 'key', 'the door finds the key in the one base');
+  assert.equal(fs.readFileSync(path.join(base, 'stack', 'app', 'dev', 'state.json'), 'utf8'), '{"base":true}');
+  assert.equal(fs.readFileSync(path.join(base, 'legacy-20261123000000', 'stack', 'app', 'dev', 'state.json'), 'utf8'), '{"host":true}');
+  assert.equal(fs.existsSync(former), false);
+  assert.deepEqual(adoptLegacyState(winEnv, root, undefined, 'win32'), []);
+  write(path.join(former, 'machine.sqlite'), 'held');
+  const rename = fs.renameSync;
+  t.after(() => { fs.renameSync = rename; });
+  fs.renameSync = () => { throw Object.assign(new Error('busy'), { code: 'EBUSY' }); };
+  assert.throws(() => adoptLegacyState(winEnv, root, undefined, 'win32'), (error: unknown) => error instanceof LegacyStateHeld && error.legacy === former);
+  assert.equal(fs.readFileSync(path.join(former, 'machine.sqlite'), 'utf8'), 'held');
 });
 
 test('an interrupted adoption resumes from .runtime.adopting; a checkout or STARCI_LOCAL_ROOT adopts nothing', (t) => {
   const { dir, root, env, base } = installed(t);
   write(path.join(root, '.runtime.adopting', 'artifacts', 'ab', 'blob'), 'x');
-  assert.deepEqual(adoptLegacyState(env, root)?.moved, ['artifacts']);
+  assert.deepEqual(adoptLegacyState(env, root)[0]?.moved, ['artifacts']);
   assert.equal(fs.readFileSync(path.join(base, 'artifacts', 'ab', 'blob'), 'utf8'), 'x');
   const checkout = path.join(dir, 'harness', 'runtime');
   write(path.join(checkout, '.runtime', 'machine.sqlite'), 'mine');
-  assert.equal(adoptLegacyState(env, checkout), null);
+  assert.deepEqual(adoptLegacyState(env, checkout), []);
   write(path.join(root, '.runtime', 'machine.sqlite'), 'later');
-  assert.equal(adoptLegacyState({ ...env, [LOCAL_ROOT_ENV]: path.join(dir, 'probe') }, root), null);
+  assert.deepEqual(adoptLegacyState({ ...env, [LOCAL_ROOT_ENV]: path.join(dir, 'probe') }, root), []);
   assert.equal(fs.existsSync(path.join(root, '.runtime', 'machine.sqlite')), true);
 });
 
@@ -96,7 +140,7 @@ test('an entry moves by rename where it can, and across volumes is copied with i
   });
   fs.lchownSync = (file, uid, gid) => { owners.push([path.relative(base, String(file)), uid, gid]); };
   const sourceMode = mode(path.join(folder, 'worker.json'));
-  assert.deepEqual(adoptLegacyState(env, root)?.moved, ['stack']);
+  assert.deepEqual(adoptLegacyState(env, root)[0]?.moved, ['stack']);
   const moved = path.join(base, 'stack', 'demo', 'dev', 'data', 'worker-state');
   assert.equal(mode(path.join(moved, 'worker.json')), sourceMode);
   assert.deepEqual(owners.filter(([file]) => file.includes('worker-state')).map(([file, uid, gid]) => [file.split(path.sep).join('/'), uid, gid]),
@@ -131,11 +175,11 @@ test('`starci app` moves the legacy state before a verb and says so, and prints 
     return { code, err };
   };
   const first = await run();
-  assert.match(first.err, /moved the state this installed copy kept in .* \(machine\.sqlite already there; the older copy is kept under legacy-\*\)/u);
+  assert.match(first.err, /moved the state kept in .* \(machine\.sqlite differed from the copy already there; the older one is kept under legacy-\*\)/u);
   fs.rmSync(path.join(base, 'stack'), { recursive: true });
   write(path.join(root, '.runtime', 'stack', 'state.json'), '{}');
   const second = await run();
-  assert.match(second.err, /moved the state this installed copy kept in \S+ to \S+\n/u);
+  assert.match(second.err, /moved the state kept in \S+ to \S+\n/u);
   write(path.join(root, '.runtime', 'machine.sqlite'), 'held');
   const rename = fs.renameSync;
   t.after(() => { fs.renameSync = rename; });
