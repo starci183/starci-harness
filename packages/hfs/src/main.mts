@@ -1104,10 +1104,10 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);
 }
 
-/** The line `main` prints once the state an installed copy kept inside itself moved to the state base. */
+/** The line `main` prints once a legacy state base moved to the state base; it names only the files kept aside because they differed. */
 function adoptionNotice({ from, to, kept }: StateAdoption): string {
-  const aside = kept.length ? ` (${kept.join(', ')} already there; the older copy is kept under legacy-*)` : '';
-  return `starci app: moved the state this installed copy kept in ${from} to ${to}${aside}\n`;
+  const aside = kept.length ? ` (${kept.join(', ')} differed from the copy already there; the older one is kept under legacy-*)` : '';
+  return `starci app: moved the state kept in ${from} to ${to}${aside}\n`;
 }
 
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
@@ -1135,8 +1135,7 @@ export async function main(argv: string[], {
     const out = global.quiet && verb !== 'check' ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
-    const adopted = adoptLegacyState(env, stateRoot);
-    if (adopted) stderr(adoptionNotice(adopted));
+    for (const adopted of adoptLegacyState(env, stateRoot)) stderr(adoptionNotice(adopted));
     return await dispatchMain(verb as string, given, { cwd: global.cwd, harness, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, heavyRoom, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));

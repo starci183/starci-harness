@@ -81,6 +81,8 @@
     "scaffold/**",
     "report/**",
     "runtime/**",
+    "!runtime/.runtime/**",
+    "!runtime/.runtime.adopting/**",
     "sync/**",
     "upgrade/**",
     "templates/**",
