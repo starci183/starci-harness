@@ -167,7 +167,7 @@ interface GraphEdge {
 }
 ```
 
-Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, routed round the outside of both ends (it places nothing). A label is a pill on the line, except a branch's port label.
+Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, in a lane beside the steps it joins (it places nothing; see Layout). A label is a pill on the line, except a branch's port label.
 
 ### The first view, on every screen
 
@@ -188,7 +188,7 @@ A container frame is thin, solid and lightly tinted in the tone of its state, ne
 
 ### Layout
 
-Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A loop's back edge is drawn after the layout, inside its container, in the gutter on its own branch's side.
+Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane more than one card and its gutter (320) outside the box of its ends is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. The collision spec holds every back edge within 320 of the box of its ends (rule 11).
 
 ELK `layered`, left to right or top to bottom, with ports and containers; edges are orthogonal with rounded corners, a dot where they leave and an arrowhead. **Islands** (parts of the graph with no edge between them) are laid out one by one and packed side by side in rows up to `islandsWidth` (default 1200 graph units); `islands: "stack"` puts them in one column. The layout depends on ids, sizes, ports, edge ends, direction and islands only: a status change neither moves nor refits the graph.
 
