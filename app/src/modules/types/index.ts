@@ -1,3 +1,5 @@
+import type { StatusDotTone } from "@starci/grammar/core"
+
 /**
  * The status recipe's two types (FE-ERROR-1, decision F-1). A read is folded into a `DataSlot` by `slotOfQuery`, several by `slotOfReads`; a block's
  * pure half renders it through `components/composites/SlotView` and never branches on a status flag itself.
@@ -34,10 +36,10 @@ export interface SlotLabels {
     readonly retry: string
 }
 
-/** A status word and its tone, resolved for drawing. */
+/** A status word and its tone, resolved for drawing: the tone is the Grammar's own (`StatusDotTone`), so every tone it draws, `info` too, is one a label may carry. */
 export interface ToneLabel {
     readonly label: string
-    readonly tone: "neutral" | "accent" | "success" | "warning" | "danger"
+    readonly tone: StatusDotTone
 }
 
 /** The outcome of one write, resolved for drawing: its tone, title and words. */

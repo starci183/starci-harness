@@ -8,6 +8,7 @@
  * two side by side differ in shape as well as hue. Every label starts with an uppercase letter.
  */
 import type { PresentationState, StatusDotTone } from "@starci/grammar/core"
+import type { GraphTone as GrammarGraphTone } from "@starci/grammar/core/ext/graph"
 import type {
     CheckState,
     CircuitState,
@@ -62,7 +63,8 @@ export const AWAITING_DECISION: StatusLabel = { label: "Cần quyết định", 
 /* ------------------------------------------------------------------ Op (graph node) state */
 
 /** The tone a graph node is drawn in. */
-export type GraphTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
+/** The tone a node is drawn in on the graph: the Grammar graph's own (`GraphTone` of `@starci/grammar/core/ext/graph`), never a hand list. */
+export type GraphTone = GrammarGraphTone
 
 export interface NodeStateLabel extends StatusLabel {
     readonly graphTone: GraphTone
@@ -80,9 +82,9 @@ const node = (label: string, tone: StatusDotTone, graphTone: GraphTone, presenta
 })
 
 export const NODE_STATE: Readonly<Record<NodeState, NodeStateLabel>> = {
-    waiting: node("Chờ phụ thuộc", "neutral", "neutral", "neutral", true),
-    ready: node("Sẵn sàng", "neutral", "neutral", "neutral", true),
-    queued: node("Chờ lượt", "neutral", "neutral", "pending", true),
+    waiting: node("Chờ phụ thuộc", "neutral", "default", "neutral", true),
+    ready: node("Sẵn sàng", "neutral", "default", "neutral", true),
+    queued: node("Chờ lượt", "neutral", "default", "pending", true),
     blocked: node("Bị chặn", "warning", "warning", "cautionary"),
     running: node("Đang chạy", "accent", "accent", "informative"),
     "launch-unknown": node("Chưa xác nhận khởi chạy", "warning", "warning", "cautionary"),

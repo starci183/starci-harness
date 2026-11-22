@@ -101,7 +101,7 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                                 </li>
                             ))}
                             <li>
-                                <Text as="span" size="xs" tone="muted">
+                                <Text as="span" role="caption">
                                     {labels.legendSide}
                                 </Text>
                             </li>

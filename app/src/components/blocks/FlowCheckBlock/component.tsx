@@ -38,7 +38,7 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
         <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(check, isLoading) => {
                 const flow =
                     check.flow.length === 0 ? (
-                        <Text size="sm" tone="muted" isLoading={isLoading}>
+                        <Text role="body" tone="muted" isLoading={isLoading}>
                             {labels.noLanes}
                         </Text>
                     ) : (

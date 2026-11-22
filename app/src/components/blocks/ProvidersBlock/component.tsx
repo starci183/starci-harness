@@ -60,7 +60,7 @@ const ProviderDetail = ({ provider, locale, isLoading }: { readonly provider: Pr
                 isLabelHidden
                 isLoading={isLoading}
             />
-            <Text as="p" size="xs" tone="muted" isLoading={isLoading}>
+            <Text as="p" role="caption" isLoading={isLoading}>
                 {provider.windows}
                 {provider.reset === null ? null : (
                     <>
@@ -77,7 +77,7 @@ const ProviderDetail = ({ provider, locale, isLoading }: { readonly provider: Pr
                     </>
                 )}
             </Text>
-            <Text as="p" size="xs" isLoading={isLoading}>
+            <Text as="p" role="caption" isLoading={isLoading}>
                 {provider.running}
             </Text>
     </div>

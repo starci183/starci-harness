@@ -48,7 +48,7 @@ export const TaskContractBlockBase = (props: TaskContractBlockBaseProps) => {
                             size="sm"
                             items={contract.allowPaths.map((path) => ({ id: path, label: path }))}
                             emptyContent={
-                                <Text size="sm" tone="muted" isLoading={isLoading}>
+                                <Text role="body" tone="muted" isLoading={isLoading}>
                                     {labels.anyPath}
                                 </Text>
                             }

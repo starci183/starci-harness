@@ -70,17 +70,17 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRowView; readonly colum
         case "workflow":
             return (
                 <div className="app-pair">
-                    <Text size="sm" isStrong mono>
+                    <Text isStrong mono>
                         {row.workflow}
                     </Text>
-                    <Text size="xs" tone="muted" overflow="truncate">
+                    <Text role="caption" overflow="truncate">
                         {row.goalSummary}
                     </Text>
                 </div>
             )
         case "project":
             return (
-                <Text size="sm" mono>
+                <Text mono>
                     {row.project}
                 </Text>
             )
@@ -97,20 +97,20 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRowView; readonly colum
                     <span className="app-cell-progress">
                         <Progress label={row.progressLabel} value={row.progress} valueText={row.progressText} />
                     </span>
-                    <Text size="xs" tone="muted" tabular>
+                    <Text role="caption" tabular>
                         {row.fraction}
                     </Text>
                 </span>
             )
         case "live":
             return (
-                <Text size="sm" tabular>
+                <Text role="body" tabular>
                     {row.live}
                 </Text>
             )
         case "kernel":
             return (
-                <Text size="xs" tone="muted" mono>
+                <Text role="code" tone="muted">
                     {row.kernel}
                 </Text>
             )

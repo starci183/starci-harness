@@ -10,7 +10,7 @@ export interface KeyListProps {
 
 /** Leaf: keys (Op keys, dependencies, records) as inline code, comma separated, or the word for none. */
 export const KeyList = (props: KeyListProps) => (
-    <Text as="span" size="sm" isLoading={props.isLoading === true}>
+    <Text as="span" role="body" isLoading={props.isLoading === true}>
         {props.keys.length === 0
             ? props.noneLabel
             : props.keys.map((key, index) => (

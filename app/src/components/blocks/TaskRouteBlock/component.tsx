@@ -51,7 +51,7 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                         isLoading={isLoading}
                     />
                     <Stack gap="identity">
-                        <Text size="sm" tone="muted" isLoading={isLoading}>
+                        <Text role="body" tone="muted" isLoading={isLoading}>
                             {labels.chosen}
                         </Text>
                         <DescriptionList

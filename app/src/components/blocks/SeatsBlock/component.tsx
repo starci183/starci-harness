@@ -50,7 +50,7 @@ export const SeatsBlockBase = (props: SeatsBlockBaseProps) => {
                     headingLevel={2}
                     isLoading={isLoading}
                     action={
-                        <Text as="span" size="sm" tone="muted" isLoading={isLoading}>
+                        <Text as="span" role="body" tone="muted" isLoading={isLoading}>
                             {labels.count}
                         </Text>
                     }

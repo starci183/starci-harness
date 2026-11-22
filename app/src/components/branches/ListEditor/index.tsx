@@ -71,7 +71,7 @@ export const ListEditor = (props: ListEditorProps) => {
                 removeLabel={(label) => fill(words.removeTag, { label })}
                 {...reorder}
                 emptyContent={
-                    <Text size="sm" tone="muted" isLoading={isLoading}>
+                    <Text role="body" tone="muted" isLoading={isLoading}>
                         {list.emptyText}
                     </Text>
                 }

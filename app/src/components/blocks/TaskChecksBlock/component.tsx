@@ -41,7 +41,7 @@ const Cell = ({ row, columnId }: { readonly row: CheckView; readonly columnId: s
     switch (columnId) {
         case "name":
             return (
-                <Text size="sm" mono>
+                <Text mono>
                     {row.name}
                 </Text>
             )
@@ -51,7 +51,7 @@ const Cell = ({ row, columnId }: { readonly row: CheckView; readonly columnId: s
             return <StatusWord status={row.state} />
         default:
             return (
-                <Text size="sm" tone="muted">
+                <Text role="body" tone="muted">
                     {row.detail}
                 </Text>
             )

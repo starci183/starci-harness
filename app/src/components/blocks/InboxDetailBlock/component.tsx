@@ -68,7 +68,7 @@ type PartProps = InboxDetailBlockBaseProps & { readonly decision: DecisionView; 
 
 /** The command line under either shape. */
 const CommandLine = ({ decision, labels, isLoading }: { readonly decision: DecisionView; readonly labels: InboxDetailBlockLabels; readonly isLoading: boolean }) => (
-    <Text size="xs" tone="muted" isLoading={isLoading}>
+    <Text role="caption" isLoading={isLoading}>
         {labels.commandPrefix} <Code>{decision.command}</Code> {labels.commandSuffix}
     </Text>
 )

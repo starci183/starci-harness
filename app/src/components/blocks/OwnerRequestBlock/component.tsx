@@ -93,7 +93,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                                         {labels.send}
                                     </Button>
                                 </span>
-                                <Text size="xs" tone="muted" isLoading={isLoading}>
+                                <Text role="caption" isLoading={isLoading}>
                                     {labels.commandPrefix} <Code>{labels.command}</Code> {labels.commandSuffix}
                                 </Text>
                             </div>

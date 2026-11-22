@@ -73,10 +73,10 @@ const Cell = ({ row, columnId, panel }: { readonly row: VpsRowView; readonly col
         case "server":
             return (
                 <div className="app-pair">
-                    <Text size="sm" isStrong mono>
+                    <Text isStrong mono>
                         {row.id}
                     </Text>
-                    <Text size="xs" tone="muted">
+                    <Text role="caption">
                         {row.serverLine}
                     </Text>
                 </div>
@@ -85,7 +85,7 @@ const Cell = ({ row, columnId, panel }: { readonly row: VpsRowView; readonly col
             return (
                 <div className="app-pair">
                     <StatusWord status={row.status} />
-                    <Text size="xs" tone="muted" overflow="truncate">
+                    <Text role="caption" overflow="truncate">
                         {row.statusDetail}
                     </Text>
                 </div>
@@ -93,10 +93,10 @@ const Cell = ({ row, columnId, panel }: { readonly row: VpsRowView; readonly col
         case "resources":
             return (
                 <div className="app-pair">
-                    <Text size="sm" tabular>
+                    <Text role="body" tabular>
                         {row.cpu}
                     </Text>
-                    <Text size="xs" tone="muted" tabular>
+                    <Text role="caption" tabular>
                         {row.usage}
                     </Text>
                 </div>
@@ -105,7 +105,7 @@ const Cell = ({ row, columnId, panel }: { readonly row: VpsRowView; readonly col
             return row.isFailedAlert ? (
                 <Badge tone="danger">{row.failed}</Badge>
             ) : (
-                <Text size="sm" tabular>
+                <Text role="body" tabular>
                     {row.failed}
                 </Text>
             )
@@ -113,7 +113,7 @@ const Cell = ({ row, columnId, panel }: { readonly row: VpsRowView; readonly col
             return (
                 <span className="app-row">
                     {row.swarmRole === "" ? null : <Badge tone="neutral">{row.swarmRole}</Badge>}
-                    <Text size="xs" tone="muted">
+                    <Text role="caption">
                         {row.swarm}
                     </Text>
                 </span>

@@ -188,18 +188,18 @@ const ModelsPanel = (props: PanelProps) => {
                     isLoading={props.isLoading}
                     renderCell={(tier) => (
                         <span className="app-pair">
-                            <Text as="span" size="sm" isStrong>
+                            <Text as="span" role="label.item">
                                 {tier.name}
                             </Text>
                             {tier.description === null ? null : (
-                                <Text as="span" size="xs" tone="muted">
+                                <Text as="span" role="caption">
                                     {tier.description}
                                 </Text>
                             )}
                         </span>
                     )}
                     emptyContent={
-                        <Text size="sm" tone="muted">
+                        <Text role="body" tone="muted">
                             {labels.noTiers}
                         </Text>
                     }
@@ -263,20 +263,20 @@ const PendingChanges = (props: SettingsBlockBaseProps) => {
                         term: (
                             <span className="app-lines">
                                 <span>{change.label}</span>
-                                <Text as="span" size="xs" tone="muted" mono>
+                                <Text as="span" role="code" tone="muted">
                                     {change.configKey}
                                 </Text>
                             </span>
                         ),
                         description: (
                             <span className="app-row">
-                                <Text as="span" size="sm" tone="muted" isSuperseded>
+                                <Text as="span" role="body" tone="muted" isSuperseded>
                                     {change.before}
                                 </Text>
-                                <Text as="span" size="sm" tone="muted">
+                                <Text as="span" role="body" tone="muted">
                                     →
                                 </Text>
-                                <Text as="span" size="sm" isStrong>
+                                <Text as="span" role="label.item">
                                     {change.after}
                                 </Text>
                                 {change.refused === null ? null : <Badge tone="danger">{change.refused}</Badge>}
@@ -285,7 +285,7 @@ const PendingChanges = (props: SettingsBlockBaseProps) => {
                     }))}
                 />
                 {props.props.hasRefusals ? (
-                    <Text size="sm" tone="muted">
+                    <Text role="body" tone="muted">
                         {labels.refusedHint}
                     </Text>
                 ) : null}
