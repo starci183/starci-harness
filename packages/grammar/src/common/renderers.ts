@@ -22,6 +22,7 @@ export { PressableField, type PressableFieldProps } from "../core/leaf/Pressable
 export { Progress, type ProgressProps, type ProgressTone } from "../core/leaf/Progress/index.js"
 export { StatusDot, type StatusDotProps, type StatusDotSize, type StatusDotTone } from "../core/leaf/StatusDot/index.js"
 export { Code, type CodeProps } from "../core/leaf/Code/index.js"
+export { GlossaryTerm, type GlossaryTermProps } from "../core/leaf/GlossaryTerm/index.js"
 export { Terminal, type TerminalProps } from "../core/branch/Terminal/index.js"
 export { SITE_TEXT_ROLES, Text, TEXT_ROLES, typeRoleClassName, type TextAs, type TextLive, type TextProps, type TextRole, type TextTone } from "../core/leaf/Text/index.js"
 export { RelativeTime, type RelativeTimeFormat, type RelativeTimeMode, type RelativeTimeProps, type RelativeTimeStyle } from "../core/leaf/RelativeTime/index.js"
@@ -78,7 +79,7 @@ export type {
     AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, RowEdgeTone, RowGroundTone, TileData, TileGroundTone, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner } from "../core/accentCorner.js"
-export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
+export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type CodeLineRange, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
 export { Markdown, type MarkdownCode, type MarkdownLabels, type MarkdownProps } from "../core/frame/Markdown/index.js"
 export { Tabs, type PrimaryTabItem, type PrimaryTabItems, type PrimaryTabsProps, type SecondaryTabsProps, type TabItem, type TabsProps } from "../core/branch/Tabs/index.js"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "../core/branch/Tooltip/index.js"

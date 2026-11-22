@@ -2465,6 +2465,83 @@
         overflow: auto;
     }
 
+    /*
+     * Numbered and marked lines (owner 2026-11-23, a lesson's code): each authored line is a block, so a marked line's accent soft band runs the
+     * whole width of the code; the numbers stand in a gutter drawn by the line itself, never selected or copied.
+     */
+    .starci-core-fenced-code-block pre:has(> [data-grammar-code-lines="true"]) { padding-inline: 0; }
+    [data-grammar-code-lines="true"] { display: block; inline-size: max-content; min-inline-size: 100%; }
+    .starci-core-code-line { display: block; min-block-size: 1lh; padding-inline: var(--grammar-inset); }
+    [data-grammar-line-numbers="true"] .starci-core-code-line::before {
+        content: attr(data-line);
+        display: inline-block;
+        min-inline-size: 3ch;
+        margin-inline-end: var(--grammar-inset);
+        color: var(--muted);
+        text-align: end;
+        user-select: none;
+    }
+
+    .starci-core-code-line[data-grammar-line-highlighted="true"] {
+        background: var(--accent-soft);
+        box-shadow: inset var(--grammar-ring-width) 0 0 var(--accent);
+    }
+
+    /* The file path in the header: the code's own monospace, the header's muted colour. */
+    .starci-core-fenced-code-path { font-family: var(--font-mono); overflow-wrap: anywhere; }
+
+    /* The note under the code: one muted caption line inside the block. */
+    .starci-core-fenced-code-note {
+        padding-block-start: var(--grammar-inline-gap);
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    /*
+     * GlossaryTerm (owner 2026-11-23): the term keeps the words around it, a dotted underline under it; its definition is a small overlay
+     * bubble under the term, shown on hover, on focus and while a tap holds it open. The bubble is always in the document (the term's
+     * description), only unseen while closed.
+     */
+    .starci-core-glossary-term { position: relative; display: inline; }
+    .starci-core-glossary-term-word {
+        display: inline;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        cursor: help;
+        font: inherit;
+        text-decoration-line: underline;
+        text-decoration-style: dotted;
+        text-decoration-thickness: var(--grammar-hairline);
+        text-underline-offset: 0.2em;
+    }
+
+    .starci-core-glossary-term-word:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .starci-core-glossary-term-definition {
+        position: absolute;
+        z-index: 1;
+        inset-block-start: calc(100% + var(--grammar-identity-gap));
+        inset-inline-start: 0;
+        inline-size: max-content;
+        max-inline-size: min(20rem, 80vw);
+        padding: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-md);
+        background: var(--overlay);
+        box-shadow: var(--overlay-shadow);
+        color: var(--overlay-foreground, var(--foreground));
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-type-caption-line);
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+        white-space: normal;
+    }
+
+    .starci-core-glossary-term:is(:hover, :focus-within, [data-grammar-term-open="true"]) > .starci-core-glossary-term-definition { opacity: 1; visibility: visible; }
+
     .starci-core-fenced-code-header {
         display: flex;
         min-width: 0;

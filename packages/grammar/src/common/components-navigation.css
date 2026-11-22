@@ -2678,6 +2678,70 @@
         padding: var(--grammar-inset);
     }
 
+
+    /* The expand control stands in the frame's top end corner over the drawing; the drawing itself opens the full-screen view too. */
+    .starci-core-mermaid-diagram { position: relative; }
+    .starci-core-mermaid-diagram-expand { position: absolute; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); }
+    .starci-core-mermaid-diagram[data-grammar-mermaid-state="ready"] .starci-core-mermaid-diagram-drawing { cursor: zoom-in; }
+
+    /* The one-line caption under the drawing: the caption role, muted, inside the frame on its inset. */
+    .starci-core-mermaid-diagram-caption {
+        padding: 0 var(--grammar-inset) var(--grammar-inset);
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    /*
+     * A toned step (owner 2026-11-23): the faulty step danger, the fix success, a touched part accent, each the tone's soft pair with its
+     * edge, from the tokens, in the frame and the full-screen view alike; a colour the source wrote (a classDef, a style line) never paints (`!important` outranks Mermaid's inline style).
+     */
+    :is([data-grammar-mermaid-tone="danger"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--danger-soft) !important; stroke: var(--danger) !important; }
+    :is([data-grammar-mermaid-tone="success"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--success-soft) !important; stroke: var(--success) !important; }
+    :is([data-grammar-mermaid-tone="accent"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--accent-soft) !important; stroke: var(--accent) !important; }
+    [data-grammar-mermaid-tone="danger"] :is(text, tspan, span) { fill: var(--danger-soft-foreground) !important; color: var(--danger-soft-foreground) !important; }
+    [data-grammar-mermaid-tone="success"] :is(text, tspan, span) { fill: var(--success-soft-foreground) !important; color: var(--success-soft-foreground) !important; }
+    [data-grammar-mermaid-tone="accent"] :is(text, tspan, span) { fill: var(--accent-soft-foreground) !important; color: var(--accent-soft-foreground) !important; }
+
+    /* The phone fallback of a sequence diagram: its messages as a numbered list, the route (who, the arrow, to whom) over the words. */
+    .starci-core-mermaid-steps {
+        display: flex;
+        inline-size: 100%;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        margin: 0;
+        padding-inline-start: var(--grammar-section-gap);
+        place-self: start;
+    }
+
+    .starci-core-mermaid-step { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-mermaid-step::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .starci-core-mermaid-step-route { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-weight: var(--grammar-weight-medium); }
+    .starci-core-mermaid-step-text { color: var(--muted); overflow-wrap: anywhere; }
+    .starci-core-mermaid-step[data-grammar-mermaid-reply="true"] .starci-core-mermaid-step-route { color: var(--muted); }
+
+    /* The full-screen view: the controls on one row, then the pane the reader drags and zooms; the drawing starts centred at 100%. */
+    .starci-core-mermaid-zoom { display: flex; min-block-size: 0; block-size: 100%; flex-direction: column; gap: var(--grammar-row-gap); }
+    .starci-core-mermaid-zoom-controls { display: flex; align-items: center; gap: var(--grammar-inline-gap); }
+    .starci-core-mermaid-zoom-level { min-inline-size: 4ch; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+    .starci-core-mermaid-zoom-pane {
+        display: grid;
+        min-block-size: 0;
+        flex: 1 1 auto;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid var(--separator);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .starci-core-mermaid-zoom-pane:active { cursor: grabbing; }
+    .starci-core-mermaid-zoom-pane:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-mermaid-zoom-drawing { transform-origin: center; }
+    .starci-core-mermaid-zoom-drawing > svg { display: block; max-inline-size: none; block-size: auto; }
+
     /* ---------------------------------------------------------------- expandable */
     /*
      * Expandable (owner, 2026-11-21): the trigger is HeroUI's `link` on a native button. This only resets the button's own box (no border, background,
