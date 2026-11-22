@@ -366,8 +366,14 @@ export const layoutFlow = async (nodes: readonly SizedNode[], links: readonly Li
         if (arrangement === "wrap") cursorX += right + ISLAND_GAP
         else cursorY += bottom + ISLAND_GAP
     }
+    // The back edges are routed last, one by one, each clear of the edges and labels already placed.
+    const taken: Taken = { labels: [], routes: [], lanes: [] }
+    for (const route of Object.values(routes)) {
+        taken.routes.push(route.points)
+        if (route.label !== undefined) taken.labels.push({ l: route.label.x, t: route.label.y, r: route.label.x + route.label.width, b: route.label.y + route.label.height })
+    }
     for (const link of backs) {
-        const route = backRoute(tree, link, positions, boxes, measure)
+        const route = backRoute(tree, link, positions, boxes, measure, taken)
         if (route !== undefined && link.id !== undefined) routes[link.id] = route
     }
     // Labels of edges that leave one node keep 8px apart.
@@ -428,42 +434,169 @@ const absolute = (tree: Tree, id: string, positions: Readonly<Record<string, Gra
     return { x, y }
 }
 
+/** An axis-aligned box in the canvas frame: left, top, right, bottom. */
+interface Rect {
+    readonly l: number
+    readonly t: number
+    readonly r: number
+    readonly b: number
+}
+
+type Point = readonly [number, number]
+type Side = "W" | "E"
+
+/** How far a back edge's lane stands from the side it leaves or enters when that side is free, and the least it may. */
+const LANE_LEAD = 40
+const LANE_MIN = 24
+/** How far a back edge's line keeps from a node or a frame it passes and from another back edge's lane, and from a label. */
+const LANE_CLEAR = 16
+const LINE_LABEL_CLEAR = 6
+/** How far the label of a back edge keeps from a node, a frame border and another label. */
+const LABEL_CLEAR = 12
+/** The status chip and the tag stand half above a card's top edge: a label keeps clear of them too. */
+const TOP_CHIP = 12
+/** What a lane pays, in graph units of length, for crossing another edge and for sharing a side of its target with another back edge. */
+const CROSS_COST = 400
+const SHARED_SIDE_COST = 120
+/** What a lane pays for a breach: a line through a node, a frame or a label, or a label with no free place. Any free lane beats it. */
+const BREACH_COST = 100_000
+/** How far a lane may stand outside the box of its two ends before it pays as much as a tenth of a breach: one card and its gutter. */
+const DETOUR = NODE_WIDTH + LANE_LEAD
+
+const rectOf = (at: GraphPosition, box: Box): Rect => ({ l: at.x, t: at.y, r: at.x + box.width, b: at.y + box.height })
+const grow = (rect: Rect, by: number): Rect => ({ l: rect.l - by, t: rect.t - by, r: rect.r + by, b: rect.b + by })
+const meets = (a: Rect, b: Rect): boolean => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b
+/** Whether the orthogonal run from `a` to `b` passes through the box. */
+const runMeets = (a: Point, b: Point, rect: Rect): boolean => meets({ l: Math.min(a[0], b[0]), t: Math.min(a[1], b[1]), r: Math.max(a[0], b[0]), b: Math.max(a[1], b[1]) }, rect)
+/** Whether two orthogonal runs cross (each strictly inside the other's span; touching or running along is not a crossing). */
+const runsCross = (a: Point, b: Point, c: Point, d: Point): boolean => {
+    const across = (p: Point, q: Point, r: Point, s: Point): boolean =>
+        p[1] === q[1] && r[0] === s[0] && r[0] > Math.min(p[0], q[0]) && r[0] < Math.max(p[0], q[0]) && p[1] > Math.min(r[1], s[1]) && p[1] < Math.max(r[1], s[1])
+    return across(a, b, c, d) || across(c, d, a, b)
+}
+const runsOf = (points: readonly Point[]): readonly (readonly [Point, Point])[] => points.slice(1).map((point, index) => [points[index] ?? point, point] as const)
+
+/** What the back edges of a graph keep clear of, shared as they are routed one by one: the routed edges, their labels and the lanes already taken. */
+interface Taken {
+    readonly labels: Rect[]
+    readonly routes: (readonly Point[])[]
+    readonly lanes: { readonly rect: Rect; readonly target: string; readonly side: Side }[]
+}
+
+/** The nearest container that holds both nodes, if any. */
+const commonParent = (tree: Tree, a: string, b: string): string | undefined => {
+    const above = new Set<string>()
+    for (let at = tree.parent.get(a); at !== undefined; at = tree.parent.get(at)) above.add(at)
+    for (let at = tree.parent.get(b); at !== undefined; at = tree.parent.get(at)) if (above.has(at)) return at
+    return undefined
+}
+
 /**
- * The route of a back edge: out of the west or east side of its source, along the gutter on the side its branch lies (the left one for the spine itself), and into the
- * same side of its target. The gutter lies outside every sibling node beside the lane (overlapping the rows between its ends), so the line never crosses the spine
- * or a branch it passes, and stays near the steps it joins; its label stands on the line.
+ * The route of a back edge: out of the west or east side of its source, along a lane, and into the west or east side of its target. Every lane the
+ * span of its ends allows is tried (beside both ends, between them, in each gap between the nodes it would pass) and the shortest that passes no
+ * node, frame or label wins; a crossing with another edge, and a side of the target another back edge already enters, cost extra. So a loop-back
+ * runs close to the steps it joins, on their nearest free side, never down the far side of the whole graph, and inside the frame that holds both
+ * its ends. Its label stands on the lane, at the free place nearest the middle.
  */
-const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, measure: Measure): Route | undefined => {
+const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, measure: Measure, taken: Taken): Route | undefined => {
     const sourceBox = boxes[link.source]
     const targetBox = boxes[link.target]
     if (sourceBox === undefined || targetBox === undefined) return undefined
-    const from = absolute(tree, link.source, positions)
-    const to = absolute(tree, link.target, positions)
+    const s = rectOf(absolute(tree, link.source, positions), sourceBox)
+    const t = rectOf(absolute(tree, link.target, positions), targetBox)
+    // Every node but the two ends, and every frame that holds neither, is in the way; the frame that holds both bounds the lane.
+    const nodes: Rect[] = []
+    for (const [id, box] of Object.entries(boxes)) {
+        if (id === link.source || id === link.target || !tree.byId.has(id)) continue
+        if ((tree.kids.get(id)?.length ?? 0) > 0 && (isAncestor(tree, id, link.source) || isAncestor(tree, id, link.target))) continue
+        nodes.push(rectOf(absolute(tree, id, positions), box))
+    }
+    const holder = commonParent(tree, link.source, link.target)
+    const holderBox = holder === undefined ? undefined : boxes[holder]
+    const bound = holder === undefined || holderBox === undefined ? undefined : rectOf(absolute(tree, holder, positions), holderBox)
+    const sy = Math.round((s.t + s.b) / 2)
+    const ty = Math.round((t.t + t.b) / 2)
+    const lo = Math.min(sy, ty)
+    const hi = Math.max(sy, ty)
+    const words = link.label === undefined || link.label === "" ? undefined : measure(link.label)
+    // The side a branch lies on is tried first, so of two equal lanes the one on the branch's own side wins (the left one for the spine itself).
     const parent = tree.parent.get(link.source)
     const siblings = (parent === undefined ? tree.roots : (tree.kids.get(parent) ?? [])).filter((id) => boxes[id] !== undefined)
-    // The gutter keeps clear of the siblings the lane runs beside (those that overlap the rows between its ends), not of the whole graph: a back edge stays
-    // near the steps it joins instead of running down the far side of every branch.
-    const top = Math.min(from.y, to.y)
-    const bottom = Math.max(from.y + sourceBox.height, to.y + targetBox.height)
-    const beside = siblings.filter((id) => {
-        const y = absolute(tree, id, positions).y
-        return id === link.source || id === link.target || (y < bottom && y + (boxes[id]?.height ?? 0) > top)
-    })
-    const lefts = beside.map((id) => absolute(tree, id, positions).x)
-    const rights = beside.map((id) => absolute(tree, id, positions).x + (boxes[id]?.width ?? 0))
     const spineId = [...siblings].sort((a, b) => absolute(tree, a, positions).y - absolute(tree, b, positions).y)[0]
     const spineX = spineId === undefined ? 0 : absolute(tree, spineId, positions).x + (boxes[spineId]?.width ?? 0) / 2
-    const centre = (from.x + sourceBox.width / 2 + to.x + targetBox.width / 2) / 2
-    const right = centre - spineX > 8
-    const gutter = right ? Math.max(...rights) + 40 : Math.min(...lefts) - 40
-    const sy = from.y + sourceBox.height / 2
-    const ty = to.y + targetBox.height / 2
-    const sx = right ? from.x + sourceBox.width : from.x
-    const tx = right ? to.x + targetBox.width : to.x
-    const points: readonly (readonly [number, number])[] = [[Math.round(sx), Math.round(sy)], [Math.round(gutter), Math.round(sy)], [Math.round(gutter), Math.round(ty)], [Math.round(tx), Math.round(ty)]]
-    if (link.label === undefined || link.label === "") return { points }
-    const box = measure(link.label)
-    return { points, label: { x: Math.round(gutter - box.width / 2), y: Math.round((sy + ty) / 2 - box.height / 2), width: box.width, height: box.height } }
+    const right = (s.l + s.r + t.l + t.r) / 4 - spineX > 8
+    const sides: readonly (readonly [Side, Side])[] = right ? [["E", "E"], ["W", "W"], ["E", "W"], ["W", "E"]] : [["W", "W"], ["E", "E"], ["W", "E"], ["E", "W"]]
+    const lefts = [...nodes.map((rect) => rect.l), ...taken.lanes.map((lane) => lane.rect.l), s.l, t.l]
+    const rights = [...nodes.map((rect) => rect.r), ...taken.lanes.map((lane) => lane.rect.r), s.r, t.r]
+    const found = new Set<number>()
+    for (const x of lefts) for (const by of [LANE_MIN, LANE_LEAD]) found.add(x - by)
+    for (const x of rights) for (const by of [LANE_MIN, LANE_LEAD]) found.add(x + by)
+    for (const r of rights) for (const l of lefts) if (l - r >= 2 * LANE_CLEAR) found.add(Math.round((r + l) / 2))
+    if (bound !== undefined) found.add(bound.l + LANE_CLEAR).add(bound.r - LANE_CLEAR)
+    const candidates = [...found].sort((a, b) => a - b)
+    const routes = taken.routes.map(runsOf)
+    // The label: on the lane, at the free place nearest the middle of it.
+    const placeLabel = (g: number, runs: readonly (readonly [Point, Point])[]): Rect | undefined => {
+        if (words === undefined) return undefined
+        const free = (rect: Rect): boolean => {
+            const room = grow(rect, LABEL_CLEAR)
+            const line = grow(rect, LINE_LABEL_CLEAR)
+            return (
+                ![...nodes, s, t].some((node) => meets(room, { ...node, t: node.t - TOP_CHIP })) &&
+                !taken.labels.some((other) => meets(room, other)) &&
+                !routes.some((route) => route.some(([a, b]) => runMeets(a, b, line))) &&
+                !runs.some(([a, b], index) => index !== 1 && runMeets(a, b, line)) &&
+                (bound === undefined || (rect.l >= bound.l + LABEL_CLEAR && rect.r <= bound.r - LABEL_CLEAR))
+            )
+        }
+        const middle = (lo + hi) / 2
+        const reach = (hi - lo - words.height) / 2 - LINE_LABEL_CLEAR
+        for (let step = 0; step <= reach; step += 8)
+            for (const y of step === 0 ? [middle] : [middle - step, middle + step]) {
+                const l = Math.round(g - words.width / 2)
+                const top = Math.round(y - words.height / 2)
+                const rect: Rect = { l, t: top, r: l + words.width, b: top + words.height }
+                if (free(rect)) return rect
+            }
+        return undefined
+    }
+    let best: { readonly cost: number; readonly points: readonly Point[]; readonly label?: Rect; readonly side: Side; readonly lane: Rect } | undefined
+    for (const [from, into] of sides) {
+        const min = Math.max(from === "E" ? s.r + LANE_MIN : -Infinity, into === "E" ? t.r + LANE_MIN : -Infinity)
+        const max = Math.min(from === "W" ? s.l - LANE_MIN : Infinity, into === "W" ? t.l - LANE_MIN : Infinity)
+        const sx = from === "E" ? s.r : s.l
+        const tx = into === "E" ? t.r : t.l
+        for (const g of candidates) {
+            if (g < min || g > max) continue
+            const points: readonly Point[] = [[sx, sy], [g, sy], [g, ty], [tx, ty]]
+            const runs = runsOf(points)
+            const lane: Rect = { l: g, t: lo, r: g, b: hi }
+            let cost = Math.abs(g - sx) + (hi - lo) + Math.abs(g - tx)
+            if (best !== undefined && cost >= best.cost) continue
+            for (const [a, b] of runs) {
+                for (const rect of nodes) if (runMeets(a, b, grow(rect, LANE_CLEAR))) cost += BREACH_COST
+                for (const rect of taken.labels) if (runMeets(a, b, grow(rect, LINE_LABEL_CLEAR))) cost += BREACH_COST
+                for (const route of routes) for (const [c, d] of route) if (runsCross(a, b, c, d)) cost += CROSS_COST
+            }
+            for (const other of taken.lanes) {
+                if (meets(grow(lane, LANE_CLEAR - 0.5), other.rect)) cost += BREACH_COST
+                if (other.target === link.target && other.side === into) cost += SHARED_SIDE_COST
+            }
+            if (bound !== undefined && (g < bound.l + LANE_CLEAR || g > bound.r - LANE_CLEAR)) cost += BREACH_COST
+            if (g < Math.min(s.l, t.l) - DETOUR || g > Math.max(s.r, t.r) + DETOUR) cost += BREACH_COST / 10
+            if (best !== undefined && cost >= best.cost) continue
+            const label = placeLabel(g, runs)
+            if (words !== undefined && label === undefined) cost += BREACH_COST
+            if (best === undefined || cost < best.cost) best = { cost, points, side: into, lane, ...(label === undefined ? {} : { label }) }
+        }
+    }
+    if (best === undefined) return undefined
+    taken.lanes.push({ rect: best.lane, target: link.target, side: best.side })
+    taken.routes.push(best.points)
+    if (words === undefined) return { points: best.points }
+    const box = best.label === undefined ? { x: Math.round(best.lane.l - words.width / 2), y: Math.round((lo + hi - words.height) / 2), width: words.width, height: words.height } : { x: best.label.l, y: best.label.t, width: words.width, height: words.height }
+    taken.labels.push({ l: box.x, t: box.y, r: box.x + box.width, b: box.y + box.height })
+    return { points: best.points, label: box }
 }
 
 /** The positions of a graph, laid out by ELK (see `layoutFlow`). */

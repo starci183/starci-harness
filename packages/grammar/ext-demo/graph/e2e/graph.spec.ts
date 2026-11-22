@@ -167,7 +167,7 @@ test.describe("loading and containers", () => {
     })
 })
 
-const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "big"] as const
+const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "wait-loops", "big"] as const
 const MIXES = ["todo", "running", "waiting", "error", "done"] as const
 
 test.describe("pictures", () => {

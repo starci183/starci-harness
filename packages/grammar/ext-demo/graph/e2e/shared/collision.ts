@@ -19,7 +19,8 @@ export interface Report {
  * 1 a node within 8 of another node; 2 a label within 8 of a node, a frame border, a status chip or another label; 3 an edge through a node or a frame header, or
  * across a frame it does not start or end at; 4 an edge end (its hollow circle, its open triangle) more than 2 off its port; 5 the spine off one x centre by more
  * than 2; 6 a decision whose branches are not symmetric about it within 4; 7 a loop edge that leaves its frame; 8 more edge crossings than allowed; 9 a scroll at
- * desktop width, a first view not at 100%, or the running step (or every node) out of the view; plus text over an edge. The positions come back for rule 10, the snapshot.
+ * desktop width, a first view not at 100%, or the running step (or every node) out of the view; 11 a back edge more than one card and its gutter (320) outside
+ * the box of its two ends; plus text over an edge. The positions come back for rule 10, the snapshot.
  */
 export const measure = (page: Page, allowed: number): Promise<Report> =>
     page.evaluate((maxCrossings) => {
@@ -31,6 +32,8 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         }
         type Pt = readonly [number, number]
         const hits: { rule: string; a: string; b: string }[] = []
+        /** Rule 11: how far a back edge may run outside the box of its two ends, in graph units: one card (280) and its gutter (40). */
+        const BACK_DETOUR = 320
         const positions: Record<string, [number, number]> = {}
         const canvas = document.querySelector(".react-flow")
         if (canvas === null) return { hits, positions }
@@ -184,6 +187,14 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
                 const b = byId.get(edge.target)
                 const frame = frames.find((f) => a !== undefined && b !== undefined && contains(f.box, a.box) && contains(f.box, b.box))
                 if (frame !== undefined && edge.points.some((p) => !inside(p, frame.box, 0))) hits.push({ rule: "7 loop edge leaves its frame", a: edge.id, b: frame.id })
+                // 11: a back edge runs near the steps it joins: no point of it lies further than one card and its gutter (280 + 40) outside the box of its two ends
+                if (a !== undefined && b !== undefined && edge.points.length > 0) {
+                    const span = { l: Math.min(a.box.l, b.box.l), t: Math.min(a.box.t, b.box.t), r: Math.max(a.box.r, b.box.r), b: Math.max(a.box.b, b.box.b) }
+                    const xs = edge.points.map((p) => p[0])
+                    const ys = edge.points.map((p) => p[1])
+                    const detour = Math.max(span.l - Math.min(...xs), Math.max(...xs) - span.r, span.t - Math.min(...ys), Math.max(...ys) - span.b)
+                    if (detour > u(BACK_DETOUR)) hits.push({ rule: "11 back edge detour", a: edge.id, b: `${String(Math.round(detour / zoom))} > ${String(BACK_DETOUR)}` })
+                }
             }
         }
 
