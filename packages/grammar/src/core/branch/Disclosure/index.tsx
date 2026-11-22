@@ -27,7 +27,7 @@ export type DisclosureProps = NoChildren & {
     /** Heading level of the trigger's heading element. */
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
     /**
-     * What the trigger is. `row` (default) is the full-size row of a list or a card. `quiet` is a small link-toned line with the
+     * What the trigger is. `row` (default) is the full-size row of a list or a card. `quiet` is a small muted line (the secondary text colour, owner 2026-11-23), its caret 1em of its words, with the
      * chevron before the words and the content folded under it (a note such as "Evidence (2)" that a reader may skip).
      */
     readonly kind?: "row" | "quiet"

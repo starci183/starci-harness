@@ -2219,7 +2219,7 @@
     [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(90deg); }
     [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
 
-    /* kind="quiet": a small link-toned line the size of its words; the touch floor still holds on a coarse pointer. */
+    /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
         display: inline-flex;
         width: auto;
@@ -2227,7 +2227,7 @@
         min-block-size: 1.5rem;
         justify-content: flex-start;
         gap: var(--grammar-inline-gap);
-        color: var(--accent-soft-foreground);
+        color: var(--muted);
         font-size: var(--grammar-text-sm);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-sm);

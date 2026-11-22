@@ -55,7 +55,7 @@ export const RowActionEndAndHashNumber: Story = {
     ),
 }
 
-/** Chevron before the title, and the quiet link-toned disclosure (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
+/** Chevron before the title, and the quiet disclosure: a muted line, its caret 1em of its words (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
 export const DisclosureChevronAndQuiet: Story = {
     render: () => (
         <Matrix maxWidth={420}>
