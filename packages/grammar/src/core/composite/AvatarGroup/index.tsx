@@ -90,7 +90,14 @@ const useMemberList = () => {
         if (closeTimer.current !== undefined) clearTimeout(closeTimer.current)
         closeTimer.current = undefined
     }, [])
-    const open = useCallback(() => { cancelClose(); setOpen(true) }, [cancelClose])
+    // Where the group stood when its list opened: the list is placed there once.
+    const openedAt = useRef<{ readonly top: number; readonly left: number } | undefined>(undefined)
+    const open = useCallback(() => {
+        cancelClose()
+        const box = triggerRef.current?.getBoundingClientRect()
+        openedAt.current = box === undefined ? undefined : { top: box.top, left: box.left }
+        setOpen(true)
+    }, [cancelClose])
     const close = useCallback(() => { cancelClose(); setOpen(false) }, [cancelClose])
     const closeSoon = useCallback(() => {
         cancelClose()
@@ -134,8 +141,18 @@ const useMemberList = () => {
         onPointerEnter: (event: PointerEvent) => { if (event.pointerType === "mouse") cancelClose() },
         onPointerLeave: (event: PointerEvent) => { if (event.pointerType === "mouse") closeSoon() },
     }
-    // The list owns its closing (React Aria's non-modal popover would close on the scroll a keyboard focus makes).
-    return { isOpen, triggerRef, triggerProps, popoverProps } as const
+    // The list owns its closing (React Aria's non-modal popover would close on the scroll a keyboard focus makes) but honours a close the popover asks for:
+    // a non-modal popover is placed once when it opens and asks to close when a scroll region around its trigger scrolls (useCloseOnScroll). Ignoring that ask
+    // left the open list standing where it was placed while the rows under it moved (a room list scrolled or re-sorted by a new message), a member card
+    // floating between rows until the next click.
+    // Only a list whose group has moved since it opened is closed, so the scroll a keyboard focus makes before the list opens keeps it open.
+    const onOpenChange = (next: boolean) => {
+        if (next) return
+        const at = openedAt.current
+        const now = triggerRef.current?.getBoundingClientRect()
+        if (at === undefined || now === undefined || Math.abs(now.top - at.top) > 1 || Math.abs(now.left - at.left) > 1) close()
+    }
+    return { isOpen, triggerRef, triggerProps, popoverProps, onOpenChange } as const
 }
 
 /** The member list's rows: every member, its `sm` avatar, its name and an agent's Chip. */
@@ -264,6 +281,7 @@ const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", 
                     {...members.popoverProps}
                     triggerRef={members.triggerRef}
                     isOpen={members.isOpen}
+                    onOpenChange={members.onOpenChange}
                     isNonModal
                     placement="bottom start"
                     offset={8}
