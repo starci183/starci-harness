@@ -535,6 +535,22 @@ const releaseIfSame = (file: string, read: SlotHolder): boolean => {
     return true
 }
 
+/**
+ * Takes a pid lock (the lander's `_batch-lander*.lock`, the dev push's `_dev-push*.lock`): a lock whose pid does not run on this machine
+ * is stale, so it is taken over and `say` gets one line naming the dead pid; a live pid, a lock with no pid or one written on another
+ * host keeps it held (false). A lock that changed between the read and the takeover is left to its new holder.
+ */
+export const takeLiveLock = (file: string, content: string, say: (line: string) => void, alive: (pid: number) => boolean = pidAlive): boolean => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (takeLockFile(file, content)) return true
+        const held = readHolder(file)
+        if (held === undefined) continue
+        if (held.pid === null || (held.host !== null && held.host !== hostname()) || alive(held.pid)) return false
+        if (releaseIfSame(file, held)) say(`${file}: its holder pid ${String(held.pid)} is not alive on this machine; taking the stale lock over`)
+    }
+    return takeLockFile(file, content)
+}
+
 /** Reclaims every slot of the given kinds whose holder is proven gone (`RECLAIMABLE`); an `old` one is reported, never removed. */
 export const reclaimStale = (root: string, rules: SlotRules, names: readonly string[], by: string): Released => {
     const released: string[] = []

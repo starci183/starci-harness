@@ -72,7 +72,7 @@ export const laneLandVerb = defineVerb({
                 const run = spawnSync(process.execPath, [own, ...process.argv.slice(2)], { stdio: "inherit", cwd: process.cwd(), env: { ...process.env, [LANDER_OWN_INSTALL_ENV]: "1" } })
                 process.exit(run.status ?? 1)
             }
-            holdLander(dir, scope)
+            holdLander(dir, scope, context.progress)
         }
         // The heartbeat: the lock's mtime moves every poll, through long gates too (the batch steps are async), so `lane status` tells a
         // live lander from a hung or killed one.
