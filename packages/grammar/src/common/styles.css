@@ -6578,6 +6578,42 @@
 
     .starci-core-quote .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
+    /*
+     * Quote variant="line": one muted line over an answer, a rule on the start edge and no ground, the source then the words, ellipsized. Its size is the caption's
+     * on every face, so it reads as the answer's context, never as a second message.
+     */
+    .starci-core-quote[data-grammar-quote-variant="line"] {
+        display: block;
+        overflow: hidden;
+        padding-block: 0;
+        padding-inline: var(--grammar-inline-gap) 0;
+        border-inline-start: var(--grammar-ring-width) solid var(--border);
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-quote[data-grammar-quote-variant="line"] :is(.starci-core-quote-source, .starci-core-quote-words) {
+        display: inline;
+        color: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        white-space: nowrap;
+    }
+
+    .starci-core-quote[data-grammar-quote-variant="line"] .starci-core-quote-source { margin-inline-end: var(--grammar-identity-gap); }
+
+    /* On the brand face of the reader's own bubble the line keeps the bubble's ink, softened, and its rule. */
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-quote[data-grammar-quote-variant="line"] {
+        border-inline-start-color: currentcolor;
+        background: transparent;
+        opacity: var(--grammar-opacity-secondary);
+    }
+
     @media (forced-colors: active) {
         .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body,
         .starci-core-message-bubble-body { border: 1px solid CanvasText; }
