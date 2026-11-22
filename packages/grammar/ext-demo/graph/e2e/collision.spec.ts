@@ -4,10 +4,10 @@ import { join } from "node:path"
 import { measure, type Positions } from "./shared/collision.ts"
 
 /** The flows of the demo, each in every state mix, and the other stories; each may have this many edge crossings (the default is 0). */
-const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "wait-loops", "big"] as const
+const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "wait-loops", "wait-replies", "big"] as const
 const MIXES = ["todo", "running", "waiting", "error", "done"] as const
 const OTHERS = ["containers", "islands", "schema", "legend", "editable", "decision", "edges", "states", "vertical"] as const
-const CROSSINGS: Readonly<Record<string, number>> = { "nested-branch": 1, "wait-loops": 2, states: 1, editable: 1, edges: 1 }
+const CROSSINGS: Readonly<Record<string, number>> = { "nested-branch": 1, "wait-loops": 2, "wait-replies": 2, states: 1, editable: 1, edges: 1 }
 const SNAPSHOT = join(import.meta.dirname, "positions.snap.json")
 
 const open = async (page: Page, query: string): Promise<void> => {

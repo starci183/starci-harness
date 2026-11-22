@@ -2460,5 +2460,255 @@
    984,
    703
   ]
+ },
+ "wait-replies todo": {
+  "open": [
+   492,
+   1
+  ],
+  "request": [
+   492,
+   163
+  ],
+  "await": [
+   492,
+   345
+  ],
+  "got": [
+   328,
+   529
+  ],
+  "decide": [
+   328,
+   691
+  ],
+  "check-stop": [
+   492,
+   873
+  ],
+  "cancel": [
+   492,
+   1035
+  ],
+  "remind-check": [
+   656,
+   529
+  ],
+  "remind": [
+   984,
+   691
+  ],
+  "confirmed": [
+   0,
+   691
+  ],
+  "cancelled": [
+   492,
+   1217
+  ],
+  "unanswered": [
+   656,
+   691
+  ]
+ },
+ "wait-replies running": {
+  "open": [
+   492,
+   1
+  ],
+  "request": [
+   492,
+   163
+  ],
+  "await": [
+   492,
+   345
+  ],
+  "got": [
+   328,
+   529
+  ],
+  "decide": [
+   328,
+   691
+  ],
+  "check-stop": [
+   492,
+   873
+  ],
+  "cancel": [
+   492,
+   1035
+  ],
+  "remind-check": [
+   656,
+   529
+  ],
+  "remind": [
+   984,
+   691
+  ],
+  "confirmed": [
+   0,
+   691
+  ],
+  "cancelled": [
+   492,
+   1217
+  ],
+  "unanswered": [
+   656,
+   691
+  ]
+ },
+ "wait-replies waiting": {
+  "open": [
+   492,
+   1
+  ],
+  "request": [
+   492,
+   163
+  ],
+  "await": [
+   492,
+   345
+  ],
+  "got": [
+   328,
+   529
+  ],
+  "decide": [
+   328,
+   691
+  ],
+  "check-stop": [
+   492,
+   873
+  ],
+  "cancel": [
+   492,
+   1035
+  ],
+  "remind-check": [
+   656,
+   529
+  ],
+  "remind": [
+   984,
+   691
+  ],
+  "confirmed": [
+   0,
+   691
+  ],
+  "cancelled": [
+   492,
+   1217
+  ],
+  "unanswered": [
+   656,
+   691
+  ]
+ },
+ "wait-replies error": {
+  "open": [
+   492,
+   1
+  ],
+  "request": [
+   492,
+   163
+  ],
+  "await": [
+   492,
+   345
+  ],
+  "got": [
+   328,
+   529
+  ],
+  "decide": [
+   328,
+   691
+  ],
+  "check-stop": [
+   492,
+   873
+  ],
+  "cancel": [
+   492,
+   1035
+  ],
+  "remind-check": [
+   656,
+   529
+  ],
+  "remind": [
+   984,
+   691
+  ],
+  "confirmed": [
+   0,
+   691
+  ],
+  "cancelled": [
+   492,
+   1217
+  ],
+  "unanswered": [
+   656,
+   691
+  ]
+ },
+ "wait-replies done": {
+  "open": [
+   492,
+   1
+  ],
+  "request": [
+   492,
+   163
+  ],
+  "await": [
+   492,
+   345
+  ],
+  "got": [
+   327,
+   529
+  ],
+  "decide": [
+   328,
+   723
+  ],
+  "check-stop": [
+   492,
+   905
+  ],
+  "cancel": [
+   492,
+   1067
+  ],
+  "remind-check": [
+   657,
+   540
+  ],
+  "remind": [
+   984,
+   723
+  ],
+  "confirmed": [
+   0,
+   723
+  ],
+  "cancelled": [
+   492,
+   1249
+  ],
+  "unanswered": [
+   656,
+   723
+  ]
  }
 }
