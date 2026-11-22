@@ -10,6 +10,9 @@ import type { LaneFinding } from "../../harness/land-queue.js"
 import { loadSlotRules, slotRoot, withSlot } from "../../harness/slots.js"
 import { cancelLaneGate, markSuperseded } from "../../harness/supersede.js"
 import { lanesDir } from "../../harness/land-queue.js"
+import { landProfile, profileNameFor } from "../../harness/land-profile.js"
+import type { LandProfileName } from "../../harness/land-profile.js"
+import { runningCliRoot } from "../../harness/lander-install.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { registerReady } from "./ready.js"
 import type { Registered } from "./ready.js"
@@ -33,6 +36,8 @@ export interface LaneGate {
     readonly installed: boolean
     readonly prepared: readonly string[]
     readonly mode: "check" | "push"
+    /** The repository's profile (harness/land-profile.ts): an app's pinned CLI and hook, or the harness FAST gate and a plain git push. */
+    readonly profile: LandProfileName
     readonly exitCode: number
     readonly verdict: GateVerdict
     readonly findings: readonly LaneFinding[]
@@ -76,6 +81,46 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
     return changed.some((file) => INSTALL_INPUT.test(file))
 }
 
+/** The report lines of one gate. Pure. */
+const gateLines = (data: LaneGate): string[] => [
+    `${data.lane}: ${data.mode} ${data.verdict}${data.profile === "app" && data.mode === "check" && data.verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
+    ...data.findings.slice(0, 20).map((finding) => `  ${finding.code} ${finding.path} ${finding.message.split("\n")[0] ?? ""}`.trimEnd()),
+    ...(data.ready === null ? [] : [`ready: monitor ${data.ready.status}`]),
+]
+
+/** What the harness profile of `lane gate` hands back. */
+interface HarnessGated {
+    readonly exitCode: number
+    readonly verdict: GateVerdict
+    readonly findings: LaneFinding[]
+    readonly pushed: boolean
+}
+
+/**
+ * The gate of a harness lane: no root install, codegen or app hook. Under a gate slot the lane's own running CLI runs the harness FAST gate
+ * (`release gate --level dev`) measured from where the lane forks from the dev commit it merged, and with --push a green gate is followed by
+ * `git push origin HEAD:<branch>` (the harness has no pre-push hook that would run it again).
+ */
+const gateHarness = async (given: { readonly root: string; readonly lane: string; readonly branch: string; readonly ref: string; readonly merging: boolean; readonly push: boolean; readonly slots: string; readonly rules: ReturnType<typeof loadSlotRules>; readonly wait: number | undefined; readonly say: (line: string) => void }): Promise<HarnessGated> => {
+    const { root, lane, branch, ref, push, slots, rules, wait, say } = given
+    const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
+    const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
+    const profile = landProfile("harness", join(runningCliRoot(), "dist", "main.js"))
+    const command = profile.gate(root, fork === "" ? base : fork)
+    const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
+        say(`${profile.gateLabel} (gate slot ${String(taken.n)})`)
+        return captureTool(command.file, command.args, root)
+    })
+    const all = blockingFindings(run.stdout)
+    const findings = all ?? []
+    const verdict: GateVerdict = isOutOfMemory(run.exitCode, run.stderr) ? "oom" : all === undefined || (run.exitCode !== 0 && all.length === 0) ? "no-verdict" : findings.length === 0 ? "green" : "red"
+    if (!push || verdict !== "green") return { exitCode: run.exitCode, verdict, findings, pushed: false }
+    const pushCommand = profile.push(root, branch)
+    const pushed = await captureTool(pushCommand.file, pushCommand.args, root)
+    if (pushed.exitCode === 0) return { exitCode: 0, verdict, findings, pushed: true }
+    return { exitCode: pushed.exitCode, verdict: "red", findings: [{ code: "LANE_GATE_PUSH", path: "", message: `${pushed.stdout}\n${pushed.stderr}`.trim().split("\n").slice(-5).join(" ").slice(0, 600) }], pushed: false }
+}
+
 /**
  * `starci lane gate [lane]`: the local gate a lane runs before it lands (contexts/authority/lanes.md). It merges the base ref
  * (origin/dev), installs under an npm slot when the merge changed a manifest or lockfile, runs codegen (and build:modules after an
@@ -97,6 +142,7 @@ export const laneGateVerb = defineVerb({
         ready: { kind: "boolean", summary: "after a push, register the pushed sha with the batch lander (lane ready)" },
         wait: { kind: "string", summary: "seconds to wait for each slot before SLOT_BUSY (default: until one frees)" },
         dir: { kind: "string", summary: "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)" },
+        profile: { kind: "string", summary: "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push" },
     },
     run: async (context, flags) => {
         if (flags.ready && !flags.push) throw new Refusal("CLI_USAGE", "--ready registers a pushed sha: give --push too")
@@ -124,7 +170,15 @@ export const laneGateVerb = defineVerb({
                 // the status file is the monitor's courtesy; the cancel itself happened
             }
         }
-        const merged = merging ? await mergeRef(root, flags.ref ?? "origin/dev", say) : null
+        const ref = flags.ref ?? "origin/dev"
+        const merged = merging ? await mergeRef(root, ref, say) : null
+        const profileName = profileNameFor(root, flags.profile)
+        if (profileName === "harness") {
+            const harness = await gateHarness({ root, lane, branch, ref, merging, push: flags.push, slots, rules, wait, say })
+            const ready = flags.ready && harness.pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
+            const data: LaneGate = { lane, branch, merged, installed: false, prepared: [], mode: flags.push ? "push" : "check", profile: profileName, exitCode: harness.exitCode, verdict: harness.verdict, findings: harness.findings, pushed: harness.pushed, ready }
+            return { data, message: gateLines(data).join("\n"), exitCode: harness.verdict === "green" ? 0 : 1 }
+        }
         const installed = await needsInstall(root, merged, flags.install)
         if (installed) {
             await withSlot(slots, rules, "npm", lane, { waitSeconds: wait, say }, async (taken) => {
@@ -162,12 +216,7 @@ export const laneGateVerb = defineVerb({
             verdict = oom || findings.some((finding) => isOutOfMemory(undefined, finding.message)) ? "oom" : all === undefined || (run.exitCode !== 0 && all.length === 0) ? "no-verdict" : findings.length === 0 ? "green" : "red"
         }
         const ready = flags.ready && pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
-        const data: LaneGate = { lane, branch, merged, installed, prepared, mode, exitCode: run.exitCode, verdict, findings, pushed, ready }
-        const lines = [
-            `${lane}: ${mode} ${verdict}${mode === "check" && verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
-            ...findings.slice(0, 20).map((finding) => `  ${finding.code} ${finding.path} ${finding.message.split("\n")[0] ?? ""}`.trimEnd()),
-            ...(ready === null ? [] : [`ready: monitor ${ready.status}`]),
-        ]
-        return { data, message: lines.join("\n"), exitCode: verdict === "green" ? 0 : 1 }
+        const data: LaneGate = { lane, branch, merged, installed, prepared, mode, profile: profileName, exitCode: run.exitCode, verdict, findings, pushed, ready }
+        return { data, message: gateLines(data).join("\n"), exitCode: verdict === "green" ? 0 : 1 }
     },
 })

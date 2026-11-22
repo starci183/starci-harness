@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
@@ -7,8 +6,7 @@ import { listPackages } from "../../shared/workspace.js"
 import { EVAL_FILE, checkAnchors, loadAnchors } from "../contexts/anchors.js"
 import { judgePlan } from "./publish.js"
 
-/** Whether the checkout is the harness repository itself: the CLI, the contexts it reads and the packages it publishes. */
-export const isHarnessCheckout = (root: string): boolean => existsSync(join(root, "cli", "package.json")) && existsSync(join(root, "contexts", "README.md")) && existsSync(join(root, "packages"))
+export { isHarnessCheckout } from "./harness-checkout.js"
 
 /**
  * The base CI's plan measures this push from (the `base` step of ci.yml, which publish.yml reads back from the run): the head of the last successful CI run on main (`status=success` is a conclusion, so a run cancelled by a newer push never counts) when

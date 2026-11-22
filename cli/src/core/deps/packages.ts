@@ -152,15 +152,19 @@ const unlinkedInstallOptions = (folder: string, options: RunOptions = {}): RunOp
     return options
 }
 
+/** Installs a package folder's private dependencies when they are missing or stale (`npm ci`, else `npm install`); refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */
+export const installPackage = async (pkg: Pick<LocalPackage, "name" | "folder">): Promise<void> => {
+    if (!installStale(pkg.folder)) return
+    unlinkedInstallOptions(pkg.folder)
+    const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
+    const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, unlinkedInstallOptions(pkg.folder, held.options)))
+    if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
+}
+
 /** Builds a package, installing missing or stale private dependencies; refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
-    if (installStale(pkg.folder)) {
-        unlinkedInstallOptions(pkg.folder)
-        const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
-        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, unlinkedInstallOptions(pkg.folder, held.options)))
-        if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
-    }
+    await installPackage(pkg)
     const build = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(["run", "build"], pkg.folder, held.options))
     if (build.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm run build in ${pkg.folder} failed:\n${tail(build.stdout, build.stderr)}`)
 }

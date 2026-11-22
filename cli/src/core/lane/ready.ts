@@ -27,7 +27,9 @@ export const registerReady = async (cwd: string, flags: { readonly lane?: string
     const tip = remote.stdout.trim().split(/\s+/)[0] ?? ""
     if (tip === "") throw new Refusal("LANE_READY_NOT_PUSHED", `origin has no ${branch}: git push origin HEAD:${branch} first`)
     if (tip !== sha) throw new Refusal("LANE_READY_NOT_PUSHED", `origin/${branch} is ${tip.slice(0, 10)}, HEAD is ${sha.slice(0, 10)}: push the sha you gated`)
-    const entry: ReadyEntry = { lane, branch, sha, at: new Date().toISOString() }
+    // The repository the lane lands in: a lanes folder holds the lanes of every repository of the machine, and each lander takes its own (harness/land-profile.ts takesEntry).
+    const origin = (await captureGit(["remote", "get-url", "origin"], context.cwd)).stdout.trim()
+    const entry: ReadyEntry = { lane, branch, sha, at: new Date().toISOString(), ...(origin === "" ? {} : { repo: origin }) }
     writeReady(dir, entry)
     const statusFile = join(landPaths(dir).status, `${lane}.json`)
     return { data: { ...entry, status: statusFile }, message: `ready: ${lane} ${branch} ${sha.slice(0, 10)}; monitor ${statusFile}` }

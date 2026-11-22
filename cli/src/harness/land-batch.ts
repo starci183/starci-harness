@@ -9,6 +9,10 @@ import {
 } from "./land-queue.js"
 import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
 import { loadSlotRules, releaseLaneSlots, slotKind, takeSlot as takeSlotFile } from "./slots.js"
+import { APP_PROFILE, LANDER_GATE_ARGS, lockScope, takesEntry } from "./land-profile.js"
+import type { LandProfile } from "./land-profile.js"
+
+export { LANDER_GATE_ARGS }
 
 /** The fields of a status a batch sets; the lane, its sha, branch and batch come from the entry. */
 type StatusFields = Omit<LaneStatus, "lane" | "laneSha" | "branch" | "at" | "batch">
@@ -28,7 +32,14 @@ export interface BatchOptions {
     /** Merge only: report what would conflict, no gate, no push, no status. */
     readonly dryRun: boolean
     readonly say: (line: string) => void
+    /** How the tree is prepared, gated and pushed (harness/land-profile.ts); default the app's. */
+    readonly profile?: LandProfile
+    /** The origin URL of the repository: the lander takes only the ready lanes that name it (an app lander also takes the lanes that name none). */
+    readonly ownRemote?: string
 }
+
+const profileOf = (options: BatchOptions): LandProfile => options.profile ?? APP_PROFILE
+const scopeOf = (options: BatchOptions): string => lockScope(profileOf(options).name)
 
 /** What one batch did, kept as `_land-status/_batches/<batch>/batch.json`. */
 export interface BatchRecord {
@@ -79,11 +90,11 @@ export const releaseLaneSlotsOf = (dir: string, lane: string, state: string, say
     }
 }
 
-/** Waits for the dev lock and holds it for the batch. */
-const takeDevLock = async (dir: string, say: (line: string) => void): Promise<void> => {
+/** Waits for the dev lock (of the lander's scope) and holds it for the batch. */
+const takeDevLock = async (dir: string, say: (line: string) => void, scope = ""): Promise<void> => {
     let waited = false
-    while (!takeLockFile(landPaths(dir).devLock, holderLine())) {
-        if (!waited) say(`waiting for ${landPaths(dir).devLock}`)
+    while (!takeLockFile(landPaths(dir, scope).devLock, holderLine())) {
+        if (!waited) say(`waiting for ${landPaths(dir, scope).devLock}`)
         waited = true
         await sleep(5000)
     }
@@ -156,9 +167,6 @@ const prepare = async (options: BatchOptions, log: string[]): Promise<void> => {
     }
 }
 
-/** The app's own pinned CLI: a lander judges with the harness the app pins, never this one. */
-const appCli = (wt: string): string => join(wt, "node_modules", "starci-harness", "dist", "main.js")
-
 /** One gate run as the batch reads it. */
 export interface GateRun {
     readonly exitCode: number
@@ -167,9 +175,6 @@ export interface GateRun {
     /** The run was cancelled because a lane of the batch was registered again or withdrawn while it ran: it has no verdict. */
     readonly cancelled?: boolean
 }
-
-/** The batch gate's check: the FAST level, since a batch lands on dev (the full gate runs once at the main cut). */
-export const LANDER_GATE_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "dev", "--json"]
 
 /** How often a running batch gate looks whether a lane of its batch was registered again (superseded) or withdrawn. */
 export const SUPERSEDE_POLL_MS = 15_000
@@ -205,12 +210,13 @@ export const cancellableRun = async (
  * One `app check --env prod --level dev --json` under a gate slot (the FAST level: a batch lands on dev, the full gate runs once at the main cut); `attempt`
  * numbers a run repeated after it ran out of memory. `superseded` says whether a lane of the batch was registered again or withdrawn: the run is then cancelled.
  */
-const gate = async (options: BatchOptions, folder: string, round: number, attempt: number, superseded: () => boolean = () => false): Promise<GateRun> => {
+const gate = async (options: BatchOptions, folder: string, round: number, attempt: number, base: string, superseded: () => boolean = () => false): Promise<GateRun> => {
     const slot = await takeSlot(options.dir, "gate", options.gateSlots)
     try {
         const name = attempt === 0 ? String(round) : `${String(round)}-retry${String(attempt)}`
         options.say(`gate round ${name} (${slot})`)
-        const run = await cancellableRun((onSpawn) => captureTool(process.execPath, [appCli(options.worktree), ...LANDER_GATE_ARGS], options.worktree, { onSpawn }), superseded)
+        const command = profileOf(options).gate(options.worktree, base)
+        const run = await cancellableRun((onSpawn) => captureTool(command.file, command.args, options.worktree, { onSpawn }), superseded)
         writeFileSync(join(folder, `check-${name}.json`), run.stdout)
         writeFileSync(join(folder, `check-${name}.log`), run.stderr)
         if (run.cancelled === true) options.say(`gate round ${name}: cancelled, a lane of the batch was registered again or withdrawn`)
@@ -310,7 +316,8 @@ const push = async (options: BatchOptions, folder: string, stillReady: () => boo
         // The land-time check: after the wait for the slot, the last moment before dev moves.
         if (!stillReady()) return { pushed: false, oom: false, aborted: true }
         await squash()
-        const run = await captureTool(process.execPath, [appCli(options.worktree), "app", "push", "origin", "HEAD:dev"], options.worktree)
+        const command = profileOf(options).push(options.worktree, "dev")
+        const run = await captureTool(command.file, command.args, options.worktree)
         writeFileSync(join(folder, "push.log"), `${run.stdout}\n${run.stderr}`)
         return { pushed: run.exitCode === 0, oom: run.exitCode !== 0 && isOutOfMemory(run.exitCode, `${run.stdout}\n${run.stderr}`) }
     } finally {
@@ -350,7 +357,8 @@ export const abortIfNotReady = (dir: string, batch: string, tree: readonly Ready
  * when no lane is ready. Never bisects: a batch takes at most GATE_ROUNDS gate runs.
  */
 export const runBatch = async (options: BatchOptions): Promise<BatchRecord | undefined> => {
-    const ready = readyEntries(options.dir)
+    const profile = profileOf(options)
+    const ready = readyEntries(options.dir).filter((entry) => takesEntry(entry, options.ownRemote, profile.name))
     if (ready.length === 0) return undefined
     const { dir, say } = options
     const batch = new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "")
@@ -427,12 +435,12 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
                 if (merged.length === 0) break
             }
             for (const lane of merged) status(lane, { state: "queued", sha: lane.sha, reason: `in batch ${batch}, gate round ${String(round)}` })
-            await prepare(options, log)
+            if (profile.prepares) await prepare(options, log)
             if (reformed()) return
             const inBatch = new Map([...changed].filter(([lane]) => merged.some((entry) => entry.lane === lane)))
             const waitRam = (): Promise<void> => waitForFreeRam(OOM_FREE_MB, say)
             const judged = await judgeWithOomRetry(
-                (attempt) => gate(options, folder, round, attempt, () => { const gone = notReadyAny(dir, merged); return gone.withdrawn.length > 0 || gone.replaced.length > 0 }),
+                (attempt) => gate(options, folder, round, attempt, base, () => { const gone = notReadyAny(dir, merged); return gone.withdrawn.length > 0 || gone.replaced.length > 0 }),
                 (run) => judgeRound(round, run.exitCode, run.stdout, inBatch, run.stderr),
                 waitRam,
                 say,
@@ -484,7 +492,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
         }
         outcome = "no lane left in the batch"
     }
-    if (!options.dryRun) await takeDevLock(dir, say)
+    if (!options.dryRun) await takeDevLock(dir, say, scopeOf(options))
     // A batch that failed because a step ran out of memory (npm ci, codegen, build:modules) waits for RAM once the dev lock is released,
     // so the next batch does not start into the same shortage a second later.
     let waitForRam = false
@@ -495,7 +503,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
         waitForRam = isOutOfMemory(undefined, `${message}\n${log.slice(-4).join("\n")}`)
         outcome = `batch failed (${message})${waitForRam ? " (out of memory)" : ""}; every lane not yet judged stays ready`
     } finally {
-        if (!options.dryRun) releaseLockFile(landPaths(dir).devLock, process.pid)
+        if (!options.dryRun) releaseLockFile(landPaths(dir, scopeOf(options)).devLock, process.pid)
         writeFileSync(join(folder, "lander.log"), log.join("\n"))
     }
     if (waitForRam) await waitForFreeRam(OOM_FREE_MB, say)

@@ -99,6 +99,11 @@ plain `starci dev sync` alike, until the setting is emptied, so dev runs the new
 `deps.devAllowsLocalRegistry` keeps its committed pins on npm (its push gate refuses `DEPS_LOCAL_REGISTRY_COMMITTED`); with it, `dev` and lane
 branches carry the local pins too. `--local` on the verb overrides it for one sync.
 
+`publishLocal` (default `false`) is the harness lander's: after each batch lands on the harness's own `dev`, it runs `starci deps publish-dev
+--execute` in its worktree (the changed packages and every package that pins one of them, as `X.Y.Z-dev.N`, their publish copies pinning each
+other exactly) and sets `local` to exactly those versions, before the sync ([branches.md](branches.md) PROJECT-BRANCH-3). The harness lander syncs
+only when `checkout` names the app's dev checkout (its own repository has no dev stack).
+
 `afterLand` (default `false`) makes `starci lane land` run `dev sync --execute` on `checkout` (default: the lander's app main
 checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
 `local` keeps those packages on the local registry across syncs; empty restores the registry versions. `processes` names the
@@ -110,6 +115,14 @@ starci lane land` in its main checkout) installs the same starci-harness version
 the files under the running lander. Its `_batch-lander` worktree is no home: the lander runs `npm ci` there itself whenever a
 batch's lockfile moves. A lander started from outside every worktree (a global install, the harness checkout's build, its own
 install) runs as it is.
+
+**The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
+"bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` through the
+same batch lander under the harness profile (the FAST gate `starci release gate --level dev`, then `git push origin HEAD:dev`), and with
+`devSync.publishLocal` each landed batch goes to the local registry as the dev line and into the app's dev checkout at once. npm sees only the
+train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
+`starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on
+`main`. The harness checkout's branch (`D:/.claude`, on `dev` today) is the owner's choice.
 
 **Prod** is slow and careful, in this order: harness fixes go to npm (the harness's own release), then the app code is pushed
 with its full checks, the docker images are built, `app check --env prod`, staging, the tag, CI, prod (the sections below).

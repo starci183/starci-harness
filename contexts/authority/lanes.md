@@ -88,8 +88,16 @@ One verb runs the local gate, one registers, one lander lands (PROJECT-BRANCH-2)
    `queued` at the new sha with `supersededBy`.
 4. The lander lands a batch as ONE commit on `dev`: the merges it gated become one commit with the same tree and `origin/dev` as
    its parent, whose message lists every lane with its branch and sha and carries one `Landed-lane: <lane> <sha>` trailer each.
-   Every landed lane's status points at that commit. The lander (`starci lane land`) is one process per
+   Every landed lane's status points at that commit. The lander (`starci lane land`) is one process per repository and
    lanes folder that the coordinator starts; a lane never starts it, never pushes `dev` and never takes the dev lock.
+
+**A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same three
+verbs. `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
+gate slot the harness FAST gate `starci release gate --level dev` (the build, typecheck and tests of the packages the lane changed and of their
+dependents, the CLI and the desktop app when affected) and with `--push` pushes `lane/<lane>` with git once it is green. The harness lander
+(`starci lane land` started in the harness checkout) takes only the harness's lanes from the shared lanes folder, gates the batch the same way and
+pushes `dev` with `git push origin HEAD:dev`; the squash, the cancel on a newer registration and the status files are the app lander's. With
+`devSync.publishLocal` it publishes the landed packages to the local registry (`deps publish-dev`) and the app's dev sync installs them.
 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the
 pre-push hook needs `.husky/_` present. Before every commit run `git diff --cached --stat`.

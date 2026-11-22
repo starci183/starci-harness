@@ -94,7 +94,22 @@ npm versions (`deps install-local --restore`, then the npm version of each). The
 CI, prod. The release is cut from a fixed sha with `starci release cut --from <sha> --execute`, in its own temporary
 worktree that is removed afterwards. The dev checkout never moves for prod work, and prod never waits for dev to go quiet.
 
-**CI.** Many changes are gathered into one commit, and a newer push cancels the CI run of the commit it supersedes; a run
+**The harness itself: dev and main.** The owner, in his words:
+
+> "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"
+
+The harness repository has `dev` and `main` too ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-3). Harness lanes
+fork from `origin/dev` and land through the batch lander exactly as an app's do, under the harness profile: the gate is the harness FAST gate
+(`starci release gate --level dev`: build, typecheck and tests of the changed packages and their dependents), the push `git push origin HEAD:dev`.
+With `devSync.publishLocal: true` in `.runtime/local-settings.json`, every landed batch is published to the local registry as the dev line
+(`starci deps publish-dev --execute`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, pinned to each other exactly in
+the publish copies, never in committed files) and `devSync.local` names exactly those versions, so the after-land dev sync runs them in the app at
+once. A train moves `dev` to `main` after `starci release gate --level full`; `release push` and publish.yml publish the plain versions; then
+`starci release back-merge --execute` brings `main` back into `dev`. Which branch `D:/.claude` has checked out is the owner's choice: it runs on
+`dev` today.
+
+**CI.** Many changes are gathered into one commit, and a newer push cancels the CI run of the commit it supersedes (the harness's ci.yml runs
+the FAST level on `dev`, the FULL level on `main`); a run
 that deploys or publishes (a release tag run, `stack-deploy.yml`, the harness `publish.yml`) is never cancelled.
 
 The full design: [contexts/project/cicd.md](contexts/project/cicd.md) "Dev and prod".

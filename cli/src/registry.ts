@@ -13,6 +13,8 @@ import { releaseAffectedVerb } from "./core/release/affected.js"
 import { releaseCutVerb } from "./core/release/cut.js"
 import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
+import { releaseGateVerb } from "./core/release/gate.js"
+import { releaseBackMergeVerb } from "./core/release/back-merge.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./core/app/info.js"
 import { appMasterPlanVerb } from "./core/app/master-plan.js"
@@ -122,6 +124,7 @@ import { uiVerb } from "./core/ui/serve.js"
 import { dnaCheckVerb } from "./core/dna/check.js"
 import { depsCheckVerb } from "./core/deps/check.js"
 import { depsPublishLocalVerb } from "./core/deps/publish-local.js"
+import { depsPublishDevVerb } from "./core/deps/publish-dev.js"
 import { depsInstallLocalVerb } from "./core/deps/install-local.js"
 import { pkgBranchVerb } from "./core/pkg/branch.js"
 import { pkgHandoffVerb } from "./core/pkg/handoff.js"
@@ -160,6 +163,8 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     releaseCutVerb,
     releasePublishVerb,
     releaseAffectedVerb,
+    releaseGateVerb,
+    releaseBackMergeVerb,
     contractNewVerb,
     contractCheckVerb,
     taskVerifyVerb,
@@ -288,6 +293,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     dnaCheckVerb,
     depsInstallLocalVerb,
     depsPublishLocalVerb,
+    depsPublishDevVerb,
     depsCheckVerb,
     pkgBranchVerb,
     pkgHandoffVerb,

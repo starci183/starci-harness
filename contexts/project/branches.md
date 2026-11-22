@@ -1,7 +1,7 @@
 # The branches of an app
 
-An app repository (never the harness repository itself) has two long-lived branches and one way between them. This file owns the
-rule; every other page links to it.
+An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository
+itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file owns the rules; every other page links to it.
 
 ## PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
 
@@ -72,4 +72,48 @@ rule; every other page links to it.
 taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and `cli/src/harness/land-batch.ts`;
 item 6 by `judgeRound` and `judgeWithOomRetry`, proven by `cli/src/harness/land-oom.test.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
 
-The harness repository has no managed app hook and no `dev` branch; this rule never applies to it.
+PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has no managed app hook, and its own `dev` and `main` follow PROJECT-BRANCH-3.
+
+## PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
+
+The owner's words (2026-11-22): "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local", after "merge hết vô
+local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa thời gian code local" and "rules là k check nhánh khi dev, khi
+nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
+
+1. The harness repository has two long-lived branches: `dev`, where finished harness work lands at once and is used locally, and `main`, what is
+   released to npm. `main` is always an ancestor of `dev`. Which branch the harness checkout (`D:/.claude`) has checked out is the owner's choice;
+   today it runs on `dev`. No verb switches it.
+2. Harness lanes fork from `origin/dev`, gate with `starci lane gate --push --ready` and land through the batch lander exactly as an app's lanes do
+   (PROJECT-BRANCH-2: one commit per batch listing the lanes and their shas, a newer registration cancels the running gate, the same status
+   files), under the **harness profile** (`cli/src/harness/land-profile.ts`), picked when the repository is the harness checkout (cli/,
+   contexts/README.md and packages/, the marker `release push` reads) or by `--profile harness`:
+   - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build, typecheck and tests of the packages
+     the batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected. No
+     lint, no light gates, no sonar;
+   - the push is `git push origin HEAD:dev` (there is no app hook);
+   - one lanes folder serves every repository of the machine (its slots bound the machine): `lane ready` records the lane's origin URL and each
+     lander takes only its own repository's lanes; the harness lander holds `_batch-lander-harness.lock` and `_dev-push-harness.lock` and works in
+     `<lanes>/_batch-lander-harness`;
+   - the harness lander runs in place, from the CLI it was started with (`node D:/.claude/cli/dist/main.js lane land`): an npm install of the
+     same version would lack the dev code it lands with.
+3. After each landed batch, when this machine's local settings say `devSync.publishLocal: true`, the harness lander publishes the **dev line** to the
+   local registry (`starci deps publish-dev --execute`, also run by hand, dry until `--execute`, idempotent): every package changed since the last dev
+   publish and every package that pins one of them in `dependencies`, `peerDependencies` or `optionalDependencies` (the Grammar family, gallery,
+   eslint-grammar-*, jest-preset, hfs, the CLI: the real graph of the package.json files) as `X.Y.Z-dev.N`, X.Y.Z the package's next release and N
+   one more than any dev build of it the registry lists or the machine counted. The publish copies carry those versions and pin each other exactly;
+   no committed file changes, so `dev` never holds a `-dev` pin. Then `devSync.local` names exactly those versions (exact versions, since the `local`
+   dist-tag moves), a dev build whose release npm now serves is dropped from it, and the after-land dev sync (`devSync.afterLand`) installs them into
+   the app checkout `devSync.checkout` names.
+4. A release train is a `dev` -> `main` move with the FULL gate: `starci release gate --level full` on the dev tip (every package and the CLI with
+   lint, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
+   (`release publish`, never a `-dev` version). Then `starci release back-merge --execute` brings `main` back into `dev`, the cli-follow commit
+   included: a fast-forward when dev is behind, else a merge commit, pushed under the harness lander's dev lock. `release push` of main and
+   `release publish --execute` print that step; it runs only with `--execute`.
+5. CI (`.github/workflows/ci.yml`) runs on pushes of and pull requests into both branches: the FAST level on `dev` (no sonar, no Grammar theme
+   proof, no CLI lint), the FULL level on `main`; a newer push cancels the older run. publish.yml listens to the runs of `main` only, and a run
+   that publishes is never cancelled.
+
+**Enforced by** the harness profile of `starci lane land` and `starci lane gate` (`cli/src/harness/land-profile.ts`, proven by
+`land-profile.test.ts`), `starci release gate` (`cli/src/core/release/gate.ts`, `gate.test.ts`), `starci deps publish-dev`
+(`cli/src/core/deps/publish-dev.ts`, `publish-dev.test.ts`), `starci release back-merge` (`back-merge.test.ts`) and ci.yml. That `main` moves only by
+a train is held by review: the harness has no pre-push hook.

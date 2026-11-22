@@ -16,6 +16,8 @@ import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
 import { FOLLOW_FILES } from "./affected.js"
+import { BACK_MERGE_STEP } from "./back-merge-step.js"
+import { isHarnessCheckout } from "./harness-checkout.js"
 import { meetsPin } from "./pin-range.js"
 import { peerSkews } from "./peer-range.js"
 import { stackPinVersions, unservedPins } from "./pin-served.js"
@@ -332,6 +334,8 @@ export const releasePublishVerb = defineVerb({
         const data: PublishData = { mode: flags.execute ? "publish" : "plan", rows, published }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])
         const summary = flags.execute ? `published ${String(published.length)} package(s)` : `${String(due.length)} to publish (plan only; add --execute)`
-        return { data, message: `${table}\n${summary}` }
+        // On the harness, main moved: the train's back-merge brings it (and the cli-follow commit publish.yml may add) into dev.
+        const next = flags.execute && isHarnessCheckout(root) ? `\n${BACK_MERGE_STEP}` : ""
+        return { data, message: `${table}\n${summary}${next}` }
     },
 })

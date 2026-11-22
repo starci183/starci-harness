@@ -64,7 +64,7 @@ void test("publish-local plans the committed version, never a -local one, and ju
     const { root, pkg } = harnessCheckout(t)
     const digest = await sourceDigest(root, "packages/x")
     const unserved = await planOne(root, pkg, { served: () => Promise.resolve(undefined), listed: undefined })
-    assert.deepEqual({ ...unserved }, { package: "@starci/x", version: "1.2.3", dir: "packages/x", npm: "unserved", replaces: undefined, served: undefined })
+    assert.deepEqual({ ...unserved }, { package: "@starci/x", version: "1.2.3", dir: "packages/x", npm: "unserved", replaces: undefined, served: undefined, pins: [], pinned: new Map() })
     const same: NpmCopy = { integrity: "sha512-x", source: digest }
     const asked = (served: NpmCopy | undefined, listed: readonly string[]) => ({ served: () => Promise.resolve(served), listed: () => Promise.resolve(listed) })
     const rebuilt = await planOne(root, pkg, asked(same, ["1.2.3"]))

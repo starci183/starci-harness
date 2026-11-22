@@ -47,8 +47,11 @@ export interface LandAutoSync {
     readonly run: () => Promise<void>
 }
 
-/** The lander's auto-sync from this machine's settings (`devSync.afterLand`), or undefined when it is off or the run is a dry run. */
-export const landAutoSync = (settings: DevSyncSettings, repo: string, dryRun: boolean, say: (line: string) => void, sync: LandSync = devSync): LandAutoSync | undefined => {
+/**
+ * The lander's auto-sync from this machine's settings (`devSync.afterLand`), or undefined when it is off or the run is a dry run. `reload` reads the
+ * settings again when the sync runs, so the `local` overlay a dev publish wrote after the lander started is the one installed.
+ */
+export const landAutoSync = (settings: DevSyncSettings, repo: string, dryRun: boolean, say: (line: string) => void, sync: LandSync = devSync, reload: () => DevSyncSettings = () => settings): LandAutoSync | undefined => {
     if (!settings.afterLand || dryRun) return undefined
     const debounce = new LandDebounce(settings.debounceSeconds * 1000)
     const checkout = settings.checkout ?? repo
@@ -56,11 +59,28 @@ export const landAutoSync = (settings: DevSyncSettings, repo: string, dryRun: bo
         debounce.settle()
         say(`dev sync of ${checkout} after the landed batch(es) (local setting devSync.afterLand)`)
         try {
-            const result = await sync({ checkout, local: settings.local, env: settings.env, execute: true, restart: true, processes: settings.processes, say: (line) => { say(`dev sync: ${line}`) } })
+            const result = await sync({ checkout, local: reload().local, env: settings.env, execute: true, restart: true, processes: settings.processes, say: (line) => { say(`dev sync: ${line}`) } })
             if ((result.exitCode ?? 0) !== 0) say("dev sync: the restart failed; the lander keeps landing (read the stack log, then run starci dev sync --execute by hand)")
         } catch (error) {
             say(`dev sync: not run (${error instanceof Error ? error.message : String(error)}); the lander keeps landing`)
         }
     }
     return { debounce, run }
+}
+
+/**
+ * The harness lander's dev publish after a landed batch (`devSync.publishLocal`): undefined when it is off or the run is a dry run. It runs `publish`
+ * on the landed dev commit before the debounced sync, so the sync installs the versions it wrote into `devSync.local`; a failure is said, never thrown,
+ * and the next landed batch measures from the last publish that completed, so nothing it missed is lost.
+ */
+export const landPublishDev = (settings: DevSyncSettings, dryRun: boolean, say: (line: string) => void, publish: (landed: string) => Promise<{ readonly published: readonly string[]; readonly local: readonly string[] }>): ((landed: string) => Promise<void>) | undefined => {
+    if (!settings.publishLocal || dryRun) return undefined
+    return async (landed) => {
+        try {
+            const done = await publish(landed)
+            say(`dev publish of ${landed.slice(0, 10)}: ${String(done.published.length)} dev build(s); devSync.local = ${done.local.join(", ") || "(empty)"}`)
+        } catch (error) {
+            say(`dev publish of ${landed.slice(0, 10)}: not done (${error instanceof Error ? error.message.split("\n")[0] ?? "" : String(error)}); the lander keeps landing, the next batch publishes from the last completed publish (or run starci deps publish-dev --execute)`)
+        }
+    }
 }

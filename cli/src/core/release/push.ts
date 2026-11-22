@@ -8,6 +8,7 @@ import { isSealedPath, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding } from "../../shared/secrets.js"
 import { defineVerb } from "../../shared/verb.js"
 import { isHarnessCheckout, judgeHarnessPush } from "./push-gate.js"
+import { BACK_MERGE_STEP } from "./back-merge-step.js"
 
 interface PushData {
     readonly remote: string
@@ -83,7 +84,7 @@ export const releasePushVerb = defineVerb({
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])
         const data: PushData = { remote, branch, head, previous, commits, pushed: !dryRun, dryRun }
         const judgedSuffix = judged === undefined ? "" : `
-${judged}`
+${judged}${branch === "main" ? `\n${BACK_MERGE_STEP}` : ""}`
         return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judgedSuffix}` }
     },
 })

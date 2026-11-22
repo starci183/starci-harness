@@ -21,6 +21,7 @@ import { buildPackage, parseManifest, tail } from "./packages.js"
 import { judgePeerLine } from "./peer-line.js"
 import type { ListedLine, PeerLineVerdict } from "./peer-line.js"
 import { packStamped, sourceDigest } from "./pack-stamped.js"
+import { copyPins, movedPins, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
 /** What npm serves of a version this checkout publishes: nothing, or a copy of the same source. */
 type NpmState = "unserved" | "same source"
@@ -32,11 +33,15 @@ interface Row {
     readonly npm: NpmState
     /** Whether the local registry already lists the version (a publish replaces it); undefined while the registry is down. */
     readonly replaces: boolean | undefined
+    /** The sibling pins its publish copy moves (`name a -> b`): to the version published in the same batch, or to the tree's newer version the registry serves. */
+    readonly pins: readonly string[]
 }
 
 /** A row with what the publish itself needs: the copy npm serves, judged again against the source as built. */
 interface Planned extends Row {
     readonly served: NpmCopy | undefined
+    /** The pins of its publish copy, name to exact version (publish-pins.ts copyPins). */
+    readonly pinned: ReadonlyMap<string, string>
 }
 
 interface PublishLocalData {
@@ -57,7 +62,7 @@ const shippable = (pkg: WorkspacePackage): boolean => !pkg.private && (pkg.relat
  * Every dependency before its dependent, as CI builds them (`release affected` with no base: the build order of each package, a
  * sibling it installs or builds against first), then the CLI.
  */
-const globalOrder = async (root: string): Promise<string[]> => {
+export const globalOrder = async (root: string): Promise<string[]> => {
     const plan = await affectedBy(root, undefined, undefined)
     return [...new Set([...plan.packages.flatMap((one) => one.build), CLI_DIR])]
 }
@@ -89,7 +94,31 @@ export const planOne = async (root: string, pkg: WorkspacePackage, asked: PlanQu
     const served = await asked.served(pkg.name, version)
     const npm = judgeVersion(pkg.name, version, await sourceDigest(root, pkg.relativeDir), served)
     const replaces = asked.listed === undefined ? undefined : (await asked.listed(pkg.name)).includes(version)
-    return { package: pkg.name, version, dir: pkg.relativeDir, npm, replaces, served }
+    return { package: pkg.name, version, dir: pkg.relativeDir, npm, replaces, served, pins: [], pinned: new Map() }
+}
+
+/**
+ * The publish-copy pins of every planned row (publish-pins.ts): each sibling a row requires is pinned at its version in the same batch, and an exact pin
+ * of a sibling outside the batch that the tree moved past is pinned at the tree's version when the local registry (its npm uplink included) lists it.
+ * So a batch never ships the CLI requiring the hfs below the one it published beside it, and `--package cli` alone never ships behind the hfs the same tree
+ * published before. `listed` is undefined while the registry is down: only the batch's own pins move then.
+ */
+export const pinRows = async (rows: readonly Planned[], all: readonly WorkspacePackage[], listed: ((name: string) => Promise<readonly string[]>) | undefined): Promise<Planned[]> => {
+    const batch = new Map(rows.map((row) => [row.package, row.version]))
+    const tree = new Map(all.map((pkg) => [pkg.name, pkg.version]))
+    const manifests = new Map(rows.map((row) => {
+        const pkg = all.find((one) => one.relativeDir === row.dir)
+        const raw: unknown = pkg === undefined ? {} : JSON.parse(readFileSync(join(pkg.dir, "package.json"), "utf8"))
+        return [row.package, typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {}]
+    }))
+    const asked = [...new Set([...manifests.values()].flatMap((manifest) => [...siblingSpecs(manifest).keys()]))].filter((name) => tree.has(name) && !batch.has(name))
+    const lists = new Map(listed === undefined ? [] : await inOrder(asked, async (name) => [name, await listed(name)] as const))
+    const served = (name: string, version: string): boolean => lists.get(name)?.includes(version) ?? false
+    return rows.map((row) => {
+        const manifest = manifests.get(row.package) ?? {}
+        const pinned = copyPins(manifest, batch, tree, served)
+        return { ...row, pinned, pins: movedPins(manifest, pinned, false) }
+    })
 }
 
 /** Packs the package folder with its source digest stamped and publishes the tarball to the local registry as it is: the version in git, replacing the copy of that version the registry lists (an unpublish, then the publish). */
@@ -98,7 +127,8 @@ const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-local-"))
     try {
         judgeVersion(row.package, row.version, await sourceDigest(root, pkg.relativeDir), row.served)
-        const local = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz` })
+        // The copy pins its siblings as the batch publishes them (publish-pins.ts): an exact pin moves, a range a release satisfies stays.
+        const local = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit: (text) => pinnedManifest(text, undefined, row.pinned, false) })
         if ((await registryVersions(row.package, port, scratch)).includes(row.version)) {
             const removed = await captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", "--userconfig", npmrc, ...registryFlags(port)], scratch)
             if (removed.exitCode !== 0) throw stepFailed(`npm unpublish of ${row.package}@${row.version} from ${registryUrl(port)}`, removed)
@@ -206,18 +236,19 @@ export const depsPublishLocalVerb = defineVerb({
         const state = await registryState()
         const live = state === "up"
         const asked: PlanQuestions = { served: (name, version) => npmCopy(root, name, version), listed: live ? (name) => registryVersions(name, port, root) : undefined }
-        const rows = await inOrder(chosen, (pkg) => planOne(root, pkg, asked))
+        const rows = await pinRows(await inOrder(chosen, (pkg) => planOne(root, pkg, asked)), all.filter(shippable), asked.listed)
         const order = declared === undefined ? await globalOrder(root) : appBuildOrder(chosen)
         const due = rows.toSorted((left, right) => order.indexOf(left.dir) - order.indexOf(right.dir))
         const peerLine: PeerLineVerdict = declared === undefined && (live || flags.execute) ? await peerLineOf(all, due, port) : { refused: [], warned: [] }
         if (flags.execute && peerLine.refused.length > 0) throw new Refusal("PUBLISH_LOCAL_PEER_ORPHAN", `an app could not install this publish beside its siblings (CONTRIB-20; contexts/authority/packages.md "The local registry"):\n${peerLine.refused.map((line) => `- ${line}`).join("\n")}`)
         const published: string[] = []
         if (flags.execute) await publishDue(context, port, { root, all, order, rows: due, published, app: declared !== undefined })
-        const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: flags.execute ? "up" : state, rows: due.map((row) => ({ package: row.package, version: row.version, dir: row.dir, npm: row.npm, replaces: row.replaces })), published, peerLine }
+        const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: flags.execute ? "up" : state, rows: due.map((row) => ({ package: row.package, version: row.version, dir: row.dir, npm: row.npm, replaces: row.replaces, pins: row.pins })), published, peerLine }
         const table = formatTable([["PACKAGE", "VERSION", "NPM", "LOCAL REGISTRY"], ...due.map((row) => [row.package, row.version, row.npm, row.replaces === undefined ? "unknown (down)" : row.replaces ? "replaces its copy" : "new"])])
         const summary = flags.execute ? `published ${String(published.length)} package(s) to ${registryUrl(port)}` : `${String(due.length)} to publish to ${registryUrl(port)} (registry ${state}; plan only, add --execute)`
         const names = due.map((row) => row.package.replace(/^@starci\//, "")).join(" ")
-        const peerLines = [...peerLine.refused.map((line) => `refused PUBLISH_LOCAL_PEER_ORPHAN: ${line}`), ...peerLine.warned.map((line) => `warning PUBLISH_LOCAL_PEER_LINE: ${line}`)]
+        const pinLines = due.filter((row) => row.pins.length > 0).map((row) => `${row.package} publish copy pins ${row.pins.join(", ")}`)
+        const peerLines = [...pinLines, ...peerLine.refused.map((line) => `refused PUBLISH_LOCAL_PEER_ORPHAN: ${line}`), ...peerLine.warned.map((line) => `warning PUBLISH_LOCAL_PEER_LINE: ${line}`)]
         return { data, message: [table, ...peerLines, summary, `install them in an app: starci deps install-local ${names} --execute (before a commit: starci deps install-local --restore)`].join("\n") }
     },
 })

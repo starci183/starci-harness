@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { sharedStateBase } from "./ledger.js"
@@ -20,8 +20,13 @@ const devSyncSchema = z.object({
     env: z.string().min(1).default("dev"),
     /** Consecutive landed batches inside this window give one sync, after the last of them (default 120 s). */
     debounceSeconds: z.number().int().min(0).default(120),
-    /** Harness packages the sync keeps installed from the local registry (`dev sync --local <pkg>`); empty restores the registry versions. */
+    /** Harness packages the sync keeps installed from the local registry (`dev sync --local <pkg>`, or `<pkg>@<exact version>`); empty restores the registry versions. The harness lander's dev publish writes it. */
     local: z.array(z.string().min(1)).default([]),
+    /**
+     * The harness's own lander only: after a batch lands on the harness's dev, publish its dev line (`deps publish-dev --execute`: the changed packages and
+     * their dependents as X.Y.Z-dev.N) and set `local` to exactly those versions, before the sync (default off).
+     */
+    publishLocal: z.boolean().default(false),
     /** The stack processes of each side: a change under be/ restarts `be`, under fe/ restarts `fe`, anything else both. */
     processes: z.object({ be: z.array(z.string().min(1)).default(["api"]), fe: z.array(z.string().min(1)).default(["web"]) }).default({ be: ["api"], fe: ["web"] }),
 })
@@ -39,6 +44,20 @@ export type LocalSettings = z.infer<typeof settingsSchema>
 
 /** Where this machine's settings live. */
 export const localSettingsPath = (base: string = sharedStateBase()): string => join(base, LOCAL_SETTINGS_FILE)
+
+/**
+ * Sets `devSync.local` of the settings file to exactly `entries`, keeping every other key of the file as it is (an absent file is created). The written
+ * file is read back through the schema, so a damaged one refuses LOCAL_SETTINGS_INVALID instead of being overwritten.
+ */
+export const writeDevSyncLocal = (file: string, entries: readonly string[]): void => {
+    loadLocalSettings(file)
+    const raw: unknown = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {}
+    const record = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+    const devSync = typeof record.devSync === "object" && record.devSync !== null && !Array.isArray(record.devSync) ? (record.devSync as Record<string, unknown>) : {}
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, `${JSON.stringify({ ...record, devSync: { ...devSync, local: [...entries] } }, null, 2)}\n`)
+    loadLocalSettings(file)
+}
 
 /** Reads this machine's settings; an absent file is every default, a damaged one is LOCAL_SETTINGS_INVALID naming the file. */
 export const loadLocalSettings = (file: string = localSettingsPath()): LocalSettings => {

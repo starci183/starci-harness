@@ -1,18 +1,22 @@
 name: ci
 
+# Two lines (contexts/project/branches.md PROJECT-BRANCH-3): `dev`, where the batch lander lands every harness batch, runs the FAST level (the plan's
+# packages built and tested, the CLI typechecked and tested, the light gates; no sonar, no Grammar theme proof, no CLI lint); `main`, moved once per
+# release train, runs the FULL level. publish.yml listens to main's runs only, so nothing of dev ever reaches npm.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Only the newest run matters, on a pull request and on main alike: a push cancels the run still going for its older commit, and
-# the newer run tests the whole tree. Nothing here writes to npm or to main, so a cancelled run leaves nothing half done: the
-# publication is publish.yml's, which starts when this workflow completes and is never cancelled (CONTRIBUTING.md CONTRIB-20).
+# Only the newest run matters, on a pull request, on dev and on main alike: a push cancels the run still going for its older commit
+# (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and the newer run
+# tests the whole change. Nothing here writes to npm, main or dev, so a cancelled run leaves nothing half done: the publication is
+# publish.yml's, which starts when a run of main completes and is never cancelled (CONTRIBUTING.md CONTRIB-20).
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -28,6 +32,7 @@ jobs:
       actions: read
     outputs:
       base: ${{ steps.base.outputs.base }}
+      level: ${{ steps.base.outputs.level }}
       matrix: ${{ steps.plan.outputs.matrix }}
       packages: ${{ steps.plan.outputs.packages }}
       harness: ${{ steps.plan.outputs.harness }}
@@ -53,12 +58,16 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1"
           base=""
+          # The FAST level on dev (a push of dev, a pull request into it), the FULL level on main and on a manual run.
+          level=full
+          if [ "$GITHUB_REF" = refs/heads/dev ] || [ "$GITHUB_BASE_REF" = dev ]; then level=dev; fi
           case "$GITHUB_EVENT_NAME:$GITHUB_REF" in
             pull_request:*)
               base="$PR_BASE" ;;
-            push:refs/heads/main)
+            push:refs/heads/main|push:refs/heads/dev)
+              branch="${GITHUB_REF#refs/heads/}"
+              runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=$branch&event=push&status=success&per_page=1"
               base=$(gh api "$runs" --jq '.workflow_runs[0].head_sha // empty')
               # No successful run, or one off this history: the parent, and with no parent nothing (everything is checked).
               if [ -z "$base" ] || ! git merge-base --is-ancestor "$base" HEAD; then
@@ -67,6 +76,7 @@ jobs:
               fi ;;
           esac
           echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "level=$level" >> "$GITHUB_OUTPUT"
       - name: Install the CLI on this commit's packages
         uses: ./.github/actions/cli-install
       - name: Build the CLI
@@ -229,7 +239,7 @@ jobs:
   grammar-proof:
     name: grammar proof
     needs: plan
-    if: needs.plan.outputs.grammar == 'true'
+    if: needs.plan.outputs.grammar == 'true' && needs.plan.outputs.level == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     container:
@@ -272,6 +282,7 @@ jobs:
       - name: Typecheck the CI scripts
         run: node cli/node_modules/typescript/bin/tsc -p .github/scripts/tsconfig.json
       - name: Lint the CLI
+        if: needs.plan.outputs.level == 'full'
         working-directory: cli
         run: npm run lint
       - name: Build the CLI
@@ -306,10 +317,11 @@ jobs:
         working-directory: app
         run: npm ci --no-audit --no-fund && npm run build
 
-  # Once per pull request and push to main: the CLI is analysed for issues and duplication, never coverage
+  # Once per pull request into main and push to main (the FULL level; dev skips it): the CLI is analysed for issues and duplication, never coverage
   # (sonar-project.properties), so it needs nothing the other jobs build.
   sonar:
     needs: plan
+    if: needs.plan.outputs.level == 'full'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

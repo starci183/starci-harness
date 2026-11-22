@@ -70,6 +70,8 @@ export interface ReadyEntry {
     readonly branch: string
     readonly sha: string
     readonly at: string
+    /** The repository the lane lands in (its origin URL, written by `lane ready`): each lander of a shared lanes folder takes its own repository's lanes (harness/land-profile.ts). */
+    readonly repo?: string
 }
 
 /** What a lane monitors: `<lanes>/_land-status/<lane>.json`. */
@@ -109,12 +111,13 @@ export interface LandPaths {
 }
 
 /** The folders and files of a lanes folder. */
-export const landPaths = (dir: string): LandPaths => ({
+export const landPaths = (dir: string, scope = ""): LandPaths => ({
     ready: join(dir, "_land-ready"),
     status: join(dir, "_land-status"),
     batches: join(dir, "_land-status", "_batches"),
-    lander: join(dir, "_batch-lander.lock"),
-    devLock: join(dir, "_dev-push.lock"),
+    // A lander of another repository in the same lanes folder (the harness's, harness/land-profile.ts lockScope) holds its own lander lock and dev lock.
+    lander: join(dir, scope === "" ? "_batch-lander.lock" : `_batch-lander-${scope}.lock`),
+    devLock: join(dir, scope === "" ? "_dev-push.lock" : `_dev-push-${scope}.lock`),
     slot: (kind: "gate" | "npm", n: number) => join(dir, `_${kind}-slot-${String(n)}.lock`),
 })
 
@@ -218,9 +221,9 @@ export const releaseLockFile = (file: string, pid?: number): void => {
 /** The content the lander writes into what it holds. */
 export const holderLine = (): string => `${LANDER} ${new Date().toISOString()} pid=${String(process.pid)}`
 
-/** One lander per lanes folder: refused while a live lander holds it; the file of a lander whose process is gone is replaced. */
-export const holdLander = (dir: string): void => {
-    const file = landPaths(dir).lander
+/** One lander per lanes folder and scope: refused while a live lander holds it; the file of a lander whose process is gone is replaced. */
+export const holdLander = (dir: string, scope = ""): void => {
+    const file = landPaths(dir, scope).lander
     for (let attempt = 0; attempt < 3; attempt += 1) {
         if (takeLockFile(file, holderLine())) return
         let held: string
