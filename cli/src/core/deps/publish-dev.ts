@@ -17,10 +17,11 @@ import { isHarnessCheckout } from "../release/harness-checkout.js"
 import { NPMJS_FLAGS } from "./local-refs.js"
 import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryFolder, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
 import { packStamped } from "./pack-stamped.js"
+import type { EntryEdit } from "./pack-stamped.js"
 import { parseRequested } from "./install-local.js"
 import { buildPackage, tail } from "./packages.js"
 import { globalOrder } from "./publish-local.js"
-import { copyPins, pinnedManifest, siblingSpecs } from "./publish-pins.js"
+import { copyPins, dataPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
 export { PIN_FIELDS } from "./publish-pins.js"
 
@@ -60,12 +61,16 @@ export interface DevNode {
     readonly requires: ReadonlySet<string>
 }
 
-/** The dev-line nodes of a repository's packages, read from each package.json. */
-export const devNodes = (packages: readonly WorkspacePackage[]): DevNode[] =>
+/**
+ * The dev-line nodes of a repository's packages, read from each package.json and the pin data it ships (hfs's canon-pins.yaml, publish-pins.ts): a
+ * package whose rendered pins name a sibling requires it, so a dev build of the gallery or the Grammar republishes hfs with the dev build in its data.
+ */
+export const devNodes = (packages: readonly WorkspacePackage[], dataOf: (pkg: WorkspacePackage) => readonly string[] = (pkg) => pinDataTexts(pkg.dir)): DevNode[] =>
     packages.filter(shipsOnDevLine).map((pkg) => {
         const manifest: unknown = JSON.parse(readFileSync(join(pkg.dir, "package.json"), "utf8"))
         const pins = typeof manifest === "object" && manifest !== null ? siblingSpecs(manifest as Record<string, unknown>) : new Map<string, string>()
-        return { name: pkg.name, dir: pkg.relativeDir, version: pkg.version, requires: new Set(pins.keys()) }
+        const rendered = dataOf(pkg).flatMap((text) => pinDataRows(text).map((row) => row.name)).filter((name) => name !== pkg.name)
+        return { name: pkg.name, dir: pkg.relativeDir, version: pkg.version, requires: new Set([...pins.keys(), ...rendered]) }
     })
 
 /** The dev-line packages owning a changed file: the package whose folder holds it, and the CLI for a tree its tarball carries. Pure. */
@@ -236,7 +241,8 @@ export interface DevPublishIo {
     readonly build: (pkg: WorkspacePackage) => Promise<void>
     /** The tree's versions and whether a registry serves one: a sibling the dev line does not carry is pinned at the tree's version when served (publish-pins.ts). */
     readonly treePins?: { readonly tree: ReadonlyMap<string, string>; readonly served: (name: string, version: string) => boolean }
-    readonly publish: (pkg: WorkspacePackage, row: DevRow, edit: (text: string) => string) => Promise<void>
+    /** Publishes one copy: `edit` gives its manifest, `entries` its other text files (the pin data it ships, publish-pins.ts pinDataEdit). */
+    readonly publish: (pkg: WorkspacePackage, row: DevRow, edit: (text: string) => string, entries: EntryEdit) => Promise<void>
     readonly files: { readonly record: string; readonly counter: string; readonly settings: string }
     readonly say: (line: string) => void
 }
@@ -248,6 +254,9 @@ const withTreePins = (text: string, pins: ReadonlyMap<string, string>, tree: Dev
     if (typeof manifest !== "object" || manifest === null) return pins
     return new Map([...copyPins(manifest as Record<string, unknown>, pins, tree.tree, tree.served), ...pins])
 }
+
+/** The edit of a dev copy's pin data (hfs's canon-pins.yaml): the dev line's versions, then the tree's served ones, versions and ranges alike. Pure. */
+export const devDataEdit = (pins: ReadonlyMap<string, string>, tree: DevPublishIo["treePins"]): EntryEdit => pinDataEdit((text) => dataPins(text, pins, tree?.tree ?? new Map(), tree?.served ?? (() => false)), true)
 
 /** What one dev publish did. */
 export interface DevPublishData {
@@ -277,7 +286,7 @@ export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly p
         const row = plan.rows.find((one) => one.dir === dir)
         if (row === undefined) return
         io.say(`publishing ${row.package}@${row.version} (${row.why})`)
-        await io.publish(pkg, row, (text) => devManifest(text, row.version, withTreePins(text, plan.pins, io.treePins)))
+        await io.publish(pkg, row, (text) => devManifest(text, row.version, withTreePins(text, plan.pins, io.treePins)), devDataEdit(plan.pins, io.treePins))
         const counter = readCounter(io.files.counter)
         writeJson(io.files.counter, { ...counter, [`${row.package}@${row.next}`]: Math.max(counter[`${row.package}@${row.next}`] ?? 0, devNumber(row.version)) })
         published.push(`${row.package}@${row.version}`)
@@ -288,10 +297,10 @@ export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly p
 }
 
 /** Packs the package with its dev manifest and publishes it to the local registry under the `local` tag, then reads it back. */
-const publishDevCopy = async (root: string, pkg: WorkspacePackage, row: DevRow, edit: (text: string) => string, npmrc: string): Promise<void> => {
+const publishDevCopy = async (root: string, pkg: WorkspacePackage, row: DevRow, edit: (text: string) => string, entries: EntryEdit, npmrc: string): Promise<void> => {
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
     try {
-        const tarball = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit })
+        const tarball = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit, entries })
         const published = await withHeavySlot("build", `npm publish ${row.package}@${row.version}`, pkg.dir, {}, (held) => captureNpm(["publish", tarball, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(PORT)], scratch, held.options))
         if (published.exitCode !== 0) throw new Refusal("PUBLISH_LOCAL_FAILED", `npm publish of ${row.package}@${row.version} to ${registryUrl(PORT)} failed:\n${tail(published.stdout, published.stderr)}`)
         const view = await captureNpm(["view", `${row.package}@${row.version}`, "version", ...registryFlags(PORT)], scratch)
@@ -362,7 +371,7 @@ export const publishDev = async (given: { readonly root: string; readonly head?:
         io: {
             treePins,
             build: (pkg) => buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined }),
-            publish: (pkg, row, edit) => publishDevCopy(root, pkg, row, edit, npmrc),
+            publish: (pkg, row, edit, entries) => publishDevCopy(root, pkg, row, edit, entries, npmrc),
             files, say,
         },
     })

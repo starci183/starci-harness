@@ -6,6 +6,7 @@ import { captureNpm, captureTool } from "../../shared/exec.js"
 import { captureGit, refExists, repositoryRoot } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
+import { assertPosixSh } from "../../shared/posix-sh.js"
 import { installPackage, tail } from "../deps/packages.js"
 import { affectedBy } from "./affected.js"
 import type { Affected } from "./affected.js"
@@ -197,6 +198,7 @@ export const releaseGateVerb = defineVerb({
     run: async (context, flags) => {
         const level = flags.level ?? "dev"
         if (level !== "dev" && level !== "full") throw new Refusal("CLI_USAGE", `--level is dev or full, not "${level}"`)
+        assertPosixSh("release gate")
         const root = await repositoryRoot(context.cwd)
         if (!isHarnessCheckout(root)) throw new Refusal("RELEASE_GATE_NOT_HARNESS", `${root} is not the harness checkout (cli/, contexts/README.md, packages/); an app gates with starci app check --level dev|full`)
         const base = level === "full" ? undefined : (flags.base ?? (await defaultBase(root)))
