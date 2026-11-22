@@ -71,7 +71,7 @@ is fine). Neither one waits for the other, and neither moves the other's checkou
    coverage. Those run ONCE at the main cut (`--level full`: a push of main, `release cut`, `release push`,
    `app release`), and a red full run is fixed in a hardening lane before the cut.
 2. `starci dev sync --execute` in the app's main dev checkout fast-forwards it to `origin/dev`, runs `npm ci`, installs
-   each `--local <pkg>` from the local npm registry, then **builds** the api and the web from that code and runs the
+   each `--local <pkg>` from the local npm registry, builds the workspace packages (the app's `codegen` and `build:modules`), then **builds** the api and the web from that code and runs the
    built artifacts (`next start`, `node dist/...`; never `next dev`, `ts-node-dev` or another watcher). It restarts only
    the changed side, waits for its health (over the tunnel hostname when one routes it) and keeps the database, the
    storage and the tunnel up. It prints any local overlay in effect. A plain `dev sync` (no `--local`) puts every

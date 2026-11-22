@@ -45,11 +45,16 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
    conflict in `.starcistacks/cache` alone is no conflict: the batch keeps its own records and its gate rewrites what it re-checks.
 3. The batch runs `npm ci` when the lockfile is not the one its `node_modules` came from, then codegen and `build:modules`, then
    one `app check --env prod` with the app's own pinned CLI. Green, `app push origin HEAD:dev` commits the cache records the run wrote
-   and pushes, and every lane in the batch is landed at that commit.
+   and pushes, and every lane in the batch is landed at that commit. A tree that fails one of those prepare steps is judged like a red
+   gate, so the same failing batch never forms again: each lane of a batch of several is prepared alone on `origin/dev`, and every lane
+   that fails alone is rejected with the step's output (`LANE_LAND_PREPARE`); a batch whose lanes all pass alone but fail together
+   rejects them all. When every lane fails alone (or the batch is one lane), `origin/dev` itself is prepared: a dev that fails too
+   blames no lane, every lane stays ready and the lander waits a full poll before the next batch, as after any batch that failed
+   before it judged its lanes (`harness/land-batch.ts` `judgePrepare`).
 4. Red, each blocking finding is mapped to the lanes whose diff against the base names its file (the path itself, else a file its
    message cites, else a file under the folder it names). Those lanes are rejected with their findings and the gate runs once more
    on the rest. A second red run, a finding no lane's diff names, or a batch where every lane is named, lands nothing and rejects
-   every lane with the findings. A batch is never split further: at most two gate runs.
+   every lane with the findings. A red gate never splits a batch further: at most two gate runs.
 5. Each lane reads its outcome from `<lanes>/_land-status/<lane>.json`: `queued`, `landed` (`sha` the dev commit, `migrations`
    the files under `db/migrations/` it added, applied once landed), `conflict` (`reason`, `files`, `requeued`) or `rejected`
    (`findings`). A gate that gives no verdict (no report) or a failed push blames no lane: every lane stays ready.

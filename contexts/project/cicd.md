@@ -64,8 +64,12 @@ to `origin/dev` and its running dev stack onto that code:
    holds refuses the rename at once, one retry follows a short pause, then `DEV_SYNC_BUSY` with nothing deleted. A failed
    install puts every copy back; the copies are removed only once it passed, and a copy left aside by a sync that died is moved
    back by the next sync, which installs again. (A staging install swapped in by a rename is not sound for npm workspaces:
-   their links and nested `node_modules` would point into the staging copy.) The stopped processes restart after the install,
-   with the changed ones, even under `--no-restart`.
+   their links and nested `node_modules` would point into the staging copy.) Then the tree is prepared as the lane gate and the
+   lander prepare theirs (`harness/prepare-tree.ts`): the app's `codegen` and `build:modules` (its workspace packages, whose `main`
+   is their `dist`), each it declares, whenever the sync installed or a running process reads a changed file. A step that fails is
+   `DEV_SYNC_BUILD` with its output; the next sync builds again and restarts both sides though the checkout has not moved. The
+   stopped processes restart after the install and the build, with the changed ones, even under `--no-restart`, and alone when the
+   install or the build failed.
 4. The changed side restarts: a change under `be/` restarts the api, under `fe/` the web, anything else a process reads (the root
    manifests, `packages/`, `db/`, the stack declaration, an overlay) both; docs and cache records restart nothing. It runs the app's
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
