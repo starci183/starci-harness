@@ -67,7 +67,7 @@ ARCH_GRAMMAR_EXPORT_BYPASS:
   title_vi: "Bỏ qua cổng xuất của Grammar"
   meaning_vi: "Mã giao diện import Grammar không qua entry mã hoặc style được chọn."
   causes_vi:
-    - "Import thẳng đường dẫn sâu trong gói Grammar"
+    - "Import thẳng đường dẫn sâu trong gói Grammar (ngoài entry đã chọn và các entry core/ext/<tên> mà gói khai báo trong exports)"
     - "File style import CSS của Grammar ngoài styleEntry và các stylesheet core/ext/<tên>.css mà gói đã khai báo trong exports"
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không cần ai can thiệp thêm."
   owner: op-retry

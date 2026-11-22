@@ -29,9 +29,16 @@ const source = 'import { Button } from "@starci/grammar/common"; export default 
 const bypassEntry = 'apps/web/src/app/bypass.tsx';
 const bypassSource = 'import { Button } from "@starci/grammar/private"; export const Bypass = () => <Button />;';
 const peers = { react: '>=18', '@heroui/react': '>=2', 'react-aria-components': '>=1' };
+const extEntry = 'apps/web/src/app/graph.tsx';
+const extSource = 'import { FlowGraph } from "@starci/grammar/core/ext/graph"; export const Graph = () => <FlowGraph />;';
+const unexportedExtEntry = 'apps/web/src/app/pdf.tsx';
+const unexportedExtSource = 'import { PdfViewer } from "@starci/grammar/core/ext/pdf"; export const Pdf = () => <PdfViewer />;';
+const deepExtEntry = 'apps/web/src/app/deep.tsx';
+const deepExtSource = 'import { FlowGraph } from "@starci/grammar/core/ext/graph/internal"; export const Deep = () => <FlowGraph />;';
 
-function fixture(t: TestContext, edition: 'lite' | 'full', invalid = false, bypass = false) {
+function fixture(t: TestContext, edition: 'lite' | 'full', invalid = false, bypass = false, ext = false) {
   const exports: Record<string, unknown> = { './common': { types: './dist/common/index.d.ts', import: './dist/common/index.js' } };
+  if (ext) exports['./core/ext/graph'] = { types: './dist/core/ext/graph/index.d.ts', import: './dist/core/ext/graph/index.js' };
   if (!invalid) exports['./common.css'] = './dist/common/styles.css';
   const result = projectFixture({
     profile: 'fe', edition,
@@ -43,10 +50,17 @@ function fixture(t: TestContext, edition: 'lite' | 'full', invalid = false, bypa
       'node_modules/@starci/grammar/dist/common/index.js': 'export const Button = () => null;',
       'node_modules/@starci/grammar/dist/common/index.d.ts': 'export declare const Button: () => null;',
       'node_modules/@starci/grammar/dist/common/styles.css': ':root{}',
+      ...(ext ? {
+        'node_modules/@starci/grammar/dist/core/ext/graph/index.js': 'export const FlowGraph = () => null;',
+        'node_modules/@starci/grammar/dist/core/ext/graph/index.d.ts': 'export declare const FlowGraph: () => null;',
+        'node_modules/@starci/grammar/dist/core/ext/pdf/index.js': 'export const PdfViewer = () => null;',
+        'node_modules/@starci/grammar/dist/core/ext/pdf/index.d.ts': 'export declare const PdfViewer: () => null;',
+      } : {}),
     },
     files: {
       [entry]: source,
       ...(bypass ? { [bypassEntry]: bypassSource } : {}),
+      ...(ext ? { [extEntry]: extSource, [unexportedExtEntry]: unexportedExtSource, [deepExtEntry]: deepExtSource } : {}),
       'apps/web/src/app/globals.css': '@import "@starci/grammar/common.css";',
     },
   });
@@ -98,6 +112,19 @@ for (const edition of ['lite'] as const) {
     canonTester(app.tester).run('grammar-entry', ruleOf('grammar-entry'), {
       valid: [{ filename: app.at(entry), code: source }],
       invalid: [{ filename: app.at(bypassEntry), code: bypassSource, errors: [{ message: /ARCH_GRAMMAR_EXPORT_BYPASS/ }] }],
+    });
+  });
+
+  test(`${edition} an exported core-ext entry passes the machine and TSX lint; a non-exported or deep ext path is refused`, t => {
+    const app = fixture(t, edition, false, false, true);
+    const bypasses = grammarFindings(app.root).filter(hit => hit.ruleId === 'ARCH_GRAMMAR_EXPORT_BYPASS').map(hit => hit.path).sort();
+    assert.deepEqual(bypasses, [deepExtEntry, unexportedExtEntry].sort());
+    canonTester(app.tester).run('grammar-entry', ruleOf('grammar-entry'), {
+      valid: [{ filename: app.at(entry), code: source }, { filename: app.at(extEntry), code: extSource }],
+      invalid: [
+        { filename: app.at(unexportedExtEntry), code: unexportedExtSource, errors: [{ message: /ARCH_GRAMMAR_EXPORT_BYPASS/ }] },
+        { filename: app.at(deepExtEntry), code: deepExtSource, errors: [{ message: /ARCH_GRAMMAR_EXPORT_BYPASS/ }] },
+      ],
     });
   });
 }

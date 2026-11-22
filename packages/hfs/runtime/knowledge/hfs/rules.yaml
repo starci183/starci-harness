@@ -1695,7 +1695,7 @@ rules:
       - {path: packages/eslint/fe/r56-r92-graph-coverage.spec.mjs}
   - id: R93
     code: "FE_VENDOR_BOUNDARY"
-    law: "Vendor primitives and icons reach components only through their named owner, with one declared icon set through its icon owner, one icon size per region chosen from the selected Grammar scale, and every vendor primitive behind a named owner. The Grammar package is imported through its selected public code and style entries (a style source may also import a core-ext stylesheet, `<package>/core/ext/<name>.css`, that the installed Grammar exports) and keeps its declared contract: its required peers (those not optional in peerDependenciesMeta) are exactly the selected peers. The Grammar owns the visual values and component API that realize these requirements."
+    law: "Vendor primitives and icons reach components only through their named owner, with one declared icon set through its icon owner, one icon size per region chosen from the selected Grammar scale, and every vendor primitive behind a named owner. The Grammar package is imported through its selected public code and style entries (beside them, a core-ext code entry `<package>/core/ext/<name>` and, in a style source, a core-ext stylesheet `<package>/core/ext/<name>.css`, each one the installed Grammar exports) and keeps its declared contract: its required peers (those not optional in peerDependenciesMeta) are exactly the selected peers. The Grammar owns the visual values and component API that realize these requirements."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_VENDOR_BOUNDARY", "ARCH_GRAMMAR_CONTRACT_INVALID", "ARCH_GRAMMAR_EXPORT_BYPASS"]

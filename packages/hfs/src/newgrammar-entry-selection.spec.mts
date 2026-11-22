@@ -153,6 +153,31 @@ for (const edition of ['lite'] as const) {
       'an ext stylesheet never replaces the selected style entry');
   });
 
+  test(`architecture accepts an exported core-ext code entry in product source and refuses the rest (${edition})`, context => {
+    selectedCatalog(context);
+    const { package: name } = genericContract;
+    const root = fixture(context, edition, 'alternate');
+    const installed = path.join(path.dirname(root), 'node_modules', name, 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(installed, 'utf8'));
+    manifest.exports['./core/ext/graph'] = './dist/core/ext/graph/index.js';
+    manifest.exports['./core/ext/graph.css'] = './dist/core/ext/graph/styles.css';
+    manifest.exports['./core/ext/markdown/react'] = './dist/core/ext/markdown/react.js';
+    manifest.exports['./core/ext/escape'] = '../outside.js';
+    fs.writeFileSync(installed, JSON.stringify(manifest));
+    const config = loadArchitectureConfig(root);
+    const findings = (specifier: string): string[] => checkGrammar(config, grammarSource(root, specifier), sourceFinding).map(finding => finding.ruleId);
+    assert.deepEqual(findings(`${name}/core/ext/graph`), [], 'an exported core-ext entry is accepted');
+    assert.deepEqual(findings(`${name}/core/ext/markdown/react`), [], 'an exported core-ext sub-entry is accepted');
+    for (const refused of [
+      `${name}/core/ext/pdf`, // a core-ext entry the install does not export
+      `${name}/core/ext/graph/internal`, // a deep path under an ext
+      `${name}/core/ext/graph.css`, // a stylesheet belongs in globals.css, never in product source
+      `${name}/core/ext/escape`, // an export whose target leaves the package
+      `${name}/offset-pop`, // another family's entry
+      `${name}/dist/core/ext/graph/index.js`, // an internal file
+    ]) assert.deepEqual(findings(refused), ['ARCH_GRAMMAR_EXPORT_BYPASS'], refused);
+  });
+
   test(`architecture refuses absent or unsupported selection when styles need a contract (${edition})`, context => {
     for (const family of [undefined, 'unlisted']) {
       const root = fixture(context, edition, family);

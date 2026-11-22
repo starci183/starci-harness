@@ -26,6 +26,15 @@ function coreExtStylesheet(packageName: string, specifier: string): boolean {
   return specifier.startsWith(prefix) && /^[a-z0-9][a-z0-9-]*\.css$/u.test(specifier.slice(prefix.length));
 }
 
+/**
+ * A core-ext code entry of the grammar package: `<package>/core/ext/<name>` or one declared sub-entry of it
+ * (`core/ext/markdown/react`); never a stylesheet, which a TSX file does not import (FE-CSS-4).
+ */
+function coreExtEntry(packageName: string, specifier: string): boolean {
+  const prefix = `${packageName}/core/ext/`;
+  return specifier.startsWith(prefix) && /^[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)?$/u.test(specifier.slice(prefix.length));
+}
+
 /** The peers an install requires: every declared peer not marked `optional: true` in peerDependenciesMeta. */
 function requiredPeers(manifest: GrammarManifest | null | undefined): string[] {
   const meta = manifest?.peerDependenciesMeta ?? {};
@@ -201,7 +210,9 @@ function sourceEdges(context: TypeContext, sourceFile: SourceFile): Map<number, 
 }
 
 function grammarReferenceAllowed(reference: LiteralModule, sourceFile: SourceFile, owner: GrammarConsumer, edgesByStart: Map<number, ImportEdge>, grammar: GrammarContext, allowed: Set<string>): boolean {
-  if (!allowed.has(reference.specifier)) return false;
+  // Beside the selected entries, a core-ext code entry the install this source resolves declares as a safe export.
+  const extEntry = coreExtEntry(grammar.package, reference.specifier) && grammarExport(owner.packageManifest, grammar.package, reference.specifier);
+  if (!allowed.has(reference.specifier) && !extEntry) return false;
   const edge = edgesByStart.get(reference.node.getStart(sourceFile));
   const expected = grammarExportTargets(owner.packageManifest, owner.packageRoot, grammar.package, reference.specifier);
   return !edge || expected.includes(canonical(edge.to));
@@ -212,7 +223,7 @@ function reportGrammarReference(scan: GrammarScan, sourceFile: SourceFile, refer
   if (!sameOrUnder(reference.specifier, grammar.package)) return;
   if (grammarReferenceAllowed(reference, sourceFile, owner, edgesByStart, grammar, allowed)) return;
   violations.push(makeViolation(config, sourceFile, reference.node, 'ARCH_GRAMMAR_EXPORT_BYPASS',
-    `Product source must import the selected Grammar code entry ${grammar.entry} or style entry ${grammar.styleEntry}; ${reference.specifier} is outside that contract.`,
+    `Product source must import the selected Grammar code entry ${grammar.entry}, its style entry ${grammar.styleEntry} or a core-ext entry (${grammar.package}/core/ext/<name>) the installed Grammar exports; ${reference.specifier} is outside that contract.`,
     { specifier: reference.specifier, package: grammar.package }));
 }
 
