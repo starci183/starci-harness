@@ -19,8 +19,8 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 
 ## The canvas
 Authors keep writing Mermaid; Mermaid is the parser and the graph ext is the renderer. Every diagram stands in the graph's frame: its dot
-grid, pan by drag, touch or the arrow keys, zoom by pinch, the + and - keys or the zoom buttons, fit and reset (0) beside them in a row along
-the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 / 18).
+grid, pan by drag, touch or the arrow keys, zoom by pinch, the + and - keys or the zoom buttons, fit and reset (0) beside them in a row of their own
+under the canvas (56px, never over the drawing, so no node is covered at the first view at any width), the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 / 18).
 
 - **Flowchart and state diagram**: Mermaid's own database (vertices, links and subgraphs; states and transitions) becomes a graph laid out by
   ELK, layered, with as few crossings as the layout finds, routed by the routing law. A node is a rounded box in the shape its source
@@ -40,7 +40,7 @@ is the whole drawing, centred, at 100% or less, but never under the **readable f
 A sequence or a flowchart that does not fit whole at 0.85 opens at 0.85 from its start (a sequence: its first participant and first message at the top left; a
 flowchart or state diagram: its entry node, the first node nothing leads into, kept in view) and the reader pans by touch or drag and zooms by pinch, the
 buttons or + and -; fit (the button) still shows the whole drawing down to 0.2, reset (0) returns to the first view. Any other kind (Mermaid's own SVG)
-keeps the least zoom of 0.2. There is no list fallback on a phone: the same canvas, the controls row kept, the text version visually hidden for assistive
+keeps the least zoom of 0.2. There is no list fallback on a phone: the same canvas, the controls row kept under it, the text version visually hidden for assistive
 technology. The drawing follows the graph ext's routing law ([graph](graph.md) "The routing law": no handle dots, straight or one bend, a decision's main branch straight on with every branch
 labelled at the split, fitted, dashed only when the source means it and one open arrowhead). Under 480px a flowchart or a state diagram is laid out
 top-down so it fits the width. Paint is the grammar's, read from the root's tokens; an app passes no

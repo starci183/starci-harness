@@ -14,8 +14,11 @@ export interface Box extends Size {
     readonly y: number
 }
 
-/** The room round the drawing at the first view: the controls row along the bottom (40 + 2 x 8). */
-export const INSETS = { top: 16, right: 16, bottom: 64, left: 16 } as const
+/** The room round the drawing at the first view. The zoom controls are a row of their own under the canvas, never over the drawing. */
+export const INSETS = { top: 16, right: 16, bottom: 16, left: 16 } as const
+
+/** The controls row under the canvas: the 40px buttons and 8px above and below. */
+export const CONTROLS_ROW = 56
 
 /** The least zoom of the canvas, the floor of a kind whose words are not ours to size. */
 export const LEAST_OPEN_ZOOM = 0.2
@@ -43,7 +46,7 @@ export const openZoom = (frame: Size, drawing: Size, floor: number = LEAST_OPEN_
 export const canvasHeight = (frameWidth: number, drawing: Size, reserved: number, floor: number = LEAST_OPEN_ZOOM): number => {
     const zoom = Math.max(floor, Math.min(1, (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width)))
     const tallest = frameWidth < 480 ? TALLEST_ON_PHONE : TALLEST
-    return Math.round(Math.max(reserved, Math.min(Math.max(reserved, tallest), drawing.height * zoom + INSETS.top + INSETS.bottom)))
+    return Math.round(Math.max(reserved, Math.min(Math.max(reserved, tallest), drawing.height * zoom + INSETS.top + INSETS.bottom + CONTROLS_ROW)))
 }
 
 /**

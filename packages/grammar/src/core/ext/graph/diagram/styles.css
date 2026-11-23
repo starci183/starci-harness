@@ -23,7 +23,7 @@
 }
 
 .starci-graph-diagram .starci-graph-canvas {
-    block-size: 100%;
+    block-size: auto;
 }
 
 .starci-graph-diagram .react-flow__node {
@@ -57,12 +57,10 @@
     aspect-ratio: auto;
 }
 
-/* The zoom buttons: the graph's 40px IconButtons, in a row along the bottom of a diagram (a diagram's frame is short). */
+/* The zoom buttons: the graph's 40px IconButtons, in a row of their own under the canvas, so they never cover the drawing at any width. */
 .starci-graph-diagram-controls {
-    position: absolute;
-    inset-block-end: var(--grammar-inline-gap);
-    inset-inline-start: var(--grammar-inline-gap);
-    z-index: 5;
+    flex: none;
+    padding: var(--grammar-inline-gap);
 }
 
 .starci-graph-diagram-controls .starci-graph-zoom {

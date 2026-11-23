@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { INSETS, LEAST_OPEN_ZOOM, READABLE_ZOOM, canvasHeight, openFloor, openView, openZoom } from "../src/core/ext/graph/diagram/open.ts"
+import { CONTROLS_ROW, INSETS, LEAST_OPEN_ZOOM, READABLE_ZOOM, canvasHeight, openFloor, openView, openZoom } from "../src/core/ext/graph/diagram/open.ts"
 
 const PHONE = { width: 390, height: 480 }
 const DESKTOP = { width: 820, height: 480 }
@@ -42,7 +42,7 @@ describe("the readable floor of the first view", () => {
     })
 
     it("anchors a drawing that does not fit at its top left, first participant and first message", () => {
-        const view = openView(PHONE, WIDE_SEQUENCE, READABLE_ZOOM)
+        const view = openView(PHONE, { width: 700, height: 900 }, READABLE_ZOOM)
         assert.equal(view.zoom, READABLE_ZOOM)
         assert.equal(view.x, INSETS.left)
         assert.equal(view.y, INSETS.top)
@@ -74,7 +74,7 @@ describe("the canvas height at the floor", () => {
     it("sizes the canvas for the floor zoom, between the reserved box and the tallest", () => {
         const drawing = { width: 700, height: 300 }
         const height = canvasHeight(390, drawing, 256, READABLE_ZOOM)
-        assert.equal(height, Math.round(drawing.height * READABLE_ZOOM + INSETS.top + INSETS.bottom))
+        assert.equal(height, Math.round(drawing.height * READABLE_ZOOM + INSETS.top + INSETS.bottom + CONTROLS_ROW))
         assert.ok(height >= 256)
     })
 
