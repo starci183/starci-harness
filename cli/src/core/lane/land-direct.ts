@@ -12,6 +12,7 @@ import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.
 import { prepareTree } from "../../harness/prepare-tree.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { requestDevSync } from "../dev/sync-runner.js"
+import { startDevCiWatch } from "../../harness/dev-ci-watch.js"
 
 /**
  * `lane gate --push --land`: the lane lands on dev itself, right after its own green gate (contexts/authority/lanes.md "Gate and land"; the owner: "cứ xong
@@ -46,6 +47,8 @@ export interface LandDeps {
     readonly push: (root: string, profile: LandProfileName, sha: string) => Promise<ToolRun>
     readonly publish: (root: string, sha: string, say: (line: string) => void) => Promise<readonly string[]>
     readonly requestSync: (checkout: string, reason: string, say: (line: string) => void) => Promise<unknown>
+    /** Starts the detached watch of the pushed sha's GitHub CI (harness/dev-ci-watch.ts); it never throws and never waits for the verdict. */
+    readonly watchCi: (root: string, dir: string, sha: string, lanes: readonly string[], say: (line: string) => void) => Promise<void>
 }
 
 const gitOut = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
@@ -73,6 +76,7 @@ export const realLandDeps: LandDeps = {
         profile === "harness" ? captureTool("git", ["push", "origin", `${sha}:refs/heads/dev`], root) : captureTool(process.execPath, [appCli(root), "app", "push", "origin", `${sha}:refs/heads/dev`], root),
     publish: async (root, sha, say) => (await publishDev({ root, head: sha, execute: true, say })).published,
     requestSync: requestDevSync,
+    watchCi: (root, dir, sha, lanes, say) => startDevCiWatch(root, dir, sha, lanes, say),
 }
 
 /**
@@ -147,5 +151,6 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
             say(`dev sync of ${checkout}: NOT requested (${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}); run starci dev sync-runner --request --dir ${checkout}`)
         }
     }
+    await deps.watchCi(root, dir, landed.sha, [lane], say)
     return { sha: landed.sha, base: landed.base, rechecked: landed.rechecked, migrations: landed.migrations, published, ...(publishNote === undefined ? {} : { publishNote }), syncs }
 }

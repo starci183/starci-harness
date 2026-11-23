@@ -49,9 +49,18 @@ const devSyncSchema = z.object({
         .default({}),
 })
 
+const landerSchema = z.object({
+    /** The coordinator session a red dev CI after a landing is sent to (`claude -p --resume <session>`); without it the verdict is only logged loudly. */
+    notifySession: z.string().min(1).optional(),
+    /** How long the watcher of a landed sha follows its GitHub runs before it writes `pending` (default 45 min). */
+    ciWatchMinutes: z.number().int().min(1).default(45),
+})
+
 const settingsSchema = z.object({
     schema: z.literal("starci/local-settings@1").default("starci/local-settings@1"),
     devSync: devSyncSchema.default(devSyncSchema.parse({})),
+    /** What follows a landing on dev beyond the sync: the watch of the pushed sha's CI (harness/dev-ci-watch.ts). */
+    lander: landerSchema.default(landerSchema.parse({})),
 })
 
 /** The dev flow settings of this machine. */

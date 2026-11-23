@@ -45,7 +45,7 @@ export const laneStatusVerb = defineVerb({
             landerLine(lander),
             `dev lock: ${data.devLock ?? "free"}`,
             `ready: ${readyLine === "" ? "none" : readyLine}`,
-            ...statuses.map((status) => `${status.lane}: ${status.state} ${status.sha.slice(0, 10)}${status.reason === undefined ? "" : ` (${status.reason})`}`),
+            ...statuses.map((status) => `${status.lane}: ${status.state} ${status.sha.slice(0, 10)}${status.reason === undefined ? "" : ` (${status.reason})`}${status.ci === undefined ? "" : `, dev CI ${status.ci.state}`}`),
         ]
         return Promise.resolve({ data, message: lines.join("\n") })
     },
