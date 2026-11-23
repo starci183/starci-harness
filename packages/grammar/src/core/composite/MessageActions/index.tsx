@@ -2,13 +2,13 @@
 
 import { useIsLoading } from "../../regionScope.js"
 import { Button as HeroButton, Popover as HeroPopover } from "@heroui/react"
-import { ArrowUturnLeftIcon, EllipsisVerticalIcon, FaceSmileIcon, PlusIcon } from "@heroicons/react/24/outline"
 import { useState } from "react"
 import { DropdownMenu, type DropdownMenuEntry } from "../../branch/DropdownMenu/index.js"
 import { Icon } from "../../leaf/Icon/index.js"
 import { overlayOpenProps, useOverlayContainer } from "../../overlayScope.js"
 import type { NoChildren } from "../../tier.js"
 import { MESSAGE_REACTION_PICKER_EMOJI, messageActionsEdge, messageActionsMenuPlacement, messageActionsPickerPlacement, type MessageActionsSide } from "./logic.js"
+import { TablerArrowBackUp, TablerDotsVertical, TablerMoodSmile, TablerPlus } from "../../leaf/Icon/tabler.js"
 
 export { MESSAGE_REACTION_PICKER_EMOJI, messageActionsEdge, messageActionsMenuPlacement, messageActionsPickerPlacement, type MessageActionsSide } from "./logic.js"
 
@@ -82,7 +82,7 @@ const MessageActionsInner = ({ side, labels, onReact, onMore, onReply, menu, onM
         >
             {anchor}
             <HeroPopover {...overlayOpenProps({ isOpen: pickerOpen, onOpenChange: setPickerOpen })}>
-                <HeroButton {...ACTION} aria-label={labels.react} data-grammar-message-action="react"><Icon source={FaceSmileIcon} usage="chip" /></HeroButton>
+                <HeroButton {...ACTION} aria-label={labels.react} data-grammar-message-action="react"><Icon source={TablerMoodSmile} usage="control" /></HeroButton>
                 {container === null ? null : (
                     <HeroPopover.Content
                         UNSTABLE_portalContainer={container}
@@ -112,14 +112,14 @@ const MessageActionsInner = ({ side, labels, onReact, onMore, onReply, menu, onM
                                     data-grammar-message-emoji-more="true"
                                     onClick={() => { setPickerOpen(false); onMore() }}
                                     type="button"
-                                ><Icon source={PlusIcon} usage="chip" /></button>
+                                ><Icon source={TablerPlus} usage="control" /></button>
                             )}
                         </HeroPopover.Dialog>
                     </HeroPopover.Content>
                 )}
             </HeroPopover>
             {onReply === undefined ? null : (
-                <HeroButton {...ACTION} aria-label={labels.reply} data-grammar-message-action="reply" onPress={onReply}><Icon source={ArrowUturnLeftIcon} usage="chip" /></HeroButton>
+                <HeroButton {...ACTION} aria-label={labels.reply} data-grammar-message-action="reply" onPress={onReply}><Icon source={TablerArrowBackUp} usage="control" /></HeroButton>
             )}
             {!hasMenu ? null : (
                 <DropdownMenu
@@ -128,7 +128,7 @@ const MessageActionsInner = ({ side, labels, onReact, onMore, onReply, menu, onM
                     onOpenChange={setMenuOpen}
                     placement={messageActionsMenuPlacement(side)}
                     {...(onMenuAction === undefined ? {} : { onAction: onMenuAction })}
-                    trigger={<HeroButton {...ACTION} aria-label={labels.more} data-grammar-message-action="more"><Icon source={EllipsisVerticalIcon} usage="chip" /></HeroButton>}
+                    trigger={<HeroButton {...ACTION} aria-label={labels.more} data-grammar-message-action="more"><Icon source={TablerDotsVertical} usage="control" /></HeroButton>}
                 />
             )}
         </div>

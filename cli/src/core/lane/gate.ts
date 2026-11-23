@@ -2,8 +2,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGit, currentBranch, repositoryRoot, trackedChanges } from "../../shared/git.js"
+import { captureGit, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
+import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
 import type { LaneFinding } from "../../harness/land-queue.js"
@@ -15,6 +16,7 @@ import type { LandProfileName } from "../../harness/land-profile.js"
 import { runningCliRoot } from "../../harness/lander-install.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { registerReady } from "./ready.js"
+import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import type { Registered } from "./ready.js"
 
 /** The mark of the lockfile a lane's node_modules was installed from by this verb. */
@@ -97,6 +99,21 @@ interface HarnessGated {
 }
 
 /**
+ * How far the CLI that runs this gate is behind `base`, the harness dev it gates against: the commits of `base` its checkout lacks that change
+ * the harness's own judge (cli/, ops/, policy/), or undefined when it lacks none or is no checkout of the same repository (an installed CLI).
+ * A stale CLI judges a lane by rules dev no longer holds, so the gate says so loudly at its start and in its result.
+ */
+export const staleCli = async (root: string, cliRoot: string, base: string): Promise<string | undefined> => {
+    const head = await gitOut(cliRoot, ["rev-parse", "HEAD"])
+    if (!head.ok || head.out === base) return undefined
+    const behind = await gitOut(root, ["rev-list", "--count", `${head.out}..${base}`, "--", "cli", "ops", "policy"])
+    const count = Number(behind.out)
+    if (!behind.ok || !Number.isFinite(count) || count === 0) return undefined
+    const sha = head.out
+    return `the CLI running this gate (${cliRoot}, at ${sha.slice(0, 10)}) lacks ${String(count)} commit(s) of ${base.slice(0, 10)} that change cli/, ops/ or policy/: it judges the lane by rules dev no longer holds; build a CLI from dev (git worktree add --detach <lanes>/_cli-<sha> origin/dev, npm ci and npm run build in its cli/) and gate with it`
+}
+
+/**
  * The gate of a harness lane: no root install, codegen or app hook. Under a gate slot the lane's own running CLI runs the harness FAST gate
  * (`release gate --level dev`) measured from where the lane forks from the dev commit it merged, and with --push a green gate is followed by
  * `git push origin HEAD:<branch>` (the harness has no pre-push hook that would run it again).
@@ -106,6 +123,8 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
     const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
     const profile = landProfile("harness", join(runningCliRoot(), "dist", "main.js"))
+    const stale = await staleCli(root, runningCliRoot(), base)
+    if (stale !== undefined) say(`WARNING: ${stale}`)
     const command = profile.gate(root, fork === "" ? base : fork)
     const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
         say(`${profile.gateLabel} (gate slot ${String(taken.n)})`)
@@ -146,6 +165,7 @@ export const laneGateVerb = defineVerb({
     },
     run: async (context, flags) => {
         if (flags.ready && !flags.push) throw new Refusal("CLI_USAGE", "--ready registers a pushed sha: give --push too")
+        assertPosixSh("lane gate")
         const say = context.progress
         const root = await repositoryRoot(context.cwd)
         const lane = await laneHolder(root, flags.lane)
@@ -153,7 +173,7 @@ export const laneGateVerb = defineVerb({
         if (branch === undefined) throw new Refusal("LANE_GATE_DETACHED", "the worktree is on no branch")
         const merging = !flags["skip-merge"]
         if (merging || flags.push) {
-            const dirty = await trackedChanges(root)
+            const dirty = await trackedWorkChanges(root)
             if (dirty.length > 0) throw new Refusal("LANE_GATE_DIRTY", `${String(dirty.length)} tracked path(s) are not committed (${dirty.slice(0, 3).join(", ")}): commit first; a merge and a push need a clean tree`)
         }
         const rules = loadSlotRules()
@@ -188,12 +208,10 @@ export const laneGateVerb = defineVerb({
             })
             writeFileSync(join(root, INSTALL_MARK), (await gitOut(root, ["hash-object", "package-lock.json"])).out)
         }
-        const prepared: string[] = []
-        for (const script of installed ? ["codegen", "build:modules"] : ["codegen"]) {
-            const run = await withHeavySlot("build", `lane gate ${lane}: npm run ${script}`, root, {}, (held) => captureNpm(["run", script, "--silent", "--if-present"], root, held.options))
-            if (run.exitCode !== 0) throw new Refusal("LANE_GATE_PREPARE", `npm run ${script} exited ${String(run.exitCode)}: ${run.stderr.split("\n").slice(-3).join(" ")}`)
-            prepared.push(script)
-        }
+        // The workspace packages are built after an install only: a tree whose install did not move keeps the builds it already has.
+        const preparing = await prepareTree(root, `lane gate ${lane}`, installed ? PREPARE_SCRIPTS : PREPARE_SCRIPTS.filter((script) => script === "codegen"))
+        if (preparing.failure !== undefined) throw new Refusal("LANE_GATE_PREPARE", `${preparing.failure.command} exited ${String(preparing.failure.exitCode)}: ${preparing.failure.output.split("\n").slice(-3).join(" ")}`)
+        const prepared = [...preparing.ran]
         if (!existsSync(appCli(root))) throw new Refusal("LANE_GATE_NO_APP_CLI", `${appCli(root)} is missing: the app pins starci-harness; run lane gate --install`)
         const mode = flags.push ? "push" : "check"
         // A lane lands on dev: the check is the FAST level (app check --level dev), and a push of the lane branch runs it once, in its pre-push hook.

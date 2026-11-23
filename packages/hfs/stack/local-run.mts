@@ -12,6 +12,7 @@ import { fileEnvironment, grantDirectory } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostTool, launch } from './local-host.mjs';
 import type { HostDeps } from './local-host.mjs';
+import type { EdgeDeps } from './local-edge.mjs';
 import { tcpOpen } from './local-ports.mjs';
 import type { PeerBase } from './local-peers.mjs';
 import { logFile, stateDirectory } from './local-state.mjs';
@@ -19,12 +20,14 @@ import { expandPorts } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { HttpProbe, LocalCommand, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
 /** The seams a spec replaces besides the context's own. */
-export interface LocalDeps extends HostDeps {
+export interface LocalDeps extends HostDeps, EdgeDeps {
   alive?: ((pid: number) => boolean) | undefined;
   kill?: ((pid: number) => void) | undefined;
   /** The live command line of a process id, or null when the host cannot tell (a spec replaces it). */
   commandLine?: ((pid: number) => string | null) | undefined;
   tcpOpen?: ((port: number) => Promise<boolean>) | undefined;
+  /** The process listening on a TCP port of this host, or null when none listens or the host cannot tell (a spec replaces it). */
+  portHolder?: ((port: number) => { pid: number; command: string | null } | null) | undefined;
   /** The other projects of the machine (the doctor's overlap row); the machine registries when absent (local-peers.mts machinePeers). */
   peers?: (() => PeerBase[]) | undefined;
   migrate?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>) | undefined;
@@ -215,7 +218,13 @@ export function sameCommand(recorded: string, live: string): boolean {
 }
 
 /** A recorded process, judged against the host. */
-export interface Ownership { ours: boolean; /** Why a live pid is not ours (the log line); null when ours or simply gone. */ stale: string | null }
+export interface Ownership {
+  ours: boolean;
+  /** Why a live pid is not ours (the log line); null when ours or simply gone. */
+  stale: string | null;
+  /** The recorded pid is alive and still runs the recorded command, only its port is silent: the environment's own tree (a watcher whose server died), stopped before a fresh start. */
+  silent?: boolean;
+}
 
 /**
  * Whether the process a record names is still the one this environment started. A pid alone proves nothing: Windows reuses ids after a reboot or crash,
@@ -232,10 +241,46 @@ export async function ownedProcess(ctx: StackContext, entry: { pid: number; star
   if (await (deps.tcpOpen ?? tcpOpen)(entry.port)) return { ours: true, stale: null };
   const age = ctx.now() - Date.parse(entry.startedAt);
   if (Number.isFinite(age) && age < DEFAULT_TIMEOUT_SECONDS * 1000) return { ours: true, stale: null };
+  if (live !== null) return { ours: false, stale: `pid ${entry.pid} still runs the recorded command but nothing listens on its port ${entry.port} (started ${entry.startedAt})`, silent: true };
   return { ours: false, stale: `pid ${entry.pid} is alive but nothing listens on its port ${entry.port} (started ${entry.startedAt}): the id was reused` };
 }
 
-/** Starts a native process detached from this command, its output in the environment's log. Returns the pid. */
+/** The process listening on TCP `port` of this host: Get-NetTCPConnection on Windows, lsof elsewhere; null when none listens or the host cannot tell. */
+export function portHolder(ctx: Pick<StackContext, 'spawn' | 'platform'>, port: number): { pid: number; command: string | null } | null {
+  const result = ctx.platform === 'win32'
+    ? ctx.spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-NetTCPConnection -State Listen -LocalPort ${Math.trunc(port)} -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess`])
+    : ctx.spawn('lsof', ['-nP', `-iTCP:${Math.trunc(port)}`, '-sTCP:LISTEN', '-t']);
+  if (result.error || result.status !== 0) return null;
+  const pid = Number(result.stdout.trim().split(/\s+/u)[0] ?? '');
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  return { pid, command: liveCommandLine(ctx, pid) };
+}
+
+/**
+ * What the Windows relay runs: it starts the real command detached with the log as its output, writes the child's pid into the file named by
+ * argv[1] and exits. The child's parent is then a process that is gone, so a tree kill of the caller (closing a terminal tab, `taskkill /T` of a
+ * lander) never reaches it; `detached: true` alone does not break that chain on Windows.
+ */
+const RELAY = "const {spawn}=require('node:child_process'),fs=require('node:fs');const o=JSON.parse(process.argv[2]);" +
+  "const c=spawn(o.command,o.args,{cwd:o.cwd,env:process.env,detached:true,stdio:['ignore','inherit','inherit'],windowsHide:true});" +
+  "c.on('error',(e)=>{fs.writeFileSync(o.pidFile+'.err',String(e.message));process.exit(1)});" +
+  "if(typeof c.pid==='number'){fs.writeFileSync(o.pidFile,String(c.pid));c.unref();setTimeout(()=>process.exit(0),200)}";
+
+/** Waits (synchronously, up to `timeoutMs`) for the relay's pid file; the pid, or the spawn error it recorded, or undefined. */
+function relayedPid(pidFile: string, timeoutMs: number): number | string | undefined {
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (let waited = 0; waited <= timeoutMs; waited += 50) {
+    if (fs.existsSync(pidFile)) { const pid = Number(fs.readFileSync(pidFile, 'utf8').trim()); if (Number.isInteger(pid) && pid > 0) return pid; }
+    if (fs.existsSync(`${pidFile}.err`)) return fs.readFileSync(`${pidFile}.err`, 'utf8');
+    Atomics.wait(cell, 0, 0, 50);
+  }
+  return undefined;
+}
+
+/**
+ * Starts a native process detached from this command, its output in the environment's log. Returns the pid. On Windows it goes through a relay
+ * (see RELAY) so the process outlives the caller's whole process tree: restarting a lander or closing its terminal never takes the dev stack down.
+ */
 export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): number {
   const dir = stateOf(ctx, local);
   const log = logFile(dir, run.name);
@@ -243,7 +288,20 @@ export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCo
   const descriptor = fs.openSync(log, 'a');
   try {
     const [command, args] = launcher(ctx, run.argv.map((part) => expand(ctx, local, part)));
-    const child = ctx.spawn(command, args, { background: true, detached: true, cwd: path.join(local.repoRoot, run.cwd), env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
+    const cwd = path.join(local.repoRoot, run.cwd);
+    if (ctx.platform === 'win32') {
+      const pidFile = path.join(dir, `${run.name}.relay-pid`);
+      fs.rmSync(pidFile, { force: true });
+      fs.rmSync(`${pidFile}.err`, { force: true });
+      const relay = ctx.spawn(process.execPath, ['-e', RELAY, JSON.stringify({ command, args, cwd, pidFile })], { background: true, detached: true, cwd, env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
+      relay.unref?.();
+      const pid = relayedPid(pidFile, 10_000);
+      fs.rmSync(pidFile, { force: true });
+      fs.rmSync(`${pidFile}.err`, { force: true });
+      if (typeof pid !== 'number') throw failure('STACK_LOCAL_COMMAND', `${run.name} did not start: ${pid ?? relay.spawnError?.message ?? 'the relay gave no process id'}`);
+      return pid;
+    }
+    const child = ctx.spawn(command, args, { background: true, detached: true, cwd, env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
     const pid = child.pid;
     if (typeof pid !== 'number') throw failure('STACK_LOCAL_COMMAND', `${run.name} did not start: ${child.spawnError?.message ?? 'no process id'}`);
     child.unref?.();

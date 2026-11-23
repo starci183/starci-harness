@@ -12,7 +12,7 @@ export type ChoiceButtonsProps = NoChildren & ChoiceGroupProps & {
 }
 
 /**
- * One choice among a few options with the weight of a button (a plan level, an amount, a period), each option a separate toggle as
+ * One form value among a few options with the weight of a button (a plan level, an amount; never a period or mode switch of shown data, which is `Tabs appearance="primary"`), each option a separate toggle as
  * tall as a Button of `size`, wrapping onto as many rows as the width needs. The same radio behaviour as `ChoiceChips`, which draws
  * the options as Chips. Never joined into one bar (R380).
  */

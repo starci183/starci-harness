@@ -11,6 +11,12 @@
     --starci-graph-tone-soft: var(--default);
     --starci-graph-tone-ink: var(--default-foreground);
     --starci-graph-line: color-mix(in oklab, var(--foreground) 28%, var(--surface));
+    /* The dot grid of the panel: quiet but seen on the surface in light and dark alike (the border colour vanishes in a 1.4px dot). */
+    --starci-graph-grid: color-mix(in oklab, var(--foreground) 22%, var(--surface));
+    /* A graph's words are never under 13px: its core Badges (chips, tags, ports, the words on a line) take the label.field size, the size the layout measures them at. */
+    --grammar-type-badge-size: var(--grammar-type-label-field-size);
+    /* The most a `height="content"` graph grows to; set it on the graph (its className) to change it. */
+    --starci-graph-max-block-size: 80vh;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -33,6 +39,12 @@
     position: relative;
     flex: 1;
     min-block-size: 0;
+}
+
+/* `height="content"`: the canvas is as tall as its drawing at 100% plus the fit insets (canvas.ts sets it), at least 20rem, at most the graph's most. */
+.starci-graph-canvas[data-hugs] {
+    flex: none;
+    block-size: clamp(20rem, var(--starci-graph-drawn-block-size), var(--starci-graph-max-block-size));
 }
 
 .starci-graph .react-flow {
@@ -118,23 +130,16 @@
     color: var(--danger);
 }
 
-/* Flowing into the running step: a solid info line with dots that move along it. */
-.starci-graph .starci-graph-edge--running .react-flow__edge-path {
+/*
+ * Flowing into the running step (the routing law, rule 6a: one edge is one drawn line): the edge's own line in the info tone, its dashes moving towards the
+ * step. No second path is drawn over or beside it.
+ */
+.starci-graph .starci-graph-edge--running .react-flow__edge-path,
+.starci-graph .react-flow__edge.animated.starci-graph-edge--running .react-flow__edge-path {
     stroke: var(--starci-graph-info);
-    stroke-dasharray: none;
-    animation: none;
-}
-
-.starci-graph .react-flow__edge.animated .starci-graph-edge-flow,
-.starci-graph-edge-flow {
-    fill: none;
-    stroke: var(--starci-graph-info);
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-dasharray: 0.1 14;
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
     animation: starci-graph-dash var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
-    stroke-dasharray: 0.1 14;
-    pointer-events: none;
 }
 
 /* Into a waiting step: solid amber, nothing moves. */
@@ -154,10 +159,15 @@
     stroke-dasharray: 8 5;
 }
 
+/* An untaken branch is dotted in the muted tone, never faded away: its words stand at the split and the line visibly reaches its target (the routing law, 6c). */
+.starci-graph .starci-graph-edge--skipped {
+    color: var(--muted);
+}
+
 .starci-graph .starci-graph-edge--skipped .react-flow__edge-path {
-    stroke-dasharray: 1.5 5;
+    stroke: var(--muted);
+    stroke-dasharray: 2 5;
     stroke-linecap: round;
-    opacity: var(--grammar-opacity-faded);
 }
 
 .starci-graph .starci-graph-edge--pending .react-flow__edge-path {
@@ -320,13 +330,25 @@
 
 @keyframes starci-graph-dash {
     to {
-        stroke-dashoffset: -14.1;
+        stroke-dashoffset: -14;
     }
 }
 
 
 @media (prefers-reduced-motion: reduce) {
-    .starci-graph-edge-flow {
+    .starci-graph .starci-graph-edge--running .react-flow__edge-path {
         animation: none;
+        stroke-dasharray: none;
     }
+}
+
+/* Where an edge meets another edge's line (the routing law, rule 6): a small dot in the line's colour; the shared stretch is drawn once. */
+.starci-graph .starci-graph-edge-join {
+    fill: currentcolor;
+    stroke: none;
+}
+
+/* A read-only graph shows no handle dots (the routing law, rule 1): an edge is a line and its arrowhead, its source dot only while a person edits the graph. */
+.starci-graph:not([data-editable="true"]) .starci-graph-edge-dot {
+    display: none;
 }

@@ -71,7 +71,7 @@ is fine). Neither one waits for the other, and neither moves the other's checkou
    coverage. Those run ONCE at the main cut (`--level full`: a push of main, `release cut`, `release push`,
    `app release`), and a red full run is fixed in a hardening lane before the cut.
 2. `starci dev sync --execute` in the app's main dev checkout fast-forwards it to `origin/dev`, runs `npm ci`, installs
-   each `--local <pkg>` from the local npm registry, then **builds** the api and the web from that code and runs the
+   each `--local <pkg>` from the local npm registry, builds the workspace packages (the app's `codegen` and `build:modules`), migrates the dev database when new migrations arrived (`app stack up`), then **builds** the api and the web from that code and runs the
    built artifacts (`next start`, `node dist/...`; never `next dev`, `ts-node-dev` or another watcher). It restarts only
    the changed side, waits for its health (over the tunnel hostname when one routes it) and keeps the database, the
    storage and the tunnel up. It prints any local overlay in effect. A plain `dev sync` (no `--local`) puts every
@@ -87,6 +87,10 @@ is fine). Neither one waits for the other, and neither moves the other's checkou
    the default way the dev checkout runs harness builds. A lane NEVER waits for npm. `deps install-local --restore` is
    needed only for main and a prod cut: main, release branches, tags and prod deploys still refuse local pins.
 5. Hot reload is opt-in, for live coding only: `starci app stack up --env dev --execute --watch`.
+6. **One web and one api server per app**, the shared dev stack's (owner: "chốt vậy chỉ có 1 next server fe chạy thôi, lane xong f5 lại,
+   chấp nhận giật ở fe", "Tương tự 1 be server"). A lane never starts its own to look or shoot: it lands, the dev sync brings the change in,
+   and it looks at the running stack (`starci app look`, `starci gallery shoot --port`); the owner presses F5
+   ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Shots and looks").
 
 **Prod (slow, careful, after dev).** npm is published once per release train, for prod only (`starci release push` /
 `release publish` on the harness). Prod pins npm versions ONCE, at release time: the cut bumps the app's local pins to the
@@ -100,7 +104,8 @@ worktree that is removed afterwards. The dev checkout never moves for prod work,
 
 The harness repository has `dev` and `main` too ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-3). Harness lanes
 fork from `origin/dev` and land through the batch lander exactly as an app's do, under the harness profile: the gate is the harness FAST gate
-(`starci release gate --level dev`: build, typecheck and tests of the changed packages and their dependents), the push `git push origin HEAD:dev`.
+(`starci release gate --level dev`: install, build and typecheck of the changed packages and their dependents plus the publish checks, NO test
+suite), the push `git push origin HEAD:dev`. Package tests run only in the FULL gate of the train (`--level full`), never on a landing.
 With `devSync.publishLocal: true` in `.runtime/local-settings.json`, every landed batch is published to the local registry as the dev line
 (`starci deps publish-dev --execute`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, pinned to each other exactly in
 the publish copies, never in committed files) and `devSync.local` names exactly those versions, so the after-land dev sync runs them in the app at

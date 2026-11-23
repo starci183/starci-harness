@@ -2,9 +2,9 @@
 
 `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model (`SchemaMap`, `ErdMap`) or a knowledge map (`KnowledgeMap`). Everything else is core: a list, `Timeline`, `Stepper`, cards ([situations](../situations.md)). The ext imports the core and its tokens; the core entry never imports the ext, so an app that draws no graph installs none of its libraries (`@xyflow/react`, `elkjs`, `d3-force` are optional peers of `@starci/grammar`). An app never imports those libraries itself.
 
-The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. Both are laid out by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, fit the view on load, select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
+The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. Both are laid out by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, open fitted (the whole graph, centred, at 100% or less), lay out top-down on a phone, select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
 
-They draw only from the tokens of the Grammar theme in the page (`--surface`, `--border`, `--muted`, `--accent*`, `--info`, `--success*`, `--warning*`, `--danger*`, `--default*`, `--grammar-radius-*`, `--grammar-type-*`), so they follow the app's brand and its dark mode. They carry no icon and no text of their own: the icons, the words of the states, the labels of the controls and the legend are the app's.
+They draw only from the tokens of the Grammar theme in the page (`--surface`, `--foreground` (the dot grid of the panel is `--foreground` mixed 22% into `--surface`, quiet but seen in light and dark), `--border`, `--muted`, `--accent*`, `--info`, `--success*`, `--warning*`, `--danger*`, `--default*`, `--grammar-radius-*`, `--grammar-type-*`), so they follow the app's brand and its dark mode. They carry no icon and no text of their own: the icons, the words of the states, the labels of the controls and the legend are the app's.
 
 ## Minimal usage (any app)
 
@@ -73,11 +73,11 @@ const edges: GraphEdge[] = [
 </div>
 ```
 
-The graph fills its parent, so the parent has a height.
+The graph fills its parent, so the parent has a height (`height="frame"`, the default). A top-down flow in a wide column takes `height="content"` instead and its parent gives it no height: the graph is as tall as its drawing at 100% plus the fit insets, at least 20rem and at most `--starci-graph-max-block-size` (80vh), so it opens at full size rather than shrinking into a fixed height.
 
 ## Built from core
 
-The ext draws nothing core already has (owner 2026-11-22, "ext is built from core"): a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s, the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
+The ext draws nothing core already has (owner 2026-11-22, "ext is built from core"): a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s (at the label.field size, 13px: no word of a graph is under 13px), the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
 
 ## The six states
 
@@ -110,7 +110,7 @@ interface FlowGraphProps extends GraphCanvasProps {
 }
 ```
 
-`GraphCanvasProps` (shared with `SchemaMap`): `label`, `direction` (`LR` default, `TB`), `isLoading`, `emptyLabel`, `selectedId` and `onSelect(id | null)`, `onNodePress(id)`, `interactive` (default on), `showControls`, `minimap` and `minimapLabel`, `ariaLabelConfig`, `editable`, `positions`, `onPositionsChange`, `resetLabel`, `islands`, `islandsWidth`, `className`.
+`GraphCanvasProps` (shared with `SchemaMap`): `label`, `direction` (`LR` default, `TB`), `isLoading`, `emptyLabel`, `selectedId` and `onSelect(id | null)`, `onNodePress(id)`, `focusId` (the node the first view is centred on when even the least fitted zoom cannot show the whole graph), `interactive` (default on; `false` is a still picture, fitted, with no zoom group), `showControls`, `minimap` and `minimapLabel`, `ariaLabelConfig`, `editable`, `positions`, `onPositionsChange`, `resetLabel`, `islands`, `islandsWidth`, `className`.
 
 ### Nodes
 
@@ -167,11 +167,11 @@ interface GraphEdge {
 }
 ```
 
-Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, routed round the outside of both ends (it places nothing). A label is a pill on the line, except a branch's port label.
+Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, in a lane beside the steps it joins (it places nothing; see Layout). A label is a pill on the line, except a branch's port label.
 
-### On a phone
+### The first view, on every screen
 
-Under 768px the graph is the desktop graph at 100% (no fit to the width, no relayout, text never under 13px), centred on the running step, else a failed one, else a waiting one, else the first not done; one finger pans, two fingers pinch, a double tap zooms in. The zoom buttons are 40px and include fit; their words are the app's (`ariaLabelConfig`). Give the graph a fixed height (about 70vh) so the page still scrolls past it.
+The first view and the phone are the routing law's rule 4 (below): every graph opens fitted, the whole of it in view and centred inside the insets (the zoom buttons' room on the left, 16px elsewhere), at 100% or less, never enlarged; only a graph that would need less than `LEAST_FIT` (0.1) opens at that zoom, centred on its focus step (`focusId` when the app names one, else the running step, a failed one, a waiting one, the first not done, the first; `focusStep`). Under 480px a `FlowGraph` or `SchemaMap` is laid out top-down (`TB`) whatever `direction` says, so it fits the width. The view is set once per layout: a status change or a pan never moves it. One finger pans, two fingers pinch, a double tap zooms in. The zoom buttons are 40px (zoom in, zoom out, fit); their words are the app's (`ariaLabelConfig`). Give the graph a fixed height (about 70vh on a phone) so the page still scrolls past it.
 
 ### Line styles
 
@@ -188,7 +188,7 @@ A container frame is thin, solid and lightly tinted in the tone of its state, ne
 
 ### Layout
 
-Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A loop's back edge is drawn after the layout, inside its container, in the gutter on its own branch's side.
+Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. The collision spec holds every back edge within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11).
 
 ELK `layered`, left to right or top to bottom, with ports and containers; edges are orthogonal with rounded corners, a dot where they leave and an arrowhead. **Islands** (parts of the graph with no edge between them) are laid out one by one and packed side by side in rows up to `islandsWidth` (default 1200 graph units); `islands: "stack"` puts them in one column. The layout depends on ids, sizes, ports, edge ends, direction and islands only: a status change neither moves nor refits the graph.
 
@@ -227,10 +227,10 @@ export const Library = () => (
 )
 ```
 
-The line runs from the field's own port to the head of the other entity, with a crow's foot where many stand and two bars where one stands (a ring beyond either when the end may be empty). Hovering a relation or an entity lights both ends. A link is drawn with an icon, never a typed arrow. On a phone the map is the same map at 100%, in a panel about 70vh high: a finger drags it, two fingers zoom it, and the 40px controls fit it (the words of the controls are `ariaLabelConfig`).
+The line runs from the field's own port to the head of the other entity, with a crow's foot where many stand and two bars where one stands (a ring beyond either when the end may be empty). Hovering a relation or an entity lights both ends. A link is drawn with an icon, never a typed arrow. On every screen the map opens fitted (the routing law, rule 4): the whole map, centred, at 100% or less. A finger drags it, two fingers zoom it, and the 40px controls fit it (the words of the controls are `ariaLabelConfig`); on a phone give the panel about 70vh.
 ## KnowledgeMap
 
-A map of what an app knows, for any app: topic clusters with names, a bubble for each item sized by its weight, and a line from an item to the item it came from. It is not tied to one product: the data is neutral (clusters, items with a weight, links) and every word is the app's.
+A map of what an app knows, for any app: topic clusters with names, a bubble for each item sized by its weight, a line from an item to the item it came from, and a line for each `links` pair of related items (`{ from, to }`; every pair drawn once, whichever way or however often it is given). It is not tied to one product: the data is neutral (clusters, items with a weight, links) and every word is the app's.
 
 ```tsx
 import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
@@ -250,10 +250,45 @@ import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
 />
 ```
 
-- Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
-- Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name of a bubble on hover, `onOpen(id)` on click or Enter, a legend.
-- Every screen: the map is the same graph on a phone as on a desktop, at 100% when it opens (no fit-to-width, no list). A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
+- Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters (each column as wide as its widest cluster or cluster name; on a phone, under 480px, at most two clusters across, laid out top-down), a link pulling its two ends together; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
+- Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name card of a bubble on hover or focus (the Grammar Tooltip), `onOpen(id)` on click or Enter, a legend.
+- Every screen: the map is the same graph on a phone as on a desktop, fitted when it opens (the routing law, rule 4): the whole map, centred, at 100% or less (no list), never under a diagram's readable floor (`READABLE_ZOOM`, 0.85, as a Mermaid diagram, [diagram](diagram.md) "Variants"): a map that needs less opens at 0.85 from its top, centred across when it fits the width, and the reader pans on. A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
 - Words: `kindLabels`, `stateLabels`, `weightLabel`, `sourceLabel`, `zoomLabels`, `emptyLabel` and the `legend` are all passed in; the package has none of its own.
+
+## The routing law
+
+Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `SchemaMap`, `ErdMap`, `KnowledgeMap` and the lesson `MermaidDiagram`): an edge reads at a glance.
+
+1. **No handle dots, one entry.** A read-only graph shows no dot where an edge leaves (only an `editable` graph does). Edges without a named port touch a node at one
+   point per side (ELK `mergeEdges`); every edge enters its target by the side facing the flow, and leaves its source by the side facing its target, never from two
+   stacked handles.
+2. **Straight or one bend.** Nodes on one rank line (their boxes overlap across the flow, or their centres stand within `STRAIGHT_SNAP`, 8) are joined by one straight
+   run; offset nodes by exactly one orthogonal bend: out of the source's side facing the target, round one corner, into the target's flow-facing side. No micro-jog.
+   ELK lays out with `NETWORK_SIMPLEX` node placement, which keeps the spine on one line. The one-bend route is taken only where it crosses no node; otherwise
+   ELK's orthogonal route (round the nodes) is kept. Owner: `simplifyRoutes` in `layout.ts`.
+3. **A decision's main branch runs straight on.** The first branch of a decision leaves by the vertex on the flow's side (`SOUTH` top-down, `EAST` across) and its target
+   stands on the decision's line (`alignDecisions` in `arrange.ts`); the other branches leave by the side vertices and turn to the side. Every branch carries its words
+   right at the split, at its own vertex: on the first run it does not share with a sibling, clear of the sibling's words, never two answers side by side on one stub.
+   A branch on a side vertex runs straight only when its vertex stands inside its target's span; otherwise it turns round to its target, never dropping past it.
+   A lesson `MermaidDiagram` gives every `{…}` decision with two or more edges out these vertex ports (`decisionBranches` in `diagram/graph.ts`), in the order the
+   source writes its edges, and enters it by its entry vertex.
+4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down. A lesson
+   `MermaidDiagram` keeps a readable floor: never opened under zoom 0.85 (caption words at 11px or more), from its start when it does not fit whole (`diagram/open.ts`).
+5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
+   edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight.
+6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the info tone, its dashes moving), never a second path over or
+   beside it. Where two edges would share a stretch (a corridor into one target, a run out of one source), the stronger state keeps it with the one arrowhead
+   (running over waiting over taken over plain over pending and skipped) and the other ends or starts where it meets that line, at a small junction dot
+   (`dedupeRuns` in `shared/overlap.ts`, run by the canvas once the states are known); a middle run that would lie in another edge's corridor moves
+   `PARALLEL_GAP` (12) aside. A branch's words stand on its own edge at the split, and that edge visibly reaches its target.
+
+Proof: `specs/ext-graph-diagram.spec.mts` "the routing law" (no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, the decision's
+main branch straight, branch words at the split, every point inside the fitted first view, the dot hidden read-only, one arrowhead size), "every stretch is
+drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge) , "a branch is an if/else" (a lesson decision: each branch out of its own
+vertex with its words there, the two answers apart, the side branch ending on its target, the branches rejoining at one junction with one arrowhead) and
+`specs/ext-graph-arrange.spec.mts` (a decision's main branch under it, the other to the side). Known gap: the one-bend route is refused where it would cross a node,
+and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends; the spec holds the law on
+graphs with room for it.
 
 ## Look
 

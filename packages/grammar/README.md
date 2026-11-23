@@ -190,6 +190,8 @@ root's semantic tokens (so family, theme and token overrides apply), and re-rend
 with a skeleton and loads nothing. A source Mermaid refuses becomes an error inside the same frame: an `Alert` with
 `errorTitle`, then the source as a `FencedCodeBlock`.
 
+The first view is the whole drawing when it stays readable; it is never opened under zoom 0.85 (caption-role words at 11px or more), so a sequence or a flowchart too wide for a phone opens at 0.85 from its first participant or entry node and is panned by touch and pinched, with the zoom controls kept.
+
 ```tsx
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
@@ -358,9 +360,8 @@ page of timestamps does not repeatedly interrupt assistive technology. Grammar o
 **DropdownMenu entries.** `entries` is a list of items and sections; the app writes data and no markup, no separator, no
 className and no size. An item takes `id`, `label`, `description`, `descriptionLines`, `shortcut`, `href`, `isDisabled`, `submenu` and:
 
-- `iconSource`: a glyph component (the app's Heroicons). Grammar draws it in HeroUI's leading position at the canon icon size,
-  20px (`size-5`, `Icon` `leading`; the Heroicons rule R93 / FE-ICON). HeroUI's own docs example draws its sample glyph at
-  `size-4`, which is example content and not a component default, so 20px is StarCi's icon rule and not a vendor override.
+- `iconSource`: a glyph component (Tabler outline, the one set). Grammar draws it in HeroUI's leading position at 16 (`Icon` `control`,
+  the icon table of contexts/ui/scale.md: the one leading icon beside 14px words), the size HeroUI's own docs example draws (`size-4`).
 - `mark`: a decorative node instead of `iconSource`, e.g. an identity mark (`<Avatar size="sm" shape="rounded" isDecorative />`). The public type rejects both props together.
 - `tone: "danger"`: HeroUI's `danger` variant, which colours the label and the glyph. Sign out, delete, remove, leave workspace
   and revoke are destructive; the lint rule `starci-grammar/destructive-menu-entry-needs-danger-tone` of `@starci/eslint-grammar-core` refuses such an entry without it.
@@ -427,7 +428,7 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 ```
 
 **Navigation & Data (15).** Accordion, AvatarGroup, Calendar, DataTable,
-DescriptionList, Disclosure, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+DescriptionList, Disclosure, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 
 **The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
@@ -442,14 +443,12 @@ Enter / Space on the focused row (React Aria's row action, so the row is a focus
 and the pressable list row's hover fill (`--surface-secondary`). Buttons, links and editors inside a row keep their own press; the row
 title stays plain text, never a Link. `<DataTable label="Invoices" onRowAction={(id) => open(id)} columns={columns} rows={rows} renderCell={renderCell} emptyContent={empty} />`
 
-`LogoStack` shows which connections an agent uses: `items` (`{ id, label, src?, iconSource? }`, a provider logo image or an app
-icon), `max` (default 3) round 20px logos with no plate, one identity gap (4) apart (not overlapped, so no mark is cut by the next),
-then a "+N" pill, an optional muted `caption` ("3 connections") and `label` naming the group. It is static by default. With `onPress`,
-or `isTrigger` when it is the trigger of a `DropdownMenu` or `Popover`, the whole group is one `PlainPressable` (a focus ring, no
-button fill) named by `label`, and its logos are decorative. `isLoading` (or a loading region) draws the same box under a shimmer.
+Channel logos are Avatars (0.57.0): a row of them is an `AvatarGroup` of `kind: "logo"` items (`{ id, name, src, kind: "logo" }`, a
+brand logo on a white surface in both themes, fitted inside with a hairline edge), and a lone logo an `Avatar kind="logo"` of the same
+`size`. They are sized by `size` alone (`sm` 24 beside text, `md` 40), never by hand.
 
 ```tsx
-<DropdownMenu trigger={<LogoStack isTrigger label="Agent connections" items={connections} caption="3 connections" />} entries={entries} />
+<AvatarGroup label="Agent connections" size="sm" max={3} items={connections.map((c) => ({ id: c.id, name: c.name, src: c.logo, kind: "logo" }))} overflowLabel={(n) => `${n} more`} />
 ```
 
 `PlainPressable` is exported from `@starci/grammar/common` (outside the registry): `children`, `aria-label` (needed when the content has
@@ -819,7 +818,7 @@ list, which draws no link. A Data nav or a mail list is `<ListBox label="Mail" s
 DNA. Omit it for a read row, which keeps HeroUI's normal label and muted description.
 Optional `labelLeading` puts a decorative glyph in the title line itself, inside HeroUI's `Label` before the
 text and on its baseline, e.g. a status mark beside an item's name. Both glyph slots are
-`aria-hidden` (A11Y-2), so the name stays `label`; pass an `Icon usage="chip"` to keep the title line's height.
+`aria-hidden` (A11Y-2), so the name stays `label`; pass an `Icon usage="control"` to keep the title line's height.
 `ListBox size="sm" | "md" | "lg"` defaults to `md` and reserves a leading column of 2rem, 2.5rem
 or 3rem, respectively, so icons, avatars and group grids keep labels in one column. An item's
 `size` overrides the list's size.

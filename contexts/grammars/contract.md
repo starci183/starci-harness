@@ -346,7 +346,8 @@ negative one, stays until dismissed.
 A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below
 the surface that hosts it. It is not a surface: it has no shadow, no outline and no action, so it stands in a pane, a card
 or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
-when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble).
+when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble). Its `line`
+variant is one muted, ellipsized line with a rule on its start edge and no ground: the line a chat answer quotes, over that answer.
 
 `Inset` is the same ground around anything else: a tinted box at the nested inset, one radius below the surface, with an optional
 muted label above its content that also names the group. It is not a surface (a card inside it is refused like a card in a card). A
@@ -414,10 +415,9 @@ An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a 
 beside it. Without an image it draws generated initials coloured by a stable seed, or, as a MARK, an icon on a round brand-colour plate (a
 provider or a channel); an agent's avatar is initials only with an accessible name that says so, and its "AI" is the neutral Chip that
 follows the NAME (`AgentName`, `isAgent` on the name slots); avatars in a row or from a list are one `AvatarGroup` of people and marks
-at one size, with `max - 1` items then a "+N" tile (lint `avatar-row-uses-group`). `LogoStack` shows which provider connections something
-uses: round 20px logos with no plate, at most three then a "+N" pill, an optional muted `xs` caption, static or one plain
-pressable (or a `DropdownMenu` trigger through `isTrigger`); the exported `PlainPressable` lets an app wrap its own content
-the same way.
+at one size, with `max - 1` items then a "+N" tile (lint `avatar-row-uses-group`). The provider connections something uses are an `AvatarGroup` of `kind: "logo"` items (a
+brand logo on a white surface in both themes, fitted inside, a hairline edge), and a lone logo an `Avatar kind="logo"` of the same
+`size`; logos are sized by `size` alone. The exported `PlainPressable` lets an app wrap its own content as a menu trigger.
 
 ### Mascot
 
@@ -548,8 +548,8 @@ replaces the strip. A strip that owns its visible heading supplies `title`. An a
 
 ### Diagram
 
-A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
-tokens; a node graph is the core's graph ext (`@starci/grammar/core/ext/graph`: a run's flow, a data ERD, a knowledge map, and
+A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source on the core's graph ext canvas
+(`@starci/grammar/core/ext/graph`, Mermaid the parser, xyflow the renderer, in the grammar's tokens); a node graph is the core's graph ext (`@starci/grammar/core/ext/graph`: a run's flow, a data ERD, a knowledge map, and
 ONLY those; [graph](../ui/components/graph.md)), never a `Fragment` and never an app's own xyflow. A
 diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
 and a source the renderer refuses stays in the region as code under an error. A grammar decides the frame and the paint; the reserved box and the error carrier are the same
@@ -566,6 +566,10 @@ A PDF document is shown by the PDF extension of the core grammar (`@starci/gramm
 ### Upload
 
 Every upload is taken by the upload extension of the core grammar (`@starci/grammar/core/ext/dropzone`, `Dropzone` over react-dropzone, loaded lazily), never by react-dropzone or another upload library imported in an app. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. The zone is a surface with a 1px dashed edge and no shadow that takes files and folders (a folder flattens into its files with their relative paths); drag-over paints the info soft surface, a refused drop the danger soft surface with the reason in words (too big, wrong type, too many). Each upload the app runs is a row: a 24px file-type icon, the name, an info Progress and an inline status of the three glyphs. Every word comes from the app's `labels`.
+
+### AI chat
+
+A chat with an assistant is the chat extension of the core grammar (`@starci/grammar/core/ext/chat`, `AiChatThread` over assistant-ui's headless primitives and its external store runtime), never assistant-ui or another chat library imported in an app and never a hand-built thread for an assistant. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. The app owns the messages and the run; every part is Grammar: the chat frame on `--background`, the reader's turns neutral soft bubbles at the end side, an assistant turn plain markdown across a centred reading column, a tool call a folded row with its status mark, the proposed result a card whose approve is its one primary, and one bordered composer box, the core Textarea over a foot row with the hint and a send that turns into stop while an answer runs. Every word comes from the app's `labels`.
 
 ### Shell
 

@@ -3,6 +3,8 @@ import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
+import { MermaidDiagram as GraphMermaidDiagram } from '../core/ext/graph/index.js';
+import '../core/ext/graph/styles.css';
 import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
 
 /**
@@ -93,37 +95,26 @@ export const PlainPressable: Story = {
   ),
 };
 
-const connections: ReadonlyArray<G.LogoStackItem> = [
-  { id: 'mail', label: 'Mail', src: placeholderImage('M', 200) },
-  { id: 'docs', label: 'Docs', iconSource: BookGlyph },
-  { id: 'home', label: 'Home', iconSource: HomeGlyph },
-  { id: 'chat', label: 'Chat' },
-  { id: 'cal', label: 'Calendar', src: placeholderImage('C', 120) },
+const connections: ReadonlyArray<G.AvatarGroupItem> = [
+  { id: 'mail', name: 'Mail', kind: 'logo', src: placeholderImage('M', 200) },
+  { id: 'docs', name: 'Docs', kind: 'logo', src: placeholderImage('D', 120) },
+  { id: 'home', name: 'Home', kind: 'logo', src: placeholderImage('H', 120) },
+  { id: 'chat', name: 'Chat', kind: 'logo', src: placeholderImage('T', 120) },
+  { id: 'cal', name: 'Calendar', kind: 'logo', src: placeholderImage('C', 120) },
 ];
 
-export const LogoStack: Story = {
+/** Channel logos (0.57.0): an AvatarGroup of logo avatars, and a lone logo as an Avatar of the same size. Sized by `size` only. */
+export const ChannelLogos: Story = {
   render: () => (
     <Matrix>
-      <State label="Static: logos, one identity gap apart, no plate">
-        <G.LogoStack label="Connections used by this agent" items={connections.slice(0, 3)} />
+      <State label="A row of logos, sm (24), max 3 then +N">
+        <G.AvatarGroup label="Connections used by this agent" items={connections} max={3} size="sm" overflowLabel={(n) => `${n} more`} />
       </State>
-      <State label="Overflow +N pill and caption (max 3)">
-        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" />
+      <State label="One logo: an Avatar of the same size">
+        <G.Avatar name="Mail" kind="logo" src={placeholderImage('M', 200)} size="sm" />
       </State>
-      <State label="Pressable (onPress): focus ring, no button fill">
-        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" onPress={() => undefined} />
-      </State>
-      <State label="Pressable, disabled">
-        <G.LogoStack label="Connections used by this agent" items={connections} onPress={() => undefined} isDisabled />
-      </State>
-      <State label="DropdownMenu trigger">
-        <G.DropdownMenu
-          trigger={<G.LogoStack isTrigger label="Connections used by this agent" items={connections} caption="5 connections" />}
-          entries={connections.map((item) => ({ id: item.id, label: item.label }))}
-        />
-      </State>
-      <State label="Loading (same box)">
-        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" isLoading />
+      <State label="md (40)">
+        <G.AvatarGroup label="Connections used by this agent" items={connections} max={4} size="md" overflowLabel={(n) => `${n} more`} />
       </State>
       <State label="Own content as a trigger (PlainPressable)">
         <G.DropdownMenu
@@ -166,7 +157,7 @@ export const PageBreadcrumbs: Story = {
             breadcrumbs: {
               label: 'Breadcrumb',
               items: [
-                { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="leading" /> },
+                { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="control" /> },
                 { id: 'guides', label: 'Guides', href: '#guides' },
                 { id: 'grammar', label: 'Grammar basics' },
               ],
@@ -376,7 +367,7 @@ export const DescriptionList: Story = {
 };
 
 const listItems: ReadonlyArray<G.ListBoxItem> = [
-  { id: 'inbox', label: 'Inbox', description: '3 unread', leading: <G.Icon source={BookGlyph} usage="leading" /> },
+  { id: 'inbox', label: 'Inbox', description: '3 unread', leading: <G.Icon source={BookGlyph} usage="control" /> },
   { id: 'drafts', label: 'Drafts' },
   { id: 'archive', label: 'Archive', trailing: <G.Badge>12</G.Badge> },
   { id: 'spam', label: 'Spam', isDisabled: true },
@@ -396,21 +387,21 @@ const mermaidSequence = `sequenceDiagram
   Browser->>API: POST /sign-in
   API-->>Browser: 200 session`;
 
-/** A Mermaid diagram in the root's theme, a sequence diagram, the loading box and a refused source shown as code. */
+/** A Mermaid diagram on the graph ext's canvas (`@starci/grammar/core/ext/graph`), a sequence diagram, the loading box and a refused source shown as code. */
 export const MermaidDiagram: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Flowchart" direction="column">
-        <G.MermaidDiagram label="Cache lookup" source={mermaidSource} />
+        <GraphMermaidDiagram label="Cache lookup" source={mermaidSource} />
       </State>
       <State label="Sequence" direction="column">
-        <G.MermaidDiagram label="Sign-in request" source={mermaidSequence} />
+        <GraphMermaidDiagram label="Sign-in request" source={mermaidSequence} />
       </State>
       <State label="Skeleton (the same box)" direction="column">
-        <G.MermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isLoading />
+        <GraphMermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isLoading />
       </State>
       <State label="Error: the source as code" direction="column">
-        <G.MermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
+        <GraphMermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
       </State>
     </Matrix>
   ),
@@ -419,10 +410,10 @@ export const MermaidDiagram: Story = {
       const diagrams = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MermaidDiagram"]')];
       expect(diagrams.map((diagram) => diagram.dataset.grammarMermaidState)).toEqual(['ready', 'ready', 'loading', 'error']);
       const [flowchart, , skeleton, broken] = diagrams;
-      const svg = flowchart!.querySelector('[role="img"] > svg');
-      if (svg === null) throw new Error('The flowchart must draw its svg');
-      expect(flowchart!.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Cache lookup');
-      expect(svg.textContent).toContain('In cache?');
+      const drawing = flowchart!.querySelector('[data-grammar-mermaid-canvas] > [role="img"]');
+      if (drawing === null) throw new Error('The flowchart must draw its canvas');
+      expect(drawing.getAttribute('aria-label')).toBe('Cache lookup');
+      expect(drawing.textContent).toContain('In cache?');
       // The skeleton keeps the ready frame's least box: both canvases reserve the sm height.
       const box = (diagram: HTMLElement) => diagram.querySelector<HTMLElement>('[data-grammar-mermaid-canvas]')!.getBoundingClientRect().height;
       expect(Math.round(box(skeleton!))).toBe(256);
@@ -569,7 +560,7 @@ export const ListBoxNoIndicator: Story = {
 /** The optional title-leading slot remains available for decorative, non-chat labels. */
 export const ListBoxTitleGlyph: Story = {
   name: 'ListBox (optional title-line glyph)',
-  render: () => <G.ListBox label="Reading shelves" items={[{ id: 'books', label: 'Reading list', labelLeading: <G.Icon source={BookGlyph} usage="chip" /> }]} />,
+  render: () => <G.ListBox label="Reading shelves" items={[{ id: 'books', label: 'Reading list', labelLeading: <G.Icon source={BookGlyph} usage="control" /> }]} />,
 };
 
 export const ListBox: Story = {
@@ -890,7 +881,7 @@ export const Timeline: Story = {
 
 const tabItems: ReadonlyArray<G.TabItem> = [
   { id: 'overview', label: 'Overview' },
-  { id: 'documents', label: 'Documents', leading: <G.Icon source={BookGlyph} usage="leading" /> },
+  { id: 'documents', label: 'Documents', leading: <G.Icon source={BookGlyph} usage="control" /> },
   { id: 'members', label: 'Members' },
 ];
 

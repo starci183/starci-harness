@@ -54,6 +54,8 @@ export interface ErdMapProps {
     readonly moreLabel?: (count: number) => string
     readonly isLoading?: boolean
     readonly emptyLabel?: string
+    /** The entity the first view is centred on when the map is larger than its frame (it opens at 100% on every screen); left out, the map opens at its top-left corner. */
+    readonly focusId?: string
     /** The labels of the zoom controls (xyflow's `ariaLabelConfig`). */
     readonly ariaLabelConfig?: Readonly<Record<string, string>>
     readonly className?: string

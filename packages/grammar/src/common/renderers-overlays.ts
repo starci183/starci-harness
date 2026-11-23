@@ -14,6 +14,7 @@ import { Meter } from "../core/leaf/Meter/index.js"
 import { ProgressCircle } from "../core/leaf/ProgressCircle/index.js"
 import { Skeleton } from "../core/leaf/Skeleton/index.js"
 import { Spinner } from "../core/leaf/Spinner/index.js"
+import { TypingDots } from "../core/leaf/TypingDots/index.js"
 
 export { AlertDialog, type AlertDialogProps } from "../core/frame/AlertDialog/index.js"
 export { Dialog, type DialogProps, type DialogSize, type OverlayFooter } from "../core/frame/Dialog/index.js"
@@ -54,16 +55,17 @@ export {
     type ToastStackPlacement,
     type ToastStackProps,
 } from "../core/composite/ToastStack/index.js"
-export { Alert, type AlertAction, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
+export { Alert, type AlertAction, type AlertActionItem, type AlertPress, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
 export { Meter, type MeterProps, type MeterSegments, type MeterSize, type MeterTone } from "../core/leaf/Meter/index.js"
 export { ProgressCircle, type ProgressCircleProps, type ProgressCircleSize } from "../core/leaf/ProgressCircle/index.js"
 export { Skeleton, type SkeletonProps, type SkeletonRadius, type SkeletonRatio, type SkeletonShape, type SkeletonSize } from "../core/leaf/Skeleton/index.js"
 export { Spinner, type SpinnerProps, type SpinnerSize, type SpinnerTone } from "../core/leaf/Spinner/index.js"
+export { TypingDots, type TypingDotsProps } from "../core/leaf/TypingDots/index.js"
 export { GRAMMAR_ROOT_SELECTOR, resolveOverlayContainer, type OverlayOpenState } from "../core/overlayScope.js"
 
 /** Overlay and feedback renderers merged into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_OVERLAYS_COMPONENTS = Object.freeze({
     Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Kbd, Meter, Popover,
-    ProgressCircle, Skeleton, Spinner, Toast, Toaster, ToastStack,
+    ProgressCircle, Skeleton, Spinner, Toast, Toaster, ToastStack, TypingDots,
 } as const)

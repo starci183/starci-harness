@@ -37,13 +37,49 @@ export const Alert: Story = {
       <State label="With action and dismiss" direction="column">
         <G.Alert tone="cautionary" title="New version available" action={{ label: 'Reload', onAction: noop }} dismissLabel="Dismiss" onDismiss={noop} />
       </State>
-      <State label="Action variant by tone (accent primary, danger danger, else secondary)" direction="column">
+      <State label="Every action takes the banner's tone (0.55.1): one step over the soft fill, the tone's ink at 500" direction="column">
         <G.Alert title="Update available" description="A new version is ready." action={{ label: 'Refresh', onAction: noop }} />
         <G.Alert tone="negative" title="Unable to connect" description="Check your connection." action={{ label: 'Retry', onAction: noop }} />
         <G.Alert tone="affirmative" title="Saved" action={{ label: 'View', onAction: noop }} />
+        <G.Alert tone="cautionary" title="A capability is off" description="Turn it back on to answer order questions." action={{ label: 'Enable', onAction: noop }} />
       </State>
-      <State label="Action with a start icon" direction="column">
-        <G.Alert tone="cautionary" title="A capability is off" description="Turn it back on to answer order questions." action={{ label: 'Enable', onAction: noop, icon: SettingsGlyph }} />
+    </Matrix>
+  ),
+};
+
+/**
+ * Alert actions in the banner's tone (0.55.1, owner 2026-11-23): several EQUAL actions (`actions`) are tinted buttons and none is primary; one action and a second
+ * decision take the same tint; a destructive action stays `danger`. Switch the theme to see the dark pair: the tint is a film of the banner's ink, so it holds there too.
+ */
+export const AlertActionsInTone: Story = {
+  name: 'Alert actions in tone (0.55.1)',
+  render: () => (
+    <Matrix maxWidth={640}>
+      <State label="Several equal actions, none primary (info)" direction="column">
+        <G.Alert
+          tone="informative"
+          title="This room has no agent yet"
+          description="Messages here reach only the people in the room. Ask an agent in its own room."
+          actions={[
+            { label: 'Message Ads', href: '#ads' },
+            { label: 'Message Customer care', href: '#care' },
+            { label: 'Message Social', onAction: noop },
+          ]}
+        />
+      </State>
+      <State label="Each tone" direction="column">
+        <G.Alert tone="accent" title="New: weekly digest" actions={[{ label: 'Turn on', onAction: noop }, { label: 'Preview', onAction: noop }]} />
+        <G.Alert tone="affirmative" title="Channel connected" actions={[{ label: 'Open inbox', onAction: noop }, { label: 'Invite a teammate', onAction: noop }]} />
+        <G.Alert tone="cautionary" title="Credits are running low" action={{ label: 'Top up', onAction: noop }} dismissLabel="Dismiss" onDismiss={noop} />
+        <G.Alert tone="negative" title="The sync failed" description="Nothing was lost." action={{ label: 'Try again', onAction: noop }} />
+        <G.Alert tone="neutral" title="Using the default departments" action={{ label: 'Edit', onAction: noop }} />
+      </State>
+      <State label="A decision with a second action; a destructive action stays danger" direction="column">
+        <G.Alert tone="cautionary" title="Approve this quote?" action={{ label: 'Approve', onAction: noop }} secondaryAction={{ label: 'Reject', onAction: noop }} />
+        <G.Alert tone="negative" title="This channel is broken" action={{ label: 'Disconnect', onAction: noop, isDestructive: true }} />
+      </State>
+      <State label="A Button placed in the copy takes the tint too" direction="column">
+        <G.Alert tone="informative" title="Read the guide" description={<G.Button variant="border" onPress={noop}>Open the guide</G.Button>} />
       </State>
     </Matrix>
   ),

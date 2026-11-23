@@ -1,3 +1,4 @@
+import { captureGit } from "../shared/git.js"
 import { devSync } from "../core/dev/sync.js"
 import type { DevSyncRequest } from "../core/dev/sync.js"
 import type { DevSyncSettings } from "./local-settings.js"
@@ -83,4 +84,22 @@ export const landPublishDev = (settings: DevSyncSettings, dryRun: boolean, say: 
             say(`dev publish of ${landed.slice(0, 10)}: not done (${error instanceof Error ? error.message.split("\n")[0] ?? "" : String(error)}); the lander keeps landing, the next batch publishes from the last completed publish (or run starci deps publish-dev --execute)`)
         }
     }
+}
+
+/** How often an idle lander looks whether its dev checkout fell behind origin/dev. */
+export const BEHIND_CHECK_MS = 5 * 60_000
+
+/**
+ * True when the dev checkout is behind origin/dev (a batch landed that no sync of this checkout followed: a lander restarted inside the debounce
+ * window, a refused sync, a push from elsewhere). The lander schedules its sync from this state as well as from the batches it lands itself, so a
+ * landed commit never waits for the next batch to reach dev. A fetch that fails, or a checkout that is not an ancestor of origin/dev, is false
+ * (the sync itself refuses those loudly).
+ */
+export const checkoutBehindDev = async (checkout: string): Promise<boolean> => {
+    const fetched = await captureGit(["fetch", "--quiet", "origin", "dev"], checkout)
+    if (fetched.exitCode !== 0) return false
+    const head = await captureGit(["rev-parse", "HEAD"], checkout)
+    const dev = await captureGit(["rev-parse", "origin/dev"], checkout)
+    if (head.exitCode !== 0 || dev.exitCode !== 0 || head.stdout.trim() === dev.stdout.trim()) return false
+    return (await captureGit(["merge-base", "--is-ancestor", head.stdout.trim(), dev.stdout.trim()], checkout)).exitCode === 0
 }

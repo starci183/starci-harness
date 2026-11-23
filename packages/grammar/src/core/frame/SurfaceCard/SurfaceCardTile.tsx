@@ -1,4 +1,3 @@
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Badge } from "../../leaf/Badge/index.js"
@@ -11,6 +10,7 @@ import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { BadgeData, ItemAction, TileData, TileMark, TilePoster } from "../../surfaceCardData.js"
 import { tileClassName } from "./classNames.js"
 import { AgentName } from "../../leaf/AgentName/index.js"
+import { TablerDots } from "../../leaf/Icon/tabler.js"
 
 /** A tile poster names its frame by shape; the picture claims that shape as a ratio. */
 const POSTER_RATIO = { square: "1:1", landscape: "4:3", portrait: "3:4" } as const
@@ -86,12 +86,12 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
                     {data.menu === undefined ? null : (
                         <span className="starci-core-tile-menu">
                             {isLoading || isDisabled ? (
-                                <IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" isLoading={isLoading} isDisabled={isDisabled} />
+                                <IconButton label={data.menu.label} source={TablerDots} size="sm" variant="border" isLoading={isLoading} isDisabled={isDisabled} />
                             ) : (
                                 <DropdownMenu
                                     placement="bottom end"
                                     entries={data.menu.entries}
-                                    trigger={<IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" />}
+                                    trigger={<IconButton label={data.menu.label} source={TablerDots} size="sm" variant="border" />}
                                 />
                             )}
                         </span>

@@ -7,6 +7,8 @@
 import type Compiler from "typescript"
 import { runV0540, v0540Markdown, type V0540Report } from "./v0540/index.mts"
 import { runV0550, v0550Markdown, type V0550Report } from "./v0550/index.mts"
+import { runV0551, v0551Markdown, type V0551Report } from "./v0551/index.mts"
+import { runV0570, v0570Markdown, type V0570Report } from "./v0570/index.mts"
 
 /** What one codemod run reports: its findings are the cases left for a person. */
 export interface GrammarCodemodReport {
@@ -46,6 +48,20 @@ export const CODEMODS: readonly GrammarCodemod[] = Object.freeze([
         summary: "the APIs deleted in 0.55.0 (IconTile size, Timeline marker, Stepper completeMarker, Text size, Avatar fallbackMark, Alert appearance, GrammarRoot theme dropped or moved; ButtonGroup and FilterButtonGroup marked) and the site group: the public site's display sizes become display.hero, display.section, display.figure, lead and title.card, its other raw sizes the role of their pixel size",
         run: runV0550,
         markdown: (report) => v0550Markdown(report as V0550Report),
+    },
+    {
+        id: "v0551",
+        version: "0.55.1",
+        summary: "the graph ext switches to top-down on a phone itself: shared.PHONE_WIDTH and shared.usePhone of @starci/grammar/core/ext/graph are deleted, each use marked TODO(grammar-0.55.1); the initial focus is the new focusId prop; MermaidDiagram moved from the core entries to @starci/grammar/core/ext/graph (imports rewritten, a namespace use marked); the deleted icon of an Alert action is dropped; the agent tones of the dev line are deleted for the tone slot: tone=\"agent\" and agentToneOf(x) become the app's agentTone(x), the Grammar import marked TODO(grammar-0.55.1)",
+        run: runV0551,
+        markdown: (report) => v0551Markdown(report as V0551Report),
+    },
+    {
+        id: "v0570",
+        version: "0.57.0",
+        summary: "the icon table: Icon usage chip and leading become control, heading becomes head (on Icon and inlineGlyph); Disclosure chevron is dropped (the caret always leads and turns when open); LogoStack is deleted, each use marked TODO(grammar-0.57.0) for an AvatarGroup of kind logo items",
+        run: runV0570,
+        markdown: (report) => v0570Markdown(report as V0570Report),
     },
 ])
 

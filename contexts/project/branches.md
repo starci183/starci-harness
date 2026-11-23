@@ -45,11 +45,16 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
    conflict in `.starcistacks/cache` alone is no conflict: the batch keeps its own records and its gate rewrites what it re-checks.
 3. The batch runs `npm ci` when the lockfile is not the one its `node_modules` came from, then codegen and `build:modules`, then
    one `app check --env prod` with the app's own pinned CLI. Green, `app push origin HEAD:dev` commits the cache records the run wrote
-   and pushes, and every lane in the batch is landed at that commit.
+   and pushes, and every lane in the batch is landed at that commit. A tree that fails one of those prepare steps is judged like a red
+   gate, so the same failing batch never forms again: each lane of a batch of several is prepared alone on `origin/dev`, and every lane
+   that fails alone is rejected with the step's output (`LANE_LAND_PREPARE`); a batch whose lanes all pass alone but fail together
+   rejects them all. When every lane fails alone (or the batch is one lane), `origin/dev` itself is prepared: a dev that fails too
+   blames no lane, every lane stays ready and the lander waits a full poll before the next batch, as after any batch that failed
+   before it judged its lanes (`harness/land-batch.ts` `judgePrepare`).
 4. Red, each blocking finding is mapped to the lanes whose diff against the base names its file (the path itself, else a file its
    message cites, else a file under the folder it names). Those lanes are rejected with their findings and the gate runs once more
    on the rest. A second red run, a finding no lane's diff names, or a batch where every lane is named, lands nothing and rejects
-   every lane with the findings. A batch is never split further: at most two gate runs.
+   every lane with the findings. A red gate never splits a batch further: at most two gate runs.
 5. Each lane reads its outcome from `<lanes>/_land-status/<lane>.json`: `queued`, `landed` (`sha` the dev commit, `migrations`
    the files under `db/migrations/` it added, applied once landed), `conflict` (`reason`, `files`, `requeued`) or `rejected`
    (`findings`). A gate that gives no verdict (no report) or a failed push blames no lane: every lane stays ready.
@@ -67,7 +72,7 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
    commits those pins when the app declares `deps.devAllowsLocalRegistry`; it lands on `dev` without waiting for npm. Only main and a
    prod cut need npm pins (`deps install-local --restore`, then each pin bumped to its npm version, once per release).
 
-**Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
+**Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`; the check-cache records a gate writes back under `.starcistacks/cache/` are no work and never count, as `lane gate`'s `LANE_GATE_DIRTY` does not count them, and a sha that is not the pushed tip of its branch,
 `LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder
 taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and `cli/src/harness/land-batch.ts`;
 item 6 by `judgeRound` and `judgeWithOomRetry`, proven by `cli/src/harness/land-oom.test.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
@@ -87,9 +92,12 @@ nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
    (PROJECT-BRANCH-2: one commit per batch listing the lanes and their shas, a newer registration cancels the running gate, the same status
    files), under the **harness profile** (`cli/src/harness/land-profile.ts`), picked when the repository is the harness checkout (cli/,
    contexts/README.md and packages/, the marker `release push` reads) or by `--profile harness`:
-   - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build, typecheck and tests of the packages
-     the batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected. No
-     lint, no light gates, no sonar;
+   - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build and typecheck of the packages the
+     batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected, and the
+     cheap checks a publish needs (built declarations name `.js` only; `bundles:check` where a package has it). No test suite, no lint, no light
+     gates, no sonar: dev only reaches the local registry, and the tests are the release line's (item 4). Owner: "dev và prod phân biệt rõ…
+     grammar chưa lên prod chạy test chỉ bỏ vào verdaccio không được à?". A package's tests run on request (`npm test` in it) or at the train;
+     a test suite in the landing gate takes gigabytes under the RAM governor and holds every app build behind it;
    - the push is `git push origin HEAD:dev` (there is no app hook);
    - one lanes folder serves every repository of the machine (its slots bound the machine): `lane ready` records the lane's origin URL and each
      lander takes only its own repository's lanes; the harness lander holds `_batch-lander-harness.lock` and `_dev-push-harness.lock` and works in
@@ -105,7 +113,7 @@ nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
    dist-tag moves), a dev build whose release npm now serves is dropped from it, and the after-land dev sync (`devSync.afterLand`) installs them into
    the app checkout `devSync.checkout` names.
 4. A release train is a `dev` -> `main` move with the FULL gate: `starci release gate --level full` on the dev tip (every package and the CLI with
-   lint, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
+   lint and their test suites, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
    (`release publish`, never a `-dev` version). Then `starci release back-merge --execute` brings `main` back into `dev`, the cli-follow commit
    included: a fast-forward when dev is behind, else a merge commit, pushed under the harness lander's dev lock. `release push` of main and
    `release publish --execute` print that step; it runs only with `--execute`.

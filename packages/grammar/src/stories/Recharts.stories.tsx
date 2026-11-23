@@ -46,6 +46,29 @@ export const BarChart: Story = {
   },
 };
 
+/** highlightLast: the latest week in the full tone, the weeks before it in the soft tone; the chart's name ends with the latest value. */
+export const BarChartHighlightLast: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="highlightLast, accent" direction="column">
+        <E.BarChart data={weekly} xKey="week" yKey="orders" highlightLast ariaLabel="Orders per week" emptyLabel="No orders yet" formatX={day} formatY={count} />
+      </State>
+      <State label="highlightLast, success, short" direction="column">
+        <E.BarChart data={weekly} xKey="week" yKey="orders" tone="success" height={160} highlightLast ariaLabel="Orders per week" emptyLabel="No orders yet" formatX={day} formatY={count} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const last = weekly[weekly.length - 1];
+    const name = `Orders per week, ${day(last?.week ?? '')}: ${count(last?.orders ?? 0)}`;
+    await waitFor(() => expect(within(canvasElement).getAllByRole('img', { name })).toHaveLength(2));
+    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-bar-rectangle path').length).toBe(weekly.length * 2));
+    const fills = Array.from(canvasElement.querySelectorAll('[data-component="BarChart"]')[0]?.querySelectorAll('.recharts-bar-rectangle path') ?? []).map((bar) => bar.getAttribute('fill'));
+    expect(fills.at(-1)).toBe('var(--accent)');
+    expect(fills.slice(0, -1).every((fill) => fill?.startsWith('color-mix('))).toBe(true);
+  },
+};
+
 /** One series as a line, each tone in turn. */
 export const LineChart: Story = {
   render: () => (

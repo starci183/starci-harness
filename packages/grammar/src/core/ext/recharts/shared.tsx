@@ -58,8 +58,9 @@ type ChartFrameProps = {
     readonly children: ReactNode
 }
 
-const frameStyle = (height: number): CSSProperties => ({ inlineSize: "100%", minInlineSize: 0, blockSize: height })
-const stackStyle: CSSProperties = { inlineSize: "100%", minInlineSize: 0, display: "flex", flexDirection: "column", gap: "var(--grammar-row-gap)" }
+/** A chart takes its parent's full width, and stretches in a flex column that aligns its rows to the start. */
+const frameStyle = (height: number): CSSProperties => ({ inlineSize: "100%", minInlineSize: 0, alignSelf: "stretch", blockSize: height })
+const stackStyle: CSSProperties = { inlineSize: "100%", minInlineSize: 0, alignSelf: "stretch", display: "flex", flexDirection: "column", gap: "var(--grammar-row-gap)" }
 
 /**
  * The box a chart draws in. It keeps its height in every state (loading skeleton, empty line, drawing), so the page below does not

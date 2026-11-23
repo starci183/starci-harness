@@ -9,7 +9,15 @@ import ts from "typescript"
 import { transformApiSource } from "./api.mts"
 import { BUTTON_MARK, BUTTON_VARIANT_MAP, INTENT_MAP } from "./button.mts"
 
-const run = (code: string) => transformApiSource(ts, "apps/web/src/components/blocks/Foo/index.tsx", code)
+/** The Grammar imports the snippets read their elements from (the codemod touches only a Grammar element), at the end so the lines of a snippet stay its own. */
+const GRAMMAR = `
+import * as G from "@starci/grammar"
+import { Alert, Avatar, AvatarButton, AvatarGroup, Button, ButtonGroup, EmptyNotice, ExpandableText, FilterButtonGroup, GrammarRoot, IconButton, IconTile, ListRow, Stepper, Text, Timeline } from "@starci/grammar/core"
+import { BarChart, Sparkline } from "@starci/grammar/core/ext/recharts"
+`
+const withGrammar = (out: ReturnType<typeof transformApiSource>) => ({ ...out, text: out.text.endsWith(GRAMMAR) ? out.text.slice(0, -GRAMMAR.length) : out.text })
+const bare = (code: string) => transformApiSource(ts, "apps/web/src/components/blocks/Foo/index.tsx", code)
+const run = (code: string) => withGrammar(transformApiSource(ts, "apps/web/src/components/blocks/Foo/index.tsx", code + GRAMMAR))
 const IMPORT = 'import { Button, IconButton, EmptyNotice, ListRow } from "@starci/grammar/core"\n'
 const one = (before: string): string => run(`export const A = () => ${before}\n`).text.replace(/^export const A = \(\) => /u, "").replace(/\n$/u, "")
 
@@ -95,7 +103,7 @@ test("an action object's intent is its variant in a Grammar file, isPrimary is d
     const other = `${IMPORT}const x = { intent: "primary", mode: 1 }\n`
     assert.equal(run(other).text, other)
     const plain = 'const rows = [{ label: "Continue", intent: "commit" }]\n'
-    assert.equal(run(plain).text, plain)
+    assert.equal(bare(plain).text, plain)
     // a dynamic action intent is marked
     assert.match(run(`${IMPORT}const a = { label: "Go", intent: pick() }\n`).text, /\/\* TODO\(button\): the action's intent is not a literal/u)
 })

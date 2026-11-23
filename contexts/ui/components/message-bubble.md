@@ -18,6 +18,17 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it. A
   `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message
   replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
+- **the message an answer replies to** (0.55.1, owner 2026-11-23, Zalo/Messenger) is `ReplyStrip` as the first line of the answer's body: ONE
+  compact line on the secondary surface, a 3px bar on its start edge in the replied author's tone (an agent's colour from the app's palette by `tone={{ soft, ink }}`, its ink on the bar; a person's muted ink),
+  the reply glyph at 1em, the author in the medium weight, then the words muted and ellipsized; no "Reply to X:" label, no quotation marks, no box in a
+  box. With `onPress` it is a button that scrolls the thread to the original and rings it (`isHighlight`). The thread draws NO strip when the answer
+  follows the message it replies to with nothing between them: the reader sees that message right above. Story `Navigation & Data/Chat parts` `ReplyStrips`.
+- **a question with answers** (owner 2026-11-23, Telegram / iOS alert) is ONE `ChoiceCard` as the body of `MessageBubble content="card"`: the short question
+  on top (it never lists the answers again nor asks for a number), the answers as cells separated by hairlines, a long one on its own row and two short
+  ones to a row, each naming the thing with a muted hint, and `other` as the last cell, which focuses the composer. A chosen answer fills its cell (accent
+  soft, check) and closes the card, and the app posts the choice as the reader's own message. A destructive answer is the danger ink only (a cell is not
+  a Button, so the danger Button rule does not apply to it) and asks once more. Never a row of Buttons under a text bubble for a question.
+  Story `Navigation & Data/Chat parts` `ChoiceCards`.
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread.
@@ -50,6 +61,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | `DNA-COMMON-CHAT-OUTGOING-ACCENT` |
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the 1px `--border` edge with no fill and `--foreground` words (no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-OUTLINE` |
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
+| the reader in an assistant chat | the reader's own words where an accent fill would shout (`AiChatThread`) | `side="outgoing" tone="neutral"`: the default soft surface (`--default-soft`) with its foreground, at the end side; `tone` never changes an incoming bubble | judgement |
 
 Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent` (and `agentLabel`, the Chip's word in the app's language, `AI` by default): the bubble draws the small neutral "AI" Chip right after the name (`AgentName`; owner 2026-11-22: the AI is a Chip at the end of the name, never a pill on the avatar). The app never places a `Badge` for it by hand.
 
@@ -123,7 +135,7 @@ It takes no step; the words use the body step (14) and the author line and meta 
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here); a render highlights one thing (lint `one-highlight-per-render`, R359). Loading draws the face with two skeleton lines
-(`isLoading`, STATE-8): incoming the outlined face, outgoing the brand's SOFT pair (`--accent-soft`, its lines in `--accent-soft-foreground` at a tint), never the solid fill a real message wears (`DNA-COMMON-CHAT-SKELETON-SOFT`, story `Chat surfaces / Loading thread`); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
+(`isLoading`, STATE-8): incoming the outlined face, outgoing the brand's SOFT pair (`--accent-soft`, its lines in `--accent-soft-foreground` at a tint), never the solid fill a real message wears (`DNA-COMMON-CHAT-SKELETON-SOFT`, story `Chat surfaces / Loading thread`); a whole loading thread is the thread's own bubbles with `isLoading`. While a party writes its answer, its bubble (its avatar, name and meta line) holds `TypingDots` as its body, and the answer replaces that body in place. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split
 - **Grammar owns:** the thread ground, the faces (flat surface, accent), the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton, the card's suggestion list.

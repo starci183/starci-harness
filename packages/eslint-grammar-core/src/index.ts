@@ -21,6 +21,7 @@ import { rules as mascotRules } from "./mascot.ts"
 import { rules as mediaRules } from "./media.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
+import { rules as noRawSpacingStyleRules } from "./no-raw-spacing-style.ts"
 import { rules as noRawTypeSizeRules } from "./no-raw-type-size.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
@@ -90,6 +91,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "media", rules: mediaRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
+  { law: "no-raw-spacing-style", rules: noRawSpacingStyleRules },
   { law: "no-raw-type-size", rules: noRawTypeSizeRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
@@ -142,6 +144,7 @@ export const rules: Readonly<Record<string, Rule.RuleModule>> = Object.fromEntri
  */
 export const COUNTING: Readonly<Record<string, { readonly law: string; readonly until: string }>> = Object.freeze({
   "starci-grammar/no-raw-type-size": { law: "TYPE-ROLES", until: "both apps have moved their raw type sizes onto the type roles" },
+  "starci-grammar/no-raw-spacing-style": { law: "SPACING-ROLES", until: "both apps have moved their raw style spacing onto the spacing roles" },
 })
 
 /** The level of one published rule: warn in the counting cohort, error otherwise. */

@@ -130,14 +130,14 @@ roles:
     slots: [label, startContent, endContent, disabledReason, "isPending: initiating Button or IconButton busy state", "isLoading: unresolved inert geometry"]
     variants:
       variant: { values: [primary, border, danger], default: border, chosenBy: app from button.choose.variant }
-      tone: { values: [accent, info, success, warning], of: primary, chosenBy: the composing notice (Alert ALERT_ACTION_LOOK) }
+      tone: { values: [accent, info, success, warning], of: primary, chosenBy: app (a solid primary in a tone's colour; an Alert's buttons take the banner's tint instead, DNA-COMMON-ALERT-ACTION-IN-TONE) }
       width: { values: [content, fill], chosenBy: app }
       kind: { values: [command (onPress), destination (href)], chosenBy: app }
     buttonVariant: buttonVariant
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-BORDER-OUTLINE, DNA-COMMON-BUTTON-GROUND-CONTRAST]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-COMMON-ONE-PRIMARY-PER-REGION, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-BORDER-OUTLINE, DNA-COMMON-BUTTON-GROUND-CONTRAST]
 
   - id: link
     ui: ui/components/button.md
@@ -209,7 +209,7 @@ roles:
     renderers: [Quote, Inset]
     vendorParity: []
     slots: [children (the words), source (a short word: Brain, Chat, Template), byline (where and when), "Inset: children (rows or a block), label, isLoading"]
-    variants: none
+    variants: [block, "line (one muted ellipsized line with a start rule, no ground: the line a chat answer quotes)"]
     sizes: none
     states: [skeleton]
     grammarMayChange: [ground tint through tokens]
@@ -427,7 +427,7 @@ roles:
     ui: ui/components/data-views.md
     renderers: [Board, ScheduleGrid, ProportionBar, IntervalChart, FunnelChart, Legend, GeoMap]
     vendorParity: []                              # no HeroUI part: Common regions built from the card, the table and the scroll region
-    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns (todayAt), rows (isGroup, isCollapsed, parent), items placed by row and column (title, meta, tone, endColumn, progress, form, after, resize, onPress), cellLabels, empty, onDrop (source grid or outside), onCellPress, onRowToggle; startScheduleDrag for a list beside it", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format", "Legend: label, items (id, label, tone, form)", "GeoMap: label, points (id, lat, lng, count, label), labels, tiles (url, attribution, maxZoom), empty, height, defaultView, onSelect", "every view: isLoading, error (message, description, actionLabel, onAction)"]
+    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns (todayAt), rows (isGroup, isCollapsed, parent), items placed by row and column (title, meta, tone, endColumn, progress, form, after, resize, onPress), cellLabels, empty, onDrop (source grid or outside), onCellPress, onRowToggle; startScheduleDrag for a list beside it", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty, size (sm, md, lg)", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format", "Legend: label, items (id, label, tone, form)", "GeoMap: label, points (id, lat, lng, count, label), labels, tiles (url, attribution, maxZoom), empty, height, defaultView, onSelect", "every view: isLoading, error (message, description, actionLabel, onAction)"]
     variants:
       tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items, Legend items) }
     sizes: none
@@ -639,6 +639,18 @@ roles:
     states: [loading (skeleton at the zone and rows), idle, drag-over (info soft), rejected (danger soft, the reasons in words), rows (waiting, uploading with percent, done, error with retry)]
     grammarMayChange: [zone edge, soft surfaces and row paint through tokens]
     dna: [DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY]
+    lint: [starci-grammar/ext-boundary, starci-grammar/no-graph-or-animation-library]
+
+  - id: ai-chat
+    ui: ui/components/ai-chat.md
+    renderers: [AiChatThread]
+    vendorParity: []
+    slots: ["messages, isRunning, onSend, onStop, onRetry, preview, onApprove, onRevise, labels, header, disabled"]
+    variants: {}
+    sizes: none
+    states: [empty (the app's empty words), conversation, thinking (running mark), streaming (stop in place of send), tool call (running, done, error), preview (waiting, approving, approved), disabled (read-only composer)]
+    grammarMayChange: [frame, column and tool row paint through tokens]
+    dna: [DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY, DNA-COMMON-CHAT-FRAME-SCROLL]
     lint: [starci-grammar/ext-boundary, starci-grammar/no-graph-or-animation-library]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
@@ -987,6 +999,11 @@ mustKeep:
       owner: CTA-1; lint single-commit-per-render
     # --- tabs, segmented control, fields
       followUp: "owner-triage 2026-11-18: Offset Pop: an Alert action and a commit Button are both pink in one view"
+    - id: DNA-COMMON-ONE-PRIMARY-PER-REGION
+      role: button
+      law: "A region (a card: SurfaceCard or EntitySummaryCard; a Section or PaneSection; a Dialog, AlertDialog or Drawer; the page head, PageHeader) holds at most one filled primary Button (variant primary) of its own; a Button inside a region nested in it counts for that inner region, border and danger never count, and neither does a region behind an open modal (inert) or in a catalog story. The finding names the region; the fix is the owner's: \"giữ 1 nút chính, nút còn lại đổi sang border\"."
+      measure: { kind: count, scope: ':is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]):not([inert] *, [data-story-catalog] *)', select: ':scope [data-component="Button"][data-grammar-variant="primary"]:not(:scope :is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]) *, [inert] *)', op: "<=", value: 1 }
+      owner: CTA-1; ui/components/button.md (the CTA rule); lint single-commit-per-render
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
       law: "Every tab bar draws the underline, on the page and inside a surface alike, views and filter tabs alike; the one exception is a filter strip the app asks to wear the pill (shape=\"pill\", 0.46.2, ui/components/tabs.md), which draws the primary pill on its track."
@@ -1197,10 +1214,10 @@ mustKeep:
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --info-soft } }, { metric: color, op: "=", value: { token: --info-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
-    - id: DNA-COMMON-ALERT-ACTION-SOLID
+    - id: DNA-COMMON-ALERT-ACTION-IN-TONE
       role: alert
-      law: "An Alert's action Button is a primary SOLID in the banner's tone (0.55.0, owner: \"button phải là màu tương ứng, ko phải border\"): a warning banner a warning-filled primary, info info-filled, success success-filled, accent accent-filled; never an outline. A negative banner's action is the border retry (danger only when it destroys); a neutral, pending or unavailable banner's is border. The mapping is one table, ALERT_ACTION_LOOK."
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"]) [data-grammar-alert-actions] [data-grammar-button-tone="warning"]', checks: [{ metric: background-color, op: "=", value: { token: --warning } }, { metric: color, op: "=", value: { token: --warning-foreground } }] }
+      law: "A Button inside an Alert takes the banner's tone (0.55.1, owner 2026-11-23, \"Chốt, làm luôn\"): its fill one step stronger than the banner's soft background (the banner's ink, --<tone>-soft-foreground, at 10% over the soft box), its label that ink at the button label weight 500, Grammar's pill. Never a white or neutral outline on a tinted banner, never a solid primary: action, secondaryAction and each of several equal actions are the border rank, none primary; a destructive action stays danger."
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"]) [data-grammar-alert-actions] [data-component="Button"][data-grammar-variant="border"]', checks: [{ metric: color, op: "=", value: { token: --warning-soft-foreground } }, { metric: font-weight, op: "=", value: "500" }] }
       owner: ui/components/toast-alert.md
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
@@ -1365,7 +1382,7 @@ mustKeep:
       owner: ui/components/empty-state.md; ui/presentation.md
     - id: DNA-COMMON-RETRY-ONE-LOOK
       role: [empty-state, alert]
-      law: "\"Try again\" has one look wherever a read failed: the retry of an ErrorView (and of an EmptyNotice isError) and the action of a negative Alert are the border (outlined) look, never the danger fill (a negative Alert's action is danger only when it destroys: isDestructive)."
+      law: "\"Try again\" has one look wherever a read failed: the retry of an ErrorView (and of an EmptyNotice isError) and the action of a negative Alert are the border look (in a banner the border rank painted in the banner tint, DNA-COMMON-ALERT-ACTION-IN-TONE), never the danger fill (a negative Alert's action is danger only when it destroys: isDestructive)."
       measure:
         kind: attr
         metric: data-grammar-variant
@@ -1974,7 +1991,7 @@ mustKeep:
       owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BODY-GAP
       role: page
-      law: The page owns its rhythm, the region step between the band and the body and between the body's sections.
+      law: The page owns its rhythm, the region step between the band and the body and between the body's sections; under a band that carries tabs the body starts one tab line step (16) below the band's bottom border (ui/components/tabs.md "The second layer").
       measure:
         kind: style
         select: ':is([data-component="Page"], [data-component="Page"] > [data-grammar-page-body])'
@@ -2017,7 +2034,7 @@ mustKeep:
       owner: ui/components/fragment.md
     - id: DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY
       role: fragment
-      law: "Chart, graph, markdown, PDF and upload libraries (recharts; @xyflow/react, elkjs, d3-force; unified, remark-*, mdast-util-directive, shiki, beautiful-mermaid; pdfjs-dist; react-dropzone) are imported only inside Grammar's core ext, each in its own ext (src/core/ext/recharts, src/core/ext/graph, src/core/ext/markdown, src/core/ext/pdf and src/core/ext/dropzone, lazily), and declared only as optional peers; the core entry, Common and the families never import an ext or its libraries, and an ext imports the core and itself. Apps never import those libraries directly: they draw through @starci/grammar/core/ext/recharts (EVERY chart and sparkline), @starci/grammar/core/ext/graph, @starci/grammar/core/ext/markdown and @starci/grammar/core/ext/pdf (ONLY a PDF document) and @starci/grammar/core/ext/dropzone (EVERY upload), each only in its own situation. No animation library (motion, framer-motion, gsap, react-spring, lottie, ...) is imported or declared anywhere: Grammar motion is the CSS transitions its tokens drive."
+      law: "Chart, graph, markdown, PDF and upload libraries (recharts; @xyflow/react, elkjs, d3-force; unified, remark-*, mdast-util-directive, shiki, beautiful-mermaid; pdfjs-dist; react-dropzone; @assistant-ui/react) are imported only inside Grammar's core ext, each in its own ext (src/core/ext/recharts, src/core/ext/graph, src/core/ext/markdown, src/core/ext/pdf, src/core/ext/dropzone, lazily, and src/core/ext/chat), and declared only as optional peers; the core entry, Common and the families never import an ext or its libraries, and an ext imports the core and itself. Apps never import those libraries directly: they draw through @starci/grammar/core/ext/recharts (EVERY chart and sparkline), @starci/grammar/core/ext/graph, @starci/grammar/core/ext/markdown and @starci/grammar/core/ext/pdf (ONLY a PDF document) and @starci/grammar/core/ext/dropzone (EVERY upload) and @starci/grammar/core/ext/chat (EVERY chat with an assistant), each only in its own situation. No animation library (motion, framer-motion, gsap, react-spring, lottie, ...) is imported or declared anywhere: Grammar motion is the CSS transitions its tokens drive."
       measure: { kind: source, check: "lint:starci-grammar/no-graph-or-animation-library, lint:starci-grammar/ext-boundary, npm run check:libraries" }
       owner: ui/components/fragment.md
     # --- diagram
@@ -2120,12 +2137,12 @@ mustKeep:
       owner: grammars/core.md; CHANGELOG 0.55.0 (the status-mark rule)
     - id: DNA-CORE-LINK-ACCENT-TEXT
       role: link
-      law: "A text link is the exact primary brand colour (--accent), underlined (owner overrule of P2, 2026-11-05, commit 1e502f15d: the raw accent may fall below 4.5 contrast as text on an app's grounds, so this law pins the token and no contrast law judges a link). The plain variant (0.37.14: a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
-      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent } }] }
+      law: "A text link is HeroUI v3's own link (owner 2026-11-23): --link, which the theme sets to the foreground, never the accent, weight 500, no underline at rest (a 1.5px muted underline 4px below the text on hover). The plain variant (0.37.14: a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
+      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --foreground } }, { metric: text-decoration-line, op: "=", value: none }] }
       owner: contract roles.link; grammars/core.md
     - id: DNA-CORE-ACCENT-TEXT
       role: root
-      law: "Where the accent is text other than a link (the current tab label, the section eyebrow, the soft accent pairing) it reads the text-safe accent --accent-soft-foreground, never the fill accent. A text Link is the exception: since the owner overrule of P2 (2026-11-05, commit 1e502f15d, DNA-CORE-LINK-ACCENT-TEXT) it is the exact brand --accent, underlined."
+      law: "Where the accent is text other than a link (the current tab label, the section eyebrow, the soft accent pairing) it reads the text-safe accent --accent-soft-foreground, never the fill accent. A text Link is no accent at all: it is the foreground (DNA-CORE-LINK-ACCENT-TEXT)."
       measure: { kind: count, select: '*:not(:empty):not(a, a *)', where: { metric: color, op: "=", value: { token: --accent } }, op: "=", value: 0 }
       owner: grammars/core.md; owner overrule of P2 (links)
       followUp: "owner-triage 2026-11-18: other components paint accent as text (a ring number, today in the Calendar, a step, a message status): rule on accent-as-text beyond links is stale (the current tab is the foreground)"
@@ -2192,7 +2209,7 @@ mustKeep:
       owner: grammars/offset-pop.md O-1
     - id: DNA-OFFSET-POP-LINK-INK
       role: link
-      law: "A text link is ink (--foreground) with a pink underline, never pink text: pink is a fill and a ring (O-2, DNA-OFFSET-POP-PINK-NEVER-TEXT), so the owner overrule of P2 (a text Link is the exact brand --accent, DNA-CORE-LINK-ACCENT-TEXT) is Core's and not this family's. The plain variant inherits its host's colour; a current link keeps its own look."
+      law: "A text link is ink (--foreground) with a pink underline, never pink text: pink is a fill and a ring (O-2, DNA-OFFSET-POP-PINK-NEVER-TEXT), as Core's link is too (DNA-CORE-LINK-ACCENT-TEXT). The plain variant inherits its host's colour; a current link keeps its own look."
       measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"], [data-grammar-link-visited="distinct"]:visited)', checks: [{ metric: color, op: "=", value: { token: --foreground } }] }
       owner: grammars/offset-pop.md; O-2
     - id: DNA-OFFSET-POP-INK-ON-PINK

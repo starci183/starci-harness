@@ -141,9 +141,10 @@ test("only core and offset-pop are families; any other id, starci and starci-cor
   }
 })
 
-test("the counting cohort is closed: the type-roles rule alone runs at warn, until its entry is deleted", () => {
-  assert.deepEqual(Object.keys(COUNTING), ["starci-grammar/no-raw-type-size"])
+test("the counting cohort is closed: the type-roles and spacing-roles rules alone run at warn, each until its entry is deleted", () => {
+  assert.deepEqual(Object.keys(COUNTING), ["starci-grammar/no-raw-type-size", "starci-grammar/no-raw-spacing-style"])
   assert.deepEqual(COUNTING["starci-grammar/no-raw-type-size"]?.law, "TYPE-ROLES")
+  assert.deepEqual(COUNTING["starci-grammar/no-raw-spacing-style"]?.law, "SPACING-ROLES")
   const loose = Object.entries(recommended).filter(([, level]) => level !== "error").map(([name]) => name)
-  assert.deepEqual(loose, Object.keys(COUNTING))
+  assert.deepEqual(loose.toSorted(), Object.keys(COUNTING).toSorted())
 })

@@ -28,11 +28,19 @@
         --offset-pop-row-gap: var(--grammar-row-gap);
         --offset-pop-surface-radius: calc(var(--radius) * 1.5);
         --offset-pop-control-radius: var(--radius);
+        --grammar-button-radius: var(--offset-pop-control-radius);
         --offset-pop-pill-radius: 999px;
         --offset-pop-motion-duration: 140ms;
         --offset-pop-motion-easing: cubic-bezier(.2, .8, .2, 1);
         /* The composite motion value every family transition reads; reduced motion replaces it. */
         --offset-pop-transition: var(--offset-pop-motion-duration) var(--offset-pop-motion-easing);
+        /* 0.47.3 marketing motion, the sticker's way: a rise that settles with a small overshoot, a longer reach and a quicker beat between siblings; Common's ramps hold every other step. */
+        --grammar-motion-ease-out: cubic-bezier(0.34, 1.35, 0.64, 1);
+        --grammar-motion-duration-reveal: 480ms;
+        --grammar-motion-distance-reveal: 2rem;
+        --grammar-motion-stagger: 60ms;
+        --grammar-loop-marquee: 32s;
+        --grammar-loop-marquee-compact: 24s;
         /* The danger tone is a fill (3.57:1 as text), so danger painted as TEXT is mixed toward the ink. */
         --offset-pop-error: color-mix(in srgb, var(--danger) 65%, var(--foreground));
 
@@ -52,15 +60,6 @@
         color: var(--muted);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Text"][data-tone="accent"] {
-        color: var(--accent-soft-foreground);
-    }
-
-    /* Common paints these two with the fill accent itself; the family routes their TEXT to the text-safe one. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-section-header] .starci-core-section-eyebrow {
-        color: var(--accent-soft-foreground);
-    }
-
     /* The current tab keeps its pink underline (non-text, a decision mark); only the label reads the text-safe accent. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TextAction"][data-appearance="tab"][data-current="true"] {
         border-block-end-color: var(--accent);
@@ -69,9 +68,12 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
         border: var(--offset-pop-outline-width) solid var(--border);
-        border-radius: var(--radius);
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: var(--grammar-weight-extrabold);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
+        border-radius: var(--radius);
     }
 
     /* A disabled Button's tooltip wrapper carries its focus ring in the family's button radius. */
@@ -86,13 +88,7 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
-    /* StatusDot with text: a pill in ink. No outline, so its padding and height stay the HeroUI Chip's. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="StatusDot"][data-variant="text"] {
-        border-radius: var(--offset-pop-pill-radius);
-        font-weight: var(--grammar-weight-extrabold);
-    }
-
-    /* The status dot takes an ink ring so it reads on the cream canvas. */
+    /* The filled status dot takes a hairline ink outline so it reads on the cream canvas. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
         box-shadow: 0 0 0 var(--grammar-hairline) var(--foreground);
     }
@@ -124,86 +120,37 @@
         box-shadow: none;
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-surface-radius);
         color: var(--surface-foreground);
         background: var(--surface);
     }
 
-    /* The accent corner survives this family's surface radius. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"][data-grammar-surface-depth] { border-start-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"][data-grammar-surface-depth] { border-start-end-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"][data-grammar-surface-depth] { border-end-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"][data-grammar-surface-depth] { border-end-end-radius: var(--grammar-accent-corner); }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="top"] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"] {
         box-shadow: var(--surface-shadow);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"],
+    /* 0.47.2: a bleed poster sits inside the outline, flush to it, and the outline's own weight draws the line under the picture. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-tile-poster[data-grammar-tile-poster-bleed="true"] {
+        border-block-end: var(--offset-pop-outline-width) solid var(--border);
+    }
+
+    /* 0.47.1: a tile `groundTone` is the tone's soft pair over the family's surface paint. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-ground] {
+        color: var(--starci-core-ground-ink);
+        background: var(--starci-core-ground);
+    }
+
     /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
         color: inherit;
-    }
-
-    /* The seam between two bands of a joined card is the family's outline width, the same line the stat strip draws between its cells. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
-        height: var(--offset-pop-outline-width);
-        min-height: var(--offset-pop-outline-width);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="nested"] {
-        box-shadow: none;
-        background: var(--surface-secondary);
-    }
-
-    /*
-     * The ink band (SurfaceCard treatment="ink", 0.6.0) is painted on the family ink with the canvas on
-     * it - the pink stays the decision accent (ACCENT-1). The ink flips to cream in the dark theme, so the
-     * band's quiet inks are mixes of the canvas into the ink (both directions stay AA: muted 72% is
-     * about 8:1), not the lightness lift Common uses for a dark accent.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-treatment="ink"] {
-        --grammar-ink-band: var(--foreground);
-        --grammar-ink-band-foreground: var(--background);
-        --grammar-ink-band-muted: color-mix(in oklab, var(--background) 72%, var(--foreground));
-        --grammar-ink-band-separator: color-mix(in oklab, var(--background) 18%, var(--foreground));
-        --grammar-ink-band-plate: color-mix(in oklab, var(--background) 10%, var(--foreground));
-        --grammar-ink-band-orbit: color-mix(in oklab, var(--background) 20%, var(--foreground));
-        --success-soft-foreground: color-mix(in oklab, var(--success) 45%, var(--background));
-        --warning-soft-foreground: color-mix(in oklab, var(--warning) 45%, var(--background));
-        --danger-soft-foreground: color-mix(in oklab, var(--danger) 45%, var(--background));
-        border-color: var(--foreground);
-        color: var(--grammar-ink-band-foreground);
-        background: var(--grammar-ink-band);
-    }
-
-    /* On the ink band the eyebrow is the band's muted ink, not the text-safe pink (which is tuned for the canvas). */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-treatment="ink"] [data-grammar-section-header] .starci-core-section-eyebrow {
-        color: var(--grammar-ink-band-muted);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-label] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
         letter-spacing: var(--grammar-tracking-snug);
-    }
-
-    /*
-     * A scrollable SurfaceListCard renders its collection AS the vertical scroll region, and the
-     * family layer outranks Common, so clipping it would override Common's overflow-y: auto
-     * (OVERFLOW-3) and stop the list scrolling. Only a list that does not scroll is clipped here.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-list] {
-        border-radius: calc(var(--offset-pop-surface-radius) - var(--offset-pop-outline-width));
-    }
-
-    /* A scroll region already clips its rows to that radius through its own overflow. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-list]:not([data-grammar-scroll-region]) {
-        overflow: clip;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
@@ -232,25 +179,24 @@
         border-inline-end: var(--offset-pop-outline-width) solid var(--border);
     }
 
-    /* IconButton "danger-soft" (a destructive row action): the danger tint plate wears the family's ink outline and a small hard offset, pressed flat. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"] {
+    /* IconButton "danger" (a destructive action): the danger plate wears the family's ink outline and a small hard offset, pressed flat. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"]:active:not([disabled]) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger"]:active:not([disabled]) {
         box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-x));
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-navigation-feature-nav] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] {
         border-block-end-width: var(--offset-pop-outline-width);
         border-block-end-color: var(--border);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
         transition:
             transform var(--offset-pop-transition),
@@ -275,13 +221,9 @@
         outline-offset: 0.25rem;
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"]:has([data-grammar-whole-action]:active) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"]:has([data-grammar-whole-action]:active) {
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"]:has([data-grammar-whole-action]:active) {
-        transform: translateY(var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state="affirmative"] {
@@ -334,7 +276,6 @@
 
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
             transform: none;
         }
@@ -345,7 +286,6 @@
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state-mark],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-rail] {
             border-color: CanvasText;

@@ -51,10 +51,12 @@ type AnchoredTooltipProps = {
     readonly target: Element | null
     readonly content: ReactNode
     readonly isOpen: boolean
+    /** Beside the item (default, a rail's collapsed entries) or above it (a mark on a canvas). */
+    readonly placement?: "right" | "top"
 }
 
 /** A collection owns its trigger events; HeroUI positions the controlled annotation beside that item. */
-export const AnchoredTooltip = ({ id, target, content, isOpen }: AnchoredTooltipProps) => {
+export const AnchoredTooltip = ({ id, target, content, isOpen, placement = "right" }: AnchoredTooltipProps) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
         <HeroTooltip isOpen={isOpen && target !== null}>
@@ -63,7 +65,7 @@ export const AnchoredTooltip = ({ id, target, content, isOpen }: AnchoredTooltip
                 <HeroTooltip.Content
                     triggerRef={{ current: target }}
                     UNSTABLE_portalContainer={container}
-                    placement="right"
+                    placement={placement}
                     offset={8}
                     className={tooltipContentClassName}
                     data-grammar-tooltip-content="true"

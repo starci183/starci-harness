@@ -10,11 +10,13 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { captureGitSync } from "../../shared/git.js"
 import { writeInstallRecord } from "../deps/install-local.js"
+import type { InstallRecord } from "../deps/install-local.js"
 import { ASIDE, installPlaces, realInstallFs } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { parseStackStatus, stopTargets } from "./stack-stop.js"
 import type { StackProcesses, StackStop } from "./stack-stop.js"
-import { changedSides, devSync, overlayFiles, overlayLine, overlayOf, processesFor, summaryLine, syncLocal } from "./sync.js"
+import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
+import { changedSides, devSync,overlayFiles, overlayLine, overlayOf, processesFor, summaryLine, syncLocal } from "./sync.js"
 import type { DevSyncDeps, DevSyncRequest } from "./sync.js"
 
 const PROCESSES = { be: ["api"], fe: ["web"] }
@@ -35,6 +37,9 @@ void test("the overlay is printed whether or not one is in effect, and names the
     const record = { schema: "starci/deps-install-local@1" as const, registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/grammar", version: "0.52.4-local.1", pins: [{ file: "fe/package.json", field: "dependencies", spec: "0.52.3" }] }] }
     assert.deepEqual(overlayOf(record), ["@starci/grammar@0.52.4-local.1"])
     assert.deepEqual(overlayFiles(record), ["fe/package.json", "package-lock.json"])
+    // a pin in a subfolder package with its own lockfile (gallery/) owns that lockfile too, so the next sync never reads it as a stray change
+    const gallery: InstallRecord = { ...record, packages: [...record.packages, { name: "@starci/gallery", version: "0.1.21-dev.2", pins: [{ file: "gallery/package.json", field: "devDependencies", spec: "0.1.20" }] }] }
+    assert.deepEqual(overlayFiles(gallery, (file) => (file.startsWith("gallery/") ? "gallery" : "")), ["fe/package.json", "gallery/package-lock.json", "gallery/package.json", "package-lock.json"])
     assert.deepEqual(overlayOf(undefined), [])
     assert.match(overlayLine([]), /local overlay: none/u)
     assert.match(overlayLine(overlayOf(record)), /local overlay in effect: @starci\/grammar@0\.52\.4-local\.1/u)
@@ -257,6 +262,10 @@ const fakeDeps = (log: string[], extra: Partial<DevSyncDeps> & { readonly refuse
             writeFileSync(join(root, "node_modules", "new"), "the new install\n")
             return Promise.resolve()
         },
+        prepare: () => {
+            log.push("prepare")
+            return Promise.resolve(undefined)
+        },
         fs,
         pause: () => {
             log.push("pause")
@@ -277,7 +286,7 @@ void test("an install stops the recorded dev stack processes first, moves node_m
     lockfileMoved(pusher, checkout)
     const log: string[] = []
     const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log))
-    assert.deepEqual(log, ["status", "stop api,web", "rename aside", "npm ci (node_modules moved aside)", "rename trash", "restart api,web"])
+    assert.deepEqual(log, ["status", "stop api,web", "rename aside", "npm ci (node_modules moved aside)", "rename trash", "prepare", "restart api,web"])
     assert.deepEqual(done.data.stopped, ["api", "web"])
     assert.equal(done.data.restart, "done")
     assert.ok(existsSync(join(checkout, "node_modules", "new")))
@@ -374,6 +383,127 @@ void test("the places an install replaces are the root node_modules and each wor
     assert.ok(existsSync(join(checkout, "fe", "apps", "web", "node_modules", "old")))
 })
 
+void test("a new workspace package is built (the app's codegen and build:modules) after the install and before the restart; a code-only change builds without installing", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    // The commit that adds a workspace package whose main is its dist: the lockfile moves with it.
+    mkdirSync(join(pusher, "packages", "nivo-icons"), { recursive: true })
+    writeFileSync(join(pusher, "packages", "nivo-icons", "package.json"), '{"name":"@starci/nivo-icons","main":"./dist/index.js"}\n')
+    lockfileMoved(pusher, checkout)
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /would run the app's codegen and build:modules \(each one it declares\) before the restart/u)
+    const log: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log))
+    assert.deepEqual(log.slice(-3), ["rename trash", "prepare", "restart api,web"], "built after the install, before the web restarts on it")
+    writeFileSync(join(pusher, "packages", "nivo-icons", "index.ts"), "export const icon = 1\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "icon source")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const code: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(code))
+    assert.deepEqual(code, ["prepare", "restart api,web"], "a package's source moved without the lockfile: no install, still built before the restart")
+})
+
+void test("a build of the workspace packages that fails restarts the stopped processes and refuses DEV_SYNC_BUILD with its output", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const failing = fakeDeps(log, {
+        prepare: () => {
+            log.push("prepare fails")
+            return Promise.resolve({ command: "npm run build:modules", exitCode: 2, output: "packages/nivo-icons: error TS2307: Cannot find module './glyphs'" })
+        },
+    })
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), failing), refused("DEV_SYNC_BUILD", "npm run build:modules exited 2"))
+    assert.deepEqual(log, ["status", "stop api,web", "rename aside", "npm ci (node_modules moved aside)", "rename trash", "prepare fails", "restart api,web"], "the processes stopped for the install come back")
+    assert.ok(existsSync(join(checkout, "node_modules", "new")), "the install itself stands: only the build failed")
+    // The checkout no longer moves, yet the next sync builds again and restarts both sides once the build passes.
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /the last sync could not build the workspace packages/u)
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps([], { prepare: failing.prepare })), refused("DEV_SYNC_BUILD", "Cannot find module './glyphs'"))
+    const fixed: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(fixed))
+    assert.deepEqual(fixed, ["prepare", "restart api,web"])
+    assert.equal(done.data.restart, "done")
+    const quiet: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(quiet))
+    assert.deepEqual(quiet, [], "a passing build clears the mark: nothing moved, nothing runs")
+})
+
+/** Pushes a new migration file (and, with `lockfile`, a lockfile change) to dev. */
+const migrationPushed = (pusher: string, name: string): void => {
+    mkdirSync(join(pusher, "db", "migrations"), { recursive: true })
+    writeFileSync(join(pusher, "db", "migrations", name), "alter table webhooks add column expires_at timestamptz;\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", name)
+    gitIn(pusher, "push", "-q", "origin", "dev")
+}
+
+/** Fake seams whose appRun logs `up` for `app stack up` and fails it while `failUp` holds. */
+const migratingDeps = (log: string[], failUp: { now: boolean }): DevSyncDeps => fakeDeps(log, {
+    appRun: (_root, args) => {
+        if (args.includes("up")) {
+            log.push(failUp.now ? "up fails" : "up")
+            return Promise.resolve({ exitCode: failUp.now ? 1 : 0, stdout: failUp.now ? "STACK_LOCAL_MIGRATE: starci app db migrate exited 1: column card_figures already exists" : "migrate: applied, receipt abc", stderr: "", timedOut: false })
+        }
+        log.push(`restart ${args[args.indexOf("--process") + 1] ?? ""}`)
+        return Promise.resolve({ exitCode: 0, stdout: "", stderr: "", timedOut: false })
+    },
+})
+
+void test("new migrations are applied by the stack's migrate step (app stack up) after the build and before the api restarts on the code that needs them", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    migrationPushed(pusher, "20261122090000_webhook_expiry.sql")
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /would migrate the dev database before the restart \(1 migration file\(s\) changed\): app stack up --env dev --execute/u)
+    const log: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(log, { now: false }))
+    assert.deepEqual(log, ["prepare", "up", "restart api,web"])
+    assert.equal(done.data.migrated, true)
+    // With an install, the processes stopped for it are started again by stack up on the new code: not restarted twice.
+    const { checkout: other, pusher: second } = scratch(t)
+    migrationPushed(second, "20261122100000_card_figures.sql")
+    lockfileMoved(second, other)
+    const installed: string[] = []
+    const both = await devSync(request(other, { execute: true, restart: true }), migratingDeps(installed, { now: false }))
+    assert.deepEqual(installed.slice(-3), ["rename trash", "prepare", "up"])
+    assert.deepEqual(both.data.restarted, ["api", "web"])
+    assert.equal(both.data.restart, "done")
+})
+
+void test("a failed migration refuses DEV_SYNC_MIGRATE, restarts nothing new, and the next sync migrates again though nothing moved", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    migrationPushed(pusher, "20261122130000_card_figures.sql")
+    const failUp = { now: true }
+    const log: string[] = []
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), migratingDeps(log, failUp)), refused("DEV_SYNC_MIGRATE", "column card_figures already exists"))
+    assert.deepEqual(log, ["prepare", "up fails"], "no process restarts on code whose migration failed")
+    const dry = await devSync(request(checkout, { restart: true }), fakeDeps([]))
+    assert.match(dry.message, /the last sync's migration failed/u)
+    failUp.now = false
+    const again: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(again, failUp))
+    assert.deepEqual(again, ["prepare", "up", "restart api,web"], "nothing moved, yet the migration runs again and the api restarts on the code that needs it")
+    assert.equal(done.data.migrated, true)
+    const quiet: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true }), migratingDeps(quiet, failUp))
+    assert.deepEqual(quiet, [], "a migration that passed clears the mark")
+})
+
+void test("prepareTree runs codegen then build:modules and stops at the first that fails, quoting its output", async () => {
+    const ran: string[] = []
+    const runner = (exits: Record<string, number>) => (_root: string, script: string) => {
+        ran.push(script)
+        return Promise.resolve({ exitCode: exits[script] ?? 0, stdout: `${script} out`, stderr: exits[script] === undefined ? "" : "Module not found: Can't resolve '@starci/nivo-icons'", timedOut: false })
+    }
+    const green = await prepareTree("/app", "spec", PREPARE_SCRIPTS, runner({}))
+    assert.deepEqual(green.ran, ["codegen", "build:modules"])
+    assert.equal(green.failure, undefined)
+    ran.length = 0
+    const red = await prepareTree("/app", "spec", PREPARE_SCRIPTS, runner({ codegen: 1 }))
+    assert.deepEqual(ran, ["codegen"], "build:modules never runs on a failed codegen")
+    assert.deepEqual(red.failure, { command: "npm run codegen", exitCode: 1, output: "codegen out\nModule not found: Can't resolve '@starci/nivo-icons'" })
+})
+
 void test("the stack's processes are read from the pinned CLI's status envelope, and a stop takes each recorded process with its children only", () => {
     const envelope = JSON.stringify({ schema: "starci/app-stack@1", ok: true, data: { verb: "stack", exitCode: 1, output: { verb: "status", ok: false, processes: { web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z", port: 3000, command: "npm run start" } } } } })
     assert.deepEqual(parseStackStatus(envelope), { web: { pid: 7, startedAt: "2026-11-21T08:00:00.000Z", command: "npm run start" } })
@@ -391,4 +521,32 @@ void test("a sync with no --local keeps this machine's standing overlay (devSync
     assert.deepEqual(syncLocal([], { local: ["grammar@0.55.0-content.4"] }), ["grammar@0.55.0-content.4"])
     assert.deepEqual(syncLocal(["@starci/hfs@6.18.0-local.1"], { local: ["grammar@0.55.0-content.4"] }), ["@starci/hfs@6.18.0-local.1"])
     assert.deepEqual(syncLocal([], { local: [] }), [])
+})
+
+void test("a sync that asks for the overlay already installed leaves the running web alone: nothing restored, installed, stopped or restarted", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    const pinned = readFileSync(join(checkout, "package.json"), "utf8")
+    writeFileSync(join(checkout, "package.json"), pinned.replace("0.52.3", "0.57.1-dev.1"))
+    writeInstallRecord(checkout, { schema: "starci/deps-install-local@1", registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/grammar", version: "0.57.1-dev.1", pins: [{ file: "package.json", field: "dependencies", spec: "0.52.3" }] }] })
+    const log: string[] = []
+    const same = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(log))
+    assert.deepEqual(log, [], "no stop, no install, no prepare, no restart")
+    assert.equal(same.data.restart, "none")
+    assert.deepEqual(same.data.overlay, ["@starci/grammar@0.57.1-dev.1"], "the overlay stays in effect")
+    assert.match(same.message, /the local overlay is already installed \(@starci\/grammar@0\.57\.1-dev\.1\): nothing restored, reinstalled or restarted for it/u)
+    assert.match(readFileSync(join(checkout, "package.json"), "utf8"), /0\.57\.1-dev\.1/u, "the overlay pin is kept")
+    // a code change under be/ alone restarts the api only; the web keeps running
+    mkdirSync(join(pusher, "be"), { recursive: true })
+    writeFileSync(join(pusher, "be", "main.ts"), "export {}\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "be change")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const api: string[] = []
+    const be = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(api))
+    assert.deepEqual(api, ["prepare", "restart api"])
+    assert.deepEqual(be.data.restarted, ["api"])
+    // a new version of the overlay is a change the web consumes: restored, installed and both sides restarted, as before
+    const dry = await devSync(request(checkout, { local: ["@starci/grammar@0.57.2-dev.1"] }))
+    assert.match(dry.message, /would restore the committed pins of package-lock\.json, package\.json/u)
+    assert.deepEqual(dry.data.sides, ["be", "fe"])
 })

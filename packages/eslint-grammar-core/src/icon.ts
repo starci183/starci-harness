@@ -144,11 +144,11 @@ const SIZE_UTILITY = /(?:^|\s)(?:size|w|h|min-w|min-h|max-w|max-h)-\S+/
 export const noIconSizeClass: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A glyph component takes its size from its usage (the two icon sizes: 24px before 14px text, 20px in a chip or badge and before 12px text), never from a size class at the call site." },
+    docs: { description: "A glyph component takes its size from its role (the icon table: `control` 16 beside 14px words and in every labelled control, `row` 20 in the 40 tile, `head` 24 in the 48 tile, `text` 1em for a caret or a status glyph), never from a size class at the call site." },
     schema: [],
     messages: {
       size:
-        "`{{cls}}` sizes a glyph at the call site. The size of a glyph is its usage's (`Icon` and the Grammar components that draw one; there are two icon sizes: 24px before 14px text, `heading` and `leading`, and 20px in a chip or badge and before 12px text, `chip`), so the app passes the glyph and no size class; a size written here is a third step nobody applies the same way twice.",
+        "`{{cls}}` sizes a glyph at the call site. The size of a glyph is its role's (`Icon usage` and the Grammar components that draw one; the icon table: `control` 16 beside 14px words and in every labelled control, `row` 20 in the 40 tile, `head` 24 in the 48 tile, `text` 1em of its words for a caret or a status glyph), so the app passes the glyph and no size class; a size written here is a third step nobody applies the same way twice.",
     },
   },
   create(context) {

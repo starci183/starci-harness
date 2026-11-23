@@ -1,0 +1,85 @@
+@layer starci-grammar-common {
+    /*
+     * ReplyStrip (0.55.1, owner 2026-11-23): the message an answer replies to, ONE compact line at the top inside the answer's bubble. A soft neutral ground
+     * (the secondary surface), a `--grammar-reply-edge` bar on the start edge in the replied author's tone (the ink of the app's tone slot, a
+     * person's muted ink), the glyph at 1em, the author in the medium weight, then the words muted and ellipsized. Caption size on every face, so it reads as
+     * the answer's context, never as a second message.
+     */
+    .starci-core-reply-strip {
+        --starci-core-reply-strip-edge: var(--muted);
+
+        display: flex;
+        box-sizing: border-box;
+        inline-size: 100%;
+        min-inline-size: 0;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        margin: 0;
+        padding-block: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-inline-gap);
+        border: 0;
+        border-inline-start: var(--grammar-reply-edge) solid var(--starci-core-reply-strip-edge);
+        border-radius: var(--starci-core-control-radius);
+        background: var(--surface-secondary);
+        color: var(--foreground);
+        font: inherit;
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-type-caption-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
+        line-height: var(--grammar-type-caption-line);
+        text-align: start;
+    }
+
+    .starci-core-reply-strip[data-tone="slot"] { --starci-core-reply-strip-edge: var(--grammar-tone-slot-ink); }
+
+    button.starci-core-reply-strip { cursor: pointer; }
+    button.starci-core-reply-strip:hover { background: color-mix(in oklab, var(--surface-secondary), var(--foreground) 6%); }
+
+    button.starci-core-reply-strip:focus-visible {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: var(--grammar-ring-width);
+    }
+
+    .starci-core-reply-strip-glyph {
+        flex: none;
+        inline-size: 1em;
+        block-size: 1em;
+        color: var(--starci-core-reply-strip-edge);
+    }
+
+    .starci-core-reply-strip-author {
+        overflow: hidden;
+        flex: 0 1 auto;
+        max-inline-size: 50%;
+        font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-reply-strip-text {
+        overflow: hidden;
+        flex: 1 1 0;
+        min-inline-size: 0;
+        color: var(--muted);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* On the brand face of the reader's own bubble the strip keeps the bubble's ink: a tint of it as the ground, the ink softened, the bar in the ink. */
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-reply-strip {
+        --starci-core-reply-strip-edge: currentcolor;
+
+        background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
+        color: inherit;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-reply-strip-text {
+        color: inherit;
+        opacity: var(--grammar-opacity-secondary);
+    }
+
+    @media (forced-colors: active) {
+        .starci-core-reply-strip { border-inline-start-color: CanvasText; }
+    }
+}

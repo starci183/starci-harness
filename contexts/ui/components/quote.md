@@ -25,16 +25,19 @@ Choice `quote.choose.host`: where a `Quote` stands. The first row that applies w
 | card | the words belong to the subject of a card | `Quote` in the card's content; it is not a surface, so it does not nest one | judgement |
 | drawer | the words are part of a task beside the page | `Quote` in the drawer body | judgement |
 | group | rows or a block (not words) need the same quiet ground inside a surface: an approver panel, a short summary | `Inset` with an optional `label`; never a card inside a card | judgement |
+| answer | the words are the line a chat message answers, shown over that answer inside its bubble | `Quote variant="line"`: one muted line, the source naming who said it ("Reply to Lan:") then the words, cut with an ellipsis; a block would outweigh the answer | judgement |
 | contradiction | two sources disagree on one fact | a `Section` whose title is the question, the two `Quote`s side by side in a `Cluster` (each names its source), and the answers as a decision group below (`action-group.choose.kind:decision`) | judgement |
 
 ## Variants
-None. `source` and `byline` are optional facts, not variants: a quote with neither is the words alone.
+`block` (default): the source above the words on the tinted ground. `line`: one muted line with a rule on its start edge and no ground, the source then the
+words, ellipsized, the whole quote as its title; it draws no byline (row `answer` above). `source` and `byline` are optional facts, not variants: a quote with
+neither is the words alone.
 
 ## Size
-It takes no step. Its words use the body step, its source and byline the caption step ([../scale.md](../scale.md)).
+It takes no step. Its words use the body step, its source and byline the caption step; a `line` quote is wholly at the caption step ([../scale.md](../scale.md)).
 
 ## States
-Loading draws the ground with two skeleton lines and no source or byline (`isLoading`, STATE-8). It has no action, no
+Loading draws the ground with two skeleton lines (one for `line`) and no source or byline (`isLoading`, STATE-8). It has no action, no
 focus target and no selected state.
 
 ## Owner split

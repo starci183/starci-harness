@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.22 - 2026-11-23
+
+- Changed: requires @starci/grammar 0.57.0 (the icon table, Avatar kind logo, LogoStack deleted).
+
+## 0.1.21 - 2026-11-23
+
+- Changed: requires @starci/grammar 0.56.0.
+
 ## 0.1.20 - 2026-11-22
 
 - Changed: requires @starci/grammar 0.55.0 (Button variant, the deleted APIs, the core ext).

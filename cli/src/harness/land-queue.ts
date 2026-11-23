@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync,
 import { join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
-import { configuredSlotRoot, takeLockFile } from "./slots.js"
+import { configuredSlotRoot, takeLiveLock, takeLockFile } from "./slots.js"
 
 /**
  * The batch lander of an app's `dev` branch (contexts/project/branches.md PROJECT-BRANCH-2). A lane whose full gate ran green on its
@@ -206,7 +206,7 @@ export const readStatuses = (dir: string): LaneStatus[] => {
 }
 
 /** Takes a lock file whole and alone (harness/slots.ts owns it; the lander and every slot share it). */
-export { takeLockFile }
+export { takeLiveLock, takeLockFile }
 
 /** Releases a lock or slot only when it names the lander (and, given a pid, that process). */
 export const releaseLockFile = (file: string, pid?: number): void => {
@@ -221,23 +221,27 @@ export const releaseLockFile = (file: string, pid?: number): void => {
 /** The content the lander writes into what it holds. */
 export const holderLine = (): string => `${LANDER} ${new Date().toISOString()} pid=${String(process.pid)}`
 
-/** One lander per lanes folder and scope: refused while a live lander holds it; the file of a lander whose process is gone is replaced. */
-export const holdLander = (dir: string, scope = ""): void => {
+/** One lander per lanes folder and scope: refused while a live lander holds it; the lock of a lander whose pid is not alive is taken over (`takeLiveLock`). */
+export const holdLander = (dir: string, scope = "", say: (line: string) => void = () => undefined, alive: (pid: number) => boolean = pidAlive): void => {
     const file = landPaths(dir, scope).lander
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        if (takeLockFile(file, holderLine())) return
-        let held: string
+    const foreign = (): string | undefined => {
         try {
-            held = readFileSync(file, "utf8")
+            const held = readFileSync(file, "utf8")
+            return held.startsWith(`${LANDER} `) ? undefined : held
         } catch {
-            continue
+            return undefined
         }
-        const pid = Number(/pid=(\d+)/.exec(held)?.[1] ?? "0")
-        if (pid > 0 && pidAlive(pid)) throw new Refusal("LANE_LANDER_RUNNING", `a lander already runs (${held.trim()}); one lander per lanes folder`)
-        if (!held.startsWith(`${LANDER} `)) throw new Refusal("LANE_LANDER_LOCK_FOREIGN", `${file} holds "${held.trim()}", not a lander: report it, it is never removed here`)
-        unlinkSync(file)
     }
-    throw new Refusal("LANE_LANDER_RUNNING", `${file} could not be taken`)
+    const before = foreign()
+    if (before !== undefined) throw new Refusal("LANE_LANDER_LOCK_FOREIGN", `${file} holds "${before.trim()}", not a lander: report it, it is never removed here`)
+    if (takeLiveLock(file, holderLine(), say, alive)) return
+    let held = ""
+    try {
+        held = readFileSync(file, "utf8").trim()
+    } catch {
+        // released meanwhile
+    }
+    throw new Refusal("LANE_LANDER_RUNNING", `a lander already runs (${held === "" ? file : held}); one lander per lanes folder`)
 }
 
 interface RawFinding {

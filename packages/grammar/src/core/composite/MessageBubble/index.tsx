@@ -29,9 +29,10 @@ export type MessageBubbleSide = "incoming" | "outgoing"
 /**
  * `brand`: the solid brand fill (`--accent` with `--accent-foreground`), the reader's own words. `soft`: the brand's tint (`--accent-soft`
  * with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (an AI's reply the reader may approve) so it reads as
- * a second voice, not as the reader's own. It only changes the face of an `outgoing` bubble.
+ * a second voice, not as the reader's own. `neutral`: the default soft surface (`--default-soft` with `--default-soft-foreground`), the reader's own
+ * words with no accent fill, as an assistant chat draws them. It only changes the face of an `outgoing` bubble.
  */
-export type MessageBubbleTone = "brand" | "soft"
+export type MessageBubbleTone = "brand" | "soft" | "neutral"
 
 /**
  * Where the message actions sit. `floating` (the default): a small bordered toolbar outside the bubble, over the thread.

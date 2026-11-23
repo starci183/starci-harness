@@ -5,7 +5,7 @@ import * as G from '../common/index.js';
 
 /**
  * THE WHITE-THEME FIXES (0.41.0). One page that shows every part the white-theme reshoot named: the page head sharing the body's start edge
- * (MEASURE-8), an inline link underlined at rest, a list section (flat with its rows on the title's edge, the one look of 0.43.0, no
+ * (MEASURE-8), an inline link (HeroUI's own: the foreground, no underline at rest), a list section (flat with its rows on the title's edge, the one look of 0.43.0, no
  * hook), the catalog toolbar as a flat `Section filter` row, the measures' empty track (`--starci-core-track`), the card radius hook and a
  * disabled commit with its reason. `Defaults` sets no hook; `White` sets the hooks on the root, as an app's brand.css sets them on `:root`.
  */
@@ -44,7 +44,7 @@ const Toolbar = () => {
 const Body = () => (
   <G.Stack gap="section">
     <G.Text>
-      No account yet? <G.Link href="#sign-up">Sign up</G.Link>, or <G.Link href="#forgot">reset a forgotten password</G.Link>. A link in a sentence is underlined at rest.
+      No account yet? <G.Link href="#sign-up">Sign up</G.Link>, or <G.Link href="#forgot">reset a forgotten password</G.Link>. A link in a sentence is HeroUI's own: no underline until hovered.
     </G.Text>
     <G.Section title="Catalog" filter={<Toolbar />}>
       <G.Stack gap="section">
@@ -89,7 +89,7 @@ export const Defaults: Story = {
       expect(Math.round(head.getBoundingClientRect().left)).toBe(Math.round(body.getBoundingClientRect().left));
       const link = canvasElement.querySelector<HTMLElement>('[data-component="Link"][data-grammar-link-variant="inline"]');
       if (link === null) throw new Error('the link renders');
-      expect(getComputedStyle(link).textDecorationLine).toBe('underline');
+      expect(getComputedStyle(link).textDecorationLine).toBe('none');
       const filter = canvasElement.querySelector<HTMLElement>('[data-grammar-section-kind="region"] > .starci-core-section-filter');
       if (filter === null) throw new Error('the region filter row renders');
       expect(getComputedStyle(filter).boxShadow).toBe('none');

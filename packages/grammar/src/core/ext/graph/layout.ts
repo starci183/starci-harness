@@ -1,6 +1,6 @@
 import ElkModule from "elkjs/lib/elk.bundled.js"
 import type { ELK, ElkExtendedEdge, ElkNode, ElkPort, LayoutOptions } from "elkjs/lib/elk-api.js"
-import { separateLabels, symmetrise, type MutableRoute } from "./arrange.js"
+import { alignDecisions, separateLabels, type MutableRoute } from "./arrange.js"
 import type { GraphDirection, GraphPosition } from "./types.js"
 
 /** The fixed width of a node box: the layout reserves it and the stylesheet draws it. */
@@ -113,8 +113,8 @@ const options = (direction: GraphDirection, nested: boolean): LayoutOptions => (
     "elk.spacing.edgeEdge": "16",
     "elk.spacing.edgeLabel": "10",
     "elk.spacing.labelNode": "10",
-    // SIMPLE keeps the spine on one x and a decision's branches equally far either side; BRANDES_KOEPF left them 8 to 70px off (see the CHANGELOG).
-    "elk.layered.nodePlacement.strategy": "SIMPLE",
+    // NETWORK_SIMPLEX keeps the spine and each decision's main branch on one line (the routing law, rule 2 and 3); alignDecisions settles what it leaves off.
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
     "elk.spacing.portPort": "10",
     "elk.layered.spacing.nodeNodeBetweenLayers": direction === "LR" ? "96" : "64",
@@ -123,6 +123,8 @@ const options = (direction: GraphDirection, nested: boolean): LayoutOptions => (
     "elk.layered.considerModelOrder.strategy": "PREFER_EDGES",
     "elk.layered.cycleBreaking.strategy": "DEPTH_FIRST",
     "elk.layered.nodePlacement.favorStraightEdges": "true",
+    // One entry and one exit per side of a node: the edges without ports touch it at one point, never stacked (the routing law, simplifyRoutes).
+    "elk.layered.mergeEdges": "true",
     "elk.layered.edgeLabels.sideSelection": "ALWAYS_UP",
     "elk.json.edgeCoords": "ROOT",
     "elk.separateConnectedComponents": "false",
@@ -339,7 +341,7 @@ export const layoutFlow = async (nodes: readonly SizedNode[], links: readonly Li
         }
         const sides = new Map<string, PortSide>()
         for (const id of island) for (const port of tree.byId.get(id)?.ports ?? []) sides.set(`${id}\u0000${port.id}`, port.side)
-        symmetrise({ island, links: usable.filter((link) => inIsland(link.source) && inIsland(link.target)), sides, positions: local, boxes: sizes, routes: arranged })
+        alignDecisions({ island, links: usable.filter((link) => inIsland(link.source) && inIsland(link.target)), sides, positions: local, boxes: sizes, routes: arranged, direction })
         let right = 0
         let bottom = 0
         for (const id of island) {
@@ -366,15 +368,143 @@ export const layoutFlow = async (nodes: readonly SizedNode[], links: readonly Li
         if (arrangement === "wrap") cursorX += right + ISLAND_GAP
         else cursorY += bottom + ISLAND_GAP
     }
+    // The back edges are routed last, one by one, each clear of the edges and labels already placed.
+    const taken: Taken = { labels: [], routes: [], lanes: [] }
+    for (const route of Object.values(routes)) {
+        taken.routes.push(route.points)
+        if (route.label !== undefined) taken.labels.push({ l: route.label.x, t: route.label.y, r: route.label.x + route.label.width, b: route.label.y + route.label.height })
+    }
     for (const link of backs) {
-        const route = backRoute(tree, link, positions, boxes, measure)
+        const route = backRoute(tree, link, positions, boxes, measure, taken)
         if (route !== undefined && link.id !== undefined) routes[link.id] = route
     }
     // Labels of edges that leave one node keep 8px apart.
     const mutable: Record<string, MutableRoute> = Object.fromEntries(Object.entries(routes).map(([id, route]) => [id, { points: route.points.map(([x, y]) => [x, y] as [number, number]), ...(route.label === undefined ? {} : { label: { ...route.label } }) }]))
     separateLabels(usable, mutable, 8)
     snapEnds(tree, placed, mutable, positions, boxes)
+    simplifyRoutes(tree, placed, mutable, positions, boxes, direction)
     return { positions, boxes, routes: mutable, ports }
+}
+
+/** How far apart (in graph units) two ends may stand across the flow and still be drawn as one straight line: a jog under this is a rounding, never a bend. */
+export const STRAIGHT_SNAP = 8
+
+/**
+ * The edge-routing law of every graph (owner: "Chốt", 2026-11-23). An edge whose ends share a rank line (their boxes overlap across the flow, or stand within
+ * `STRAIGHT_SNAP`) is one straight run, no jog. A port-less edge between offset nodes takes exactly one bend: it leaves its source by the side facing its target
+ * across the flow (a decision's other branch turns to the side) and enters its target by the side facing the flow, so every node keeps one entry; when that
+ * L would cross a node, the other L (out along the flow, then into the target's top or bottom) is tried, and ELK's own route is kept when both would. The
+ * words of a branch stand right at the split. A back edge, an edge on a fixed port and an edge into or out of a container keep their routes.
+ */
+const simplifyRoutes = (tree: Tree, links: readonly LinkEnds[], routes: Record<string, MutableRoute>, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, direction: GraphDirection): void => {
+    const across = direction === "LR" ? 1 : 0
+    const along = 1 - across
+    const leaves = [...tree.byId.keys()].filter((id) => (tree.kids.get(id) ?? []).length === 0)
+    const rects = new Map(leaves.flatMap((id) => {
+        const box = boxes[id]
+        return box === undefined ? [] : [[id, rectOf(absolute(tree, id, positions), box)] as const]
+    }))
+    const blocked = (points: readonly Point[], source: string, target: string): boolean => {
+        for (const [id, rect] of rects) {
+            if (id === source || id === target) continue
+            for (let index = 1; index < points.length; index += 1) {
+                const a = points[index - 1]
+                const b = points[index]
+                if (a !== undefined && b !== undefined && runMeets(a, b, grow(rect, 4))) return true
+            }
+        }
+        return false
+    }
+    const lo = (rect: Rect, axis: number): number => (axis === 0 ? rect.l : rect.t)
+    const hi = (rect: Rect, axis: number): number => (axis === 0 ? rect.r : rect.b)
+    const mid = (rect: Rect, axis: number): number => (lo(rect, axis) + hi(rect, axis)) / 2
+    const pt = (alongValue: number, acrossValue: number): [number, number] => (along === 0 ? [alongValue, acrossValue] : [acrossValue, alongValue])
+    for (const link of links) {
+        const route = link.id === undefined ? undefined : routes[link.id]
+        if (route === undefined || link.back === true) continue
+        const s = rects.get(link.source)
+        const t = rects.get(link.target)
+        if (s === undefined || t === undefined) continue
+        const first = route.points[0]
+        const last = route.points[route.points.length - 1]
+        if (first === undefined || last === undefined) continue
+        // A node's own entry and exit (the ports whose id starts with , model.ts IN_PORT and OUT_PORT) are not fixed: the edge may touch any side. A named
+        // output (a decision's branch, a card's output pill) is fixed where it stands.
+        const fixed = (port: string | undefined): boolean => port !== undefined && !port.startsWith("")
+        const ported = fixed(link.sourcePort) || fixed(link.targetPort)
+        // Straight: the exit (fixed when on a port) lies within the target's span across the flow, or both centres are a rounding apart.
+        const exitAcross = ported ? first[across] : mid(s, across)
+        const shared = [Math.max(lo(s, across), lo(t, across)) + 6, Math.min(hi(s, across), hi(t, across)) - 6] as const
+        const forward = lo(t, along) >= hi(s, along)
+        if (!forward) continue
+        // A fixed exit runs straight only from inside the target's span: a branch out of a decision's side vertex never drops past its target.
+        const exitInTarget = exitAcross !== undefined && exitAcross >= lo(t, across) + 6 && exitAcross <= hi(t, across) - 6
+        const straightAt = Math.abs(mid(s, across) - mid(t, across)) <= STRAIGHT_SNAP
+            ? (ported ? (exitInTarget ? exitAcross : undefined) : mid(t, across))
+            : !ported && shared[0] <= shared[1]
+              ? Math.min(Math.max(mid(t, across), shared[0]), shared[1])
+              : ported && exitInTarget && Math.abs(exitAcross - mid(t, across)) <= STRAIGHT_SNAP
+                ? exitAcross
+                : undefined
+        const towards = mid(t, across) > mid(s, across)
+        // Into the target by the side facing the flow, at its centre: one entry per node.
+        const entry = pt(lo(t, along), mid(t, across))
+        let points: [number, number][] | undefined
+        if (straightAt !== undefined && exitAcross !== undefined) {
+            const candidate = [pt(ported ? (first[along] ?? hi(s, along)) : hi(s, along), straightAt), pt(lo(t, along), straightAt)]
+            if (!blocked(candidate, link.source, link.target)) points = candidate
+        } else if (fixed(link.targetPort)) {
+            points = undefined
+        } else if (fixed(link.sourcePort)) {
+            // A branch on a side port (across the flow) turns once: out sideways to the target's centre line, then on into the target's flow-facing side.
+            const onSide = first[along] !== undefined && first[along] > lo(s, along) + 1 && first[along] < hi(s, along) - 1
+            const firstAcross = first[across]
+            const firstAlong = first[along]
+            if (onSide && firstAcross !== undefined && firstAlong !== undefined && Math.sign(mid(t, across) - firstAcross) === (towards ? 1 : -1)) {
+                const candidate = [pt(firstAlong, firstAcross), pt(firstAlong, mid(t, across)), entry]
+                if (!blocked(candidate, link.source, link.target)) points = candidate
+            }
+        } else if (route.points.length > 3 || route.points.length === 3) {
+            // Out by the side facing the target across the flow, once round the corner, into the target's flow-facing side; else out along the flow.
+            const sideExit = [pt(mid(s, along), towards ? hi(s, across) : lo(s, across)), pt(mid(s, along), mid(t, across)), entry]
+            const alongExit = [pt(hi(s, along), mid(s, across)), pt(mid(t, along), mid(s, across)), pt(mid(t, along), towards ? lo(t, across) : hi(t, across))]
+            points = [sideExit, alongExit].find((candidate) => !blocked(candidate, link.source, link.target))
+        }
+        // A route that keeps ELK's shape (an L would cross a node) still carries its words at the split, unless they sit on a named port.
+        if (points === undefined && ported) continue
+        const label = route.label
+        if (points !== undefined) route.points = points
+        points = route.points
+        if (label === undefined || points.length < 2) continue
+        // The words stand right at the split: on the first run this edge does not share with another edge of its source, a little past its start.
+        const siblings = links.filter((other) => other !== link && other.source === link.source && other.id !== undefined).flatMap((other) => {
+            const theirs = routes[other.id as string]
+            return theirs === undefined ? [] : [theirs.points]
+        })
+        const onRun = (p: readonly [number, number], q: readonly [number, number], at: readonly [number, number]): boolean =>
+            (Math.abs(p[0] - q[0]) <= 1 && Math.abs(at[0] - p[0]) <= 1 && at[1] >= Math.min(p[1], q[1]) - 1 && at[1] <= Math.max(p[1], q[1]) + 1) ||
+            (Math.abs(p[1] - q[1]) <= 1 && Math.abs(at[1] - p[1]) <= 1 && at[0] >= Math.min(p[0], q[0]) - 1 && at[0] <= Math.max(p[0], q[0]) + 1)
+        const sharedRun = (p: readonly [number, number], q: readonly [number, number]): boolean => {
+            const middle: [number, number] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+            return siblings.some((other) => other.some((point, index) => index > 0 && onRun(other[index - 1] ?? point, point, middle)))
+        }
+        let runAt = 0
+        while (runAt < points.length - 2 && sharedRun(points[runAt] ?? [0, 0], points[runAt + 1] ?? [0, 0])) runAt += 1
+        const a = points[runAt] ?? [0, 0]
+        const b = points[runAt + 1] ?? [0, 0]
+        const sideways = a[1] === b[1]
+        const room = Math.abs(sideways ? b[0] - a[0] : b[1] - a[1])
+        // Past a shared run, the words keep clear of the words a sibling carries on the line they leave.
+        const siblingHalf = runAt === 0 ? 0 : Math.max(0, ...links.filter((other) => other !== link && other.source === link.source && other.id !== undefined).map((other) => {
+            const theirs = routes[other.id as string]?.label
+            return theirs === undefined ? 0 : (sideways ? theirs.width : theirs.height) / 2
+        }))
+        const half = (sideways ? label.width : label.height) / 2
+        const step = Math.max(Math.min((siblingHalf > 0 ? siblingHalf + 8 : 12) + half, room - half), Math.min(12 + half, room / 2))
+        const cx = sideways ? a[0] + Math.sign(b[0] - a[0]) * step : a[0]
+        const cy = sideways ? a[1] : a[1] + Math.sign(b[1] - a[1]) * step
+        route.label = { ...label, x: Math.round(cx - label.width / 2), y: Math.round(cy - label.height / 2) }
+    }
 }
 
 /**
@@ -428,33 +558,179 @@ const absolute = (tree: Tree, id: string, positions: Readonly<Record<string, Gra
     return { x, y }
 }
 
+/** An axis-aligned box in the canvas frame: left, top, right, bottom. */
+interface Rect {
+    readonly l: number
+    readonly t: number
+    readonly r: number
+    readonly b: number
+}
+
+type Point = readonly [number, number]
+type Side = "W" | "E"
+
+/** How far a back edge's lane stands from the side it leaves or enters when that side is free, and the least it may. */
+const LANE_LEAD = 40
+const LANE_MIN = 24
+/** How far a back edge's line keeps from a node or a frame it passes and from another back edge's lane, and from a label. */
+const LANE_CLEAR = 16
+const LINE_LABEL_CLEAR = 6
+/** How far the label of a back edge keeps from a node, a frame border and another label. */
+const LABEL_CLEAR = 12
+/** The status chip and the tag stand half above a card's top edge: a label keeps clear of them too. */
+const TOP_CHIP = 12
+/** What a lane pays, in graph units of length, for crossing another edge and for sharing a side of its target with another back edge. */
+const CROSS_COST = 400
+const SHARED_SIDE_COST = 120
+/** What a lane pays for a breach: a line through a node, a frame or a label, or a label with no free place. Any free lane beats it. */
+const BREACH_COST = 100_000
+/** How far a lane may stand outside the box of its two ends before it pays as much as a tenth of a breach: one card and its gutter. */
+const DETOUR = NODE_WIDTH + LANE_LEAD
+
+const rectOf = (at: GraphPosition, box: Box): Rect => ({ l: at.x, t: at.y, r: at.x + box.width, b: at.y + box.height })
+const grow = (rect: Rect, by: number): Rect => ({ l: rect.l - by, t: rect.t - by, r: rect.r + by, b: rect.b + by })
+const meets = (a: Rect, b: Rect): boolean => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b
+/** Whether the orthogonal run from `a` to `b` passes through the box. */
+const runMeets = (a: Point, b: Point, rect: Rect): boolean => meets({ l: Math.min(a[0], b[0]), t: Math.min(a[1], b[1]), r: Math.max(a[0], b[0]), b: Math.max(a[1], b[1]) }, rect)
+/** Whether two orthogonal runs cross (each strictly inside the other's span; touching or running along is not a crossing). */
+const runsCross = (a: Point, b: Point, c: Point, d: Point): boolean => {
+    const across = (p: Point, q: Point, r: Point, s: Point): boolean =>
+        p[1] === q[1] && r[0] === s[0] && r[0] > Math.min(p[0], q[0]) && r[0] < Math.max(p[0], q[0]) && p[1] > Math.min(r[1], s[1]) && p[1] < Math.max(r[1], s[1])
+    return across(a, b, c, d) || across(c, d, a, b)
+}
+const runsOf = (points: readonly Point[]): readonly (readonly [Point, Point])[] => points.slice(1).map((point, index) => [points[index] ?? point, point] as const)
+
+/** What the back edges of a graph keep clear of, shared as they are routed one by one: the routed edges, their labels and the lanes already taken. */
+interface Taken {
+    readonly labels: Rect[]
+    readonly routes: (readonly Point[])[]
+    readonly lanes: { readonly rect: Rect; readonly target: string; readonly side: Side }[]
+}
+
+/** The nearest container that holds both nodes, if any. */
+const commonParent = (tree: Tree, a: string, b: string): string | undefined => {
+    const above = new Set<string>()
+    for (let at = tree.parent.get(a); at !== undefined; at = tree.parent.get(at)) above.add(at)
+    for (let at = tree.parent.get(b); at !== undefined; at = tree.parent.get(at)) if (above.has(at)) return at
+    return undefined
+}
+
 /**
- * The route of a back edge: out of the west or east side of its source, along the gutter on the side its branch lies (the left one for the spine itself), and into the
- * same side of its target. The gutter lies outside every sibling node, so the line never crosses the spine or another branch; its label stands on the line.
+ * The route of a back edge: out of the west or east side of its source, along a lane, and into the west or east side of its target. Every lane the
+ * span of its ends allows is tried (beside both ends, between them, in each gap between the nodes it would pass) and the shortest that passes no
+ * node, frame or label wins; a crossing with another edge, a side of the target another back edge already enters, and a lane or label outside the box
+ * of all the nodes (it would widen the layout) cost extra. So a loop-back
+ * runs close to the steps it joins, on their nearest free side, never down the far side of the whole graph, and inside the frame that holds both
+ * its ends. Its label stands on the lane, at the free place nearest the middle.
  */
-const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, measure: Measure): Route | undefined => {
+const backRoute = (tree: Tree, link: LinkEnds, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, measure: Measure, taken: Taken): Route | undefined => {
     const sourceBox = boxes[link.source]
     const targetBox = boxes[link.target]
     if (sourceBox === undefined || targetBox === undefined) return undefined
-    const from = absolute(tree, link.source, positions)
-    const to = absolute(tree, link.target, positions)
+    const s = rectOf(absolute(tree, link.source, positions), sourceBox)
+    const t = rectOf(absolute(tree, link.target, positions), targetBox)
+    // Every node but the two ends, and every frame that holds neither, is in the way; the frame that holds both bounds the lane.
+    const nodes: Rect[] = []
+    for (const [id, box] of Object.entries(boxes)) {
+        if (id === link.source || id === link.target || !tree.byId.has(id)) continue
+        if ((tree.kids.get(id)?.length ?? 0) > 0 && (isAncestor(tree, id, link.source) || isAncestor(tree, id, link.target))) continue
+        nodes.push(rectOf(absolute(tree, id, positions), box))
+    }
+    // The layout's own content, the box of all the nodes: a lane that leaves it widens the layout, so it is a near last resort.
+    const tops = tree.roots.filter((id) => boxes[id] !== undefined).map((id) => rectOf(absolute(tree, id, positions), boxes[id] as Box))
+    const content: Rect = { l: Math.min(...tops.map((rect) => rect.l)), t: Math.min(...tops.map((rect) => rect.t)), r: Math.max(...tops.map((rect) => rect.r)), b: Math.max(...tops.map((rect) => rect.b)) }
+    const holder = commonParent(tree, link.source, link.target)
+    const holderBox = holder === undefined ? undefined : boxes[holder]
+    const bound = holder === undefined || holderBox === undefined ? undefined : rectOf(absolute(tree, holder, positions), holderBox)
+    const sy = Math.round((s.t + s.b) / 2)
+    const ty = Math.round((t.t + t.b) / 2)
+    const lo = Math.min(sy, ty)
+    const hi = Math.max(sy, ty)
+    const words = link.label === undefined || link.label === "" ? undefined : measure(link.label)
+    // The side a branch lies on is tried first, so of two equal lanes the one on the branch's own side wins (the left one for the spine itself).
     const parent = tree.parent.get(link.source)
     const siblings = (parent === undefined ? tree.roots : (tree.kids.get(parent) ?? [])).filter((id) => boxes[id] !== undefined)
-    const lefts = siblings.map((id) => absolute(tree, id, positions).x)
-    const rights = siblings.map((id) => absolute(tree, id, positions).x + (boxes[id]?.width ?? 0))
     const spineId = [...siblings].sort((a, b) => absolute(tree, a, positions).y - absolute(tree, b, positions).y)[0]
     const spineX = spineId === undefined ? 0 : absolute(tree, spineId, positions).x + (boxes[spineId]?.width ?? 0) / 2
-    const centre = (from.x + sourceBox.width / 2 + to.x + targetBox.width / 2) / 2
-    const right = centre - spineX > 8
-    const gutter = right ? Math.max(...rights) + 40 : Math.min(...lefts) - 40
-    const sy = from.y + sourceBox.height / 2
-    const ty = to.y + targetBox.height / 2
-    const sx = right ? from.x + sourceBox.width : from.x
-    const tx = right ? to.x + targetBox.width : to.x
-    const points: readonly (readonly [number, number])[] = [[Math.round(sx), Math.round(sy)], [Math.round(gutter), Math.round(sy)], [Math.round(gutter), Math.round(ty)], [Math.round(tx), Math.round(ty)]]
-    if (link.label === undefined || link.label === "") return { points }
-    const box = measure(link.label)
-    return { points, label: { x: Math.round(gutter - box.width / 2), y: Math.round((sy + ty) / 2 - box.height / 2), width: box.width, height: box.height } }
+    const right = (s.l + s.r + t.l + t.r) / 4 - spineX > 8
+    const sides: readonly (readonly [Side, Side])[] = right ? [["E", "E"], ["W", "W"], ["E", "W"], ["W", "E"]] : [["W", "W"], ["E", "E"], ["W", "E"], ["E", "W"]]
+    const lefts = [...nodes.map((rect) => rect.l), ...taken.lanes.map((lane) => lane.rect.l), s.l, t.l]
+    const rights = [...nodes.map((rect) => rect.r), ...taken.lanes.map((lane) => lane.rect.r), s.r, t.r]
+    const found = new Set<number>()
+    for (const x of lefts) for (const by of [LANE_MIN, LANE_LEAD]) found.add(x - by)
+    for (const x of rights) for (const by of [LANE_MIN, LANE_LEAD]) found.add(x + by)
+    for (const r of rights) for (const l of lefts) if (l - r >= 2 * LANE_CLEAR) found.add(Math.round((r + l) / 2))
+    if (bound !== undefined) found.add(bound.l + LANE_CLEAR).add(bound.r - LANE_CLEAR)
+    const candidates = [...found].sort((a, b) => a - b)
+    const routes = taken.routes.map(runsOf)
+    // The label: on the lane, at the free place nearest the middle of it.
+    const placeLabel = (g: number, runs: readonly (readonly [Point, Point])[]): Rect | undefined => {
+        if (words === undefined) return undefined
+        const free = (rect: Rect): boolean => {
+            const room = grow(rect, LABEL_CLEAR)
+            const line = grow(rect, LINE_LABEL_CLEAR)
+            return (
+                ![...nodes, s, t].some((node) => meets(room, { ...node, t: node.t - TOP_CHIP })) &&
+                !taken.labels.some((other) => meets(room, other)) &&
+                !routes.some((route) => route.some(([a, b]) => runMeets(a, b, line))) &&
+                !runs.some(([a, b], index) => index !== 1 && runMeets(a, b, line)) &&
+                (bound === undefined || (rect.l >= bound.l + LABEL_CLEAR && rect.r <= bound.r - LABEL_CLEAR))
+            )
+        }
+        const middle = (lo + hi) / 2
+        const reach = (hi - lo - words.height) / 2 - LINE_LABEL_CLEAR
+        for (let step = 0; step <= reach; step += 8)
+            for (const y of step === 0 ? [middle] : [middle - step, middle + step]) {
+                const l = Math.round(g - words.width / 2)
+                const top = Math.round(y - words.height / 2)
+                const rect: Rect = { l, t: top, r: l + words.width, b: top + words.height }
+                if (free(rect)) return rect
+            }
+        return undefined
+    }
+    let best: { readonly cost: number; readonly points: readonly Point[]; readonly label?: Rect; readonly side: Side; readonly lane: Rect } | undefined
+    for (const [from, into] of sides) {
+        const min = Math.max(from === "E" ? s.r + LANE_MIN : -Infinity, into === "E" ? t.r + LANE_MIN : -Infinity)
+        const max = Math.min(from === "W" ? s.l - LANE_MIN : Infinity, into === "W" ? t.l - LANE_MIN : Infinity)
+        const sx = from === "E" ? s.r : s.l
+        const tx = into === "E" ? t.r : t.l
+        for (const g of candidates) {
+            if (g < min || g > max) continue
+            const points: readonly Point[] = [[sx, sy], [g, sy], [g, ty], [tx, ty]]
+            const runs = runsOf(points)
+            const lane: Rect = { l: g, t: lo, r: g, b: hi }
+            let cost = Math.abs(g - sx) + (hi - lo) + Math.abs(g - tx)
+            if (best !== undefined && cost >= best.cost) continue
+            for (const [a, b] of runs) {
+                for (const rect of nodes) if (runMeets(a, b, grow(rect, LANE_CLEAR))) cost += BREACH_COST
+                for (const rect of taken.labels) if (runMeets(a, b, grow(rect, LINE_LABEL_CLEAR))) cost += BREACH_COST
+                for (const route of routes) for (const [c, d] of route) if (runsCross(a, b, c, d)) cost += CROSS_COST
+            }
+            for (const other of taken.lanes) {
+                if (meets(grow(lane, LANE_CLEAR - 0.5), other.rect)) cost += BREACH_COST
+                if (other.target === link.target && other.side === into) cost += SHARED_SIDE_COST
+            }
+            if (bound !== undefined && (g < bound.l + LANE_CLEAR || g > bound.r - LANE_CLEAR)) cost += BREACH_COST
+            if (g < Math.min(s.l, t.l) - DETOUR || g > Math.max(s.r, t.r) + DETOUR) cost += BREACH_COST / 10
+            if (best !== undefined && cost >= best.cost) continue
+            const label = placeLabel(g, runs)
+            if (words !== undefined && label === undefined) cost += BREACH_COST
+            const half = words === undefined ? 0 : words.width / 2
+            const outside = Math.max(content.l - Math.min(g - half, label?.l ?? g), Math.max(g + half, label?.r ?? g) - content.r, 0)
+            // Outside the box of all the nodes a lane or its words widen the layout, and the first view, centred on a step, leaves them out: each unit
+            // out costs its length, and more than the lane's gutter out is a near last resort.
+            if (outside > 0) cost += outside
+            if (outside > LANE_LEAD) cost += BREACH_COST / 10
+            if (best === undefined || cost < best.cost) best = { cost, points, side: into, lane, ...(label === undefined ? {} : { label }) }
+        }
+    }
+    if (best === undefined) return undefined
+    taken.lanes.push({ rect: best.lane, target: link.target, side: best.side })
+    taken.routes.push(best.points)
+    if (words === undefined) return { points: best.points }
+    const box = best.label === undefined ? { x: Math.round(best.lane.l - words.width / 2), y: Math.round((lo + hi - words.height) / 2), width: words.width, height: words.height } : { x: best.label.l, y: best.label.t, width: words.width, height: words.height }
+    taken.labels.push({ l: box.x, t: box.y, r: box.x + box.width, b: box.y + box.height })
+    return { points: best.points, label: box }
 }
 
 /** The positions of a graph, laid out by ELK (see `layoutFlow`). */

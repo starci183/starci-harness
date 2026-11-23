@@ -51,6 +51,11 @@ export type TextareaSend = {
     readonly onPress: () => void
     readonly isDisabled?: boolean
     readonly isPending?: boolean
+    /**
+     * The glyph of the action: `send` (default), or `stop` while an answer the reader asked for is still streaming, so the same button stops it
+     * (`label` then names the stop, e.g. "Stop"). The button keeps its place, size and look.
+     */
+    readonly glyph?: "send" | "stop"
 }
 
 /**
@@ -352,7 +357,7 @@ const TextareaControl = ({
                         <span className="starci-core-textarea-send-wide">
                             <Button
                                 variant="primary"
-                                startGlyph="send"
+                                startGlyph={send.glyph ?? "send"}
                                 onPress={send.onPress}
                                 {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
                                 {...(send.isPending === undefined ? {} : { isPending: send.isPending })}
@@ -360,7 +365,7 @@ const TextareaControl = ({
                         </span>
                         <span className="starci-core-textarea-send-compact">
                             <IconButton
-                                glyph="send"
+                                glyph={send.glyph ?? "send"}
                                 variant="primary"
                                 label={send.label}
                                 onPress={send.onPress}

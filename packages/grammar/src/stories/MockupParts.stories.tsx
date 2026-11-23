@@ -55,14 +55,14 @@ export const RowActionEndAndHashNumber: Story = {
     ),
 }
 
-/** Chevron before the title, and the quiet link-toned disclosure (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
+/** Chevron before the title, and the quiet disclosure: a muted line, its caret 1em of its words (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
 export const DisclosureChevronAndQuiet: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="chevron end (default) / start / start, open" direction="column">
                 <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
             </State>
             <State label="quiet, closed / open" direction="column">
                 <G.Disclosure kind="quiet" title="Evidence (2)" body={<G.Text>Two messages from the customer.</G.Text>} />
@@ -353,8 +353,8 @@ const LinkOn = ({ ground, label }: { readonly ground: string; readonly label: st
     </div>
 )
 
-/** A text link is the accent as text, underlined, on every ground (DNA-CORE-LINK-ACCENT-TEXT). */
-export const LinkAccentOnEveryGround: Story = {
+/** A text link is HeroUI v3's own link on every ground: the foreground, weight 500, no underline until hovered (DNA-CORE-LINK-ACCENT-TEXT). */
+export const LinkOnEveryGround: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="background / surface / secondary / tertiary" direction="column">

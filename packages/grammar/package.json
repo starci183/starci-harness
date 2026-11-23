@@ -1,6 +1,6 @@
 {
   "name": "@starci/grammar",
-  "version": "0.55.0",
+  "version": "0.57.0",
   "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
   "keywords": [
     "starci",
@@ -52,6 +52,11 @@
       "types": "./dist/core/ext/dropzone/index.d.ts",
       "import": "./dist/core/ext/dropzone/index.js"
     },
+    "./core/ext/chat": {
+      "types": "./dist/core/ext/chat/index.d.ts",
+      "import": "./dist/core/ext/chat/index.js"
+    },
+    "./core/ext/chat.css": "./dist/core/ext/chat/styles.css",
     "./core.css": "./dist/core/styles.css",
     "./core/styles.css": "./dist/core/styles.css",
     "./core/theme.css": "./dist/core/theme.css",
@@ -123,7 +128,6 @@
   "dependencies": {
     "@dicebear/core": "10.4.0",
     "@dicebear/styles": "10.4.0",
-    "@heroicons/react": "2.2.0",
     "dashjs": "5.3.0",
     "hls.js": "1.7.4",
     "mdast-util-from-markdown": "2.1.0",
@@ -132,6 +136,7 @@
     "micromark-extension-gfm": "3.0.0"
   },
   "peerDependencies": {
+    "@assistant-ui/react": "0.15.38",
     "@heroui/react": ">=3.2.0",
     "@xyflow/react": "^12.11.6",
     "beautiful-mermaid": "^1.1.3",
@@ -150,6 +155,7 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
+    "@assistant-ui/react": "0.15.38",
     "@chromatic-com/storybook": "latest",
     "@eslint/js": "10.0.1",
     "@internationalized/date": "^3.12.4",
@@ -232,6 +238,9 @@
       "optional": true
     },
     "react-dropzone": {
+      "optional": true
+    },
+    "@assistant-ui/react": {
       "optional": true
     }
   }

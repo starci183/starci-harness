@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { TablerCircleCheck } from '../core/leaf/Icon/tabler.js';
 import * as G from '../common/index.js';
 
 const meta: Meta = { title: 'Surfaces/Pricing cards', parameters: { layout: 'padded' } };
@@ -43,7 +43,7 @@ export const PricingGrid: Story = {
             </G.Stack>
             <G.Stack gap="row">
               {plan.features.map((feature) => (
-                <G.Text key={feature} role="body" startContent={<G.Icon source={CheckCircleIcon} usage="leading" />}>{feature}</G.Text>
+                <G.Text key={feature} role="body" startContent={<G.Icon source={TablerCircleCheck} usage="control" />}>{feature}</G.Text>
               ))}
             </G.Stack>
           </G.SurfaceCard>

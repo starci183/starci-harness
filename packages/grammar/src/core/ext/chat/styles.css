@@ -1,0 +1,202 @@
+/*
+ * @starci/grammar/core/ext/chat draws every message, card, status and the composer with Grammar core components and their CSS; this sheet holds
+ * only the frame Grammar has no part for: the chat frame (head, the one scrolling thread, the composer foot, all --background, hairlines
+ * between them), the centred reading column, an assistant turn's actions row, a tool call's 1px edge, the jump-to-latest control pinned to the
+ * foot of the thread, and the line breaks of a long value. Every value is a Grammar token. Import it after the Grammar's styles.
+ */
+@layer starci-ai-chat {
+    .starci-ai-chat {
+        display: flex;
+        block-size: 100%;
+        min-block-size: 0;
+        min-inline-size: 0;
+        flex-direction: column;
+        background: var(--background);
+        color: var(--foreground);
+    }
+
+    .starci-ai-chat-head {
+        flex: none;
+        padding: var(--grammar-inset) var(--grammar-page-inset);
+        border-block-end: var(--grammar-hairline) solid var(--border);
+    }
+
+    /* The thread is the only scroller between the head and the composer (DNA-COMMON-CHAT-FRAME-SCROLL). */
+    .starci-ai-chat-viewport {
+        position: relative;
+        display: flex;
+        min-block-size: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        overflow: hidden auto;
+        overscroll-behavior: contain;
+    }
+
+    /* The centred readable column every turn and the composer stand in; the page gutter keeps it off the edge at 390. */
+    .starci-ai-chat-column {
+        display: flex;
+        box-sizing: border-box;
+        inline-size: 100%;
+        min-inline-size: 0;
+        max-inline-size: calc(var(--starci-core-reading-measure) + 2 * var(--grammar-page-inset));
+        flex-direction: column;
+        margin-inline: auto;
+        padding-inline: var(--grammar-page-inset);
+    }
+
+    .starci-ai-chat-viewport > .starci-ai-chat-column {
+        flex: 1 0 auto;
+        gap: var(--grammar-section-gap);
+        padding-block: var(--grammar-section-gap);
+    }
+
+    .starci-ai-chat-turn {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+    }
+
+    /* An assistant turn with the assistant's mark: the 24px mark at the start, the answer and its actions beside it, the row gap between. */
+    .starci-ai-chat-turn[data-grammar-ai-chat-role="assistant"]:has(> .starci-ai-chat-mark) {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-ai-chat-mark {
+        display: flex;
+        flex: none;
+    }
+
+    .starci-ai-chat-body {
+        display: flex;
+        min-inline-size: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-ai-chat-after {
+        min-inline-size: 0;
+    }
+
+    .starci-ai-chat-answer {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+    }
+
+    /* The reader's words keep their line breaks and break a long word rather than widen the row. */
+    .starci-ai-chat-user-text,
+    .starci-ai-chat-multiline {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .starci-ai-chat-message-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+    }
+
+    /* A tool call is a quiet row with the plain 1px edge, folded; its body stands one nested step in. */
+    .starci-ai-chat-tool {
+        min-inline-size: 0;
+        padding-inline: var(--grammar-inset);
+        border: var(--grammar-hairline) solid var(--border);
+        border-radius: var(--grammar-radius-card);
+    }
+
+    .starci-ai-chat-tool-body {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding-block-end: var(--grammar-inset);
+    }
+
+    .starci-ai-chat-preview {
+        min-inline-size: 0;
+    }
+
+    .starci-ai-chat-preview-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-ai-chat-empty {
+        display: flex;
+        flex: 1 0 auto;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* Pinned to the foot of the visible thread, centred over the column, while the reader is scrolled up. */
+    .starci-ai-chat-latest {
+        position: sticky;
+        inset-block-end: var(--grammar-row-gap);
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    .starci-ai-chat-latest > * {
+        pointer-events: auto;
+    }
+
+    /*
+     * The composer is one bordered box (the 1px `--border` edge on the field's background): the core Textarea on top with its own frame taken off, and a foot row inside the same
+     * box, the hint caption at the start and the round send or stop button at the end. The box shows the focus ring while its textarea has focus.
+     */
+    .starci-ai-chat-box {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        padding: var(--grammar-identity-gap);
+        border: var(--grammar-hairline) solid var(--border);
+        border-radius: var(--grammar-radius-card);
+        background: var(--field-background);
+    }
+
+    .starci-ai-chat-box:focus-within {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: 2px;
+    }
+
+    .starci-ai-chat-box .starci-core-textarea .starci-core-textarea-control {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        outline: none;
+    }
+
+    .starci-ai-chat-box-foot {
+        display: flex;
+        min-inline-size: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
+        padding-inline: var(--grammar-inline-gap) 0;
+    }
+
+    .starci-ai-chat-box-foot > :first-child:not(button) {
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-ai-chat-box-foot > button:only-child {
+        margin-inline-start: auto;
+    }
+
+    .starci-ai-chat-composer {
+        flex: none;
+        padding-block: var(--grammar-inset);
+        border-block-start: var(--grammar-hairline) solid var(--border);
+    }
+}

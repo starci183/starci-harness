@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url"
 import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { AreaChart, BarChart, CHART_TONES, CHART_TONE_TOKEN, DonutChart, LineChart, Sparkline, chartToneColor, donutSlices, type DonutSegment } from "../src/core/ext/recharts/index.ts"
+import { AreaChart, BarChart, CHART_TONES, CHART_TONE_TOKEN, DONUT_RING_WIDTH, DonutChart, LineChart, Sparkline, barFills, chartToneColor, chartToneSoftColor, donutSlices, type DonutSegment } from "../src/core/ext/recharts/index.ts"
 import { AreaFill } from "../src/core/ext/recharts/AreaChart.tsx"
 import { ChartTooltip } from "../src/core/ext/recharts/shared.tsx"
 
@@ -50,6 +50,18 @@ test("with data each chart is one named image in a box of its own height", () =>
     assert.match(area, /data-state="ready"/)
     assert.equal(area.match(/role="img"/g)?.length, 1)
     assert.match(area, /block-size:240px/)
+})
+
+test("highlightLast: the latest bar in the full tone, the others in its soft pair, and the name ends with the latest value", () => {
+    assert.deepEqual(barFills(3, "accent", false), ["var(--accent)", "var(--accent)", "var(--accent)"])
+    assert.deepEqual(barFills(3, "success", true), [chartToneSoftColor("success"), chartToneSoftColor("success"), "var(--success)"])
+    assert.equal(chartToneSoftColor("accent"), "color-mix(in oklab, var(--accent) 32%, var(--surface))")
+    assert.deepEqual(barFills(0, "accent", true), [])
+    const named = renderToStaticMarkup(createElement(BarChart<Week>, { ...words, data: weekly, highlightLast: true, formatY: (value: number) => `${String(value)} orders` }))
+    assert.match(named, /aria-label="Orders per week, 2026-11-16: 94 orders"/)
+    assert.match(renderToStaticMarkup(createElement(BarChart<Week>, { ...words, data: weekly })), /aria-label="Orders per week"/)
+    // Empty: the chart's own empty line, no latest value to name.
+    assert.match(renderToStaticMarkup(createElement(BarChart<Week>, { ...words, data: [], highlightLast: true })), /No orders yet/)
 })
 
 test("loading is a Grammar Skeleton of the box, with no name announced and the box busy", () => {
@@ -211,5 +223,13 @@ test("a donut loads as all Skeleton, and with no positive part shows the empty l
         assert.match(empty, /data-state="empty"/)
         assert.match(empty, /No lessons yet/)
         assert.doesNotMatch(empty, /role="img"/)
+        assert.match(empty, /data-slot="track"[^>]*border:8px solid var\(--grammar-bar-track/, "the empty state is the bare track ring")
     }
+})
+
+test("bars follow HeroUI ProgressBar sizes: the ring is the md track thick (8px) over a ring of the track colour", () => {
+    assert.equal(DONUT_RING_WIDTH, 8)
+    const html = renderToStaticMarkup(createElement(DonutChart, { ...donut, data: topics.slice(0, 3), size: 120 }))
+    assert.match(html, /data-slot="track"[^>]*border:8px solid var\(--grammar-bar-track/)
+    assert.ok(html.indexOf('data-slot="track"') < html.indexOf('role="img"'), "the track ring is under the parts")
 })

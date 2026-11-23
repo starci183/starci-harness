@@ -19,6 +19,7 @@ import { renderStandard } from '@starci/seed/git';
 import type { RunResult, StackContext } from '../stack/context.mjs';
 import type { DbTarget } from '../db/postgres.mjs';
 import { seedStep } from '../stack/seeds.mjs';
+import { pinnedStandardReader } from '../stack/standard-load.mjs';
 import type { SeedStepInput } from '../stack/seeds.mjs';
 import { pinnedStandardVerifier } from '../stack/standard-gate.mjs';
 import type { PinVerifier } from '../stack/standard-gate.mjs';
@@ -122,8 +123,10 @@ async function world(t: TestContext): Promise<World & { a: string }> {
   const ctx = { env: {}, cwd: app, spawn: db.spawn } as unknown as StackContext;
   const target: DbTarget = { how: 'url', url: 'postgresql://owner@127.0.0.1:5432/app', env: {}, secrets: [] };
   const verify = pinnedStandardVerifier({ cache });
+  // The reader fetches into the spec's own cache too, never the host's state base (standardCache).
+  const read = pinnedStandardReader({ cache });
   const run = async (overrides: Partial<SeedStepInput> = {}): Promise<string[]> => (await seedStep({
-    ctx, repoRoot: app, env: 'production', target, execute: true, command: doorCommand(doors), standards: verify, ...overrides,
+    ctx, repoRoot: app, env: 'production', target, execute: true, command: doorCommand(doors), standards: verify, standardReader: read, ...overrides,
   })).lines;
   return { app, repo, cache, doors, db, run, a };
 }

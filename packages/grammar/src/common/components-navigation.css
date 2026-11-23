@@ -23,33 +23,17 @@
      */
     .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
-    /* HeroUI v3's own link: the vendor's underline on hover and press, the anchor icon at the end. */
+    /*
+     * A Link is HeroUI v3's own link, exactly (owner 2026-11-23): `--link` (the theme sets it to the foreground, never the accent), weight 500, no
+     * underline at rest; on hover a 1.5px underline 4px below the text in the muted colour, on press the full muted colour (the vendor's `.link`).
+     * Grammar draws none of it: it only lets the text wrap and paints `--link` where the vendor's utility class may be missing. A Link only ever goes
+     * to another page; a command is a Button. A current link keeps its own look (below).
+     */
     .starci-core-link {
         overflow-wrap: anywhere;
     }
 
-    /*
-     * An inline link is underlined at rest (0.41.0, COLOR-3: a destination in body copy is identifiable at rest, with colour removed too). The line is a
-     * hairline in the link's own colour at 40%, set off below the text, and turns to the full colour on hover and press. The head variant keeps the
-     * vendor's hover-only underline (its arrow is the affordance) and plain stays undecorated (its host is). The rules below win by order: a media, current or
-     * disabled link and a footer link draw no line at rest.
-     */
-    .starci-core-link[data-grammar-link-variant="inline"] {
-        text-decoration-line: underline;
-        text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
-        text-decoration-thickness: var(--grammar-hairline);
-        text-underline-offset: var(--grammar-link-underline-offset);
-    }
-
-    .starci-core-link[data-grammar-link-variant="inline"]:is(:hover, [data-hovered="true"], :active, [data-pressed="true"]) {
-        text-decoration-color: currentColor;
-    }
-
-    /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of a rose-accent theme,
-     * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
-     */
-    .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
+    .starci-core-link[data-grammar-link-content="text"] { color: var(--link); }
 
     /* The plain variant (0.37.14): a destination with no accent, no underline and no icon; the component around it (a navigation row with its chevron, a shell brand) is the affordance. */
     .starci-core-link[data-grammar-link-content="text"][data-grammar-link-variant="plain"] { color: inherit; text-decoration-line: none; }
@@ -120,7 +104,8 @@
 
     /* The trail reads small and muted, the separator a slash, and the current page is the one strong crumb. */
     .starci-core-breadcrumbs-list { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
-    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { color: var(--muted); font-size: var(--grammar-text-xs); }
+    /* The separator is text-sized (the text-sized glyph rule, styles.css): a 1em box of the crumbs' 12px, centred on their line. */
+    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--grammar-text-xs); }
 
     .starci-core-breadcrumb {
         display: inline-flex;
@@ -156,14 +141,15 @@
 
     .starci-core-breadcrumb-leading > svg,
     .starci-core-tag-leading > svg {
-        width: 1em;
-        height: 1em;
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
     .starci-core-breadcrumb-label[data-grammar-current="true"] {
         max-width: none;
         color: var(--foreground);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* A crumb whose label is not known yet (knowledge STATE-8): a short Skeleton text line of the label's size. */
@@ -347,6 +333,7 @@
         border-radius: var(--grammar-radius-pill);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -379,13 +366,13 @@
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-bar { background: var(--danger); }
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-bar { background: var(--warning); }
     .starci-core-stepper-caption { display: flex; min-width: 0; min-block-size: var(--grammar-leading-md); flex-direction: column; gap: 0; }
-    .starci-core-stepper-caption .starci-core-step-label { color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-md); }
+    .starci-core-stepper-caption .starci-core-step-label { color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); line-height: var(--grammar-leading-md); }
     .starci-core-stepper-caption .starci-core-step-skeleton-label { display: block; inline-size: 8rem; }
 
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap); }
     /* Dense is inline (A): the bare 20px status glyph (the icon size before 12px text) in the step's ink; the current step's number in a 20px accent ring. */
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; font-size: var(--grammar-text-xs); }
-    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker > .starci-core-inline-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker > .starci-core-inline-status-glyph { width: var(--grammar-icon-control); height: var(--grammar-icon-control); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker { color: var(--success-soft-foreground); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker { color: var(--starci-core-mark-danger, var(--danger)); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker { color: var(--starci-core-mark-warning, var(--warning)); }
@@ -427,11 +414,13 @@
         overflow-wrap: anywhere;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-step[data-grammar-step-state="upcoming"] .starci-core-step-label {
         color: var(--muted);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-step-description {
@@ -723,6 +712,7 @@
         margin: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-footer-links {
@@ -774,6 +764,7 @@
     .starci-core-avatar-letters {
         font-size: var(--starci-avatar-letters-size);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-none);
         white-space: nowrap;
         user-select: none;
@@ -847,6 +838,7 @@
         font-size: var(--grammar-type-caption-size);
         line-height: var(--grammar-type-caption-line);
         font-weight: var(--grammar-type-badge-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-badge-weight), 400), 600) - 400) * 0.0025);
     }
 
     /* A loading avatar (knowledge STATE-8): the Skeleton circle at the avatar's size. */
@@ -1033,6 +1025,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1288,6 +1281,7 @@
         background-color: var(--background);
         background-image: linear-gradient(var(--surface-secondary), var(--surface-secondary));
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -1300,17 +1294,20 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-field-size);
         font-weight: var(--grammar-type-label-field-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-field-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-field-line);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
     .starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"] {
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /* Amounts and counts: one line, tabular numerals. */
@@ -1326,6 +1323,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
 
@@ -1345,6 +1343,7 @@
         flex: none;
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
@@ -1613,6 +1612,7 @@
         min-inline-size: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
@@ -1632,7 +1632,7 @@
 
     /* The totals item of the phone list: the last row, on the secondary surface, its figures labelled by their column. */
     .starci-core-data-table-list-row.starci-core-data-table-list-totals { background: var(--surface-secondary); border-block-start: 1px solid var(--border); border-block-end: 0; }
-    .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); }
     .starci-core-data-table-list-totals .starci-core-data-table-list-value { color: var(--default-foreground); font-variant-numeric: tabular-nums; }
 
     /*
@@ -1706,6 +1706,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
@@ -1717,6 +1718,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-sm);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         white-space: normal;
     }
 
@@ -1794,6 +1796,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-lg);
     }
 
@@ -1803,6 +1806,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
@@ -1904,6 +1908,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-group-size);
         font-weight: var(--grammar-type-label-group-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-group-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-group-line);
         /* The label breaks between words and keeps one or two lines; a word breaks only when it alone is wider than the cell. */
         overflow-wrap: break-word;
@@ -1929,6 +1934,7 @@
         /* The stat value is the figure role (0.54.0): 24 / 32 / 500, tabular. */
         font-size: var(--grammar-type-figure-size);
         font-weight: var(--grammar-type-figure-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-figure-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-figure-line);
         font-variant-numeric: tabular-nums;
     }
@@ -1957,7 +1963,8 @@
     }
 
     /*
-     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, pushed to the cell's end, and the cell takes the
+     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, a caret 1em of the term (12, the text-sized glyph rule
+     * of styles.css), pushed to the term's end (the term hugs its words, so it stands right after them), and the cell takes the
      * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
      */
     .starci-core-description-stat-term > .starci-core-figure-cue {
@@ -1979,6 +1986,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -2000,8 +2008,8 @@
     .starci-core-description-trend[data-grammar-trend-tone="info"] { color: var(--info); }
     .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
 
-    /* The trend line stands under the value and meta, at the start of the cell. */
-    .starci-core-description-trend-line { margin: 0; line-height: 0; }
+    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). */
+    .starci-core-description-trend-line { align-self: stretch; min-width: 0; margin: 0; line-height: 0; }
 
     @container starci-core-description-strip (min-width: 18rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
@@ -2095,6 +2103,7 @@
 
     .starci-core-list-box-item[data-grammar-list-emphasis="unread"] :is([data-grammar-item-label], [data-grammar-item-description]) {
         font-weight: var(--grammar-weight-semibold) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-list-box-item[data-grammar-list-size="sm"] {
@@ -2182,17 +2191,16 @@
         width: 100%;
         min-block-size: var(--starci-core-control-min-size);
         align-items: center;
-        justify-content: space-between;
-        gap: var(--grammar-row-gap);
+        justify-content: flex-start;
+        gap: var(--grammar-inline-gap);
         text-align: start;
     }
 
+    /* The label of a disclosure carries the caret, so it is regular (text that carries an icon is regular, owner 2026-11-23). */
     .starci-core-disclosure-trigger {
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
     }
-
-    /* The chevron first: the title follows it, left-aligned, instead of space-between pushing it to the row's end. */
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-trigger { justify-content: flex-start; }
 
     .starci-core-disclosure-trigger[data-focus-visible="true"],
     .starci-core-generic-accordion-trigger[data-focus-visible="true"] {
@@ -2214,6 +2222,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         text-align: end;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2227,13 +2236,13 @@
         transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
-    /* The chevron before the words (chevron="start"): pointing toward the reading direction closed, down when open. */
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(-90deg); }
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
-    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(90deg); }
-    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+    /* The caret before the words: pointing toward the reading direction closed, turned 90 degrees down when open (one glyph, never swapped). */
+    :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(-90deg); }
+    :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
+    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(90deg); }
+    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
 
-    /* kind="quiet": a small link-toned line the size of its words; the touch floor still holds on a coarse pointer. */
+    /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
         display: inline-flex;
         width: auto;
@@ -2241,9 +2250,10 @@
         min-block-size: 1.5rem;
         justify-content: flex-start;
         gap: var(--grammar-inline-gap);
-        color: var(--accent-soft-foreground);
+        color: var(--muted);
         font-size: var(--grammar-text-sm);
-        font-weight: var(--grammar-weight-medium);
+        font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-sm);
     }
 
@@ -2251,10 +2261,6 @@
         .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger { min-block-size: var(--grammar-touch-size); }
     }
 
-    .starci-core-disclosure[data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator,
-    .starci-core-generic-accordion-item[data-grammar-disclosure-state="open"] .starci-core-generic-accordion-indicator {
-        transform: rotate(180deg);
-    }
 
     /* ---------- Image ---------- */
     .starci-core-image {
@@ -2535,6 +2541,7 @@
         overflow-wrap: anywhere;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -2640,56 +2647,6 @@
             outline-offset: -2px;
             forced-color-adjust: none;
         }
-    }
-
-    /* ---------- MermaidDiagram ----------
-     * The diagram frame (separator edge, surface radius, surface fill). Every state reserves the canvas height, so the
-     * drawing, its skeleton and the error take the same least box; a wider drawing scrolls inline in the canvas. */
-    .starci-core-mermaid-diagram {
-        --starci-mermaid-height: 16rem;
-        display: block;
-        min-width: 0;
-        margin: 0;
-        border: 1px solid var(--separator);
-        border-radius: var(--starci-core-surface-radius);
-        background: var(--surface);
-        color: var(--foreground);
-    }
-
-    .starci-core-mermaid-diagram[data-grammar-mermaid-height="md"] { --starci-mermaid-height: 24rem; }
-    .starci-core-mermaid-diagram[data-grammar-mermaid-height="lg"] { --starci-mermaid-height: 32rem; }
-
-    .starci-core-mermaid-diagram-canvas {
-        display: grid;
-        min-block-size: var(--starci-mermaid-height);
-        place-items: center;
-        padding: var(--grammar-inset);
-        overflow-x: auto;
-        border-radius: inherit;
-        outline: none;
-    }
-
-    .starci-core-mermaid-diagram-canvas:focus-visible {
-        outline: 2px solid var(--focus);
-        outline-offset: -2px;
-    }
-
-    .starci-core-mermaid-diagram-canvas > .starci-core-skeleton {
-        inline-size: 100%;
-        block-size: calc(var(--starci-mermaid-height) - 2 * var(--grammar-section-gap));
-        aspect-ratio: auto;
-    }
-
-    /* Mermaid sizes the svg to the canvas width up to its natural width (its own max-width); it sits centred. */
-    .starci-core-mermaid-diagram-drawing { min-width: 0; inline-size: 100%; }
-    .starci-core-mermaid-diagram-drawing > svg { display: block; block-size: auto; margin-inline: auto; }
-
-    .starci-core-mermaid-diagram-error {
-        display: flex;
-        min-block-size: var(--starci-mermaid-height);
-        flex-direction: column;
-        gap: var(--grammar-row-gap);
-        padding: var(--grammar-inset);
     }
 
     /* ---------------------------------------------------------------- expandable */

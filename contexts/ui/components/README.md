@@ -80,6 +80,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | draw a chart or a sparkline (a measure over a category or a date) | [charts](charts.md) |
 | show a PDF document, a page at a time | [pdf](pdf.md) |
 | take files or folders to upload, and show each upload until it is done | [upload](upload.md) |
+| a chat with an assistant: streaming answers, tool calls and a proposed result to approve | [ai-chat](ai-chat.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |
@@ -93,5 +94,6 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
 | move a public marketing page: a section rising into view, a loop of names, a figure counting up, a picture that follows the text | [motion](motion.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |
+| a lesson page: a code excerpt, a question answered until right, terms in the margin, the outline of a long part | [lesson](lesson.md) |
 | ONLY when the reader must see a structure of steps, relations or clusters (a run's flow, a data ERD, a knowledge map): the core's graph ext | [graph](graph.md) |
 | ONLY for a long authored document written as markdown: the core's markdown ext | [markdown](markdown.md) |

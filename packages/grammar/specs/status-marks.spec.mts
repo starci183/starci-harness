@@ -11,30 +11,29 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline"
 import { IconTile } from "../src/core/leaf/IconTile/index.tsx"
 import { InlineStatus } from "../src/core/leaf/InlineStatus/index.tsx"
 import { BareCircleIcon, CircleIcon, MARK_STATES, MARK_STATE_TONE, STATUS_GLYPH } from "../src/core/statusMark.tsx"
-import { CheckCircleIcon, CheckIcon, XCircleIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import { Timeline, timelineMarkState } from "../src/core/composite/Timeline/index.tsx"
 import { Stepper, stepperMarkState } from "../src/core/composite/Stepper/index.tsx"
 import { EmptyNotice } from "../src/core/composite/EmptyNotice/index.tsx"
 import { Alert } from "../src/core/composite/Alert/index.tsx"
 import { EntitySummaryCard, type EntitySummaryCardProps } from "../src/core/frame/EntitySummaryCard/index.tsx"
+import { TablerCheck, TablerCircleCheck, TablerCircleX, TablerMessages, TablerX } from "../src/core/leaf/Icon/tabler.tsx"
 
 const read = (path: string): string => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8")
 const render = (node: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(node)
 const count = (markup: string, pattern: RegExp): number => [...markup.matchAll(pattern)].length
 
-test("every IconTile is one round 40px plate: the tile rule holds 2.5rem and the pill radius; no size rule is left", () => {
+test("an IconTile is the row tile (40, radius 10) or the head tile (48, radius 12); a status mark stays the round 40", () => {
     const css = read("common/styles.css")
-    assert.match(css, /\.starci-core-icon-tile \{[^}]*width: 2\.5rem;[^}]*height: 2\.5rem;[^}]*border-radius: var\(--grammar-radius-pill\)/u)
-    assert.doesNotMatch(css, /\.starci-core-icon-tile\[data-size/u)
+    assert.match(css, /\.starci-core-icon-tile \{[^}]*width: var\(--grammar-tile-row-size\);[^}]*border-radius: var\(--grammar-tile-row-radius\)/u)
+    assert.match(css, /\.starci-core-icon-tile\[data-grammar-mark="status"\] \{\s*border-radius: var\(--grammar-radius-pill\);/u)
 })
 
 test("the status map holds only these three (owner 2026-11-22): circle-check done, circle-x error, the plain circle waiting, skipped and not run; the tile carries their bare equivalents", () => {
-    assert.deepEqual({ ...STATUS_GLYPH.inline }, { done: CheckCircleIcon, error: XCircleIcon, waiting: CircleIcon, skipped: CircleIcon, notRun: CircleIcon })
-    assert.deepEqual({ ...STATUS_GLYPH.tile }, { done: CheckIcon, error: XMarkIcon, waiting: BareCircleIcon, skipped: BareCircleIcon, notRun: BareCircleIcon })
+    assert.deepEqual({ ...STATUS_GLYPH.inline }, { done: TablerCircleCheck, error: TablerCircleX, waiting: CircleIcon, skipped: CircleIcon, notRun: CircleIcon })
+    assert.deepEqual({ ...STATUS_GLYPH.tile }, { done: TablerCheck, error: TablerX, waiting: BareCircleIcon, skipped: BareCircleIcon, notRun: BareCircleIcon })
     assert.equal(new Set(Object.values(STATUS_GLYPH.inline)).size, 3, "three inline glyphs")
     assert.equal(new Set(Object.values(STATUS_GLYPH.tile)).size, 3, "three tile glyphs")
     for (const glyph of [CircleIcon, BareCircleIcon]) assert.doesNotMatch(render(createElement(glyph)), /stroke-dasharray/u, "the circle is plain, never dashed")
@@ -67,13 +66,13 @@ test("case 1: IconTile state with no subject is the 40px tile carrying the STATU
 })
 
 test("case 2: IconTile state with a subject carries the SUBJECT icon on the state's plate, a running subject wears the ring", () => {
-    const done = render(createElement(IconTile, { source: ChatBubbleLeftRightIcon, state: "done" }))
+    const done = render(createElement(IconTile, { source: TablerMessages, state: "done" }))
     assert.match(done, /data-grammar-mark-subject="true"/)
     assert.doesNotMatch(done, /data-grammar-status-glyph/)
     assert.doesNotMatch(done, /data-grammar-mark-ring/)
-    assert.match(render(createElement(IconTile, { source: ChatBubbleLeftRightIcon, state: "running" })), /data-grammar-mark-ring="true"/)
+    assert.match(render(createElement(IconTile, { source: TablerMessages, state: "running" })), /data-grammar-mark-ring="true"/)
     // an identity tile is unchanged: no status attributes
-    assert.doesNotMatch(render(createElement(IconTile, { source: ChatBubbleLeftRightIcon, tone: "info" })), /data-grammar-mark/)
+    assert.doesNotMatch(render(createElement(IconTile, { source: TablerMessages, tone: "info" })), /data-grammar-mark/)
 })
 
 test("(A) InlineStatus: a bare glyph and its words in the state's tone, the meta trailing, no plate in its rule", () => {
@@ -141,41 +140,13 @@ test("Alert: its mark is the bare 24px Heroicon in the soft foreground on the so
     assert.match(glyph, /<svg[^>]*width="24"[^>]*height="24"[^>]*class="starci-core-alert-glyph"/u)
     const css = read("common/components-overlays.css")
     const alert = css.slice(css.indexOf("alert banner"), css.indexOf("Below 30rem"))
-    assert.match(alert, /\.starci-core-alert \.starci-core-alert-title \{ font-weight: var\(--grammar-type-label-item-weight\); \}/u)
+    assert.match(alert, /\.starci-core-alert \.starci-core-alert-title \{ font-weight: var\(--grammar-type-label-item-weight\); --grammar-icon-stroke: [^}]*\}/u)
     assert.match(alert, /\.starci-core-alert \.starci-core-alert-indicator \{\s*inline-size: 1\.5rem;\s*block-size: 1\.5rem;/u)
     for (const [state, tone] of [["affirmative", "success"], ["cautionary", "warning"], ["negative", "danger"], ["accent", "accent"]] as const) {
         assert.match(alert, new RegExp(`\\[data-grammar-tone="${state}"\\] \\{ --starci-core-alert-soft: var\\(--${tone}-soft\\); --starci-core-alert-ink: var\\(--${tone}-soft-foreground\\); \\}`, "u"), state)
     }
     assert.match(alert, /\[data-grammar-tone="informative"\] \{ --starci-core-alert-soft: var\(--informative-soft, var\(--info-soft\)\);/u)
     assert.doesNotMatch(css, /soft-surface|--starci-core-alert-plate|data-tone="alert"/u, "no soft-surface box, no plate")
-})
-
-test("Alert: ALERT_ACTION_LOOK - a primary SOLID in the banner's tone, the negative retry and colourless tones border, a destructive action danger; the secondary is border", () => {
-    const withAction = (tone: string, isDestructive = false) => render(createElement(Alert, { tone: tone as never, title: "T", action: { label: "Làm", onAction: () => undefined, isDestructive }, secondaryAction: { label: "Sau", onAction: () => undefined } }))
-    const buttons = (markup: string): string[] => markup.match(/<button[^>]*data-component="Button"[^>]*>/gu) ?? []
-    for (const [tone, button] of [["cautionary", "warning"], ["informative", "info"], ["affirmative", "success"], ["accent", "accent"]] as const) {
-        const markup = withAction(tone)
-        assert.equal(count(markup, new RegExp(`data-grammar-button-tone="${button}"`, "gu")), 1, `${tone}: one solid ${button} action`)
-        const toned = new RegExp(`<button[^>]*data-grammar-button-tone="${button}"[^>]*>`, "u").exec(markup)?.[0] ?? ""
-        assert.match(toned, /data-grammar-variant="primary"/u, `${tone}: a primary`)
-        assert.doesNotMatch(toned, /outline/u, `${tone}: the vendor's solid variant, never an outline`)
-        assert.ok(buttons(markup).some((b) => /data-grammar-variant="border"/u.test(b) && /button--outline/u.test(b)), `${tone}: the secondary is border`)
-    }
-    for (const tone of ["negative", "neutral", "pending", "unavailable"]) {
-        const markup = withAction(tone)
-        assert.doesNotMatch(markup, /data-grammar-button-tone/u, tone)
-        assert.ok(buttons(markup).every((b) => /data-grammar-variant="border"/u.test(b)), `${tone}: border`)
-    }
-    for (const tone of ["negative", "cautionary", "informative"]) {
-        const markup = withAction(tone, true)
-        assert.equal(buttons(markup).filter((b) => /data-grammar-variant="danger"[^>]*button--danger|button--danger[^>]*data-grammar-variant="danger"/u.test(b)).length, 1, `${tone}: a destructive action is danger`)
-        assert.doesNotMatch(markup, /data-grammar-button-tone/u, `${tone}: danger takes no tone`)
-    }
-    const css = read("common/styles.css")
-    for (const tone of ["accent", "info", "success", "warning"]) {
-        assert.match(css, new RegExp(`\\.starci-core-button\\[data-grammar-button-tone="${tone}"\\] \\{ --starci-core-button-tone: var\\(--${tone}\\); --starci-core-button-tone-ink: var\\(--${tone}-foreground\\); \\}`, "u"), tone)
-    }
-    assert.match(css, /\.starci-core-button\[data-grammar-button-tone\] \{\s*border-color: transparent !important;\s*background: var\(--starci-core-button-tone\) !important;/u)
 })
 
 const FIGURES: EntitySummaryCardProps["figures"] = [

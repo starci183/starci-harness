@@ -21,7 +21,7 @@ import { buildPackage, parseManifest, tail } from "./packages.js"
 import { judgePeerLine } from "./peer-line.js"
 import type { ListedLine, PeerLineVerdict } from "./peer-line.js"
 import { packStamped, sourceDigest } from "./pack-stamped.js"
-import { copyPins, movedPins, pinnedManifest, siblingSpecs } from "./publish-pins.js"
+import { copyPins, dataPins, movedDataPins, movedPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
 /** What npm serves of a version this checkout publishes: nothing, or a copy of the same source. */
 type NpmState = "unserved" | "same source"
@@ -42,6 +42,8 @@ interface Planned extends Row {
     readonly served: NpmCopy | undefined
     /** The pins of its publish copy, name to exact version (publish-pins.ts copyPins). */
     readonly pinned: ReadonlyMap<string, string>
+    /** The pins of the pin data its copy ships (hfs's canon-pins.yaml, publish-pins.ts dataPins), name to exact version. */
+    readonly dataPinned?: ReadonlyMap<string, string>
 }
 
 interface PublishLocalData {
@@ -103,21 +105,31 @@ export const planOne = async (root: string, pkg: WorkspacePackage, asked: PlanQu
  * So a batch never ships the CLI requiring the hfs below the one it published beside it, and `--package cli` alone never ships behind the hfs the same tree
  * published before. `listed` is undefined while the registry is down: only the batch's own pins move then.
  */
-export const pinRows = async (rows: readonly Planned[], all: readonly WorkspacePackage[], listed: ((name: string) => Promise<readonly string[]>) | undefined): Promise<Planned[]> => {
+export const pinRows = async (rows: readonly Planned[], all: readonly WorkspacePackage[], listed: ((name: string) => Promise<readonly string[]>) | undefined, dataOf: (pkg: WorkspacePackage) => readonly string[] = (pkg) => pinDataTexts(pkg.dir)): Promise<Planned[]> => {
     const batch = new Map(rows.map((row) => [row.package, row.version]))
     const tree = new Map(all.map((pkg) => [pkg.name, pkg.version]))
+    const pkgOf = (row: Planned): WorkspacePackage | undefined => all.find((one) => one.relativeDir === row.dir)
     const manifests = new Map(rows.map((row) => {
-        const pkg = all.find((one) => one.relativeDir === row.dir)
+        const pkg = pkgOf(row)
         const raw: unknown = pkg === undefined ? {} : JSON.parse(readFileSync(join(pkg.dir, "package.json"), "utf8"))
         return [row.package, typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {}]
     }))
-    const asked = [...new Set([...manifests.values()].flatMap((manifest) => [...siblingSpecs(manifest).keys()]))].filter((name) => tree.has(name) && !batch.has(name))
+    // The pin data a row's copy ships (hfs's canon-pins.yaml): its rows are pinned by the same rule as the manifest's requirements.
+    const data = new Map(rows.map((row) => {
+        const pkg = pkgOf(row)
+        return [row.package, pkg === undefined ? [] : dataOf(pkg)]
+    }))
+    const named = [...manifests.values()].flatMap((manifest) => [...siblingSpecs(manifest).keys()])
+    const rowed = [...data.values()].flat().flatMap((text) => pinDataRows(text).map((one) => one.name))
+    const asked = [...new Set([...named, ...rowed])].filter((name) => tree.has(name) && !batch.has(name))
     const lists = new Map(listed === undefined ? [] : await inOrder(asked, async (name) => [name, await listed(name)] as const))
     const served = (name: string, version: string): boolean => lists.get(name)?.includes(version) ?? false
     return rows.map((row) => {
         const manifest = manifests.get(row.package) ?? {}
         const pinned = copyPins(manifest, batch, tree, served)
-        return { ...row, pinned, pins: movedPins(manifest, pinned, false) }
+        const texts = data.get(row.package) ?? []
+        const dataPinned = new Map(texts.flatMap((text) => [...dataPins(text, batch, tree, served)]))
+        return { ...row, pinned, dataPinned, pins: [...movedPins(manifest, pinned, false), ...texts.flatMap((text) => movedDataPins(text, dataPinned))] }
     })
 }
 
@@ -128,7 +140,7 @@ const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root
     try {
         judgeVersion(row.package, row.version, await sourceDigest(root, pkg.relativeDir), row.served)
         // The copy pins its siblings as the batch publishes them (publish-pins.ts): an exact pin moves, a range a release satisfies stays.
-        const local = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit: (text) => pinnedManifest(text, undefined, row.pinned, false) })
+        const local = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit: (text) => pinnedManifest(text, undefined, row.pinned, false), entries: pinDataEdit(() => row.dataPinned ?? new Map<string, string>(), false) })
         if ((await registryVersions(row.package, port, scratch)).includes(row.version)) {
             const removed = await captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", "--userconfig", npmrc, ...registryFlags(port)], scratch)
             if (removed.exitCode !== 0) throw stepFailed(`npm unpublish of ${row.package}@${row.version} from ${registryUrl(port)}`, removed)

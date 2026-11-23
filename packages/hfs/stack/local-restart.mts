@@ -13,6 +13,7 @@ import { DEFAULT_TIMEOUT_SECONDS, ownedProcess, probe, stateOf, stopProcess, wai
 import type { LocalDeps, ProcessMode } from './local-run.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { launchProcess, processPlan } from './local-up.mjs';
+import { endEarlierTrees } from './local-edge.mjs';
 import type { HttpProbe, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
 /** The probes a restarted process must pass: its loopback health, then the same path over each tunnel hostname that routes its port. Pure. */
@@ -62,7 +63,8 @@ export async function restartLocal(ctx: StackContext, local: LocalConfig, { exec
     }
   }
   for (const run of runs) {
-    lines.push(await launchProcess(ctx, local, run, custody, mode, record));
+    lines.push(...endEarlierTrees(ctx, local, run, record, deps));
+    lines.push(await launchProcess(ctx, local, run, custody, mode, record, deps));
     writeRecord(dir, record);
   }
   const deadline = ctx.now() + timeoutSeconds * 1000;

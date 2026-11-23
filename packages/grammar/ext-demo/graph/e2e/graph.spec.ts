@@ -36,17 +36,16 @@ test.describe("states", () => {
         await expect(page.locator(".starci-graph-node[data-status=running] .starci-graph-node-icon [data-component=IconTile]").first()).toHaveAttribute("data-grammar-mark-state", "running")
     })
 
-    test("the edge into a running step flows (moving dots on a solid line); the edge into a waiting step is solid amber and still", async ({ page }) => {
+    test("the edge into a running step flows (its own line's dashes move; one line, no copy); the edge into a waiting step is solid amber and still", async ({ page }) => {
         await open(page, "states")
-        const dots = page.locator('[data-testid="rf__edge-start->run"] .starci-graph-edge-flow')
-        expect(await dots.evaluate((path) => getComputedStyle(path).animationName)).toBe('starci-graph-dash')
+        await expect(page.locator('[data-testid="rf__edge-start->run"] path:not(.starci-graph-edge-arrow):not(.react-flow__edge-interaction)')).toHaveCount(1)
         const into = await pathStyle(page, 'start->run')
-        expect(into.dash).toBe('none')
+        expect(into.animation).toBe('starci-graph-dash')
+        expect(into.dash).not.toBe('none')
         const waiting = await pathStyle(page, 'start->wait')
         expect(waiting.animation).toBe('none')
         expect(waiting.dash).toBe('none')
         expect(into.stroke).not.toBe(waiting.stroke)
-        await expect(page.locator('[data-testid="rf__edge-start->wait"] .starci-graph-edge-flow')).toHaveCount(0)
         await expect(page.locator('[data-testid="rf__edge-start->run"]')).toHaveClass(/animated/)
         await expect(page.locator('[data-testid="rf__edge-start->wait"]')).not.toHaveClass(/animated/)
         // not reached yet: dashed grey
@@ -167,7 +166,7 @@ test.describe("loading and containers", () => {
     })
 })
 
-const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "big"] as const
+const FLOWS = ["order-approval", "wait-person", "wait-time", "wait-external", "error-reason", "linear", "branch-merge", "nested-branch", "loop", "loop-two-exits", "parallel", "long-labels", "wait-loops", "wait-replies", "big"] as const
 const MIXES = ["todo", "running", "waiting", "error", "done"] as const
 
 test.describe("pictures", () => {

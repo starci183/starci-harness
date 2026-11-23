@@ -83,85 +83,29 @@
         object-fit: cover;
     }
 
-    /* --- LogoStack: round connection logos with no plate, one identity gap apart, a "+N" pill and a muted caption --- */
-    .starci-core-logo-stack-group {
-        display: inline-flex;
-        min-inline-size: 0;
-        max-inline-size: 100%;
+    /* A logo (Avatar kind="logo"): a white surface in both themes, a hairline edge, the logo fitted whole inside, an eighth of the size in from the edge. */
+    .starci-core-avatar[data-grammar-avatar-kind="logo"] {
+        background: var(--grammar-logo-surface);
+        box-shadow: inset 0 0 0 var(--grammar-hairline) var(--border);
     }
 
-    .starci-core-logo-stack {
-        display: inline-flex;
-        min-inline-size: 0;
-        max-inline-size: 100%;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--grammar-identity-gap);
-        text-align: start;
-    }
-
-    .starci-core-logo-stack-logos {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--grammar-identity-gap);
-    }
-
-    .starci-core-logo-stack-logo {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
-        inline-size: var(--grammar-logo-stack-size);
-        block-size: var(--grammar-logo-stack-size);
-        overflow: hidden;
-        border-radius: var(--grammar-radius-round);
-    }
-
-    .starci-core-logo-stack-image {
-        inline-size: 100%;
-        block-size: 100%;
-        object-fit: cover;
-    }
-
-    .starci-core-logo-stack-initial {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        inline-size: 100%;
-        block-size: 100%;
-        background: var(--surface-secondary);
-        color: var(--foreground);
-        font-size: var(--grammar-text-2xs);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-none);
-    }
-
-    .starci-core-logo-stack-count {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
+    .starci-core-avatar[data-grammar-avatar-kind="logo"] img {
         box-sizing: border-box;
-        min-inline-size: var(--grammar-logo-stack-size);
-        block-size: var(--grammar-logo-stack-size);
-        padding-inline: var(--grammar-identity-gap);
-        border-radius: var(--grammar-radius-pill);
-        background: var(--surface-secondary);
-        color: var(--foreground);
-        font-size: var(--grammar-text-2xs);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-none);
-        white-space: nowrap;
+        padding: 12.5%;
+        object-fit: contain;
     }
 
-    .starci-core-logo-stack-caption {
-        overflow: hidden;
-        max-inline-size: 100%;
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    /*
+     * The overlapping row: each member but the last is covered at its end by the next one (the overlap plus the seam ring), so its letters or its mark
+     * move toward its start by half of that cover and stand centred in the part that shows; nothing of a name is clipped. A 24px row overlaps a quarter
+     * of the avatar (6px), the 40px row the vendor's 8px.
+     */
+    .starci-core-avatar-group[data-grammar-avatar-layout="row"][data-grammar-avatar-size="sm"] {
+        --avatar-group-overlap: calc(var(--grammar-avatar-sm-size) / 4);
+    }
+
+    .starci-core-avatar-group[data-grammar-avatar-layout="row"] > :not(:last-child) :is(.starci-core-avatar-initials, .starci-core-avatar-letters, .starci-core-avatar-mark-icon) {
+        translate: calc((var(--avatar-group-overlap) + var(--avatar-group-seam)) / -2) 0;
     }
 
     .starci-core-avatar-group-count {
@@ -185,6 +129,7 @@
         color: var(--muted);
         font-size: var(--starci-avatar-letters-size);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-none);
         white-space: nowrap;
         user-select: none;

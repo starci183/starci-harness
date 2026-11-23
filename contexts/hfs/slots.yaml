@@ -422,8 +422,10 @@ ruleParams:
       "@langchain/langgraph": []
       "@langchain/community": []
       langchain: []
-      openai: []
-      "@anthropic-ai/sdk": []
+      openai:
+        - integrations/ai-byok
+      "@anthropic-ai/sdk":
+        - integrations/ai-byok
       "@google/genai": []
       "@google/generative-ai": []
       "@mistralai/mistralai": []

@@ -1,4 +1,7 @@
 import { requireHostServices } from "../../harness/host-needs.js"
+import { registerRun } from "../../harness/runs.js"
+import type { RunHandle } from "../../harness/runs.js"
+import { loadSlotRules, slotRoot } from "../../harness/slots.js"
 import { appRootOf } from "../../harness/memory-plan.js"
 import { captureGitSync } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
@@ -45,6 +48,15 @@ const fastPorts = async (context: VerbContext, env: string): Promise<FastPorts> 
     }
 }
 
+/** Records an app check as a harness run in the slot root; a host with no slot root it can read records nothing. */
+const recordCheck = async (cwd: string): Promise<RunHandle> => {
+    try {
+        return await registerRun(slotRoot(undefined, loadSlotRules()), `app check in ${cwd}`, cwd)
+    } catch {
+        return { child: () => undefined, done: () => undefined }
+    }
+}
+
 /** `starci app check`: run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture under the branch profile, or with --staged the pre-commit guard; --fix, --out and the result cache write; @starci/hfs runs it in-process in the app. */
 export const appCheckVerb = defineVerb({
     path: ["app", "check"],
@@ -57,7 +69,13 @@ export const appCheckVerb = defineVerb({
     run: async (context, flags) => {
         const env = argValue(flags.args, "env") ?? "local"
         if (env === "prod") judgeHostServices(context)
-        if (argValue(flags.args, LEVEL_FLAG) !== "dev") return runHfs(context, "check", flags.args, true)
-        return runFastCheck(flags.args, await fastPorts(context, env))
+        // The check records itself with its launchers, so the reaper (harness/runs.ts) stops it once its caller is gone.
+        const run = await recordCheck(context.cwd)
+        try {
+            if (argValue(flags.args, LEVEL_FLAG) !== "dev") return await runHfs(context, "check", flags.args, true)
+            return await runFastCheck(flags.args, await fastPorts(context, env))
+        } finally {
+            run.done()
+        }
     },
 })

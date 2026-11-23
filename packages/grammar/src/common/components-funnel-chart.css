@@ -1,107 +1,95 @@
 /*
- * Common anatomy for FunnelChart: a stage per label with its bar on one track, the count as text inside the bar, a chip between two
- * bars (how much of the stage before came through) with the drop-off count beside it. Stages share the chart's three columns (label,
- * track, value) through subgrid, so every track is one width and every bar starts at one edge; a chart narrower than 33rem stacks
- * each stage. Every colour resolves through Common semantic variables: a tone is its `x-soft` with its `x-soft-foreground`.
+ * Common anatomy for FunnelChart: one stage per list item, a text row ("label · count", the step into it: the down arrow icon and "60%", the app's value at
+ * its end) over a track of HeroUI ProgressBar's own size (md: `--grammar-bar-md`, 8px, at `--grammar-bar-radius-md`; ramps.css
+ * "BARS"), the fill the stage's share of the largest stage. Every track spans the chart, so every track is one width and every fill
+ * starts at one edge; the text row sits above its track at every width. The step that lost the largest share is the danger ink.
+ * Every colour resolves through Common semantic variables: the empty track is the measures' one neutral (`--starci-core-track`,
+ * components-overlays.css "THE EMPTY TRACK"), a fill its tone's solid colour.
  */
 @layer starci-grammar-common {
-    .starci-core-funnel-chart { container: starci-core-funnel-chart / inline-size; min-width: 0; }
+    .starci-core-funnel-chart { min-width: 0; }
 
     .starci-core-funnel-stages {
-        display: grid;
+        display: flex;
         min-width: 0;
-        grid-template-columns: minmax(6rem, 10rem) minmax(0, 1fr) minmax(5rem, auto);
-        column-gap: var(--grammar-inset);
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
         margin: 0;
         padding: 0;
         list-style: none;
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-funnel-stage {
-        display: grid;
-        grid-column: 1 / -1;
-        grid-template-columns: subgrid;
-        align-items: center;
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
     }
 
-    .starci-core-funnel-step {
+    .starci-core-funnel-head {
         display: flex;
-        grid-column: 2;
-        grid-row: 1;
         min-width: 0;
-        min-block-size: 2.25rem;
         flex-wrap: wrap;
-        align-items: center;
-        gap: 0 var(--grammar-identity-gap);
-        padding-block: var(--grammar-inline-gap);
+        align-items: baseline;
+        gap: 0 var(--grammar-inline-gap);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    .starci-core-funnel-label {
+        min-width: 0;
+        flex: 1 1 auto;
+        color: var(--foreground);
+        font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
+    }
+
+    .starci-core-funnel-label > .starci-core-skeleton-group { inline-size: 8rem; }
+
+    .starci-core-funnel-count { font-variant-numeric: tabular-nums; }
+
+    .starci-core-funnel-step,
+    .starci-core-funnel-value {
+        flex: none;
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
         font-variant-numeric: tabular-nums;
     }
 
-    .starci-core-funnel-step > .starci-core-skeleton-group { min-inline-size: 6rem; }
-    .starci-core-funnel-drop[data-grammar-drop="lost"] { color: var(--danger); }
+    .starci-core-funnel-step > .starci-core-skeleton-group,
+    .starci-core-funnel-value > .starci-core-skeleton-group { min-inline-size: 3rem; }
 
-    .starci-core-funnel-label {
-        grid-column: 1;
-        grid-row: 2;
-        min-width: 0;
-        color: var(--foreground);
-    }
+    .starci-core-funnel-step { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
+
+    .starci-core-funnel-step[data-grammar-drop="largest"] { color: var(--danger); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
 
     .starci-core-funnel-track {
         display: block;
-        grid-column: 2;
-        grid-row: 2;
+        position: relative;
+        inline-size: 100%;
         min-width: 0;
+        block-size: var(--grammar-bar-md);
+        overflow: hidden;
+        border-radius: var(--grammar-bar-radius-md);
+        background: var(--grammar-bar-track);
     }
 
     .starci-core-funnel-bar {
-        display: flex;
-        box-sizing: border-box;
+        display: block;
         inline-size: var(--starci-core-funnel-share);
-        min-inline-size: max-content;
-        block-size: 2rem;
-        align-items: center;
-        padding-inline: var(--grammar-identity-gap);
-        border-radius: var(--grammar-radius-sm);
-        background: var(--default);
-        color: var(--default-foreground);
-        font-variant-numeric: tabular-nums;
-        font-weight: var(--grammar-weight-semibold);
+        block-size: 100%;
+        border-radius: var(--grammar-bar-radius-md);
+        background: var(--accent);
     }
 
-    .starci-core-funnel-bar[data-grammar-skeleton="true"] { background: var(--surface-secondary); min-inline-size: 0; }
-    .starci-core-funnel-bar[data-grammar-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
-    .starci-core-funnel-bar[data-grammar-tone="success"] { background: var(--success-soft); color: var(--success-soft-foreground); }
-    .starci-core-funnel-bar[data-grammar-tone="info"] { background: var(--info-soft); color: var(--info-soft-foreground); }
-    .starci-core-funnel-bar[data-grammar-tone="warning"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
-    .starci-core-funnel-bar[data-grammar-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+    .starci-core-funnel-bar[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
+    .starci-core-funnel-bar[data-grammar-tone="success"] { background: var(--success); }
+    .starci-core-funnel-bar[data-grammar-tone="info"] { background: var(--info); }
+    .starci-core-funnel-bar[data-grammar-tone="warning"] { background: var(--warning); }
+    .starci-core-funnel-bar[data-grammar-tone="danger"] { background: var(--danger); }
+    .starci-core-funnel-bar[data-grammar-tone="neutral"] { background: var(--muted); }
 
-    .starci-core-funnel-value {
-        grid-column: 3;
-        grid-row: 2;
-        min-width: 0;
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
-        text-align: end;
-    }
-
-    @container starci-core-funnel-chart (max-width: 33rem) {
-        .starci-core-funnel-stages { grid-template-columns: minmax(0, 1fr); }
-
-        .starci-core-funnel-stage {
-            grid-template-columns: minmax(0, 1fr) auto;
-            grid-template-areas: "step step" "label value" "track track";
-            row-gap: var(--grammar-identity-gap);
-        }
-
-        .starci-core-funnel-step { grid-area: step; }
-        .starci-core-funnel-label { grid-area: label; }
-        .starci-core-funnel-track { grid-area: track; }
-        .starci-core-funnel-value { grid-area: value; }
+    @media (forced-colors: active) {
+        .starci-core-funnel-track { border: 1px solid CanvasText; }
+        .starci-core-funnel-bar { background: CanvasText; }
     }
 }

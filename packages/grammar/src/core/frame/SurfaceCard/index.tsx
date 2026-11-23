@@ -2,7 +2,6 @@
 
 import { toneEdgeProps, type ToneEdge } from "../../toneEdge.js"
 import { Card } from "@heroui/react"
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
 import { AgentName } from "../../leaf/AgentName/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
@@ -17,6 +16,7 @@ import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { CardActionsScope } from "../../zoneContext.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
+import { TablerDots } from "../../leaf/Icon/tabler.js"
 import {
     getSurfaceCardClassName,
     surfaceActionsClassName,
@@ -199,12 +199,12 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             {body?.menu === undefined ? null : (
                 <span className="starci-core-body-menu" data-grammar-body-menu="true">
                     {isLoading || disabled ? (
-                        <IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" isLoading={isLoading} isDisabled={disabled} />
+                        <IconButton label={body.menu.label} source={TablerDots} size="sm" variant="border" isLoading={isLoading} isDisabled={disabled} />
                     ) : (
                         <DropdownMenu
                             placement="bottom end"
                             entries={body.menu.entries}
-                            trigger={<IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" variant="border" />}
+                            trigger={<IconButton label={body.menu.label} source={TablerDots} size="sm" variant="border" />}
                         />
                     )}
                 </span>

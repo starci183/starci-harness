@@ -1,11 +1,15 @@
 "use client"
 
-import { createElement as h, useCallback, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactElement } from "react"
+import { createElement as h, useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactElement } from "react"
 import { InlineStatus, Skeleton as Bone, Text, type MarkState } from "../../../index.js"
 import { InlineStatusGlyph } from "../../../statusMark.js"
+import { AnchoredTooltip } from "../../../branch/Tooltip/index.js"
+import { READABLE_ZOOM } from "../diagram/open.js"
+import { useLayoutDirection } from "../shared/phone.js"
+import { openView as openAt } from "../shared/view.js"
 import { ZoomButtons } from "../shared/zoom.js"
 import type { GraphTone } from "../types.js"
-import { layoutKnowledge, type KnowledgeLayout } from "./layout.js"
+import { layoutKnowledge, linePairs, type KnowledgeLayout } from "./layout.js"
 import type { KnowledgeCluster, KnowledgeItem, KnowledgeMapProps, KnowledgeState } from "./types.js"
 
 /** The tones the clusters take in turn when the app names none. */
@@ -45,8 +49,27 @@ interface Point {
 /** The room kept above a map taller than its canvas, so its first names stand in view below the zoom toolbar. */
 const OPEN_TOP = 12
 
-/** The view a map opens in, on every screen alike: 100%, the middle of the map in the middle of the canvas; a map taller than the canvas starts at its top. */
-const openView = (layout: KnowledgeLayout, size: Size): View => ({ k: 1, x: (size.width - layout.width) / 2, y: Math.max(OPEN_TOP, (size.height - layout.height) / 2) })
+/** The columns of the cluster grid on a phone (under the graphs' phone width): the map is laid out top-down, two clusters across, so its names stay readable. */
+const PHONE_COLUMNS = 2
+
+/**
+ * The view a map opens in, on every screen alike: the whole map fitted (at 100% or less) in the middle of the canvas (`openView`), never under the diagrams'
+ * readable floor (`READABLE_ZOOM`): a map that needs less opens at the floor from its top, centred across when it fits the width, and the reader pans on.
+ */
+const openView = (layout: KnowledgeLayout, size: Size, focusId: string | undefined): View => {
+    const room = { width: size.width - 2 * OPEN_TOP, height: size.height - 2 * OPEN_TOP }
+    const fit = Math.min(room.width / Math.max(1, layout.width), room.height / Math.max(1, layout.height))
+    if (fit < READABLE_ZOOM) {
+        const k = READABLE_ZOOM
+        const wide = layout.width * k
+        return { k, x: wide <= room.width ? OPEN_TOP + (room.width - wide) / 2 : OPEN_TOP, y: OPEN_TOP }
+    }
+    const heaviest = layout.bubbles.reduce<KnowledgeLayout["bubbles"][number] | undefined>((best, bubble) => (best === undefined || bubble.r > best.r ? bubble : best), undefined)
+    const bubble = layout.bubbles.find((each) => each.id === focusId) ?? heaviest
+    const focus = bubble === undefined ? undefined : { x: bubble.x - bubble.r, y: bubble.y - bubble.r, width: bubble.r * 2, height: bubble.r * 2 }
+    const view = openAt(size, { x: 0, y: 0, width: layout.width, height: layout.height }, focus, { top: OPEN_TOP, right: OPEN_TOP, bottom: OPEN_TOP, left: OPEN_TOP })
+    return { k: view.zoom, x: view.x, y: view.y }
+}
 
 /** The view that shows the whole map, centred in the canvas; never enlarged beyond 1.25 so a sparse map stays small. */
 const fitView = (layout: KnowledgeLayout, size: Size): View => {
@@ -149,6 +172,7 @@ const MapView = (props: MapProps): ReactElement => {
     const [hover, setHover] = useState<string | null>(null)
     const gesture = useRef<Gesture>({ down: new Map(), pinch: null, moved: false, tap: null })
     const suppress = useRef(false)
+    const tipId = useId()
     const opened = useRef<KnowledgeLayout | null>(null)
     const words: Words = { kindLabels: props.kindLabels, stateLabels: props.stateLabels, weightLabel: props.weightLabel }
 
@@ -170,8 +194,8 @@ const MapView = (props: MapProps): ReactElement => {
     useLayoutEffect(() => {
         if (size === undefined || size.width === 0 || opened.current === layout) return
         opened.current = layout
-        setView(openView(layout, size))
-    }, [layout, size])
+        setView(openView(layout, size, props.focusId))
+    }, [layout, size, props.focusId])
 
     const middle = useCallback((): Point => ({ x: (size?.width ?? 0) / 2, y: (size?.height ?? 0) / 2 }), [size])
     const zoomBy = useCallback(
@@ -182,11 +206,10 @@ const MapView = (props: MapProps): ReactElement => {
     )
 
     const byId = new Map(items.map((item) => [item.id, item] as const))
+    const lines = linePairs(items, props.links ?? [])
     const at = new Map(layout.bubbles.map((bubble) => [bubble.id, bubble] as const))
     const hovered = hover === null ? undefined : byId.get(hover)
-    const hoveredAt = hover === null ? undefined : at.get(hover)
     const hoveredSource = hovered?.sourceId === undefined ? undefined : byId.get(hovered.sourceId)
-    const tooltipBelow = hoveredAt !== undefined && view !== undefined && (hoveredAt.y - hoveredAt.r) * view.k + view.y < 70
 
     const onDown = (event: PointerEvent<HTMLDivElement>): void => {
         if (event.pointerType === "mouse" && event.button !== 0) return
@@ -282,9 +305,9 @@ const MapView = (props: MapProps): ReactElement => {
                       h(
                           "svg",
                           { className: "starci-knowledge-lines", width: layout.width, height: layout.height, "aria-hidden": true },
-                          items.flatMap((item) => {
-                              const from = at.get(item.id)
-                              const to = item.sourceId === undefined ? undefined : at.get(item.sourceId)
+                          lines.flatMap(([fromId, toId]) => {
+                              const from = at.get(fromId)
+                              const to = at.get(toId)
                               if (from === undefined || to === undefined || from === to) return []
                               const length = Math.hypot(to.x - from.x, to.y - from.y)
                               if (length === 0) return []
@@ -292,11 +315,11 @@ const MapView = (props: MapProps): ReactElement => {
                               const uy = (to.y - from.y) / length
                               return [
                                   h("line", {
-                                      key: item.id,
+                                      key: `${fromId}>${toId}`,
                                       className: "starci-knowledge-line",
-                                      "data-active": hover === item.id || hover === item.sourceId ? "true" : undefined,
-                                      "data-from": item.id,
-                                      "data-to": item.sourceId,
+                                      "data-active": hover === fromId || hover === toId ? "true" : undefined,
+                                      "data-from": fromId,
+                                      "data-to": toId,
                                       x1: from.x + ux * from.r,
                                       y1: from.y + uy * from.r,
                                       x2: to.x - ux * to.r,
@@ -347,34 +370,39 @@ const MapView = (props: MapProps): ReactElement => {
                               item.state === undefined ? null : h(Glyph, { state: item.state }),
                           )
                       }),
-                      hovered === undefined || hoveredAt === undefined
-                          ? null
-                          : h(
-                                "div",
-                                {
-                                    className: "starci-knowledge-tip",
-                                    role: "tooltip",
-                                    "data-below": tooltipBelow ? "true" : undefined,
-                                    style: { left: hoveredAt.x, top: tooltipBelow ? hoveredAt.y + hoveredAt.r + 8 : hoveredAt.y - hoveredAt.r - 8, "--starci-knowledge-scale": String(1 / view.k) },
-                                },
-                                h(Text, { role: "label.item" }, hovered.name),
-                                h(Text, { role: "caption" }, [words.kindLabels?.[hovered.kind], words.weightLabel?.(hovered.weight)].filter((part): part is string => part !== undefined).join(" · ")),
-                                hoveredSource === undefined ? null : h(Text, { role: "caption" }, `${props.sourceLabel === undefined ? "" : `${props.sourceLabel} `}${hoveredSource.name}`),
-                            ),
                   ),
         ),
+        // The name card of the hovered or focused bubble: the Grammar Tooltip, anchored above the bubble (HeroUI places and flips it), at the page's own size.
+        h(AnchoredTooltip, {
+            id: tipId,
+            target: hover === null ? null : (canvas.current?.querySelector(`.starci-knowledge-bubble[data-id="${CSS.escape(hover)}"]`) ?? null),
+            isOpen: hovered !== undefined,
+            placement: "top",
+            content:
+                hovered === undefined
+                    ? null
+                    : h(
+                          "span",
+                          { className: "starci-knowledge-tip" },
+                          h(Text, { role: "label.item" }, hovered.name),
+                          h(Text, { role: "caption" }, [words.kindLabels?.[hovered.kind], words.weightLabel?.(hovered.weight)].filter((part): part is string => part !== undefined).join(" · ")),
+                          hoveredSource === undefined ? null : h(Text, { role: "caption" }, `${props.sourceLabel === undefined ? "" : `${props.sourceLabel} `}${hoveredSource.name}`),
+                      ),
+        }),
     )
 }
 
 /**
- * The knowledge map of an app: topic clusters, a bubble for each item sized by its weight, and a line from each item to the one it came from. A bordered
- * dot-grid panel with 40px zoom buttons (in, out, fit) and a legend; hover shows a bubble's name, a click calls `onOpen(id)`. The map is the same on every
- * screen: it opens at 100%, and a finger drags it, pinches it and double-taps it. The layout is seeded: the same clusters and items always stand in the same
+ * The knowledge map of an app: topic clusters, a bubble for each item sized by its weight, a line from each item to the one it came from and one for each
+ * link between two items (every pair drawn once). A bordered dot-grid panel with 40px zoom buttons (in, out, fit) and a legend; hover shows a bubble's name, a
+ * click calls `onOpen(id)`. It opens fitted, never under the readable floor; on a phone the clusters stand two across, top-down. A finger drags it, pinches it
+ * and double-taps it. The layout is seeded: the same clusters and items always stand in the same
  * places. Every word is the app's.
  */
 export const KnowledgeMap = (props: KnowledgeMapProps): ReactElement => {
     const { clusters, items, label, isLoading = false, emptyLabel, legend } = props
-    const layout = useMemo(() => layoutKnowledge(clusters, items), [clusters, items])
+    const columns = useLayoutDirection<"wide" | "phone">("wide", "phone") === "phone" ? PHONE_COLUMNS : undefined
+    const layout = useMemo(() => layoutKnowledge(clusters, items, { links: props.links ?? [], ...(columns === undefined ? {} : { maxColumns: columns }) }), [clusters, items, props.links, columns])
     const tones = useMemo(() => toneOf(clusters), [clusters])
 
     const classes = props.className === undefined ? "starci-graph starci-knowledge" : `starci-graph starci-knowledge ${props.className}`

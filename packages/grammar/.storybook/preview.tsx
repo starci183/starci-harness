@@ -21,7 +21,8 @@ import { OffsetPopGrammarRoot } from '../src/offset-pop/index.js';
  */
 
 type Family = 'common' | 'core' | 'offset-pop';
-type Theme = NonNullable<GrammarRootProps['theme']>;
+/** The page's mode: `.dark` on `html` (as HeroUI reads it), or the system's. GrammarRoot takes no theme. */
+type Theme = 'light' | 'dark' | 'system';
 
 const FAMILIES: Record<Family, { readonly css: string; readonly Root: (props: GrammarRootProps) => ReactNode }> = {
   common: { css: commonCss, Root: GrammarRoot },
@@ -86,7 +87,6 @@ const withGrammarRoot: Decorator = (Story, context) => {
       <style data-grammar-storybook-family={family}>{css}</style>
       {palette === undefined ? null : <style data-grammar-storybook-palette={family}>{palette}</style>}
       <Root
-        theme={theme}
         data-grammar-storybook-root="true"
         {...(grammar.catalog === true ? { 'data-story-catalog': 'true' } : {})}
         style={{

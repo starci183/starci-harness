@@ -1,21 +1,21 @@
 "use client"
 
 import { Background, BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStoreApi, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
-import { createElement as h, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
-import { LinkIcon } from "@heroicons/react/24/outline"
+import { createElement as h, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
 import { Badge, Icon, IconTile, Link, Text } from "../../../index.js"
-import { GraphSkeleton, PHONE_WIDTH, measureLabel, roundedPath } from "../shared/index.js"
+import { GraphSkeleton, measureLabel, openView, roundedPath, type ViewRect } from "../shared/index.js"
 import { FlowZoom, zoomWords } from "../shared/zoom.js"
+import { useGraphScheme } from "../shared/scheme.js"
 import { erdBounds, layoutErd, type ErdLayout, type ErdRoute, type Point } from "./layout.js"
 import { NO_GLYPH } from "./glyphs.js"
 import { endMarker, markerAngle, unitFrom, type Marker } from "./markers.js"
 import { ERD_DEFAULT_FIELDS, ERD_WIDTH, HEAD_PORT, erdPortId, erdPortY, erdStructureKey, resolveErd, type ErdEdge, type ErdModel, type ErdNode } from "./model.js"
 import type { ErdMapProps } from "./types.js"
+import { TablerLink } from "../../../leaf/Icon/tabler.js"
 
 const CORNER = 12
-/** Where the graph starts from the left of a phone: past the 40px zoom controls and their gap. */
-const PHONE_CLEAR = 72
-const PHONE_TOP = 16
+/** The first view's room round the map: on the left the 40px zoom controls and their gap. */
+const OPEN_INSETS = { top: 16, right: 16, bottom: 16, left: 72 } as const
 
 interface Lit {
     readonly edge: string | undefined
@@ -83,7 +83,7 @@ const EntityView = ({ data }: NodeProps<EntityRfNode>): ReactElement => {
                           h("span", { className: "starci-erd-field", title: row.field.label }, h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label)),
                           row.links !== undefined && row.linksTo !== undefined
                               ? // The core's Link to the entity the field points at, after the link icon.
-                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: LinkIcon, usage: "leading" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
+                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: TablerLink, usage: "text" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
                               : row.field.type === undefined
                                 ? null
                                 : h("span", { className: "starci-erd-type" }, h(Text, { as: "span", role: "caption" }, row.field.type)),
@@ -164,11 +164,21 @@ const shapesOf = (model: ErdModel, layout: ErdLayout): readonly Rect[] => {
 const CONTROLS_GAP = 16
 
 /**
- * The view of the map and its zoom controls. A wide page opens fitted to `bounds` (and, when something of the graph would stand under the controls, fitted again with their room
- * added at the left, a few passes at most since the zoom changes with each). A phone opens at 100% on the same layout, the left edge of the graph past the controls: the
- * person drags it with a finger and pinches to zoom. The fit button of the controls fits the whole graph either way. Swappable for the shared touch and initial-view logic.
+ * The box of the entity the first view is centred on: the app's `focusId`. Left out, a map larger than its frame opens at its top-left corner, where its reading
+ * starts, past the zoom controls (so they cover nothing).
  */
-const Viewport = ({ bounds, shapes, token, words }: { readonly bounds: Rect; readonly shapes: readonly Rect[]; readonly token: string; readonly words: ReturnType<typeof zoomWords> }): ReactElement => {
+const focusOf = (model: ErdModel, layout: ErdLayout, focusId: string | undefined): ViewRect | undefined => {
+    const node = model.nodes.find((each) => each.id === focusId)
+    const at = node === undefined ? undefined : layout.positions[node.id]
+    return node === undefined || at === undefined ? undefined : { x: at.x, y: at.y, width: ERD_WIDTH, height: node.height }
+}
+
+/**
+ * The view of the map and its zoom controls. Every screen opens fitted (`openView`): the whole map, centred, at 100% or less, and
+ * the person drags it and pinches to zoom. The fit button fits `bounds` (and, when something of the graph would stand under the controls, fits again with their room added at
+ * the left, a few passes at most since the zoom changes with each).
+ */
+const Viewport = ({ bounds, focus, shapes, token, words }: { readonly bounds: Rect; readonly focus: ViewRect | undefined; readonly shapes: readonly Rect[]; readonly token: string; readonly words: ReturnType<typeof zoomWords> }): ReactElement => {
     const flow = useReactFlow()
     const store = useStoreApi()
     const fit = async (): Promise<void> => {
@@ -190,9 +200,9 @@ const Viewport = ({ bounds, shapes, token, words }: { readonly bounds: Rect; rea
         }
     }
     useEffect(() => {
-        const width = store.getState().domNode?.getBoundingClientRect().width ?? 0
-        if (width < PHONE_WIDTH) void flow.setViewport({ x: PHONE_CLEAR - bounds.x, y: PHONE_TOP - bounds.y, zoom: 1 })
-        else void fit()
+        const frame = store.getState().domNode?.getBoundingClientRect()
+        // Fitted on every screen: the whole map, centred (`openView`).
+        if (frame !== undefined) void flow.setViewport(openView(frame, bounds, focus, OPEN_INSETS))
         // The view is set when a layout lands (its token changes), never while the person pans.
     }, [token])
     // The shared zoom (Grammar's 40px IconButtons); its fit is the ERD's own, clear of the buttons.
@@ -200,6 +210,8 @@ const Viewport = ({ bounds, shapes, token, words }: { readonly bounds: Rect; rea
 }
 
 const Canvas = (props: ErdMapProps): ReactElement => {
+    const anchor = useRef<HTMLDivElement | null>(null)
+    const scheme = useGraphScheme(anchor)
     const { entities, relations, label, onOpen, maxFields = ERD_DEFAULT_FIELDS, moreLabel, isLoading = false, emptyLabel } = props
     const [placed, setPlaced] = useState<Placed | undefined>(undefined)
     const [lit, setLit] = useState<Lit>({ edge: undefined, node: undefined })
@@ -218,7 +230,7 @@ const Canvas = (props: ErdMapProps): ReactElement => {
     }, [key])
 
     const classes = props.className === undefined ? "starci-graph" : `starci-graph ${props.className}`
-    const outer = { className: classes, role: "region", "aria-label": label, "data-mode": "erd" }
+    const outer = { className: classes, role: "region", "aria-label": label, "data-mode": "erd", ref: anchor }
     const ready = placed?.key === key ? placed.layout : undefined
 
     if (isLoading) return h("div", { ...outer, "aria-busy": true }, h(GraphSkeleton))
@@ -320,10 +332,12 @@ const Canvas = (props: ErdMapProps): ReactElement => {
                         setLit({ edge: undefined, node: undefined })
                     },
                     proOptions: { hideAttribution: true },
+                    // xyflow's root class is a theme scope: it names the scheme the frame stands in.
+                    colorMode: scheme,
                     ...(props.ariaLabelConfig === undefined ? {} : { ariaLabelConfig: props.ariaLabelConfig }),
                 },
-                h(Background, { gap: 22, size: 1.4, color: "var(--border)" }),
-                h(Viewport, { bounds, shapes: shapesOf(model, ready), token: key, words: zoomWords(props.ariaLabelConfig) }),
+                h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),
+                h(Viewport, { bounds, focus: focusOf(model, ready, props.focusId), shapes: shapesOf(model, ready), token: key, words: zoomWords(props.ariaLabelConfig) }),
             ),
         ),
     )

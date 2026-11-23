@@ -164,6 +164,7 @@ export const EXT_LIBRARIES: Readonly<Record<string, readonly RegExp[]>> = Object
     recharts: [/^recharts(?:\/|$)/u],
     pdf: [/^pdfjs-dist(?:\/|$)/u],
     dropzone: [/^react-dropzone(?:\/|$)/u],
+    chat: [/^@assistant-ui\/[^/]+(?:\/|$)/u],
 })
 
 /** The ext a source file belongs to (`src/core/ext/<name>/…`), or null for the core, the families and the stories. */

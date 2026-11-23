@@ -532,7 +532,7 @@
         color: var(--danger);
     }
 
-    /* Marks reuse Icon's leading box; artwork fits that box without a second size rule. */
+    /* Marks reuse Icon's control box (16, an icon beside text); artwork fits that box without a second size rule. */
     [data-grammar-menu-mark] {
         display: inline-flex;
         align-items: center;
@@ -662,6 +662,7 @@
         margin: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
@@ -682,6 +683,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
     }
 
@@ -706,8 +708,8 @@
      * shadow, no border, radius 12 (`--grammar-radius-md`), 12 by 16 inset and a 12 gap. The glyph is the original Heroicons 24 outline mark at its
      * native size and stroke, pulled up 2px onto the centre of the 20px title line; pending's spinner is 24px too. The copy is the label.item role:
      * the title 14/20 at 500, the description 14/20 at 400. The tone maps informative -> info (0.55.0, blue), neutral, pending and unavailable ->
-     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its action Button is SOLID in the same tone
-     * (Button `tone`). The row wraps at a narrow width so the action stays inside it.
+     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its buttons take the banner's tone (0.55.1,
+     * below). The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
         --starci-core-alert-soft: var(--default-soft);
@@ -745,15 +747,15 @@
     .starci-core-alert-row-press:focus-visible { outline: none; }
     .starci-core-alert-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-alert-row-press-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .starci-core-alert-chevron { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--starci-core-alert-ink); }
+    .starci-core-alert-chevron { color: var(--starci-core-alert-ink); }
 
     .starci-core-alert :is(.starci-core-alert-title, .starci-core-alert-description) {
         font-size: var(--grammar-type-label-item-size);
         line-height: var(--grammar-type-label-item-line);
     }
 
-    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); }
-    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
+    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025); }
+    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025); }
 
     /* The glyph at its own 24px, no tile: HeroUI's p-1 goes, the 24px box rides 2px above the 20px title line so their centres meet. */
     .starci-core-alert .starci-core-alert-indicator {
@@ -811,11 +813,29 @@
     }
 
     /*
-     * A border action on a negative banner ("Try again") draws its edge in the banner's danger ink: the neutral edge disappears on the danger soft
-     * box (owner shots 2026-11-22). The fill stays transparent, so it is still the border look, not a second danger button.
+     * THE ALERT ACTION LOOK (0.55.1, owner 2026-11-23, "Chốt, làm luôn"): a Button inside a banner, in its actions or anywhere in its copy, takes the
+     * BANNER'S TONE, never a white or neutral outline on the tint. The fill is one step stronger than the banner's soft background: a film of the banner's
+     * ink (its `--<tone>-soft-foreground`) over it, 10% at rest and 16% on hover and press, so it reads in light and dark and on an app's own tone alike.
+     * The label is that ink at the button label weight (500, the label.item role); the box keeps Grammar's pill, size and focus ring. Every one of them
+     * is the `border` rank, so none is primary; a destructive action keeps `danger`, and a Button on a band (`ground`) keeps its band. A loading
+     * banner is neutral and its buttons are skeletons, so it takes none of this.
      */
-    [data-component="Alert"][data-grammar-tone="negative"] .starci-core-alert-actions > [data-component="Button"][data-grammar-variant="border"] {
-        border-color: var(--danger);
+    .starci-core-alert {
+        --starci-core-alert-action: color-mix(in oklab, var(--starci-core-alert-ink) 10%, transparent);
+        --starci-core-alert-action-hover: color-mix(in oklab, var(--starci-core-alert-ink) 16%, transparent);
+    }
+
+    .starci-core-alert:not([data-loading="true"]) .starci-core-button:not([data-grammar-variant="danger"], [data-grammar-button-ground], [data-loading="true"]) {
+        border-color: transparent !important;
+        background: var(--starci-core-alert-action) !important;
+        box-shadow: none !important;
+        color: var(--starci-core-alert-ink) !important;
+        font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
+    }
+
+    .starci-core-alert:not([data-loading="true"]) .starci-core-button:not([data-grammar-variant="danger"], [data-grammar-button-ground], [data-loading="true"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: var(--starci-core-alert-action-hover) !important;
     }
 
     .starci-core-alert-actions {
@@ -887,6 +907,43 @@
         width: 100%;
         height: 100%;
         animation: starci-core-spin var(--grammar-loop-spin-fast) var(--grammar-loop-easing) infinite;
+    }
+
+    /* ---------------------------------------------------------------- typing dots */
+    .starci-core-typing-dots {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        min-block-size: var(--grammar-leading-md);
+        color: var(--muted);
+    }
+
+    .starci-core-typing-dot {
+        inline-size: var(--grammar-typing-dot);
+        block-size: var(--grammar-typing-dot);
+        border-radius: var(--grammar-radius-round);
+        background: currentcolor;
+        animation: starci-core-typing var(--grammar-loop-typing) var(--grammar-loop-pulse-easing) infinite;
+    }
+
+    .starci-core-typing-dot:nth-child(2) { animation-delay: var(--grammar-typing-stagger); }
+    .starci-core-typing-dot:nth-child(3) { animation-delay: calc(var(--grammar-typing-stagger) * 2); }
+
+    @keyframes starci-core-typing {
+        0%, 60%, 100% {
+            opacity: var(--grammar-opacity-faded);
+            transform: translateY(0);
+        }
+
+        30% {
+            opacity: 1;
+            transform: translateY(calc(-1 * var(--grammar-typing-travel)));
+        }
+    }
+
+    @keyframes starci-core-typing-still {
+        0%, 60%, 100% { opacity: var(--grammar-opacity-faded); }
+        30% { opacity: 1; }
     }
 
     @keyframes starci-core-spin {
@@ -1144,6 +1201,7 @@
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-meter-output {
@@ -1156,6 +1214,7 @@
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
     }
 
     /*
@@ -1181,10 +1240,10 @@
     }
 
     /* Loading meter (knowledge STATE-8, `isLoading`): the label stays real, the bar is a static Skeleton bar of the track height. */
-    .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: var(--grammar-radius-pill); }
+    .starci-core-meter-skeleton-bar { display: block; block-size: var(--grammar-bar-md); overflow: hidden; border-radius: var(--grammar-bar-radius-md); }
 
     /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */
-    .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: 0.25rem; }
+    .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: var(--grammar-bar-sm); border-radius: var(--grammar-bar-radius-sm); }
 
     .starci-core-meter-skeleton-bar > .starci-core-skeleton {
         block-size: 100%;
@@ -1194,7 +1253,7 @@
     /*
      * Segmented meter: the track spans the full width of its container,
      * like a Progress track, at HeroUI's h-1 (0.25rem, 4px) - thinner than the plain meter's h-2 -
-     * laid out as equal pill segments 0.25rem apart. The track itself goes transparent so the gaps
+     * laid out as equal segments 0.25rem apart, each at HeroUI's sm corner (ramps.css "BARS"). The track itself goes transparent so the gaps
      * read as gaps; each empty segment wears the track colour and each filled one the tone fill. The
      * track is HeroUI's `.meter__track` (a `components`-layer rule declared after this layer:
      * `h-2`, `bg-default`, `overflow-hidden`), and consumers import this sheet before or after
@@ -1204,9 +1263,9 @@
     .starci-core-meter-segments {
         display: flex !important;
         overflow: visible !important;
-        height: 0.25rem !important;
+        height: var(--grammar-bar-sm) !important;
         gap: 0.25rem;
-        border-radius: var(--grammar-radius-pill);
+        border-radius: var(--grammar-bar-radius-sm);
         background: transparent !important;
     }
 
@@ -1237,6 +1296,11 @@
 
         .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
             transition: none;
+        }
+
+        /* The typing dots stay put and only pulse in opacity, in turn. */
+        .starci-core-typing-dot {
+            animation-name: starci-core-typing-still;
         }
 
         /* Busy stays perceivable without rotation: a slow opacity pulse replaces the spin. */

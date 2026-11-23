@@ -19,7 +19,8 @@ export interface Report {
  * 1 a node within 8 of another node; 2 a label within 8 of a node, a frame border, a status chip or another label; 3 an edge through a node or a frame header, or
  * across a frame it does not start or end at; 4 an edge end (its hollow circle, its open triangle) more than 2 off its port; 5 the spine off one x centre by more
  * than 2; 6 a decision whose branches are not symmetric about it within 4; 7 a loop edge that leaves its frame; 8 more edge crossings than allowed; 9 a scroll at
- * desktop width or a node out of the view; plus text over an edge. The positions come back for rule 10, the snapshot.
+ * desktop width, a first view not at 100%, or the running step (or every node) out of the view; 11 a back edge more than one card and its gutter (320) outside
+ * the box of its two ends, or a back edge or its label more than its gutter (40) outside the box of all the nodes (it would widen the layout); plus text over an edge. The positions come back for rule 10, the snapshot.
  */
 export const measure = (page: Page, allowed: number): Promise<Report> =>
     page.evaluate((maxCrossings) => {
@@ -31,6 +32,10 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         }
         type Pt = readonly [number, number]
         const hits: { rule: string; a: string; b: string }[] = []
+        /** Rule 11: how far a back edge may run outside the box of its two ends, in graph units: one card (280) and its gutter (40). */
+        const BACK_DETOUR = 320
+        /** Rule 11: how far a back edge and its label may stand outside the box of all the nodes, in graph units: the gutter a lane keeps from the side it passes. */
+        const BACK_GUTTER = 40
         const positions: Record<string, [number, number]> = {}
         const canvas = document.querySelector(".react-flow")
         if (canvas === null) return { hits, positions }
@@ -63,6 +68,8 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         const byId = new Map(nodes.map((node) => [node.id, node]))
         const cards = nodes.filter((node) => !node.frame)
         const frames = nodes.filter((node) => node.frame)
+        /** The layout's own content: the box of every node. */
+        const content = { l: Math.min(...nodes.map((node) => node.box.l)), t: Math.min(...nodes.map((node) => node.box.t)), r: Math.max(...nodes.map((node) => node.box.r)), b: Math.max(...nodes.map((node) => node.box.b)) }
 
         const edges = [...canvas.querySelectorAll<SVGGElement>(".react-flow__edge")].map((group) => {
             const path = group.querySelector<SVGPathElement>(".react-flow__edge-path")
@@ -112,6 +119,11 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         for (const el of canvas.querySelectorAll('.starci-graph-node-text [data-component=Text]')) {
             const size = Number.parseFloat(getComputedStyle(el).fontSize)
             if (size < 13 || (el.matches('.starci-graph-node-text > :first-child') && size !== 14)) hits.push({ rule: 'text size', a: String(size), b: el.getAttribute("class") ?? el.tagName })
+        }
+        // the core Badges of a graph (chips, tags, ports, the words on a line) are 13px too
+        for (const el of canvas.querySelectorAll('[data-component=Badge]')) {
+            const size = Number.parseFloat(getComputedStyle(el).fontSize)
+            if (size < 13) hits.push({ rule: 'badge text size', a: String(size), b: el.textContent.slice(0, 20) })
         }
         // a phone sees the same graph; its layout is checked once, at desktop size
         if (window.innerWidth < 1000) return { hits, positions }
@@ -179,6 +191,22 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
                 const b = byId.get(edge.target)
                 const frame = frames.find((f) => a !== undefined && b !== undefined && contains(f.box, a.box) && contains(f.box, b.box))
                 if (frame !== undefined && edge.points.some((p) => !inside(p, frame.box, 0))) hits.push({ rule: "7 loop edge leaves its frame", a: edge.id, b: frame.id })
+                // 11: a back edge runs near the steps it joins: no point of it lies further than one card and its gutter (280 + 40) outside the box of its two ends
+                if (a !== undefined && b !== undefined && edge.points.length > 0) {
+                    const span = { l: Math.min(a.box.l, b.box.l), t: Math.min(a.box.t, b.box.t), r: Math.max(a.box.r, b.box.r), b: Math.max(a.box.b, b.box.b) }
+                    const xs = edge.points.map((p) => p[0])
+                    const ys = edge.points.map((p) => p[1])
+                    const detour = Math.max(span.l - Math.min(...xs), Math.max(...xs) - span.r, span.t - Math.min(...ys), Math.max(...ys) - span.b)
+                    if (detour > u(BACK_DETOUR)) hits.push({ rule: "11 back edge detour", a: edge.id, b: `${String(Math.round(detour / zoom))} > ${String(BACK_DETOUR)}` })
+                    // and neither it nor its label stands more than its gutter outside the layout's own content (the box of every node), where the first view never shows it
+                    const own = pills.filter((pill) => pill.edge === edge.id).map((pill) => pill.box)
+                    const lefts = [...xs, ...own.map((box) => box.l)]
+                    const rights = [...xs, ...own.map((box) => box.r)]
+                    const tops = [...ys, ...own.map((box) => box.t)]
+                    const bottoms = [...ys, ...own.map((box) => box.b)]
+                    const out = Math.max(content.l - Math.min(...lefts), Math.max(...rights) - content.r, content.t - Math.min(...tops), Math.max(...bottoms) - content.b)
+                    if (out > u(BACK_GUTTER) + 1) hits.push({ rule: "11 back edge outside the layout", a: edge.id, b: `${String(Math.round(out / zoom))} > ${String(BACK_GUTTER)}` })
+                }
             }
         }
 
@@ -228,7 +256,11 @@ export const measure = (page: Page, allowed: number): Promise<Report> =>
         {
             const doc = document.documentElement
             if (doc.scrollHeight > window.innerHeight + 1 || doc.scrollWidth > window.innerWidth + 1) hits.push({ rule: "9 page scrolls", a: `${String(doc.scrollHeight)} > ${String(window.innerHeight)}`, b: "" })
-            for (const node of nodes) if (!contains(grow(view, 1), node.box)) hits.push({ rule: "9 node out of view", a: node.id, b: "" })
+            // The first view is the graph at 100% on every screen (never fitted): the running step, when there is one, stands wholly in view, and so does at least one node.
+            if (Math.abs(zoom - 1) > 0.001) hits.push({ rule: "9 first view not at 100%", a: String(zoom), b: "" })
+            const running = nodes.find((node) => !node.frame && node.el.querySelector('[data-status="running"]') !== null)
+            if (running !== undefined && !contains(grow(view, 1), running.box)) hits.push({ rule: "9 running step out of view", a: running.id, b: "" })
+            if (!nodes.some((node) => contains(grow(view, 1), node.box))) hits.push({ rule: "9 no node in view", a: "", b: "" })
         }
         return { hits, positions }
     }, allowed)

@@ -41,7 +41,7 @@ const toListItem = (item: CommandPaletteItem): ListBoxItem => ({
     label: item.label,
     size: "sm",
     ...(item.hint === undefined ? {} : { description: item.hint, descriptionLines: 1 as const }),
-    ...(item.source === undefined ? {} : { leading: <Icon source={item.source} usage="leading" /> }),
+    ...(item.source === undefined ? {} : { leading: <Icon source={item.source} usage="control" /> }),
     ...(item.shortcut === undefined ? {} : { trailing: <Kbd keys={item.shortcut} /> }),
     ...(item.href === undefined ? {} : { href: item.href }),
     ...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled }),

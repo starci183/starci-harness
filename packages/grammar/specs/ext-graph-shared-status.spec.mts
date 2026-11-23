@@ -88,7 +88,7 @@ describe("two running nodes on one path", () => {
     })
 })
 
-describe("the step a phone starts on", () => {
+describe("the step the first view is centred on", () => {
     it("is the running one, else a failed one, else a waiting one, else the first not done, else the first", () => {
         const at = (statuses: readonly (FlowStatusInput | undefined)[]): string | undefined => focusStep(statuses.map((status, index) => ({ id: String(index), status })))
         assert.equal(at(["done", "wait", "running", "todo"]), "2")

@@ -72,7 +72,7 @@ const SettingsFormPage = () => {
                   <G.Input id="settings-name" name="name" label="Display name" defaultValue="Alex Morgan" isRequired />
                   <G.Input id="settings-email" name="email" label="Email" kind="email" defaultValue="alex@example.test" isInvalid errorMessage="Verify this address before saving." />
                   <G.Textarea name="bio" label="Bio" description="A sentence or two." rows={3} defaultValue="Learning something new every week." />
-                  <G.FileDropzone label="Photo" prompt="Drop an image or browse" accept="image/*" icon={<G.Icon source={UploadGlyph} usage="heading" />} />
+                  <G.FileDropzone label="Photo" prompt="Drop an image or browse" accept="image/*" icon={<G.Icon source={UploadGlyph} usage="head" />} />
                 </div>
               </G.SurfaceCard>
               <G.SurfaceCard label="Preferences" headingLevel={2}>

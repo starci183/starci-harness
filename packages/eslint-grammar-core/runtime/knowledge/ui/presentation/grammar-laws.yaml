@@ -320,3 +320,14 @@ rules:
           The scroll area is a Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`, `PaneSection` with `scroll`):
           the scrollbar is hidden, a fading edge (ScrollShadow behaviour) shows where content continues, and wheel, touch and
           keyboard scrolling keep working. An app element with an `overflow-y-auto` or `overflow-auto` class is refused.
+  - id: SPACING-ROLES
+    title: Spacing is a Grammar role
+    governs: The gaps, paddings and margins an app writes.
+    cases:
+      - id: case-1
+        when: An app separates two things it places, or pads content inside a box
+        assert: |-
+          The distance is a role the Grammar resolves (owner 2026-11-23; contexts/ui/scale.md "The spacing roles"): identity 4, inline 8,
+          row 12, section 24 and region 32 on a Stack, Cluster or Grid `gap`, and the inset of the Grammar box that holds the content.
+          A spacing utility in a class string is `starci-fe/no-spacing-utility` (R350); a gap, padding or margin key in a JSX `style`
+          is reported (`starci-grammar/no-raw-spacing-style`, a counting rule at warn until both apps migrate, then blocking).

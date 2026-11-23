@@ -112,7 +112,7 @@ export const findConcurrentRunning = (
 }
 
 /**
- * The step a phone's first view is centred on: the running one, else a failed one, else a waiting one, else the first one not done (in the order given), else the first.
+ * The step the first view is centred on, on every screen (when the app names no `focusId`): the running one, else a failed one, else a waiting one, else the first one not done (in the order given), else the first.
  */
 export const focusStep = (nodes: readonly { readonly id: string; readonly status?: FlowStatusInput | undefined }[]): string | undefined => {
     const at = (status: FlowStatus): string | undefined => nodes.find((node) => normalizeStatus(node.status) === status)?.id

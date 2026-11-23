@@ -1,6 +1,6 @@
 /*
  * Common overlay and feedback anatomy: Dialog, AlertDialog, Drawer, Popover, DropdownMenu, Toast,
- * Toaster, Alert, Spinner, Skeleton, ProgressCircle, Meter, CloseButton, Kbd.
+ * Toaster, Alert, Spinner, Skeleton, ProgressCircle, Meter, Kbd.
  *
  * Structure only, from Common semantic variables (with `--starci-core-*` geometry hooks a family may
  * set). Every overlay surface is portalled INTO the nearest `.grammar-common-root` (see
@@ -18,10 +18,18 @@
         --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
     }
 
-    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        --starci-core-overlay-tone: var(--info, var(--accent));
-        --starci-core-overlay-soft: var(--info-soft, color-mix(in oklab, var(--info, var(--accent)) 15%, transparent));
-        --starci-core-overlay-soft-foreground: var(--info-soft-foreground, color-mix(in oklab, var(--info, var(--accent)) 70%, var(--foreground) 30%));
+    /* informative is NEUTRAL on a toast and an alert dialog, as on an Alert: the default soft pair, the mark in --muted; an app that writes the optional --informative tokens keeps its own. */
+    :is(.starci-core-toast, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
+        --starci-core-overlay-tone: var(--informative, var(--info));
+        --starci-core-overlay-soft: var(--informative-soft, var(--info-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--info-soft-foreground));
+    }
+
+    /* A Meter's informative fill is a measure, not a notice: it stays the accent unless the app writes --informative. */
+    .starci-core-meter[data-grammar-tone="informative"] {
+        --starci-core-overlay-tone: var(--informative, var(--accent));
+        --starci-core-overlay-soft: var(--informative-soft, var(--accent-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--accent-soft-foreground));
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="affirmative"] {
@@ -49,11 +57,29 @@
         --starci-core-overlay-soft-foreground: var(--accent-soft-foreground);
     }
 
+    /*
+     * A Meter's foreground tone is a measure that spends no accent: the fill is HeroUI's text colour on the default track,
+     * for a screen whose one accent mass is its commit (ACCENT-6). The vendor's colour variant writes `--meter-fill` on the
+     * same element and consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide: the
+     * fill variable is `!important`. The segments read `--starci-core-overlay-tone`.
+     */
+    .starci-core-meter[data-grammar-tone="foreground"] {
+        --meter-fill: var(--foreground) !important;
+        --starci-core-overlay-tone: var(--foreground);
+        --starci-core-overlay-soft: var(--default-soft);
+        --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
+    }
+
     /* ---------------------------------------------------------------- modal backdrop */
+    /*
+     * Stacking: every modal-level overlay (Dialog, AlertDialog, Drawer, a PaneGrid pane's drawer, and the vendor's popovers) sits on
+     * HeroUI's one level `--z-index-overlay`, so the overlay opened last paints on top: an alert dialog opened inside a drawer covers
+     * it, a select opened inside a dialog stays above the dialog. The toaster is `--z-index-toast`, above them all.
+     */
     .starci-core-overlay-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 50;
+        z-index: var(--z-index-overlay);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -112,6 +138,62 @@
         height: 100%;
     }
 
+    /*
+     * THE COMMAND PALETTE (0.46.0) is a dialog that stands at the top of the page, not in its middle, so the results growing and shrinking while the person types
+     * never move the field. On a phone (below 40rem) it takes the full width at the top and stays as tall as its results (0.48.0: it no longer fills the screen,
+     * which left a tall empty sheet under a short list), capped by the screen; the results scroll inside.
+     */
+    .starci-core-dialog-container:has(.starci-core-command-palette) {
+        justify-content: flex-start;
+        margin-block-start: var(--grammar-region-gap);
+    }
+
+    /* The vendor dialog centres itself with auto block margins; the palette keeps its top edge. */
+    .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
+        margin-block: 0;
+    }
+
+    @media (max-width: 40rem) {
+        .starci-core-dialog-container:has(.starci-core-command-palette) {
+            align-self: flex-start;
+            width: 100%;
+            height: auto;
+            margin-block-start: 0;
+        }
+
+        .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
+            flex: 0 1 auto;
+            align-self: flex-start;
+            max-height: 100%;
+        }
+    }
+
+    /* The keys hint (arrows, Enter, Escape) is for a keyboard: a touch screen has none, so the palette's footer is not drawn on a coarse pointer (0.48.0). */
+    @media (pointer: coarse) {
+        .starci-core-dialog-container:has(.starci-core-command-palette) .starci-core-overlay-footer {
+            display: none !important;
+        }
+    }
+
+    /*
+     * The row the arrows are on (virtual focus: the caret stays in the field) is drawn as a selected row, the --default fill, never the focus ring (0.48.0: the ring
+     * read as a heavy accent outline around every highlighted result).
+     */
+    .starci-core-command-palette .starci-core-list-box-item:is([data-focused="true"], [data-focus-visible="true"], [data-hovered="true"]) {
+        background: var(--default) !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    /* The padding gives the field's focus ring room inside the body, which clips what overflows it. */
+    .starci-core-command-palette {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-ring-width);
+    }
+
     .starci-core-dialog-container[data-entering] {
         animation: starci-core-overlay-rise var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
@@ -137,9 +219,19 @@
         gap: var(--grammar-row-gap) !important;
     }
 
-    .starci-core-overlay-header > .starci-core-close-button {
+    .starci-core-overlay-header > [data-component="IconButton"] {
         flex: none;
         margin-inline-start: auto;
+    }
+
+    /* A leading mark (avatar, logo) sits before the title block; the title block then takes the room up to the close button. */
+    .starci-core-overlay-leading {
+        display: inline-flex;
+        flex: none;
+    }
+
+    .starci-core-overlay-leading + .starci-core-overlay-heading-group {
+        flex: 1 1 auto;
     }
 
     .starci-core-overlay-heading-group {
@@ -234,6 +326,22 @@
         width: min(100%, 24rem);
     }
 
+    .starci-core-drawer-content[data-grammar-drawer-width="wide"]:is([data-placement="right"], [data-placement="left"]) {
+        width: min(100%, 32rem);
+    }
+
+    /* 0.37.8: on a phone (< 768) a side drawer is FULL width: no strip of the page stays visible beside it (the vendor sheet keeps a margin and a max width). */
+    @media (max-width: 47.99rem) {
+        .starci-core-drawer-content[data-placement="right"],
+        .starci-core-drawer-content[data-placement="left"],
+        .starci-core-drawer-content[data-grammar-drawer-width="wide"]:is([data-placement="right"], [data-placement="left"]) {
+            inset-inline: 0;
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+    }
+
     /* The vendor content is `inset: 0`; each placement releases the opposite edge so the sized panel sits on its own side. */
     .starci-core-drawer-content[data-placement="right"] {
         inset-inline-start: auto;
@@ -317,15 +425,68 @@
     }
 
     /* ---------------------------------------------------------------- popover */
+    /*
+     * The panel is 26rem wide, or the viewport less 2rem (0.45.1; it was capped at 20rem with no floor, so a panel of rows with a leading mark, copy and an action
+     * collapsed to one word per line). The width is definite on purpose: a row list is a size container (the rows lay out by the list's width), which has no
+     * intrinsic width, so a content-sized panel would shrink to its floor. An app sets no width.
+     */
     .starci-core-popover {
-        max-width: min(20rem, calc(100vw - 2rem));
+        width: min(26rem, calc(100vw - 2rem));
+        max-width: min(26rem, calc(100vw - 2rem));
         overflow: auto;
         color: var(--surface-foreground);
         outline: none;
     }
 
+    /* `size` (0.46.2): the panel's own widths, each capped at the viewport less 2rem like the default. */
+    .starci-core-popover[data-size="sm"] {
+        width: min(18rem, calc(100vw - 2rem));
+        max-width: min(18rem, calc(100vw - 2rem));
+    }
+
+    .starci-core-popover[data-size="lg"] {
+        width: min(36rem, calc(100vw - 2rem));
+        max-width: min(36rem, calc(100vw - 2rem));
+    }
+
     .starci-core-popover[data-entering] {
         animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    /*
+     * The panel's edge (0.48.0): a 1px `--border` and a soft shadow, so a panel over a white surface reads as a layer and never as a hole in the page. One look in
+     * every family; the vendor's heavier overlay shadow is replaced.
+     */
+    .starci-core-popover {
+        border: 1px solid var(--border);
+        box-shadow: var(--grammar-shadow-popover) !important;
+    }
+
+    /*
+     * A phone (at most 30rem, 480px): the popover is a sheet (0.48.0). It leaves its trigger and stands on the bottom edge at the full width, its top corners rounded,
+     * at most 85% of the screen tall, over a scrim that dims the page (a spread shadow of the foreground at 40%, the modal backdrop's tone). A press on the scrim
+     * is outside the panel, so it closes, as before. The arrow has no trigger to point at and is not drawn.
+     */
+    @media (max-width: 30rem) {
+        .starci-core-popover,
+        .starci-core-popover:is([data-size="sm"], [data-size="lg"]) {
+            position: fixed !important;
+            inset: auto 0 0 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 85dvh !important;
+            border-width: 1px 0 0;
+            border-radius: var(--starci-core-surface-radius) var(--starci-core-surface-radius) 0 0 !important;
+            padding-block-end: env(safe-area-inset-bottom);
+            box-shadow: var(--grammar-shadow-scrim) !important;
+            transform: none !important;
+            /* The scroll fade is a mask, which would clip the scrim to the sheet's box: the sheet scrolls without it. */
+            mask-image: none !important;
+        }
+
+        .starci-core-popover .starci-core-popover-arrow {
+            display: none;
+        }
     }
 
     .starci-core-popover-dialog {
@@ -400,6 +561,17 @@
         flex-direction: column;
     }
 
+    /* A switch entry: the Switch is the row's own mark at its end, never a second control (inert), and the row has no check. */
+    [data-grammar-menu-switch-mark] {
+        display: inline-flex;
+        flex: none;
+        margin-inline-start: auto;
+        align-self: center;
+        pointer-events: none;
+    }
+
+    [data-grammar-menu-switch] [data-slot="menu-item-indicator"] { display: none; }
+
     [data-grammar-menu-shortcut] {
         margin-inline-start: auto;
     }
@@ -407,7 +579,7 @@
     /* ---------------------------------------------------------------- toaster + toast */
     .starci-core-toaster {
         position: fixed;
-        z-index: 60;
+        z-index: var(--z-index-toast);
         display: flex;
         width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset)));
         flex-direction: column;
@@ -505,6 +677,20 @@
         align-self: center;
     }
 
+    /* HeroUI's Toast, drawn by ToastStack (the region may sit outside the stack's own element): the title is the foreground at 14 / 500 in every variant and the description is 12 muted; the status icon keeps the variant's colour. */
+    .toast .toast__title {
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-snug);
+    }
+
+    .toast .toast__description {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-snug);
+    }
+
     @media (max-width: 40rem) {
         .starci-core-toaster {
             inset-inline: var(--grammar-page-inset);
@@ -515,47 +701,77 @@
 
     /* ---------------------------------------------------------------- alert banner */
     /*
-     * The Alert IS the HeroUI Alert (@heroui/styles alert.css): a white
-     * bg-surface row with shadow-surface, px-4 py-3, radius min(32px, --radius-3xl), gap-4; the indicator a size-4
-     * glyph with p-1 and the title text-sm/6 medium, both in the tone's soft-foreground; a muted description. Grammar
-     * paints nothing over it (0.5.4: the tone tint, tone border, 12px radius, 20px indicator and overlay-tone indicator
-     * colour are gone). It only lets the row wrap at a narrow width so the action stays inside the surface.
+     * One look, the tone's soft pair, like a big chip (owner 2026-11-22: "alert nói rõ là icon 24 soft-foreground trên nền soft thôi mà?"): the row is
+     * `--<tone>-soft` at full strength and its glyph, title and description are all `--<tone>-soft-foreground`, in every tone; no tile, no plate, no
+     * shadow, no border, radius 12 (`--grammar-radius-md`), 12 by 16 inset and a 12 gap. The glyph is the original Heroicons 24 outline mark at its
+     * native size and stroke, pulled up 2px onto the centre of the 20px title line; pending's spinner is 24px too. The copy is the label.item role:
+     * the title 14/20 at 500, the description 14/20 at 400. The tone maps informative -> info (0.55.0, blue), neutral, pending and unavailable ->
+     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its action Button is SOLID in the same tone
+     * (Button `tone`). The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
+        --starci-core-alert-soft: var(--default-soft);
+        --starci-core-alert-ink: var(--default-soft-foreground);
         min-width: 0;
         flex-wrap: wrap;
-    }
-
-    /*
-     * appearance="soft": the tone's soft tint at half strength under the same anatomy, no shadow.
-     * The title keeps the tone's soft-foreground, which clears 3:1 on the lighter half tint (COLOR-5 case-1a).
-     */
-    .starci-core-alert[data-grammar-appearance="soft"] {
-        --starci-core-alert-soft: var(--default-soft, var(--default));
-        background: color-mix(in oklab, var(--starci-core-alert-soft) 50%, transparent);
+        border: 0;
+        border-radius: var(--grammar-radius-md);
+        background: var(--starci-core-alert-soft);
         box-shadow: none;
+        color: var(--starci-core-alert-ink);
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="informative"] {
-        --starci-core-alert-soft: var(--accent-soft, var(--default));
+    /* An informative notice is the built-in info tone (0.55.0, blue); an app that writes --informative* keeps its own. Accent stays the brand for "new" and "selected". */
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--info-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--info-soft-foreground)); }
+    /* A tone the app declared: its soft pair, read through the component variables customToneProps sets. */
+    .starci-core-alert[data-grammar-tone-custom="true"] { --starci-core-alert-soft: var(--grammar-tone-soft); --starci-core-alert-ink: var(--grammar-tone-soft-foreground); }
+    /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
+    .starci-core-alert[data-grammar-tone="accent"] { --starci-core-alert-soft: var(--accent-soft); --starci-core-alert-ink: var(--accent-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }
+
+    .starci-core-alert .starci-core-alert-indicator,
+    .starci-core-alert .starci-core-alert-title,
+    .starci-core-alert .starci-core-alert-description {
+        color: var(--starci-core-alert-ink);
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="affirmative"] {
-        --starci-core-alert-soft: var(--success-soft, var(--default));
+    /* A row banner: the one press target is the whole banner (an invisible button stretched over it), a chevron at its end. */
+    .starci-core-alert { position: relative; }
+    .starci-core-alert-leading { display: inline-flex; flex: none; align-items: center; }
+    .starci-core-alert-row-press { position: static; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+    .starci-core-alert-row-press::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+    .starci-core-alert-row-press:focus-visible { outline: none; }
+    .starci-core-alert-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-alert-row-press-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .starci-core-alert-chevron { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--starci-core-alert-ink); }
+
+    .starci-core-alert :is(.starci-core-alert-title, .starci-core-alert-description) {
+        font-size: var(--grammar-type-label-item-size);
+        line-height: var(--grammar-type-label-item-line);
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="cautionary"] {
-        --starci-core-alert-soft: var(--warning-soft, var(--default));
+    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); }
+    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
+
+    /* The glyph at its own 24px, no tile: HeroUI's p-1 goes, the 24px box rides 2px above the 20px title line so their centres meet. */
+    .starci-core-alert .starci-core-alert-indicator {
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        margin-block-start: -2px;
+        padding: 0;
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="negative"] {
-        --starci-core-alert-soft: var(--danger-soft, var(--default));
-    }
+    /* The original Heroicons 24 outline mark at its native size and stroke, never restyled. */
+    .starci-core-alert .starci-core-alert-glyph { inline-size: 1.5rem; block-size: 1.5rem; flex: none; }
 
     /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
-       surface, so the content takes its own height. */
+       surface, so the content takes its own height. Where the banner's own height is definite (a Stack in a height-bound
+       Page well) h-full resolves to the whole box, the first line fills it and the stacked action lands below the box (0.37.36). */
     .starci-core-alert-content {
         min-width: min(100%, 12rem);
+        block-size: auto;
         flex: 1;
     }
 
@@ -579,6 +795,29 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * Below 30rem a button action leaves the end of the row: the actions wrapper dissolves, the dismiss stays at the end of the
+     * text row (order 0) and the button takes a row of its own under it, full width (the Button's `fill-narrow`).
+     */
+    @media (max-width: 30rem) {
+        .starci-core-alert-actions:has(> [data-component="Button"]) {
+            display: contents;
+        }
+
+        .starci-core-alert-actions > [data-component="Button"] {
+            order: 1;
+            flex: 1 1 100%;
+        }
+    }
+
+    /*
+     * A border action on a negative banner ("Try again") draws its edge in the banner's danger ink: the neutral edge disappears on the danger soft
+     * box (owner shots 2026-11-22). The fill stays transparent, so it is still the border look, not a second danger button.
+     */
+    [data-component="Alert"][data-grammar-tone="negative"] .starci-core-alert-actions > [data-component="Button"][data-grammar-variant="border"] {
+        border-color: var(--danger);
+    }
+
     .starci-core-alert-actions {
         display: inline-flex;
         flex: none;
@@ -587,47 +826,23 @@
         margin-inline-start: auto;
     }
 
-    /* ---------------------------------------------------------------- close button */
-    .starci-core-close-button {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
-        width: var(--starci-core-control-min-size);
-        height: var(--starci-core-control-min-size);
-        margin: -0.5rem -0.5rem 0 0;
-        padding: 0;
-        border: 0;
-        border-radius: var(--grammar-radius-pill);
-        background: transparent;
-        color: var(--muted);
-        cursor: pointer;
+    /*
+     * The form slot (0.46.2): the fields the banner is about stand under its description, a row step down, on the text's own edge. The words and rows inside keep the banner's
+     * ink. With a form the actions do not sit at the end of the first row but take a row of their own under it, at the end, so the decision reads after the fields.
+     */
+    .starci-core-alert-form {
+        display: flex;
+        min-width: 0;
+        inline-size: 100%;
+        flex-direction: column;
+        margin-block-start: var(--grammar-row-gap);
+        color: var(--starci-core-alert-ink);
     }
 
-    .starci-core-close-button[data-size="sm"] {
-        width: 2rem;
-        height: 2rem;
-        margin: 0;
-    }
-
-    .starci-core-close-button > svg {
-        width: 1rem;
-        height: 1rem;
-    }
-
-    .starci-core-close-button:is([data-hovered], [data-pressed]) {
-        background: var(--surface-secondary);
-        color: var(--surface-foreground);
-    }
-
-    .starci-core-close-button[data-focus-visible] {
-        outline: 2px solid var(--focus);
-        outline-offset: 2px;
-    }
-
-    .starci-core-close-button[data-disabled] {
-        cursor: not-allowed;
-        opacity: var(--disabled-opacity);
+    .starci-core-alert[data-grammar-alert-form="true"] > .starci-core-alert-actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+        margin-inline-start: 0;
     }
 
     /* ---------------------------------------------------------------- kbd */
@@ -728,6 +943,50 @@
     .starci-core-skeleton-placeholder[data-shape="block"] { display: inline-flex; }
     .starci-core-skeleton-placeholder[data-shape="circle"] { display: inline-flex; border-radius: var(--grammar-radius-pill); }
     .starci-core-skeleton[data-shape="circle"] { border-radius: var(--grammar-radius-pill); }
+    /*
+     * The box shapes (0.52.2): HeroUI's Skeleton with the same fill and shimmer as every skeleton, no border or ring, sized to the box it stands for.
+     * `box` and `field` take the caller's width (`--starci-core-skeleton-width`, default the full width); `box` its height and `data-radius`.
+     */
+    .starci-core-skeleton:is([data-shape="box"], [data-shape="field"], [data-shape="button"], [data-shape="switch"]) {
+        flex: none;
+        max-inline-size: 100%;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .starci-core-skeleton[data-shape="box"] {
+        inline-size: var(--starci-core-skeleton-width);
+        block-size: var(--starci-core-skeleton-height);
+    }
+
+    .starci-core-skeleton[data-shape="field"] {
+        inline-size: var(--starci-core-skeleton-width);
+        block-size: var(--starci-core-field-min-height);
+        border-radius: var(--grammar-radius-md);
+    }
+
+    .starci-core-skeleton[data-shape="button"] {
+        inline-size: var(--starci-core-skeleton-button-width);
+        block-size: var(--starci-core-control-min-size);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-skeleton[data-shape="button"][data-size="sm"] { block-size: var(--grammar-skeleton-button-sm-height); }
+
+    .starci-core-skeleton[data-shape="switch"] {
+        inline-size: var(--grammar-switch-compact-width);
+        block-size: var(--grammar-switch-compact-height);
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-skeleton[data-shape="switch"][data-kind="toggle"] {
+        inline-size: var(--grammar-switch-toggle-width);
+        block-size: var(--starci-core-control-min-size);
+    }
+
+    .starci-core-skeleton[data-radius="none"] { border-radius: 0; }
+    .starci-core-skeleton[data-radius="md"] { border-radius: var(--grammar-radius-md); }
+    .starci-core-skeleton[data-radius="full"] { border-radius: var(--grammar-radius-pill); }
 
     /*
      * HeroUI's `--skeleton-animation` (shimmer, pulse or none) is the app's choice. Its own Skeleton reads the token in script;
@@ -757,8 +1016,45 @@
     .starci-core-skeleton-placeholder[data-shape="region"] { display: block; }
     .starci-core-skeleton-placeholder[data-shape="text"]:empty { inline-size: min(100%, 8rem); block-size: 1lh; }
 
+    /*
+     * No tone while loading (owner, 2026-11-21: "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè"): a card, a region, an alert or a button that is loading drops its
+     * tone, keeping only the plain neutral surface and border; a skeleton has no border or ring of its own.
+     */
+    :is([data-grammar-loading-region="true"], .starci-core-alert[data-loading="true"]) {
+        border-color: var(--border) !important;
+        background-color: var(--surface) !important;
+        box-shadow: none !important;
+    }
+
+    .starci-core-button[data-loading="true"] {
+        border-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /*
+     * The page content zone loading (`Page isContentLoading`): its copy that a loading region would keep real (a Text, a Heading, a section title, a
+     * field or group label) is a skeleton line too, painted with HeroUI's own skeleton fill (`--surface-tertiary` at 70%) so it reads as the Skeleton
+     * shapes around it; the words are laid out unseen, so each bar is the length of its copy. Those components are server components, so the zone reaches
+     * them through the stylesheet; every client component reads the zone's region and draws its own Skeleton.
+     */
+    [data-grammar-content-loading="true"] :is(.starci-core-text, [data-component="Heading"], .starci-core-section-title-text, .starci-core-label, .starci-core-field-label, .starci-core-section-count) {
+        inline-size: fit-content;
+        max-inline-size: 100%;
+        border-radius: var(--grammar-radius-sm);
+        background-color: color-mix(in oklab, var(--surface-tertiary) 70%, transparent);
+        color: transparent !important;
+        user-select: none;
+    }
+
+    [data-grammar-content-loading="true"] :is(.starci-core-text, [data-component="Heading"], .starci-core-section-title-text, .starci-core-label, .starci-core-field-label) * { visibility: hidden; }
+
     /* A skeleton root that keeps its content as a measured placeholder (Button, Badge, StatusDot) paints none of it. */
     :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
+
+    /* A button skeleton takes the corner of the button it stands for: the vendor's own, which the shimmer class would otherwise replace with its small corner. */
+    .starci-core-button[data-loading="true"] {
+        border-radius: calc(var(--radius) * 3);
+    }
 
     .starci-core-skeleton[data-grammar-skeleton-line="last"] {
         width: 60%;
@@ -783,14 +1079,10 @@
         height: 2.5rem;
     }
 
+    /* A round mark has two sizes (40 and 24, no 32): the circle is md 40px by default and sm 24px, the icon size. */
     .starci-core-skeleton[data-shape="circle"][data-size="sm"] {
-        width: 2rem;
-        height: 2rem;
-    }
-
-    .starci-core-skeleton[data-shape="circle"][data-size="lg"] {
-        width: 3rem;
-        height: 3rem;
+        width: var(--grammar-avatar-sm-size);
+        height: var(--grammar-avatar-sm-size);
     }
 
     /* ---------------------------------------------------------------- progress circle */
@@ -818,7 +1110,7 @@
     }
 
     .starci-core-progress-circle [data-slot="progress-circle-track-circle"] {
-        stroke: color-mix(in srgb, var(--foreground) 12%, transparent);
+        stroke: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
     }
 
     .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
@@ -850,6 +1142,7 @@
     .starci-core-meter-label {
         color: var(--foreground);
         font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-medium);
     }
 
@@ -857,8 +1150,26 @@
         color: var(--muted);
     }
 
+    /* labelTone="muted" (0.46.0): the quiet reading, label and value muted, 12 regular. */
+    .starci-core-meter[data-grammar-label-tone="muted"] :is(.starci-core-meter-label, .starci-core-meter-output) {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        font-weight: var(--grammar-weight-regular);
+    }
+
+    /*
+     * THE EMPTY TRACK (0.41.0): every measure's empty track (Meter, its segments, Progress, its steps, ProgressCircle, ProportionBar) is one visible neutral,
+     * the theme hook `--starci-core-track`, by default the foreground at 10% over the surface (about neutral-200 on white), one step lighter than the Switch's
+     * off track (a control, 16%, its own hook). It is no longer the vendor's `--default`, which a white theme sets to the surface, so an empty bar vanished on a
+     * white page. `!important`: the vendor track (`bg-default`, a `components`-layer rule) may be imported on either side of this sheet.
+     */
     .starci-core-meter-track {
         overflow: hidden;
+    }
+
+    .starci-core-meter-track:not(.starci-core-meter-segments) {
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))) !important;
     }
 
     /* The loading meter root keeps the meter's column (label above the bar) and is inert. */
@@ -869,7 +1180,7 @@
         pointer-events: none;
     }
 
-    /* Loading meter (knowledge STATE-8, `isSkeleton`): the label stays real, the bar is a static Skeleton bar of the track height. */
+    /* Loading meter (knowledge STATE-8, `isLoading`): the label stays real, the bar is a static Skeleton bar of the track height. */
     .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: var(--grammar-radius-pill); }
 
     /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */
@@ -904,7 +1215,7 @@
         height: 100%;
         flex: 1 1 0;
         border-radius: inherit;
-        background: color-mix(in srgb, var(--foreground) 10%, transparent);
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
     }
 
     .starci-core-meter-segment[data-grammar-meter-segment="filled"] {

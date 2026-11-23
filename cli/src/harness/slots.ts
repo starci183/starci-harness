@@ -7,6 +7,7 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync, pidAlive } from "../shared/exec.js"
 import { hostFreeMb } from "./heavy.js"
+import { registerRun } from "./runs.js"
 import { sharedStateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
 
@@ -42,6 +43,8 @@ const slotsSchema = z
         schema: z.literal("starci/slots@1"),
         root: z.string().min(1).nullable(),
         kinds: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), kindSchema),
+        reap: z.strictObject({ graceMinutes: z.number().positive() }).optional(),
+        janitor: z.strictObject({ idleHours: z.number().positive(), touchedMinutes: z.number().nonnegative().optional(), dirs: z.array(z.string().regex(/^[A-Za-z0-9._-]+$/)).min(1) }).optional(),
     })
     .superRefine((rules, issues) => {
         for (const [name, kind] of Object.entries(rules.kinds)) {
@@ -535,6 +538,22 @@ const releaseIfSame = (file: string, read: SlotHolder): boolean => {
     return true
 }
 
+/**
+ * Takes a pid lock (the lander's `_batch-lander*.lock`, the dev push's `_dev-push*.lock`): a lock whose pid does not run on this machine
+ * is stale, so it is taken over and `say` gets one line naming the dead pid; a live pid, a lock with no pid or one written on another
+ * host keeps it held (false). A lock that changed between the read and the takeover is left to its new holder.
+ */
+export const takeLiveLock = (file: string, content: string, say: (line: string) => void, alive: (pid: number) => boolean = pidAlive): boolean => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (takeLockFile(file, content)) return true
+        const held = readHolder(file)
+        if (held === undefined) continue
+        if (held.pid === null || (held.host !== null && held.host !== hostname()) || alive(held.pid)) return false
+        if (releaseIfSame(file, held)) say(`${file}: its holder pid ${String(held.pid)} is not alive on this machine; taking the stale lock over`)
+    }
+    return takeLockFile(file, content)
+}
+
 /** Reclaims every slot of the given kinds whose holder is proven gone (`RECLAIMABLE`); an `old` one is reported, never removed. */
 export const reclaimStale = (root: string, rules: SlotRules, names: readonly string[], by: string): Released => {
     const released: string[] = []
@@ -569,8 +588,11 @@ export const listSlots = (root: string, rules: SlotRules, names: readonly string
 /** Holds a slot while `work` runs, released when it ends (thrown, signalled or not); the slot records this process's pid. */
 export const withSlot = async <T>(root: string, rules: SlotRules, name: string, holder: string, options: Omit<TakeOptions, "pid" | "reuse">, work: (taken: Taken) => Promise<T>): Promise<T> => {
     const taken = await takeSlot(root, rules, name, holder, { ...options, pid: process.pid })
+    // The run is recorded with its launchers, so the reaper (harness/runs.ts) stops it once its caller is gone.
+    const run = await registerRun(root, `${name} slot of ${holder}`, process.cwd())
     const release = (): void => {
         releaseSlots(root, rules, name, holder, { n: taken.n, pid: process.pid })
+        run.done()
     }
     const onSignal = (): void => {
         release()

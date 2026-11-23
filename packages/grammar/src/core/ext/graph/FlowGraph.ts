@@ -5,6 +5,7 @@ import { createElement as h, isValidElement, useEffect, useMemo, type CSSPropert
 import { POSITION_OF, buildFlowEdges, buildFlowNodes, containerKind, type FlowRfNode } from "./build.js"
 import { Badge, IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
 import { focusStep } from "./shared/status.js"
+import { useLayoutDirection } from "./shared/phone.js"
 import { GraphCanvas, type Placement } from "./shared/canvas.js"
 import { FlowLegend } from "./shared/legend.js"
 import { PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type ResolvedPort } from "./model.js"
@@ -182,7 +183,9 @@ const isProduction = (): boolean => typeof process !== "undefined" && process.en
  * Import `@starci/grammar/core/ext/graph.css` once (it carries xyflow's base sheet).
  */
 export const FlowGraph = (props: FlowGraphProps): ReactElement => {
-    const { nodes, edges, statusLabels, skippedLabel, kindTones, legend, linkComponent, direction = "LR" } = props
+    const { nodes, edges, statusLabels, skippedLabel, kindTones, legend, linkComponent } = props
+    // On a phone the flow is laid out top-down, so it fits the width (the routing law, rule 4).
+    const direction = useLayoutDirection(props.direction ?? "LR", "TB")
     const model = useMemo(() => resolveFlow(nodes, edges, direction, skippedLabel), [nodes, edges, direction, skippedLabel])
     const rfEdges = useMemo(() => buildFlowEdges(model, nodes), [model, nodes])
     const nodeTypes = useMemo(() => makeNodeTypes(linkComponent), [linkComponent])
@@ -196,5 +199,5 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         for (const [from, to] of findConcurrentRunning(nodes, edges)) globalThis.console.warn(`@starci/grammar/core/ext/graph: "${from}" and "${to}" are both running on one path; a path has one active node, so check the states the app passes.`)
     }, [nodes, edges])
     const footer = legend === undefined || legend.length === 0 ? undefined : h(FlowLegend, { items: legend, ...(kindTones === undefined ? {} : { kindTones }) })
-    return h(GraphCanvas, { ...props, focusId: focusStep(nodes), sizes: model.sizes, links: model.links, rfEdges, makeNodes, nodeTypes, edgeTypes: EDGE_TYPES, ...(footer === undefined ? {} : { footer }) })
+    return h(GraphCanvas, { ...props, direction, focusId: props.focusId ?? focusStep(nodes), sizes: model.sizes, links: model.links, rfEdges, makeNodes, nodeTypes, edgeTypes: EDGE_TYPES, ...(footer === undefined ? {} : { footer }) })
 }
