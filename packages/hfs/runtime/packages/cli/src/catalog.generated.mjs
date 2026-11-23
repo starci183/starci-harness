@@ -852,6 +852,64 @@ export const CATALOG = {
             }
           ],
           "json": "flag"
+        },
+        "look": {
+          "summary": "look at the running dev stack with real data (PROJECT-GALLERY-7 step 2b): sign in as the app's seed owner (gallery/look.json; the password from custody, never printed), shoot every --paths route at 1440 and 390 in the installed Chrome under a shoot slot, write PNGs and index.json (route, width, time, dev sha) into .starciwork/evidence/look/ or --out; never starts a server",
+          "flags": [
+            {
+              "name": "app",
+              "type": "string",
+              "summary": "the app: its hfs.json project or folder name, or its folder (default: the app around the working folder)"
+            },
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "the environment of gallery/look.json to look at (default dev)"
+            },
+            {
+              "name": "paths",
+              "type": "list",
+              "summary": "the routes the change reaches, comma-separated or repeated (/chat,/leads); prefixed by the workspace route when a workspace is chosen",
+              "required": true
+            },
+            {
+              "name": "workspace",
+              "type": "string",
+              "summary": "the workspace id (default: the declared demo workspace; none: paths are taken as typed)"
+            },
+            {
+              "name": "widths",
+              "type": "list",
+              "summary": "viewport widths, comma-separated (default 1440,390)"
+            },
+            {
+              "name": "out",
+              "type": "string",
+              "summary": "the folder for the PNGs and index.json (default: <app>/.starciwork/evidence/look/<stamp>-<env>)"
+            },
+            {
+              "name": "settle",
+              "type": "string",
+              "summary": "milliseconds to wait after the page settles, before the shot (default 1500)"
+            },
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds the shoot slot (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
         }
       }
     },

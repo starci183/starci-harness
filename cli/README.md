@@ -382,7 +382,7 @@ harness never runs.
 
 The heavy-command governor counts every heavy command of the host in one per-user store (`governorStorePath`); the slots of
 `harness/slots.ts` coordinate the lanes themselves (one gate of a lane at a time, the shared stack, shots) across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
-floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate`, `gallery shoot` and the batch lander's own npm and gate
+floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate`, `gallery shoot`, `app look` and the batch lander's own npm and gate
 slots all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
 time, the pid and that process's start, the host's boot time and the host, and it is released only once read and found to name its
 holder, through a rename aside so a slot taken again in between stays. A holder is reclaimed only on evidence (`judgeHolder`): a pid

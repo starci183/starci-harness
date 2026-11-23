@@ -132,6 +132,13 @@ process: a recorded process whose port went silent is stopped before a fresh sta
 web from its watcher, so a land needs only F5, waits on the root cause of the Next HMR reload loop through the ingress that moved StarCi Next to
 `next build`/`next start`; until then each land restarts the changed side once.
 
+`starci app look --env dev --paths <route,…> [--workspace <id>] [--widths 1440,390] [--out <dir>]` is the step 2b look of
+PROJECT-GALLERY-7: against the RUNNING dev stack (it starts no server and refuses LOOK_DEV_DOWN when the declared web or api does not answer),
+under a `shoot` slot, signed in as the app's seed owner the way the app's `gallery/look.json` declares (the password read from the app's
+secret custody, never printed), in the installed Chrome. It writes the PNGs and `index.json` (route, width, time, the sha the dev checkout
+runs) into `.starciwork/evidence/look/<stamp>-<env>/` of the app (git-ignored), or `--out`; a shot that landed on the sign-in page or
+answered 4xx/5xx is listed and the verb exits 1.
+
 ## Processes and cleanup
 
 - Kill only processes you started, by the pid you recorded; never by a command-line pattern (`node`, `next`, a script name),
@@ -149,3 +156,5 @@ web from its watcher, so a land needs only F5, waits on the root cause of the Ne
 - At the end stop every process you started and remove the worktree with `starci lane remove <worktree> --execute` (it unlinks each
   install link first, never deletes through it, and takes the install with the worktree); keep the branch. Report what landed (the dev sha), what is open, and what needs
   the owner.
+  A lane that changed a visible screen reports done only with its step 2b shots of [../project/gallery.md](../project/gallery.md)
+  PROJECT-GALLERY-7 (`starci app look` on dev with real data, at 1440 and 390); without them it reports "chưa xem trên dev", never "done".
