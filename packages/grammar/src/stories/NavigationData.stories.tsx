@@ -3,6 +3,8 @@ import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
+import { MermaidDiagram as GraphMermaidDiagram } from '../core/ext/graph/index.js';
+import '../core/ext/graph/styles.css';
 import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
 
 /**
@@ -396,21 +398,21 @@ const mermaidSequence = `sequenceDiagram
   Browser->>API: POST /sign-in
   API-->>Browser: 200 session`;
 
-/** A Mermaid diagram in the root's theme, a sequence diagram, the loading box and a refused source shown as code. */
+/** A Mermaid diagram on the graph ext's canvas (`@starci/grammar/core/ext/graph`), a sequence diagram, the loading box and a refused source shown as code. */
 export const MermaidDiagram: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Flowchart" direction="column">
-        <G.MermaidDiagram label="Cache lookup" source={mermaidSource} />
+        <GraphMermaidDiagram label="Cache lookup" source={mermaidSource} />
       </State>
       <State label="Sequence" direction="column">
-        <G.MermaidDiagram label="Sign-in request" source={mermaidSequence} />
+        <GraphMermaidDiagram label="Sign-in request" source={mermaidSequence} />
       </State>
       <State label="Skeleton (the same box)" direction="column">
-        <G.MermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isLoading />
+        <GraphMermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isLoading />
       </State>
       <State label="Error: the source as code" direction="column">
-        <G.MermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
+        <GraphMermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
       </State>
     </Matrix>
   ),
@@ -419,10 +421,10 @@ export const MermaidDiagram: Story = {
       const diagrams = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MermaidDiagram"]')];
       expect(diagrams.map((diagram) => diagram.dataset.grammarMermaidState)).toEqual(['ready', 'ready', 'loading', 'error']);
       const [flowchart, , skeleton, broken] = diagrams;
-      const svg = flowchart!.querySelector('[role="img"] > svg');
-      if (svg === null) throw new Error('The flowchart must draw its svg');
-      expect(flowchart!.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Cache lookup');
-      expect(svg.textContent).toContain('In cache?');
+      const drawing = flowchart!.querySelector('[data-grammar-mermaid-canvas] > [role="img"]');
+      if (drawing === null) throw new Error('The flowchart must draw its canvas');
+      expect(drawing.getAttribute('aria-label')).toBe('Cache lookup');
+      expect(drawing.textContent).toContain('In cache?');
       // The skeleton keeps the ready frame's least box: both canvases reserve the sm height.
       const box = (diagram: HTMLElement) => diagram.querySelector<HTMLElement>('[data-grammar-mermaid-canvas]')!.getBoundingClientRect().height;
       expect(Math.round(box(skeleton!))).toBe(256);

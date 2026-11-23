@@ -1,0 +1,57 @@
+/*
+ * THE CODE PALETTE (0.55.1, owner 2026-11-23: "Chốt, làm luôn"). Code has its own colours: a near-white (light) or graphite (dark) ground on
+ * a hairline edge, and syntax inks that never borrow a status tone or the brand: keyword purple, function blue, string green, number and
+ * constant orange, type teal, comment grey (italic), punctuation slate. Red is only `deleted`, the removed side of a diff. The palette is
+ * brand-independent: no value reads --accent or --brand, so a red brand never turns keywords red. Every ink reaches WCAG AA 4.5:1 on the
+ * ground and on each line tint (the highlighted line, the inserted and the deleted row) in both themes (specs/code-palette.spec.mts).
+ *
+ * Read by: the markdown ext's Shiki variables (core/ext/markdown/styles.css), FencedCodeBlock and its highlight slot, the lesson CodeBlock
+ * (its `scheme="dark" | "light"` sets `data-theme` on the block, so these blocks apply inside it), inline code of a MarkdownArticle.
+ * An app may set its own values (unlayered, or later in the theme layer) and wins.
+ */
+@layer starci-grammar-theme {
+    :root,
+    .light,
+    [data-theme="light"] {
+        --grammar-code-fg: #24292f;
+        --grammar-code-bg: #fafaf8;
+        --grammar-code-border: #e3e3de;
+        --grammar-code-gutter: #5f6873;
+        --grammar-code-keyword: #7a44d6;
+        --grammar-code-function: #0862c9;
+        --grammar-code-string: #08743a;
+        --grammar-code-number: #a04f00;
+        --grammar-code-constant: #a04f00;
+        --grammar-code-type: #0b6b78;
+        --grammar-code-comment: #5f6873;
+        --grammar-code-punctuation: #57606a;
+        --grammar-code-inserted: #116329;
+        --grammar-code-inserted-bg: #e9f6ed;
+        --grammar-code-deleted: #b42318;
+        --grammar-code-deleted-bg: #fcedec;
+        --grammar-code-highlight-line: #eff3fa;
+        --grammar-code-highlight-edge: #6b8fd6;
+    }
+
+    .dark,
+    [data-theme="dark"] {
+        --grammar-code-fg: #e6e6e6;
+        --grammar-code-bg: #1e1f24;
+        --grammar-code-border: #33353d;
+        --grammar-code-gutter: #959aa4;
+        --grammar-code-keyword: #c792ea;
+        --grammar-code-function: #82aaff;
+        --grammar-code-string: #c3e88d;
+        --grammar-code-number: #f78c6c;
+        --grammar-code-constant: #f78c6c;
+        --grammar-code-type: #89ddff;
+        --grammar-code-comment: #959aa4;
+        --grammar-code-punctuation: #a0a6b0;
+        --grammar-code-inserted: #9ddb9f;
+        --grammar-code-inserted-bg: #1f2f25;
+        --grammar-code-deleted: #ff9492;
+        --grammar-code-deleted-bg: #352225;
+        --grammar-code-highlight-line: #272c38;
+        --grammar-code-highlight-edge: #5c7cc2;
+    }
+}

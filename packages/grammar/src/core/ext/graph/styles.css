@@ -3,6 +3,7 @@
 @import "./shared/styles.css";
 @import "./erd/styles.css";
 @import "./knowledge/styles.css";
+@import "./diagram/styles.css";
 
 /* The tones. A status sets the tone of a node's border; a kind (or a `tone`) sets the tone of its icon tile. */
 .starci-graph-node[data-tone="success"],

@@ -3,6 +3,7 @@
 @import "./ramps.css";
 @import "./tones-info.css";
 @import "./tones-agent.css";
+@import "./tones-code.css";
 @import "./tones-border.css";
 @import "./components-forms.css";
 @import "./components-overlays.css";
@@ -213,7 +214,6 @@
         .starci-core-data-table-scroll,
         .starci-core-fenced-code-block pre,
         .starci-core-markdown-table-frame,
-        .starci-core-mermaid-diagram-canvas,
         .starci-core-rail-body,
         .starci-core-sidebar-list,
         .starci-core-terminal-log,
@@ -2423,10 +2423,10 @@
     .starci-core-markdown-article :not(pre) > code {
         display: inline;
         padding: 0 var(--grammar-identity-gap);
-        border: 1px solid var(--border);
+        border: 1px solid var(--grammar-code-border);
         border-radius: var(--grammar-radius-pill);
-        background: var(--muted-surface, color-mix(in oklab, var(--foreground) 7%, var(--background)));
-        color: inherit;
+        background: var(--grammar-code-bg);
+        color: var(--grammar-code-fg);
         font-family: var(--font-mono);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
@@ -2440,10 +2440,10 @@
         margin: 0;
         padding: var(--grammar-inset);
         overflow-x: auto;
-        border: 1px solid var(--border);
+        border: 1px solid var(--grammar-code-border);
         border-radius: var(--grammar-radius-md);
-        background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
-        color: inherit;
+        background: var(--grammar-code-bg);
+        color: var(--grammar-code-fg);
         overscroll-behavior-inline: contain;
     }
 
@@ -2468,8 +2468,9 @@
     }
 
     /*
-     * Numbered and marked lines (owner 2026-11-23, a lesson's code): each authored line is a block, so a marked line's accent soft band runs the
-     * whole width of the code; the numbers stand in a gutter drawn by the line itself, never selected or copied.
+     * Numbered and marked lines (owner 2026-11-23, a lesson's code): each authored line is a block, so a marked line's band (the code palette's
+     * neutral blue tint and edge, never the brand) runs the whole width of the code; the numbers stand in a gutter drawn by the line itself, never
+     * selected or copied.
      */
     .starci-core-fenced-code-block pre:has(> [data-grammar-code-lines="true"]) { padding-inline: 0; }
     [data-grammar-code-lines="true"] { display: block; inline-size: max-content; min-inline-size: 100%; }
@@ -2479,14 +2480,14 @@
         display: inline-block;
         min-inline-size: 3ch;
         margin-inline-end: var(--grammar-inset);
-        color: var(--muted);
+        color: var(--grammar-code-gutter);
         text-align: end;
         user-select: none;
     }
 
     .starci-core-code-line[data-grammar-line-highlighted="true"] {
-        background: var(--accent-soft);
-        box-shadow: inset var(--grammar-ring-width) 0 0 var(--accent);
+        background: var(--grammar-code-highlight-line);
+        box-shadow: inset var(--grammar-ring-width) 0 0 var(--grammar-code-highlight-edge);
     }
 
     /* The file path in the header: the code's own monospace, the header's muted colour. */
@@ -2567,9 +2568,9 @@
         width: 100%;
         min-width: 0;
         overflow-x: auto;
-        border: 1px solid var(--border);
+        border: 1px solid var(--grammar-code-border);
         border-radius: var(--grammar-radius-md);
-        background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
+        background: var(--grammar-code-bg);
         overscroll-behavior-inline: contain;
     }
 
@@ -5968,9 +5969,21 @@
         background: color-mix(in oklab, var(--starci-core-button-band-ink) 14%, transparent) !important;
     }
 
-    .starci-core-button[data-grammar-button-ground]:is(:focus-visible, [data-focus-visible="true"]) {
+    .starci-core-button[data-grammar-button-ground]:focus-visible {
         outline: 2px solid var(--starci-core-button-band-ink) !important;
         outline-offset: 2px;
+    }
+
+    /*
+     * A Button's focus ring is the keyboard's alone (FOCUS-2; owner 2026-11-23: never stuck after a mouse click). react-aria calls focus that script moves with no key or
+     * pointer event before it "virtual" and marks it `data-focus-visible`, so a sheet that gives focus back to the button that opened it with a mouse click left the vendor's
+     * ring on it. The browser's own :focus-visible tells a keyboard from a script that follows a pointer, so it alone draws the ring: a button react-aria marks and the
+     * browser does not wears neither the outline nor the vendor's ring shadow.
+     */
+    .starci-core-button[data-focus-visible="true"]:not(:focus-visible) {
+        outline: none !important;
+        --tw-ring-shadow: 0 0 #0000 !important;
+        --tw-ring-offset-shadow: 0 0 #0000 !important;
     }
 
         .starci-core-button[data-width="fill"] {

@@ -11,7 +11,6 @@ import { Link } from "../../leaf/Link/index.js"
 import { MediaFrame } from "../../leaf/MediaFrame/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame } from "../MarkdownArticle/index.js"
-import { MermaidDiagram } from "../MermaidDiagram/index.js"
 import type { NoChildren } from "../../tier.js"
 import { CopyAction } from "./CopyAction.js"
 import { isExternalUrl, isSafeImage, isSafeLink } from "./urls.js"
@@ -38,6 +37,16 @@ export type MarkdownLabels = {
     readonly externalHint?: string
 }
 
+/** One `mermaid` fence as the `renderDiagram` slot receives it: hand it to the graph ext's `MermaidDiagram` (`{...diagram}`). */
+export type MarkdownDiagram = {
+    /** The Mermaid text of the fence. */
+    readonly source: string
+    /** The diagram's name (`labels.diagram`, numbered when the body has several). */
+    readonly label: string
+    /** The error title (`labels.diagramError`). */
+    readonly errorTitle: string
+}
+
 /** One fenced code block as the `renderCode` slot receives it. */
 export type MarkdownCode = {
     /** The info string of the fence (`ts`, `bash`), or `null` when the fence names none. */
@@ -60,9 +69,14 @@ export type MarkdownProps = NoChildren & {
      * Draws the body of a fenced code block (syntax highlighting): the app supplies the highlighter, Grammar depends on none. The slot replaces ONLY the
      * code body; the `FencedCodeBlock` frame, its language label and its Copy action stay Grammar's, and Copy always writes the original `value`.
      * Return the already-highlighted markup in a `data-grammar-fenced-code-highlight="true"` wrapper (Grammar styles the frame and scrolls it inline),
-     * or `null` to keep the plain text (e.g. while the highlighter is still loading). A `mermaid` fence never goes through the slot.
+     * or `null` to keep the plain text (e.g. while the highlighter is still loading). A `mermaid` fence goes to `renderDiagram` when given.
      */
     readonly renderCode?: (code: MarkdownCode) => ReactNode
+    /**
+     * Draws a `mermaid` fence: the graph ext's `MermaidDiagram` (`@starci/grammar/core/ext/graph`), which the core never imports, so the app passes
+     * it: `renderDiagram={(diagram) => <MermaidDiagram {...diagram} height="md" />}`. Without it a `mermaid` fence is shown as its source, a code block.
+     */
+    readonly renderDiagram?: (diagram: MarkdownDiagram) => ReactNode
 }
 
 const DEFAULT_LABELS: Required<MarkdownLabels> = {
@@ -84,6 +98,7 @@ type Context = {
     /** The label of every Mermaid fence, by node: a body with one diagram keeps the plain name, several are numbered. */
     readonly diagramLabels: ReadonlyMap<CodeNode, string>
     readonly renderCode: ((code: MarkdownCode) => ReactNode) | undefined
+    readonly renderDiagram: ((diagram: MarkdownDiagram) => ReactNode) | undefined
 }
 
 /** A fence: the plain block, or the frame around the app's highlighted body. */
@@ -230,8 +245,8 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
         }
         case "code": {
             const diagramLabel = context.diagramLabels.get(node)
-            if (diagramLabel !== undefined) {
-                return <MermaidDiagram source={node.value} label={diagramLabel} height="md" errorTitle={context.labels.diagramError} />
+            if (diagramLabel !== undefined && context.renderDiagram !== undefined) {
+                return context.renderDiagram({ source: node.value, label: diagramLabel, errorTitle: context.labels.diagramError })
             }
             return <FenceOf node={node} context={context} />
         }
@@ -278,14 +293,14 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
  * A document body: a markdown string drawn with the grammar's own parts inside the reading frame (`MarkdownArticle`).
  * Headings are `h2` to `h4` (an `h1` is demoted to `h2`), a paragraph is `Text`, inline code is `Code`, a link is `Link` (an external
  * one opens in its own context and ends in the arrow), a table sits in `MarkdownTableFrame`, a fence is a `FencedCodeBlock` with a Copy
- * action, a `mermaid` fence is a `MermaidDiagram`, an image is a `MediaFrame` captioned with its alt.
+ * action, a `mermaid` fence is what `renderDiagram` draws (the graph ext's `MermaidDiagram`; without it, the fence), an image is a `MediaFrame` captioned with its alt.
  *
  * The text is parsed to a syntax tree (mdast) and mapped node by node to elements: no HTML string is built or injected. Raw HTML is
  * shown as text (a comment is dropped); a link or image whose scheme is not http(s), mailto, tel or relative is shown as its words.
  * `renderCode` (optional) draws the code body of a fence (syntax highlighting supplied by the app); the frame, language label and Copy stay here.
  * Contract: overflow OVERFLOW-4 (tables and code scroll inline inside their frames).
  */
-export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl, renderCode }: MarkdownProps) => {
+export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl, renderCode, renderDiagram }: MarkdownProps) => {
     const tree = useMemo(() => parse(source), [source])
     const { copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint } = { ...DEFAULT_LABELS, ...stripUndefined(labels) }
     const context = useMemo<Context>(() => {
@@ -296,10 +311,11 @@ export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isEx
             labels: { copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint },
             isExternal,
             renderCode,
+            renderDiagram,
             definitions: new Map(definitions.map((definition) => [definition.identifier, definition])),
             diagramLabels: new Map(diagrams.map((node, index) => [node, diagrams.length > 1 ? `${diagram} ${index + 1}` : diagram])),
         }
-    }, [tree, isExternal, renderCode, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
+    }, [tree, isExternal, renderCode, renderDiagram, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
     return (
         <MarkdownArticle {...(measure === undefined ? {} : { measure })} {...(ariaLabel === undefined ? {} : { ariaLabel })}>
             <Blocks nodes={tree.children} context={context} />
