@@ -24,7 +24,7 @@ An `Alert` has one look in every grammar: its tone's soft pair on the row (`x-so
 `x-soft-foreground`, in every tone), flat, with no shadow or border, like a big chip (`DNA-COMMON-ALERT-TONE-PAIR-*`). Radius 12, a 12 by 16
 inset, a 12 gap; the mark is the original Heroicons 24 outline glyph at its native size and stroke, in `--<tone>-soft-foreground` on the `--<tone>-soft` box, with no tile and no plate (owner 2026-11-22: "alert nói rõ là icon 24 soft-foreground trên nền soft thôi mà?"; pending's spinner is 24 too), pulled up 2px onto the 20px title line; the title is 14/20 at 500 and the description 14/20 at 400 (the label.item role). Its meaning picks the tone: informative
 the built-in info tone (blue, 0.55.0; never the accent pair: pink/red reads as an error; an app may write its own `--informative-soft` pair), affirmative success, cautionary warning, negative danger, and
-neutral, pending and unavailable the default pair. A `Toast` and the `AlertDialog` follow the same meaning (0.37.18): informative is neutral there too (the toast's mark `--muted`, the dialog's icon tile the default soft pair; `DNA-COMMON-TOAST-TONE-INFORMATIVE`, `DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE`); an app that writes `--informative` tokens keeps its own. A `Meter` is a measure, not a notice: a neutral or pending reading keeps the accent (ACCENT-4), and `tone="foreground"` fills it with `--foreground` on the empty track, the measure that spends no accent (ACCENT-6; `Progress` takes the same tone). The empty track of every measure (`Progress` and its steps, `Meter` and its segments, `ProgressCircle`, `ProportionBar`) is one visible neutral, the theme hook `--starci-core-track` (by default the foreground at 10% over the surface, a step lighter than the Switch off track), never `--default`, which a white theme sets to the surface. It takes no appearance choice (`appearance` is deleted in 0.55.0; the v0550 codemod drops it). Its action Button is SOLID in the banner's tone (owner: "button phải là màu tương ứng, ko phải border"; Button `tone`): warning-filled on a cautionary banner, danger on negative, info on informative, success on affirmative, accent on accent; a neutral, pending or unavailable banner keeps the intent's look (`DNA-COMMON-ALERT-ACTION-SOLID`).
+neutral, pending and unavailable the default pair. A `Toast` and the `AlertDialog` follow the same meaning (0.37.18): informative is neutral there too (the toast's mark `--muted`, the dialog's icon tile the default soft pair; `DNA-COMMON-TOAST-TONE-INFORMATIVE`, `DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE`); an app that writes `--informative` tokens keeps its own. A `Meter` is a measure, not a notice: a neutral or pending reading keeps the accent (ACCENT-4), and `tone="foreground"` fills it with `--foreground` on the empty track, the measure that spends no accent (ACCENT-6; `Progress` takes the same tone). The empty track of every measure (`Progress` and its steps, `Meter` and its segments, `ProgressCircle`, `ProportionBar`) is one visible neutral, the theme hook `--starci-core-track` (by default the foreground at 10% over the surface, a step lighter than the Switch off track), never `--default`, which a white theme sets to the surface. It takes no appearance choice (`appearance` is deleted in 0.55.0; the v0550 codemod drops it). Its buttons take the banner's tone (0.55.1, owner 2026-11-23, "Chốt, làm luôn"; `DNA-COMMON-ALERT-ACTION-IN-TONE`): see "Buttons in a banner" below.
 
 ## Alert form slot (0.46.2)
 An `Alert` that asks for a decision holds the fields of the draft in `form` (a `Section kind="list" layout="keyValue"` or a few fields), a named slot, since a composite takes no `children`. The form stands under the description on the text's edge, and the actions move to a row of their own under it, at the end: `secondaryAction` (`alternative`, "Reject") then `action` (the tone's intent, "Approve"). Not with an `action` of `kind: "row"` (a development error). Loading keeps the box with the form as geometry. Story `Overlays/Alert form slot (0.46.2)`.
@@ -48,23 +48,26 @@ the grammar's.
 ## Rules
 FEEDBACK-1..3, ACCENT-5, STATE-8. Proof: TRUTH-3, UX-4, UX-6, TASTE-5.
 
-## The retry of a negative banner (0.48.0)
-The action's look per tone is ONE table, `ALERT_ACTION_LOOK` (`src/core/composite/Alert/index.tsx`, 0.55.0), so a tone flips in one line (the owner
-may switch warning to `border`):
+## Buttons in a banner (0.55.1)
+Owner 2026-11-23 ("Chốt, làm luôn"): a button inside a tinted `Alert` (info, warning, danger, success, and the accent, neutral or an app's own pair alike)
+takes the banner's tone. Its fill is one step stronger than the banner's soft background (`--starci-core-alert-action`: a film of the banner's ink,
+`--<tone>-soft-foreground`, at 10% over the soft box; 16% on hover and press), its label is that ink, the tone's strong text colour, at the button label
+weight 500 (the label.item role), and its shape is Grammar's button pill at `sm`. Tokens only, so the light and dark pairs both hold. Never a white or
+neutral outline on the tint, never a solid primary.
 
-| tone | action look |
-| --- | --- |
-| informative | `primary`, tone `info` (solid in the banner's colour) |
-| accent | `primary`, tone `accent` |
-| affirmative | `primary`, tone `success` |
-| cautionary | `primary`, tone `warning` |
-| negative | `border` (the retry, `RETRY_VARIANT`) |
-| neutral, pending, unavailable, an app's own tone | `border` |
-| any tone, `action.isDestructive` | `danger` |
+| prop | for | look |
+| --- | --- | --- |
+| `action` | the one thing the banner offers ("Thử lại", "Nạp thêm") | tinted, the `border` rank |
+| `secondaryAction` | a second decision beside `action` ("Từ chối" beside "Duyệt") | tinted, the `border` rank |
+| `actions` | several EQUAL actions ("Nhắn Quảng cáo / Nhắn Chăm sóc khách / Nhắn Mạng xã hội") | each tinted, in order, none primary |
+| any, `isDestructive` | the action destroys | `danger` |
 
-The `secondaryAction` and the dismiss are always `border`. Only a `primary` action draws its `icon`.
-
-A negative `Alert`'s `action` is the `border` (outlined) button, the one look of "Thử lại" wherever a read failed, as in an `ErrorView`; it is `danger` only when the action itself destroys (`action.isDestructive`). A destructive decision belongs to an `AlertDialog`, never to a banner's action. Law `DNA-COMMON-RETRY-ONE-LOOK`.
+Each takes `onAction` (a command) or `href` (a destination, an anchor). `actions` never stands beside `action` or `secondaryAction` (the types refuse it,
+and a development error names it). The dismiss stays the `border` icon button. No banner action carries a start icon (`AlertAction.icon` is deleted in
+0.55.1; the v0551 codemod drops it). The paint is the stylesheet's (`.starci-core-alert .starci-core-button`), so a Grammar `Button` an app writes in
+the banner's copy takes it too; still, pass the buttons through `action` or `actions`, the slot that lays them out and stacks them on a phone. A
+negative banner's retry ("Thử lại") is the same tinted button, the one look of a recovery in a banner; a destructive decision belongs to an
+`AlertDialog`, never to a banner's action. Spec `specs/alert-actions.spec.mts`; story `Overlays/Alert actions in tone (0.55.1)`.
 
 ## ToastStack and stackToast (0.49.1)
 `ToastStack` is the region of HeroUI's own Toast (white card, status icon, title, description, one action, close) and `stackToast` is its callable: `show({ title, description?, meta?, tone?, action?, timeout? })` answers an id, `update(id, options)` turns that toast into another, `dismiss(id)` closes it. One act is one toast: a check that starts pending is updated in place to its result, never followed by a second toast. Mount exactly one `ToastStack` inside the root (default `bottom end`); it sits beside `Toaster` and leaves it unchanged. Generic: the words, the tone and the one action are the app's.

@@ -55,7 +55,7 @@ export {
     type ToastStackPlacement,
     type ToastStackProps,
 } from "../core/composite/ToastStack/index.js"
-export { Alert, type AlertAction, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
+export { Alert, type AlertAction, type AlertActionItem, type AlertPress, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
 export { Meter, type MeterProps, type MeterSegments, type MeterSize, type MeterTone } from "../core/leaf/Meter/index.js"
 export { ProgressCircle, type ProgressCircleProps, type ProgressCircleSize } from "../core/leaf/ProgressCircle/index.js"
