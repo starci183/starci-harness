@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - The Grammar snapshot is Grammar 0.55.1's
+## 2.9.10 - 2026-11-23 - The Grammar snapshot is Grammar 0.55.1's
 
 - Changed (vocabulary, with Grammar 0.55.1): `fixtures/grammar/src` is refreshed from the Grammar (it was stale against 0.55.0) and `vocabulary.generated.ts` regenerated. The breakpoint scale is 30, 40, 48, 56, 64 and 80rem (70rem is gone); the vendor tokens the Grammar reads add the `--*-border` pairs, `--informative*`, `--radius-3xl` and the `--z-index-*` pair and drop `--radius-lg`; the old flow tokens (`--starci-flow-*`, `--xy-*`) are gone. Specs follow (64rem for 70rem, `--radius-3xl` for `--radius-lg`).
 

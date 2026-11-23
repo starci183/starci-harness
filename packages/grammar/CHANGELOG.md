@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased - Every diagram on the graph canvas, one routing law for every graph, a dot grid you can see, a trend line as wide as its cell, the codemod reads only Grammar elements
+## 0.56.0 - 2026-11-23 - Every diagram on the graph canvas, one routing law for every graph, a dot grid you can see, a trend line as wide as its cell, the codemod reads only Grammar elements
 
-codemod: v0551 (`starci app codemod v0551`, or `--from 0.55.0 --to 0.55.1`); v0550 is fixed in place, so an app re-runs it.
+A minor, not the 0.55.1 the dev line was built as: it deletes and moves APIs 0.55.0 published (`shared.PHONE_WIDTH`, `shared.usePhone`, MermaidDiagram's core entries) and changes an eslint-grammar-core rule (contexts/grammars/contributing.md "Patch or minor"). Its codemod keeps the dev line's id.
+
+codemod: v0551 (`starci app codemod v0551`, or `--from 0.55.0 --to 0.56.0`); v0550 is fixed in place, so an app re-runs it.
 
 - Added (`ListRowData.actionPlacement: "foot"`, NIVO lead board, owner 2026-11-23: the card's "Chốt đơn" at its end, on its own row): the commands stand on a row of their own AFTER the row's `detail`, on the copy's start edge (beside a leading avatar, the name's edge), at every width, and follow the detail in reading and focus order; the line under the name keeps the row's whole width. The loading row puts its action skeleton at the same place.
 - Added (graph `height="content"`, coordinator 2026-11-23: the "Rẽ nhánh lồng nhau" story opened at 69% in its 640px frame at 1440): a `FlowGraph` or `SchemaMap` with `height="content"` is as tall as its laid-out drawing at 100% plus the fit insets (at least 20rem, at most `--starci-graph-max-block-size`, default 80vh), so a top-down flow in a wide column opens at full size; its parent gives it no height. `frame` (default) keeps filling the parent. The flow stories of the graph demo use it.
