@@ -72,7 +72,7 @@ export const discoverAlertChat = async (root: string, env: string, chat: string 
 }
 
 /** The app's sealed store: opens and re-seals a member with the identity and the recipients `starci app secret` uses (the member's own recipients). */
-const appStore = async (root: string): Promise<Pick<AlertChatSeams, "open" | "seal">> => {
+export const appStore = async (root: string): Promise<Pick<AlertChatSeams, "open" | "seal">> => {
     const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
     const { readMap, writeSecret } = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
     const { envelopeOf } = await import("@starci/hfs/runtime/scripts/hfs/secret-document.mjs")

@@ -110,6 +110,13 @@ pre-push hook needs `.husky/_` present. Before every commit run `git diff --cach
 runs the capture, then kills the server by the pid it started and releases the slot. Shoot every screen you need in one go.
 Screens, sizes (1440 and 390) and what a shot records are the app's gallery rules ([project/gallery.md](../project/gallery.md)).
 
+`starci app look --env dev --paths <route,…> [--workspace <id>] [--widths 1440,390] [--out <dir>]` is the step 2b look of
+PROJECT-GALLERY-7: against the RUNNING dev stack (it starts no server and refuses LOOK_DEV_DOWN when the declared web or api does not answer),
+under a `shoot` slot, signed in as the app's seed owner the way the app's `gallery/look.json` declares (the password read from the app's
+secret custody, never printed), in the installed Chrome. It writes the PNGs and `index.json` (route, width, time, the sha the dev checkout
+runs) into `.starciwork/evidence/look/<stamp>-<env>/` of the app (git-ignored), or `--out`; a shot that landed on the sign-in page or
+answered 4xx/5xx is listed and the verb exits 1.
+
 ## Processes and cleanup
 
 - Kill only processes you started, by the pid you recorded; never by a command-line pattern (`node`, `next`, a script name),
@@ -117,4 +124,5 @@ Screens, sizes (1440 and 390) and what a shot records are the app's gallery rule
 - Code first: no new unit specs, existing specs stay green; integration and e2e suites run only when asked (R12).
 - At the end stop every process you started and remove the worktree as [README.md](README.md) "Worktrees" says (unlink each
   install link first, never delete through it); keep the branch. Report what landed (the dev sha), what is open, and what needs
-  the owner.
+  the owner. A lane that changed a visible screen reports done only with its step 2b shots of [../project/gallery.md](../project/gallery.md)
+  PROJECT-GALLERY-7 (`starci app look` on dev with real data, at 1440 and 390); without them it reports "chưa xem trên dev", never "done".
