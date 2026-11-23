@@ -17,7 +17,7 @@ import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, portHolder, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, stopProcess, waitFor } from './local-run.mjs';
 import type { LocalDeps, ProcessMode } from './local-run.mjs';
 import type { LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { launch } from './local-host.mjs';
@@ -256,7 +256,12 @@ export async function launchProcess(ctx: StackContext, local: LocalConfig, run: 
   return `process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'})`;
 }
 
-/** Starts each native process that is not already running: built and served by default, its watcher only with `--watch`. */
+/**
+ * Starts each native process that is not already running: built and served by default, its watcher only with `--watch`. One copy of each process
+ * runs per environment: a recorded tree that still runs its command with its port silent (a watcher whose server died) is stopped before the fresh
+ * start, and a port some other process already listens on refuses STACK_LOCAL_SECOND_COPY, naming that process, instead of starting a second copy
+ * beside it (each copy a watcher with its own crons and consumers).
+ */
 async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps, mode: ProcessMode): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
@@ -266,9 +271,17 @@ async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Cu
     if (known) {
       const owned = await ownedProcess(ctx, known, deps);
       if (owned.ours) { out.push(`process ${run.name}: running (pid ${known.pid})`); continue; }
-      if (owned.stale !== null) {
+      if (owned.silent === true) {
+        stopProcess(ctx, known.pid, deps);
+        out.push(`process ${run.name}: stopped its previous tree (pid ${known.pid}): ${owned.stale ?? 'its port is silent'}; starting fresh`);
+      } else if (owned.stale !== null) {
         out.push(`process ${run.name}: discarded a stale record: ${owned.stale}; starting fresh`);
       }
+    }
+    const port = run.port === null ? null : (local.ports[run.port] ?? null);
+    const holder = port === null ? null : (deps.portHolder ?? ((value: number) => portHolder(ctx, value)))(port);
+    if (holder !== null) {
+      throw failure('STACK_LOCAL_SECOND_COPY', `process ${run.name}: port ${port} already listens (pid ${holder.pid}${holder.command === null ? '' : `, ${holder.command.slice(0, 160)}`}), which this environment's record does not hold: a second copy is refused; stop that one (starci app stack down --env ${local.env} from the checkout that started it, or end pid ${holder.pid}) and run up again`);
     }
     out.push(await launchProcess(ctx, local, run, custody, mode, record));
     writeRecord(dir, record);
@@ -329,7 +342,22 @@ export async function waitReady(ctx: StackContext, local: LocalConfig, deadline:
 }
 
 /** `up` for a dev environment. */
-export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only, watch = false }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined; watch?: boolean } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+/**
+ * The environment `up` starts: every process but the on-demand ones (`onDemand`, the gallery) not named in `--with`, and no readiness row of a
+ * gallery left out. The owner: one web and one backend server per app run on the dev stack; a gallery or a landing runs only when asked for.
+ */
+export const withOnDemand = (local: LocalConfig, names: readonly string[]): LocalConfig => {
+  const wanted = new Set(names);
+  const runs = local.processes.filter((run) => run.onDemand !== true || wanted.has(run.name));
+  const galleries = runs.some((run) => isAdvisoryRow(run.name));
+  return { ...local, processes: runs, ready: local.ready.filter((row) => galleries || !isAdvisoryRow(row.name)) };
+};
+
+export async function upLocal(ctx: StackContext, declared: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only, watch = false, with: withNames }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined; watch?: boolean; with?: string | undefined } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+  const named = (withNames ?? '').split(',').map((name) => name.trim()).filter((name) => name !== '');
+  const unknown = named.filter((name) => !declared.processes.some((run) => run.name === name && run.onDemand === true));
+  if (unknown.length > 0) throw refusal('STACK_USAGE', `--with names an on-demand process (${declared.processes.filter((run) => run.onDemand === true).map((run) => run.name).join(', ') || 'none declared'}), not ${unknown.join(', ')}`);
+  const local = withOnDemand(declared, named);
   const mode: ProcessMode = watch ? 'watch' : 'serve';
   refuseTakenRange(ctx, local, deps);
   const host = await preflight(ctx, local, deps);

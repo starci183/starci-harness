@@ -138,6 +138,8 @@ import { ticketTakeVerb } from "./core/ticket/take.js"
 import { laneLandVerb } from "./core/lane/land.js"
 import { devSyncVerb } from "./core/dev/sync.js"
 import { laneRemoveVerb } from "./core/lane/remove.js"
+import { lanePruneInstallsVerb } from "./core/lane/prune-installs.js"
+import { opsReapVerb } from "./core/ops/reap.js"
 import { laneReadyVerb } from "./core/lane/ready.js"
 import { laneStatusVerb } from "./core/lane/status.js"
 import { laneWithdrawVerb } from "./core/lane/withdraw.js"
@@ -316,6 +318,8 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     slotRunVerb,
     galleryShootVerb,
     laneRemoveVerb,
+    lanePruneInstallsVerb,
+    opsReapVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees every verb but the runtime's own; the runtime and a bare directory see everything. */

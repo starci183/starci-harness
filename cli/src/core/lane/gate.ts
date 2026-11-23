@@ -99,6 +99,21 @@ interface HarnessGated {
 }
 
 /**
+ * How far the CLI that runs this gate is behind `base`, the harness dev it gates against: the commits of `base` its checkout lacks that change
+ * the harness's own judge (cli/, ops/, policy/), or undefined when it lacks none or is no checkout of the same repository (an installed CLI).
+ * A stale CLI judges a lane by rules dev no longer holds, so the gate says so loudly at its start and in its result.
+ */
+export const staleCli = async (root: string, cliRoot: string, base: string): Promise<string | undefined> => {
+    const head = await gitOut(cliRoot, ["rev-parse", "HEAD"])
+    if (!head.ok || head.out === base) return undefined
+    const behind = await gitOut(root, ["rev-list", "--count", `${head.out}..${base}`, "--", "cli", "ops", "policy"])
+    const count = Number(behind.out)
+    if (!behind.ok || !Number.isFinite(count) || count === 0) return undefined
+    const sha = head.out
+    return `the CLI running this gate (${cliRoot}, at ${sha.slice(0, 10)}) lacks ${String(count)} commit(s) of ${base.slice(0, 10)} that change cli/, ops/ or policy/: it judges the lane by rules dev no longer holds; build a CLI from dev (git worktree add --detach <lanes>/_cli-<sha> origin/dev, npm ci and npm run build in its cli/) and gate with it`
+}
+
+/**
  * The gate of a harness lane: no root install, codegen or app hook. Under a gate slot the lane's own running CLI runs the harness FAST gate
  * (`release gate --level dev`) measured from where the lane forks from the dev commit it merged, and with --push a green gate is followed by
  * `git push origin HEAD:<branch>` (the harness has no pre-push hook that would run it again).
@@ -108,6 +123,8 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
     const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
     const profile = landProfile("harness", join(runningCliRoot(), "dist", "main.js"))
+    const stale = await staleCli(root, runningCliRoot(), base)
+    if (stale !== undefined) say(`WARNING: ${stale}`)
     const command = profile.gate(root, fork === "" ? base : fork)
     const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
         say(`${profile.gateLabel} (gate slot ${String(taken.n)})`)

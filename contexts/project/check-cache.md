@@ -600,20 +600,16 @@ report lines and family reports are folded in graph and family order.
 
 Before its families run, `app check` measures the cache folder of the app (the MB of every record) and takes the check's own heap and the files of one lint chunk
 from it and the constants of `ops/liveness.yaml` `heavy.plan` (`cli/src/harness/memory-plan.ts`; the check re-executes itself under its heap when
-node's limit is lower). Every heavy command then sizes itself from the live RAM at its admission, never from an earlier run (`withHeavySlot` of
-`cli/src/harness/heavy.ts`; the caps and the one reserve are in `heavy.caps`, `heavy.testRun` and `heavy.reserveMb`, which also hold every number below):
+node's limit is lower). Every heavy command then takes one of the host's heavy slots while it runs (one per `heavy.gbPerSlot` GB of RAM; `withHeavySlot` of
+`cli/src/harness/heavy.ts`, [cli/README.md](../../cli/README.md) "Heavy-command governor") and runs under the process limits of `heavy.caps` and `heavy.testRun`:
 
-- The room is the free RAM now less the one reserve and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes
-  what running commands use.
-- A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, heavy.testWorkers))` workers from the room at its admission, the start of the test step, whatever steps ran before it and with no cap per step: the jest parent is held to its cap,
-  each worker to its cap by `--workerIdleMemoryLimit` and a `--max-old-space-size` a preload of the parent's `NODE_OPTIONS` gives every forked worker.
-  One worker is the floor, and an estimate never lowers a count the room holds.
-- Any other node tool runs under the smaller of its cap and the room, never under its minimum. A side of the lint family runs as many ESLint chunks at once as
-  floor(room / eslint cap) and the free lanes allow, at most its chunks ([ESLint](#eslint)); the programs of the types step run together as
-  floor(room / tsc cap) and the free lanes allow, at most the programs to run, the room read when the step starts (the CLI hands the caps over as `STARCI_ESLINT_HEAP_MB` and `STARCI_TSC_HEAP_MB`).
-- A command whose room is under its least need waits, first come, first served, and starts when RAM frees; with nothing running it starts anyway with one
-  worker and a warning that names the shortfall. A command that runs out of memory names the heap cap it hit and the RAM free at its admission.
-  ([cli/README.md](../../cli/README.md) "Heavy-command governor"). `--explain` prints the plan and the test run the RAM free now would get.
+- A test run takes min(`heavy.testWorkers` of the cores, cores - 1) workers, at least one: the jest parent is held to its cap, each worker to its cap by
+  `--workerIdleMemoryLimit` and a `--max-old-space-size` a preload of the parent's `NODE_OPTIONS` gives every forked worker.
+- Any other node tool runs under its cap. A side of the lint family runs as many ESLint chunks at once as heavy slots are free and the free lanes allow, at most
+  its chunks ([ESLint](#eslint)); the programs of the types step likewise, read when the step starts (the CLI hands the caps over as `STARCI_ESLINT_HEAP_MB`
+  and `STARCI_TSC_HEAP_MB`, and the room as the free slots times the eslint cap). Each chunk and program takes its own slot.
+- A command past the slots waits, first come, first served, and starts when one frees. A command that runs out of memory names the heap cap it hit and the
+  RAM free at its admission. `--explain` prints the plan and the test run's sizing.
 
 The per-spec coverage records are held as their lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the
 preset's merge one record at a time, so the parent holds about three times the records' MB, not the seven times their parsed tree took.

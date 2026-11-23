@@ -284,6 +284,45 @@ export const CATALOG = {
           ],
           "positional": [],
           "json": "flag"
+        },
+        "gate": {
+          "summary": "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, and runs the publish checks (declarations name .js, bundles:check), no test suite; --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+          "flags": [
+            {
+              "name": "level",
+              "type": "string",
+              "summary": "dev (default: the packages changed since --base and their dependents, built and typechecked, no tests) or full (everything, with lint, tests and CI's light gates)"
+            },
+            {
+              "name": "base",
+              "type": "string",
+              "summary": "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
+        "back-merge": {
+          "summary": "bring main back into dev after a release train (the cli-follow commit and anything else dev lacks): a fast-forward when dev is behind, else a merge commit made in a temporary worktree, pushed to dev under the lander's dev lock; dry until --execute",
+          "flags": [
+            {
+              "name": "remote",
+              "type": "string",
+              "summary": "the remote holding main and dev (default origin)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder whose dev lock the push holds (default: STARCI_LANES_DIR, else slots.root; none configured: no lock)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "merge and push dev (default: report how dev stands to main only)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
         }
       }
     },
@@ -575,7 +614,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate (owner: \"rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn\"): dev is the FAST level of a landing on dev (a lane push, a push of dev, the batch lander and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs), db and the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED); it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -599,7 +638,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "codemod": {
-          "summary": "migrate front-end button variants to declared intent and report cases requiring a human decision",
+          "summary": "run an app migration: a Grammar codemod by version (v0540; --list; --from <installed> --to <target> runs every one between) or a harness codemod by name; dry until --execute, cases left for a person are marked and listed",
           "flags": [],
           "positional": [
             {
@@ -683,7 +722,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "push": {
-          "summary": "push once with a warm cache: run app check --env prod, commit the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
+          "summary": "push once: a landing on dev (every pushed ref dev or a lane branch) runs no check of its own, and its pre-push hook runs the fast level once (app check --level dev); any other push (main, a release tag, another branch) first runs app check --env prod --level full, commits the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
           "flags": [],
           "positional": [
             {
@@ -871,27 +910,12 @@ export const CATALOG = {
           "json": "flag"
         },
         "shoot": {
-          "summary": "shoot the gallery under a machine-wide shoot slot: wait for --ready-url and the slot, start --serve on --port and wait until it listens, run the app's capture command ({port}, {url} filled in), then kill the server by its pid and release the slot",
+          "summary": "shoot the gallery under a machine-wide shoot slot (one of the host's maxHeavy heavy jobs) against the app's one running web server, the shared dev stack's: wait for --ready-url and the slot, refuse when nothing listens on --port (a lane never starts its own web or api server), run the app's capture command ({port}, {url} filled in), release the slot; a shoot whose caller died is stopped by the reaper",
           "flags": [
-            {
-              "name": "serve",
-              "type": "string",
-              "summary": "the web server to start for the shoot, one shell command ({port} is replaced); none: the capture reaches a server already up"
-            },
             {
               "name": "port",
               "type": "string",
-              "summary": "the port --serve listens on"
-            },
-            {
-              "name": "serve-cwd",
-              "type": "string",
-              "summary": "where --serve runs (default: the repository root)"
-            },
-            {
-              "name": "serve-env",
-              "type": "list",
-              "summary": "NAME=value for the server's environment, repeatable"
+              "summary": "the port the shared dev stack's web server listens on ({port}; {url} is http://localhost:<port>)"
             },
             {
               "name": "ready-url",
@@ -901,7 +925,7 @@ export const CATALOG = {
             {
               "name": "timeout",
               "type": "string",
-              "summary": "seconds the server has to listen, and --ready-url to answer (default 180)"
+              "summary": "seconds --ready-url has to answer (default 180)"
             },
             {
               "name": "lane",
@@ -2242,7 +2266,7 @@ export const CATALOG = {
             {
               "name": "host",
               "type": "string",
-              "summary": "a machine of config.yaml: report each service its roles turn on (running, adopted, partial, missing, unsupported, unbuilt), its drift, the gaps, and the endpoints of every served model in router order (`--json` data.endpoints, what the apps' ai-router reads)"
+              "summary": "a machine of config.yaml: report each service its roles turn on (running, adopted, partial, missing, unsupported, unbuilt), its image drift and config drift (the files its deployer would write now against the server's, read-only) as findings, the gaps, and the endpoints of every served model in router order (`--json` data.endpoints, what the apps' ai-router reads)"
             }
           ],
           "positional": [
@@ -2273,13 +2297,13 @@ export const CATALOG = {
           "json": "flag"
         },
         "load": {
-          "summary": "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+          "summary": "show the host's heavy-command governor: the slots (one per heavy.gbPerSlot GB of RAM) and how many run, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
           "flags": [],
           "positional": [],
           "json": "flag"
         },
         "up": {
-          "summary": "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, wait for its health and roll it back when it never turns healthy; a service already running (even under another name) is adopted, never redeployed or restarted, a drift only reported; no app stack is touched; one writer per host (HOST_BUSY)",
+          "summary": "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, and update an owned running one whose deployer would render it otherwise (config drift) or whose pinned images moved through the same deployer; wait for its health and roll it back when it never turns healthy; a service running under another name is adopted, never redeployed or restarted, its drift only reported; no app stack is touched; one writer per host (HOST_BUSY); --host local also merges [experimental] autoMemoryReclaim=dropcache into %UserProfile%/.wslconfig (other keys kept; effective after the next WSL restart, never run by the harness)",
           "flags": [
             {
               "name": "stack",
@@ -2373,7 +2397,7 @@ export const CATALOG = {
             {
               "name": "host",
               "type": "string",
-              "summary": "a machine of config.yaml: one real call per service its roles turn on (an embed vector of the pinned dimensions, the Grafana login page, a status API, a BuildKit ping hook, each Swarm service at its replicas), then the parity of every served model across the machines serving it (equal dimensions, cosine >= the catalog's minimum, else HOST_EMBED_MISMATCH)"
+              "summary": "a machine of config.yaml: one real call per service its roles turn on (an embed vector of the pinned dimensions, the Grafana login page, a status API, a BuildKit ping hook, each Swarm service at its replicas), the config and image drift of each service as a finding (read-only, never red), then the parity of every served model across the machines serving it (equal dimensions, cosine >= the catalog's minimum, else HOST_EMBED_MISMATCH)"
             }
           ],
           "positional": [],
@@ -2738,7 +2762,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "monitor": {
-          "summary": "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
+          "summary": "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to each app's own Telegram bot (monitoring.alerts; held behind a null receiver until one is ready), the two-way monitor bot when an app has a bot ready, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
           "flags": [
             {
               "name": "local",
@@ -3119,6 +3143,28 @@ export const CATALOG = {
           "positional": [],
           "json": "flag"
         },
+        "publish-dev": {
+          "summary": "publish the harness's dev line to the registry on this machine: every package changed since the last dev publish (or --since) and every package that pins one of them, each as X.Y.Z-dev.N (the next release, N monotonic), its publish copy pinning the dev builds exactly (no committed file changes); then devSync.local of the local settings names exactly those versions; dry until --execute, a rerun at the same head changes nothing",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "build, publish and write devSync.local (default: print the plan only)"
+            },
+            {
+              "name": "since",
+              "type": "string",
+              "summary": "measure the change from this commit (default: the last dev publish of this machine, else where HEAD forks from origin/main)"
+            },
+            {
+              "name": "cwd",
+              "type": "string",
+              "summary": "the harness checkout at the dev commit to publish (default: the checkout of the working directory)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
         "check": {
           "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a lockfile whose harness package integrity is not the one npm serves for that version (DEPS_LOCK_INTEGRITY)",
           "flags": [
@@ -3126,6 +3172,11 @@ export const CATALOG = {
               "name": "sha",
               "type": "string",
               "summary": "judge the package.json files committed at this commit (default HEAD)"
+            },
+            {
+              "name": "push-refs",
+              "type": "string",
+              "summary": "the pre-push hook's stdin (one `<local ref> <sha> <remote ref> <sha>` line per ref): a push whose every ref is dev or a lane branch, of an app declaring hfs.json deps.devAllowsLocalRegistry, accepts local-registry pins; without it every local pin is refused"
             }
           ],
           "positional": [],
@@ -3437,7 +3488,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "withdraw": {
-          "summary": "take a lane out of the batch lander's ready set (a batch already under way keeps it)",
+          "summary": "take a lane out of the batch lander's ready set and out of a batch under way (that batch aborts and the others are gated again; a withdrawn lane never lands)",
           "flags": [
             {
               "name": "dir",
@@ -3473,7 +3524,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "land": {
-          "summary": "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod, push dev; red drops the lanes its findings name and re-gates once, never bisects",
+          "summary": "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod --level dev (the fast level; a lane registered again with a new sha cancels the running gate and re-forms the batch, its status says superseded by <sha>), squash the batch into ONE commit (its message lists the lanes and their shas), push dev; red drops the lanes its findings name and re-gates once, never bisects",
           "flags": [
             {
               "name": "dir",
@@ -3499,13 +3550,18 @@ export const CATALOG = {
               "name": "dry-run",
               "type": "boolean",
               "summary": "merge the ready lanes and report conflicts; no gate, no push, no status written"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "summary": "app or harness (default: harness when the repository is the harness checkout, else app): the harness gates with release gate --level dev, pushes with git push origin HEAD:dev and, with devSync.publishLocal, publishes its dev line after each landed batch"
             }
           ],
           "positional": [],
           "json": "flag"
         },
         "gate": {
-          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green on its findings alone; the cache records it wrote are not a finding), or --push app push, and --ready register with the batch lander",
+          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --ready register with the batch lander; a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot, writes superseded by <sha> into its status)",
           "flags": [
             {
               "name": "ref",
@@ -3541,6 +3597,11 @@ export const CATALOG = {
               "name": "dir",
               "type": "string",
               "summary": "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "summary": "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push"
             }
           ],
           "positional": [
@@ -3589,18 +3650,40 @@ export const CATALOG = {
             }
           ],
           "json": "flag"
+        },
+        "prune-installs": {
+          "summary": "delete the reinstallable folders (janitor.dirs of ops/slots.yaml: node_modules, .next, dist, .turbo, and safe-install trash) of every lane worktree of the lanes folder idle at least --idle-hours that nothing holds (no removal lock, no live slot of its lane, no git operation, no process working inside it); links are unlinked first, never deleted through; the worktree, its branch and every tracked file stay (dry run until --execute, printing what and how many MB)",
+          "flags": [
+            {
+              "name": "idle-hours",
+              "type": "string",
+              "summary": "take a worktree only when it has not moved for this many hours (default: janitor.idleHours of ops/slots.yaml)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "delete (default: a dry run that measures and prints, changing nothing)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
         }
       }
     },
     "dev": {
       "verbs": {
         "sync": {
-          "summary": "fast-forward the app's dev checkout to origin/dev, npm ci, install each --local harness package from the local registry, then rebuild and restart only the changed api/web of the running dev stack; a plain sync drops any local overlay (dry until --execute)",
+          "summary": "fast-forward the app's dev checkout to origin/dev, npm ci, install each --local harness package from the local registry, run the app's codegen and build:modules (its workspace packages), migrate the dev database through app stack up when new migrations arrived, then rebuild and restart only the changed api/web of the running dev stack; a plain sync drops any local overlay (dry until --execute)",
           "flags": [
             {
               "name": "local",
               "type": "list",
-              "summary": "a harness package to install from the local registry after the install (grammar, @starci/hfs@6.18.0-local.1; repeat); without it every @starci package comes from npm"
+              "summary": "a harness package to install from the local registry after the install (grammar, @starci/hfs@6.18.0-local.1; repeat); without it the sync uses this machine's devSync.local, and with that empty every @starci package comes from npm"
             },
             {
               "name": "dir",
@@ -3750,6 +3833,27 @@ export const CATALOG = {
               "variadic": true
             }
           ],
+          "json": "flag"
+        }
+      }
+    },
+    "ops": {
+      "verbs": {
+        "reap": {
+          "summary": "stop the harness-started runs (slot runs, lane gates, gallery shoots and looks, app checks; recorded in <slot root>/_runs/ with their launchers) whose launcher has been gone longer than reap.graceMinutes of ops/slots.yaml: the run's whole process tree goes and each stop is logged in <slot root>/_reap.log; a process the harness did not record is never touched (dry run until --execute; an --execute also stamps when an orphan was first seen)",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "stop the orphans past their grace (default: a dry run that says what it would stop)"
+            }
+          ],
+          "positional": [],
           "json": "flag"
         }
       }

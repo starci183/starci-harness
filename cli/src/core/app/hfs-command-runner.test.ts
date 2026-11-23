@@ -20,9 +20,9 @@ test.after(() => {
 
 const GB = 1024
 const rules = loadHeavyRules(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops"))
-const pace = { ...rules, pollSeconds: 0.05, maxCpuPercent: 100, cpuStarveMinutes: 100_000, testWorkers: "50%" }
-const sizing = testRunSizing(rules, 22 * 1024, 12)
-const held: Held = { options: { env: { NODE_OPTIONS: "--max-old-space-size=1234" } }, roomMb: 22 * 1024, rules, test: sizing, heapMb: sizing.parentMb }
+const pace = { ...rules, pollSeconds: 0.05, testWorkers: "50%" }
+const sizing = testRunSizing(rules, 12)
+const held: Held = { options: { env: { NODE_OPTIONS: "--max-old-space-size=1234" } }, rules, test: sizing, heapMb: sizing.parentMb }
 const flags = [`--maxWorkers=${String(sizing.workers)}`, `--workerIdleMemoryLimit=${String(sizing.workerMb)}MB`]
 
 void test("a test row that is an npm script gets the workers and the worker heap after --", () => {
@@ -53,7 +53,7 @@ void test("through the real governor, a test request runs under the parent's hea
     await run({ kind: "build", label: "release gate build-be", cwd: state, argv: ["npm", "run", "build:be"], env: {} })
     const [tested, built] = [calls[0], calls[1]]
     assert.ok(tested && built)
-    const workers = Math.max(1, Math.min(testWorkerCap(pace), Math.floor((22 * GB - pace.reserveMb - pace.testRun.parentMb) / pace.testRun.workerMb)))
+    const workers = testWorkerCap(pace)
     assert.deepEqual(tested.argv, ["npm", "run", "test:e2e", "--", `--maxWorkers=${String(workers)}`, `--workerIdleMemoryLimit=${String(pace.testRun.workerMb)}MB`])
     assert.match(tested.env?.NODE_OPTIONS ?? "", new RegExp(`--max-old-space-size=${String(pace.testRun.parentMb)} --require=.*starci-jest-worker-heap`, "u"))
     assert.equal(tested.env?.STARCI_WORKER_HEAP_MB, String(pace.testRun.workerMb))

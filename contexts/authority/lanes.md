@@ -12,14 +12,18 @@ slot or landing script; every step that coordinates with other lanes is a verb.
 - **The slot root and lanes folder** are one folder: `--dir`, else `STARCI_LANES_DIR`, else `slots.root` of `ops/slots.yaml`
   (`starci config set slots.root <dir>`), else `<harness state>/slots`. The coordinator sets it once per host.
 - **The CLI** is the worktree's own, `node_modules/.bin/starci` after its install, so the judge is the harness the app pins. A
-  global or another checkout's CLI reports false pin drift. `HFS_CLI_HFS_SKEW` means reinstall, never `STARCI_ALLOW_CLI_SKEW`.
+  global or another checkout's CLI reports false pin drift. `HFS_CLI_HFS_SKEW` means reinstall, never `STARCI_ALLOW_CLI_SKEW`. A harness
+  lane is gated by the CLI build the coordinator names (a `_cli-<sha>` worktree of the harness); `lane gate` warns at its start when that build
+  lacks commits of dev that change cli/, ops/ or policy/, since it would judge by rules dev no longer holds.
 
 ## Slots
 
-The heavy-command governor ([cli/README.md](../../cli/README.md) "Heavy-command governor") admits by RAM inside one harness
-state, and a CLI installed in an app's `node_modules` has a state of its own. The machine-wide slots of `ops/slots.yaml` are
-what bound heavy work across worktrees: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a web dev server
-for shots), `stack` (the shared stack and its main checkout). Each kind has a count, and some a burst opened only with free RAM.
+Two layers bound the host's work. The heavy-command governor ([cli/README.md](../../cli/README.md) "Heavy-command governor") is the owner's
+rule: one heavy slot per 16 GB of the host's RAM (`heavy.gbPerSlot`, 4 on a 64 GB host), and each heavy command (a tsc, an eslint, a build, an
+install, a test run) holds one while it runs, whichever checkout or installed CLI starts it; a gate that runs several in turn takes one for each
+step, and a running web or api server takes none. Nothing starts while the drive has under `heavy.diskFloorMb` free. The lane slots of
+`ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look),
+`stack` (the shared stack and its main checkout). Each kind has a count, and some a burst opened only with free RAM.
 
 | verb | does |
 |---|---|
@@ -103,18 +107,45 @@ pushes `dev` with `git push origin HEAD:dev`; the squash, the cancel on a newer 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the
 pre-push hook needs `.husky/_` present. Before every commit run `git diff --cached --stat`.
 
-## Shots
+## Shots and looks: the one web and one api server of the app
 
-`starci gallery shoot --serve "<web dev server, {port}>" --port <n> [--ready-url <api health>] -- <the app's capture command,
-{url}>` waits for the api and a `shoot` slot (which waits for the kind's free RAM), starts the server, waits until it listens,
-runs the capture, then kills the server by the pid it started and releases the slot. Shoot every screen you need in one go.
-Screens, sizes (1440 and 390) and what a shot records are the app's gallery rules ([project/gallery.md](../project/gallery.md)).
+The owner's rule, in his words:
+
+> "chốt vậy chỉ có 1 next server fe chạy thôi, lane xong f5 lại, chấp nhận giật ở fe"
+
+> "Tương tự 1 be server"
+
+Each app runs ONE web (Next) server and ONE api server (with its workers, one stack): the shared dev stack's. A lane never starts a web or api
+server of its own to look or to shoot. It lands, the dev sync brings the change into the shared checkout, and the lane looks at the running
+dev stack: `starci app look` (PROJECT-GALLERY-7 step 2b, real data, a `shoot` slot) or `starci gallery shoot --port <the dev stack's web port>
+[--ready-url <api health>] -- <the app's capture command, {url}>`, which waits for the api and a `shoot` slot, refuses when nothing listens on
+the port (`GALLERY_SHOOT_NO_SERVER`) and never starts a server. The owner refreshes the page (F5) after a land and accepts a brief flicker.
+Shoot every screen you need in one go. Screens, sizes (1440 and 390) and what a shot records are the app's gallery rules
+([project/gallery.md](../project/gallery.md)). A shoot or look is recorded as a harness run, so one whose caller died is stopped by the reaper
+with its browser.
+
+A back-end change that truly cannot wait for a land to be seen runs its api only under `starci slot run stack -- <the api command>`, a job of
+its own, recorded and reaped with its caller; a lane never runs a second web server. On the stack itself, `app stack up` keeps one copy of each
+process: a recorded process whose port went silent is stopped before a fresh start, a port some other process already listens on refuses
+`STACK_LOCAL_SECOND_COPY`, and the on-demand processes (the gallery, or any process declaring `onDemand: true`, a landing) start only with
+`--with <name>`. Known gap: `starci dev sync` still builds the changed side and restarts it (`next start`, `node dist/...`); serving the shared
+web from its watcher, so a land needs only F5, waits on the root cause of the Next HMR reload loop through the ingress that moved StarCi Next to
+`next build`/`next start`; until then each land restarts the changed side once.
 
 ## Processes and cleanup
 
 - Kill only processes you started, by the pid you recorded; never by a command-line pattern (`node`, `next`, a script name),
   which other lanes run too. The verbs above stop what they start.
+- **Orphans are reaped.** A run the harness starts for you (`slot run`, `lane gate`, `gallery shoot`, `app look`, `app check`) records its
+  launchers in `<lanes>/_runs/`; once its launcher (your shell, or the agent above it) has been gone `reap.graceMinutes` of `ops/slots.yaml`,
+  the batch lander (and `starci ops reap --execute`) stops its process tree and logs it in `<lanes>/_reap.log`. Keep the launching shell alive
+  for the run's life; a run started detached on purpose is reaped too. A process the harness did not record is never touched.
+- **Installs go back to the drive.** When the lander lands a lane it deletes the reinstallable folders of the lane's worktree
+  (`janitor.dirs` of `ops/slots.yaml`: node_modules, .next, dist, .turbo, and a failed safe install's `.starci-trash-` folders), links unlinked
+  first and never deleted through, the worktree, its branch and its tracked files kept, unless the worktree is live (a slot of the lane, a
+  removal lock, a git operation, a process working inside it). `starci lane prune-installs [--idle-hours N] [--execute]` does the same for every
+  lane worktree idle that long (dry run first: it prints what and how many MB). The next `lane gate` installs again.
 - Code first: no new unit specs, existing specs stay green; integration and e2e suites run only when asked (R12).
-- At the end stop every process you started and remove the worktree as [README.md](README.md) "Worktrees" says (unlink each
-  install link first, never delete through it); keep the branch. Report what landed (the dev sha), what is open, and what needs
+- At the end stop every process you started and remove the worktree with `starci lane remove <worktree> --execute` (it unlinks each
+  install link first, never deletes through it, and takes the install with the worktree); keep the branch. Report what landed (the dev sha), what is open, and what needs
   the owner.
