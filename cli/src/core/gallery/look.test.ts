@@ -68,6 +68,22 @@ void test("the session is the cookies the web host receives: a shared parent dom
     assert.deepEqual(rotated.map((cookie) => [cookie.name, cookie.value, cookie.domain, cookie.path]), [["refresh_token", "live", ".example.org", "/"]], "a clearing header sets nothing")
 })
 
+void test("a host-only cookie the api set is bound to the api host too: the web calls its api across hosts (no shared cookie domain in dev)", () => {
+    const at = new Date("2026-11-23T05:00:00.000Z")
+    const cross = sessionCookies(["next_refresh=r1; Path=/auth; HttpOnly; Secure; SameSite=Strict"], "https://next-app-dev.example.org", at, "https://next-api-dev.example.org")
+    assert.deepEqual(
+        cross.map((cookie) => [cookie.name, cookie.domain, cookie.path, cookie.sameSite]),
+        [
+            ["next_refresh", "next-app-dev.example.org", "/auth", "Strict"],
+            ["next_refresh", "next-api-dev.example.org", "/auth", "Strict"],
+        ],
+    )
+    // a shared domain still comes first; the api host keeps its host-only cookies; an api on the web host binds nothing twice
+    const shared = sessionCookies(["sid=abc; Domain=example.org; Path=/", "local=1; Path=/"], "https://app-dev.example.org", at, "https://api-dev.example.org")
+    assert.deepEqual(shared.map((cookie) => [cookie.name, cookie.domain]), [["sid", ".example.org"], ["local", "api-dev.example.org"]])
+    assert.deepEqual(sessionCookies(["local=1; Path=/"], "https://app-dev.example.org", at, "https://app-dev.example.org/api").map((cookie) => cookie.domain), ["app-dev.example.org"])
+})
+
 void test("the index names the app, the dev sha and each shot with its time; a sign-in page is a signed-out look", () => {
     const index = lookIndex({ app: "demo", env: "dev", web: "https://app-dev.example.org", workspace: "ws-demo", devSha: "abc123", startedAt: "2026-11-23T01:00:00.000Z" }, [
         { route: "/chat", url: "https://app-dev.example.org/workspaces/ws-demo/chat", width: 1440, file: "chat-1440.png", time: "2026-11-23T01:00:05.000Z", landed: "https://app-dev.example.org/workspaces/ws-demo/chat", status: 200, problem: null },

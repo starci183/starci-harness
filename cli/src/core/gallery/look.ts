@@ -122,12 +122,15 @@ const sameSiteOf = (same: string | undefined): LookCookie["sameSite"] => (same =
 
 /**
  * The session cookies of a sign-in's Set-Cookie headers, for the web host. Cookies that name a Domain the web host is under are the
- * session (the api and the web share a parent domain); when none does, the host-only cookies are bound to the web host. A cookie whose
+ * session (the api and the web share a parent domain); when none does, the host-only cookies are bound to the web host. A host-only
+ * cookie is also bound to the host that set it, the `api` host when it differs from the web host, as a browser keeps it: an app whose
+ * web calls its api across hosts with the api's own host-only refresh cookie (no shared cookie domain in dev) is signed in. A cookie whose
  * Domain the web host is not under never reaches the browser. A header that clears a cookie (an Expires in the past, a Max-Age of 0 or
  * less) sets nothing, and of several headers for one name, domain and path the last one wins, as a browser keeps them.
  */
-export const sessionCookies = (setCookies: readonly string[], web: string, now: Date = new Date()): LookCookie[] => {
+export const sessionCookies = (setCookies: readonly string[], web: string, now: Date = new Date(), api?: string): LookCookie[] => {
     const host = new URL(web).hostname
+    const apiHost = api === undefined ? undefined : new URL(api).hostname
     const secureWeb = new URL(web).protocol === "https:"
     const parsed = setCookies.map((header) => {
         const [pair = "", ...attributes] = header.split(";").map((part) => part.trim())
@@ -163,7 +166,9 @@ export const sessionCookies = (setCookies: readonly string[], web: string, now: 
     const live = [...kept.values()]
     const under = (domain: string): boolean => host === domain || host.endsWith(`.${domain}`)
     const shared = live.filter((cookie) => cookie.domain !== undefined && under(cookie.domain))
-    const chosen = shared.length > 0 ? shared.map((cookie) => ({ ...cookie, domain: `.${cookie.domain ?? host}` })) : live.filter((cookie) => cookie.domain === undefined).map((cookie) => ({ ...cookie, domain: host }))
+    const hostOnly = live.filter((cookie) => cookie.domain === undefined)
+    const onApi = apiHost === undefined || apiHost === host ? [] : hostOnly.map((cookie) => ({ ...cookie, domain: apiHost }))
+    const chosen = [...(shared.length > 0 ? shared.map((cookie) => ({ ...cookie, domain: `.${cookie.domain ?? host}` })) : hostOnly.map((cookie) => ({ ...cookie, domain: host }))), ...onApi]
     return chosen.map(({ name, value, domain, path, secure, httpOnly, sameSite }) => ({ name, value, domain, path, secure, httpOnly, sameSite }))
 }
 
@@ -283,7 +288,7 @@ const signIn = async (root: string, env: string, settings: LookEnv): Promise<Loo
     const origin = new URL(settings.origin ?? settings.web).origin
     const response = await fetch(`${settings.api.replace(/\/+$/u, "")}${settings.signIn.path}`, { method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify({ email: settings.signIn.email, password: password.trim() }), signal: AbortSignal.timeout(30_000) })
     if (response.status < 200 || response.status > 299) throw new Refusal("LOOK_SIGN_IN_REFUSED", `the sign-in of ${settings.signIn.email} at ${settings.api}${settings.signIn.path} answered ${String(response.status)}`)
-    const cookies = sessionCookies(response.headers.getSetCookie(), settings.web)
+    const cookies = sessionCookies(response.headers.getSetCookie(), settings.web, new Date(), settings.api)
     if (cookies.length === 0) throw new Refusal("LOOK_SIGN_IN_NO_COOKIE", `the sign-in at ${settings.api}${settings.signIn.path} set no cookie the web host ${new URL(settings.web).hostname} receives`)
     return cookies
 }
