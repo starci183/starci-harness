@@ -282,10 +282,11 @@
     stroke-dasharray: 5 4;
 }
 
+/* The one arrowhead of the graphs (StepEdge's): an open triangle at the target only. */
 .starci-graph-diagram-head {
-    fill: var(--starci-graph-diagram-line);
+    fill: none;
     stroke: var(--starci-graph-diagram-line);
-    stroke-width: var(--grammar-hairline);
+    stroke-width: var(--grammar-stroke-fine);
     stroke-linejoin: round;
 }
 

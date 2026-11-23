@@ -24,7 +24,7 @@ test("a use of shared.usePhone or shared.PHONE_WIDTH is marked once, with what t
     const code = `${IMPORT}export const A = () => {\n    const phone = shared.usePhone()\n    return phone ? null : <FlowGraph label="x" nodes={[]} edges={[]} statusLabels={l} />\n}\nconst wide = window.innerWidth >= shared.PHONE_WIDTH\n`
     const out = transformSource(ts, "a.tsx", code)
     assert.equal(out.findings.length, 2)
-    assert.match(out.text, new RegExp(`    // ${MARK.replace(/[()]/gu, "\\$&")}: shared\\.usePhone is deleted in 0\\.55\\.1; use nothing: a graph is the same on every screen[^\\n]*\\n    const phone = shared\\.usePhone\\(\\)`, "u"))
+    assert.match(out.text, new RegExp(`    // ${MARK.replace(/[()]/gu, "\\$&")}: shared\\.usePhone is deleted in 0\\.55\\.1; use nothing: a graph lays itself out top-down under 480px[^\\n]*\\n    const phone = shared\\.usePhone\\(\\)`, "u"))
     assert.match(out.text, /\/\/ TODO\(grammar-0\.55\.1\): shared\.PHONE_WIDTH is deleted in 0\.55\.1[^\n]*\nconst wide/u)
     // Run again: nothing is doubled.
     assert.equal(transformSource(ts, "a.tsx", out.text).text, out.text)

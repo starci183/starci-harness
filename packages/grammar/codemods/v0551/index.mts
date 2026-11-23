@@ -1,5 +1,5 @@
 /**
- * v0551: the codemod of Grammar 0.55.1. The graph ext opens at 100% on every screen (owner: "size vẫn vậy chỉ có điều kéo = tay thôi"), so its phone switch
+ * v0551: the codemod of Grammar 0.55.1. The graph ext lays itself out top-down on a phone and opens fitted (the routing law), so its exported phone switch
  * is deleted: `shared.PHONE_WIDTH` and `shared.usePhone` of `@starci/grammar/core/ext/graph`. There is nothing to rewrite them to (a graph no longer differs
  * on a phone), so each use is marked `// TODO(grammar-0.55.1): <what to do>` and listed. The initial focus is the new optional `focusId` prop.
  * Additions of 0.55.1 (`focusId`, the ext BarChart's `highlightLast`) need no codemod; the fixed v0550 is re-run in place (`starci app codemod v0550`).
@@ -28,8 +28,8 @@ export const MOVED_TO_GRAPH: readonly string[] = Object.freeze(["MermaidDiagram"
 
 /** The members of `shared` deleted in 0.55.1, and what to do instead. */
 export const DELETED_SHARED: Readonly<Record<string, string>> = Object.freeze({
-    PHONE_WIDTH: "nothing: a graph is the same on every screen (100%, dragged by hand); keep a phone breakpoint of the app's own if the page needs one",
-    usePhone: "nothing: a graph is the same on every screen (100%, dragged by hand); FlowGraph, ErdMap and KnowledgeMap take focusId for the step they open on",
+    PHONE_WIDTH: "nothing: a graph lays itself out top-down under 480px and opens fitted; keep a phone breakpoint of the app's own if the page needs one",
+    usePhone: "nothing: a graph lays itself out top-down under 480px and opens fitted (the routing law)",
 })
 
 export interface V0551Finding {
@@ -157,7 +157,7 @@ export function runV0551({ root, write, ts }: { readonly root: string; readonly 
 
 /** The report as Markdown: every use of a deleted member, left for a person. */
 export function v0551Markdown(report: V0551Report): string {
-    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph opens at 100% on every screen; MermaidDiagram on the graph canvas), ${report.mode}`, ""]
+    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph lays itself out on a phone; MermaidDiagram on the graph canvas), ${report.mode}`, ""]
     lines.push(`${String(report.findings.length)} uses of a deleted graph member or a moved MermaidDiagram in ${String(report.files.length)} files; a rewrite shows its result, the rest are marked \`${MARK}\`.`, "")
     if (report.findings.length) lines.push(...report.findings.map((f) => `- ${f.file}:${String(f.line)} ${f.reason}: \`${f.before.replaceAll("`", "'")}\`${f.after === undefined ? "" : ` -> ${f.after}`}`), "")
     return `${lines.join("\n")}\n`

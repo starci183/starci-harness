@@ -4,14 +4,17 @@ import { Background, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowPr
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type RefObject } from "react"
 import { Alert, FencedCodeBlock, Skeleton } from "../../../index.js"
 import type { NoChildren } from "../../../tier.js"
-import { layoutFlow, type FlowLayout, type LinkEnds, type SizedNode } from "../layout.js"
+import type { FlowLayout, SizedNode } from "../layout.js"
 import { measureLabel } from "../shared/canvas.js"
 import { StepEdge } from "../shared/StepEdge.js"
 import { edgeClassName } from "../shared/status.js"
 import { ZoomButtons } from "../shared/zoom.js"
+import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
+import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
 import { describeDiagram, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
+import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
 
@@ -40,7 +43,7 @@ export type MermaidDiagramProps = NoChildren & {
     readonly label: string
     /**
      * The least height of the canvas, kept by the loading, ready and error states alike so the page does not jump when the drawing arrives. A taller
-     * drawing grows the canvas up to 35rem; a wider or taller one than that is panned and zoomed. Default `sm`.
+     * drawing grows the canvas up to 45rem; the first view always fits the whole drawing (the reader zooms in). Default `sm`.
      */
     readonly height?: MermaidDiagramHeight
     /** The error title shown in the region when the source cannot be drawn; the source follows it as code. */
@@ -66,11 +69,11 @@ const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", f
 
 /** The reserved box of each height step, and the tallest the canvas grows to fit a drawing. */
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
-const TALLEST = 560
+const TALLEST = 720
 /** The room round the drawing at the first view: the controls row along the bottom (40 + 2 × 8). */
 const INSETS = { top: 16, right: 16, bottom: 64, left: 16 } as const
-/** The first view never draws smaller than this (the 13px words stay about 9px, read on a phone); a drawing that needs less opens on its start and is panned. */
-const LEAST_OPEN_ZOOM = 0.7
+/** The first view fits the whole drawing (the routing law, rule 4: nothing clipped), never enlarged past 100% and never under this, the least zoom of the canvas. */
+const LEAST_OPEN_ZOOM = 0.2
 const PAN_STEP = 48
 const px = (n: number): `${number}px` => `${String(n)}px` as `${number}px`
 /** The fit button: the whole drawing, clear of the controls row. */
@@ -80,53 +83,6 @@ const FIT_OPTIONS = { padding: { top: px(INSETS.top), right: px(INSETS.right), b
 
 /** The width of one line of words at the canvas's label size (the measure the edge words use, without their padding). */
 const textWidth = (text: string): number => Math.ceil((measureLabel(text).width - 20) * 1.06)
-
-/** Words wrapped greedily into lines no wider than `max`. */
-const wrap = (text: string, max: number): readonly string[] =>
-    text.split("\n").flatMap((paragraph) => {
-        const out: string[] = []
-        let line = ""
-        for (const word of paragraph.split(/\s+/u)) {
-            const next = line === "" ? word : `${line} ${word}`
-            if (line !== "" && textWidth(next) > max) {
-                out.push(line)
-                line = word
-            } else line = next
-        }
-        out.push(line)
-        return out
-    })
-
-const LINE = 18
-const BOX_MAX = 240
-
-/** The box a node needs for its words in its shape. */
-const nodeSize = (node: DiagramNode, direction: "LR" | "TB"): { readonly width: number; readonly height: number } => {
-    const words = wrap(node.label, BOX_MAX - 32)
-    const wide = Math.max(0, ...words.map(textWidth))
-    const tall = words.length * LINE
-    switch (node.shape) {
-        case "start":
-        case "end":
-            return { width: 20, height: 20 }
-        case "bar":
-            return direction === "LR" ? { width: 8, height: 64 } : { width: 64, height: 8 }
-        case "diamond": {
-            const width = Math.max(104, Math.round(wide * 1.5) + 40)
-            return { width, height: Math.max(64, Math.round(tall * 1.6) + 40, Math.round(width * 0.55)) }
-        }
-        case "circle": {
-            const side = Math.max(64, wide + 32, tall + 32)
-            return { width: side, height: side }
-        }
-        case "cylinder":
-            return { width: Math.max(96, wide + 40), height: Math.max(64, tall + 40) }
-        case "container":
-            return { width: Math.max(120, wide + 32), height: 0 }
-        default:
-            return { width: Math.max(node.shape === "stadium" ? 96 : 80, wide + 32), height: Math.max(40, tall + 22) }
-    }
-}
 
 /* ---------------------------------------------------------------- the drawings */
 
@@ -256,7 +212,8 @@ interface MessageData extends Record<string, unknown> {
     numbered: boolean
 }
 
-const HEAD = 9
+/** The arrowhead of every graph edge: 10 long, 10 across, open (StepEdge's), at the target only. */
+const HEAD = 10
 
 /** A message: a line between its two anchors (a reply dashed), its head, and its words over it; a self-message a loop to the right. */
 const MessageEdge = ({ id, data }: EdgeProps<Edge<MessageData>>): ReactElement | null => {
@@ -342,9 +299,16 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { rea
             ...still,
         }
     })
+    // Every shared stretch drawn once (the routing law, rule 6): a solid edge keeps it over a dashed one.
+    const once = dedupeRuns(graph.edges.flatMap((edge) => {
+        const route = layout.routes[edge.id]
+        return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edge.dashed ? "fallback" : "plain"] ?? 3 }]
+    }))
     const edges = graph.edges.map((edge): Edge => {
         const style = edge.dashed ? "fallback" : "plain"
-        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: layout.routes[edge.id] }
+        const route = layout.routes[edge.id]
+        const drawn = once.get(edge.id)
+        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: drawn?.joinStart === true, joinEnd: drawn?.joinEnd === true }
         return { id: edge.id, source: edge.source, target: edge.target, type: "step", sourceHandle: "out", targetHandle: "in", className: `${edgeClassName(style)}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}`, zIndex: 2, data, ...still }
     })
     return { nodes, edges }
@@ -383,7 +347,9 @@ const useWidth = (target: RefObject<HTMLElement | null>): number | null => {
     const [width, setWidth] = useState<number | null>(null)
     useEffect(() => {
         const element = target.current
-        if (element === null || typeof ResizeObserver === "undefined") return
+        if (element === null) return
+        setWidth(element.getBoundingClientRect().width)
+        if (typeof ResizeObserver === "undefined") return
         const observer = new ResizeObserver(([entry]) => {
             if (entry !== undefined) setWidth(entry.contentRect.width)
         })
@@ -564,39 +530,11 @@ const useThemeRevision = (anchor: RefObject<HTMLElement | null>): number => {
     return revision
 }
 
-const CONTAINER_INSETS = { top: 36, right: 16, bottom: 16, left: 16 } as const
-
 /** Lays a parsed diagram out: ELK for a graph, the sequence layout for a sequence, Mermaid's SVG for any other kind. */
-const draw = async (parsed: ParsedDiagram, source: string, id: string, anchor: HTMLElement): Promise<Drawn> => {
-    if (parsed.kind === "flowchart" || parsed.kind === "state") {
-        const sizes: SizedNode[] = parsed.nodes.map((node) => ({
-            id: node.id,
-            ...nodeSize(node, parsed.direction),
-            ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
-            ...(node.shape === "container" ? { insets: CONTAINER_INSETS } : {}),
-        }))
-        const links: LinkEnds[] = parsed.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, ...(edge.label === undefined ? {} : { label: edge.label }) }))
-        const layout = await layoutFlow(sizes, links, { direction: parsed.direction, islands: "wrap", width: 960, measure: measureLabel })
-        const parent = new Map(parsed.nodes.flatMap((node) => (node.parentId === undefined ? [] : [[node.id, node.parentId] as const])))
-        const absolute = (nodeId: string): { x: number; y: number } => {
-            const own = layout.positions[nodeId] ?? { x: 0, y: 0 }
-            const up = parent.get(nodeId)
-            if (up === undefined) return own
-            const at = absolute(up)
-            return { x: at.x + own.x, y: at.y + own.y }
-        }
-        const boxes = sizes.map((size) => {
-            const at = absolute(size.id)
-            const box = layout.boxes[size.id] ?? size
-            return { x: at.x, y: at.y, width: box.width, height: box.height }
-        })
-        const routeEnds = Object.values(layout.routes).flatMap((route) => route.points)
-        const minX = Math.min(...boxes.map((box) => box.x), ...routeEnds.map((point) => point[0]))
-        const minY = Math.min(...boxes.map((box) => box.y), ...routeEnds.map((point) => point[1]))
-        const maxX = Math.max(...boxes.map((box) => box.x + box.width), ...routeEnds.map((point) => point[0]))
-        const maxY = Math.max(...boxes.map((box) => box.y + box.height), ...routeEnds.map((point) => point[1]))
-        return { kind: "graph", graph: parsed, layout, sizes, width: Math.max(1, maxX - Math.min(0, minX)), height: Math.max(1, maxY - Math.min(0, minY)) }
-    }
+const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HTMLElement, isPhone: boolean): Promise<Drawn> => {
+    // On a phone a flowchart or a state diagram is laid out top-down, so it fits the width (the routing law, rule 4).
+    const parsed: ParsedDiagram = isPhone && (given.kind === "flowchart" || given.kind === "state") ? { ...given, direction: "TB" } : given
+    if (parsed.kind === "flowchart" || parsed.kind === "state") return { kind: "graph", ...(await layoutDiagram(parsed, textWidth, measureLabel)) }
     if (parsed.kind === "sequence") {
         const layout = layoutSequence(parsed, textWidth)
         return { kind: "sequence", model: parsed, layout, width: layout.width, height: layout.height }
@@ -629,6 +567,8 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
         if (frame.current !== null) setScheme(resolveMermaidTheme(frame.current).darkMode ? "dark" : "light")
     }, [themeRevision])
     const width = useWidth(frame)
+    // The layout waits for the frame's width: a phone lays a graph out top-down.
+    const isPhone = width === null ? null : width < PHONE_LAYOUT_WIDTH
     const words = { ...LABELS, ...labels }
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
     // The tones are read by value: an inline object passed each render redraws nothing unless what it says changed.
@@ -637,14 +577,14 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     toned.current = { tones, messageTones }
 
     useEffect(() => {
-        if (isLoading || frame.current === null) return
+        if (isLoading || frame.current === null || isPhone === null) return
         let isCurrent = true
         const anchor = frame.current
         setDrawing({ status: "loading" })
         parseDiagram(source, toned.current.tones, toned.current.messageTones)
             .then((parsed) => {
                 if (isCurrent) setNeedsTheme(parsed.kind === "other")
-                return draw(parsed, source, `${id}-${String(revision)}`, anchor)
+                return draw(parsed, source, `${id}-${String(revision)}`, anchor, isPhone)
             })
             .then(
                 (drawn) => {
@@ -657,7 +597,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
         return () => {
             isCurrent = false
         }
-    }, [id, isLoading, revision, source, toneKey])
+    }, [id, isLoading, isPhone, revision, source, toneKey])
 
     const state = isLoading ? "loading" : drawing.status
     const reserved = RESERVED[height]

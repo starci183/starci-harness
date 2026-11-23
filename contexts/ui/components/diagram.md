@@ -23,7 +23,7 @@ grid, pan by drag, touch or the arrow keys, zoom by pinch, the + and - keys or t
 the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 / 18).
 
 - **Flowchart and state diagram**: Mermaid's own database (vertices, links and subgraphs; states and transitions) becomes a graph laid out by
-  ELK, layered, with as few crossings as the layout finds and the edges routed round the nodes. A node is a rounded box in the shape its source
+  ELK, layered, with as few crossings as the layout finds, routed by the routing law. A node is a rounded box in the shape its source
   names: `[(db)]` a cylinder, `{x}` a decision diamond, `((x))` a circle, `([x])` a stadium; a subgraph or a composite state is a container its
   nodes stand in; `[*]` is a start dot or an end ring; an edge's words are a pill on its line, a dotted link (`-.->`) dashed. RL draws across,
   BT down.
@@ -35,8 +35,10 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
 
 ## Variants
 `height` reserves the canvas box (`sm` 16rem, `md` 24rem, `lg` 32rem): pick the step the finished drawing fills, so the loading box is the
-ready box. A taller drawing grows the canvas to fit it, up to 35rem; the first view shows the whole drawing at up to 100%, never under 50%,
-and a drawing larger than that opens on its start for the reader to pan. Paint is the grammar's, read from the root's tokens; an app passes no
+ready box. A taller drawing grows the canvas to fit it, up to 45rem; the first view is always the whole drawing, centred, at 100% or less (the
+graph ext's routing law, [graph](graph.md) "The routing law": no handle dots, straight or one bend, a decision's main branch straight on with every branch
+labelled at the split, fitted, dashed only when the source means it and one open arrowhead). Under 480px a flowchart or a state diagram is laid out
+top-down so it fits the width. Paint is the grammar's, read from the root's tokens; an app passes no
 colours.
 
 Tones and caption: a flowchart node or a state takes a tone, `danger` for the faulty step, `success` for the fix, `accent` for a part the change

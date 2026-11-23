@@ -17,6 +17,8 @@ export interface Arrangement {
     readonly positions: Record<string, GraphPosition>
     readonly boxes: Readonly<Record<string, Box>>
     readonly routes: Record<string, MutableRoute>
+    /** The flow's direction: a decision's main branch continues along it (default top-down). */
+    readonly direction?: "LR" | "TB"
 }
 
 const centre = (a: Arrangement, id: string): number => (a.positions[id]?.x ?? 0) + (a.boxes[id]?.width ?? 0) / 2
@@ -48,12 +50,16 @@ const reroute = (route: MutableRoute, start: readonly [number, number], end: rea
 }
 
 /**
- * Makes each decision symmetric: the two branches (the ones leaving by its west and its east port) stand equally far either side of it. The deepest decision goes
- * first, and a branch moves with everything only it reaches (a subtree moves as one), outward, so nothing comes closer to anything. The edges of what moved are
- * moved with it, or, when their two ends moved by different amounts, drawn again in the same orthogonal way. Deterministic: the same input, the same moves.
+ * Aligns each decision's main branch (owner: "Chốt", the routing law, rule 3): the branch leaving by the port on the flow's side (SOUTH top-down, EAST across)
+ * continues straight on, its target centred on the decision across the flow, and the other branches turn to the side. The deepest decision goes first; the main
+ * branch moves with everything only it reaches (a subtree moves as one) and the side branches move with it by the same amount, away from the decision, so
+ * nothing comes closer to anything. The edges of what moved are moved with it, or, when their two ends moved by different amounts, drawn again in the same
+ * orthogonal way. Deterministic: the same input, the same moves.
  */
-export const symmetrise = (a: Arrangement): void => {
+export const alignDecisions = (a: Arrangement): void => {
     const top = new Set(a.island)
+    const across = a.direction === "LR" ? 1 : 0
+    const mainSide: PortSide = a.direction === "LR" ? "EAST" : "SOUTH"
     const next = new Map<string, string[]>()
     for (const link of a.links) if (top.has(link.source) && top.has(link.target)) next.set(link.source, [...(next.get(link.source) ?? []), link.target])
     const depth = new Map<string, number>()
@@ -65,32 +71,37 @@ export const symmetrise = (a: Arrangement): void => {
         depth.set(id, value)
         return value
     }
+    const sideOf = (id: string, link: LinkEnds): PortSide | undefined => (link.sourcePort === undefined ? undefined : a.sides.get(`${id}\u0000${link.sourcePort}`))
     const decisions = a.island.flatMap((id) => {
-        const west = a.links.find((link) => link.source === id && link.sourcePort !== undefined && a.sides.get(`${id}\u0000${link.sourcePort}`) === "WEST")
-        const east = a.links.find((link) => link.source === id && link.sourcePort !== undefined && a.sides.get(`${id}\u0000${link.sourcePort}`) === "EAST")
-        return west === undefined || east === undefined || !top.has(west.target) || !top.has(east.target) ? [] : [{ id, left: west.target, right: east.target }]
+        const out = a.links.filter((link) => link.source === id && link.sourcePort !== undefined && top.has(link.target))
+        const main = out.find((link) => sideOf(id, link) === mainSide)
+        const others = out.filter((link) => link !== main && sideOf(id, link) !== undefined)
+        return main === undefined || others.length === 0 ? [] : [{ id, main: main.target, others: others.map((link) => link.target) }]
     })
     // The deepest decision first (a larger depth is nearer the start, so the smallest goes first).
     decisions.sort((p, q) => depthOf(p.id, new Set()) - depthOf(q.id, new Set()) || p.id.localeCompare(q.id))
-
+    const centreOf = (id: string): number => (across === 0 ? centre(a, id) : (a.positions[id]?.y ?? 0) + (a.boxes[id]?.height ?? 0) / 2)
     const moved = new Map<string, number>()
+    const shift = (id: string, by: number): void => {
+        const at = a.positions[id]
+        if (at === undefined) return
+        a.positions[id] = across === 0 ? { x: Math.round(at.x + by), y: at.y } : { x: at.x, y: Math.round(at.y + by) }
+        moved.set(id, (moved.get(id) ?? 0) + by)
+    }
     for (const d of decisions) {
-        const reachLeft = reach(next, d.left)
-        const reachRight = reach(next, d.right)
-        const own = (mine: ReadonlySet<string>, other: ReadonlySet<string>): string[] => [...mine].filter((id) => !other.has(id) && id !== d.id)
-        const left = own(reachLeft, reachRight)
-        const right = own(reachRight, reachLeft)
-        const toLeft = centre(a, d.id) - centre(a, d.left)
-        const toRight = centre(a, d.right) - centre(a, d.id)
-        if (toLeft <= 0 || toRight <= 0 || Math.abs(toLeft - toRight) < 1) continue
-        const far = Math.max(toLeft, toRight)
-        for (const [ids, by] of [[left, -(far - toLeft)], [right, far - toRight]] as const)
-            for (const id of ids) {
-                const at = a.positions[id]
-                if (at === undefined) continue
-                a.positions[id] = { x: Math.round(at.x + by), y: at.y }
-                moved.set(id, (moved.get(id) ?? 0) + by)
-            }
+        const by = centreOf(d.id) - centreOf(d.main)
+        if (Math.abs(by) < 1) continue
+        const reachMain = reach(next, d.main)
+        const reachOthers = d.others.map((other) => reach(next, other))
+        const shared = (id: string, sets: readonly ReadonlySet<string>[]): boolean => sets.some((set) => set.has(id))
+        const ownMain = [...reachMain].filter((id) => id !== d.id && !shared(id, reachOthers))
+        // A side branch moves with the main one only when it stands on the side the main one moves towards, so it is pushed away, never pulled in.
+        const ownOthers = reachOthers.flatMap((set, index) => {
+            const other = d.others[index]
+            if (other === undefined || Math.sign(centreOf(other) - centreOf(d.main)) !== Math.sign(by)) return []
+            return [...set].filter((id) => id !== d.id && !reachMain.has(id) && !reachOthers.some((each, at) => at !== index && each.has(id)))
+        })
+        for (const id of new Set([...ownMain, ...ownOthers])) shift(id, by)
     }
     if (moved.size === 0) return
 
@@ -104,21 +115,30 @@ export const symmetrise = (a: Arrangement): void => {
         const first = route.points[0]
         const last = route.points[route.points.length - 1]
         if (first === undefined || last === undefined) continue
+        const move = (point: readonly [number, number], by: number): [number, number] => (across === 0 ? [Math.round(point[0] + by), point[1]] : [point[0], Math.round(point[1] + by)])
         if (ds === dt) {
             a.routes[id] = {
-                points: route.points.map(([x, y]) => [Math.round(x + ds), y]),
-                ...(route.label === undefined ? {} : { label: { ...route.label, x: Math.round(route.label.x + ds) } }),
+                points: route.points.map((point) => move(point, ds)),
+                ...(route.label === undefined ? {} : { label: across === 0 ? { ...route.label, x: Math.round(route.label.x + ds) } : { ...route.label, y: Math.round(route.label.y + ds) } }),
             }
-        } else a.routes[id] = reroute(route, [Math.round(first[0] + ds), first[1]], [Math.round(last[0] + dt), last[1]])
+        } else a.routes[id] = reroute(route, move(first, ds), move(last, dt))
     }
 
-    // Moving outward can leave the island left of its origin: bring it back.
+    // Moving outward can leave the island left of or above its origin: bring it back.
     const left = Math.min(...a.island.map((id) => a.positions[id]?.x ?? 0))
     if (left < 0) {
         for (const [id, at] of Object.entries(a.positions)) if (a.island.includes(id)) a.positions[id] = { x: at.x - left, y: at.y }
         for (const route of Object.values(a.routes)) {
             route.points = route.points.map(([x, y]) => [x - left, y])
             if (route.label !== undefined) route.label = { ...route.label, x: route.label.x - left }
+        }
+    }
+    const above = Math.min(...a.island.map((id) => a.positions[id]?.y ?? 0))
+    if (above < 0) {
+        for (const [id, at] of Object.entries(a.positions)) if (a.island.includes(id)) a.positions[id] = { x: at.x, y: at.y - above }
+        for (const route of Object.values(a.routes)) {
+            route.points = route.points.map(([x, y]) => [x, y - above])
+            if (route.label !== undefined) route.label = { ...route.label, y: route.label.y - above }
         }
     }
 }
