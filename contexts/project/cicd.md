@@ -102,9 +102,12 @@ process's own watcher argv.
 
 **The debounced dev sync.** A landing never syncs by itself: `lane gate --land` marks its app's dev checkout as wanting a sync, and one runner per
 checkout (`starci dev sync-runner`, started through a relay so that no terminal tab or agent owns it) waits until no landing marked it for
-`debounceSeconds` (120 s), stops the checkout's stray dev servers (a dev server running from inside the checkout that its stack does not record;
-nothing else), runs `dev sync --execute` once to the newest `origin/dev`, and syncs again only when a landing marked the checkout during that
-sync. Its files are in the checkout's git folder, the same for every CLI copy of the machine: `<git common dir>/starci-dev-sync/` holds the mark
+`debounceSeconds` (120 s), stops the checkout's stray dev servers (a process run from inside the checkout that is a dev server or listens on a port
+the environment declares, and that its stack does not record: neither a recorded process, one of its children, nor a web's edge; an earlier hand
+run, or a copy a moved checkout or an older lander left, which `stack up` refuses as STACK_LOCAL_SECOND_COPY; nothing else), runs `dev sync
+--execute` once to the newest `origin/dev`, brings the stack up (`app stack up --execute`) when a declared process has nothing listening after it,
+and syncs again only when a landing marked the checkout during that sync. `npm ci` that dies on a held file (ENOTEMPTY, EPERM, EBUSY: an antivirus
+scanning a large file) runs again up to four times, its `node_modules` removed with retries before each try. Its files are in the checkout's git folder, the same for every CLI copy of the machine: `<git common dir>/starci-dev-sync/` holds the mark
 (`wanted.json`), the status (`status.json`: `waiting`, `syncing`, `synced`, or `failed` with the refusal's code and message), the runner's lock
 (its pid) and its log. `starci dev sync-runner --status --dir <checkout>` prints the status and the pending mark; `--request` marks and starts it
 by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once.
@@ -149,8 +152,10 @@ batch lander only.
 
 `afterLand` (default `true` in a `repos` entry, `false` at the top level) lets a landing mark `checkout` (default: the repository's main checkout);
 landings inside `debounceSeconds` of each other give one sync after the last. `local` keeps those packages on the local registry across syncs;
-empty restores the registry versions. `processes` names the stack processes of each side. A sync that is refused or fails is written to the
-runner's status with its reason, and the next landing (or `--request`) tries again.
+empty restores the registry versions. `processes` names the stack processes of each side; a sync restarts the processes the app declares
+(`environments.<env>.local.processes` of its application-stacks.yaml, each by the side its `cwd` is under, `core/dev/declared.ts`) whenever the
+setting names one the app does not declare, so the default `api`/`web` never reaches an app whose processes are `core`, `app`, `landing`. A sync
+that is refused or fails is written to the runner's status with its reason, and the next landing (or `--request`) tries again.
 
 The deprecated batch lander never runs from a checkout's `node_modules`: a `starci lane land` started from inside a worktree of the app (`npx
 starci lane land` in its main checkout) installs the same starci-harness version once into `<lanes>/_lander-cli/<version>`

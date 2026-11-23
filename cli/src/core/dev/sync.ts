@@ -9,12 +9,13 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord, writeInstallRecord } from "../deps/install-local.js"
 import { stageTree, stagedOutputs, stagedTrackedChanges, swapStaged } from "./stage.js"
+import { declaredProcesses, processesOfApp } from "./declared.js"
 import type { Swapped } from "./stage.js"
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
 import { syncLockFile, withSyncLock } from "./sync-lock.js"
-import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
+import { installPlaces, installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import type { PrepareFailure } from "../../harness/prepare-tree.js"
@@ -96,6 +97,30 @@ export interface DevSyncRequest {
     readonly say: (line: string) => void
 }
 
+/** How many times a sync runs `npm ci` when it dies on a file something holds. */
+export const NPM_CI_TRIES = 4
+
+/** An install error of a file something holds for a moment (an antivirus scanning a large file it just saw written). */
+const HELD_FILE = /\b(?:ENOTEMPTY|EPERM|EBUSY|EACCES)\b/u
+
+/**
+ * `npm ci` at `root`, run again up to NPM_CI_TRIES times when it dies on a held file: before each new try every `node_modules` it wrote is removed
+ * with retries and a pause lets the holder go. Any other failure, or the last one, is thrown as it is.
+ */
+export const npmCiRetried = async (root: string, ci: (root: string) => Promise<void>, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms)), tries: number = NPM_CI_TRIES): Promise<void> => {
+    for (let attempt = 1; ; attempt += 1) {
+        try {
+            await ci(root)
+            return
+        } catch (error) {
+            const text = error instanceof Error ? error.message : String(error)
+            if (attempt >= tries || !HELD_FILE.test(text)) throw error
+            for (const place of installPlaces(root)) rmSync(place, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 })
+            await pause(5000 * attempt)
+        }
+    }
+}
+
 /** The seams of a sync that touch processes and node_modules, real by default and replaced by the specs. */
 export interface DevSyncDeps {
     /** The processes the checkout's dev environment recorded (stack-stop.ts readStackProcesses). */
@@ -126,7 +151,7 @@ export interface DevSyncDeps {
 export const realDevSyncDeps: DevSyncDeps = {
     stackProcesses: readStackProcesses,
     stop: stopStackProcesses,
-    npmCi: (root) => appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci"),
+    npmCi: (root) => npmCiRetried(root, (at) => appNpm(at, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci")),
     prepare: async (root) => (await prepareTree(root, "dev sync")).failure,
     fs: realInstallFs,
     pause: (ms) => new Promise((done) => setTimeout(done, ms)),
@@ -209,7 +234,8 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
     const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
     const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
-    const processes = processesFor(sides, request.processes)
+    // The processes the app declares for this environment (core/dev/declared.ts), not names the settings assumed.
+    const processes = processesFor(sides, processesOfApp(request.processes, declaredProcesses(root, request.env)))
     const lockChanged = files.includes(LOCKFILE)
     const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0

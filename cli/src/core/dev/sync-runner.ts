@@ -3,7 +3,8 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as sleep } from "node:timers/promises"
 import { captureGit, repositoryRoot } from "../../shared/git.js"
-import { killPidTree } from "../../shared/exec.js"
+import { captureTool, killPidTree } from "../../shared/exec.js"
+import { declaredProcesses } from "./declared.js"
 import { startRelayed } from "../../shared/relay.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -14,7 +15,7 @@ import { listProcesses } from "../../harness/process-table.js"
 import type { HostProcess } from "../../harness/process-table.js"
 import { takeLiveLock } from "../../harness/slots.js"
 import { devSync } from "./sync.js"
-import { readStackProcesses } from "./stack-stop.js"
+import { appCli, readStackProcesses } from "./stack-stop.js"
 
 /**
  * The debounced dev sync of an app's dev checkout (contexts/project/cicd.md "Dev and prod"): a landing on dev only marks the checkout as wanting a sync
@@ -128,13 +129,35 @@ export const settingsForCheckout = (settings: DevSyncSettings, checkout: string)
 /** A dev server's command line: next dev or start, a watcher (ts-node-dev, nodemon, tsx watch), nest start, vite. */
 const DEV_SERVER = /\bnext(?:\.js)?["']?\s+(?:dev|start)\b|ts-node-dev|nodemon|\btsx\s+watch\b|\bnest\s+start\b|\bvite(?:\.js)?["']?(?:\s|$)/iu
 
+/** The edge of a dev web (@starci/hfs stack/edge-server.mjs): the stack's own, never a stray. */
+const EDGE = /edge-server\.m?js/iu
+
 /**
- * The stray dev servers of a checkout: processes whose command line runs a dev server from inside the checkout and that its dev stack does not record
- * (an earlier hand run, a duplicate the stack lost track of). Only these are ever stopped by the runner. Pure.
+ * The stray dev servers of a checkout: processes run from inside the checkout (its path on their command line) that are a dev server, or that listen
+ * on a port the environment declares (`listeners`), and that its dev stack does not record: neither a recorded pid nor one of their descendants, nor
+ * a web's edge (an earlier hand run, a copy a moved checkout or an older lander left, which blocks `stack up` with STACK_LOCAL_SECOND_COPY). Only
+ * these are ever stopped by the runner. Pure.
  */
-export const strayDevServers = (table: readonly HostProcess[], checkout: string, recorded: ReadonlySet<number>, self: number = process.pid): HostProcess[] => {
+export const strayDevServers = (table: readonly HostProcess[], checkout: string, recorded: ReadonlySet<number>, self: number = process.pid, listeners: ReadonlySet<number> = new Set()): HostProcess[] => {
     const inside = resolve(checkout).replaceAll("\\", "/").toLowerCase()
-    return table.filter((row) => row.pid !== self && !recorded.has(row.pid) && DEV_SERVER.test(row.commandLine) && row.commandLine.replaceAll("\\", "/").toLowerCase().includes(inside))
+    const owned = new Set(recorded)
+    for (let grew = true; grew; ) {
+        grew = false
+        for (const row of table) {
+            if (!owned.has(row.pid) && owned.has(row.ppid)) {
+                owned.add(row.pid)
+                grew = true
+            }
+        }
+    }
+    return table.filter((row) => row.pid !== self && !owned.has(row.pid) && !EDGE.test(row.commandLine) && (DEV_SERVER.test(row.commandLine) || listeners.has(row.pid)) && row.commandLine.replaceAll("\\", "/").toLowerCase().includes(inside))
+}
+
+/** The pids listening on `ports` of this host (Windows: Get-NetTCPConnection); empty when none is asked or the host cannot tell. */
+const listenersOn = async (ports: readonly number[]): Promise<Set<number>> => {
+    if (ports.length === 0 || process.platform !== "win32") return new Set()
+    const run = await captureTool("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", `Get-NetTCPConnection -State Listen -LocalPort ${ports.map((port) => String(Math.trunc(port))).join(",")} -ErrorAction SilentlyContinue | ForEach-Object { $_.OwningProcess }`], process.cwd(), { timeoutMs: 30_000 })
+    return new Set(run.stdout.split(/\s+/u).map(Number).filter((pid) => Number.isInteger(pid) && pid > 0))
 }
 
 /** The seams of the runner: the real ones sync and stop processes; the specs hand in their own. */
@@ -145,6 +168,18 @@ export interface RunnerDeps {
     readonly strays: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
     readonly sync: (checkout: string, settings: DevSyncSettings) => Promise<{ readonly exitCode?: number; readonly data: { readonly to: string; readonly restart: string } }>
     readonly settings: () => DevSyncSettings
+    /** After a green sync: the declared processes nothing listens for (a stack an older lander or a moved checkout left down) are brought up; the lines saying what. */
+    readonly ensureUp?: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
+}
+
+const realEnsureUp = async (checkout: string, settings: DevSyncSettings): Promise<readonly string[]> => {
+    const declared = (declaredProcesses(checkout, settings.env) ?? []).filter((one) => one.port !== undefined)
+    if (declared.length === 0 || process.platform !== "win32") return []
+    const down: string[] = []
+    for (const one of declared) if ((await listenersOn([one.port ?? 0])).size === 0) down.push(one.name)
+    if (down.length === 0) return []
+    const up = await captureTool(process.execPath, [appCli(checkout), "app", "stack", "up", "--env", settings.env, "--execute"], checkout, { timeoutMs: 30 * 60_000 })
+    return [`nothing listened for ${down.join(", ")}: app stack up --env ${settings.env} --execute exited ${String(up.exitCode)}`]
 }
 
 const realStrays = async (checkout: string, settings: DevSyncSettings): Promise<readonly string[]> => {
@@ -154,7 +189,8 @@ const realStrays = async (checkout: string, settings: DevSyncSettings): Promise<
     const table = await listProcesses()
     if (typeof table === "string") return []
     const pids = new Set(Object.values(recorded).map((entry) => entry.pid))
-    return strayDevServers(table, checkout, pids).map((row) => `${killPidTree(row.pid) ? "stopped" : "could not stop"} stray dev server pid ${String(row.pid)} (${row.commandLine.slice(0, 120)})`)
+    const ports = (declaredProcesses(checkout, settings.env) ?? []).flatMap((one) => (one.port === undefined ? [] : [one.port]))
+    return strayDevServers(table, checkout, pids, process.pid, await listenersOn(ports)).map((row) => `${killPidTree(row.pid) ? "stopped" : "could not stop"} stray dev server pid ${String(row.pid)} (${row.commandLine.slice(0, 120)})`)
 }
 
 export const realRunnerDeps: RunnerDeps = {
@@ -163,6 +199,7 @@ export const realRunnerDeps: RunnerDeps = {
     strays: realStrays,
     sync: (checkout, settings) => devSync({ checkout, local: settings.local, env: settings.env, execute: true, restart: true, processes: settings.processes, say: (line) => { process.stdout.write(`${new Date().toISOString()} ${line}\n`) } }),
     settings: () => loadLocalSettings().devSync,
+    ensureUp: realEnsureUp,
 }
 
 /** How long a waiting runner sleeps before it reads the mark again, at most. */
@@ -205,6 +242,7 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
                 for (const line of strays) say(line)
                 const done = await deps.sync(checkout, settings)
                 failed = (done.exitCode ?? 0) !== 0
+                if (!failed) for (const line of (await deps.ensureUp?.(checkout, settings)) ?? []) say(line)
                 write(failed ? { state: "failed", reason: `${wanted.reason}; dev sync moved to ${done.data.to.slice(0, 10)} but the restart failed (read the stack log)`, to: done.data.to } : { state: "synced", reason: `${wanted.reason}; restart ${done.data.restart}`, to: done.data.to })
             } catch (error) {
                 failed = true
