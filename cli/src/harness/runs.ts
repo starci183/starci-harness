@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { killPidTree, pidAlive } from "../shared/exec.js"
+import { killPidTree } from "../shared/exec.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 
@@ -225,7 +225,7 @@ export const reapRuns = (root: string, probe: ReapProbe, graceMinutes: number, e
             continue
         }
         stop(record.pid)
-        for (const child of record.children) if (pidAlive(child.pid) && !probe.spared.has(child.pid)) stop(child.pid)
+        for (const child of record.children) if (probe.same(child) && !probe.spared.has(child.pid)) stop(child.pid)
         drop(root, record.pid)
         stopped.push(record)
         try {

@@ -69,8 +69,8 @@ const PROBES: readonly Probe[] = [
     { name: "success badge tint", selector: '[data-component="Badge"][data-tone="success"]', property: "background-color", token: "--success-soft" },
     { name: "danger badge ink", selector: '[data-component="Badge"][data-tone="danger"]', property: "color", token: "--danger-soft-foreground", familyToken: { "offset-pop": "--foreground" } },
     { name: "danger badge tint", selector: '[data-component="Badge"][data-tone="danger"]', property: "background-color", token: "--danger-soft" },
-    // A text link is the exact brand --accent, underlined, and no contrast law judges it: the token the theme proves it paints.
-    { name: "link", selector: ".starci-core-link", property: "color", token: "--accent", familyToken: { "offset-pop": "--foreground" } },
+    // A text link is HeroUI v3's own link (Grammar 0.56.0, owner 2026-11-23): `--link`, the foreground in both families, never the accent.
+    { name: "link", selector: ".starci-core-link", property: "color", token: "--foreground" },
     { name: "heading", selector: '[data-component="Heading"]', property: "color", token: "--foreground" },
     { name: "status dot fill", selector: ".starci-core-status-dot-mark", property: "background-color", token: "--success" },
     { name: "field fill", selector: "[data-slot='input']", property: "background-color", token: "--field-background" },
