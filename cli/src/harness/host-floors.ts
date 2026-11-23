@@ -41,6 +41,8 @@ export const freeDiskMb = (path: string): number | null => {
 /** The floor as configured: the free space a heavy command's drive keeps. */
 export interface FloorRules {
     readonly diskFloorMb: number
+    /** Where the floor is set, as the queue line names it (default: heavy.diskFloorMb of ops/liveness.yaml). */
+    readonly source?: string | undefined
 }
 
 /** One reading of the host the floor is judged on. */
@@ -55,6 +57,12 @@ export const readFloors = (path: string): FloorReading => ({ diskMb: freeDiskMb(
 
 const gbOf = (mb: number): string => `${(mb / 1024).toFixed(1).replace(/\.0$/, "")} GB`
 
+const floorName = (rules: FloorRules): string => {
+    const source = rules.source ?? "heavy.diskFloorMb (ops/liveness.yaml)"
+    const split = source.indexOf(" ")
+    return split < 0 ? `${source} ${gbOf(rules.diskFloorMb)}` : `${source.slice(0, split)} ${gbOf(rules.diskFloorMb)}${source.slice(split)}`
+}
+
 /** The floor a reading is under, as the clause a queue line names; empty when the drive has room or cannot be read. Pure. */
 export const floorsHeld = (rules: FloorRules, reading: FloorReading): string[] =>
-    reading.diskMb !== null && reading.diskMb < rules.diskFloorMb ? [`free disk ${gbOf(reading.diskMb)} on the drive of ${reading.disk} is under heavy.diskFloorMb ${gbOf(rules.diskFloorMb)} (ops/liveness.yaml)`] : []
+    reading.diskMb !== null && reading.diskMb < rules.diskFloorMb ? [`free disk ${gbOf(reading.diskMb)} on the drive of ${reading.disk} is under ${floorName(rules)}`] : []

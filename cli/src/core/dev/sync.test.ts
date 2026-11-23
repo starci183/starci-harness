@@ -550,3 +550,38 @@ void test("a sync that asks for the overlay already installed leaves the running
     assert.match(dry.message, /would restore the committed pins of package-lock\.json, package\.json/u)
     assert.deepEqual(dry.data.sides, ["be", "fe"])
 })
+
+void test("with the staging seam the new tree is installed and built before the stop, and only the swap and the restart happen after it", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: (_root, to) => {
+            log.push(`stage ${to.slice(0, 7)}`)
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+        },
+    }
+    const target = gitIn(pusher, "rev-parse", "HEAD")
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage }))
+    assert.deepEqual(log, [`stage ${target.slice(0, 7)}`, "npm ci (node_modules moved aside)", "prepare", "status", "stop api,web", "swap", "restart api,web"])
+    assert.equal(done.data.restart, "done")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), target)
+    // A staged build that fails stops nothing and moves nothing: the stack keeps serving the old tree.
+    writeFileSync(join(pusher, "package-lock.json"), '{"name":"app","lockfileVersion":3,"requires":true,"packages":{"":{"name":"app","version":"1.0.2"}}}\n')
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "lockfile again")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const failed: string[] = []
+    const before = gitIn(checkout, "rev-parse", "HEAD")
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps(failed, { stage, prepare: () => Promise.resolve({ command: "npm run codegen", exitCode: 1, output: "boom" }) })), refused("DEV_SYNC_BUILD", "nothing was stopped"))
+    assert.equal(failed.some((line) => line.startsWith("stop") || line === "swap"), false)
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), before)
+})

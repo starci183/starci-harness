@@ -1,0 +1,28 @@
+import { Refusal } from "../shared/errors.js"
+import { readMachines } from "./machines.js"
+import type { MachinesRead } from "./machines.js"
+
+/** The settings of this host as a machine, as read now. */
+export interface HostSettings {
+    /** config.yaml `host.diskFloorMb`, when the host sets one. */
+    readonly diskFloorMb?: number
+    /** Where they were read: config.yaml, or why none was found. */
+    readonly source: string
+}
+
+/**
+ * The `host` block of this machine's config.yaml (harness/machines.ts), read fresh at every call and never cached, so a value the owner changes reaches a
+ * command that is already waiting. A host whose config.yaml cannot be found (no harness home above the working folder, a CI runner) reads as every
+ * default, saying so in `source`; a damaged config.yaml is refused (MACHINES_INVALID) as every machines verb refuses it.
+ */
+export const readHostSettings = (read: () => MachinesRead = () => readMachines()): HostSettings => {
+    let found: MachinesRead
+    try {
+        found = read()
+    } catch (error) {
+        if (error instanceof Refusal && error.code === "HOST_STATE_NOT_FOUND") return { source: `no config.yaml (${error.message})` }
+        throw error
+    }
+    const floor = found.doc.host?.diskFloorMb
+    return { ...(floor === undefined ? {} : { diskFloorMb: floor }), source: found.file }
+}

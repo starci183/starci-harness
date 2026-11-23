@@ -42,7 +42,7 @@ export const registerReady = async (cwd: string, flags: { readonly lane?: string
  */
 export const laneReadyVerb = defineVerb({
     path: ["lane", "ready"],
-    summary: "register this lane's pushed, locally gated sha with the batch lander of dev; then monitor <lanes>/_land-status/<lane>.json",
+    summary: "deprecated (a lane lands itself with lane gate --push --land): register this lane's pushed, locally gated sha with the batch lander of dev; then monitor <lanes>/_land-status/<lane>.json",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/lane-ready@1",

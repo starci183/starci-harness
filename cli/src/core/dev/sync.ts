@@ -7,12 +7,15 @@ import { captureGit, currentBranch, git, repositoryRoot, resolveSha, trackedChan
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
-import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord } from "../deps/install-local.js"
+import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord, writeInstallRecord } from "../deps/install-local.js"
+import { stageTree, stagedOutputs, stagedTrackedChanges, swapStaged } from "./stage.js"
+import { declaredProcesses, processesOfApp } from "./declared.js"
+import type { Swapped } from "./stage.js"
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
 import { syncLockFile, withSyncLock } from "./sync-lock.js"
-import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
+import { installPlaces, installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import type { PrepareFailure } from "../../harness/prepare-tree.js"
@@ -94,6 +97,30 @@ export interface DevSyncRequest {
     readonly say: (line: string) => void
 }
 
+/** How many times a sync runs `npm ci` when it dies on a file something holds. */
+export const NPM_CI_TRIES = 4
+
+/** An install error of a file something holds for a moment (an antivirus scanning a large file it just saw written). */
+const HELD_FILE = /\b(?:ENOTEMPTY|EPERM|EBUSY|EACCES)\b/u
+
+/**
+ * `npm ci` at `root`, run again up to NPM_CI_TRIES times when it dies on a held file: before each new try every `node_modules` it wrote is removed
+ * with retries and a pause lets the holder go. Any other failure, or the last one, is thrown as it is.
+ */
+export const npmCiRetried = async (root: string, ci: (root: string) => Promise<void>, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms)), tries: number = NPM_CI_TRIES): Promise<void> => {
+    for (let attempt = 1; ; attempt += 1) {
+        try {
+            await ci(root)
+            return
+        } catch (error) {
+            const text = error instanceof Error ? error.message : String(error)
+            if (attempt >= tries || !HELD_FILE.test(text)) throw error
+            for (const place of installPlaces(root)) rmSync(place, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 })
+            await pause(5000 * attempt)
+        }
+    }
+}
+
 /** The seams of a sync that touch processes and node_modules, real by default and replaced by the specs. */
 export interface DevSyncDeps {
     /** The processes the checkout's dev environment recorded (stack-stop.ts readStackProcesses). */
@@ -109,16 +136,27 @@ export interface DevSyncDeps {
     readonly pause: (ms: number) => Promise<void>
     /** One run of the app's pinned CLI (`app stack up` to migrate, `app stack restart`). */
     readonly appRun: (root: string, args: readonly string[]) => Promise<ToolRun>
+    /**
+     * The build-first install (core/dev/stage.ts): a staging worktree at the new commit, its outputs and the tracked files its install changed, and the
+     * swap into the checkout. Absent, the install runs in place after the stop (safe-install.ts).
+     */
+    readonly stage?: {
+        readonly tree: (root: string, to: string) => Promise<string>
+        readonly outputs: (staging: string) => Promise<readonly string[]>
+        readonly tracked: (staging: string) => Promise<readonly string[]>
+        readonly swap: (staging: string, root: string, outputs: readonly string[], tracked: readonly string[]) => Promise<Swapped>
+    }
 }
 
 export const realDevSyncDeps: DevSyncDeps = {
     stackProcesses: readStackProcesses,
     stop: stopStackProcesses,
-    npmCi: (root) => appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci"),
+    npmCi: (root) => npmCiRetried(root, (at) => appNpm(at, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci")),
     prepare: async (root) => (await prepareTree(root, "dev sync")).failure,
     fs: realInstallFs,
     pause: (ms) => new Promise((done) => setTimeout(done, ms)),
     appRun: (root, args) => captureTool(process.execPath, [appCli(root), ...args], root),
+    stage: { tree: stageTree, outputs: stagedOutputs, tracked: stagedTrackedChanges, swap: (staging, root, outputs, tracked) => swapStaged(staging, root, outputs, tracked) },
 }
 
 const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
@@ -196,7 +234,8 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
     const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
     const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
-    const processes = processesFor(sides, request.processes)
+    // The processes the app declares for this environment (core/dev/declared.ts), not names the settings assumed.
+    const processes = processesFor(sides, processesOfApp(request.processes, declaredProcesses(root, request.env)))
     const lockChanged = files.includes(LOCKFILE)
     const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
@@ -226,6 +265,24 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         say("dry run: nothing moved; add --execute")
         return { data: { ...base, overlay: overlayBefore, installed: false, migrated: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
     }
+    // Build first: with a staging seam, an install is done and the tree built in a worktree of the new commit while the stack keeps serving, and only the
+    // swap and the restart happen after the stop. A copy an interrupted in-place sync left aside goes through the in-place path, which restores it.
+    const stage = writesModules && aside.length === 0 ? deps.stage : undefined
+    let staged: { readonly staging: string; readonly outputs: readonly string[]; readonly tracked: readonly string[] } | undefined
+    if (stage !== undefined) {
+        const staging = await stage.tree(root, to)
+        say(`building the new tree in ${staging} first (npm ci${requested.length > 0 ? ", the local packages" : ""}, ${PREPARE_SCRIPTS.join(", ")}); the running api and web keep serving until the swap`)
+        await deps.npmCi(staging)
+        say("npm ci (staged): done")
+        if (requested.length > 0) {
+            const installed = await installLocal(staging, requested, PORT, true)
+            say(`(staged) ${installed.message.split("\n")[0] ?? "installed the local packages"}`)
+        }
+        const failed = await deps.prepare(staging)
+        if (failed !== undefined) throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in the staged tree of ${to.slice(0, 9)} (${staging}): nothing was stopped and nothing moved, the stack keeps serving the previous build; fix it on a lane and sync again:\n${failed.output}`)
+        staged = { staging, outputs: await stage.outputs(staging), tracked: await stage.tracked(staging) }
+        say(`staged build ready: ${String(staged.outputs.length)} built path(s) to swap in`)
+    }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
     if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing restored, reinstalled or restarted for it`)
     else if (record !== undefined) {
@@ -251,17 +308,28 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         return run.exitCode === 0
     }
     try {
-        const restored = restoreLeftAside(root, deps.fs)
+        if (stage !== undefined && staged !== undefined) {
+            const swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
+            if (requested.length > 0) {
+                const record = readInstallRecord(staged.staging)
+                if (record !== undefined) writeInstallRecord(root, record)
+                rmSync(installRecordFile(staged.staging), { force: true })
+            }
+            rmSync(join(root, UNPREPARED), { force: true })
+            say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.leftover.length > 0 ? `; left for the next sync (held): ${swapped.leftover.join(", ")}` : ""}`)
+        }
+        const restored = stage === undefined ? restoreLeftAside(root, deps.fs) : []
         if (restored.length > 0) say(`moved back the copy an earlier sync left aside: ${restored.join(", ")}`)
-        if (needInstall) {
+        if (stage !== undefined) say("npm ci: done in the staged tree")
+        else if (needInstall) {
             await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
             say("npm ci: done")
         } else say("npm ci: the lockfile did not change, skipped")
-        if (requested.length > 0) {
+        if (requested.length > 0 && stage === undefined) {
             const installed = await installLocal(root, requested, PORT, true)
             say(installed.message.split("\n")[0] ?? "installed the local packages")
         }
-        if (prepares) {
+        if (prepares && stage === undefined) {
             const failed = await deps.prepare(root)
             if (failed !== undefined) {
                 writeFileSync(join(root, UNPREPARED), `${to}\n`)

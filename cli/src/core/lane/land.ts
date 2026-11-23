@@ -46,7 +46,7 @@ const POLL_MS = 30_000
  */
 export const laneLandVerb = defineVerb({
     path: ["lane", "land"],
-    summary: "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod --level dev (the fast level; a lane registered again with a new sha cancels the running gate and re-forms the batch, its status says superseded by <sha>), squash the batch into ONE commit (its message lists the lanes and their shas), push dev; red drops the lanes its findings name and re-gates once, never bisects",
+    summary: "deprecated (a lane lands itself with lane gate --push --land; this runs until the owner retires it): run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod --level dev (the fast level; a lane registered again with a new sha cancels the running gate and re-forms the batch, its status says superseded by <sha>), squash the batch into ONE commit (its message lists the lanes and their shas), push dev; red drops the lanes its findings name and re-gates once, never bisects",
     effect: "remote",
     roles: ["owner", "coordinator", "lead", "release"],
     schema: "starci/lane-land@1",

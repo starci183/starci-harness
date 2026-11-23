@@ -3,9 +3,9 @@ import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 
 /**
- * An install that never leaves a half-wiped `node_modules` (`dev sync`). A staging install swapped in by a rename is not sound for an app
- * of npm workspaces: `npm ci` writes the root `node_modules` and a nested one in any workspace that needs its own versions, and links each
- * workspace from the root, so a staging copy would need the whole tree of workspace folders and its links would point into the copy. So:
+ * The in-place install of `dev sync`, which never leaves a half-wiped `node_modules`. A sync builds first in a staging worktree of the whole tree and
+ * swaps it in, re-pointing the workspace links into the checkout (stage.ts); this path is its fallback, for a seam with no staging and for a copy an
+ * interrupted in-place sync left aside:
  *  1. every `node_modules` npm ci replaces (the root's, and each workspace's that exists) is renamed aside first, on the same volume. On
  *     Windows a rename of a folder whose file a process loaded fails at once, before anything is deleted; one bounded retry follows a
  *     short pause (a process that was just ended may still be letting go of its files);
@@ -27,7 +27,8 @@ export interface InstallFs {
     readonly exists: (path: string) => boolean
 }
 
-export const realInstallFs: InstallFs = { rename: renameSync, remove: (path) => { rmSync(path, { recursive: true, force: true }) }, exists: existsSync }
+// A removal retries a busy file (ENOTEMPTY, EPERM, EBUSY): an antivirus scan holds a large file it just saw written for a moment.
+export const realInstallFs: InstallFs = { rename: renameSync, remove: (path) => { rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }) }, exists: existsSync }
 
 /** How long the one retry of a refused rename waits. */
 export const RETRY_MS = 3_000

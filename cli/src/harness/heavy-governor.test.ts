@@ -10,7 +10,8 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { governorStorePath } from "./ledger.js"
-import { HEAVY_PARENTS_ENV, HOST_HELD, admission, governed, heavyRoomMb, heavySlots, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
+import { readHostSettings } from "./host-settings.js"
+import { HEAVY_PARENTS_ENV, HOST_HELD, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
 import { withMachine } from "./machine.js"
 
 const state = mkdtempSync(join(tmpdir(), "starci-governor-"))
@@ -136,6 +137,32 @@ void test("the disk floor holds a start: a verify's bound ends the wait as HOST_
     })
     assert.deepEqual(order, [])
     assert.match(text, /npm-ci waits for a heavy-command slot .*under heavy\.diskFloorMb/u)
+    assert.equal(heavySlots().length, 0)
+})
+
+void test("the disk floor is the host's config.yaml host.diskFloorMb when set, else the ops/liveness.yaml default, and a waiting command reads it again at every attempt", async () => {
+    assert.deepEqual(diskFloorOf({ diskFloorMb: 15_360 }, { source: "config.yaml" }), { diskFloorMb: 15_360, source: "heavy.diskFloorMb (ops/liveness.yaml)" })
+    assert.deepEqual(diskFloorOf({ diskFloorMb: 15_360 }, { diskFloorMb: 8192, source: "D:/.claude/.runtime/config.yaml" }), { diskFloorMb: 8192, source: "host.diskFloorMb (D:/.claude/.runtime/config.yaml)" })
+    const machines = (host: object | undefined) => () => ({ file: "C:/state/config.yaml", exists: true, doc: { schema: "starci/machines@1" as const, ...(host === undefined ? {} : { host }), machines: {} } })
+    assert.equal(readHostSettings(machines({ diskFloorMb: 4096 })).diskFloorMb, 4096)
+    assert.equal(readHostSettings(machines(undefined)).diskFloorMb, undefined)
+    // A host whose floor the owner lowers while a command waits: the next attempt reads the new floor and admits it, no restart of the waiting process.
+    let floorMb = 999_999
+    let reads = 0
+    const changing: Governed = {
+        ...host,
+        reread: (last) => {
+            reads += 1
+            if (reads === 3) floorMb = 0
+            return currentHeavyRules(last, () => last, () => ({ diskFloorMb: floorMb, source: "config.yaml" }))
+        },
+        floors: (_cwd, now) => (now.diskFloorMb > 0 ? [`free disk 1 GB is under host.diskFloorMb ${String(now.diskFloorMb)}`] : []),
+    }
+    const order: string[] = []
+    const text = await stderrOf(() => run(changing, "install", "waits-for-floor", order))
+    assert.deepEqual(order, ["waits-for-floor"])
+    assert.ok(reads >= 3, "the rules were read again at each attempt")
+    assert.match(text, /under host\.diskFloorMb 999999/u)
     assert.equal(heavySlots().length, 0)
 })
 

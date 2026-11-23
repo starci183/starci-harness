@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { sharedStateBase } from "./ledger.js"
+import { LOCAL_ROOT_ENV, sharedStateBase } from "./ledger.js"
+import { machinesBase } from "./machines.js"
 
 /**
  * The settings of this machine alone: `<shared state base>/local-settings.json` (the harness main checkout's `.runtime/`, git-ignored, or
@@ -59,8 +60,22 @@ export type DevSyncSettings = z.infer<typeof devSyncSchema>
 /** This machine's settings. */
 export type LocalSettings = z.infer<typeof settingsSchema>
 
+/**
+ * The state folder that holds this machine's settings: STARCI_LOCAL_ROOT when set; else the `.runtime` of the harness home found as config.yaml's is
+ * (harness/machines.ts machinesBase: STARCI_OPS_DIR, the harness home above the working folder, the CLI's own checkout), so a CLI installed in an app's
+ * node_modules reads the same file as the harness checkout instead of an empty one of its own package; else the CLI's own shared state base.
+ */
+export const settingsBase = (): string => {
+    if ((process.env[LOCAL_ROOT_ENV] ?? "") !== "") return sharedStateBase()
+    try {
+        return machinesBase()
+    } catch {
+        return sharedStateBase()
+    }
+}
+
 /** Where this machine's settings live. */
-export const localSettingsPath = (base: string = sharedStateBase()): string => join(base, LOCAL_SETTINGS_FILE)
+export const localSettingsPath = (base: string = settingsBase()): string => join(base, LOCAL_SETTINGS_FILE)
 
 /**
  * Sets `devSync.local` of the settings file to exactly `entries`, keeping every other key of the file as it is (an absent file is created). The written

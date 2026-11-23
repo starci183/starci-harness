@@ -22,7 +22,7 @@ export const withdrawLane = (dir: string, lane: string): { readonly fromBatch?: 
 /** `starci lane withdraw <lane>`: take a lane out of the ready set, and out of a batch queued or gating with it. */
 export const laneWithdrawVerb = defineVerb({
     path: ["lane", "withdraw"],
-    summary: "take a lane out of the batch lander's ready set and out of a batch under way (that batch aborts and the others are gated again; a withdrawn lane never lands)",
+    summary: "deprecated with the batch lander (lane gate --push --land lands a lane itself): take a lane out of the batch lander's ready set and out of a batch under way (that batch aborts and the others are gated again; a withdrawn lane never lands)",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/lane-withdraw@1",

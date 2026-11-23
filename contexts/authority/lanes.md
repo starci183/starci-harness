@@ -21,7 +21,7 @@ slot or landing script; every step that coordinates with other lanes is a verb.
 Two layers bound the host's work. The heavy-command governor ([cli/README.md](../../cli/README.md) "Heavy-command governor") is the owner's
 rule: one heavy slot per 16 GB of the host's RAM (`heavy.gbPerSlot`, 4 on a 64 GB host), and each heavy command (a tsc, an eslint, a build, an
 install, a test run) holds one while it runs, whichever checkout or installed CLI starts it; a gate that runs several in turn takes one for each
-step, and a running web or api server takes none. Nothing starts while the drive has under `heavy.diskFloorMb` free. The lane slots of
+step, and a running web or api server takes none. Nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else `heavy.diskFloorMb`). The lane slots of
 `ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look),
 `stack` (the shared stack and its main checkout). Each kind has a count, and some a burst opened only with free RAM.
 
@@ -47,7 +47,7 @@ step, and a running web or api server takes none. Nothing starts while the drive
   worktree of the repositories under the slot root exists on disk whose folder ends in `/<lane>` or which has `lane/<lane>` checked out (where the slot root
   holds no repository, `_land-status/<lane>.json` saying `landed` or `rejected` stands in), or taken before this boot (`rebooted`). Otherwise they are
   only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or its old-format lock can be reclaimed.
-- **A lane lets go of its slots.** The batch lander releases every slot a lane holds, of any kind, once it lands or is rejected, and `starci lane remove`
+- **A lane lets go of its slots.** The deprecated batch lander releases every slot a lane holds, of any kind, once it lands or is rejected, and `starci lane remove`
   does so as part of the removal (its dry run lists them; `--dir` names the slot root). Each release is logged in `_slots.log`.
 - **Never hold a slot while you wait** for a review, an audit or another lane; take it for the run, then let it go.
 
@@ -74,35 +74,40 @@ approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED still blocks). The hfs rule s
 stale and missing blocks, the nivoos package checks, the whole test suite, sonar and coverage run once at the main cut
 (`--level full`); a red full run is fixed in a hardening lane before the cut. screen.yaml and audit records may be completed there.
 
-One verb runs the local gate, one registers, one lander lands (PROJECT-BRANCH-2):
+The owner's rule for landing, in his words:
 
-1. `starci lane gate --push --ready` in the worktree, tree committed: it merges `origin/dev`, runs `npm ci` under an `npm` slot when
+> "bỏ lander đi, cứ xong là merge vô dev là được, vì cũng bỏ hết gate nặng rồi"
+
+One verb gates and lands (PROJECT-BRANCH-2):
+
+1. `starci lane gate --push --land` in the worktree, tree committed: it merges `origin/dev`, runs `npm ci` under an `npm` slot when
    the merge changed a manifest or lockfile (`--install` forces it), runs `codegen` (and `build:modules` after an install), then
-   under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, whose pre-push hook runs the fast level once, and
-   registers the pushed sha with the lander. Without `--push` it runs `app check --env prod --level dev` only and reports the
-   findings. A new `lane gate` of the same lane first cancels the lane's running gate: its process tree is killed, its slot
-   released and its status says `superseded by <sha>`. A merge conflict refuses `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
-2. Monitor `<lanes>/_land-status/<lane>.json` (`starci lane status <lane>`): `queued`, `landed` (`sha`, `migrations`), `conflict`
-   (`requeued: true` means wait for the next batch), `rejected` (`findings`; `LANE_LAND_PREPARE` when the lane alone fails the batch's
-   npm ci, codegen or `build:modules`) or `parked` (out of memory, register again).
-   A rejection or a conflict with `origin/dev` is fixed in the lane, gated again and registered again.
-3. `starci lane withdraw <lane>` takes the lane out, also while a batch has it: status `withdrawn` (`fromBatch`), and that batch aborts
-   (the lander re-reads the ready set before each gate run, after it and right before the push) and re-forms without it; the other
-   lanes read `re-formed` and are gated again. A withdrawn lane never lands. A lane registered again with a new sha does the same to
-   its old batch: the running batch gate is cancelled (its process tree killed), the batch re-forms, and the lane's status reads
-   `queued` at the new sha with `supersededBy`.
-4. The lander lands a batch as ONE commit on `dev`: the merges it gated become one commit with the same tree and `origin/dev` as
-   its parent, whose message lists every lane with its branch and sha and carries one `Landed-lane: <lane> <sha>` trailer each.
-   Every landed lane's status points at that commit. The lander (`starci lane land`) is one process per repository and
-   lanes folder that the coordinator starts; a lane never starts it, never pushes `dev` and never takes the dev lock.
+   under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, whose pre-push hook runs the fast level once. Without `--push`
+   it runs `app check --env prod --level dev` only and reports the findings. A new `lane gate` of the same lane first cancels the lane's
+   running gate: its process tree is killed, its slot released and its status says `superseded by <sha>`. A merge conflict refuses
+   `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
+2. Green and pushed, `--land` lands the lane at once (core/lane/land-direct.ts): under the repository's dev lock (`<lanes>/_dev-push.lock`, the
+   harness's `_dev-push-harness.lock`) it fetches and merges the newest `origin/dev` into the lane; when dev moved since the gate's merge it
+   re-checks the merged tree (the app's `codegen` and `typecheck`, the harness CLI's typecheck) under the heavy governor, never the whole gate
+   again; then it squashes the lane into ONE commit on `dev` (parent `origin/dev`, the lane's tree; its message names the lane with its branch
+   and sha and carries a `Landed-lane: <lane> <sha>` trailer) and pushes it, never forced. It refuses `LANE_LAND_CONFLICT` with the files (merge
+   `origin/dev` in the lane, resolve, commit, run it again), `LANE_LAND_RED` with the re-check's failure and `LANE_LAND_PUSH`; nothing lands then,
+   and the lock is released in every case.
+3. After the push the landing stands, and what follows is reported, never thrown: the lane's status file (`<lanes>/_land-status/<lane>.json`,
+   `starci lane status <lane>`) reads `landed` with the dev `sha` and the `migrations` it added; a harness landing that changed a published
+   package publishes the dev line (`deps publish-dev`); and the app's dev checkout (`devSync.repos`), or after a harness publish every app's, is
+   marked for its debounced sync (`starci dev sync-runner`, [project/cicd.md](../project/cicd.md) "The debounced dev sync"). A lane never runs
+   the sync of the shared checkout itself.
 
-**A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same three
-verbs. `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
+**Deprecated, kept running:** `lane gate --push --ready` (and `lane ready`) registers the pushed sha with the batch lander instead, `starci lane land`
+lands the registered lanes in batches, and `lane withdraw` takes a registered lane out; their statuses `queued`, `conflict`, `rejected`, `parked`
+and `withdrawn` are written only for lanes registered that way. A lane does not use them; they are removed once the running landers are retired.
+
+**A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
+`lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
 gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
-dependents, the CLI and the desktop app when affected, and the publish checks; no test suite, which runs only in the train's full gate) and with `--push` pushes `lane/<lane>` with git once it is green. The harness lander
-(`starci lane land` started in the harness checkout) takes only the harness's lanes from the shared lanes folder, gates the batch the same way and
-pushes `dev` with `git push origin HEAD:dev`; the squash, the cancel on a newer registration and the status files are the app lander's. With
-`devSync.publishLocal` it publishes the landed packages to the local registry (`deps publish-dev`) and the app's dev sync installs them.
+dependents, the CLI and the desktop app when affected, and the publish checks; no test suite, which runs only in the train's full gate), with `--push`
+pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`.
 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the
 pre-push hook needs `.husky/_` present. Before every commit run `git diff --cached --stat`.
@@ -145,9 +150,9 @@ answered 4xx/5xx is listed and the verb exits 1.
   which other lanes run too. The verbs above stop what they start.
 - **Orphans are reaped.** A run the harness starts for you (`slot run`, `lane gate`, `gallery shoot`, `app look`, `app check`) records its
   launchers in `<lanes>/_runs/`; once its launcher (your shell, or the agent above it) has been gone `reap.graceMinutes` of `ops/slots.yaml`,
-  the batch lander (and `starci ops reap --execute`) stops its process tree and logs it in `<lanes>/_reap.log`. Keep the launching shell alive
+  `starci ops reap --execute` (and the deprecated batch lander on its loop) stops its process tree and logs it in `<lanes>/_reap.log`. Keep the launching shell alive
   for the run's life; a run started detached on purpose is reaped too. A process the harness did not record is never touched.
-- **Installs go back to the drive.** When the lander lands a lane it deletes the reinstallable folders of the lane's worktree
+- **Installs go back to the drive.** `starci lane prune-installs` (and the deprecated batch lander, when it lands a lane) deletes the reinstallable folders of a landed lane's worktree
   (`janitor.dirs` of `ops/slots.yaml`: node_modules, .next, dist, .turbo, and a failed safe install's `.starci-trash-` folders), links unlinked
   first and never deleted through, the worktree, its branch and its tracked files kept, unless the worktree is live (a slot of the lane, a
   removal lock, a git operation, a process working inside it, uncommitted work, commits on its branch after the landed sha because the lane moved on to a follow-up, or a touch within `janitor.touchedMinutes`, default 60). `starci lane prune-installs [--idle-hours N] [--execute]` does the same for every
