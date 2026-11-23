@@ -51,7 +51,7 @@ export const CODEMODS: readonly GrammarCodemod[] = Object.freeze([
     {
         id: "v0551",
         version: "0.55.1",
-        summary: "the graph ext opens at 100% on every screen: shared.PHONE_WIDTH and shared.usePhone of @starci/grammar/core/ext/graph are deleted, each use marked TODO(grammar-0.55.1); the initial focus is the new focusId prop",
+        summary: "the graph ext opens at 100% on every screen: shared.PHONE_WIDTH and shared.usePhone of @starci/grammar/core/ext/graph are deleted, each use marked TODO(grammar-0.55.1); the initial focus is the new focusId prop; the deleted icon of an Alert action is dropped",
         run: runV0551,
         markdown: (report) => v0551Markdown(report as V0551Report),
     },
