@@ -71,6 +71,7 @@ export { MessageActions, MESSAGE_REACTION_PICKER_EMOJI, type MessageActionsConfi
 export { Inset, type InsetProps } from "../core/frame/Inset/index.js"
 export { DisclosureList, type DisclosureListItem, type DisclosureListProps } from "../core/composite/DisclosureList/index.js"
 export { Quote, type QuoteProps } from "../core/composite/Quote/index.js"
+export { ReplyStrip, type ReplyStripProps } from "../core/composite/ReplyStrip/index.js"
 export { HorizontalScrollRegion, type HorizontalScrollRegionProps } from "../core/frame/HorizontalScrollRegion/index.js"
 export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/frame/VerticalScrollRegion/index.js"
 export type { ErrorData } from "../core/loadingState.js"

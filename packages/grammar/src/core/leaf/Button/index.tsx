@@ -11,7 +11,7 @@ import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 /**
  * THE THREE LOOKS (owner, 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"). A Button is exactly one of:
  *
- *   - `primary`: solid, the ONE main action of a card or region (the CTA; lint `single-commit-per-render` counts it);
+ *   - `primary`: solid, the ONE main action of a card or region (the CTA; at most one per region, law `DNA-COMMON-ONE-PRIMARY-PER-REGION`, and lint `single-commit-per-render` counts it);
  *   - `border`: an outline, every secondary action (the default; a retry, a cancel, a row action, a head action);
  *   - `danger`: a destructive action (delete, disconnect, stop for good).
  *
