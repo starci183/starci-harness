@@ -166,9 +166,3 @@ test("Grammar's own source and stories type no arrow character (U+2190-U+21FF, U
     const found = walk(root).filter((file) => arrows.test(readFileSync(file, "utf8")))
     assert.deepEqual(found, [])
 })
-
-test("a negative Alert's border action draws its edge in the danger ink: the neutral edge would vanish on the danger soft box", () => {
-    const css = readFileSync(fileURLToPath(new URL("../src/common/components-overlays.css", import.meta.url)), "utf8")
-    const rule = /\[data-component="Alert"\]\[data-grammar-tone="negative"\] \.starci-core-alert-actions > \[data-component="Button"\]\[data-grammar-variant="border"\] \{\s*border-color: var\(--danger\);\s*\}/u
-    assert.match(css, rule)
-})

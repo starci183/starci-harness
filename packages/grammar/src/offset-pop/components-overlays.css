@@ -101,17 +101,15 @@
     }
 
     /* ---------------------------------------------------------------- pink decision accent */
+    /* A banner's buttons are never pink: they take the banner's tint, as in Common (0.55.1, DNA-COMMON-ALERT-ACTION-IN-TONE). */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-action="confirm"] > [data-component="Button"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-toast-action] [data-component="Button"],
-    /* A banner's decision is the last Button of its actions; a `secondaryAction` stands before it as the alternative ("Reject" beside "Approve") and is never a second pink. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-alert-actions] > [data-component="Button"]:not(:has(~ [data-component="Button"])) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-toast-action] [data-component="Button"] {
         color: var(--accent-foreground);
         background: var(--accent);
     }
 
-    /* A negative Alert's action is Common's danger Button (HeroUI's danger Alert carries a danger "Retry"). */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-action="confirm"][data-grammar-tone="negative"] > [data-component="Button"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"][data-grammar-tone="negative"] [data-grammar-alert-actions] > [data-component="Button"]:not(:has(~ [data-component="Button"])) {
+    /* A negative confirm is Common's danger Button. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-action="confirm"][data-grammar-tone="negative"] > [data-component="Button"] {
         color: var(--danger-foreground);
         background: var(--danger);
     }

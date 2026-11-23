@@ -8,27 +8,26 @@ import { isPresentationState, PRESENTATION_STATES, type PresentationState } from
 import type { CustomTone } from "../../../common/tones.js"
 import { useCustomTone } from "../../useCustomTone.js"
 import { vendorStatusFor } from "../../overlayScope.js"
-import { Button, type ButtonLook } from "../../leaf/Button/index.js"
+import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
-import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { RETRY_VARIANT } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type AlertUrgency = "polite" | "assertive"
 
-export type AlertAction = {
+/**
+ * What an Alert button does when pressed: a command (`onAction`) or a destination (`href`, an anchor: middle-click and copy-link work, as on a
+ * Button with `href`). Exactly one of the two.
+ */
+export type AlertPress =
+    | { readonly onAction: () => void; readonly href?: never }
+    | { readonly href: string; readonly onAction?: never }
+
+export type AlertAction = AlertPress & {
     readonly label: string
-    readonly onAction: () => void
-    /**
-     * Optional start glyph of the action Button (e.g. a power glyph on "Enable"), drawn by `Icon`
-     * `usage="leading"` as the Button's `startContent`. Decorative: the label stays the name. Only a `primary` action (`ALERT_ACTION_LOOK`)
-     * wears it; the button-icon rule keeps every other action text only, so the glyph is not drawn there.
-     */
-    readonly icon?: IconSource
     /**
      * The action destroys something (delete, disconnect, stop for good): it draws `danger`, whatever the banner's tone. Default: not destructive
-     * (a negative banner's "Try again" is a recovery, the `border` retry look).
+     * (a negative banner's "Try again" is a recovery, the tinted look like every other action of the banner).
      */
     readonly isDestructive?: boolean
     /**
@@ -38,10 +37,14 @@ export type AlertAction = {
     readonly kind?: "button" | "row"
 }
 
-/** The second decision of a banner that holds a form (0.46.2): a button beside the primary `action`, in the `border` look ("Reject" beside "Approve"). */
-export type AlertSecondaryAction = {
+/** The second decision of a banner that holds a form (0.46.2): a button beside `action` ("Reject" beside "Approve"), in the same tinted look. */
+export type AlertSecondaryAction = AlertPress & {
     readonly label: string
-    readonly onAction: () => void
+}
+
+/** One of several equal actions of a banner (`actions`, 0.55.1): a tinted button in the banner's tone, none of them primary. */
+export type AlertActionItem = AlertPress & {
+    readonly label: string
 }
 
 type AlertBase = {
@@ -55,11 +58,6 @@ type AlertBase = {
     readonly tone?: PresentationState | "accent" | CustomTone
     /** A mark in place of the tone's glyph: an `Avatar` (who asks) or an `IconTile`. */
     readonly leading?: ReactNode
-    readonly action?: AlertAction
-    /**
-     * A second decision beside `action` (0.46.2), for a banner that asks the reader to decide: `border`, never a second primary. Needs `action` as a `button`.
-     */
-    readonly secondaryAction?: AlertSecondaryAction
     /**
      * A named slot for the fields the banner is about (0.46.2): a few lines of the draft (a `Section kind="list" layout="keyValue"`, a short form) drawn under the description,
      * inside the banner, above the actions. With a form the actions leave the end of the first row and stand on a row of their own under it, at the end. An Alert takes no
@@ -78,6 +76,23 @@ type AlertBase = {
     readonly isLoading?: boolean
 }
 
+/** One main action, with an optional second decision beside it (0.46.2; `secondaryAction` needs `action` as a `button`). */
+type OneAction = {
+    readonly action?: AlertAction
+    readonly secondaryAction?: AlertSecondaryAction
+    readonly actions?: never
+}
+
+/**
+ * Several EQUAL actions (0.55.1, owner 2026-11-23): "Message Ads / Message Care / Message Social" under one notice. Each is a tinted button in the banner's
+ * tone, in the order given, and none is primary. Not with `action` or `secondaryAction`.
+ */
+type EqualActions = {
+    readonly actions: readonly AlertActionItem[]
+    readonly action?: never
+    readonly secondaryAction?: never
+}
+
 /** A dismissible banner must name its close action; a permanent one has neither prop. */
 type Dismissible = {
     readonly dismissLabel: string
@@ -89,41 +104,22 @@ type Permanent = {
     readonly onDismiss?: never
 }
 
-export type AlertProps = NoChildren & AlertBase & (Dismissible | Permanent)
-
-/**
- * THE ALERT ACTION MAPPING (0.55.0): the look of a banner's `action` per tone, in ONE table so a tone can be flipped (owner: warning may become `border`).
- * A toned `primary` is SOLID in the banner's own colour (owner: "button phải là màu tương ứng, ko phải border"): `tone` fills it with `--<tone>`.
- * An action with `isDestructive` is `danger` on every tone. The second action (`secondaryAction`) and the dismiss are always `border`.
- *
- * | tone | action look |
- * | ---- | ----------- |
- * | informative | primary, tone info |
- * | accent | primary, tone accent |
- * | affirmative | primary, tone success |
- * | cautionary | primary, tone warning |
- * | negative | border (the one retry look, RETRY_VARIANT); danger when `isDestructive` |
- * | neutral / pending / unavailable / an app's own tone | border |
- */
-export const ALERT_ACTION_LOOK: Readonly<Record<PresentationState | "accent", ButtonLook>> = Object.freeze({
-    informative: { variant: "primary", tone: "info" },
-    accent: { variant: "primary", tone: "accent" },
-    affirmative: { variant: "primary", tone: "success" },
-    cautionary: { variant: "primary", tone: "warning" },
-    negative: { variant: RETRY_VARIANT },
-    neutral: { variant: "border" },
-    pending: { variant: "border" },
-    unavailable: { variant: "border" },
-})
+export type AlertProps = NoChildren & AlertBase & (OneAction | EqualActions) & (Dismissible | Permanent)
 
 const ALERT_BUILT_IN_TONES: readonly string[] = [...PRESENTATION_STATES, "accent"]
 
-/** The look of an Alert's action: `danger` when it destroys, else its tone's row of `ALERT_ACTION_LOOK`; a loading banner's action is the border placeholder. */
-const alertActionLook = (tone: PresentationState | "accent" | CustomTone, isDestructive: boolean, isLoading: boolean): ButtonLook => {
-    if (isDestructive) return { variant: "danger" }
-    if (isLoading) return { variant: "border" }
-    return tone === "accent" || isPresentationState(tone) ? ALERT_ACTION_LOOK[tone] : { variant: "border" }
-}
+/**
+ * THE ALERT ACTION LOOK (0.55.1, owner 2026-11-23, "Chốt, làm luôn"): a button inside a banner takes the BANNER'S TONE. Its fill is one step stronger than
+ * the banner's soft background (a film of the banner's ink over it, `--starci-core-alert-action`), its label is the banner's strong text colour (the tone's
+ * soft foreground) at the button label weight (500), its shape Grammar's button pill. Never a white or neutral button on a tinted banner, never a solid
+ * primary: `action`, `secondaryAction` and every one of `actions` are the `border` rank painted in that tint, so none is primary. An action with
+ * `isDestructive` stays `danger`. The paint is the stylesheet's (`.starci-core-alert .starci-core-button`), so a Button an app places anywhere in a
+ * banner takes it too.
+ */
+const alertActionVariant = (isDestructive: boolean, isLoading: boolean): "border" | "danger" => isDestructive && !isLoading ? "danger" : "border"
+
+/** The press of an Alert button: a destination when it has `href`, else a command. */
+const pressOf = (item: AlertPress): { readonly href: string } | { readonly onPress: () => void } => item.href === undefined ? { onPress: item.onAction } : { href: item.href }
 
 /**
  * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
@@ -136,8 +132,8 @@ const alertActionLook = (tone: PresentationState | "accent" | CustomTone, isDest
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
- * The action Button's look follows the tone (`ALERT_ACTION_LOOK`): informative, accent, affirmative and cautionary a `primary` solid in the
- * banner's colour, negative the `border` retry (or `danger` when `isDestructive`), every other tone `border`.
+ * Its buttons take the banner's tone (0.55.1): a fill one step stronger than the soft background, the tone's strong text at weight 500, Grammar's pill;
+ * none is primary, `isDestructive` is `danger`. Several equal actions go in `actions`.
  * Below 30rem a `button` action stacks under the text, full width, in that same look; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
@@ -156,7 +152,10 @@ const AlertGlyph = ({ meaning }: { readonly meaning: Exclude<PresentationState, 
 }
 
 const AlertInner = (props: AlertProps) => {
-    const { title, description, tone: readyTone = "informative", leading, action, secondaryAction, form, urgency, isLoading = false } = props
+    const { title, description, tone: readyTone = "informative", leading, action, secondaryAction, actions, form, urgency, isLoading = false } = props
+    if (actions !== undefined && (action !== undefined || secondaryAction !== undefined) && process.env.NODE_ENV !== "production") {
+        throw new Error("Alert `actions` (several equal actions) cannot stand beside `action` or `secondaryAction`: pass one or the other.")
+    }
     if (form !== undefined && action?.kind === "row" && process.env.NODE_ENV !== "production") {
         throw new Error("Alert `form` cannot stand in a banner whose action is kind=\"row\": the whole banner would be one press target around the fields.")
     }
@@ -164,7 +163,6 @@ const AlertInner = (props: AlertProps) => {
     const tone: PresentationState | "accent" | CustomTone = isLoading ? "neutral" : readyTone
     const custom = useCustomTone(tone, ALERT_BUILT_IN_TONES)
     const meaning: PresentationState = tone === "accent" ? "informative" : isPresentationState(tone) ? tone : "neutral"
-    const actionLook = alertActionLook(tone, action?.isDestructive === true, isLoading)
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
@@ -201,25 +199,23 @@ const AlertInner = (props: AlertProps) => {
                 )}
                 {form === undefined ? null : <div className="starci-core-alert-form" data-grammar-alert-form-slot="true">{unseen(form)}</div>}
             </HeroAlert.Content>
-            {action === undefined && secondaryAction === undefined && props.dismissLabel === undefined ? null : (
+            {action === undefined && secondaryAction === undefined && (actions === undefined || actions.length === 0) && props.dismissLabel === undefined ? null : (
                 <span className="starci-core-alert-actions" data-grammar-alert-actions="true" data-contract="FEEDBACK-2">
                     {secondaryAction === undefined ? null : (
-                        <Button isLoading={isLoading} width="fill-narrow" size="sm" variant="border" onPress={secondaryAction.onAction}>{secondaryAction.label}</Button>
+                        <Button isLoading={isLoading} width="fill-narrow" size="sm" variant="border" {...pressOf(secondaryAction)}>{secondaryAction.label}</Button>
                     )}
+                    {actions?.map((item, index) => (
+                        <Button key={`${String(index)}:${item.label}`} isLoading={isLoading} width="fill-narrow" size="sm" variant="border" {...pressOf(item)}>{item.label}</Button>
+                    ))}
                     {action === undefined ? null : action.kind === "row" ? (
                         <>
-                            <button type="button" className="starci-core-alert-row-press" onClick={action.onAction} disabled={isLoading}><span className="starci-core-alert-row-press-label">{action.label}</span></button>
+                            {action.href === undefined || isLoading
+                                ? <button type="button" className="starci-core-alert-row-press" onClick={action.onAction} disabled={isLoading}><span className="starci-core-alert-row-press-label">{action.label}</span></button>
+                                : <a className="starci-core-alert-row-press" href={action.href}><span className="starci-core-alert-row-press-label">{action.label}</span></a>}
                             <ChevronRightIcon aria-hidden="true" className="starci-core-alert-chevron" />
                         </>
                     ) : (
-                        <Button
-                            isLoading={isLoading}
-                            width="fill-narrow"
-                            {...(actionLook.variant === "primary"
-                                ? { variant: "primary" as const, ...(actionLook.tone === undefined ? {} : { tone: actionLook.tone }), ...(action.icon === undefined ? { size: "sm" as const } : { size: "md" as const, startContent: <Icon source={action.icon} usage="leading" /> }) }
-                                : { variant: actionLook.variant ?? "border", size: "sm" as const })}
-                            onPress={action.onAction}
-                        >{action.label}</Button>
+                        <Button isLoading={isLoading} width="fill-narrow" size="sm" variant={alertActionVariant(action.isDestructive === true, isLoading)} {...pressOf(action)}>{action.label}</Button>
                     )}
                     {props.dismissLabel === undefined ? null : (
                         isLoading
@@ -243,8 +239,8 @@ const AlertInner = (props: AlertProps) => {
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
- * The action Button's look follows the tone (`ALERT_ACTION_LOOK`): informative, accent, affirmative and cautionary a `primary` solid in the
- * banner's colour, negative the `border` retry (or `danger` when `isDestructive`), every other tone `border`.
+ * Its buttons take the banner's tone (0.55.1): a fill one step stronger than the soft background, the tone's strong text at weight 500, Grammar's pill;
+ * none is primary, `isDestructive` is `danger`. Several equal actions go in `actions`.
  * Below 30rem a `button` action stacks under the text, full width, in that same look; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
