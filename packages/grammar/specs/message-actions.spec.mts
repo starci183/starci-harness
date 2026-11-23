@@ -45,11 +45,11 @@ test("actions: react, reply and more, in that order, each HeroUI's own ghost sm 
         assert.ok(!/\b(style|data-variant|data-size)=/.test(button), "used as shipped: no inline style or restyle")
     })
     const html = rail()
-    assert.equal(html.match(/data-usage="chip"/g)?.length, 3, "three icons")
+    assert.equal(html.match(/data-usage="control"/g)?.length, 3, "three icons")
     assert.ok(!/button--(primary|secondary|tertiary|outline|danger|md|lg)/.test(html))
-    // The glyph of a 32 (sm) Button is 16, `--grammar-icon-xs` (the icon size table, ramps.css).
+    // The glyph of a 32 (sm) Button is 16, `--grammar-icon-control` (the icon table, ramps.css).
     const sheet = read("common/components-message-actions.css")
-    assert.ok(/\.starci-core-message-actions \.starci-core-icon\s*\{\s*width: var\(--grammar-icon-xs\);\s*height: var\(--grammar-icon-xs\);/.test(sheet), "the sm Button glyph is 16px")
+    assert.ok(/\.starci-core-message-actions \.starci-core-icon\s*\{\s*width: var\(--grammar-icon-control\);\s*height: var\(--grammar-icon-control\);/.test(sheet), "the sm Button glyph is 16px")
 })
 
 test("actions: the sheet adds no colour, radius or hover style to the buttons (only the open trigger keeps the vendor hover fill)", () => {

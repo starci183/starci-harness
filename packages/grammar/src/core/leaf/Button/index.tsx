@@ -236,8 +236,8 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
     const variant: ButtonVariant = props.variant ?? "border"
     const tone = props.ground === undefined && props.variant === "primary" ? props.tone : undefined
     const toneAttr = tone === undefined ? {} : { "data-grammar-button-tone": tone }
-    const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
-    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : undefined)
+    const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="control" />)
+    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="control" /></span> : undefined)
     const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {

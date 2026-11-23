@@ -23,7 +23,15 @@ type IconTileShared = NoChildren & {
     /** A named tone, or a `ToneSlot` (`{ soft, ink }`, 0.55.1): the glyph on the app's own soft pair (`data-tone="slot"`); its contrast is the app's. */
     readonly tone?: IconTileTone | ToneSlot
     readonly isLoading?: boolean
+    /**
+     * The tile by the place it leads (the icon table, ramps.css): `row` (default) the 40 tile, radius 10, with a 20 glyph, leading a list row (a run,
+     * a document); `head` the 48 tile, radius 12, with a 24 glyph, leading a page head or an empty state. A status mark is always the round 40.
+     */
+    readonly size?: IconTileSize
 }
+
+/** The two tiles of the icon table. */
+export type IconTileSize = "row" | "head"
 
 /** An identity tile: the app's glyph on the tone's soft plate (an agent, a feature, a graph node's kind). */
 type IconTileIdentity = IconTileShared & {
@@ -68,7 +76,7 @@ const TONE_CONTRACT: Partial<Record<IconTileBuiltInTone, string>> = {
 }
 
 /**
- * Soft-tone icon tile: an outline icon on one round 40px plate (owner, 2026-11-22: "đồng bộ là tròn size40"), with its tone pair and loading geometry.
+ * Soft-tone icon tile: an outline icon on a `row` (40, radius 10) or `head` (48, radius 12) plate (the icon table, owner 2026-11-23), with its tone pair and loading geometry.
  * With `state` it is the status mark (B) of the status-mark rule, contexts/ui/components/identity-mark.md.
  */
 export const IconTile = (props: IconTileProps) => {
@@ -76,7 +84,7 @@ export const IconTile = (props: IconTileProps) => {
         const { state, source, ariaLabel } = props
         return (
             <StatusTile tone={MARK_STATE_TONE[state]} state={state} hasSubject={source !== undefined} label={ariaLabel}>
-                {source === undefined ? <StatusGlyph kind={state} /> : <Icon source={source} usage="leading" />}
+                {source === undefined ? <StatusGlyph kind={state} /> : <Icon source={source} usage="row" />}
             </StatusTile>
         )
     }
@@ -90,6 +98,7 @@ const IdentityTile = ({
     tone: ownTone = "neutral",
     isLoading = false,
     state,
+    size = "row",
 }: IconTileProps) => {
     // a loading status mark keeps the 40px plate in the state's tone; its glyph is not drawn
     const slot = state === undefined && isToneSlot(ownTone) ? ownTone : undefined
@@ -105,6 +114,7 @@ const IdentityTile = ({
             data-tier="leaf"
             data-component="IconTile"
             data-tone={tone}
+            data-size={state === undefined ? size : "row"}
             data-artwork={showsArtwork ? "true" : "false"}
             data-loading={isLoading ? "true" : "false"}
             aria-hidden={isLoading || undefined}
@@ -112,7 +122,7 @@ const IdentityTile = ({
             className={cn("starci-core-icon-tile", isLoading ? SKELETON_CLASS_NAME : undefined)}
         >
             {isLoading ? null : showsArtwork ? artwork : source === undefined ? null : (
-                <Icon source={source} usage="leading" {...(ariaLabel === undefined ? {} : { ariaLabel })} />
+                <Icon source={source} usage={size === "head" ? "head" : "row"} {...(ariaLabel === undefined ? {} : { ariaLabel })} />
             )}
         </span>
     )

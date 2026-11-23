@@ -100,7 +100,7 @@ const IconButtonFace = ({
     const source = givenSource ?? (givenGlyph === undefined ? DismissGlyph : glyphSource(givenGlyph))
     const badgeText = isLoading ? null : iconButtonBadgeText(badge, badgeMax)
     const unavailable = isDisabled || isPending || isLoading
-    const glyph = isLoading ? null : isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : <Icon source={source} usage="leading" />
+    const glyph = isLoading ? null : isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : <Icon source={source} usage="control" />
     if (href !== undefined) {
         return (
             <HeroLink

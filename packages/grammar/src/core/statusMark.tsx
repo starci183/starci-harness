@@ -1,5 +1,5 @@
-import { CheckCircleIcon, CheckIcon, XCircleIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import type { ComponentType, ReactNode, SVGProps } from "react"
+import { TablerCheck, TablerCircleCheck, TablerCircleX, TablerX } from "./leaf/Icon/tabler.js"
 
 /**
  * The state of one step, run or node (0.55.0, the status-mark rule, owner "chốt"). One closed set for every status mark in Grammar:
@@ -56,8 +56,8 @@ export const STATUS_GLYPH: {
     readonly tile: Readonly<Record<Exclude<MarkState, "running">, Glyph>>
     readonly inline: Readonly<Record<Exclude<MarkState, "running">, Glyph>>
 } = {
-    tile: { done: CheckIcon, waiting: BareCircleIcon, error: XMarkIcon, skipped: BareCircleIcon, notRun: BareCircleIcon },
-    inline: { done: CheckCircleIcon, waiting: CircleIcon, error: XCircleIcon, skipped: CircleIcon, notRun: CircleIcon },
+    tile: { done: TablerCheck, waiting: BareCircleIcon, error: TablerX, skipped: BareCircleIcon, notRun: BareCircleIcon },
+    inline: { done: TablerCircleCheck, waiting: CircleIcon, error: TablerCircleX, skipped: CircleIcon, notRun: CircleIcon },
 }
 const TILE_GLYPH = STATUS_GLYPH.tile
 const INLINE_GLYPH = STATUS_GLYPH.inline

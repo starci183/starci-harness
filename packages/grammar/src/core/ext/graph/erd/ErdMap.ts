@@ -2,7 +2,6 @@
 
 import { Background, BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStoreApi, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
 import { createElement as h, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
-import { LinkIcon } from "@heroicons/react/24/outline"
 import { Badge, Icon, IconTile, Link, Text } from "../../../index.js"
 import { GraphSkeleton, measureLabel, openView, roundedPath, type ViewRect } from "../shared/index.js"
 import { FlowZoom, zoomWords } from "../shared/zoom.js"
@@ -12,6 +11,7 @@ import { NO_GLYPH } from "./glyphs.js"
 import { endMarker, markerAngle, unitFrom, type Marker } from "./markers.js"
 import { ERD_DEFAULT_FIELDS, ERD_WIDTH, HEAD_PORT, erdPortId, erdPortY, erdStructureKey, resolveErd, type ErdEdge, type ErdModel, type ErdNode } from "./model.js"
 import type { ErdMapProps } from "./types.js"
+import { TablerLink } from "../../../leaf/Icon/tabler.js"
 
 const CORNER = 12
 /** The first view's room round the map: on the left the 40px zoom controls and their gap. */
@@ -83,7 +83,7 @@ const EntityView = ({ data }: NodeProps<EntityRfNode>): ReactElement => {
                           h("span", { className: "starci-erd-field", title: row.field.label }, h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label)),
                           row.links !== undefined && row.linksTo !== undefined
                               ? // The core's Link to the entity the field points at, after the link icon.
-                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: LinkIcon, usage: "leading" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
+                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: TablerLink, usage: "text" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
                               : row.field.type === undefined
                                 ? null
                                 : h("span", { className: "starci-erd-type" }, h(Text, { as: "span", role: "caption" }, row.field.type)),

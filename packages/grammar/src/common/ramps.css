@@ -145,6 +145,8 @@
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
         --grammar-hairline: 1px;
+        /* The ground of a brand logo (Avatar kind="logo"): white in both themes, so a logo keeps its own colours. */
+        --grammar-logo-surface: #fff;
         --grammar-stroke-fine: 1.5px;
         --grammar-ring-width: 2px;
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
@@ -321,29 +323,43 @@
         --grammar-message-emoji-cell: var(--starci-core-control-min-size);
         --grammar-message-emoji-grow: 1.15;
         /*
-         * THE ICON SIZE TABLE (owner 2026-11-23). Text-sized, `--grammar-icon-text` (1em of the text beside it, in that text's colour, centred on
-         * its line; Icon `text`): a caret before or after words (a Disclosure or Accordion chevron, the "goes somewhere" cue of a figure or a
-         * pressable row, a Select or menu trigger caret, a submenu caret), a breadcrumb separator, a status mark inside a line (InlineStatus,
-         * a message receipt). Fixed: 16 in a 32 button (`--grammar-icon-xs`); 20 in a 40 button, beside text, in a chip, badge or field and in
-         * a 40 tile (`--grammar-icon-sm`, Icon `chip`); 24 for a left navigation entry and a section or heading lead (`--grammar-icon-md`,
-         * Icon `heading`, `leading`) and in the 48 tile of an empty state. No other icon size exists.
+         * THE ICON TABLE (owner 2026-11-23). One set (Tabler outline), never filled, not even for a current or selected state (that is shown by
+         * colour and background); four roles, never pixels in an app (Icon `usage`):
+         *   control  16: the ONE leading icon beside words, always 14px words (body, label.item, label.field, a button label, a menu or
+         *            list entry) one inline step (8) away; every labelled button glyph (sm, md, lg), a field's or chip's, a navigation
+         *            entry's (14px label); an icon-only button is 20 at 40 (--grammar-icon-alone), 16 at 32; every meaning-icon beside 14px words.          --grammar-icon-control
+         *   row      20 in the 40 tile, radius 10, that leads a list row (IconTile size row).    --grammar-icon-row, --grammar-tile-row-*
+         *   head     24 in the 48 tile, radius 12, beside a page title or in an empty state (IconTile size head). A heading (18 to 28)
+         *            never carries a leading icon: it takes this tile.                       --grammar-icon-head, --grammar-tile-head-*
+         *   text     1em of its words, at any size, in their colour: a caret or "go" arrow AFTER them, a breadcrumb separator, a receipt,
+         *            and a status glyph BEFORE them (circle-check done, circle-x failed, empty circle pending, triangle warning).
+         *            A 12px caption or meta line carries no leading icon: words only.        --grammar-icon-text
+         * THE ICON STROKE: a glyph's stroke follows the weight of the text it stands with, as SF Symbols match weights: 400 draws 1.5, 500
+         * 1.75, 600 and heavier 2 (`--grammar-icon-stroke`; every rule that sets a font weight sets it, so a glyph inherits it from its
+         * text; a glyph with no words, an icon button's or a tile's, takes a control label's 500).
          */
+        --grammar-icon-text: 1em;
+        --grammar-icon-control: 1rem;
+        /* The glyph of an icon-only 40 button (IconButton md): 20, the one control glyph with no words beside it; a 32 one (sm) is 16. */
+        --grammar-icon-alone: 1.25rem;
+        --grammar-icon-row: 1.25rem;
+        --grammar-icon-head: 1.5rem;
+        --grammar-tile-row-size: 2.5rem;
+        --grammar-tile-row-radius: 0.625rem;
+        --grammar-tile-head-size: 3rem;
+        --grammar-tile-head-radius: 0.75rem;
+        --grammar-icon-stroke-regular: 1.5;
+        --grammar-icon-stroke-medium: 1.75;
+        --grammar-icon-stroke-semibold: 2;
+        --grammar-icon-stroke: var(--grammar-icon-stroke-regular);
         /* The gap a Stack or Cluster keeps between its children (its `gap` role sets it); 0 outside one. A rule that adds to that gap reads it. */
         --starci-core-flow-gap: 0px;
-        --grammar-icon-text: 1em;
-        --grammar-icon-xs: 1rem;
-        --grammar-icon-md: 1.5rem;
-        --grammar-icon-sm: 1.25rem;
-        /* The tile of an empty state (48, its glyph 24); every other IconTile is the round 40. */
-        --grammar-empty-tile-size: 3rem;
         /* The lesson parts (0.55.1): a CodeBlock's header row (48), a GradedChoice key (32) and the least height of its plate (68, one line of
            reading prose in the card inset), the Sidenotes margin column (256). */
         --grammar-code-block-head-height: 3rem;
         --grammar-graded-key-size: 2rem;
         --grammar-graded-option-min-height: 4.25rem;
         --grammar-sidenote-width: 16rem;
-        /* A connection logo in a LogoStack: the 20px icon step. */
-        --grammar-logo-stack-size: var(--grammar-icon-sm);
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
         --grammar-bubble-measure-standard: min(40rem, 85%);
         --grammar-bubble-measure-wide: 70%;

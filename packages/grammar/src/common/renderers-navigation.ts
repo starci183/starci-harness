@@ -15,7 +15,6 @@ import { TableOfContents } from "../core/composite/TableOfContents/index.js"
 import { AvatarButton } from "../core/leaf/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
-import { LogoStack } from "../core/composite/LogoStack/index.js"
 import { DescriptionList } from "../core/composite/DescriptionList/index.js"
 import { Pagination } from "../core/composite/Pagination/index.js"
 import { Stepper } from "../core/composite/Stepper/index.js"
@@ -46,7 +45,6 @@ export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps, type AvatarButtonSize, type AvatarButtonStatus } from "../core/leaf/AvatarButton/index.js"
 export { IdentityLockup, type IdentityLockupProps } from "../core/composite/IdentityLockup/index.js"
-export { LogoStack, type LogoStackItem, type LogoStackProps } from "../core/composite/LogoStack/index.js"
 export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/PlainPressable.js"
 export { Spotlight, type SpotlightProps, type SpotlightShape } from "../core/Spotlight.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
@@ -70,5 +68,5 @@ export { Video, pickVideoSource, playbackOf, type VideoLabels, type VideoPlaybac
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, CodeBlock, ColorSwatch, DataTable, DescriptionList, GradedChoice, Sidenotes, SidenoteTerm, TableOfContents,
-    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

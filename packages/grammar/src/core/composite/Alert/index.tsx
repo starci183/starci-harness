@@ -2,7 +2,6 @@
 
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
-import { CheckCircleIcon, ChevronRightIcon, ExclamationCircleIcon, ExclamationTriangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline"
 import { useState, type ComponentType, type ReactNode, type SVGProps } from "react"
 import { isPresentationState, PRESENTATION_STATES, type PresentationState } from "../../../common/state.js"
 import type { CustomTone } from "../../../common/tones.js"
@@ -12,6 +11,7 @@ import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
+import { TablerAlertCircle, TablerAlertTriangle, TablerChevronRight, TablerCircleCheck, TablerInfoCircle } from "../../leaf/Icon/tabler.js"
 
 export type AlertUrgency = "polite" | "assertive"
 
@@ -142,7 +142,7 @@ const pressOf = (item: AlertPress): { readonly href: string } | { readonly onPre
  * outline glyph at its native 24px and stroke, in the banner's soft foreground on the soft box, with NO tile and no plate; pending's spinner is 24px.
  */
 const ALERT_GLYPH: Readonly<Record<Exclude<PresentationState, "pending">, ComponentType<SVGProps<SVGSVGElement>>>> = {
-    informative: InformationCircleIcon, affirmative: CheckCircleIcon, cautionary: ExclamationTriangleIcon, negative: ExclamationCircleIcon, neutral: InformationCircleIcon, unavailable: InformationCircleIcon,
+    informative: TablerInfoCircle, affirmative: TablerCircleCheck, cautionary: TablerAlertTriangle, negative: TablerAlertCircle, neutral: TablerInfoCircle, unavailable: TablerInfoCircle,
 }
 
 /** The mark of a meaning, drawn as Heroicons ships it: 24 by 24, its own outline stroke, in the banner's ink. */
@@ -212,7 +212,7 @@ const AlertInner = (props: AlertProps) => {
                             {action.href === undefined || isLoading
                                 ? <button type="button" className="starci-core-alert-row-press" onClick={action.onAction} disabled={isLoading}><span className="starci-core-alert-row-press-label">{action.label}</span></button>
                                 : <a className="starci-core-alert-row-press" href={action.href}><span className="starci-core-alert-row-press-label">{action.label}</span></a>}
-                            <ChevronRightIcon aria-hidden="true" className="starci-core-alert-chevron" />
+                            <TablerChevronRight aria-hidden="true" className="starci-core-alert-chevron" />
                         </>
                     ) : (
                         <Button isLoading={isLoading} width="fill-narrow" size="sm" variant={alertActionVariant(action.isDestructive === true, isLoading)} {...pressOf(action)}>{action.label}</Button>

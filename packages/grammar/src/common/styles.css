@@ -319,6 +319,7 @@
         /* The type scale (0.48.0, owner 2026-11-19): the page title is 18 / 500; a section title 16 / 500 (below); a label 16 / 400; content 14; meta 12. */
         font-size: var(--grammar-text-xl);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-page-title);
         overflow-wrap: anywhere;
         text-wrap: balance;
@@ -334,6 +335,7 @@
         /* 0.54.0: the section title is the title.section role (16 / 24 / 500) with the count chip beside it. */
         font-size: var(--grammar-type-title-section-size);
         font-weight: var(--grammar-type-title-section-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-section-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-title-section-line);
     }
 
@@ -434,6 +436,7 @@
     .starci-core-section-count {
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -953,6 +956,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
@@ -1025,8 +1029,8 @@
         .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button { transition: none; }
     }
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon {
-        width: var(--grammar-icon-xs);
-        height: var(--grammar-icon-xs);
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
     .starci-core-horizontal-scroll-region {
@@ -1136,6 +1140,7 @@
         /* A card or panel title: the title.section role (0.54.0, 16 / 24 / 500). */
         font-size: var(--grammar-type-title-section-size);
         font-weight: var(--grammar-type-title-section-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-section-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-title-section-line);
     }
 
@@ -1323,6 +1328,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
         line-height: var(--grammar-leading-md);
         text-align: end;
@@ -1335,6 +1341,7 @@
         font-family: inherit;
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
         text-align: start;
     }
@@ -1547,6 +1554,7 @@
         font-size: var(--grammar-text-xs);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
     .starci-core-tab-count[data-grammar-attention="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
@@ -1564,7 +1572,7 @@
     .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
     .starci-core-proportion-dot { flex: none; inline-size: 0.5rem; block-size: 0.5rem; border-radius: var(--grammar-radius-pill); background: var(--accent); }
     .starci-core-proportion-label { color: var(--muted); }
-    .starci-core-proportion-value { color: var(--foreground); font-weight: var(--grammar-weight-medium); font-variant-numeric: tabular-nums; }
+    .starci-core-proportion-value { color: var(--foreground); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); font-variant-numeric: tabular-nums; }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="success"] { background: var(--success); }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="info"] { background: var(--info); }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="warning"] { background: var(--warning); }
@@ -1592,6 +1600,7 @@
     .starci-core-tabs-frame:is([data-grammar-tabs-kind="views"], [data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"])) .starci-core-tabs .tabs__tab[aria-selected="true"] {
         color: var(--accent-soft-foreground);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] {
@@ -1642,7 +1651,7 @@
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
     .starci-core-tabs-more > button, .starci-core-tabs-more > [role="button"] { display: inline-flex; align-items: center; }
     /* The selected tab lives in the fold menu: the trigger reads as the selected tab (the tint pair, the medium weight, the accent underline on the line). */
-    .starci-core-tabs-more[data-grammar-tabs-more-selected="true"] { position: relative; color: var(--accent-soft-foreground); font-weight: var(--grammar-weight-medium); }
+    .starci-core-tabs-more[data-grammar-tabs-more-selected="true"] { position: relative; color: var(--accent-soft-foreground); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
     .starci-core-tabs-more[data-grammar-tabs-more-selected="true"]::after {
         content: "";
         position: absolute;
@@ -1758,6 +1767,7 @@
     .starci-core-empty-notice:not([data-grammar-error-layout], [data-grammar-empty-mark="none"]) .starci-core-notice-copy > .starci-core-text:first-child {
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-lg);
     }
 
@@ -1765,6 +1775,7 @@
     .starci-core-empty-notice[data-grammar-empty-scope="page"] .starci-core-notice-copy > .starci-core-text:first-child {
         font-size: var(--grammar-text-xl);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-page-title);
     }
 
@@ -1787,6 +1798,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -1829,7 +1841,7 @@
         border-radius: var(--starci-core-control-radius);
     }
     /* The change line holds the arrow icon (20), so its loading line is as tall: the loading block is the loaded block's box. */
-    .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-change { min-block-size: var(--grammar-icon-sm); }
+    .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-change { min-block-size: var(--grammar-icon-control); }
     /* A block is its own ground: no hairline on either side of it, and a small gap between two blocks. */
     .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) + .starci-core-list-row,
     .starci-core-list-row + .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) { border-top-color: transparent; }
@@ -1851,6 +1863,7 @@
         font-family: var(--font-mono);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -1862,6 +1875,7 @@
         color: var(--starci-row-diff-ink);
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-type-caption-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
         text-decoration-line: none;
     }
@@ -1909,6 +1923,7 @@
         min-width: 0;
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
         overflow-wrap: anywhere;
     }
@@ -1920,6 +1935,7 @@
      */
     .starci-core-list-row[data-grammar-emphasis="unread"] :is(.starci-core-list-row-name, .starci-core-list-row-name > *) {
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* The title of an unread row does not wrap its dot onto a line of its own: the name shrinks and wraps inside, the dot stays on the first line at the name's end. */
@@ -2044,6 +2060,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-type-caption-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2184,6 +2201,7 @@
         border-radius: var(--grammar-radius-pill);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -2306,7 +2324,7 @@
     .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-byline ~ .starci-core-tile-badges { grid-row: 3; }
 
     /* The figure: one plain bold value at the start of the foot, the action and menu at its end, one line. */
-    .starci-core-tile-figure { min-width: 0; overflow: hidden; color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-md); text-overflow: ellipsis; white-space: nowrap; }
+    .starci-core-tile-figure { min-width: 0; overflow: hidden; color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); line-height: var(--grammar-leading-md); text-overflow: ellipsis; white-space: nowrap; }
     .starci-core-tile-foot[data-grammar-tile-figure="true"] { flex-wrap: nowrap; justify-content: space-between; }
     .starci-core-tile-foot[data-grammar-tile-figure="true"] > .starci-core-tile-actions { flex: 0 0 auto; margin-inline-start: auto; }
 
@@ -2375,6 +2393,7 @@
         margin: var(--grammar-section-gap) 0 var(--grammar-inline-gap);
         color: inherit;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-tight);
     }
 
@@ -2388,7 +2407,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-markdown-article h2 { font-weight: var(--grammar-weight-bold); }
+    .starci-core-markdown-article h2 { font-weight: var(--grammar-weight-bold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-bold), 400), 600) - 400) * 0.0025); }
     .starci-core-markdown-article h3 { margin-block-start: var(--grammar-row-gap); }
     .starci-core-markdown-article h4 { margin-block-start: var(--grammar-inline-gap); color: var(--muted); }
 
@@ -2403,7 +2422,7 @@
     .starci-core-markdown-article ul { list-style: disc; }
     .starci-core-markdown-article ol { list-style: decimal; }
 
-    .starci-core-markdown-article strong { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-markdown-article strong { font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); }
     .starci-core-markdown-article em { font-style: italic; }
 
     .starci-core-markdown-article li + li {
@@ -2434,6 +2453,7 @@
         font-family: var(--font-mono);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
         white-space: break-spaces;
     }
@@ -2460,6 +2480,7 @@
         font-family: var(--font-mono);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-relaxed);
         white-space: pre;
     }
@@ -2540,6 +2561,7 @@
         color: var(--overlay-foreground, var(--foreground));
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
         opacity: 0;
         pointer-events: none;
@@ -3062,6 +3084,7 @@
         min-width: 0;
         overflow: hidden;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -3155,6 +3178,7 @@
         font: inherit;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         text-align: start;
         cursor: pointer;
     }
@@ -3219,6 +3243,7 @@
         padding-block: 0.75rem 0.25rem !important;
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         color: var(--muted);
     }
 
@@ -3289,6 +3314,7 @@
 
     .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) .starci-core-sidebar-item-label {
         font-weight: var(--starci-core-sidebar-selected-weight, var(--grammar-weight-medium));
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--starci-core-sidebar-selected-weight, var(--grammar-weight-medium)), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-sidebar-item[data-focus-visible="true"] {
@@ -3307,6 +3333,7 @@
         font-size: var(--grammar-text-md);
         /* 0.40.0: `--starci-core-sidebar-weight` takes the weight of an unselected item (default medium, as a selected one). */
         font-weight: var(--starci-core-sidebar-weight, var(--grammar-weight-medium));
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--starci-core-sidebar-weight, var(--grammar-weight-medium)), 400), 600) - 400) * 0.0025);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -3433,6 +3460,7 @@
         overflow: hidden;
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -3440,6 +3468,7 @@
 
     .starci-core-bottom-nav-item[data-grammar-current="true"] .starci-core-bottom-nav-label {
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* --- PaneGrid: named areas laid out flush; the divider is the start edge of the later pane (n-1 lines, never doubled). --- */
@@ -4015,6 +4044,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-pane-drawer-content {
@@ -4322,6 +4352,7 @@
         font-size: var(--grammar-text-xs);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
     /* Proximity: the column spaces its head and its cards by 12, so the cards, peers inside it, stand 8 apart (12 before 0.27).
@@ -4380,12 +4411,13 @@
         padding: var(--grammar-inset-nested);
         text-align: start;
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         color: var(--muted);
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-schedule-column[data-grammar-current="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); }
+    .starci-core-schedule-column[data-grammar-current="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); }
     .starci-core-schedule-column-label,
     .starci-core-schedule-column-description { display: block; }
 
@@ -4396,6 +4428,7 @@
         text-align: start;
         vertical-align: top;
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         color: var(--muted);
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
@@ -4496,7 +4529,7 @@
      * Chip of size sm, the 12 text on a 20 line, no block padding, an inline 8 and the pill radius. ChoiceButtons: as tall as
      * a Button of the same size, 32 at sm and 40 at md, at every width.
      */
-    [data-grammar-choice-look="chip"] .starci-core-choice-chip { block-size: 1.25rem; min-block-size: 0; box-sizing: border-box; padding-block: 0; padding-inline: var(--grammar-inline-gap); border-radius: var(--grammar-radius-pill); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-sm); font-weight: var(--grammar-weight-medium); }
+    [data-grammar-choice-look="chip"] .starci-core-choice-chip { block-size: 1.25rem; min-block-size: 0; box-sizing: border-box; padding-block: 0; padding-inline: var(--grammar-inline-gap); border-radius: var(--grammar-radius-pill); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-sm); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
     [data-grammar-choice-look="button"][data-size="md"] .starci-core-choice-chip { block-size: 2.5rem; }
     [data-grammar-choice-look="button"][data-size="sm"] .starci-core-choice-chip { block-size: 2rem; }
     /*
@@ -4543,6 +4576,7 @@
         background: var(--accent-soft);
         color: var(--accent-soft-foreground);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* tone="solid" (0.46.0): the solid accent plate, a standalone x pair. tone="strong": the neutral strong plate, the foreground with the background as its ink. */
@@ -4552,6 +4586,7 @@
         background: var(--accent);
         color: var(--accent-foreground);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-avatar[data-grammar-avatar-tone="strong"] [data-grammar-avatar-fallback="true"] {
@@ -4560,6 +4595,7 @@
         background: var(--foreground);
         color: var(--background);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* A ToneSlot (0.55.1): the app's own soft pair, { soft, ink } on two variables; a lone avatar, a row member or a grid tile alike. */
@@ -4569,6 +4605,7 @@
         background: var(--grammar-tone-slot-soft);
         color: var(--grammar-tone-slot-ink);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
 
@@ -5068,44 +5105,105 @@
         flex: none;
     }
 
-    /* The icon size table (ramps.css): `heading` and `leading` 24 (a left navigation entry, a section or heading lead), `chip` 20 (beside text, a chip, a badge, a field), `text` 1em. */
-    .starci-core-icon:is([data-usage="heading"], [data-usage="leading"]) {
-        width: var(--grammar-icon-md);
-        height: var(--grammar-icon-md);
+    /*
+     * The icon table (ramps.css, owner 2026-11-23): `control` 16, the one leading-icon size (beside 14px words, in every button, menu, field and
+     * navigation entry, an icon button's glyph); `row` 20 in the 40 tile; `head` 24 in the 48 tile; `text` 1em, carets only (below).
+     */
+    .starci-core-icon[data-usage="control"] {
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
-    /* The icon of a Button follows the Button's height (owner 2026-11-23): 20 in a 40 (md) or larger button, 16 in a 32 (sm) one. Here, in the common layer, so it outranks the usage box above. */
-    .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
-        width: var(--grammar-icon-sm);
-        height: var(--grammar-icon-sm);
+    .starci-core-icon[data-usage="row"] {
+        width: var(--grammar-icon-row);
+        height: var(--grammar-icon-row);
     }
 
-    .starci-core-button[data-size="sm"]:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
-        width: var(--grammar-icon-xs);
-        height: var(--grammar-icon-xs);
+    .starci-core-icon[data-usage="head"] {
+        width: var(--grammar-icon-head);
+        height: var(--grammar-icon-head);
     }
 
-    .starci-core-icon[data-usage="chip"] {
-        width: var(--grammar-icon-sm);
-        height: var(--grammar-icon-sm);
+    /*
+     * THE ICON STROKE (ramps.css): every glyph strokes at `--grammar-icon-stroke`, the weight of the text it stands with, whatever width its
+     * source wrote (an author rule outranks a presentation attribute). Outline only: no glyph is ever filled.
+     */
+    .starci-core-icon,
+    .starci-core-status-glyph,
+    .starci-core-icon :where(path, circle, line, polyline, polygon, rect, ellipse),
+    .starci-core-status-glyph :where(path, circle, line, polyline, polygon, rect, ellipse) {
+        stroke-width: var(--grammar-icon-stroke);
     }
 
-    /* 20 whatever the usage: a chip's or badge's icon, a 40px tile's glyph, a logo, and a 40 icon button's glyph; a 32 (sm) icon button's glyph is 16, the lg step sizes its own. */
-    :is(.starci-core-icon-button, .starci-core-icon-tile, .starci-core-logo-stack-logo, [data-component="Badge"]) .starci-core-icon {
-        width: var(--grammar-icon-sm);
-        height: var(--grammar-icon-sm);
+    /* A glyph with no words beside it takes the weight of a control label (500): an icon button's, and a tile's (its row label is 500). */
+    :is(.starci-core-icon-button, .starci-core-icon-tile) {
+        --grammar-icon-stroke: var(--grammar-icon-stroke-medium);
+    }
+
+    /* A labelled control's glyph is 16 (a button's at every size); an icon-only 40 button's is 20, a 32 one's 16; the lg icon button sizes its own. */
+    .starci-core-button .starci-core-icon {
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
+    }
+
+    .starci-core-icon-button .starci-core-icon {
+        width: var(--grammar-icon-alone);
+        height: var(--grammar-icon-alone);
     }
 
     .starci-core-icon-button[data-size="sm"] .starci-core-icon {
-        width: var(--grammar-icon-xs);
-        height: var(--grammar-icon-xs);
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
+    }
+
+    /* A tile's glyph is its size's: 20 in the row tile, 24 in the head tile (below). */
+    .starci-core-icon-tile .starci-core-icon {
+        width: var(--grammar-icon-row);
+        height: var(--grammar-icon-row);
+    }
+
+    /* A badge's glyph is its status mark: 1em of its words, before them (the status glyph rule, below). */
+    [data-component="Badge"] .starci-core-icon {
+        width: var(--grammar-icon-text);
+        height: var(--grammar-icon-text);
+    }
+
+    /*
+     * A LEADING ICON beside words is ONE pair (owner 2026-11-23): 14px words (no role, `body`, `label.item`, `label.field`) with a 16 glyph, one
+     * inline step (8) apart, centred on the line. An icon written into one of those Texts by hand gets it; a heading takes the head tile beside it
+     * and a 12px caption or meta line takes words only, so no other role styles a leading icon.
+     */
+    .starci-core-text:is(:not([data-role]), [data-role="body"], [data-role="label.item"], [data-role="label.field"]):has(> .starci-core-icon) {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    /*
+     * TEXT THAT CARRIES AN ICON IS REGULAR (owner 2026-11-23): a line with a leading icon (a Text, a status mark, a status badge, a menu or
+     * navigation entry) is weight 400, never medium or bold, so the icon beside words always strokes 1.5. A button keeps its label weight (500,
+     * stroke 1.75): it is a control, not text. Bold words inside a sentence stay allowed. !important: a part sets its own weight at a higher
+     * specificity (a selected navigation entry, a status label), and the pair wins over every one of them.
+     */
+    :is(.starci-core-text:has(> .starci-core-icon), .starci-core-inline-status, [data-component="Badge"]:has(.starci-core-icon, .starci-core-inline-status-glyph), [data-grammar-menu-item]:has(.starci-core-icon), .starci-core-sidebar-item:has(.starci-core-icon)) {
+        font-weight: var(--grammar-weight-regular) !important;
+        --grammar-icon-stroke: var(--grammar-icon-stroke-regular);
+    }
+
+    span.starci-core-text:is(:not([data-role]), [data-role="body"], [data-role="label.item"], [data-role="label.field"]):has(> .starci-core-icon) {
+        display: inline-flex;
+    }
+
+    .starci-core-text > .starci-core-icon {
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
     /*
      * TEXT-SIZED GLYPHS (owner 2026-11-23): a caret (a Disclosure or Accordion chevron, the "goes somewhere" cue of a figure or a pressable
      * row, a Select trigger caret, a submenu caret, the fold caret of a tab strip, an Alert's row chevron, a schedule group's chevron), a
-     * breadcrumb separator and a status mark inside a line (InlineStatus, a message receipt) are 1em of the text beside them, in that text's
-     * colour, centred on its line. One rule sizes all of them: Icon `text`, and the vendor slots Grammar does not draw through Icon. `!important`:
+     * breadcrumb separator, a message receipt and a status mark (InlineStatus: its glyph BEFORE the word) are 1em of the text beside them, at any
+     * size, in that text's colour, centred on its line. Every other icon beside words is the 14/16 pair. One rule sizes all of them: Icon `text`, and the vendor slots Grammar does not draw through Icon. `!important`:
      * the vendor sizes its own indicators (size-3, size-4) and some consumers load its sheet unlayered.
      */
     :is(
@@ -5276,32 +5374,52 @@
         box-shadow: 0 0 0 var(--grammar-ring-width) var(--background);
         font-size: var(--grammar-text-2xs);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
         line-height: var(--grammar-leading-none);
         pointer-events: none;
     }
 
-    /* The tile of an empty state is the 48 one, its glyph 24 (the icon size table, ramps.css); every other tile is the round 40 below. */
+    /* The tile of an empty state is the head tile, 48 with a 24 glyph (the icon table, ramps.css), whatever size it was given. */
     .starci-core-empty-notice > .starci-core-icon-tile {
-        width: var(--grammar-empty-tile-size);
-        height: var(--grammar-empty-tile-size);
+        border-radius: var(--grammar-tile-head-radius);
+        width: var(--grammar-tile-head-size);
+        height: var(--grammar-tile-head-size);
     }
 
     .starci-core-empty-notice > .starci-core-icon-tile :is(.starci-core-icon, .starci-core-status-glyph) {
-        width: var(--grammar-icon-md);
-        height: var(--grammar-icon-md);
+        width: var(--grammar-icon-head);
+        height: var(--grammar-icon-head);
     }
 
     /* --- Icon tile --- */
-    /* One tile, everywhere (owner, 2026-11-22: "alert và icon và icontile … đồng bộ là tròn size40"): a round 40px plate. */
+    /*
+     * Two tiles (the icon table, ramps.css; owner 2026-11-23): `row` 40 at radius 10 with a 20 glyph, leading a list row; `head` 48 at radius 12 with
+     * a 24 glyph, leading a page head or an empty state. A status mark stays the round 40 (its running ring spins on the plate's edge).
+     */
     .starci-core-icon-tile {
         display: inline-flex;
         flex: none;
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        width: 2.5rem;
-        height: 2.5rem;
+        width: var(--grammar-tile-row-size);
+        height: var(--grammar-tile-row-size);
+        border-radius: var(--grammar-tile-row-radius);
+    }
+
+    .starci-core-icon-tile[data-size="head"] {
+        width: var(--grammar-tile-head-size);
+        height: var(--grammar-tile-head-size);
+        border-radius: var(--grammar-tile-head-radius);
+    }
+
+    .starci-core-icon-tile[data-size="head"] .starci-core-icon {
+        width: var(--grammar-icon-head);
+        height: var(--grammar-icon-head);
+    }
+
+    .starci-core-icon-tile[data-grammar-mark="status"] {
         border-radius: var(--grammar-radius-pill);
     }
 
@@ -5353,7 +5471,7 @@
      * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (1em of the words beside it, the text-sized glyph rule) and its words in the state's ink, no plate.
      */
     .starci-core-icon-tile[data-grammar-mark="status"] { position: relative; }
-    .starci-core-icon-tile .starci-core-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); flex: none; }
+    .starci-core-icon-tile .starci-core-status-glyph { width: var(--grammar-icon-row); height: var(--grammar-icon-row); flex: none; }
     /* Running is the plain circle as a spinning ring (the three status glyphs, owner 2026-11-22); still under reduced motion. */
     .starci-core-status-spin { transform-origin: center; animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite; }
 
@@ -5375,6 +5493,11 @@
         .starci-core-icon-tile-ring { animation: none; border-color: var(--info); }
     }
 
+    /*
+     * A STATUS MARK (owner 2026-11-23): the status glyph (circle-check done, circle-x failed, the empty circle pending, the triangle a warning) goes
+     * BEFORE its word at 1em of the text, as a caret goes after it, at any text size (a 12px meta line, a table cell, a 14px row); glyph and word
+     * share the state's tone, the word is regular, the glyph outline.
+     */
     .starci-core-inline-status {
         display: inline-flex;
         min-width: 0;
@@ -5383,6 +5506,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
         white-space: nowrap;
     }
@@ -5392,13 +5516,12 @@
     .starci-core-inline-status[data-tone="accent"] { color: var(--accent-soft-foreground); }
     .starci-core-inline-status[data-tone="warning"] { color: var(--warning-soft-foreground); }
     .starci-core-inline-status[data-tone="danger"] { color: var(--danger-soft-foreground); }
-    /* The glyph is text-sized (the text-sized glyph rule): 1em of the words beside it, its own 14px or the 12px line it stands in. */
+    /* In a 12px line (a caption, a group label, a badge, code) the mark takes that line's size. */
     :is(.starci-type-caption, .starci-type-label-group, .starci-type-badge, .starci-type-code, [data-component="Badge"]) .starci-core-inline-status {
         font-size: inherit;
-        font-weight: inherit;
         line-height: inherit;
     }
-    .starci-core-inline-status-meta { color: var(--muted); font-weight: var(--grammar-weight-regular); }
+    .starci-core-inline-status-meta { color: var(--muted); font-weight: var(--grammar-weight-regular); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025); }
     .starci-core-inline-status[data-loading="true"] { inline-size: 6rem; }
 
     /*
@@ -5425,6 +5548,7 @@
         overflow: hidden;
         font-size: var(--grammar-type-title-section-size);
         font-weight: var(--grammar-type-title-section-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-section-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-title-section-line);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -5445,6 +5569,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-type-caption-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
     }
 
@@ -5463,6 +5588,7 @@
         font-size: var(--grammar-type-figure-size);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-type-figure-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-figure-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-figure-line);
     }
 
@@ -5638,6 +5764,7 @@
         /* The final type scale: level 1 is the page title display size (18), levels 2 and 3 the 14 titles, all semibold. */
         font-size: var(--grammar-text-xl) !important;
         font-weight: var(--grammar-weight-semibold) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-tight) !important;
         line-height: var(--grammar-leading-page-title) !important;
     }
@@ -5645,12 +5772,14 @@
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {
         font-size: var(--grammar-text-md) !important;
         font-weight: var(--grammar-weight-semibold) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="3"] {
         font-size: var(--grammar-text-md) !important;
         font-weight: var(--grammar-weight-semibold) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md) !important;
     }
 
@@ -5658,6 +5787,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs) !important;
         font-weight: var(--grammar-weight-medium) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs) !important;
     }
 
@@ -5666,6 +5796,7 @@
         color: var(--foreground);
         font-size: var(--grammar-type-title-section-size) !important;
         font-weight: var(--grammar-type-title-section-weight) !important;
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-section-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-title-section-line) !important;
     }
 
@@ -5677,12 +5808,14 @@
     .grammar-common-root [data-component="Heading"][data-scale="title"] {
         font-size: var(--grammar-text-3xl) !important;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-tight);
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="display"] {
         font-size: var(--grammar-text-5xl) !important;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-tight);
         line-height: var(--grammar-leading-tight);
     }
@@ -5701,6 +5834,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -5708,7 +5842,7 @@
         color: var(--muted);
     }
 
-    .starci-core-text[data-strong="true"] { font-weight: var(--grammar-weight-medium); }
+    .starci-core-text[data-strong="true"] { font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
 
     .starci-core-text[data-start-content="true"] {
         display: inline-flex;
@@ -5805,17 +5939,20 @@
     .starci-core-text-action[data-appearance="inline"] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-text-action[data-appearance="muted"] {
         color: var(--muted);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /* A destructive text command (sign out of the other devices, remove): underlined, in the danger pair's foreground, no pill. */
     .starci-core-text-action[data-appearance="destructive"] {
         color: var(--danger-soft-foreground);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         text-decoration-line: underline;
     }
 
@@ -5833,6 +5970,7 @@
         padding: 0.25rem 0.5rem;
         color: var(--foreground);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /*
@@ -5872,6 +6010,7 @@
         border-block-end-color: var(--accent);
         color: var(--accent);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-text-action[data-appearance="choice"][data-current="true"],
@@ -5884,11 +6023,13 @@
     .starci-core-text-action[data-appearance="route"][data-current="true"],
     .starci-core-text-action[data-appearance="section"][data-current="true"] {
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-text-action[data-appearance="disclosure"] {
         color: var(--accent-soft-foreground);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-text-action[data-appearance="plain"] {
@@ -5915,7 +6056,7 @@
      * Every Button label is the label.item weight, 500 (owner 2026-11-23): Grammar states it instead of leaning on the vendor's `--font-weight-medium`,
      * which an app's Tailwind theme may leave undefined, so the label would inherit its parent's regular weight (a banner's description is 400).
      */
-    .starci-core-button { font-weight: var(--grammar-type-label-item-weight); }
+    .starci-core-button { font-weight: var(--grammar-type-label-item-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025); }
 
     /*
      * --- Button: full width ---
@@ -6143,6 +6284,7 @@
         /* The badge role (0.54.0): 12 / 16 / 500 in the badge's own tone. */
         font-size: var(--grammar-type-badge-size);
         font-weight: var(--grammar-type-badge-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-badge-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-badge-line);
     }
 
@@ -6207,6 +6349,7 @@
         color: var(--terminal-title-foreground, var(--terminal-foreground, var(--background)));
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-terminal-log {
@@ -6285,7 +6428,7 @@
         line-height: var(--grammar-leading-xs);
     }
 
-    .starci-core-message-bubble-author { font-weight: var(--grammar-weight-semibold); color: var(--foreground); }
+    .starci-core-message-bubble-author { font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); color: var(--foreground); }
     .starci-core-message-bubble-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
     .starci-core-message-bubble-body {
@@ -6543,6 +6686,7 @@
     .starci-core-message-status[data-grammar-message-status="transport"] {
         display: block;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         overflow-wrap: anywhere;
     }
 
@@ -6552,12 +6696,14 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-calendar-day-label[data-grammar-calendar-day-today="true"] {
         color: var(--accent);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /*
@@ -6719,12 +6865,13 @@
     }
 
     .starci-core-inset { gap: var(--grammar-inline-gap); }
-    .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-xs); }
+    .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); line-height: var(--grammar-leading-xs); }
 
     .starci-core-quote-source {
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
 
@@ -6875,7 +7022,7 @@
     }
 
     .starci-core-mention-option[data-grammar-mention-active="true"] { background: var(--default); }
-    .starci-core-mention-label { font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); }
+    .starci-core-mention-label { font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
     .starci-core-mention-description { font-size: var(--grammar-text-xs); color: var(--muted); }
 }
 
@@ -6903,6 +7050,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
         text-align: end;
@@ -6924,6 +7072,7 @@
         color: var(--foreground);
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
     }
 
@@ -6931,6 +7080,7 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -6942,6 +7092,7 @@
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         white-space: normal;
     }
 
@@ -7016,24 +7167,24 @@
  * without restructuring its JSX. The rules come last in the layer, so a role wins over the base Text step.
  */
 @layer starci-grammar-common {
-    .starci-type-figure { font-size: var(--grammar-type-figure-size); line-height: var(--grammar-type-figure-line); font-weight: var(--grammar-type-figure-weight); font-variant-numeric: tabular-nums; }
-    .starci-type-title-page { font-size: var(--grammar-type-title-page-size); line-height: var(--grammar-type-title-page-line); font-weight: var(--grammar-type-title-page-weight); }
-    .starci-type-title-section { font-size: var(--grammar-type-title-section-size); line-height: var(--grammar-type-title-section-line); font-weight: var(--grammar-type-title-section-weight); }
-    .starci-type-label-item { font-size: var(--grammar-type-label-item-size); line-height: var(--grammar-type-label-item-line); font-weight: var(--grammar-type-label-item-weight); }
-    .starci-type-body { font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); font-weight: var(--grammar-type-body-weight); }
-    .starci-type-label-field { color: var(--muted); font-size: var(--grammar-type-label-field-size); line-height: var(--grammar-type-label-field-line); font-weight: var(--grammar-type-label-field-weight); }
-    .starci-type-label-group { color: var(--muted); font-size: var(--grammar-type-label-group-size); line-height: var(--grammar-type-label-group-line); font-weight: var(--grammar-type-label-group-weight); }
-    .starci-type-caption { color: var(--muted); font-size: var(--grammar-type-caption-size); line-height: var(--grammar-type-caption-line); font-weight: var(--grammar-type-caption-weight); }
-    .starci-type-badge { font-size: var(--grammar-type-badge-size); line-height: var(--grammar-type-badge-line); font-weight: var(--grammar-type-badge-weight); }
-    .starci-type-code { font-family: var(--font-mono); font-size: var(--grammar-type-code-size); line-height: var(--grammar-type-code-line); font-weight: var(--grammar-type-code-weight); }
+    .starci-type-figure { font-size: var(--grammar-type-figure-size); line-height: var(--grammar-type-figure-line); font-weight: var(--grammar-type-figure-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-figure-weight), 400), 600) - 400) * 0.0025); font-variant-numeric: tabular-nums; }
+    .starci-type-title-page { font-size: var(--grammar-type-title-page-size); line-height: var(--grammar-type-title-page-line); font-weight: var(--grammar-type-title-page-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-page-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-title-section { font-size: var(--grammar-type-title-section-size); line-height: var(--grammar-type-title-section-line); font-weight: var(--grammar-type-title-section-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-section-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-label-item { font-size: var(--grammar-type-label-item-size); line-height: var(--grammar-type-label-item-line); font-weight: var(--grammar-type-label-item-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-body { font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); font-weight: var(--grammar-type-body-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-body-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-label-field { color: var(--muted); font-size: var(--grammar-type-label-field-size); line-height: var(--grammar-type-label-field-line); font-weight: var(--grammar-type-label-field-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-field-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-label-group { color: var(--muted); font-size: var(--grammar-type-label-group-size); line-height: var(--grammar-type-label-group-line); font-weight: var(--grammar-type-label-group-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-group-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-caption { color: var(--muted); font-size: var(--grammar-type-caption-size); line-height: var(--grammar-type-caption-line); font-weight: var(--grammar-type-caption-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-badge { font-size: var(--grammar-type-badge-size); line-height: var(--grammar-type-badge-line); font-weight: var(--grammar-type-badge-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-badge-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-code { font-family: var(--font-mono); font-size: var(--grammar-type-code-size); line-height: var(--grammar-type-code-line); font-weight: var(--grammar-type-code-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-code-weight), 400), 600) - 400) * 0.0025); }
     /* THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM"): the public marketing site only. Each class reads its role's tokens, whose
        responsive steps live in ramps.css; the display roles add their tracking, the figure its tabular figures. No colour: the tone stays on the element. */
-    .starci-type-display-hero { font-size: var(--grammar-type-display-hero-size); line-height: var(--grammar-type-display-hero-line); font-weight: var(--grammar-type-display-hero-weight); letter-spacing: var(--grammar-type-display-hero-tracking); }
-    .starci-type-display-section { font-size: var(--grammar-type-display-section-size); line-height: var(--grammar-type-display-section-line); font-weight: var(--grammar-type-display-section-weight); letter-spacing: var(--grammar-type-display-section-tracking); }
-    .starci-type-display-figure { font-size: var(--grammar-type-display-figure-size); line-height: var(--grammar-type-display-figure-line); font-weight: var(--grammar-type-display-figure-weight); letter-spacing: var(--grammar-type-display-figure-tracking); font-variant-numeric: tabular-nums; }
-    .starci-type-lead { font-size: var(--grammar-type-lead-size); line-height: var(--grammar-type-lead-line); font-weight: var(--grammar-type-lead-weight); }
-    .starci-type-title-card { font-size: var(--grammar-type-title-card-size); line-height: var(--grammar-type-title-card-line); font-weight: var(--grammar-type-title-card-weight); }
+    .starci-type-display-hero { font-size: var(--grammar-type-display-hero-size); line-height: var(--grammar-type-display-hero-line); font-weight: var(--grammar-type-display-hero-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-display-hero-weight), 400), 600) - 400) * 0.0025); letter-spacing: var(--grammar-type-display-hero-tracking); }
+    .starci-type-display-section { font-size: var(--grammar-type-display-section-size); line-height: var(--grammar-type-display-section-line); font-weight: var(--grammar-type-display-section-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-display-section-weight), 400), 600) - 400) * 0.0025); letter-spacing: var(--grammar-type-display-section-tracking); }
+    .starci-type-display-figure { font-size: var(--grammar-type-display-figure-size); line-height: var(--grammar-type-display-figure-line); font-weight: var(--grammar-type-display-figure-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-display-figure-weight), 400), 600) - 400) * 0.0025); letter-spacing: var(--grammar-type-display-figure-tracking); font-variant-numeric: tabular-nums; }
+    .starci-type-lead { font-size: var(--grammar-type-lead-size); line-height: var(--grammar-type-lead-line); font-weight: var(--grammar-type-lead-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-lead-weight), 400), 600) - 400) * 0.0025); }
+    .starci-type-title-card { font-size: var(--grammar-type-title-card-size); line-height: var(--grammar-type-title-card-line); font-weight: var(--grammar-type-title-card-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-title-card-weight), 400), 600) - 400) * 0.0025); }
     /* THE READING GROUP (0.55.1, owner 2026-11-23): a lesson's headline and prose; the phone step lives in ramps.css. The title balances its lines, the prose avoids a lone last word. */
-    .starci-type-reading-title { font-size: var(--grammar-type-reading-title-size); line-height: var(--grammar-type-reading-title-line); font-weight: var(--grammar-type-reading-title-weight); letter-spacing: var(--grammar-type-reading-title-tracking); text-wrap: balance; }
-    .starci-type-reading-body { font-size: var(--grammar-type-reading-body-size); line-height: var(--grammar-type-reading-body-line); font-weight: var(--grammar-type-reading-body-weight); text-wrap: pretty; }
+    .starci-type-reading-title { font-size: var(--grammar-type-reading-title-size); line-height: var(--grammar-type-reading-title-line); font-weight: var(--grammar-type-reading-title-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-reading-title-weight), 400), 600) - 400) * 0.0025); letter-spacing: var(--grammar-type-reading-title-tracking); text-wrap: balance; }
+    .starci-type-reading-body { font-size: var(--grammar-type-reading-body-size); line-height: var(--grammar-type-reading-body-line); font-weight: var(--grammar-type-reading-body-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-reading-body-weight), 400), 600) - 400) * 0.0025); text-wrap: pretty; }
 }

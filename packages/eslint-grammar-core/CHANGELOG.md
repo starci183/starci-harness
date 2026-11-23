@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.57.0 - 2026-11-23
+
+- Added (`no-raw-spacing-style`, law SPACING-ROLES, owner 2026-11-23): a gap, padding or margin key in a JSX `style` object in product source is reported; the distance is a Grammar spacing role (a Stack, Cluster or Grid `gap`, the inset of a Grammar box). A counting rule at warn until both apps migrate. The class-string half stays the canon's `starci-fe/no-spacing-utility` (R350).
+- Changed (`no-icon-size-class`, wording only; Grammar 0.57.0's icon table): the message names the roles, `control` 16, `row` 20, `head` 24, `text` 1em.
+
 ## 0.56.0 - 2026-11-23
 
 - Changed (`no-icon-size-class`, wording only; Grammar 0.55.1's icon size table, owner 2026-11-23): the message names the table: 24 for a navigation entry or a heading lead (`heading`, `leading`), 20 beside text and in a chip, badge or field (`chip`), 1em of its text for a caret or an inline status mark (`text`). The rule reads the same calls as before.

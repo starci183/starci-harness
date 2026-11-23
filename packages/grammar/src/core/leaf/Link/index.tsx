@@ -106,7 +106,7 @@ const LinkInner = ({
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
             {media === undefined ? children : <Image {...media} />}
-            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : null}
+            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true"><Icon source={glyphSource("arrow-end")} usage="control" /></span> : null}
             {media === undefined && variant === "inline" && external ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>

@@ -9,11 +9,11 @@ import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { StarIcon } from "@heroicons/react/24/outline"
 import { Avatar } from "../src/core/leaf/Avatar/index.tsx"
 import { AvatarGroup } from "../src/core/composite/AvatarGroup/index.tsx"
 import { IconTile } from "../src/core/leaf/IconTile/index.tsx"
 import { isToneSlot, toneSlotStyle } from "../src/core/toneSlot.ts"
+import { TablerStar } from "../src/core/leaf/Icon/tabler.tsx"
 
 const read = (path: string): string => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8")
 const render = (node: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(node)
@@ -55,7 +55,7 @@ test("an AvatarGroup item's slot reaches the row, the grid tile and the member l
 })
 
 test("an IconTile with a slot paints its glyph on the pair; a status mark ignores the slot", () => {
-    const tile = render(createElement(IconTile, { source: StarIcon, tone: SLOT }))
+    const tile = render(createElement(IconTile, { source: TablerStar, tone: SLOT }))
     assert.match(tile, /data-tone="slot"/u)
     assert.match(tile, VARS)
     assert.doesNotMatch(tile, /data-grammar-tone-custom/u)

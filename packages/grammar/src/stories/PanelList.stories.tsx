@@ -70,7 +70,7 @@ export const ScrollingIdentityColumns: Story = {
                 <G.ListBox label="Conversations" descriptionLines={1} inset="panel" defaultSelectedIds={["group"]} items={[
                     { id: "group", label: "Design team", description: "A 40px group identity", leading: <G.AvatarGroup label="Design team" layout="grid" items={[{ id: "mina", name: "Mina Nguyen" }, { id: "alex", name: "Alex Tran" }, { id: "kim", name: "Kim Le" }, { id: "robin", name: "Robin Park" }]} overflowLabel={(count) => `${count} more members`} /> },
                     { id: "person", label: "Mina Nguyen", description: "A smaller avatar in the same column", leading: <G.Avatar name="Mina Nguyen" size="md" /> },
-                    { id: "icon", label: "Pinned conversations", description: "A glyph in the same column", leading: <G.Icon source={GroupGlyph} usage="leading" /> },
+                    { id: "icon", label: "Pinned conversations", description: "A glyph in the same column", leading: <G.Icon source={GroupGlyph} usage="control" /> },
                 ]} />
             </G.NavLandmark>
         </G.SurfaceCard>
@@ -84,7 +84,7 @@ export const LeadingSlotSizes: Story = {
             {(["sm", "md", "lg"] as const).map((size) => (
                 <G.ListBox key={size} label={`${size} identity slots`} size={size} items={[
                     { id: "person", label: "Mina Nguyen", leading: <G.Avatar name="Mina Nguyen" size={size === "sm" ? "sm" : "md"} /> },
-                    { id: "glyph", label: "Pinned conversations", leading: <G.Icon source={GroupGlyph} usage="leading" /> },
+                    { id: "glyph", label: "Pinned conversations", leading: <G.Icon source={GroupGlyph} usage="control" /> },
                 ]} />
             ))}
         </>

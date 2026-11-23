@@ -61,8 +61,8 @@ export const DisclosureChevronAndQuiet: Story = {
         <Matrix maxWidth={420}>
             <State label="chevron end (default) / start / start, open" direction="column">
                 <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
             </State>
             <State label="quiet, closed / open" direction="column">
                 <G.Disclosure kind="quiet" title="Evidence (2)" body={<G.Text>Two messages from the customer.</G.Text>} />

@@ -72,6 +72,7 @@
         color: var(--default-foreground);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-funnel-bar[data-grammar-skeleton="true"] { background: var(--surface-secondary); min-inline-size: 0; }

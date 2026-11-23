@@ -21,12 +21,14 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-label] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-snug);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-error] {
         color: var(--offset-pop-error);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /*
@@ -43,6 +45,7 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field-count][data-grammar-invalid="true"] {
         color: var(--offset-pop-error);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* --- The field box: ink outline, surface paint, control radius --- */
@@ -255,6 +258,7 @@
         background: var(--accent-soft);
         color: var(--accent-soft-foreground);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
         box-shadow: inset var(--offset-pop-shadow-x) 0 0 var(--accent);
     }
 
@@ -262,12 +266,14 @@
         color: var(--accent-foreground);
         background: var(--accent);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* A standalone Calendar's chosen day is a pink fill, so its number is ink in both themes (--accent-foreground, not --foreground, which turns cream in the dark theme; DNA-OFFSET-POP-INK-ON-PINK). */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Calendar"] [data-grammar-calendar-day][data-selected="true"] {
         color: var(--accent-foreground);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-focus-visible="true"] {
@@ -282,6 +288,7 @@
         color: var(--foreground);
         background: var(--field-background);
         font-weight: var(--grammar-weight-bold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-bold), 400), 600) - 400) * 0.0025);
         transition:
             transform var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition),
@@ -308,12 +315,14 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Fieldset"] [data-grammar-fieldset-legend] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-black);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-snug);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Fieldset"][data-grammar-invalid="true"] [data-grammar-field-error] {
         color: var(--offset-pop-error);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Form"][data-grammar-pending="true"] {

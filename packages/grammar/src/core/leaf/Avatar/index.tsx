@@ -2,7 +2,6 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { Avatar as HeroAvatar } from "@heroui/react"
-import { ChatBubbleOvalLeftEllipsisIcon } from "@heroicons/react/24/outline"
 import { createElement, isValidElement, useMemo, type ComponentType, type CSSProperties, type ReactNode } from "react"
 import { avatarDataUri } from "./dicebear.js"
 import { avatarHue, avatarInitials } from "./identity.js"
@@ -10,6 +9,7 @@ import { Skeleton } from "../Skeleton/index.js"
 import type { IconSource } from "../Icon/index.js"
 import type { NoChildren } from "../../tier.js"
 import { isToneSlot, toneSlotStyle, type ToneSlot } from "../../toneSlot.js"
+import { TablerMessageDots } from "../Icon/tabler.js"
 
 /**
  * The two round-mark sizes (owner 2026-11-22: "giữ 2 size phổ biến 40 và 24 thôi, không có 32. 24 là size icon, avatargroup lúc này như icon, còn 40 là size phổ thông"):
@@ -17,7 +17,12 @@ import { isToneSlot, toneSlotStyle, type ToneSlot } from "../../toneSlot.js"
  * a chip, the agents on an account row). No other size exists.
  */
 export type AvatarSize = "sm" | "md"
-export type AvatarKind = "person" | "agent"
+/**
+ * `person` and `agent` are people; `logo` is a brand or channel logo image (Google, Facebook, Zalo…, the app's `src`) on a white surface whatever the
+ * theme, so its brand colours stay true in dark mode, fitted whole inside the circle with a hairline edge. A logo row is an `AvatarGroup` of them, and a
+ * lone logo is an `Avatar` of the same `size` (owner 2026-11-23: sized by the `size` prop only, never by hand).
+ */
+export type AvatarKind = "person" | "agent" | "logo"
 export type AvatarShape = "circle" | "square" | "rounded"
 
 /** The vendor size each step stands on; the sheet draws `sm` at 24px (`--grammar-avatar-sm-size`) and `md` at 40px (`--grammar-avatar-md-size`). */
@@ -94,7 +99,7 @@ export const AvatarMarkPlate = ({ mark }: { readonly mark: AvatarMark }) => (
 
 /** The logo of a mark: the app's node, the app's icon source drawn as a decorative glyph, or (none passed) the generic channel glyph; never initials. */
 const markLogo = (logo: AvatarMark["logo"]): ReactNode => {
-    if (logo === undefined) return <ChatBubbleOvalLeftEllipsisIcon aria-hidden="true" focusable="false" />
+    if (logo === undefined) return <TablerMessageDots aria-hidden="true" focusable="false" />
     // An icon source is a component: a function, or a forwardRef or memo object (Heroicons), never an element.
     if (typeof logo === "function" || (typeof logo === "object" && logo !== null && !isValidElement(logo) && "$$typeof" in logo)) {
         return createElement(logo as unknown as ComponentType<{ "aria-hidden": boolean; focusable: "false" }>, { "aria-hidden": true, focusable: "false" })

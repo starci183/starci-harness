@@ -103,7 +103,7 @@
 
     .starci-core-code-block-code .starci-core-code-line { padding-inline: var(--grammar-inset-card); }
     .starci-core-code-block-code [data-grammar-line-numbers="true"] .starci-core-code-line::before { min-inline-size: 4ch; margin-inline-end: var(--grammar-inset-card); font-variant-numeric: tabular-nums; }
-    .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--grammar-code-fg); font-weight: var(--grammar-weight-medium); }
+    .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--grammar-code-fg); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
 
     .starci-core-code-block-note {
         padding: var(--grammar-row-gap) var(--grammar-inset-card);
@@ -152,6 +152,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-field-size);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-field-line);
     }
 
@@ -159,6 +160,7 @@
     .starci-core-graded-option-label {
         font-size: var(--grammar-type-reading-body-size);
         font-weight: var(--grammar-type-reading-body-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-reading-body-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-reading-body-line);
     }
 
@@ -169,6 +171,7 @@
         gap: var(--grammar-identity-gap);
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
     }
 
@@ -207,6 +210,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-group-size);
         font-weight: var(--grammar-type-label-group-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-group-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-group-line);
     }
 
@@ -226,6 +230,7 @@
     .starci-core-sidenote-term {
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
     }
 
@@ -263,6 +268,7 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-group-size);
         font-weight: var(--grammar-type-label-group-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-group-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-group-line);
     }
 
@@ -280,7 +286,7 @@
 
     .starci-core-toc-link:hover { color: var(--foreground); }
     .starci-core-toc-link:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
-    .starci-core-toc-link[data-grammar-toc-active="true"] { border-inline-start-color: var(--foreground); color: var(--foreground); font-weight: var(--grammar-weight-medium); }
+    .starci-core-toc-link[data-grammar-toc-active="true"] { border-inline-start-color: var(--foreground); color: var(--foreground); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
 
     @media (prefers-reduced-motion: reduce) {
         :is(.starci-core-code-block-caret, .starci-core-graded-option, .starci-core-sidenote, .starci-core-toc-link) { transition: none; }
