@@ -42,6 +42,15 @@ export const AiChatAssistantMark = ({ avatar }: { readonly avatar: AiChatAssista
 /** The reader's own words: a neutral soft bubble at the end side, the text as typed (line breaks kept, never parsed as markdown). */
 export const AiChatUserText = ({ text }: { readonly text: string }) => <span className="starci-ai-chat-user-text">{text}</span>
 
+/** The caption of a turn's source ("typed in Claude Code"): one muted line, at the end side under the reader's bubble and at the start under an assistant's answer. */
+export const AiChatSource = ({ text, side }: { readonly text: string; readonly side: "start" | "end" }) => (
+    <span className="starci-ai-chat-source" data-grammar-ai-chat-source={side}>
+        <Text role="caption" tone="muted" as="span">
+            {text}
+        </Text>
+    </span>
+)
+
 /** The answer is on its way and has nothing to show yet: the running mark with the app's word for it. */
 export const AiChatThinking = ({ label }: { readonly label: string }) => (
     <div className="starci-ai-chat-thinking" data-grammar-ai-chat-thinking="true" role="status">

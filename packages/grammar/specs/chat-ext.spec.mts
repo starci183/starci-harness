@@ -104,6 +104,18 @@ test("the three slots: the assistant's mark before each assistant turn, the node
     assert.doesNotMatch(plain, /data-grammar-ai-chat-mark|data-grammar-ai-chat-after/, "no slot, nothing drawn")
 })
 
+test("a message's source is one caption under the reader's bubble (end side) or under an assistant answer (start side); none, nothing drawn", () => {
+    const withSource: AiChatMessage[] = [
+        { id: "u1", role: "user", source: "typed in Claude Code", parts: [{ type: "text", text: "Shorter please" }] },
+        { id: "a1", role: "assistant", status: "complete", source: "from the machine", parts: [{ type: "text", text: "Done" }] },
+    ]
+    const html = render({ messages: withSource })
+    assert.match(html, /data-grammar-ai-chat-source="end"[^>]*>[\s\S]*typed in Claude Code/)
+    assert.match(html, /data-grammar-ai-chat-source="start"[^>]*>[\s\S]*from the machine/)
+    assert.ok(html.indexOf("Shorter please") < html.indexOf("typed in Claude Code"), "the caption stands under the bubble")
+    assert.doesNotMatch(render(), /data-grammar-ai-chat-source/)
+})
+
 test("the app's messages convert to assistant-ui's: ids, roles, text and tool parts, a failed answer incomplete", () => {
     const failed: AiChatMessage = { id: "a2", role: "assistant", status: "error", parts: [{ type: "tool-call", toolCallId: "t2", toolName: "x", title: "X", args: { n: 1, skip: undefined }, status: "error" }] }
     const converted = toThreadMessage(failed)

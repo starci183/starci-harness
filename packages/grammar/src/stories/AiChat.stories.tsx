@@ -205,3 +205,24 @@ export const SlotsError: Story = {
     </Frame>
   ),
 };
+
+/** A turn's source: the reader's line typed in the CLI and mirrored here carries its caption under the bubble; a held line says so. */
+export const MessageSource: Story = {
+  render: () => (
+    <Frame>
+      <AiChatThread
+        messages={[
+          ...conversation,
+          { id: "u9", role: "user", source: "gõ trong Claude Code", parts: [{ type: "text", text: "Ngắn hơn nữa nhé" }] },
+          { id: "u10", role: "user", source: "Chưa gửi · đang giữ", parts: [{ type: "text", text: "Đổi tiêu đề ngắn hơn" }] },
+        ]}
+        isRunning={false}
+        onSend={noop}
+        labels={labels}
+        header={header}
+        assistantAvatar={assistantAvatar}
+        composerHint={composerHint}
+      />
+    </Frame>
+  ),
+};

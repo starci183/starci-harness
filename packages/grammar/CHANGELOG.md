@@ -9,6 +9,7 @@ A patch: three new optional props and a type.
 - Added (`AiChatThread composerHint`): one short caption string in the composer's foot row, inside the same bordered box, at the start with the send button at the end ("Claude · the shop's key"). The chat owns its composer layout now: one bordered box (a 1px edge, the focus ring on the box) holding the core Textarea without its own frame and a foot row with the hint and the round `sm` send, which turns into stop while an answer runs; `Textarea send` is no longer used by the chat.
 - Added (`MessageBubble tone="neutral"`): the default soft surface (`--default-soft` with its foreground) for an outgoing bubble; `AiChatThread` draws the reader's turns with it, no accent fill (it was the brand fill).
 - Story `Navigation & Data/AI chat` `Slots` and `SlotsError`; spec `chat-ext`.
+- Added (`AiChatMessage source`, NIVO Relay): an optional one-line caption in the app's words ("typed in Claude Code", "not sent yet"), drawn as a muted `caption` under the reader's bubble at its end side, or under an assistant turn's answer at the start; absent draws nothing. Story `Navigation & Data/AI chat` `MessageSource`; spec `chat-ext`.
 
 ## 0.57.0 - 2026-11-23 - The icon table: one set, three sizes by role, the stroke follows the text, no fill; the leading disclosure caret; channel logos are Avatars; the spacing roles documented
 

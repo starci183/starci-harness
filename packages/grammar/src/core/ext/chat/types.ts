@@ -18,6 +18,11 @@ export interface AiChatMessage {
     status?: "running" | "complete" | "error"
     /** ISO 8601. */
     createdAt?: string
+    /**
+     * Where the turn came from or how it stands, in the app's words ("typed in Claude Code", "not sent yet"): one caption under the reader's bubble, at its end side, or under an
+     * assistant turn's answer. Plain text, one line; absent draws nothing.
+     */
+    source?: string
 }
 
 /** One fact of the proposed result: its name and its value, which may be long text over several lines. */
