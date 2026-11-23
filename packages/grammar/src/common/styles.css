@@ -5904,6 +5904,14 @@
     .starci-core-text-action-placeholder { display: contents; visibility: hidden; }
 
     /*
+     * --- Button: label weight ---
+     *
+     * Every Button label is the label.item weight, 500 (owner 2026-11-23): Grammar states it instead of leaning on the vendor's `--font-weight-medium`,
+     * which an app's Tailwind theme may leave undefined, so the label would inherit its parent's regular weight (a banner's description is 400).
+     */
+    .starci-core-button { font-weight: var(--grammar-type-label-item-weight); }
+
+    /*
      * --- Button: full width ---
      *
      * A full-width action stretches to its parent and lets its label wrap onto a second line rather

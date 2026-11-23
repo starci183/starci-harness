@@ -98,6 +98,52 @@ const OPTIONS: readonly G.GradedChoiceOption[] = [
   { id: 'd', label: 'Sổ giá chưa lưu xong lúc lệnh xóa chạy.', isCorrect: false, explanation: 'Marketing lưu xong rồi mới xóa, nên lúc đó sổ đã có 199.000đ.' },
 ];
 
+/** The same question graded by a server: the answers carry no key; the story stands in for the server with a short delay. */
+const ServerGraded = () => {
+  const [verdicts, setVerdicts] = useState<Readonly<Record<string, G.GradedChoiceVerdict>>>({});
+  const [pendingId, setPendingId] = useState<string | undefined>(undefined);
+  const grade = (id: string) => {
+    setPendingId(id);
+    setTimeout(() => {
+      const right = OPTIONS.find((option) => option.isCorrect === true)?.id;
+      setVerdicts((now) =>
+        id === right
+          ? Object.fromEntries(OPTIONS.map((option) => [option.id, now[option.id] ?? { state: option.id === id ? 'correct' : 'reason', explanation: option.explanation }]))
+          : { ...now, [id]: { state: 'wrong', explanation: OPTIONS.find((option) => option.id === id)?.explanation } },
+      );
+      setPendingId(undefined);
+    }, 300);
+  };
+  return (
+    <G.GradedChoice
+      grading="server"
+      label="Chọn đáp án"
+      options={OPTIONS.map((option) => ({ id: option.id, label: option.label }))}
+      verdicts={verdicts}
+      {...(pendingId === undefined ? {} : { pendingId })}
+      onPick={grade}
+      labels={{ wrong: 'Chưa đúng', correct: 'Đúng', whyNot: 'Vì sao không phải', grading: 'Đang chấm' }}
+    />
+  );
+};
+
+/** Server grading: a pick waits for its verdict; the right one releases every answer's reason. */
+export const QuestionServerGraded: Story = {
+  render: () => (
+    <div style={{ maxInlineSize: 720 }}>
+      <ServerGraded />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const options = canvasElement.querySelectorAll<HTMLButtonElement>('.starci-core-graded-option');
+    await userEvent.click(options[0] as HTMLButtonElement);
+    await waitFor(() => expect(options[0]?.getAttribute('data-grammar-graded-state')).toBe('wrong'));
+    await userEvent.click(options[1] as HTMLButtonElement);
+    await waitFor(() => expect(options[1]?.getAttribute('data-grammar-graded-state')).toBe('correct'));
+    expect(options[2]?.textContent).toContain('Vì sao không phải');
+  },
+};
+
 /** The question: a wrong pick locks in danger with its reason, the right pick turns success and the rest dim. */
 export const Question: Story = {
   render: () => (

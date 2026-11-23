@@ -100,6 +100,12 @@ export type RowGroundTone = RowEdgeTone
 export type ListRowData = {
     readonly id: string
     readonly title: string
+    /**
+     * The title drawn with inline marks (0.55.1): the same words as `title` with a term that carries its note (`GlossaryTerm`, `SidenoteTerm`) or
+     * inline `Code` among them. `title` stays the plain words that name the row. Only a row that is not itself a control (no `href`, no
+     * `onPress`) draws it: an interactive term inside a link or a button would nest one control in another.
+     */
+    readonly titleContent?: ReactNode
     /** The title names an AI agent: a small neutral "AI" Chip follows it (`AgentName`). The app never places the Chip by hand. */
     readonly isAgent?: boolean
     /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */

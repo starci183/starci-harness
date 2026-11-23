@@ -42,7 +42,7 @@ export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type Geo
 export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps, type MermaidTone, type MermaidZoomLabels } from "../core/frame/MermaidDiagram/index.js"
 export { CodeBlock, type CodeBlockLabels, type CodeBlockProps, type CodeBlockScheme } from "../core/frame/CodeBlock/index.js"
 export { Sidenotes, SidenoteTerm, type SidenoteItem, type SidenotesProps, type SidenoteTermProps } from "../core/frame/Sidenotes/index.js"
-export { GradedChoice, type GradedChoiceLabels, type GradedChoiceOption, type GradedChoiceProps } from "../core/composite/GradedChoice/index.js"
+export { GradedChoice, type GradedChoiceLabels, type GradedChoiceLocalProps, type GradedChoiceOption, type GradedChoiceProps, type GradedChoiceServerProps, type GradedChoiceVerdict } from "../core/composite/GradedChoice/index.js"
 export { TableOfContents, type TableOfContentsItem, type TableOfContentsProps } from "../core/composite/TableOfContents/index.js"
 export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type ListBoxSize } from "../core/branch/ListBox/index.js"
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
