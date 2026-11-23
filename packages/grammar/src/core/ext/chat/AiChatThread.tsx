@@ -55,10 +55,10 @@ const ToolPart = ({ toolCallId, toolName, args, result, isError }: ToolCallMessa
 
 const PART_COMPONENTS = { Text: TextPart, tools: { Fallback: ToolPart } }
 
-/** The reader's turn: the brand bubble at the end side. */
+/** The reader's turn: the neutral soft bubble at the end side (no accent fill). */
 const UserTurn = ({ message }: { readonly message: AiChatMessage | undefined }) => (
     <MessagePrimitive.Root className="starci-ai-chat-turn" data-grammar-ai-chat-role="user">
-        <MessageBubble side="outgoing" body={<AiChatUserText text={message === undefined ? "" : textOfMessage(message)} />} />
+        <MessageBubble side="outgoing" tone="neutral" body={<AiChatUserText text={message === undefined ? "" : textOfMessage(message)} />} />
     </MessagePrimitive.Root>
 )
 
@@ -100,7 +100,7 @@ const appendedText = (message: AppendMessage): string =>
  * EXT - `AiChatThread` (`@starci/grammar/core/ext/chat`): a whole chat with an assistant, the way Claude and Codex draw one. Built on
  * assistant-ui's headless primitives over its EXTERNAL STORE runtime (`useExternalStoreRuntime`): the app owns the messages and the run, and
  * every send, stop and retry goes through the runtime to the app's callbacks; assistant-ui keeps the viewport (it follows a streaming answer
- * while the reader is at the foot and stops when the reader scrolls up). Everything it draws is Grammar: the reader's turns are brand
+ * while the reader is at the foot and stops when the reader scrolls up). Everything it draws is Grammar: the reader's turns are neutral soft
  * `MessageBubble`s at the end side, an assistant turn is plain markdown across a centred reading column (the core's `Markdown`, fences in the
  * code palette), a tool call is a folded row with its status mark, the proposed result a card whose approve is the region's one primary, and
  * the composer is one bordered box (the core Textarea, Enter sends, Shift+Enter breaks the line, 1 to 6 lines, and a foot row with the hint and the send), the send turning into stop while an

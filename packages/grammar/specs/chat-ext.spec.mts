@@ -44,10 +44,10 @@ const conversation: AiChatMessage[] = [
 const render = (overrides: Partial<AiChatThreadProps> = {}): string =>
     renderToStaticMarkup(createElement(AiChatThread, { messages: conversation, isRunning: false, onSend: () => undefined, labels, ...overrides }))
 
-test("a conversation: the reader's turn is a brand bubble at the end side, the answer is markdown with copy and retry, the tool call carries its mark", () => {
+test("a conversation: the reader's turn is a neutral soft bubble at the end side, the answer is markdown with copy and retry, the tool call carries its mark", () => {
     const html = render({ onRetry: () => undefined })
     assert.match(html, /data-component="AiChatThread"/)
-    assert.match(html, /data-grammar-bubble-side="outgoing"[^>]*data-grammar-bubble-tone="brand"/)
+    assert.match(html, /data-grammar-bubble-side="outgoing"[^>]*data-grammar-bubble-tone="neutral"/)
     assert.match(html, /Greet new customers\non the chat channel\./, "the reader's words keep their line break")
     assert.match(html, /data-grammar-ai-chat-role="assistant"/)
     assert.match(html, /data-component="FencedCodeBlock"|<pre/, "a fence is a code block")

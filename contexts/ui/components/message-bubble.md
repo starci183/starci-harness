@@ -61,6 +61,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | `DNA-COMMON-CHAT-OUTGOING-ACCENT` |
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the 1px `--border` edge with no fill and `--foreground` words (no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-OUTLINE` |
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
+| the reader in an assistant chat | the reader's own words where an accent fill would shout (`AiChatThread`) | `side="outgoing" tone="neutral"`: the default soft surface (`--default-soft`) with its foreground, at the end side; `tone` never changes an incoming bubble | judgement |
 
 Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent` (and `agentLabel`, the Chip's word in the app's language, `AI` by default): the bubble draws the small neutral "AI" Chip right after the name (`AgentName`; owner 2026-11-22: the AI is a Chip at the end of the name, never a pill on the avatar). The app never places a `Badge` for it by hand.
 

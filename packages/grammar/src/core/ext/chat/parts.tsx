@@ -39,7 +39,7 @@ export const AiChatAssistantMark = ({ avatar }: { readonly avatar: AiChatAssista
     </span>
 )
 
-/** The reader's own words: a brand bubble at the end side, the text as typed (line breaks kept, never parsed as markdown). */
+/** The reader's own words: a neutral soft bubble at the end side, the text as typed (line breaks kept, never parsed as markdown). */
 export const AiChatUserText = ({ text }: { readonly text: string }) => <span className="starci-ai-chat-user-text">{text}</span>
 
 /** The answer is on its way and has nothing to show yet: the running mark with the app's word for it. */

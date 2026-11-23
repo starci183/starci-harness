@@ -35,7 +35,7 @@ assistant-ui styled package, no shadcn styles.
 - **The frame** is the chat frame ([message bubble](message-bubble.md) "The chat frame"): head, thread and composer foot on `--background`,
   hairlines between them, only the thread scrolls. Turns and the composer stand in one centred reading column with the page gutter, so 390
   has no horizontal scroll.
-- **The reader's turn** is the brand `MessageBubble` at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
+- **The reader's turn** is the neutral soft `MessageBubble` (`tone="neutral"`, no accent fill) at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
   across the column (the core `Markdown`, fences in the code palette with their Copy), then its actions, the `sm` border icon buttons copy and,
   on the last turn, retry. With `assistantAvatar` each assistant turn starts with its `sm` (24px) decorative Avatar, the answer beside it at the
   row gap.
