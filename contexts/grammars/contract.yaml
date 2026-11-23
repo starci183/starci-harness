@@ -130,7 +130,7 @@ roles:
     slots: [label, startContent, endContent, disabledReason, "isPending: initiating Button or IconButton busy state", "isLoading: unresolved inert geometry"]
     variants:
       variant: { values: [primary, border, danger], default: border, chosenBy: app from button.choose.variant }
-      tone: { values: [accent, info, success, warning], of: primary, chosenBy: the composing notice (Alert ALERT_ACTION_LOOK) }
+      tone: { values: [accent, info, success, warning], of: primary, chosenBy: app (a solid primary in a tone's colour; an Alert's buttons take the banner's tint instead, DNA-COMMON-ALERT-ACTION-IN-TONE) }
       width: { values: [content, fill], chosenBy: app }
       kind: { values: [command (onPress), destination (href)], chosenBy: app }
     buttonVariant: buttonVariant
@@ -1197,10 +1197,10 @@ mustKeep:
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --info-soft } }, { metric: color, op: "=", value: { token: --info-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
-    - id: DNA-COMMON-ALERT-ACTION-SOLID
+    - id: DNA-COMMON-ALERT-ACTION-IN-TONE
       role: alert
-      law: "An Alert's action Button is a primary SOLID in the banner's tone (0.55.0, owner: \"button phải là màu tương ứng, ko phải border\"): a warning banner a warning-filled primary, info info-filled, success success-filled, accent accent-filled; never an outline. A negative banner's action is the border retry (danger only when it destroys); a neutral, pending or unavailable banner's is border. The mapping is one table, ALERT_ACTION_LOOK."
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"]) [data-grammar-alert-actions] [data-grammar-button-tone="warning"]', checks: [{ metric: background-color, op: "=", value: { token: --warning } }, { metric: color, op: "=", value: { token: --warning-foreground } }] }
+      law: "A Button inside an Alert takes the banner's tone (0.55.1, owner 2026-11-23, \"Chốt, làm luôn\"): its fill one step stronger than the banner's soft background (the banner's ink, --<tone>-soft-foreground, at 10% over the soft box), its label that ink at the button label weight 500, Grammar's pill. Never a white or neutral outline on a tinted banner, never a solid primary: action, secondaryAction and each of several equal actions are the border rank, none primary; a destructive action stays danger."
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"]) [data-grammar-alert-actions] [data-component="Button"][data-grammar-variant="border"]', checks: [{ metric: color, op: "=", value: { token: --warning-soft-foreground } }, { metric: font-weight, op: "=", value: "500" }] }
       owner: ui/components/toast-alert.md
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
@@ -1365,7 +1365,7 @@ mustKeep:
       owner: ui/components/empty-state.md; ui/presentation.md
     - id: DNA-COMMON-RETRY-ONE-LOOK
       role: [empty-state, alert]
-      law: "\"Try again\" has one look wherever a read failed: the retry of an ErrorView (and of an EmptyNotice isError) and the action of a negative Alert are the border (outlined) look, never the danger fill (a negative Alert's action is danger only when it destroys: isDestructive)."
+      law: "\"Try again\" has one look wherever a read failed: the retry of an ErrorView (and of an EmptyNotice isError) and the action of a negative Alert are the border look (in a banner the border rank painted in the banner tint, DNA-COMMON-ALERT-ACTION-IN-TONE), never the danger fill (a negative Alert's action is danger only when it destroys: isDestructive)."
       measure:
         kind: attr
         metric: data-grammar-variant
