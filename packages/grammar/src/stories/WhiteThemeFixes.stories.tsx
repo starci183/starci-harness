@@ -70,8 +70,10 @@ const Body = () => (
         <G.Button variant="border" isDisabled onPress={noop}>Cancel</G.Button>
         <G.Button variant="danger" isDisabled onPress={noop}>Delete</G.Button>
         <G.Button variant="danger" isDisabled onPress={noop}>Delete permanently</G.Button>
-        <G.Button variant="primary" isPending onPress={noop}>Saving</G.Button>
       </G.Cluster>
+    </G.Section>
+    <G.Section title="Pending button">
+      <G.Button variant="primary" isPending onPress={noop}>Saving</G.Button>
     </G.Section>
     <G.Section title="Members">
       <G.DataTable label="Members" columns={columns} rows={MEMBERS} renderCell={renderCell} emptyContent="No members yet." />

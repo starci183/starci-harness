@@ -18,6 +18,11 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it. A
   `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message
   replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
+- **the message an answer replies to** (0.55.1, owner 2026-11-23, Zalo/Messenger) is `ReplyStrip` as the first line of the answer's body: ONE
+  compact line on the secondary surface, a 3px bar on its start edge in the replied author's tone (an agent's `agentToneOf(key)`, a person's muted ink),
+  the reply glyph at 1em, the author in the medium weight, then the words muted and ellipsized; no "Reply to X:" label, no quotation marks, no box in a
+  box. With `onPress` it is a button that scrolls the thread to the original and rings it (`isHighlight`). The thread draws NO strip when the answer
+  follows the message it replies to with nothing between them: the reader sees that message right above. Story `Navigation & Data/Chat parts` `ReplyStrips`.
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread.

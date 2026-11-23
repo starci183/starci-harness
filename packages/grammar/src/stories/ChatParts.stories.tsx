@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import * as G from "../common/index.js"
 import { noop } from "./fixtures.js"
 
@@ -146,3 +146,36 @@ const ReactionsDemo = () => {
 
 /** ReactionBar (hover or long-press: six emoji, reply, share; arrow keys), ReactionPill (up to three emoji and the total; pressing adds the viewer's top reaction) and the burst. */
 export const Reactions: Story = { render: () => <ReactionsDemo /> }
+
+const replyBody = (strip: ReactNode, words: string) => (
+    <G.Stack gap="inline">
+        {strip}
+        <G.Text role="body">{words}</G.Text>
+    </G.Stack>
+)
+
+/**
+ * ReplyStrip (0.55.1): the message an answer replies to, one line at the top inside the answer's bubble. A person's in the neutral tone, an agent's in its own
+ * tone, on the reader's own brand face; the long one is cut with an ellipsis. Pressing one takes the reader to the original.
+ */
+export const ReplyStrips: Story = {
+    render: () => (
+        <div style={{ display: "grid", gap: "0.75rem", maxWidth: "40rem" }}>
+            <G.MessageBubble
+                author="Mạng xã hội"
+                isAgent
+                agentLabel="Agent"
+                avatar={<G.Avatar name="Mạng xã hội" kind="agent" size="md" />}
+                body={replyBody(<G.ReplyStrip author="Lan Nguyễn" text="Bài đăng hôm qua có bao nhiêu lượt thích vậy em, chị cần số liệu để báo cáo cho sếp trước 5 giờ chiều nay" label="Trả lời tin của Lan Nguyễn" onPress={noop} />, "Dạ, bài hôm qua có 1.240 lượt thích ạ.")}
+            />
+            <G.MessageBubble
+                author="Chăm sóc khách"
+                isAgent
+                agentLabel="Agent"
+                avatar={<G.Avatar name="Chăm sóc khách" kind="agent" size="md" />}
+                body={replyBody(<G.ReplyStrip author="Mạng xã hội" text="Em vừa đăng bài khuyến mãi tuần này." tone={G.agentToneOf("social")} label="Trả lời tin của Mạng xã hội" onPress={noop} />, "Em sẽ nhắn khách cũ về bài này.")}
+            />
+            <G.MessageBubble side="outgoing" body={replyBody(<G.ReplyStrip author="Chăm sóc khách" text="Em sẽ nhắn khách cũ về bài này." tone={G.agentToneOf("care")} label="Trả lời tin của Chăm sóc khách" onPress={noop} />, "Ok em, gửi trước 6 giờ nhé.")} />
+        </div>
+    ),
+}
