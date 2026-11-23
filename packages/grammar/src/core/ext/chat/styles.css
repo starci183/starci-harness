@@ -57,6 +57,30 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* An assistant turn with the assistant's mark: the 24px mark at the start, the answer and its actions beside it, the row gap between. */
+    .starci-ai-chat-turn[data-grammar-ai-chat-role="assistant"]:has(> .starci-ai-chat-mark) {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-ai-chat-mark {
+        display: flex;
+        flex: none;
+    }
+
+    .starci-ai-chat-body {
+        display: flex;
+        min-inline-size: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-ai-chat-after {
+        min-inline-size: 0;
+    }
+
     .starci-ai-chat-answer {
         display: flex;
         min-inline-size: 0;

@@ -7,19 +7,37 @@ import { EmptyNotice } from "../../composite/EmptyNotice/index.js"
 import { Markdown } from "../../frame/Markdown/index.js"
 import { FencedCodeBlock } from "../../frame/MarkdownArticle/index.js"
 import { SurfaceCard } from "../../frame/SurfaceCard/index.js"
+import { Avatar } from "../../leaf/Avatar/index.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { TablerArrowDown, TablerCheck, TablerCopy, TablerRefresh } from "../../leaf/Icon/tabler.js"
 import { InlineStatus } from "../../leaf/InlineStatus/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { formatValue, toolStatusOf } from "./model.js"
-import type { AiChatLabels, AiChatPart, AiChatResultPreview } from "./types.js"
+import type { AiChatAssistantAvatar, AiChatLabels, AiChatPart, AiChatResultPreview } from "./types.js"
 
 type ToolCallPart = Extract<AiChatPart, { type: "tool-call" }>
 
 /** The words of an assistant turn: markdown drawn with the core's parts, fences in the code palette with their own Copy. */
 export const AiChatText = ({ text, copy }: { readonly text: string; readonly copy: string }) =>
     text.trim() === "" ? null : <Markdown source={text} measure="compact" labels={{ copy, copied: copy }} />
+
+/** The assistant's mark before its turn: the app's Avatar item at `sm` (24px), decorative, level with the turn's first line. */
+export const AiChatAssistantMark = ({ avatar }: { readonly avatar: AiChatAssistantAvatar }) => (
+    <span className="starci-ai-chat-mark" data-grammar-ai-chat-mark="true">
+        <Avatar
+            name={avatar.name}
+            size="sm"
+            isDecorative
+            tone={avatar.tone ?? "default"}
+            {...(avatar.src === undefined ? {} : { src: avatar.src })}
+            {...(avatar.seed === undefined ? {} : { seed: avatar.seed })}
+            {...(avatar.kind === undefined ? {} : { kind: avatar.kind })}
+            {...(avatar.mark === undefined ? {} : { mark: avatar.mark })}
+            {...(avatar.fallback === undefined ? {} : { fallback: avatar.fallback })}
+        />
+    </span>
+)
 
 /** The reader's own words: a brand bubble at the end side, the text as typed (line breaks kept, never parsed as markdown). */
 export const AiChatUserText = ({ text }: { readonly text: string }) => <span className="starci-ai-chat-user-text">{text}</span>

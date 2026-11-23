@@ -85,6 +85,22 @@ test("empty, preview and disabled: the app's words, the one primary approve, a r
     assert.match(render({ disabled: true }), /data-grammar-readonly="true"/)
 })
 
+test("the three slots: the assistant's mark before each assistant turn, the node after the messages, the hint under the composer's box", () => {
+    const html = render({
+        assistantAvatar: { name: "Claude", kind: "logo", src: "/claude.svg" },
+        afterMessages: createElement("p", { "data-after": "yes" }, "You approved version 2"),
+        composerHint: "Claude · the shop's key",
+    })
+    assert.equal(html.match(/data-grammar-ai-chat-mark="true"/g)?.length, 1, "one mark for the one assistant turn, none for the reader's")
+    assert.match(html, /data-grammar-avatar-size="sm"/, "the mark is the 24px Avatar")
+    const column = html.slice(html.indexOf("starci-ai-chat-viewport"), html.indexOf("starci-ai-chat-composer"))
+    assert.ok(column.lastIndexOf("data-grammar-ai-chat-role=\"assistant\"") < column.indexOf("data-after=\"yes\""), "the node stands after the last message, inside the thread")
+    assert.ok(html.indexOf("data-after=\"yes\"") < html.indexOf("starci-ai-chat-composer"))
+    assert.match(html.slice(html.indexOf("starci-ai-chat-composer")), /the shop&#x27;s key|the shop's key/)
+    const plain = render()
+    assert.doesNotMatch(plain, /data-grammar-ai-chat-mark|data-grammar-ai-chat-after/, "no slot, nothing drawn")
+})
+
 test("the app's messages convert to assistant-ui's: ids, roles, text and tool parts, a failed answer incomplete", () => {
     const failed: AiChatMessage = { id: "a2", role: "assistant", status: "error", parts: [{ type: "tool-call", toolCallId: "t2", toolName: "x", title: "X", args: { n: 1, skip: undefined }, status: "error" }] }
     const converted = toThreadMessage(failed)

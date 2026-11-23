@@ -15,8 +15,8 @@ import { createContext, useContext, useId, useMemo, useState, type ReactNode } f
 import { Textarea } from "../../branch/Textarea/index.js"
 import { MessageBubble } from "../../composite/MessageBubble/index.js"
 import { DEFAULT_AI_CHAT_LATEST, isEmptyMessage, lastAssistantId, sendableText, textOfMessage, toolCallsById, toThreadMessage } from "./model.js"
-import { AiChatEmpty, AiChatJumpToLatest, AiChatMessageActions, AiChatPreviewCard, AiChatText, AiChatThinking, AiChatToolCard, AiChatUserText } from "./parts.js"
-import type { AiChatLabels, AiChatMessage, AiChatPart, AiChatThreadProps } from "./types.js"
+import { AiChatAssistantMark, AiChatEmpty, AiChatJumpToLatest, AiChatMessageActions, AiChatPreviewCard, AiChatText, AiChatThinking, AiChatToolCard, AiChatUserText } from "./parts.js"
+import type { AiChatAssistantAvatar, AiChatLabels, AiChatMessage, AiChatPart, AiChatThreadProps } from "./types.js"
 
 type ToolCallPart = Extract<AiChatPart, { type: "tool-call" }>
 
@@ -28,6 +28,7 @@ type ThreadScope = {
     readonly isRunning: boolean
     readonly retryId: string | null
     readonly retry: () => void
+    readonly assistantAvatar: AiChatAssistantAvatar | undefined
 }
 
 const ThreadScopeContext = createContext<ThreadScope | null>(null)
@@ -64,17 +65,20 @@ const UserTurn = ({ message }: { readonly message: AiChatMessage | undefined }) 
  * it copy and, on the last one, retry.
  */
 const AssistantTurn = ({ id, message, isLast }: { readonly id: string; readonly message: AiChatMessage | undefined; readonly isLast: boolean }) => {
-    const { labels, isRunning, retryId, retry } = useThreadScope()
+    const { labels, isRunning, retryId, retry, assistantAvatar } = useThreadScope()
     const isStreaming = isLast && isRunning
     const thinking = isStreaming && isEmptyMessage(message)
     const text = message === undefined ? "" : textOfMessage(message)
     return (
         <MessagePrimitive.Root className="starci-ai-chat-turn" data-grammar-ai-chat-role="assistant" {...(message?.status === undefined ? {} : { "data-grammar-ai-chat-status": message.status })}>
-            <div className="starci-ai-chat-answer">
-                <MessagePrimitive.Parts components={PART_COMPONENTS} />
-                {thinking ? <AiChatThinking label={labels.thinking} /> : null}
+            {assistantAvatar === undefined ? null : <AiChatAssistantMark avatar={assistantAvatar} />}
+            <div className="starci-ai-chat-body">
+                <div className="starci-ai-chat-answer">
+                    <MessagePrimitive.Parts components={PART_COMPONENTS} />
+                    {thinking ? <AiChatThinking label={labels.thinking} /> : null}
+                </div>
+                {isStreaming ? null : <AiChatMessageActions text={text} labels={labels} onRetry={retryId === id ? retry : undefined} />}
             </div>
-            {isStreaming ? null : <AiChatMessageActions text={text} labels={labels} onRetry={retryId === id ? retry : undefined} />}
         </MessagePrimitive.Root>
     )
 }
@@ -100,7 +104,7 @@ const appendedText = (message: AppendMessage): string =>
  * the composer is the core's chat composer (Enter sends, Shift+Enter breaks the line, 1 to 6 lines), its send turning into stop while an
  * answer runs. The frame is the chat frame: head, thread and composer on `--background`, hairlines between them, only the thread scrolls.
  */
-export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, preview, onApprove, onRevise, labels, header, disabled = false, className }: AiChatThreadProps) => {
+export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, preview, onApprove, onRevise, labels, header, assistantAvatar, afterMessages, composerHint, disabled = false, className }: AiChatThreadProps) => {
     const [draft, setDraft] = useState("")
     const composerId = `ai-chat-composer-${useId()}`
     const byId = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages])
@@ -119,7 +123,7 @@ export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, pre
         const index = messages.findIndex((message) => message.id === retryId)
         runtime.thread.startRun({ parentId: index > 0 ? messages[index - 1]?.id ?? null : null })
     }
-    const scope = useMemo<ThreadScope>(() => ({ byId, tools, labels, isRunning, retryId, retry }), [byId, tools, labels, isRunning, retryId, runtime])
+    const scope = useMemo<ThreadScope>(() => ({ byId, tools, labels, isRunning, retryId, retry, assistantAvatar }), [byId, tools, labels, isRunning, retryId, runtime, assistantAvatar])
     const send = () => {
         const text = sendableText(draft, isRunning, disabled)
         if (text === null) return
@@ -153,6 +157,7 @@ export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, pre
                             {messages.length === 0 && !isRunning && labels.empty !== undefined ? <AiChatEmpty message={labels.empty} /> : null}
                             <ThreadPrimitive.Messages>{renderMessage}</ThreadPrimitive.Messages>
                             {preview === undefined || preview === null ? null : <AiChatPreviewCard preview={preview} onApprove={onApprove} onRevise={onRevise === undefined ? undefined : revise} />}
+                            {afterMessages === undefined || afterMessages === null ? null : <div className="starci-ai-chat-after" data-grammar-ai-chat-after="true">{afterMessages}</div>}
                         </div>
                         <JumpToLatest label={labels.latest ?? DEFAULT_AI_CHAT_LATEST} />
                     </ThreadPrimitive.Viewport>
@@ -167,6 +172,7 @@ export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, pre
                                 onValueChange={setDraft}
                                 onSubmitShortcut={send}
                                 isReadOnly={disabled}
+                                {...(composerHint === undefined ? {} : { description: composerHint })}
                                 send={canStop
                                     ? { label: labels.stop, glyph: "stop", onPress: stop }
                                     : { label: labels.send, onPress: send, isDisabled: disabled || isRunning || draft.trim() === "" }}

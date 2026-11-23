@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.57.1 - 2026-11-23 - AiChatThread: the assistant's mark, a node after the messages, a hint under the composer
+
+A patch: three new optional props and a type.
+
+- Added (`AiChatThread assistantAvatar`, NIVO Studio): an Avatar item (`name`, `src`, `seed`, `kind` such as `logo`, `mark`, `fallback`, `tone`; `AiChatAssistantAvatar`, an `AvatarGroupItem` without its id) drawn as the `sm` (24px) decorative Avatar before each assistant turn, the answer and its actions beside it at the row gap. The reader's turns carry none.
+- Added (`AiChatThread afterMessages`): a node after the last message and the proposed result, inside the scrolling thread and its reading column (a Divider such as "you approved version 2", an inline Alert for an error); the viewport follows it like a message.
+- Added (`AiChatThread composerHint`): one short string under the composer's box, the field's own description line (`Textarea description`), for whose key answers ("Claude · the shop's key").
+- Story `Navigation & Data/AI chat` `Slots` and `SlotsError`; spec `chat-ext`.
+
 ## 0.57.0 - 2026-11-23 - The icon table: one set, three sizes by role, the stroke follows the text, no fill; the leading disclosure caret; channel logos are Avatars; the spacing roles documented
 
 A minor: it renames the Icon usages, deletes `LogoStack` and `Disclosure chevron`, and changes eslint-grammar-core (a new law).
