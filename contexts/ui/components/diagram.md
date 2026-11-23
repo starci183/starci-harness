@@ -35,9 +35,9 @@ under the canvas (56px, never over the drawing, so no node is covered at the fir
 
 ## Variants
 `height` reserves the canvas box (`sm` 16rem, `md` 24rem, `lg` 32rem): pick the step the finished drawing fills, so the loading box is the
-ready box. A taller drawing grows the canvas to fit it, up to 45rem (30rem on a phone, so the page stays in reach past a canvas a finger pans). The first view
+ready box. A taller drawing grows the canvas to fit it, up to 45rem (40rem on a phone), plus the controls row. The first view
 is the whole drawing, centred, at 100% or less, but never under the **readable floor**: `READABLE_ZOOM` 0.85, where caption-role words (13px) stay at 11px or more.
-A sequence or a flowchart that does not fit whole at 0.85 opens at 0.85 from its start (a sequence: its first participant and first message at the top left; a
+The canvas grows to hold the whole drawing at that zoom, so nothing is cut and no panning is needed to read it (owner 2026-11-23); width that overflows a phone is panned across. Only a drawing taller than the cap, or wider than the frame at 0.85, opens at 0.85 from its start (a sequence: its first participant and first message at the top left; a
 flowchart or state diagram: its entry node, the first node nothing leads into, kept in view) and the reader pans by touch or drag and zooms by pinch, the
 buttons or + and -; fit (the button) still shows the whole drawing down to 0.2, reset (0) returns to the first view. Any other kind (Mermaid's own SVG)
 keeps the least zoom of 0.2. There is no list fallback on a phone: the same canvas, the controls row kept under it, the text version visually hidden for assistive

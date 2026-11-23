@@ -71,6 +71,18 @@ describe("the readable floor of the first view", () => {
 })
 
 describe("the canvas height at the floor", () => {
+    it("grows to hold the whole drawing at the floor, so a top-down flowchart of 330 x 540 shows every node on a phone", () => {
+        const drawing = { width: 330, height: 540 }
+        const height = canvasHeight(390, drawing, 512, READABLE_ZOOM)
+        assert.ok(height >= Math.round(drawing.height * READABLE_ZOOM + INSETS.top + INSETS.bottom + CONTROLS_ROW))
+        const room = { width: 390, height: height - CONTROLS_ROW }
+        const view = openView(room, drawing, READABLE_ZOOM)
+        assert.ok(view.zoom >= READABLE_ZOOM)
+        // Nothing is cut: the drawing at that zoom stands inside the room.
+        assert.ok(view.y >= INSETS.top && view.y + drawing.height * view.zoom <= room.height - INSETS.bottom + 0.001)
+        assert.ok(view.x >= INSETS.left && view.x + drawing.width * view.zoom <= room.width - INSETS.right + 0.001)
+    })
+
     it("sizes the canvas for the floor zoom, between the reserved box and the tallest", () => {
         const drawing = { width: 700, height: 300 }
         const height = canvasHeight(390, drawing, 256, READABLE_ZOOM)
@@ -78,8 +90,8 @@ describe("the canvas height at the floor", () => {
         assert.ok(height >= 256)
     })
 
-    it("stops at 30rem on a phone and 45rem elsewhere", () => {
-        assert.equal(canvasHeight(390, { width: 300, height: 4000 }, 256, READABLE_ZOOM), 480)
+    it("stops at 40rem on a phone and 45rem elsewhere", () => {
+        assert.equal(canvasHeight(390, { width: 300, height: 4000 }, 256, READABLE_ZOOM), 640)
         assert.equal(canvasHeight(820, { width: 300, height: 4000 }, 256, READABLE_ZOOM), 720)
     })
 })

@@ -26,9 +26,9 @@ export const LEAST_OPEN_ZOOM = 0.2
 /** The zoom under which caption-role words (13px) fall under 11px: the floor of a sequence and of a flowchart or state diagram. */
 export const READABLE_ZOOM = 0.85
 
-/** The tallest the canvas grows to fit a drawing, and on a phone (a finger on it pans, so the page must stay in reach past it). */
+/** The tallest the canvas grows to hold the WHOLE drawing at its open zoom (owner 2026-11-23): 45rem, and 40rem on a phone. A taller drawing opens at the floor from its start. */
 export const TALLEST = 720
-export const TALLEST_ON_PHONE = 480
+export const TALLEST_ON_PHONE = 640
 
 /** The floor of the first view for a drawing kind. */
 export const openFloor = (kind: "graph" | "sequence" | "other"): number => (kind === "other" ? LEAST_OPEN_ZOOM : READABLE_ZOOM)
