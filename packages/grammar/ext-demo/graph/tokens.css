@@ -86,6 +86,11 @@ body {
     font-size: 0.8125rem;
 }
 
+/* a graph that sets its own height (height="content") is not held to the frame's */
+.demo-frame:has(.starci-graph[data-height="content"]) {
+    block-size: auto;
+}
+
 .demo-frame {
     box-sizing: border-box;
     block-size: min(70vh, 640px);

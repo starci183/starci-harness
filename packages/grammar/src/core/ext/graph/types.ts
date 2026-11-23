@@ -181,6 +181,12 @@ export interface GraphCanvasProps {
     readonly label: string
     /** `LR` (default) or `TB`. */
     readonly direction?: GraphDirection
+    /**
+     * Who sets the graph's height. `frame` (default): the parent gives it (the graph fills it and opens fitted inside). `content` (0.55.1): the graph is as
+     * tall as its laid-out drawing at 100% plus the fit insets, at least 20rem and at most `--starci-graph-max-block-size` (default 80vh), so a top-down
+     * flow in a wide frame opens at full size instead of shrinking to a fixed height; the parent gives it no height.
+     */
+    readonly height?: "frame" | "content"
     /** True while the data is fetched: a skeleton graph with no text. */
     readonly isLoading?: boolean
     /** Shown instead of the canvas when there are no nodes. */

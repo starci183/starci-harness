@@ -73,7 +73,7 @@ const edges: GraphEdge[] = [
 </div>
 ```
 
-The graph fills its parent, so the parent has a height.
+The graph fills its parent, so the parent has a height (`height="frame"`, the default). A top-down flow in a wide column takes `height="content"` instead and its parent gives it no height: the graph is as tall as its drawing at 100% plus the fit insets, at least 20rem and at most `--starci-graph-max-block-size` (80vh), so it opens at full size rather than shrinking into a fixed height.
 
 ## Built from core
 
