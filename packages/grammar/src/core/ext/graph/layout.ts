@@ -437,11 +437,13 @@ const simplifyRoutes = (tree: Tree, links: readonly LinkEnds[], routes: Record<s
         const shared = [Math.max(lo(s, across), lo(t, across)) + 6, Math.min(hi(s, across), hi(t, across)) - 6] as const
         const forward = lo(t, along) >= hi(s, along)
         if (!forward) continue
+        // A fixed exit runs straight only from inside the target's span: a branch out of a decision's side vertex never drops past its target.
+        const exitInTarget = exitAcross !== undefined && exitAcross >= lo(t, across) + 6 && exitAcross <= hi(t, across) - 6
         const straightAt = Math.abs(mid(s, across) - mid(t, across)) <= STRAIGHT_SNAP
-            ? (ported ? exitAcross : mid(t, across))
+            ? (ported ? (exitInTarget ? exitAcross : undefined) : mid(t, across))
             : !ported && shared[0] <= shared[1]
               ? Math.min(Math.max(mid(t, across), shared[0]), shared[1])
-              : ported && exitAcross !== undefined && exitAcross >= lo(t, across) + 6 && exitAcross <= hi(t, across) - 6 && Math.abs(exitAcross - mid(t, across)) <= STRAIGHT_SNAP
+              : ported && exitInTarget && Math.abs(exitAcross - mid(t, across)) <= STRAIGHT_SNAP
                 ? exitAcross
                 : undefined
         const towards = mid(t, across) > mid(s, across)

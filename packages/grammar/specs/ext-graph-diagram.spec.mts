@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs"
 import { after, before, describe, it } from "node:test"
 import { JSDOM } from "jsdom"
 import { parseDiagram } from "../src/core/ext/graph/diagram/mermaid.ts"
-import { describeDiagram, plainLabel, type DiagramGraph, type ParsedDiagram, type SequenceModel } from "../src/core/ext/graph/diagram/model.ts"
+import { branchesWithoutDecision, describeDiagram, plainLabel, type DiagramGraph, type ParsedDiagram, type SequenceModel } from "../src/core/ext/graph/diagram/model.ts"
 import { layoutSequence } from "../src/core/ext/graph/diagram/sequence.ts"
 import { layoutDiagram } from "../src/core/ext/graph/diagram/graph.ts"
 import { STRAIGHT_SNAP, estimateLabel } from "../src/core/ext/graph/layout.ts"
@@ -412,4 +412,71 @@ describe("every stretch is drawn once (the routing law, rule 6)", () => {
         assert.equal((step.match(/\bd: path\b/gu) ?? []).length, 0, "no extra path drawn on the edge's own route")
         assert.equal((step.match(/h\(BaseEdge/gu) ?? []).length, 1)
     })
+})
+
+describe("a branch is an if/else (owner 2026-11-23: a decision splits, its branches rejoin)", () => {
+    // The lesson's cache-aside read, as the owner asked for it: the condition is a decision, each answer its own edge, both rejoin before "Trả giá".
+    const DECIDED = `flowchart TB
+  U[Khách mở trang] --> G[GET giá trong Redis]
+  G --> D{Có giá trong Redis?}
+  D -->|Không| S[SELECT từ Postgres]
+  S --> W[SET với TTL 30 giây]
+  D -->|Có| R([Trả giá])
+  W --> R`
+    // The same read branching out of an ordinary box: the shape the owner refused.
+    const BOXED = `flowchart TB
+  U[Khách mở trang] --> G[GET giá trong Redis]
+  G -->|trượt| S[SELECT từ Postgres]
+  S --> W[SET với TTL 30 giây]
+  G -->|trúng| R([Trả giá])
+  W --> R`
+
+    it("names the box that branches without a decision, and nothing in a decided flowchart or a state diagram", async () => {
+        assert.deepEqual(branchesWithoutDecision(graph(await parseDiagram(BOXED))), ["G"])
+        assert.deepEqual(branchesWithoutDecision(graph(await parseDiagram(DECIDED))), [])
+        // Edges that carry no words never count: a fan-out of plain arrows is no branch.
+        assert.deepEqual(branchesWithoutDecision(graph(await parseDiagram("flowchart LR\n  A[Web] --> B[(Redis)]\n  A --> C[(Postgres)]"))), [])
+        assert.deepEqual(branchesWithoutDecision(graph(await parseDiagram("stateDiagram-v2\n  A --> B: one\n  A --> C: two"))), [])
+    })
+
+    for (const direction of ["TB", "LR"] as const) {
+        it(`${direction}: each branch leaves by its own vertex with its words on its own edge, and the branches rejoin at one junction with one arrowhead`, async () => {
+            const parsed = graph(await parseDiagram(direction === "TB" ? DECIDED : DECIDED.replace("flowchart TB", "flowchart LR")))
+            const out = await layoutDiagram(parsed, (text) => text.length * 7, estimateLabel)
+            const at = out.layout.positions["D"]
+            const box = out.layout.boxes["D"]
+            assert.ok(at !== undefined && box !== undefined)
+            const end = direction === "TB" ? [at.x + box.width / 2, at.y + box.height] : [at.x + box.width, at.y + box.height / 2]
+            const side = direction === "TB" ? [at.x + box.width, at.y + box.height / 2] : [at.x + box.width / 2, at.y + box.height]
+            const entry = direction === "TB" ? [at.x + box.width / 2, at.y] : [at.x, at.y + box.height / 2]
+            const no = out.layout.routes["e3"]
+            const yes = out.layout.routes["e5"]
+            const into = out.layout.routes["e2"]
+            assert.ok(no !== undefined && yes !== undefined && into !== undefined)
+            const near = (p: readonly number[] | undefined, q: readonly number[]): boolean => p !== undefined && Math.abs((p[0] ?? 0) - (q[0] ?? 0)) <= 2 && Math.abs((p[1] ?? 0) - (q[1] ?? 0)) <= 2
+            assert.ok(near(no.points[0], end), `the first branch (Không) goes straight on out of the end vertex, not ${JSON.stringify(no.points[0])}`)
+            assert.ok(near(yes.points[0], side), `the second branch (Có) leaves by the side vertex, not ${JSON.stringify(yes.points[0])}`)
+            assert.ok(near(into.points[into.points.length - 1], entry), "the decision is entered by its entry vertex")
+            // Each label stands on its own edge right at the split, and the two never stand side by side on one stub.
+            for (const route of [no, yes]) {
+                const label = route.label
+                const first = route.points[0]
+                assert.ok(label !== undefined && first !== undefined)
+                assert.ok(Math.hypot(label.x + label.width / 2 - first[0], label.y + label.height / 2 - first[1]) <= 24 + Math.max(label.width, label.height), "words at the split")
+            }
+            const [a, b] = [no.label, yes.label]
+            assert.ok(a !== undefined && b !== undefined)
+            assert.ok(a.x + a.width + 8 <= b.x || b.x + b.width + 8 <= a.x || a.y + a.height + 8 <= b.y || b.y + b.height + 8 <= a.y, "the two answers keep apart")
+            // The side branch reaches its target, never a point beside it.
+            const target = out.layout.positions["R"]
+            const targetBox = out.layout.boxes["R"]
+            const last = yes.points[yes.points.length - 1]
+            assert.ok(target !== undefined && targetBox !== undefined && last !== undefined)
+            assert.ok(last[0] >= target.x - 1 && last[0] <= target.x + targetBox.width + 1 && last[1] >= target.y - 1 && last[1] <= target.y + targetBox.height + 1, `the Có branch ends on "Trả giá", not at ${JSON.stringify(last)}`)
+            // Drawn once: the two edges into "Trả giá" meet at one junction and carry one arrowhead between them.
+            const once = dedupeRuns(parsed.edges.map((edge) => ({ id: edge.id, points: out.layout.routes[edge.id]?.points ?? [], rank: 3 })))
+            const heads = ["e5", "e6"].filter((id) => once.get(id)?.joinEnd !== true)
+            assert.equal(heads.length, 1, `one arrowhead into "Trả giá", not ${heads.join(", ")}`)
+        })
+    }
 })

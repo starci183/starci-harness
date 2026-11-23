@@ -2,7 +2,8 @@
  * The layout of a flowchart or a state diagram on the graph canvas (pure but for ELK): each node sized for its words in its shape, the containers round
  * their nodes, then the graph ext's own ELK layout and routing law (`layoutFlow`): straight edges between aligned nodes, one bend between offset ones.
  */
-import { layoutFlow, type FlowLayout, type LinkEnds, type Measure, type SizedNode } from "../layout.js"
+import { layoutFlow, type FlowLayout, type LayoutPort, type LinkEnds, type Measure, type Route, type SizedNode } from "../layout.js"
+import { entrySide, portAt, portSide } from "../model.js"
 import type { DiagramGraph, DiagramNode } from "./model.js"
 import type { TextWidth } from "./sequence.js"
 
@@ -56,6 +57,42 @@ export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: T
     }
 }
 
+/**
+ * The branches of each decision (a diamond with two or more edges out), by edge id: the port it leaves by. A branch is an if/else, so it leaves by a vertex of
+ * the diamond, as a FlowGraph decision does (owner 2026-11-23: "if else mới rẽ nhánh"): the first branch written straight on in the flow (the end vertex), the
+ * second out of the side vertex, the third out of the other side; its words stand on its own edge at that vertex, never beside a sibling's on one shared stub.
+ */
+/** The port a decision is entered by: its entry vertex (the top one down the page, the left one across). */
+const DECISION_ENTRY = "entry"
+
+export const decisionBranches = (graph: DiagramGraph): ReadonlyMap<string, { readonly node: string; readonly port: LayoutPort }> => {
+    const out = new Map<string, { readonly node: string; readonly port: LayoutPort }>()
+    for (const node of graph.nodes) {
+        if (node.shape !== "diamond") continue
+        const branches = graph.edges.filter((edge) => edge.source === node.id && edge.target !== node.id)
+        if (branches.length < 2) continue
+        for (const [index, edge] of branches.entries()) {
+            const side = portSide(true, graph.direction, index)
+            out.set(edge.id, { node: node.id, port: { id: `branch-${String(index)}`, side } })
+        }
+    }
+    return out
+}
+
+/** A branch's words on its first run, a little past the vertex it leaves by, the pill centred on the line, as the main branch's stand on theirs. */
+const atVertex = (route: Route): Route => {
+    const label = route.label
+    const [a, b] = route.points
+    if (label === undefined || a === undefined || b === undefined) return route
+    const sideways = Math.abs(a[1] - b[1]) < 0.5
+    const half = (sideways ? label.width : label.height) / 2
+    const room = Math.abs(sideways ? b[0] - a[0] : b[1] - a[1])
+    const step = Math.min(12 + half, Math.max(half, room / 2))
+    const cx = sideways ? a[0] + Math.sign(b[0] - a[0]) * step : a[0]
+    const cy = sideways ? a[1] : a[1] + Math.sign(b[1] - a[1]) * step
+    return { ...route, label: { ...label, x: Math.round(cx - label.width / 2), y: Math.round(cy - label.height / 2) } }
+}
+
 /** A laid-out graph: ELK's positions and routes, the sizes it laid out, and the drawing's box (nodes, routes and words). */
 export interface DiagramLayout {
     readonly graph: DiagramGraph
@@ -69,14 +106,34 @@ export interface DiagramLayout {
 
 /** Lays a flowchart or a state diagram out with the graph ext's ELK layout, in the graph's direction. */
 export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, measure: Measure): Promise<DiagramLayout> => {
-        const sizes: SizedNode[] = graph.nodes.map((node) => ({
-            id: node.id,
-            ...nodeSize(node, graph.direction, textWidth),
-            ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
-            ...(node.shape === "container" ? { insets: CONTAINER_INSETS } : {}),
-        }))
-        const links: LinkEnds[] = graph.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, ...(edge.label === undefined ? {} : { label: edge.label }) }))
-        const layout = await layoutFlow(sizes, links, { direction: graph.direction, islands: "wrap", width: 960, measure })
+        const branches = decisionBranches(graph)
+        const decisions = new Set([...branches.values()].map((branch) => branch.node))
+        const sizes: SizedNode[] = graph.nodes.map((node) => {
+            const size = nodeSize(node, graph.direction, textWidth)
+            // A decision is entered by its entry vertex and its branches leave by the others, each fixed where the diamond draws it.
+            const out = [...branches.values()].filter((branch) => branch.node === node.id).map(({ port }) => port)
+            const own = out.length === 0 ? [] : [{ id: DECISION_ENTRY, side: entrySide(graph.direction) }, ...out].map((port) => ({ ...port, at: portAt(port.side, true, 0, 1, size.width, size.height) }))
+            return {
+                id: node.id,
+                ...size,
+                ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
+                ...(node.shape === "container" ? { insets: CONTAINER_INSETS } : {}),
+                ...(own.length === 0 ? {} : { ports: own }),
+            }
+        })
+        const links: LinkEnds[] = graph.edges.map((edge) => {
+            const branch = branches.get(edge.id)
+            return {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                ...(branch === undefined ? {} : { sourcePort: branch.port.id }),
+                ...(decisions.has(edge.target) ? { targetPort: DECISION_ENTRY } : {}),
+                ...(edge.label === undefined ? {} : { label: edge.label, ...(branch === undefined ? {} : { labelAt: "TAIL" as const }) }),
+            }
+        })
+        const laid = await layoutFlow(sizes, links, { direction: graph.direction, islands: "wrap", width: 960, measure })
+        const layout: FlowLayout = { ...laid, routes: Object.fromEntries(Object.entries(laid.routes).map(([id, route]) => [id, branches.has(id) ? atVertex(route) : route])) }
         const parent = new Map(graph.nodes.flatMap((node) => (node.parentId === undefined ? [] : [[node.id, node.parentId] as const])))
         const absolute = (nodeId: string): { x: number; y: number } => {
             const own = layout.positions[nodeId] ?? { x: 0, y: 0 }

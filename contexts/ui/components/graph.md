@@ -267,8 +267,11 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    ELK lays out with `NETWORK_SIMPLEX` node placement, which keeps the spine on one line. The one-bend route is taken only where it crosses no node; otherwise
    ELK's orthogonal route (round the nodes) is kept. Owner: `simplifyRoutes` in `layout.ts`.
 3. **A decision's main branch runs straight on.** The first branch of a decision leaves by the vertex on the flow's side (`SOUTH` top-down, `EAST` across) and its target
-   stands on the decision's line (`alignDecisions` in `arrange.ts`); the other branches turn to the side. Every branch carries its words right at the split: on the first
-   run it does not share with a sibling, clear of the sibling's words.
+   stands on the decision's line (`alignDecisions` in `arrange.ts`); the other branches leave by the side vertices and turn to the side. Every branch carries its words
+   right at the split, at its own vertex: on the first run it does not share with a sibling, clear of the sibling's words, never two answers side by side on one stub.
+   A branch on a side vertex runs straight only when its vertex stands inside its target's span; otherwise it turns round to its target, never dropping past it.
+   A lesson `MermaidDiagram` gives every `{…}` decision with two or more edges out these vertex ports (`decisionBranches` in `diagram/graph.ts`), in the order the
+   source writes its edges, and enters it by its entry vertex.
 4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down. A lesson
    `MermaidDiagram` keeps a readable floor: never opened under zoom 0.85 (caption words at 11px or more), from its start when it does not fit whole (`diagram/open.ts`).
 5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
@@ -281,7 +284,8 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
 
 Proof: `specs/ext-graph-diagram.spec.mts` "the routing law" (no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, the decision's
 main branch straight, branch words at the split, every point inside the fitted first view, the dot hidden read-only, one arrowhead size), "every stretch is
-drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge) and
+drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge) , "a branch is an if/else" (a lesson decision: each branch out of its own
+vertex with its words there, the two answers apart, the side branch ending on its target, the branches rejoining at one junction with one arrowhead) and
 `specs/ext-graph-arrange.spec.mts` (a decision's main branch under it, the other to the side). Known gap: the one-bend route is refused where it would cross a node,
 and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends; the spec holds the law on
 graphs with room for it.
