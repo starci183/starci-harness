@@ -47,7 +47,7 @@ assistant-ui styled package, no shadcn styles.
   the border look; `approving` keeps approve's name and blocks a second press; `approved` puts the approve words marked done in place of the band.
 - **The viewport** follows the newest message while the reader is at the foot and stops when the reader scrolls up; a floating `sm` arrow
   (named `labels.latest`) brings the reader back.
-- **The composer** is one bordered box (the field's paint, the focus ring on the box): the core `Textarea onSubmitShortcut` on top with its own frame
+- **The composer** is one bordered box (a 1px --border edge, the focus ring on the box): the core `Textarea onSubmitShortcut` on top with its own frame
   taken off (one line growing to six, Enter sends, Shift+Enter breaks the line), and a foot row inside the same box, `composerHint` as a caption at the
   start and the round `sm` primary send at the end, which becomes stop (`labels.stop`) while a run goes.
 

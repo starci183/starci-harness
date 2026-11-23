@@ -149,7 +149,7 @@
     }
 
     /*
-     * The composer is one bordered box (the field's paint): the core Textarea on top with its own frame taken off, and a foot row inside the same
+     * The composer is one bordered box (the 1px `--border` edge on the field's background): the core Textarea on top with its own frame taken off, and a foot row inside the same
      * box, the hint caption at the start and the round send or stop button at the end. The box shows the focus ring while its textarea has focus.
      */
     .starci-ai-chat-box {
@@ -158,10 +158,9 @@
         flex-direction: column;
         gap: var(--grammar-identity-gap);
         padding: var(--grammar-identity-gap);
-        border: var(--field-border-width) solid var(--field-border);
+        border: var(--grammar-hairline) solid var(--border);
         border-radius: var(--grammar-radius-card);
         background: var(--field-background);
-        box-shadow: var(--field-shadow);
     }
 
     .starci-ai-chat-box:focus-within {
