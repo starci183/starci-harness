@@ -233,6 +233,14 @@ machine (the owner: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũn
 - **Data note.** A staging or production text sent to the PC travels over the Cloudflare tunnel with the gate key; the owner accepts this
   because the PC is his own machine.
 
+## WSL memory
+
+On a Windows host the WSL VM (vmmem, which Docker Desktop runs in) keeps the Linux page cache as committed memory and gives it back only when
+told: it held 32 GB of commit while its distro used 2 GB, and the host ran out of commit ("paging file is too small") with RAM still free.
+`starci host up --host local` merges `[experimental] autoMemoryReclaim=dropcache` into `%UserProfile%/.wslconfig`, keeping every other key and
+section (`cli/src/harness/wsl-config.ts`), and says so; WSL reads it at its next start, so it takes effect after the owner's next
+`wsl --shutdown` (or reboot), which the harness never runs.
+
 ## Dependencies through a link
 
 A package manager command that writes `node_modules` never runs through a link. npm, pnpm and yarn rewrite the folder they install into:

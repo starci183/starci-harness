@@ -25,6 +25,8 @@ export interface LocalDeps extends HostDeps {
   /** The live command line of a process id, or null when the host cannot tell (a spec replaces it). */
   commandLine?: ((pid: number) => string | null) | undefined;
   tcpOpen?: ((port: number) => Promise<boolean>) | undefined;
+  /** The process listening on a TCP port of this host, or null when none listens or the host cannot tell (a spec replaces it). */
+  portHolder?: ((port: number) => { pid: number; command: string | null } | null) | undefined;
   /** The other projects of the machine (the doctor's overlap row); the machine registries when absent (local-peers.mts machinePeers). */
   peers?: (() => PeerBase[]) | undefined;
   migrate?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>) | undefined;
@@ -215,7 +217,13 @@ export function sameCommand(recorded: string, live: string): boolean {
 }
 
 /** A recorded process, judged against the host. */
-export interface Ownership { ours: boolean; /** Why a live pid is not ours (the log line); null when ours or simply gone. */ stale: string | null }
+export interface Ownership {
+  ours: boolean;
+  /** Why a live pid is not ours (the log line); null when ours or simply gone. */
+  stale: string | null;
+  /** The recorded pid is alive and still runs the recorded command, only its port is silent: the environment's own tree (a watcher whose server died), stopped before a fresh start. */
+  silent?: boolean;
+}
 
 /**
  * Whether the process a record names is still the one this environment started. A pid alone proves nothing: Windows reuses ids after a reboot or crash,
@@ -232,7 +240,19 @@ export async function ownedProcess(ctx: StackContext, entry: { pid: number; star
   if (await (deps.tcpOpen ?? tcpOpen)(entry.port)) return { ours: true, stale: null };
   const age = ctx.now() - Date.parse(entry.startedAt);
   if (Number.isFinite(age) && age < DEFAULT_TIMEOUT_SECONDS * 1000) return { ours: true, stale: null };
+  if (live !== null) return { ours: false, stale: `pid ${entry.pid} still runs the recorded command but nothing listens on its port ${entry.port} (started ${entry.startedAt})`, silent: true };
   return { ours: false, stale: `pid ${entry.pid} is alive but nothing listens on its port ${entry.port} (started ${entry.startedAt}): the id was reused` };
+}
+
+/** The process listening on TCP `port` of this host: Get-NetTCPConnection on Windows, lsof elsewhere; null when none listens or the host cannot tell. */
+export function portHolder(ctx: Pick<StackContext, 'spawn' | 'platform'>, port: number): { pid: number; command: string | null } | null {
+  const result = ctx.platform === 'win32'
+    ? ctx.spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-NetTCPConnection -State Listen -LocalPort ${Math.trunc(port)} -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess`])
+    : ctx.spawn('lsof', ['-nP', `-iTCP:${Math.trunc(port)}`, '-sTCP:LISTEN', '-t']);
+  if (result.error || result.status !== 0) return null;
+  const pid = Number(result.stdout.trim().split(/\s+/u)[0] ?? '');
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  return { pid, command: liveCommandLine(ctx, pid) };
 }
 
 /** Starts a native process detached from this command, its output in the environment's log. Returns the pid. */

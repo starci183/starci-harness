@@ -37,11 +37,36 @@ Choice `lesson.choose.outline`: whether a long part carries an outline. A part o
 takes none. Measure: judgement.
 
 ## Variants
-- `CodeBlock`: `scheme` (`page` follows the page; `dark` or `light` sets the block in that theme whatever the page's, from the same tokens);
+- `CodeBlock`: `scheme` (`page` follows the page; `dark` or `light` sets the block in that theme whatever the page's, from the same tokens:
+  the code palette's dark or light set);
   `lineNumbers` (default on); `copyable` (default on). The fold is controlled (`isCollapsed`, `onCollapsedChange`) or uncontrolled
   (`defaultCollapsed`); without either the block has no fold.
 - `GradedChoice`: `keys` (default A, B, C ...); `picks` with `onPicksChange` (controlled, e.g. a learner's saved answers) or `defaultPicks`.
 - `Sidenotes`: the margin column from a 52rem frame; under it the fold `foldLabel(n)` ("Terms (3)") under the prose.
+
+## Code palette (0.55.1, owner 2026-11-23)
+Code has its own colours, the `--grammar-code-*` tokens of `common/tones-code.css`, light and dark. They never borrow a status tone or the
+brand (`--accent`): a red brand never turns keywords red, and red is only `deleted`, the removed side of a diff. Every surface that shows
+code reads them: the lesson `CodeBlock` (its `scheme="dark" | "light"` sets the block's `data-theme`, so the dark or light set applies inside
+it), `FencedCodeBlock` and the `renderCode` slot wrapper, inline code in a `MarkdownArticle`, and the markdown ext's Shiki variables
+(`--shiki-token-*`), diffs and compare included.
+
+| token | role | light | dark |
+|---|---|---|---|
+| `fg` / `bg` / `border` | text, ground, hairline edge | #24292F / #FAFAF8 / #E3E3DE | #E6E6E6 / #1E1F24 / #33353D |
+| `keyword` | purple | #7A44D6 | #C792EA |
+| `function` (and links) | blue | #0862C9 | #82AAFF |
+| `string` | green | #08743A | #C3E88D |
+| `number`, `constant` | orange | #A04F00 | #F78C6C |
+| `type` | teal | #0B6B78 | #89DDFF |
+| `comment` (italic), `gutter` | grey | #5F6873 | #959AA4 |
+| `punctuation` | slate | #57606A | #A0A6B0 |
+| `inserted` / `inserted-bg` | a diff's added row | #116329 / #E9F6ED | #9DDB9F / #1F2F25 |
+| `deleted` / `deleted-bg` | a diff's removed row (the only red) | #B42318 / #FCEDEC | #FF9492 / #352225 |
+| `highlight-line` / `highlight-edge` | a marked line: neutral blue tint, 2px edge | #EFF3FA / #6B8FD6 | #272C38 / #5C7CC2 |
+
+Every ink reaches WCAG AA 4.5:1 on the ground and on each line tint in both themes (`specs/code-palette.spec.mts`). An app may set its own
+values; it never points them at its brand. Stories `Content/Code palette (0.55.1)` (TS, bash and diff, light and dark).
 
 ## Size
 `GradedChoice` answers read at `reading.body` on a plate at least 68 high, the key a 32 round mark. `CodeBlock` code is 13 mono on the body line
@@ -56,7 +81,7 @@ takes none. Measure: judgement.
 - `TableOfContents`: the section in view is active (foreground on the rail, `aria-current="location"`); inside a loading region it waits inert.
 
 ## Owner split
-- **Grammar owns:** the plates, the verdicts and their tones; the code block's frame, gutter, band and fold; the margin column, the notes' places
+- **Grammar owns:** the plates, the verdicts and their tones; the code block's frame, gutter, band and fold, and the code palette; the margin column, the notes' places
   level with their terms and the fold; the outline's rail, scroll spy and jump (smooth unless reduced motion).
 - **Knowledge decides:** the rows above.
 - **App author decides:** the code and its file, the question, the answers and their reasons, the terms and notes, the sections, every word

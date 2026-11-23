@@ -1,4 +1,6 @@
-# The machine-wide slots that bound how many heavy jobs of one kind run at once across every checkout and agent of a host, read by
+# The machine-wide lane slots: how many lanes run one kind of job at once (an install, a gate, a shot, the shared stack) across every checkout
+# and agent of a host; each heavy command inside a job also takes one of the host's heavy slots (ops/liveness.yaml heavy, one per gbPerSlot GB of
+# RAM) while it runs. Read by
 # cli/src/harness/slots.ts (`starci slot take|release|list|run`, `starci lane gate`, `starci gallery shoot` and the batch lander's
 # own npm and gate slots). A slot is one lock file in the slot root, taken by an exclusive create, released only by the holder it names.
 # root: the folder holding the slot files; null is `<shared harness state>/slots`. STARCI_LANES_DIR and a verb's --dir override it,
@@ -12,8 +14,17 @@
 #   with its evidence in `<root>/_slots.log`.
 # One slot per lane per kind: a take for a lane that holds one returns it. A lock with no pid (the old helper) is also reclaimed when its lane
 #   has no worktree under the root (`gone`). A lane's slots are released when it lands, is rejected or is removed (`lane remove`).
+# reap.graceMinutes: a run the harness started under a slot (or an app check) records its launchers in `<root>/_runs/`; once a launcher
+#   has been gone this long, `starci ops reap --execute` and the batch lander stop the run's process tree (cli/src/harness/runs.ts).
+# janitor: what `starci lane prune-installs` and the batch lander's land step delete from a lane worktree (the ignored folders named in
+#   `dirs`, links unlinked first, never deleted through), and how long a worktree must be idle before prune-installs takes it (`idleHours`).
 schema: starci/slots@1
 root: null
+reap:
+  graceMinutes: 10
+janitor:
+  idleHours: 6
+  dirs: [node_modules, .next, dist, .turbo]
 kinds:
   npm:
     count: 3

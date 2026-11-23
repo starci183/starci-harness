@@ -7,6 +7,7 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync, pidAlive } from "../shared/exec.js"
 import { hostFreeMb } from "./heavy.js"
+import { registerRun } from "./runs.js"
 import { sharedStateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
 
@@ -42,6 +43,8 @@ const slotsSchema = z
         schema: z.literal("starci/slots@1"),
         root: z.string().min(1).nullable(),
         kinds: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), kindSchema),
+        reap: z.strictObject({ graceMinutes: z.number().positive() }).optional(),
+        janitor: z.strictObject({ idleHours: z.number().positive(), dirs: z.array(z.string().regex(/^[A-Za-z0-9._-]+$/)).min(1) }).optional(),
     })
     .superRefine((rules, issues) => {
         for (const [name, kind] of Object.entries(rules.kinds)) {
@@ -585,8 +588,11 @@ export const listSlots = (root: string, rules: SlotRules, names: readonly string
 /** Holds a slot while `work` runs, released when it ends (thrown, signalled or not); the slot records this process's pid. */
 export const withSlot = async <T>(root: string, rules: SlotRules, name: string, holder: string, options: Omit<TakeOptions, "pid" | "reuse">, work: (taken: Taken) => Promise<T>): Promise<T> => {
     const taken = await takeSlot(root, rules, name, holder, { ...options, pid: process.pid })
+    // The run is recorded with its launchers, so the reaper (harness/runs.ts) stops it once its caller is gone.
+    const run = await registerRun(root, `${name} slot of ${holder}`, process.cwd())
     const release = (): void => {
         releaseSlots(root, rules, name, holder, { n: taken.n, pid: process.pid })
+        run.done()
     }
     const onSignal = (): void => {
         release()
