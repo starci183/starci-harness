@@ -78,7 +78,7 @@ export interface AiChatThreadProps {
     assistantAvatar?: AiChatAssistantAvatar
     /** A slot after the last message (and the proposed result), inside the scrolling thread: a divider such as "you approved version 2", an inline Alert for an error. */
     afterMessages?: ReactNode
-    /** One short caption line under the composer's box, its guidance in the field's description role ("Claude · the shop's key"). */
+    /** One short caption in the composer box's foot row, left of the send button ("Claude · the shop's key"). */
     composerHint?: string
     /** The composer is read-only (the session is closed). */
     disabled?: boolean

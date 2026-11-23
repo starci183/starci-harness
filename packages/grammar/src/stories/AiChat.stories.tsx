@@ -168,7 +168,7 @@ export const Live: Story = {
   },
 };
 
-/** The three slots: the assistant's `sm` mark before its turns, a divider after the last message once the reader approved, the hint under the composer's box. */
+/** The three slots: the assistant's `sm` mark before its turns, a divider after the last message once the reader approved, the hint in the composer box's foot row. */
 export const Slots: Story = {
   render: () => (
     <Frame>

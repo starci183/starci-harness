@@ -55,7 +55,8 @@ test("a conversation: the reader's turn is a brand bubble at the end side, the a
     assert.match(html, /Look up new customers/)
     assert.match(html, /aria-label="Copy"/)
     assert.match(html, /aria-label="Retry"/)
-    assert.match(html, /data-grammar-composer-send="true"/)
+    assert.match(html, /data-grammar-ai-chat-box="true"/)
+    assert.match(html, /aria-label="Send"/)
     assert.doesNotMatch(html, /aria-label="Stop"/)
 })
 
@@ -85,7 +86,7 @@ test("empty, preview and disabled: the app's words, the one primary approve, a r
     assert.match(render({ disabled: true }), /data-grammar-readonly="true"/)
 })
 
-test("the three slots: the assistant's mark before each assistant turn, the node after the messages, the hint under the composer's box", () => {
+test("the three slots: the assistant's mark before each assistant turn, the node after the messages, the hint in the composer box's foot row", () => {
     const html = render({
         assistantAvatar: { name: "Claude", kind: "logo", src: "/claude.svg" },
         afterMessages: createElement("p", { "data-after": "yes" }, "You approved version 2"),
@@ -96,7 +97,9 @@ test("the three slots: the assistant's mark before each assistant turn, the node
     const column = html.slice(html.indexOf("starci-ai-chat-viewport"), html.indexOf("starci-ai-chat-composer"))
     assert.ok(column.lastIndexOf("data-grammar-ai-chat-role=\"assistant\"") < column.indexOf("data-after=\"yes\""), "the node stands after the last message, inside the thread")
     assert.ok(html.indexOf("data-after=\"yes\"") < html.indexOf("starci-ai-chat-composer"))
-    assert.match(html.slice(html.indexOf("starci-ai-chat-composer")), /the shop&#x27;s key|the shop's key/)
+    const box = html.slice(html.indexOf("starci-ai-chat-box-foot"))
+    assert.match(box, /the shop&#x27;s key|the shop's key/)
+    assert.ok(box.indexOf("shop") < box.indexOf('aria-label="Send"'), "the hint stands before the send button, in the box's foot row")
     const plain = render()
     assert.doesNotMatch(plain, /data-grammar-ai-chat-mark|data-grammar-ai-chat-after/, "no slot, nothing drawn")
 })

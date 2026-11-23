@@ -13,6 +13,8 @@ import {
 } from "@assistant-ui/react"
 import { createContext, useContext, useId, useMemo, useState, type ReactNode } from "react"
 import { Textarea } from "../../branch/Textarea/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
+import { Text } from "../../leaf/Text/index.js"
 import { MessageBubble } from "../../composite/MessageBubble/index.js"
 import { DEFAULT_AI_CHAT_LATEST, isEmptyMessage, lastAssistantId, sendableText, textOfMessage, toolCallsById, toThreadMessage } from "./model.js"
 import { AiChatAssistantMark, AiChatEmpty, AiChatJumpToLatest, AiChatMessageActions, AiChatPreviewCard, AiChatText, AiChatThinking, AiChatToolCard, AiChatUserText } from "./parts.js"
@@ -101,7 +103,7 @@ const appendedText = (message: AppendMessage): string =>
  * while the reader is at the foot and stops when the reader scrolls up). Everything it draws is Grammar: the reader's turns are brand
  * `MessageBubble`s at the end side, an assistant turn is plain markdown across a centred reading column (the core's `Markdown`, fences in the
  * code palette), a tool call is a folded row with its status mark, the proposed result a card whose approve is the region's one primary, and
- * the composer is the core's chat composer (Enter sends, Shift+Enter breaks the line, 1 to 6 lines), its send turning into stop while an
+ * the composer is one bordered box (the core Textarea, Enter sends, Shift+Enter breaks the line, 1 to 6 lines, and a foot row with the hint and the send), the send turning into stop while an
  * answer runs. The frame is the chat frame: head, thread and composer on `--background`, hairlines between them, only the thread scrolls.
  */
 export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, preview, onApprove, onRevise, labels, header, assistantAvatar, afterMessages, composerHint, disabled = false, className }: AiChatThreadProps) => {
@@ -163,20 +165,24 @@ export const AiChatThread = ({ messages, isRunning, onSend, onStop, onRetry, pre
                     </ThreadPrimitive.Viewport>
                     <div className="starci-ai-chat-composer">
                         <div className="starci-ai-chat-column">
-                            <Textarea
-                                id={composerId}
-                                label={labels.placeholder}
-                                isLabelHidden
-                                placeholder={labels.placeholder}
-                                value={draft}
-                                onValueChange={setDraft}
-                                onSubmitShortcut={send}
-                                isReadOnly={disabled}
-                                {...(composerHint === undefined ? {} : { description: composerHint })}
-                                send={canStop
-                                    ? { label: labels.stop, glyph: "stop", onPress: stop }
-                                    : { label: labels.send, onPress: send, isDisabled: disabled || isRunning || draft.trim() === "" }}
-                            />
+                            <div className="starci-ai-chat-box" data-grammar-ai-chat-box="true">
+                                <Textarea
+                                    id={composerId}
+                                    label={labels.placeholder}
+                                    isLabelHidden
+                                    placeholder={labels.placeholder}
+                                    value={draft}
+                                    onValueChange={setDraft}
+                                    onSubmitShortcut={send}
+                                    isReadOnly={disabled}
+                                />
+                                <div className="starci-ai-chat-box-foot">
+                                    {composerHint === undefined ? null : <Text role="caption" as="span">{composerHint}</Text>}
+                                    {canStop
+                                        ? <IconButton glyph="stop" variant="primary" size="sm" label={labels.stop} onPress={stop} />
+                                        : <IconButton glyph="send" variant="primary" size="sm" label={labels.send} onPress={send} isDisabled={disabled || isRunning || draft.trim() === ""} />}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </ThreadPrimitive.Root>

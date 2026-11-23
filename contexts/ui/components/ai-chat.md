@@ -29,7 +29,7 @@ assistant-ui styled package, no shadcn styles.
   `toolError`, `empty?`, `latest?` with an English default). `header` is a slot above the thread; `disabled` makes the composer read-only.
 - Three optional slots: `assistantAvatar` (an Avatar item, `AiChatAssistantAvatar`: the provider's initials, a `mark`, or `kind: "logo"` with
   its `src`), `afterMessages` (a node after the last message and the preview, inside the thread: a Divider such as "you approved version 2", an
-  inline Alert for an error) and `composerHint` (a string, the line under the composer's box).
+  inline Alert for an error) and `composerHint` (a string, the caption at the start of the composer's foot row).
 
 ## Look
 - **The frame** is the chat frame ([message bubble](message-bubble.md) "The chat frame"): head, thread and composer foot on `--background`,
@@ -47,7 +47,8 @@ assistant-ui styled package, no shadcn styles.
   the border look; `approving` keeps approve's name and blocks a second press; `approved` puts the approve words marked done in place of the band.
 - **The viewport** follows the newest message while the reader is at the foot and stops when the reader scrolls up; a floating `sm` arrow
   (named `labels.latest`) brings the reader back.
-- **The composer** is the core chat composer (`Textarea onSubmitShortcut send`): one line growing to six, Enter sends, Shift+Enter breaks
-  the line, `composerHint` the field's description line under the box, the send action its own 40px primary, `send.glyph="stop"` while a run goes.
+- **The composer** is one bordered box (the field's paint, the focus ring on the box): the core `Textarea onSubmitShortcut` on top with its own frame
+  taken off (one line growing to six, Enter sends, Shift+Enter breaks the line), and a foot row inside the same box, `composerHint` as a caption at the
+  start and the round `sm` primary send at the end, which becomes stop (`labels.stop`) while a run goes.
 
 Story `Navigation & Data/AI chat`: empty, a conversation with a code block and a tool call, streaming, the preview, approving, disabled, the three slots and an inline error.
