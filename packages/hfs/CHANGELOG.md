@@ -2,6 +2,7 @@
 
 ## 6.17.9 - 2026-11-23
 
+- Changed (R90 `infraOwners` in slots.yaml, canon pins, contexts/code/be/ai.md BE-AI-1; owner 2026-11-23): the official provider SDKs `openai` (7.62.0) and `@anthropic-ai/sdk` (1.12.0) are owned by the one integration `integrations/ai-byok`, for a workspace's own key (bring-your-own-key) in a streaming chat only; every other file still reaches a model through the gateway, and every other provider SDK stays owned by nobody. No new check: R90 reads the table.
 - Added (canon pins, fe-stack): `@assistant-ui/react` 0.15.38, the optional peer of the Grammar's core AI chat ext (`@starci/grammar/core/ext/chat`), as the fe-stack concern `ai-chat`; an app imports it only through the ext.
 - Changed (canon pins): the Grammar family is 0.57.0 (range ~0.57.0), @starci/gallery 0.1.22 and @starci/stylelint-canon 2.9.10.
 - Changed (`app stack up`, `stack/local-up.mts`, `stack/local-run.mts`): one copy of each process per environment. A recorded process that still runs its command with its port silent (a watcher whose server died) is stopped before the fresh start, where it was left running beside the new copy; a port another process already listens on refuses `STACK_LOCAL_SECOND_COPY` with that process's pid and command (`portHolder`) instead of starting a second watcher tree with its own crons and consumers. A process may declare `onDemand: true`, and the managed gallery process is on demand: `stack up` starts it only with `--with <name>[,<name>]`, so the dev stack runs one web and one api per app by default.

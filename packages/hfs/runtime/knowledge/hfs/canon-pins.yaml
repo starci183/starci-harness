@@ -320,6 +320,16 @@ pins:
     group: framework
     side: be
     why: 'ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway with a virtual key (BE-AI-1, BE-AI-3, R327); peer @langchain/core ^1.3.1; 1.8.2 is the floor of the peer range @starci/ai-router 0.8.0 declares.'
+  openai:
+    version: 7.62.0
+    group: framework
+    side: be
+    why: 'the official OpenAI SDK of the bring-your-own-key streaming integration integrations/ai-byok, built with a workspace''s own sealed key and nothing else (BE-AI-1, R90).'
+  '@anthropic-ai/sdk':
+    version: 1.12.0
+    group: framework
+    side: be
+    why: 'the official Anthropic SDK of the bring-your-own-key streaming integration integrations/ai-byok, built with a workspace''s own sealed key and nothing else (BE-AI-1, R90).'
   '@nestjs/cqrs':
     version: 11.0.3
     group: framework
