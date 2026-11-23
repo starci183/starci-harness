@@ -130,7 +130,7 @@ export const laneLandVerb = defineVerb({
                     await publish?.(record.landed)
                     autoSync?.debounce.landed(Date.now())
                 }
-                if (record === undefined || record.landed === undefined) await scheduleWhenBehind()
+                if (record?.landed === undefined) await scheduleWhenBehind()
                 if (autoSync !== undefined && (autoSync.debounce.due(Date.now()) || ((flags.once || dryRun) && autoSync.debounce.pending))) await autoSync.run()
                 if (flags.once || dryRun) break
                 const wait = autoSync?.debounce.waitMs(Date.now())

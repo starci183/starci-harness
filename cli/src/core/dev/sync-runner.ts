@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, resolve, win32 } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as sleep } from "node:timers/promises"
 import { captureGit, repositoryRoot } from "../../shared/git.js"
@@ -139,7 +139,8 @@ const EDGE = /edge-server\.m?js/iu
  * these are ever stopped by the runner. Pure.
  */
 export const strayDevServers = (table: readonly HostProcess[], checkout: string, recorded: ReadonlySet<number>, self: number = process.pid, listeners: ReadonlySet<number> = new Set()): HostProcess[] => {
-    const inside = resolve(checkout).replaceAll("\\", "/").toLowerCase()
+    // A checkout is matched against Windows command lines: a drive path (`D:/...`) is already absolute, though `resolve` on a POSIX host would prefix the cwd to it.
+    const inside = (win32.isAbsolute(checkout) ? checkout : resolve(checkout)).replaceAll("\\", "/").replace(/\/+$/u, "").toLowerCase()
     const owned = new Set(recorded)
     for (let grew = true; grew; ) {
         grew = false
