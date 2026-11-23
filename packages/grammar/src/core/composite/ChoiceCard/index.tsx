@@ -165,7 +165,7 @@ export const ChoiceCard = ({ question, options, other, chosen = null, pending = 
                     if (option === undefined) {
                         return (
                             <button key="other" {...common} data-other="true" onClick={() => other?.onPress()}>
-                                <span className="starci-core-choice-card-label">{other?.label}</span>
+                                <span className="starci-core-choice-card-words">{other?.label}</span>
                             </button>
                         )
                     }
@@ -181,8 +181,11 @@ export const ChoiceCard = ({ question, options, other, chosen = null, pending = 
                             onClick={() => press(option)}
                         >
                             {isChosen ? <CheckGlyph /> : null}
-                            <span className="starci-core-choice-card-label">{isConfirming && labels !== undefined ? labels.confirm(option.label) : option.label}</span>
-                            {isConfirming || option.hint === undefined || option.hint === "" ? null : <span className="starci-core-choice-card-hint">{`· ${option.hint}`}</span>}
+                            {/* one line of words that wraps as text: the label, then its hint, centred together (never a column of its own) */}
+                            <span className="starci-core-choice-card-words">
+                                <span className="starci-core-choice-card-label">{isConfirming && labels !== undefined ? labels.confirm(option.label) : option.label}</span>
+                                {isConfirming || option.hint === undefined || option.hint === "" ? null : <span className="starci-core-choice-card-hint">{` · ${option.hint}`}</span>}
+                            </span>
                         </button>
                     )
                 })}
