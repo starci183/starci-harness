@@ -706,8 +706,8 @@
      * shadow, no border, radius 12 (`--grammar-radius-md`), 12 by 16 inset and a 12 gap. The glyph is the original Heroicons 24 outline mark at its
      * native size and stroke, pulled up 2px onto the centre of the 20px title line; pending's spinner is 24px too. The copy is the label.item role:
      * the title 14/20 at 500, the description 14/20 at 400. The tone maps informative -> info (0.55.0, blue), neutral, pending and unavailable ->
-     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its action Button is SOLID in the same tone
-     * (Button `tone`). The row wraps at a narrow width so the action stays inside it.
+     * default, affirmative -> success, cautionary -> warning, negative -> danger, accent -> accent. Its buttons take the banner's tone (0.55.1,
+     * below). The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
         --starci-core-alert-soft: var(--default-soft);
@@ -811,11 +811,28 @@
     }
 
     /*
-     * A border action on a negative banner ("Try again") draws its edge in the banner's danger ink: the neutral edge disappears on the danger soft
-     * box (owner shots 2026-11-22). The fill stays transparent, so it is still the border look, not a second danger button.
+     * THE ALERT ACTION LOOK (0.55.1, owner 2026-11-23, "Chốt, làm luôn"): a Button inside a banner, in its actions or anywhere in its copy, takes the
+     * BANNER'S TONE, never a white or neutral outline on the tint. The fill is one step stronger than the banner's soft background: a film of the banner's
+     * ink (its `--<tone>-soft-foreground`) over it, 10% at rest and 16% on hover and press, so it reads in light and dark and on an app's own tone alike.
+     * The label is that ink at the button label weight (500, the label.item role); the box keeps Grammar's pill, size and focus ring. Every one of them
+     * is the `border` rank, so none is primary; a destructive action keeps `danger`, and a Button on a band (`ground`) keeps its band. A loading
+     * banner is neutral and its buttons are skeletons, so it takes none of this.
      */
-    [data-component="Alert"][data-grammar-tone="negative"] .starci-core-alert-actions > [data-component="Button"][data-grammar-variant="border"] {
-        border-color: var(--danger);
+    .starci-core-alert {
+        --starci-core-alert-action: color-mix(in oklab, var(--starci-core-alert-ink) 10%, transparent);
+        --starci-core-alert-action-hover: color-mix(in oklab, var(--starci-core-alert-ink) 16%, transparent);
+    }
+
+    .starci-core-alert:not([data-loading="true"]) .starci-core-button:not([data-grammar-variant="danger"], [data-grammar-button-ground], [data-loading="true"]) {
+        border-color: transparent !important;
+        background: var(--starci-core-alert-action) !important;
+        box-shadow: none !important;
+        color: var(--starci-core-alert-ink) !important;
+        font-weight: var(--grammar-type-label-item-weight);
+    }
+
+    .starci-core-alert:not([data-loading="true"]) .starci-core-button:not([data-grammar-variant="danger"], [data-grammar-button-ground], [data-loading="true"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: var(--starci-core-alert-action-hover) !important;
     }
 
     .starci-core-alert-actions {

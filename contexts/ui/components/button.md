@@ -143,7 +143,9 @@ A Button with a start icon or an end arrow uses HeroUI v3's padding: 12 (sm) or 
 `Button variant="primary" tone="accent" | "info" | "success" | "warning"` (0.55.0) is the primary SOLID in the tone's own colour, `--<tone>` with
 `--<tone>-foreground`, on the vendor's `primary` painted (HeroUI ships no success, warning or info variant); never an outline (owner: "button phải là
 màu tương ứng, ko phải border"). `tone` is only the colour of a primary, never a fourth look: the types refuse it on `border` and `danger`, and a
-destruction is `variant="danger"`. It keeps the primary's rules (the icon rule, the one-primary count). It is the action of a toned notice: an
-`Alert`'s action wears its banner's tone ([toast-alert](toast-alert.md), `ALERT_ACTION_LOOK`). Not with `ground`.
+destruction is `variant="danger"`. It keeps the primary's rules (the icon rule, the one-primary count). An `Alert`'s buttons do not use it: they take the
+banner's tint, the `border` rank painted one step over the banner's soft fill in its ink at 500 ([toast-alert](toast-alert.md) "Buttons in a banner", 0.55.1). Not with `ground`.
+
+Every Button label is the label.item weight, 500: Grammar states it on `.starci-core-button` (0.55.1) rather than leaning on the vendor's `--font-weight-medium`.
 
 A head link (`Link variant="head"`: a section head's "Xem tất cả", a Bento tile's "Tìm hiểu thêm") keeps its drawn line and gains an unseen 48 x 48 hit layer centred on it, so a standalone link meets the touch floor without a visual change (`DNA-COMMON-LINK-HEAD-HIT-44` at 320, 360 and 390). A link inside prose keeps its line. Stories `Surfaces/Figures, rows, bands and pages (0.48.0)` (ButtonOnBands) and `Navigation & Data/Phone fixes (0.48.0)` (LinkHitArea).
