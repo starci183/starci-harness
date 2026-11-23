@@ -25,7 +25,7 @@ export const withSyncLock = async <T>(file: string, say: (line: string) => void,
     const started = Date.now()
     let told = false
     while (!takeLockFile(file, mine)) {
-        let held = ""
+        let held: string
         try {
             held = readFileSync(file, "utf8")
         } catch {
