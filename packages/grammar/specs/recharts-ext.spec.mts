@@ -75,12 +75,18 @@ test("loading is a Grammar Skeleton of the box, with no name announced and the b
 })
 
 test("empty shows the label from props in the same box, and no drawing", () => {
-    for (const Chart of [BarChart<Week>, LineChart<Week>, Sparkline<Week>, AreaChart<Week>]) {
+    for (const Chart of [BarChart<Week>, LineChart<Week>, AreaChart<Week>]) {
         const html = renderToStaticMarkup(createElement(Chart, { ...words, data: [] }))
         assert.match(html, /data-state="empty"/)
         assert.match(html, /No orders yet/)
         assert.doesNotMatch(html, /role="img"/)
     }
+})
+
+test("a Sparkline with no data, or only zeros, draws nothing", () => {
+    assert.equal(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: [] })), "")
+    assert.equal(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: weekly.map((row) => ({ ...row, orders: 0 })) })), "")
+    assert.match(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: [], isLoading: true })), /data-state="loading"/)
 })
 
 test("a tone is a Grammar token, never a literal colour", () => {

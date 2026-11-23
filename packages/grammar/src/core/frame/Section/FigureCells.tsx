@@ -66,10 +66,10 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                         )}
                     </dd>
                     {item.meta === undefined ? null : (
-                        <dd className="starci-core-description-meta" data-contract="FONT-2">
+                        <dd className="starci-core-description-meta" data-contract="FONT-2" {...(item.trend === undefined || isLoading ? {} : { "data-grammar-trend-tone": trendTone(item) })}>
                             {item.trend === undefined || isLoading ? null : (
                                 <>
-                                    <span className="starci-core-description-trend" data-grammar-trend={item.trend} data-grammar-trend-tone={trendTone(item)} aria-hidden="true">{TREND_MARKS[item.trend]}</span>
+                                    <span className="starci-core-description-trend" data-grammar-trend={item.trend} aria-hidden="true">{TREND_MARKS[item.trend]}</span>
                                     <span className="starci-core-visually-hidden">{item.trendLabel ?? TREND_WORDS[item.trend]}{". "}</span>
                                 </>
                             )}

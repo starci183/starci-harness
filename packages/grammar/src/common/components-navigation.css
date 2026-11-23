@@ -2002,14 +2002,14 @@
         overflow-wrap: anywhere;
     }
 
-    /* The change's direction mark, before the meta text: the mark takes the tone's pair, the text stays muted. */
+    /* The change's direction: the mark and the meta words stand in the tone's ink (success, danger, info; neutral stays muted), so the words carry the status and the line under them never does. */
     .starci-core-description-trend { margin-inline-end: var(--grammar-identity-gap); font-size: var(--grammar-text-2xs); }
-    .starci-core-description-trend[data-grammar-trend-tone="success"] { color: var(--success); }
-    .starci-core-description-trend[data-grammar-trend-tone="info"] { color: var(--info); }
-    .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
-
-    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). */
+    .starci-core-description-meta[data-grammar-trend-tone="success"] { color: var(--success-soft-foreground); }
+    .starci-core-description-meta[data-grammar-trend-tone="info"] { color: var(--info-soft-foreground); }
+    .starci-core-description-meta[data-grammar-trend-tone="danger"] { color: var(--danger-soft-foreground); }
+    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). A figure with no trend to draw (no data, all zeros: the Sparkline renders nothing) is words only: its line row takes no space. */
     .starci-core-description-trend-line { align-self: stretch; min-width: 0; margin: 0; line-height: 0; }
+    .starci-core-description-trend-line:empty { display: none; }
 
     @container starci-core-description-strip (min-width: 18rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {

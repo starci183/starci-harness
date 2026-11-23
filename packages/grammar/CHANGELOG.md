@@ -2,7 +2,12 @@
 
 ## 0.57.1 - 2026-11-23 - AiChatThread: the assistant's mark, a node after the messages, a hint in the composer's foot row
 
-A patch: three new optional props and a type.
+A patch: three new optional props and a type, and the figure trend line made neutral (it deletes two Sparkline props, so it ships a codemod).
+
+codemod: v0571 (`starci app codemod v0571`, or `--from 0.57.0 --to 0.57.1`).
+
+- Changed (`Sparkline`, owner 2026-11-23, NIVO Contacts figures: a flat red line on an all-zero series read as "dropping"): the line is always the neutral muted ink, never a status colour; no data, or a series of zeros only, draws nothing at all, not even its box (the figure is words only, "Same as yesterday": `.starci-core-description-trend-line:empty` takes no space). `Sparkline tone` and `Sparkline emptyLabel` are deleted (codemod v0571 drops them); loading is still a Skeleton of the box.
+- Changed (`Figure.trend`, same rule): the status colour stands on the meta WORDS (the `--*-soft-foreground` ink of success, danger or info; neutral stays muted) together with the direction mark, so the words carry the direction and the line under them never does.
 
 - Added (`AiChatThread assistantAvatar`, NIVO Studio): an Avatar item (`name`, `src`, `seed`, `kind` such as `logo`, `mark`, `fallback`, `tone`; `AiChatAssistantAvatar`, an `AvatarGroupItem` without its id) drawn as the `sm` (24px) decorative Avatar before each assistant turn, the answer and its actions beside it at the row gap. The reader's turns carry none.
 - Added (`AiChatThread afterMessages`): a node after the last message and the proposed result, inside the scrolling thread and its reading column (a Divider such as "you approved version 2", an inline Alert for an error); the viewport follows it like a message.
