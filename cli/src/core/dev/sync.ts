@@ -11,6 +11,7 @@ import { installLocal, installRecordFile, installUnitOf, parseRequested, readIns
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
+import { syncLockFile, withSyncLock } from "./sync-lock.js"
 import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
@@ -152,6 +153,12 @@ export const overlayLine = (overlay: readonly string[]): string =>
  */
 export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     const root = await repositoryRoot(request.checkout)
+    // One sync of a checkout at a time, whoever asks (two landers, a hand run): a second one waits for the first. A dry run writes nothing and takes no lock.
+    if (!request.execute) return devSyncLocked(request, deps, root)
+    return withSyncLock(syncLockFile(root), request.say, () => devSyncLocked(request, deps, root), deps.pause)
+}
+
+const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: string): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     assertNpm(root)
     const lines: string[] = []
     const say = (line: string): void => {

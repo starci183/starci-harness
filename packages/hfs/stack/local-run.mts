@@ -256,7 +256,31 @@ export function portHolder(ctx: Pick<StackContext, 'spawn' | 'platform'>, port: 
   return { pid, command: liveCommandLine(ctx, pid) };
 }
 
-/** Starts a native process detached from this command, its output in the environment's log. Returns the pid. */
+/**
+ * What the Windows relay runs: it starts the real command detached with the log as its output, writes the child's pid into the file named by
+ * argv[1] and exits. The child's parent is then a process that is gone, so a tree kill of the caller (closing a terminal tab, `taskkill /T` of a
+ * lander) never reaches it; `detached: true` alone does not break that chain on Windows.
+ */
+const RELAY = "const {spawn}=require('node:child_process'),fs=require('node:fs');const o=JSON.parse(process.argv[2]);" +
+  "const c=spawn(o.command,o.args,{cwd:o.cwd,env:process.env,detached:true,stdio:['ignore','inherit','inherit'],windowsHide:true});" +
+  "c.on('error',(e)=>{fs.writeFileSync(o.pidFile+'.err',String(e.message));process.exit(1)});" +
+  "if(typeof c.pid==='number'){fs.writeFileSync(o.pidFile,String(c.pid));c.unref();setTimeout(()=>process.exit(0),200)}";
+
+/** Waits (synchronously, up to `timeoutMs`) for the relay's pid file; the pid, or the spawn error it recorded, or undefined. */
+function relayedPid(pidFile: string, timeoutMs: number): number | string | undefined {
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (let waited = 0; waited <= timeoutMs; waited += 50) {
+    if (fs.existsSync(pidFile)) { const pid = Number(fs.readFileSync(pidFile, 'utf8').trim()); if (Number.isInteger(pid) && pid > 0) return pid; }
+    if (fs.existsSync(`${pidFile}.err`)) return fs.readFileSync(`${pidFile}.err`, 'utf8');
+    Atomics.wait(cell, 0, 0, 50);
+  }
+  return undefined;
+}
+
+/**
+ * Starts a native process detached from this command, its output in the environment's log. Returns the pid. On Windows it goes through a relay
+ * (see RELAY) so the process outlives the caller's whole process tree: restarting a lander or closing its terminal never takes the dev stack down.
+ */
 export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): number {
   const dir = stateOf(ctx, local);
   const log = logFile(dir, run.name);
@@ -264,7 +288,20 @@ export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCo
   const descriptor = fs.openSync(log, 'a');
   try {
     const [command, args] = launcher(ctx, run.argv.map((part) => expand(ctx, local, part)));
-    const child = ctx.spawn(command, args, { background: true, detached: true, cwd: path.join(local.repoRoot, run.cwd), env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
+    const cwd = path.join(local.repoRoot, run.cwd);
+    if (ctx.platform === 'win32') {
+      const pidFile = path.join(dir, `${run.name}.relay-pid`);
+      fs.rmSync(pidFile, { force: true });
+      fs.rmSync(`${pidFile}.err`, { force: true });
+      const relay = ctx.spawn(process.execPath, ['-e', RELAY, JSON.stringify({ command, args, cwd, pidFile })], { background: true, detached: true, cwd, env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
+      relay.unref?.();
+      const pid = relayedPid(pidFile, 10_000);
+      fs.rmSync(pidFile, { force: true });
+      fs.rmSync(`${pidFile}.err`, { force: true });
+      if (typeof pid !== 'number') throw failure('STACK_LOCAL_COMMAND', `${run.name} did not start: ${pid ?? relay.spawnError?.message ?? 'the relay gave no process id'}`);
+      return pid;
+    }
+    const child = ctx.spawn(command, args, { background: true, detached: true, cwd, env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
     const pid = child.pid;
     if (typeof pid !== 'number') throw failure('STACK_LOCAL_COMMAND', `${run.name} did not start: ${child.spawnError?.message ?? 'no process id'}`);
     child.unref?.();

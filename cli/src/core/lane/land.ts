@@ -7,9 +7,9 @@ import { holdLander, landPaths, lanesDir, releaseLockFile, touchLander } from ".
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
-import { landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
+import { BEHIND_CHECK_MS, checkoutBehindDev, landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
 import { MIGRATIONS_FOLDER, landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
-import { loadLocalSettings } from "../../harness/local-settings.js"
+import { devSyncForRepo, loadLocalSettings, localSettingsPath } from "../../harness/local-settings.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
 import { listWorktrees } from "../../harness/worktree-remove.js"
@@ -96,9 +96,26 @@ export const laneLandVerb = defineVerb({
         }, POLL_MS)
         heartbeat?.unref()
         const batches: BatchRecord[] = []
-        const settings = loadLocalSettings().devSync
+        // Each lander syncs the dev checkout of its own repository (devSync.repos), never another app's.
+        const settings = devSyncForRepo(loadLocalSettings().devSync, options.repo)
         // The harness lander syncs only the app checkout its settings name: its own repository is no app with a dev stack.
-        const autoSync = profileName === "harness" && settings.checkout === undefined ? undefined : landAutoSync(settings, options.repo, dryRun, context.progress, undefined, () => loadLocalSettings().devSync)
+        const autoSync = profileName === "harness" && settings.checkout === undefined ? undefined : landAutoSync(settings, options.repo, dryRun, context.progress, undefined, () => devSyncForRepo(loadLocalSettings().devSync, options.repo))
+        if (!dryRun && autoSync === undefined && profileName !== "harness") context.progress(`dev sync after a land is off for ${options.repo} (devSync.afterLand / devSync.repos in ${localSettingsPath()}): a landed batch is not followed by a sync`)
+        const syncCheckout = settings.checkout ?? options.repo
+        let lastBehindCheck = 0
+        // Behind origin/dev with nothing scheduled: schedule the sync (also at start), so a restart or a refused sync never leaves dev stale.
+        const scheduleWhenBehind = async (): Promise<void> => {
+            if (autoSync === undefined || dryRun || autoSync.debounce.pending || Date.now() - lastBehindCheck < BEHIND_CHECK_MS) return
+            lastBehindCheck = Date.now()
+            try {
+                if (await checkoutBehindDev(syncCheckout)) {
+                    context.progress(`dev checkout ${syncCheckout} is behind origin/dev: a dev sync is scheduled`)
+                    autoSync.debounce.landed(Date.now())
+                }
+            } catch (error) {
+                context.progress(`dev checkout check of ${syncCheckout}: ${error instanceof Error ? error.message : String(error)}`)
+            }
+        }
         const publish = profileName === "harness" ? landPublishDev(settings, dryRun, context.progress, (landed) => publishDev({ root: options.worktree, head: landed, execute: true, say: context.progress })) : undefined
         try {
             for (;;) {
@@ -113,6 +130,7 @@ export const laneLandVerb = defineVerb({
                     await publish?.(record.landed)
                     autoSync?.debounce.landed(Date.now())
                 }
+                if (record === undefined || record.landed === undefined) await scheduleWhenBehind()
                 if (autoSync !== undefined && (autoSync.debounce.due(Date.now()) || ((flags.once || dryRun) && autoSync.debounce.pending))) await autoSync.run()
                 if (flags.once || dryRun) break
                 const wait = autoSync?.debounce.waitMs(Date.now())
