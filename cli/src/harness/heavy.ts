@@ -110,8 +110,11 @@ export interface HostLoad {
     readonly reason: string
 }
 
-/** The count cap, the owner's rule: one heavy command per `heavy.gbPerSlot` GB of the host's physical RAM, at least one (64 GB, 16 GB a slot: 4). */
-export const slotCap = (rules: HeavyRules, totalMb: number = Math.floor(totalmem() / 1_048_576)): number => Math.max(1, Math.floor(totalMb / 1024 / rules.gbPerSlot))
+/**
+ * The count cap, the owner's rule: one heavy command per `heavy.gbPerSlot` GB of the host's physical RAM, at least one (64 GB, 16 GB a slot: 4). The
+ * RAM is counted in whole GB as installed: the OS reports 64 GB less what the firmware and GPU reserve (about 63.8 GB), which must still be 4.
+ */
+export const slotCap = (rules: HeavyRules, totalMb: number = Math.floor(totalmem() / 1_048_576)): number => Math.max(1, Math.floor(Math.round(totalMb / 1024) / rules.gbPerSlot))
 
 /**
  * Admission is a count: a heavy command starts when fewer than `slotCap` run and no host floor holds (`floors`, the free disk; harness/host-floors.ts).

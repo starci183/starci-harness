@@ -70,7 +70,8 @@ const run = (on: Governed, kind: HeavyKind, name: string, order: string[], hold?
 
 void test("the cap is one slot per gbPerSlot GB of RAM, at least one", () => {
     assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 64 * GB), 4)
-    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 63 * GB), 3)
+    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 65_380), 4, "64 GB installed, reported as 63.8 GB, is 4 slots")
+    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 62 * GB), 3)
     assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 8 * GB), 1)
     assert.equal(admission({ ...rules, gbPerSlot: 16 }, 3, [], 0, 64 * GB).admits, true)
     assert.equal(admission({ ...rules, gbPerSlot: 16 }, 4, [], 0, 64 * GB).admits, false)
