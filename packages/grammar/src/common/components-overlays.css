@@ -889,6 +889,43 @@
         animation: starci-core-spin var(--grammar-loop-spin-fast) var(--grammar-loop-easing) infinite;
     }
 
+    /* ---------------------------------------------------------------- typing dots */
+    .starci-core-typing-dots {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        min-block-size: var(--grammar-leading-md);
+        color: var(--muted);
+    }
+
+    .starci-core-typing-dot {
+        inline-size: var(--grammar-typing-dot);
+        block-size: var(--grammar-typing-dot);
+        border-radius: var(--grammar-radius-round);
+        background: currentcolor;
+        animation: starci-core-typing var(--grammar-loop-typing) var(--grammar-loop-pulse-easing) infinite;
+    }
+
+    .starci-core-typing-dot:nth-child(2) { animation-delay: var(--grammar-typing-stagger); }
+    .starci-core-typing-dot:nth-child(3) { animation-delay: calc(var(--grammar-typing-stagger) * 2); }
+
+    @keyframes starci-core-typing {
+        0%, 60%, 100% {
+            opacity: var(--grammar-opacity-faded);
+            transform: translateY(0);
+        }
+
+        30% {
+            opacity: 1;
+            transform: translateY(calc(-1 * var(--grammar-typing-travel)));
+        }
+    }
+
+    @keyframes starci-core-typing-still {
+        0%, 60%, 100% { opacity: var(--grammar-opacity-faded); }
+        30% { opacity: 1; }
+    }
+
     @keyframes starci-core-spin {
         to {
             transform: rotate(360deg);
@@ -1237,6 +1274,11 @@
 
         .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
             transition: none;
+        }
+
+        /* The typing dots stay put and only pulse in opacity, in turn. */
+        .starci-core-typing-dot {
+            animation-name: starci-core-typing-still;
         }
 
         /* Busy stays perceivable without rotation: a slow opacity pulse replaces the spin. */

@@ -172,6 +172,11 @@
         --grammar-loop-spin: 1s;
         --grammar-loop-spin-fast: 0.8s;
         --grammar-loop-pulse: 1.6s;
+        /* TypingDots: one rise-and-fade cycle, the delay between two dots, how high a dot rises and how big it is. */
+        --grammar-loop-typing: 1.2s;
+        --grammar-typing-stagger: 0.15s;
+        --grammar-typing-travel: 5px;
+        --grammar-typing-dot: 0.375rem;
         /* How long a Spotlight rings its target before it settles. */
         --grammar-spotlight-duration: 3s;
         --grammar-loop-easing: linear;
