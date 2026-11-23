@@ -30,11 +30,15 @@ destructive, a "Cancel" that changes nothing is `border`).
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | danger | the press is destructive or irreversible: cancel an order, delete, disconnect, stop for good (the entry that opens the confirmation and the confirming press alike). It is always confirmed and never the filled primary | `variant="danger"` | judgement |
-| primary | the ONE main forward action of its region (a page head, a card, a review sheet): the next step of its one decision. At most one per region, and none when the region has no clear main action | `variant="primary"` | `DNA-COMMON-ONE-ACCENT-FILL`; lint `single-commit-per-render`, `no-commit-in-collection-item` |
+| primary | the ONE main forward action of its region (a page head, a card, a review sheet): the next step of its one decision. At most one per region, and none when the region has no clear main action | `variant="primary"` | `DNA-COMMON-ONE-PRIMARY-PER-REGION` (one per region), `DNA-COMMON-ONE-ACCENT-FILL`; lint `single-commit-per-render`, `no-commit-in-collection-item` |
 | border | every secondary action: opening another view, cancel, close, back, a retry, a negative outcome of the decision ("Not won", "Decline"), the other option beside the primary, a command outside the decision, any per-item command, a section head action, a suggestion pill | `variant="border"` or no `variant` | judgement |
 
 **The CTA rule** (owner 2026-11-23): primary is the one main forward action of a region, border is every secondary action (a negative
 outcome included), danger is the destructive one, confirmed and never filled. A destination to another page is a `Link`; a command is a Button.
+The gate is law `DNA-COMMON-ONE-PRIMARY-PER-REGION` ([contract.yaml](../../grammars/contract.yaml)): a region (a `SurfaceCard` or
+`EntitySummaryCard`, a `Section` or `PaneSection`, a `Dialog`, `AlertDialog` or `Drawer`, the page head `PageHeader`) holds at most one filled
+`primary` Button of its own; a nested region counts its own, `border` and `danger` never count. Its finding names the region; the fix is to keep
+one primary and turn the others to `border` ("giữ 1 nút chính, nút còn lại đổi sang border").
 
 The view (a page, or the open modal) has one primary (CTA-1; the red budget, [composition.md](../composition.md) ACCENT-6: one accent CTA per
 view, every other call to action `border` or a `Link variant="plain"`; lint `single-commit-per-render` refuses a second `variant="primary"`, so a

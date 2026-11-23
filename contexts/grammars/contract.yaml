@@ -137,7 +137,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-BORDER-OUTLINE, DNA-COMMON-BUTTON-GROUND-CONTRAST]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-COMMON-ONE-PRIMARY-PER-REGION, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-BORDER-OUTLINE, DNA-COMMON-BUTTON-GROUND-CONTRAST]
 
   - id: link
     ui: ui/components/button.md
@@ -987,6 +987,11 @@ mustKeep:
       owner: CTA-1; lint single-commit-per-render
     # --- tabs, segmented control, fields
       followUp: "owner-triage 2026-11-18: Offset Pop: an Alert action and a commit Button are both pink in one view"
+    - id: DNA-COMMON-ONE-PRIMARY-PER-REGION
+      role: button
+      law: "A region (a card: SurfaceCard or EntitySummaryCard; a Section or PaneSection; a Dialog, AlertDialog or Drawer; the page head, PageHeader) holds at most one filled primary Button (variant primary) of its own; a Button inside a region nested in it counts for that inner region, border and danger never count, and neither does a region behind an open modal (inert) or in a catalog story. The finding names the region; the fix is the owner's: \"giữ 1 nút chính, nút còn lại đổi sang border\"."
+      measure: { kind: count, scope: ':is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]):not([inert] *, [data-story-catalog] *)', select: ':scope [data-component="Button"][data-grammar-variant="primary"]:not(:scope :is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]) *, [inert] *)', op: "<=", value: 1 }
+      owner: CTA-1; ui/components/button.md (the CTA rule); lint single-commit-per-render
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
       law: "Every tab bar draws the underline, on the page and inside a surface alike, views and filter tabs alike; the one exception is a filter strip the app asks to wear the pill (shape=\"pill\", 0.46.2, ui/components/tabs.md), which draws the primary pill on its track."
