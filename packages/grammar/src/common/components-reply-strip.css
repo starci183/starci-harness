@@ -1,7 +1,7 @@
 @layer starci-grammar-common {
     /*
      * ReplyStrip (0.55.1, owner 2026-11-23): the message an answer replies to, ONE compact line at the top inside the answer's bubble. A soft neutral ground
-     * (the secondary surface), a `--grammar-reply-edge` bar on the start edge in the replied author's tone (an agent's `--grammar-agent-soft-foreground`, a
+     * (the secondary surface), a `--grammar-reply-edge` bar on the start edge in the replied author's tone (the ink of the app's tone slot, a
      * person's muted ink), the glyph at 1em, the author in the medium weight, then the words muted and ellipsized. Caption size on every face, so it reads as
      * the answer's context, never as a second message.
      */
@@ -29,7 +29,7 @@
         text-align: start;
     }
 
-    .starci-core-reply-strip[data-grammar-agent-tone] { --starci-core-reply-strip-edge: var(--grammar-agent-soft-foreground); }
+    .starci-core-reply-strip[data-tone="slot"] { --starci-core-reply-strip-edge: var(--grammar-tone-slot-ink); }
 
     button.starci-core-reply-strip { cursor: pointer; }
     button.starci-core-reply-strip:hover { background: color-mix(in oklab, var(--surface-secondary), var(--foreground) 6%); }

@@ -68,6 +68,6 @@ test("the sheet reads the two variables for a lone avatar, a grid tile and a til
     assert.match(styles, /:is\(\.starci-core-avatar, \.starci-core-avatar-group-member\)\[data-grammar-avatar-tone="slot"\] \[data-grammar-avatar-fallback="true"\] \{[^}]*background: var\(--grammar-tone-slot-soft\);\s*color: var\(--grammar-tone-slot-ink\);/u)
     assert.match(styles, /\.starci-core-icon-tile\[data-tone="slot"\]\[data-artwork="false"\]\[data-loading="false"\] \{\s*background: var\(--grammar-tone-slot-soft\);\s*color: var\(--grammar-tone-slot-ink\);/u)
     assert.equal(existsSync(new URL("../src/common/tones-agent.css", import.meta.url)), false)
-    const sources = [styles, read("core/leaf/Avatar/identity.ts"), read("core/leaf/Avatar/index.tsx"), read("core/leaf/IconTile/index.tsx"), read("core/composite/AvatarGroup/index.tsx"), read("common/renderers-navigation.ts")].join("\n")
+    const sources = [styles, read("core/leaf/Avatar/identity.ts"), read("core/leaf/Avatar/index.tsx"), read("core/leaf/IconTile/index.tsx"), read("core/composite/AvatarGroup/index.tsx"), read("common/renderers-navigation.ts"), read("core/composite/ReplyStrip/index.tsx"), read("common/components-reply-strip.css")].join("\n")
     assert.doesNotMatch(sources, /agentToneOf|AGENT_TONES|isAgentTone|--agent-[a-z]+-soft|data-grammar-agent-tone|avatar-tone="agent"/u)
 })

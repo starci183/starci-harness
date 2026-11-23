@@ -19,7 +19,7 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
   `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message
   replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
 - **the message an answer replies to** (0.55.1, owner 2026-11-23, Zalo/Messenger) is `ReplyStrip` as the first line of the answer's body: ONE
-  compact line on the secondary surface, a 3px bar on its start edge in the replied author's tone (an agent's `agentToneOf(key)`, a person's muted ink),
+  compact line on the secondary surface, a 3px bar on its start edge in the replied author's tone (an agent's colour from the app's palette by `tone={{ soft, ink }}`, its ink on the bar; a person's muted ink),
   the reply glyph at 1em, the author in the medium weight, then the words muted and ellipsized; no "Reply to X:" label, no quotation marks, no box in a
   box. With `onPress` it is a button that scrolls the thread to the original and rings it (`isHighlight`). The thread draws NO strip when the answer
   follows the message it replies to with nothing between them: the reader sees that message right above. Story `Navigation & Data/Chat parts` `ReplyStrips`.

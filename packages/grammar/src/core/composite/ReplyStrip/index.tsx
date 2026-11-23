@@ -1,7 +1,7 @@
 "use client"
 
 import type { NoChildren } from "../../tier.js"
-import type { AgentTone } from "../../leaf/Avatar/identity.js"
+import { isToneSlot, toneSlotStyle, type ToneSlot } from "../../toneSlot.js"
 
 export type ReplyStripProps = NoChildren & {
     /** Who wrote the message this one answers, drawn after the reply glyph in the medium weight. */
@@ -11,9 +11,10 @@ export type ReplyStripProps = NoChildren & {
     /** The accessible name, in the app's language ("Trả lời tin của Lan Nguyễn: chào em"). The visible parts are not read on their own. */
     readonly label: string
     /**
-     * The tone of the edge bar: the replied author's agent tone (`agentToneOf(key)`), so an agent is told by its colour; `neutral` (default) for a person.
+     * The tone of the edge bar: `neutral` (default, the muted ink), or a `ToneSlot` (`{ soft, ink }`, 0.55.1) whose `ink` paints the bar and the glyph: the
+     * replied author's own colour from the app's palette (an agent told by its colour).
      */
-    readonly tone?: AgentTone | "neutral"
+    readonly tone?: ToneSlot | "neutral"
     /** Pressing the strip (click, Enter, Space): the thread scrolls to the original message and highlights it. Omitted, the strip is static. */
     readonly onPress?: () => void
 }
@@ -28,7 +29,7 @@ const ReplyGlyph = () => (
 
 /**
  * COMPOSITE - `ReplyStrip`: the message an answer replies to, as ONE compact line at the top inside the answer's bubble (Zalo, Messenger): a soft neutral ground,
- * a bar on its start edge in the replied author's tone (an agent's own tone, a person's neutral), the reply glyph at 1em and the author's name, then the original
+ * a bar on its start edge in the replied author's tone (the app's slot for an agent, a person's neutral), the reply glyph at 1em and the author's name, then the original
  * words muted and ellipsized. No label with a colon, no quotation marks, no box in a box. With `onPress` it is a button that takes the reader to the original
  * (the thread scrolls there and rings it); its accessible name is the app's `label`. The thread decides when it shows: an answer to the message right above it
  * needs none.
@@ -49,7 +50,7 @@ export const ReplyStrip = ({ author, text, label, tone = "neutral", onPress }: R
         "data-tier": "composite",
         "aria-label": label,
         title: `${author}: ${text}`,
-        ...(tone === "neutral" ? {} : { "data-grammar-agent-tone": tone }),
+        ...(isToneSlot(tone) ? { "data-tone": "slot", style: toneSlotStyle(tone) } : {}),
     } as const
     if (onPress === undefined) {
         return (
