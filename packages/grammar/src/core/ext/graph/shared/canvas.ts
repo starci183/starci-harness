@@ -86,6 +86,17 @@ const known = (saved: GraphPositions, sizes: readonly SizedNode[]): GraphPositio
     return Object.fromEntries(Object.entries(saved).filter(([id]) => ids.has(id)))
 }
 
+/** The height of a laid-out drawing in graph units: its top-level nodes from the highest top to the lowest bottom (a child sits inside its container's box). */
+const contentHeight = (layout: FlowLayout, sizes: readonly SizedNode[]): number => {
+    const tops = sizes.flatMap((node) => {
+        const at = layout.positions[node.id]
+        const box = layout.boxes[node.id]
+        return node.parentId !== undefined || at === undefined || box === undefined ? [] : [[at.y, at.y + box.height] as const]
+    })
+    if (tops.length === 0) return 0
+    return Math.max(...tops.map(([, bottom]) => bottom)) - Math.min(...tops.map(([top]) => top))
+}
+
 /** The first view's room round the graph: the zoom buttons on the left. */
 const OPEN_INSETS = { top: FIT_INSET, right: FIT_INSET, bottom: FIT_INSET, left: CONTROLS_ROOM } as const
 
@@ -192,6 +203,12 @@ const Canvas = (props: CanvasInput): ReactElement => {
     const classes = props.className === undefined ? "starci-graph" : `starci-graph ${props.className}`
     const frame = { className: classes, role: "region", "aria-label": label, ref: anchor }
     const ready = placed?.key === key ? placed.layout : undefined
+    // `height="content"`: the frame hugs the drawing at 100% (the fit insets round it), capped by the theme's most; the CSS keeps its 20rem least.
+    const hugs = props.height === "content"
+    const drawnHeight = ready === undefined ? undefined : contentHeight(ready, sizes)
+    // The canvas takes that height (a legend under it adds its own); the frame grows round both.
+    const frameHeight = hugs ? { style: { blockSize: "auto" } } : {}
+    const canvasHeight = hugs && drawnHeight !== undefined ? { style: { flex: "none", blockSize: `clamp(20rem, ${String(drawnHeight + 2 * FIT_INSET)}px, var(--starci-graph-max-block-size, 80vh))` } } : {}
 
     if (isLoading) return h("div", { ...frame, "aria-busy": true }, h(GraphSkeleton))
     if (sizes.length === 0) return h("div", { ...frame, "data-empty": true }, emptyLabel === undefined ? null : h("p", { className: "starci-graph-empty" }, emptyLabel))
@@ -212,10 +229,10 @@ const Canvas = (props: CanvasInput): ReactElement => {
 
     return h(
         "div",
-        { ...frame, "data-editable": editable ? "true" : undefined, onKeyDown },
+        { ...frame, ...frameHeight, "data-height": hugs ? "content" : undefined, "data-editable": editable ? "true" : undefined, onKeyDown },
         h(
             "div",
-            { className: "starci-graph-canvas" },
+            { className: "starci-graph-canvas", ...canvasHeight },
             h(
                 ReactFlow,
                 {

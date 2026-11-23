@@ -357,6 +357,7 @@ export const FlowStory = ({ flow, mix: asked }: { readonly flow: Flow; readonly 
             nodes={nodes}
             edges={flow.edges}
             direction="TB"
+            height="content"
             statusLabels={flow.words?.status ?? WORDS}
             skippedLabel={flow.words?.skipped ?? "Bỏ qua"}
             ariaLabelConfig={{ "controls.zoomIn.ariaLabel": "Phóng to", "controls.zoomOut.ariaLabel": "Thu nhỏ", "controls.fitView.ariaLabel": "Vừa khung" }}
