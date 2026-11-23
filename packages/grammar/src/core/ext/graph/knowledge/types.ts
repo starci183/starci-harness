@@ -27,12 +27,18 @@ export interface KnowledgeItem {
     readonly state?: KnowledgeState
 }
 
+/** Two items that belong together (a shared source, a common reader: the app says why); a line joins them, drawn once whichever way it is given. */
+export interface KnowledgeLink {
+    readonly from: string
+    readonly to: string
+}
+
 /** One entry of the legend: a swatch and its words (the words are the app's). Give one of `kind`, `state` or `source`. */
 export interface KnowledgeLegendItem {
     readonly label: string
     readonly kind?: KnowledgeKind
     readonly state?: KnowledgeState
-    /** The line from a fact to its source. */
+    /** The line from a fact to its source, or between two linked items. */
     readonly source?: true
 }
 
@@ -48,6 +54,8 @@ export interface KnowledgeMapProps {
     readonly label: string
     readonly clusters: readonly KnowledgeCluster[]
     readonly items: readonly KnowledgeItem[]
+    /** Lines between related items, besides each item's line to its source; a pair is drawn once. */
+    readonly links?: readonly KnowledgeLink[]
     /** Fires with the id of the bubble (or the list row) that was clicked, or opened with Enter or Space. */
     readonly onOpen?: (id: string) => void
     /** The words of the zoom buttons (the app's). */

@@ -23,6 +23,12 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
   the reply glyph at 1em, the author in the medium weight, then the words muted and ellipsized; no "Reply to X:" label, no quotation marks, no box in a
   box. With `onPress` it is a button that scrolls the thread to the original and rings it (`isHighlight`). The thread draws NO strip when the answer
   follows the message it replies to with nothing between them: the reader sees that message right above. Story `Navigation & Data/Chat parts` `ReplyStrips`.
+- **a question with answers** (owner 2026-11-23, Telegram / iOS alert) is ONE `ChoiceCard` as the body of `MessageBubble content="card"`: the short question
+  on top (it never lists the answers again nor asks for a number), the answers as cells separated by hairlines, a long one on its own row and two short
+  ones to a row, each naming the thing with a muted hint, and `other` as the last cell, which focuses the composer. A chosen answer fills its cell (accent
+  soft, check) and closes the card, and the app posts the choice as the reader's own message. A destructive answer is the danger ink only (a cell is not
+  a Button, so the danger Button rule does not apply to it) and asks once more. Never a row of Buttons under a text bubble for a question.
+  Story `Navigation & Data/Chat parts` `ChoiceCards`.
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread.

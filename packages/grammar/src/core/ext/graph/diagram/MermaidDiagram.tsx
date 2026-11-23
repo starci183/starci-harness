@@ -12,7 +12,7 @@ import { ZoomButtons } from "../shared/zoom.js"
 import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
-import { describeDiagram, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
+import { branchesWithoutDecision, describeDiagram, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
 import { INSETS, canvasHeight, openFloor, openView, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
@@ -65,6 +65,8 @@ export type MermaidDiagramProps = NoChildren & {
     /** The canvas's words (zoom controls, the text version's start and end), English defaults. */
     readonly labels?: Partial<MermaidDiagramLabels>
 }
+
+const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
 const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", fit: "Fit to frame", reset: "Reset view", start: "start", end: "end", to: "to" }
 
@@ -556,8 +558,8 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
     // The tones are read by value: an inline object passed each render redraws nothing unless what it says changed.
     const toneKey = JSON.stringify([tones ?? null, messageTones ?? null])
-    const toned = useRef({ tones, messageTones })
-    toned.current = { tones, messageTones }
+    const toned = useRef({ tones, messageTones, label })
+    toned.current = { tones, messageTones, label }
 
     useEffect(() => {
         if (isLoading || frame.current === null || isPhone === null) return
@@ -567,6 +569,9 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
         parseDiagram(source, toned.current.tones, toned.current.messageTones)
             .then((parsed) => {
                 if (isCurrent) setNeedsTheme(parsed.kind === "other")
+                if (parsed.kind === "flowchart" && !isProduction())
+                    for (const node of branchesWithoutDecision(parsed))
+                        globalThis.console.warn(`@starci/grammar/core/ext/graph: MermaidDiagram "${toned.current.label}": node "${node}" branches without a decision; a branch is an if/else, so write the condition as a decision node {…?} with one labelled edge per answer (yes / no), or drop the words of edges that are all taken.`)
                 return draw(parsed, source, `${id}-${String(revision)}`, anchor, isPhone)
             })
             .then(

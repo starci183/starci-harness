@@ -143,14 +143,21 @@ export const FlowchartAcross: Story = {
   },
 };
 
+// The lesson's cache-aside read (owner 2026-11-23: "if else mới rẽ nhánh và arrow nối nhau"): the condition is a decision, each answer its own edge, and
+// both branches rejoin before "Trả giá".
 const ASIDE_TB = `flowchart TB
   U[Khách mở trang] --> G[GET giá trong Redis]
-  G -->|trượt| S[SELECT từ Postgres]
+  G --> D{Có giá trong Redis?}
+  D -->|Không| S[SELECT từ Postgres]
   S --> W[SET với TTL 30 giây]
-  G -->|trúng| R([Trả giá])
+  D -->|Có| R([Trả giá])
   W --> R`;
 
-/** A flowchart drawn down, the faulty step by the `tones` map (its node id). */
+/**
+ * A flowchart drawn down, the faulty step by the `tones` map (its node id). A branch is an if/else: the decision is entered at its top vertex, "Không" goes
+ * straight on out of the bottom vertex and "Có" out of the side vertex, each word at its own vertex; the two branches rejoin at one junction above "Trả giá",
+ * which one arrowhead enters.
+ */
 export const FlowchartDown: Story = {
   render: () => (
     <Both>
@@ -160,6 +167,11 @@ export const FlowchartDown: Story = {
   play: async ({ canvasElement }) => {
     await ready(canvasElement);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="danger"]').length).toBe(2);
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2);
+    // The text version reads each answer on its own link out of the decision.
+    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
+    expect(links).toContain('Có giá trong Redis? to SELECT từ Postgres: Không');
+    expect(links).toContain('Có giá trong Redis? to Trả giá: Có');
   },
 };
 

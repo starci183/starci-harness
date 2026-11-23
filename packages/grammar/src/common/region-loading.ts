@@ -34,6 +34,7 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "composite/EmptyNotice": "an answer that is never drawn while a region loads",
     "composite/MessageCard": "draws through MessageBubble, which reads the region",
     "composite/ReplyStrip": "drawn only in a loaded MessageBubble body; a loading bubble draws its skeleton in its place",
+    "composite/ChoiceCard": "drawn only in a loaded MessageBubble body; a loading bubble draws its skeleton in its place",
     "composite/Footer": "app chrome",
     "composite/Sidebar": "app chrome",
     "composite/Toast": "a transient overlay",

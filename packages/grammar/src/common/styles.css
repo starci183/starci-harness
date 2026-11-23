@@ -18,6 +18,7 @@
 @import "./components-avatar-group.css";
 @import "./components-message-actions.css";
 @import "./components-reply-strip.css";
+@import "./components-choice-card.css";
 @import "./components-dropzone.css";
 @import "./components-lesson.css";
 @import "./components-spacing.css";
@@ -1566,7 +1567,10 @@
 
     /* One track split by share, the legend under it: the dot, the label and the amount. Tones are HeroUI tokens. */
     .starci-core-proportion-bar { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
-    .starci-core-proportion-track { display: flex; block-size: 0.75rem; overflow: hidden; border-radius: var(--grammar-radius-pill); background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))); }
+    /* The track is HeroUI ProgressBar's (ramps.css "BARS"): md 8px at the vendor's md corner by default, `size="sm"` 4px, `size="lg"` 12px. */
+    .starci-core-proportion-track { display: flex; block-size: var(--grammar-bar-md); overflow: hidden; border-radius: var(--grammar-bar-radius-md); background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))); }
+    .starci-core-proportion-bar[data-size="sm"] .starci-core-proportion-track { block-size: var(--grammar-bar-sm); border-radius: var(--grammar-bar-radius-sm); }
+    .starci-core-proportion-bar[data-size="lg"] .starci-core-proportion-track { block-size: var(--grammar-bar-lg); border-radius: var(--grammar-bar-radius-lg); }
     .starci-core-proportion-segment { flex: 0 0 var(--starci-core-proportion-share); min-inline-size: 0; background: var(--accent); }
     .starci-core-proportion-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
     .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
@@ -4545,9 +4549,13 @@
      * never the selected button, so an app's dark selected edge cannot reach it; the edge keeps its width, transparent, so selecting moves nothing.
      */
     [data-grammar-choice-look="button"] .starci-core-choice-chip[data-selected="true"] { border-color: transparent; background: var(--accent-soft); color: var(--accent-soft-foreground); }
-    /* The focus ring is the keyboard's alone (FOCUS-2): a pointer press focuses the option and paints no ring; keyboard focus draws the one --focus ring. */
-    .starci-core-choice-chip:is(:focus, [data-focused="true"]):not(:focus-visible, [data-focus-visible="true"]) { outline: none; box-shadow: none; }
-    .starci-core-choice-chip:is(:focus-visible, [data-focus-visible="true"]) { outline: 2px solid var(--focus); outline-offset: 2px; }
+    /*
+     * The focus ring is the keyboard's alone (FOCUS-2; owner 2026-11-23: never stuck after a mouse click): a pointer press focuses the option and paints no ring,
+     * keyboard focus draws the one --focus ring. The browser's :focus-visible decides, never react-aria's data-focus-visible, which it also sets on focus that script
+     * moves after a click (a re-render, a restored focus): an option it marks and the browser does not wears neither the outline nor the vendor's ring.
+     */
+    .starci-core-choice-chip:not(:focus-visible) { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
+    .starci-core-choice-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     /* width="fill": the chips grow evenly from their own width and wrap only when they cannot fit (G-batch6). */
     .starci-core-choice-chips[data-grammar-width="fill"] :is(.starci-core-choice-chip, .starci-core-choice-chips-skeleton, .starci-core-tooltip-disabled-trigger) { flex: 1 0 auto; justify-content: center; }
     .starci-core-choice-chips[data-grammar-width="fill"] .starci-core-tooltip-disabled-trigger > .starci-core-choice-chip { inline-size: 100%; }
@@ -5614,8 +5622,8 @@
 
     .starci-core-progress-step {
         display: block;
-        height: 0.25rem;
-        border-radius: var(--grammar-radius-pill);
+        height: var(--grammar-bar-sm);
+        border-radius: var(--grammar-bar-radius-sm);
         background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
@@ -6125,6 +6133,13 @@
      * ring on it. The browser's own :focus-visible tells a keyboard from a script that follows a pointer, so it alone draws the ring: a button react-aria marks and the
      * browser does not wears neither the outline nor the vendor's ring shadow.
      */
+    /* The tabs of a tab bar (and its "more" trigger) follow the same rule: a tab pressed with the mouse keeps no ring when the page re-renders after the press. */
+    .starci-core-tabs .tabs__tab[data-focus-visible="true"]:not(:focus-visible) {
+        outline: none !important;
+        --tw-ring-shadow: 0 0 #0000 !important;
+        --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+
     .starci-core-button[data-focus-visible="true"]:not(:focus-visible) {
         outline: none !important;
         --tw-ring-shadow: 0 0 #0000 !important;

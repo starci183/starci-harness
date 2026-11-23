@@ -143,6 +143,21 @@
         --grammar-link-arrow-travel: 0.1875rem;
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
+        /*
+         * BARS (owner 2026-11-23, "= size progress của heroui cả"). Every bar-like data mark (Meter and its segments, Progress and its
+         * steps, ProportionBar, a FunnelChart stage, the DonutChart ring) is HeroUI v3 ProgressBar's own track: its height in steps of the
+         * vendor's `--spacing` (sm h-1 4px, md h-2 8px, lg h-3 12px) and its corner a step of `--radius` (xs, sm, md: a quarter, a half,
+         * three quarters), never a full pill and never a height of the grammar's own.
+         */
+        --grammar-bar-sm: calc(var(--spacing) * 1);
+        --grammar-bar-md: calc(var(--spacing) * 2);
+        --grammar-bar-lg: calc(var(--spacing) * 3);
+        --grammar-bar-radius-sm: calc(var(--radius) * 0.25);
+        --grammar-bar-radius-md: calc(var(--radius) * 0.5);
+        --grammar-bar-radius-lg: calc(var(--radius) * 0.75);
+        /* The empty track every bar and ring is drawn on: the measures' one neutral (components-overlays.css "THE EMPTY TRACK"). */
+        --grammar-bar-track: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
+
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
         --grammar-hairline: 1px;
         /* The ground of a brand logo (Avatar kind="logo"): white in both themes, so a logo keeps its own colours. */

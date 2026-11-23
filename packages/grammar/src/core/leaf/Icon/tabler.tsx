@@ -186,3 +186,6 @@ export const TablerSparkles = tabler(["M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0
 
 /** Tabler `user-plus`. */
 export const TablerUserPlus = tabler(["M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0","M16 19h6","M19 16v6","M6 21v-2a4 4 0 0 1 4 -4h4"])
+
+/** Tabler `arrow-down`. */
+export const TablerArrowDown = tabler(["M12 5l0 14","M18 13l-6 6","M6 13l6 6"])

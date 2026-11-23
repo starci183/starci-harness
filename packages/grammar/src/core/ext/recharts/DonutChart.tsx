@@ -37,7 +37,7 @@ export type DonutChartProps = NoChildren & {
     readonly formatValue?: (value: number) => string
     /** How a share reads, given whole percent (the shares add up to 100). Defaults to "42%". */
     readonly formatShare?: (percent: number) => string
-    /** The ring's diameter in px. Default 160. */
+    /** The ring's diameter in px, a chart size: 64 (sm), 120 (md) or 160 (lg, default). The ring is always `DONUT_RING_WIDTH` thick. */
     readonly size?: number
 }
 
@@ -45,6 +45,13 @@ export type DonutChartProps = NoChildren & {
 export const DONUT_MAX_SEGMENTS = 6
 export const DEFAULT_DONUT_SIZE = 160
 export const DEFAULT_OTHER_LABEL = "Other"
+/**
+ * The ring's thickness in px: HeroUI ProgressBar's md track (h-2, `--grammar-bar-md`; ramps.css "BARS"), so a ring and a bar of one
+ * screen are one weight. Recharts takes the radius as a number, so the step is written here, at the vendor's 0.25rem spacing.
+ */
+export const DONUT_RING_WIDTH = 8
+/** The empty track, the measures' one neutral (ramps.css "BARS", `--grammar-bar-track`). */
+const TRACK_COLOR = "var(--grammar-bar-track)"
 
 /** One drawn part: the folded segments with their colour and their whole-percent share. */
 export type DonutSlice = {
@@ -124,6 +131,17 @@ export const DonutTooltip = ({ active, payload, formatValue }: DonutTooltipProps
 const rowStyle: CSSProperties = { inlineSize: "100%", minInlineSize: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--grammar-card-gap)" }
 const ringStyle = (size: number): CSSProperties => ({ position: "relative", flex: "none", inlineSize: size, blockSize: size })
 const legendStyle = (size: number): CSSProperties => ({ flex: "1 1 0", flexBasis: size, minInlineSize: 0, maxInlineSize: size * 2 })
+/** The bare ring in the track colour: drawn under the parts, and alone in the empty state. */
+const trackRingStyle = (size: number): CSSProperties => ({
+    position: "absolute",
+    inset: 0,
+    boxSizing: "border-box",
+    inlineSize: size,
+    blockSize: size,
+    border: `${DONUT_RING_WIDTH}px solid ${TRACK_COLOR}`,
+    borderRadius: "50%",
+    pointerEvents: "none",
+})
 const centreStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
@@ -138,7 +156,8 @@ const centreStyle: CSSProperties = {
 /**
  * EXT (`@starci/grammar/core/ext/recharts`) - `DonutChart`: the parts of one whole (topics, progress) as a ring, with an optional centre
  * figure and caption and a legend of each part's value and share. The ring is one image named by `ariaLabel`; the centre and the legend
- * are text beside it. At most six parts: the rest fold into Other (`otherLabel`). The legend wraps under the ring on a narrow box.
+ * are text beside it. The ring is HeroUI ProgressBar's md track thick (`DONUT_RING_WIDTH`, 8px) over a ring of the empty track colour,
+ * which alone is the empty state, `emptyLabel` beside it. At most six parts: the rest fold into Other (`otherLabel`). The legend wraps under the ring on a narrow box.
  */
 export const DonutChart = ({
     data,
@@ -172,8 +191,13 @@ export const DonutChart = ({
     const slices = donutSlices(data, maxSegments, otherLabel)
     if (slices.length === 0) {
         return (
-            <div {...marks} data-state="empty" style={{ inlineSize: "100%", minInlineSize: 0, blockSize: size, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Text role="caption">{emptyLabel}</Text>
+            <div {...marks} data-state="empty" style={rowStyle}>
+                <div style={ringStyle(size)} aria-hidden="true">
+                    <div data-slot="track" style={trackRingStyle(size)} />
+                </div>
+                <div style={legendStyle(size)}>
+                    <Text role="caption">{emptyLabel}</Text>
+                </div>
             </div>
         )
     }
@@ -181,14 +205,15 @@ export const DonutChart = ({
     return (
         <div {...marks} data-state="ready" style={rowStyle}>
             <div style={ringStyle(size)}>
-                <div role="img" aria-label={ariaLabel} style={{ inlineSize: size, blockSize: size }}>
+                <div data-slot="track" style={trackRingStyle(size)} />
+                <div role="img" aria-label={ariaLabel} style={{ position: "relative", inlineSize: size, blockSize: size }}>
                     <PieChart width={size} height={size} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                         <Pie
                             data={drawn}
                             dataKey="value"
                             nameKey="label"
-                            innerRadius="64%"
-                            outerRadius="100%"
+                            innerRadius={Math.max(0, size / 2 - DONUT_RING_WIDTH)}
+                            outerRadius={size / 2}
                             startAngle={90}
                             endAngle={-270}
                             stroke={CHART_MARK_GAP_STROKE}
