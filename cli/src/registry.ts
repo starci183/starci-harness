@@ -146,6 +146,7 @@ import { slotListVerb } from "./core/slot/list.js"
 import { slotReleaseVerb } from "./core/slot/release.js"
 import { slotRunVerb } from "./core/slot/run.js"
 import { slotTakeVerb } from "./core/slot/take.js"
+import { appLookVerb } from "./core/gallery/look.js"
 import { galleryShootVerb } from "./core/gallery/shoot.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
@@ -314,6 +315,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     slotReleaseVerb,
     slotListVerb,
     slotRunVerb,
+    appLookVerb,
     galleryShootVerb,
     laneRemoveVerb,
 ].map(widen)

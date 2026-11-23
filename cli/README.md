@@ -396,7 +396,7 @@ harness never runs.
 The governor admits by RAM inside one harness state; an app's installed CLI keeps a state of its own (`governorStorePath` of a
 package install is that install's `.runtime`), so it never sees the heavy commands of another worktree. `harness/slots.ts` bounds
 work across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
-floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate`, `gallery shoot` and the batch lander's own npm and gate
+floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate`, `gallery shoot`, `app look` and the batch lander's own npm and gate
 slots all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
 time, the pid and that process's start, the host's boot time and the host, and it is released only once read and found to name its
 holder, through a rename aside so a slot taken again in between stays. A holder is reclaimed only on evidence (`judgeHolder`): a pid
