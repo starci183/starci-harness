@@ -180,6 +180,9 @@
     .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-key { border-color: var(--success); background: var(--success); color: var(--success-foreground); }
     .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-verdict { color: var(--success-soft-foreground); }
     .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-label { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-verdict { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] { cursor: progress; }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] .starci-core-graded-option-verdict { color: var(--muted); }
 
     /* ---------------------------------------------------------------- Sidenotes */
     /*
