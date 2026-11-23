@@ -2696,12 +2696,94 @@
      * A toned step (owner 2026-11-23): the faulty step danger, the fix success, a touched part accent, each the tone's soft pair with its
      * edge, from the tokens, in the frame and the full-screen view alike; a colour the source wrote (a classDef, a style line) never paints (`!important` outranks Mermaid's inline style).
      */
-    :is([data-grammar-mermaid-tone="danger"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--danger-soft) !important; stroke: var(--danger) !important; }
-    :is([data-grammar-mermaid-tone="success"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--success-soft) !important; stroke: var(--success) !important; }
-    :is([data-grammar-mermaid-tone="accent"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--accent-soft) !important; stroke: var(--accent) !important; }
-    [data-grammar-mermaid-tone="danger"] :is(text, tspan, span) { fill: var(--danger-soft-foreground) !important; color: var(--danger-soft-foreground) !important; }
-    [data-grammar-mermaid-tone="success"] :is(text, tspan, span) { fill: var(--success-soft-foreground) !important; color: var(--success-soft-foreground) !important; }
-    [data-grammar-mermaid-tone="accent"] :is(text, tspan, span) { fill: var(--accent-soft-foreground) !important; color: var(--accent-soft-foreground) !important; }
+    g[data-grammar-mermaid-tone="danger"] :is(rect, circle, ellipse, polygon, path) { fill: var(--danger-soft) !important; stroke: var(--danger) !important; }
+    g[data-grammar-mermaid-tone="success"] :is(rect, circle, ellipse, polygon, path) { fill: var(--success-soft) !important; stroke: var(--success) !important; }
+    g[data-grammar-mermaid-tone="accent"] :is(rect, circle, ellipse, polygon, path) { fill: var(--accent-soft) !important; stroke: var(--accent) !important; }
+    g[data-grammar-mermaid-tone="danger"] :is(text, tspan, span) { fill: var(--danger-soft-foreground) !important; color: var(--danger-soft-foreground) !important; }
+    g[data-grammar-mermaid-tone="success"] :is(text, tspan, span) { fill: var(--success-soft-foreground) !important; color: var(--success-soft-foreground) !important; }
+    g[data-grammar-mermaid-tone="accent"] :is(text, tspan, span) { fill: var(--accent-soft-foreground) !important; color: var(--accent-soft-foreground) !important; }
+
+    /*
+     * THE DIAGRAM THEME (0.55.1, owner 2026-11-23: "giờ hơi xấu"). Every drawing wears the Grammar, never Mermaid's default look: boxes
+     * rounded on the surface with a hairline edge, the words in the Grammar font at the caption role (12 / 16, a box's name in the
+     * medium weight), lifelines muted and dashed, arrows in the foreground with clear heads, a message's words on a surface plate, notes
+     * as soft accent pills. Mermaid's own sheet sits in the theme layer (MermaidDiagram), so these rules win without `!important`; the
+     * tones above still outrank them. One sheet for the frame and the full-screen view (`[data-grammar-mermaid-svg]` is the drawing).
+     */
+    [data-grammar-mermaid-svg] {
+        font-family: inherit;
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    [data-grammar-mermaid-svg] :where(text, tspan) { font-family: inherit; }
+
+    /* Boxes: a participant, a flowchart node, a state. */
+    [data-grammar-mermaid-svg] :where(rect.actor, .node rect, .node polygon, .node circle:not(.state-start, .state-end), .node path.basic, .node ellipse) {
+        fill: var(--surface);
+        stroke: var(--border);
+        stroke-width: var(--grammar-hairline);
+    }
+
+    [data-grammar-mermaid-svg] :where(rect.actor, .node rect) { rx: var(--grammar-radius-md); ry: var(--grammar-radius-md); }
+    [data-grammar-mermaid-svg] :where(text.actor, text.actor > tspan, .node text, .node tspan, .nodeLabel) {
+        fill: var(--foreground);
+        color: var(--foreground);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-weight-medium);
+    }
+
+    /* Lines: lifelines quiet and dashed; messages, edges and transitions in the foreground at the fine stroke, a reply dashed. */
+    [data-grammar-mermaid-svg] .actor-line { stroke: var(--border); stroke-width: var(--grammar-hairline); stroke-dasharray: 3 4; }
+    [data-grammar-mermaid-svg] :where(.messageLine0, .messageLine1, .flowchart-link, .edgePath .path, .transition) {
+        stroke: var(--foreground);
+        stroke-width: var(--grammar-stroke-fine);
+    }
+
+    [data-grammar-mermaid-svg] .messageLine1 { stroke-dasharray: 4 4; }
+    [data-grammar-mermaid-svg] :where(marker path, marker circle, .marker, .arrowheadPath) { fill: var(--foreground); stroke: var(--foreground); }
+
+    /* Words on a line: a message, an edge label, a transition's name; the plate behind an edge label is the surface. */
+    [data-grammar-mermaid-svg] :where(.messageText, .edgeLabel text, .edgeLabel tspan, .edgeLabel .label text) {
+        fill: var(--foreground);
+        font-size: var(--grammar-type-caption-size);
+        font-weight: var(--grammar-weight-regular);
+    }
+
+    [data-grammar-mermaid-svg] :where(.edgeLabel rect, .labelBkg, .edgeLabel .background) { fill: var(--surface); opacity: 1; }
+    /* A message's words stand a little higher over their arrow, so the line never touches the descenders. */
+    [data-grammar-mermaid-svg] .messageText { transform: translateY(calc(-1 * var(--grammar-identity-gap))); }
+
+    /* Notes: soft accent pills (MermaidDiagram rounds each to half its height), no edge. */
+    [data-grammar-mermaid-svg] rect.note { fill: var(--accent-soft); stroke: none; }
+    [data-grammar-mermaid-svg] :where(.noteText, .noteText > tspan) { fill: var(--accent-soft-foreground); font-size: var(--grammar-type-caption-size); }
+
+    /* Groups (a flowchart subgraph, a composite state, a sequence box): a quiet tinted field with a separator edge. */
+    [data-grammar-mermaid-svg] :where(.cluster rect, .statediagram-cluster rect.outer) {
+        fill: var(--surface-secondary);
+        stroke: var(--separator);
+        stroke-width: var(--grammar-hairline);
+        rx: var(--grammar-radius-lg);
+        ry: var(--grammar-radius-lg);
+    }
+
+    [data-grammar-mermaid-svg] :where(.cluster-label text, .cluster-label tspan) { fill: var(--muted); font-weight: var(--grammar-weight-medium); }
+
+    /* A state diagram's start and end marks: the foreground dot, the end ringed. */
+    [data-grammar-mermaid-svg] :where(.state-start, circle.state-start) { fill: var(--foreground); stroke: var(--foreground); }
+    [data-grammar-mermaid-svg] .state-end { fill: var(--foreground); stroke: var(--surface); }
+
+    /* A toned message (`messageTones`): its line, its own head and its words in the tone; the words take the medium weight. */
+    [data-grammar-mermaid-svg] [data-grammar-mermaid-message-tone="danger"]:is(line, path) { stroke: var(--danger); }
+    [data-grammar-mermaid-svg] [data-grammar-mermaid-message-tone="success"]:is(line, path) { stroke: var(--success); }
+    [data-grammar-mermaid-svg] [data-grammar-mermaid-message-tone="accent"]:is(line, path) { stroke: var(--accent); }
+    [data-grammar-mermaid-svg] marker[data-grammar-mermaid-message-tone="danger"] path { fill: var(--danger); stroke: var(--danger); }
+    [data-grammar-mermaid-svg] marker[data-grammar-mermaid-message-tone="success"] path { fill: var(--success); stroke: var(--success); }
+    [data-grammar-mermaid-svg] marker[data-grammar-mermaid-message-tone="accent"] path { fill: var(--accent); stroke: var(--accent); }
+    [data-grammar-mermaid-svg] text[data-grammar-mermaid-message-tone] { font-weight: var(--grammar-weight-medium); }
+    [data-grammar-mermaid-svg] text[data-grammar-mermaid-message-tone="danger"] { fill: var(--danger); }
+    [data-grammar-mermaid-svg] text[data-grammar-mermaid-message-tone="success"] { fill: var(--success-soft-foreground); }
+    [data-grammar-mermaid-svg] text[data-grammar-mermaid-message-tone="accent"] { fill: var(--accent-soft-foreground); }
 
     /* The phone fallback of a sequence diagram: its messages as a numbered list, the route (who, the arrow, to whom) over the words. */
     .starci-core-mermaid-steps {
@@ -2711,14 +2793,23 @@
         gap: var(--grammar-row-gap);
         margin: 0;
         padding-inline-start: var(--grammar-section-gap);
+        list-style: decimal;
         place-self: start;
     }
 
-    .starci-core-mermaid-step { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    /* A list item keeps its number (a flex item draws no marker); the words stand on their own line under the route. */
+    .starci-core-mermaid-step { display: list-item; min-width: 0; }
+    .starci-core-mermaid-step-text { display: block; margin-block-start: var(--grammar-identity-gap); }
     .starci-core-mermaid-step::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
     .starci-core-mermaid-step-route { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-weight: var(--grammar-weight-medium); }
     .starci-core-mermaid-step-text { color: var(--muted); overflow-wrap: anywhere; }
     .starci-core-mermaid-step[data-grammar-mermaid-reply="true"] .starci-core-mermaid-step-route { color: var(--muted); }
+    /* A toned message on the phone: the step on the tone's soft plate, its words in the tone's soft foreground. */
+    .starci-core-mermaid-step[data-grammar-mermaid-tone] { margin-inline-start: calc(-1 * var(--grammar-inline-gap)); padding: var(--grammar-identity-gap) var(--grammar-inline-gap); border-radius: var(--grammar-radius-md); }
+    .starci-core-mermaid-step[data-grammar-mermaid-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+    .starci-core-mermaid-step[data-grammar-mermaid-tone="success"] { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-core-mermaid-step[data-grammar-mermaid-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    .starci-core-mermaid-step[data-grammar-mermaid-tone] :is(.starci-core-mermaid-step-route, .starci-core-mermaid-step-text) { color: inherit; }
 
     /* The full-screen view: the controls on one row, then the pane the reader drags and zooms; the drawing starts centred at 100%. */
     .starci-core-mermaid-zoom { display: flex; min-block-size: 0; block-size: 100%; flex-direction: column; gap: var(--grammar-row-gap); }

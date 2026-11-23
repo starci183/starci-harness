@@ -233,7 +233,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/bottom-nav.md](../ui/components/bottom-nav.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/button.md](../ui/components/button.md) · 16 KB — Contract: Button.
+- [ui/components/button.md](../ui/components/button.md) · 17 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules · Icons inside Grammar are outline (0.37.4) · Icon measures (0.37.5) · App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15) · A Button on a band, and the head link's hit area (0.48.0)
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -250,7 +250,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
 - [ui/components/data-views.md](../ui/components/data-views.md) · 8 KB — Contract: data-views.
   - sections: Meter reading voice (0.46.0) · Job · Choose
-- [ui/components/diagram.md](../ui/components/diagram.md) · 2 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 4 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.46.2) · Popover edge and the phone sheet (0.48.0) · Scrolling · Size · States · Owner split · Rules
@@ -275,6 +275,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/image.md](../ui/components/image.md) · 5 KB — Contract: Image.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · Eager pictures and the fetch priority (0.48.0)
+- [ui/components/lesson.md](../ui/components/lesson.md) · 5 KB — No contract role yet: these are the parts of a lesson page (owner 2026-11-23), each a Grammar component an app places; their look is the Grammar's ...
+  - sections: Job · Choose · Variants · Size · States · Owner split · Accessibility · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 20 KB — Contract: List and Table.
   - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.46.2) · Section head (0.36.0) · Version diff rows (0.37.28; blocks since 0.55.0) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5) · Phone fixes for rows, figures, tables and timelines (0.48.0)
 - [ui/components/markdown.md](../ui/components/markdown.md) · 5 KB — `@starci/grammar/core/ext/markdown` is part of Grammar core, used ONLY for long authored documents (an article, a lesson, a report written as markdown).
@@ -301,11 +303,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Leading icon · Compact · Rules
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules · TopBar start inset and the search slot (0.48.0)
-- [ui/components/tabs.md](../ui/components/tabs.md) · 9 KB — Contract: Tabs.
+- [ui/components/tabs.md](../ui/components/tabs.md) · 10 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Filter presets as pills (0.46.2) · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 6 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
-- [ui/components/text.md](../ui/components/text.md) · 7 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
+- [ui/components/text.md](../ui/components/text.md) · 8 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
   - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules · Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14) · Course content is a markdown string (`Markdown`) · A one-line command has no language label (CODE-BLOCK-LANGUAGE, 0.37.15)
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 7 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Alert form slot (0.46.2) · Variants · Size · States · Owner split · Rules · The retry of a negative banner (0.48.0) · ToastStack and stackToast (0.49.1)

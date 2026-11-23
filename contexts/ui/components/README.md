@@ -93,5 +93,6 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
 | move a public marketing page: a section rising into view, a loop of names, a figure counting up, a picture that follows the text | [motion](motion.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |
+| a lesson page: a code excerpt, a question answered until right, terms in the margin, the outline of a long part | [lesson](lesson.md) |
 | ONLY when the reader must see a structure of steps, relations or clusters (a run's flow, a data ERD, a knowledge map): the core's graph ext | [graph](graph.md) |
 | ONLY for a long authored document written as markdown: the core's markdown ext | [markdown](markdown.md) |

@@ -47,7 +47,6 @@ const TOKENS = {
     accentSoft: "--accent-soft",
     accentSoftForeground: "--accent-soft-foreground",
     accent: "--accent",
-    warningSoft: "--warning-soft",
 } as const
 
 type TokenName = keyof typeof TOKENS
@@ -79,11 +78,11 @@ const resolveTokens = (anchor: HTMLElement): Record<TokenName, string> => {
     return resolved
 }
 
-/** The body text size of the grammar's type ramp (`--grammar-text-md`) in px, which is the unit Mermaid takes. */
+/** The label size of a drawing in px, the unit Mermaid takes: the caption role (12 / 16), so Mermaid lays its boxes out for the words the Grammar paints. */
 const resolveTextSize = (anchor: HTMLElement): string => {
     const probe = document.createElement("span")
     probe.setAttribute("aria-hidden", "true")
-    probe.style.cssText = "position:absolute;visibility:hidden;font-size:var(--grammar-text-md)"
+    probe.style.cssText = "position:absolute;visibility:hidden;font-size:var(--grammar-type-caption-size)"
     anchor.append(probe)
     const size = getComputedStyle(probe).fontSize
     probe.remove()
@@ -109,7 +108,7 @@ export const resolveMermaidTheme = (anchor: HTMLElement): MermaidThemeVariables 
         fontFamily: getComputedStyle(anchor).fontFamily,
         fontSize: resolveTextSize(anchor),
         background: token.surface,
-        primaryColor: token.surfaceSecondary,
+        primaryColor: token.surface,
         primaryTextColor: token.foreground,
         primaryBorderColor: token.border,
         secondaryColor: token.accentSoft,
@@ -118,18 +117,18 @@ export const resolveMermaidTheme = (anchor: HTMLElement): MermaidThemeVariables 
         tertiaryColor: token.surface,
         tertiaryTextColor: token.foreground,
         tertiaryBorderColor: token.separator,
-        mainBkg: token.surfaceSecondary,
+        mainBkg: token.surface,
         nodeBorder: token.border,
         textColor: token.foreground,
         titleColor: token.foreground,
-        lineColor: token.muted,
+        lineColor: token.foreground,
         edgeLabelBackground: token.surface,
-        clusterBkg: token.surface,
+        clusterBkg: token.surfaceSecondary,
         clusterBorder: token.separator,
-        noteBkgColor: token.warningSoft,
-        noteTextColor: token.foreground,
-        noteBorderColor: token.separator,
-        actorBkg: token.surfaceSecondary,
+        noteBkgColor: token.accentSoft,
+        noteTextColor: token.accentSoftForeground,
+        noteBorderColor: token.accentSoft,
+        actorBkg: token.surface,
         actorBorder: token.border,
         actorTextColor: token.foreground,
         signalColor: token.foreground,

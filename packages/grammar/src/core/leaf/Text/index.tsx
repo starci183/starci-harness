@@ -1,8 +1,8 @@
 import { skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
-import { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole } from "../../../common/typeRoles.js"
+import { READING_TEXT_ROLES, SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole } from "../../../common/typeRoles.js"
 
-export { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole }
+export { READING_TEXT_ROLES, SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName, type TextRole }
 
 export type TextAs = "div" | "p" | "span"
 export type TextTone = "default" | "muted"
@@ -67,6 +67,8 @@ const FONT_RULE_BY_ROLE: Record<TextRole, string> = {
     "display.figure": "FONT-5",
     lead: "FONT-3",
     "title.card": "FONT-3",
+    "reading.title": "FONT-4",
+    "reading.body": "FONT-3",
 }
 
 
