@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { separateLabels, symmetrise, type MutableRoute } from "../src/core/ext/graph/arrange.ts"
+import { alignDecisions, separateLabels, type MutableRoute } from "../src/core/ext/graph/arrange.ts"
 import { layoutFlow } from "../src/core/ext/graph/layout.ts"
 import { resolveFlow } from "../src/core/ext/graph/model.ts"
 import type { FlowNode, GraphEdge } from "../src/core/ext/graph/types.ts"
@@ -17,12 +17,15 @@ const nested = async (): Promise<{ centre: (id: string) => number; routes: Await
     return { centre: (id) => (out.positions[id]?.x ?? 0) + (out.boxes[id]?.width ?? 0) / 2, routes: out.routes }
 }
 
-describe("symmetrise", () => {
-    it("makes every decision symmetric, the inner one first, and keeps the spine on one x", async () => {
+describe("alignDecisions", () => {
+    // The routing law (owner: "Chốt", rule 3): a decision's main branch continues straight on in the flow, the other turns to the side.
+    it("keeps each decision's main branch straight under it and turns the other to the side", async () => {
         const { centre } = await nested()
-        assert.ok(Math.abs(centre("paid") - centre("stock") - (centre("remind") - centre("paid"))) <= 1)
-        assert.ok(Math.abs(centre("stock") - centre("ship") - (centre("back") - centre("stock"))) <= 1)
-        assert.deepEqual(new Set(["start", "paid", "log", "end"].map((id) => Math.round(centre(id)))).size, 1)
+        assert.ok(Math.abs(centre("paid") - centre("stock")) <= 1, "paid's yes stands under it")
+        assert.ok(Math.abs(centre("stock") - centre("ship")) <= 1, "stock's yes stands under it")
+        assert.ok(Math.abs(centre("remind") - centre("paid")) > 40, "paid's no turns to the side")
+        assert.ok(Math.abs(centre("back") - centre("stock")) > 40, "stock's no turns to the side")
+        assert.deepEqual(new Set(["start", "paid"].map((id) => Math.round(centre(id)))).size, 1)
     })
 
     it("gives the same coordinates every time and routes the edges of what moved from their ports to their targets", async () => {
@@ -38,7 +41,7 @@ describe("symmetrise", () => {
 
     it("leaves a graph with no decision alone", () => {
         const positions = { a: { x: 0, y: 0 }, b: { x: 10, y: 80 } }
-        symmetrise({ island: ["a", "b"], links: [{ source: "a", target: "b", id: "a->b" }], sides: new Map(), positions, boxes: { a: { width: 100, height: 40 }, b: { width: 100, height: 40 } }, routes: {} })
+        alignDecisions({ island: ["a", "b"], links: [{ source: "a", target: "b", id: "a->b" }], sides: new Map(), positions, boxes: { a: { width: 100, height: 40 }, b: { width: 100, height: 40 } }, routes: {} })
         assert.deepEqual(positions, { a: { x: 0, y: 0 }, b: { x: 10, y: 80 } })
     })
 })

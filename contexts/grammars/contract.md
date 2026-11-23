@@ -549,8 +549,8 @@ replaces the strip. A strip that owns its visible heading supplies `title`. An a
 
 ### Diagram
 
-A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
-tokens; a node graph is the core's graph ext (`@starci/grammar/core/ext/graph`: a run's flow, a data ERD, a knowledge map, and
+A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source on the core's graph ext canvas
+(`@starci/grammar/core/ext/graph`, Mermaid the parser, xyflow the renderer, in the grammar's tokens); a node graph is the core's graph ext (`@starci/grammar/core/ext/graph`: a run's flow, a data ERD, a knowledge map, and
 ONLY those; [graph](../ui/components/graph.md)), never a `Fragment` and never an app's own xyflow. A
 diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
 and a source the renderer refuses stays in the region as code under an error. A grammar decides the frame and the paint; the reserved box and the error carrier are the same

@@ -42,6 +42,10 @@ export interface StepEdgeData extends Record<string, unknown> {
     dimmed: boolean
     /** The route ELK gave the edge, while the nodes stand where ELK put them. */
     route?: Route | undefined
+    /** The route begins on another edge's line (the routing law, rule 6): a junction dot there. */
+    joinStart?: boolean
+    /** The route ends on another edge's line, which carries the one arrowhead: a junction dot there and no arrowhead. */
+    joinEnd?: boolean
 }
 
 const SIDES: Readonly<Record<GraphDirection, { readonly source: Position; readonly target: Position }>> = {

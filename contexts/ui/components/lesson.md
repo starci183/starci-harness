@@ -1,7 +1,7 @@
 # Lesson parts: CodeBlock, GradedChoice, Sidenotes, TableOfContents
 
 No contract role yet: these are the parts of a lesson page (owner 2026-11-23), each a Grammar component an app places; their look is the
-Grammar's (`src/common/components-lesson.css`), their words the app's. Diagrams are [diagram](diagram.md); the prose roles are
+Grammar's (`src/common/components-lesson.css`), their words the app's. Diagrams are [diagram](diagram.md) (`MermaidDiagram` of the graph ext, on the graph canvas); the prose roles are
 [text](text.md) (`reading.title`, `reading.body`).
 
 ## Job
