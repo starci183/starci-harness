@@ -8,12 +8,14 @@
  * `MermaidDiagram` moved to the graph ext (owner 2026-11-23: every diagram on the graph canvas): its import from a core entry (`@starci/grammar/core`,
  * `/common`, `/offset-pop`) is rewritten to `@starci/grammar/core/ext/graph`, with its types; a use through a namespace import is marked. A
  * `Markdown` whose body carries `mermaid` fences draws them only with its new `renderDiagram` slot: that is the app's to add (the changelog says how).
+ * Second pass (`agent-tone.mts`): the dev line's agent tones are deleted for the tone slot; `tone="agent"` and `agentToneOf(x)` become the app's `agentTone(x)`.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join, relative } from "node:path"
 import type * as Ts from "typescript"
 import type Compiler from "typescript"
 import { sourceRoots } from "../v0540/index.mts"
+import { transformAgentTone } from "./agent-tone.mts"
 
 /** The marker of a case left for a person. */
 export const MARK = "TODO(grammar-0.55.1)"
@@ -198,19 +200,21 @@ export function runV0551({ root, write, ts }: { readonly root: string; readonly 
     for (const path of all.sort()) {
         const rel = relative(root, path).replaceAll("\\", "/")
         const original = readFileSync(path, "utf8")
-        const out = transformSource(ts, rel, original)
-        if (out.findings.length === 0) continue
-        findings.push(...out.findings)
+        const graph = transformSource(ts, rel, original)
+        const tones = transformAgentTone(ts, rel, graph.text)
+        const found = [...graph.findings, ...tones.findings]
+        if (found.length === 0) continue
+        findings.push(...found)
         files.push(rel)
-        if (write && out.text !== original) writeFileSync(path, out.text)
+        if (write && tones.text !== original) writeFileSync(path, tones.text)
     }
     return { codemod: "v0551", version: "0.55.1", mode: write ? "execute" : "dry", findings, files }
 }
 
 /** The report as Markdown: every use of a deleted member, left for a person. */
 export function v0551Markdown(report: V0551Report): string {
-    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph lays itself out on a phone, MermaidDiagram on the graph canvas, an Alert action has no icon), ${report.mode}`, ""]
-    lines.push(`${String(report.findings.length)} uses of a deleted or moved 0.55.1 API in ${String(report.files.length)} files (graph members marked \`${MARK}\`, a MermaidDiagram import rewritten, an Alert action's icon dropped).`, "")
+    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph lays itself out on a phone, MermaidDiagram on the graph canvas, an Alert action has no icon, the agent tones become the app's tone slot), ${report.mode}`, ""]
+    lines.push(`${String(report.findings.length)} uses of a deleted or moved 0.55.1 API in ${String(report.files.length)} files (graph members marked \`${MARK}\`, a MermaidDiagram import rewritten, an Alert action's icon dropped, an agent tone rewritten to the app's agentTone).`, "")
     if (report.findings.length) lines.push(...report.findings.map((f) => `- ${f.file}:${String(f.line)} ${f.reason}: \`${f.before.replaceAll("`", "'")}\`${f.after === undefined ? "" : ` -> ${f.after}`}`), "")
     return `${lines.join("\n")}\n`
 }

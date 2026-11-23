@@ -7,18 +7,21 @@ import type { NoChildren } from "../../tier.js"
 import type { CustomTone } from "../../../common/tones.js"
 import { useCustomTone } from "../../useCustomTone.js"
 import { MARK_STATE_TONE, StatusGlyph, StatusTile, type MarkState } from "../../statusMark.js"
-import { AGENT_TONES, isAgentTone, type AgentTone } from "../Avatar/identity.js"
+import { isToneSlot, toneSlotStyle, type ToneSlot } from "../../toneSlot.js"
 
 export type IconTileBuiltInTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
-/** HeroUI's palette tones, an agent's own tone (`agentToneOf(key)`, 0.55.1), and any tone the app declared in `GrammarToneRegistry`. */
-export type IconTileTone = IconTileBuiltInTone | AgentTone | CustomTone
-const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "info", "success", "warning", "danger", ...AGENT_TONES]
+/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
+export type IconTileTone = IconTileBuiltInTone | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "info", "success", "warning", "danger"]
+/** `slot` is the attribute of a `ToneSlot`: never an app-declared tone name. */
+const SLOT_AND_BUILT_IN_TONES: readonly string[] = [...BUILT_IN_TONES, "slot"]
 
 type IconTileShared = NoChildren & {
     /** Optional app-owned artwork replaces the fallback glyph without changing plate geometry. */
     readonly artwork?: ReactNode
     readonly ariaLabel?: string
-    readonly tone?: IconTileTone
+    /** A named tone, or a `ToneSlot` (`{ soft, ink }`, 0.55.1): the glyph on the app's own soft pair (`data-tone="slot"`); its contrast is the app's. */
+    readonly tone?: IconTileTone | ToneSlot
     readonly isLoading?: boolean
 }
 
@@ -88,19 +91,20 @@ const IdentityTile = ({
     isLoading = false,
     state,
 }: IconTileProps) => {
-    // a loading status mark keeps the 40px plate in the state's tone slot; its glyph is not drawn
-    const tone = state === undefined ? ownTone : MARK_STATE_TONE[state]
+    // a loading status mark keeps the 40px plate in the state's tone; its glyph is not drawn
+    const slot = state === undefined && isToneSlot(ownTone) ? ownTone : undefined
+    const tone: string = state !== undefined ? MARK_STATE_TONE[state] : slot !== undefined ? "slot" : (ownTone as IconTileTone)
     const showsArtwork = !isLoading && artwork != null
-    const custom = useCustomTone(tone, BUILT_IN_TONES)
+    const custom = useCustomTone(tone, SLOT_AND_BUILT_IN_TONES)
     const toneRule = isLoading || showsArtwork ? undefined : (TONE_CONTRACT as Record<string, string | undefined>)[tone]
     return (
         <span
             ref={custom.ref}
             {...custom.attrs}
+            {...(slot === undefined ? {} : { style: toneSlotStyle(slot) })}
             data-tier="leaf"
             data-component="IconTile"
             data-tone={tone}
-            {...(isAgentTone(tone) ? { "data-grammar-agent-tone": tone } : {})}
             data-artwork={showsArtwork ? "true" : "false"}
             data-loading={isLoading ? "true" : "false"}
             aria-hidden={isLoading || undefined}

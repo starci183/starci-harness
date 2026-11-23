@@ -155,8 +155,8 @@ const replyBody = (strip: ReactNode, words: string) => (
 )
 
 /**
- * ReplyStrip (0.55.1): the message an answer replies to, one line at the top inside the answer's bubble. A person's in the neutral tone, an agent's in its own
- * tone, on the reader's own brand face; the long one is cut with an ellipsis. Pressing one takes the reader to the original.
+ * ReplyStrip (0.55.1): the message an answer replies to, one line at the top inside the answer's bubble. A person's in the neutral tone, an agent's in the app's
+ * tone slot, on the reader's own brand face; the long one is cut with an ellipsis. Pressing one takes the reader to the original.
  */
 export const ReplyStrips: Story = {
     render: () => (
@@ -173,9 +173,9 @@ export const ReplyStrips: Story = {
                 isAgent
                 agentLabel="Agent"
                 avatar={<G.Avatar name="Chăm sóc khách" kind="agent" size="md" />}
-                body={replyBody(<G.ReplyStrip author="Mạng xã hội" text="Em vừa đăng bài khuyến mãi tuần này." tone={G.agentToneOf("social")} label="Trả lời tin của Mạng xã hội" onPress={noop} />, "Em sẽ nhắn khách cũ về bài này.")}
+                body={replyBody(<G.ReplyStrip author="Mạng xã hội" text="Em vừa đăng bài khuyến mãi tuần này." tone={{ soft: "oklch(95% 0.03 300)", ink: "oklch(45% 0.15 300)" }} label="Trả lời tin của Mạng xã hội" onPress={noop} />, "Em sẽ nhắn khách cũ về bài này.")}
             />
-            <G.MessageBubble side="outgoing" body={replyBody(<G.ReplyStrip author="Chăm sóc khách" text="Em sẽ nhắn khách cũ về bài này." tone={G.agentToneOf("care")} label="Trả lời tin của Chăm sóc khách" onPress={noop} />, "Ok em, gửi trước 6 giờ nhé.")} />
+            <G.MessageBubble side="outgoing" body={replyBody(<G.ReplyStrip author="Chăm sóc khách" text="Em sẽ nhắn khách cũ về bài này." tone={{ soft: "oklch(95% 0.03 255)", ink: "oklch(45% 0.15 255)" }} label="Trả lời tin của Chăm sóc khách" onPress={noop} />, "Ok em, gửi trước 6 giờ nhé.")} />
         </div>
     ),
 }

@@ -36,17 +36,18 @@ test("press: with onPress it is a button named by the app's label; without, a st
     assert.ok(!still.includes("<button"))
 })
 
-test("tone: an agent tone marks the strip for its bar; a person's is neutral", () => {
-    assert.ok(strip({ tone: "agent-teal" }).includes('data-grammar-agent-tone="agent-teal"'))
-    assert.ok(!strip().includes("data-grammar-agent-tone"))
-    assert.ok(!strip({ tone: "neutral" }).includes("data-grammar-agent-tone"))
+test("tone: the app's tone slot marks the strip and carries its ink for the bar; a person's is neutral", () => {
+    const slotted = strip({ tone: { soft: "var(--app-soft)", ink: "var(--app-ink)" } })
+    assert.ok(slotted.includes('data-tone="slot"') && /--grammar-tone-slot-ink:\s*var\(--app-ink\)/.test(slotted))
+    assert.ok(!strip().includes("data-tone"))
+    assert.ok(!strip({ tone: "neutral" }).includes("data-tone"))
 })
 
-test("sheet: caption size, the 3px edge token, the agent ink on the bar, ellipsized words, a focus ring", () => {
+test("sheet: caption size, the 3px edge token, the slot ink on the bar, ellipsized words, a focus ring", () => {
     const sheet = read("common/components-reply-strip.css")
     assert.ok(sheet.includes("font-size: var(--grammar-type-caption-size)"))
     assert.ok(sheet.includes("border-inline-start: var(--grammar-reply-edge) solid var(--starci-core-reply-strip-edge)"))
-    assert.ok(/\[data-grammar-agent-tone\] \{ --starci-core-reply-strip-edge: var\(--grammar-agent-soft-foreground\); \}/.test(sheet))
+    assert.ok(/\[data-tone="slot"\] \{ --starci-core-reply-strip-edge: var\(--grammar-tone-slot-ink\); \}/.test(sheet))
     assert.ok(/\.starci-core-reply-strip-text \{[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap;/.test(sheet))
     assert.ok(/:focus-visible \{[^}]*outline: var\(--grammar-ring-width\) solid var\(--focus\)/.test(sheet))
     assert.ok(read("common/ramps.css").includes("--grammar-reply-edge: 3px;"))

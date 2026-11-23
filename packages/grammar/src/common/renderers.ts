@@ -13,6 +13,7 @@ export { NavLandmark, type NavLandmarkLayout, type NavLandmarkProps } from "../c
 export { Heading, type HeadingLevel, type HeadingProps, type HeadingScale } from "../core/leaf/Heading/index.js"
 export { Icon, type IconProps, type IconUsage, type IconSource, type IconSourceProps } from "../core/leaf/Icon/index.js"
 export { IconTile, type IconTileProps, type IconTileTone } from "../core/leaf/IconTile/index.js"
+export { isToneSlot, type ToneSlot } from "../core/toneSlot.js"
 export { InlineStatus, type InlineStatusProps } from "../core/leaf/InlineStatus/index.js"
 export { MARK_STATES, MARK_STATE_TONE, isMarkState, type MarkState } from "../core/statusMark.js"
 export { IconButton, type IconButtonProps } from "../core/leaf/IconButton/index.js"
