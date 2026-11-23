@@ -7,12 +7,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { installTargets, isInstallEntry, laneTrees, liveReasons, pruneTree, type LiveContext } from "./install-janitor.js"
+import { commitsAfter, installTargets, isInstallEntry, laneTrees, liveReasons, pruneTree, uncommittedWork, type LiveContext } from "./install-janitor.js"
 import type { HostProcess } from "./process-table.js"
 import type { SlotRules } from "./slots.js"
 
 const git = (cwd: string, ...args: string[]): string => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", ...args], { cwd, encoding: "utf8" })
-const rules: SlotRules = { schema: "starci/slots@1", root: null, kinds: { gate: { count: 2, file: "_gate-slot-{n}.lock", warnMinutes: 120, pollSeconds: 1 } }, janitor: { idleHours: 6, dirs: ["node_modules", ".next", "dist"] } }
+const rules: SlotRules = { schema: "starci/slots@1", root: null, kinds: { gate: { count: 2, file: "_gate-slot-{n}.lock", warnMinutes: 120, pollSeconds: 1 } }, janitor: { idleHours: 6, touchedMinutes: 0, dirs: ["node_modules", ".next", "dist"] } }
 const DIRS = ["node_modules", ".next", "dist"]
 
 /** A lanes folder holding a repository `app`, a lane worktree `app-x` on `lane/x` and a harness-owned `_lander` worktree. */
@@ -99,3 +99,23 @@ void test("a prune unlinks every link first, keeps its target, deletes the insta
     assert.equal(git(tree, "status", "--porcelain").trim(), "", "nothing tracked changed")
 })
 
+
+void test("a worktree in use is kept: touched within touchedMinutes, uncommitted work, commits after the landed sha; a safe install's trash is not work", (t) => {
+    const { root, tree } = lanes()
+    t.after(() => {
+        rmSync(root, { recursive: true, force: true })
+    })
+    const lane = laneTrees(root)[0]
+    assert.ok(lane !== undefined)
+    const landed = git(tree, "rev-parse", "HEAD").trim()
+    assert.deepEqual(liveReasons(lane, quiet(root), landed), [], "landed, clean, not touched-checked (0 min): free")
+    assert.deepEqual(uncommittedWork(tree, DIRS), [], "the trash folder and the installs are not work")
+    const recent: LiveContext = { ...quiet(root), rules: { ...rules, janitor: { idleHours: 6, touchedMinutes: 60, dirs: DIRS } } }
+    assert.match(liveReasons(lane, recent, landed).join(";"), /touched \d+ min ago, under 60 min/u, "a fresh worktree is in use")
+    assert.deepEqual(liveReasons(lane, recent, landed, Date.now() + 61 * 60_000), [], "an hour later it is idle")
+    writeFileSync(join(tree, "web", "page.ts"), "export const x = 1\n")
+    assert.match(liveReasons(lane, quiet(root), landed).join(";"), /uncommitted work \(web\/page\.ts\)/u)
+    git(tree, "commit", "-q", "-am", "follow-up")
+    assert.equal(commitsAfter(tree, landed), 1)
+    assert.match(liveReasons(lane, quiet(root), landed).join(";"), /1 commit\(s\) after the landed sha/u, "the lane moved on to a follow-up")
+})

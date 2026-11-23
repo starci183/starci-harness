@@ -4,6 +4,7 @@ import { captureGitSync } from "../shared/git.js"
 import { freeDiskMb } from "./host-floors.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
+import { readStatuses } from "./land-queue.js"
 import { releaseRemoveLock, removeLockOf, takeRemoveLock } from "./remove-lock.js"
 import { RECLAIMABLE, judgeHolder, liveProbe, slotKind, slotsOfLane, readHolder, worktreesUnder } from "./slots.js"
 import type { SlotRules } from "./slots.js"
@@ -22,7 +23,8 @@ import type { FoundLink } from "./worktree-remove.js"
  * meanwhile), a folder that is itself a link is unlinked, never entered; a real folder has every link in it unlinked first, a second walk must
  * find none, it is moved aside into `<lanes>/_prune-trash/` (a folder in use refuses the move, so a half-deleted install is never left in place)
  * and deleted there with lstat on every entry. A worktree is never touched while it is live: a removal lock on it, a slot of its lane not proven
- * gone, a git operation under way (index.lock), or a running process whose working folder or command line lies inside it.
+ * gone, a git operation under way (index.lock), a running process whose working folder or command line lies inside it, uncommitted work in it,
+ * commits on its branch after the landed sha (the lane moved on to a follow-up), or a touch within `janitor.touchedMinutes` (default 60).
  */
 
 /** One folder the janitor would delete. */
@@ -154,12 +156,35 @@ export const liveContext = async (root: string, rules: SlotRules): Promise<LiveC
     return { root, rules, processes, spared }
 }
 
+/** The minutes a worktree counts as in use after its last touch, when ops/slots.yaml names none. */
+export const TOUCHED_MINUTES = 60
+
+/** The uncommitted work of a worktree: what `git status` lists outside the janitor's own folders (a safe install's trash is not work). Empty when clean or unreadable. */
+export const uncommittedWork = (worktree: string, dirs: readonly string[]): string[] => {
+    const run = captureGitSync(["status", "--porcelain", "--untracked-files=normal"], worktree)
+    if (run.exitCode !== 0) return []
+    return run.stdout.split(/\r?\n/).flatMap((line) => {
+        const path = line.trim().replace(/^[^ ]+ +/u, "").replace(/^"|"$/gu, "")
+        return path === "" || isInstallEntry(path, dirs) ? [] : [path]
+    })
+}
+
+/** The commits the worktree's HEAD holds after `landed` (the sha the lane landed at); 0 when it is the landed sha or behind it, or either is unknown. */
+export const commitsAfter = (worktree: string, landed: string): number => {
+    const run = captureGitSync(["rev-list", "--count", `${landed}..HEAD`], worktree)
+    return run.exitCode === 0 ? Number(run.stdout.trim()) || 0 : 0
+}
+
+/** The sha a lane landed with (the lane's own sha its status file records), or undefined. */
+export const landedShaOf = (root: string, lane: string): string | undefined => readStatuses(root).find((status) => status.lane === lane && status.state === "landed")?.laneSha
+
 /**
  * Why a worktree is live and must keep its install, each reason one clause; empty when nothing holds it: a removal lock on it, a slot of its lane
  * not proven gone, a git operation under way (index.lock), a process (not this one or its ancestors) whose working folder or command line lies
- * inside it, or a process table that could not be read.
+ * inside it, a process table that could not be read, uncommitted work, commits after `landedSha` (the lane's branch moved on), or a touch within
+ * `janitor.touchedMinutes` of ops/slots.yaml (default 60). `now` is the clock (epoch ms).
  */
-export const liveReasons = (tree: LaneTree, context: LiveContext): string[] => {
+export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: string, now: number = Date.now()): string[] => {
     const reasons: string[] = []
     const lock = removeLockOf(tree.path, context.root)
     if (lock !== undefined) reasons.push(`being removed by ${lock.lane} (pid ${String(lock.pid)})`)
@@ -183,6 +208,14 @@ export const liveReasons = (tree: LaneTree, context: LiveContext): string[] => {
             if ((item.cwd !== null && within(item.cwd)) || inLine(item.commandLine)) reasons.push(`pid ${String(item.pid)} ${item.name} works there`)
         }
     }
+    const dirs = context.rules.janitor?.dirs ?? []
+    const work = uncommittedWork(tree.path, dirs)
+    if (work.length > 0) reasons.push(`uncommitted work (${work.slice(0, 3).join(", ")}${work.length > 3 ? ", ..." : ""})`)
+    const ahead = landedSha === undefined ? 0 : commitsAfter(tree.path, landedSha)
+    if (ahead > 0) reasons.push(`its branch has ${String(ahead)} commit(s) after the landed sha ${String(landedSha).slice(0, 10)}`)
+    const touched = context.rules.janitor?.touchedMinutes ?? TOUCHED_MINUTES
+    const sinceMinutes = Math.round((now - lastActivityMs(tree.path)) / 60_000)
+    if (sinceMinutes < touched) reasons.push(`touched ${String(Math.max(0, sinceMinutes))} min ago, under ${String(touched)} min`)
     return reasons
 }
 
@@ -291,7 +324,7 @@ export const pruneLanded = async (root: string, rules: SlotRules, lane: string, 
         if (janitor === undefined) return undefined
         const tree = laneTreeOf(root, lane)
         if (tree === undefined) return undefined
-        const reasons = liveReasons(tree, await liveContext(root, rules))
+        const reasons = liveReasons(tree, await liveContext(root, rules), landedShaOf(root, lane))
         if (reasons.length > 0) {
             say(`janitor: kept the install of landed lane ${lane} (${tree.path}): ${reasons.join("; ")}; starci lane prune-installs takes it once idle`)
             return undefined

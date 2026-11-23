@@ -72,7 +72,7 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
    commits those pins when the app declares `deps.devAllowsLocalRegistry`; it lands on `dev` without waiting for npm. Only main and a
    prod cut need npm pins (`deps install-local --restore`, then each pin bumped to its npm version, once per release).
 
-**Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
+**Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`; the check-cache records a gate writes back under `.starcistacks/cache/` are no work and never count, as `lane gate`'s `LANE_GATE_DIRTY` does not count them, and a sha that is not the pushed tip of its branch,
 `LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder
 taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and `cli/src/harness/land-batch.ts`;
 item 6 by `judgeRound` and `judgeWithOomRetry`, proven by `cli/src/harness/land-oom.test.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
