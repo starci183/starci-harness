@@ -44,7 +44,7 @@ test("keys: right and left walk in order, down and up move by row to the nearest
 test("open: the question once, a cell per answer with its hint, aria-pressed false, one cell in the tab order", () => {
     const html = card()
     assert.equal(html.split("Bạn đang hỏi việc nào?").length - 1, 2, "the question and the group's name")
-    assert.ok(html.includes('starci-core-choice-card-hint">· xong 21:19<'))
+    assert.ok(html.includes('starci-core-choice-card-words"><span class="starci-core-choice-card-label">Số liệu một bài đăng</span><span class="starci-core-choice-card-hint"> · xong 21:19</span></span>'), "the label and its hint are one run of words")
     assert.equal(html.split('aria-pressed="false"').length - 1, 3)
     assert.equal(html.split('tabindex="0"').length - 1, 1)
     assert.ok(html.includes('data-other="true"') && html.includes("Việc khác…"))
