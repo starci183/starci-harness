@@ -61,6 +61,8 @@ export interface DiagramLayout {
     readonly graph: DiagramGraph
     readonly layout: FlowLayout
     readonly sizes: readonly SizedNode[]
+    /** The entry node's box (the first node nothing leads into, else the first), where the first view starts when the drawing does not fit whole. */
+    readonly entry?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
     readonly width: number
     readonly height: number
 }
@@ -93,5 +95,9 @@ export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, m
         const minY = Math.min(...boxes.map((box) => box.y), ...routeEnds.map((point) => point[1]))
         const maxX = Math.max(...boxes.map((box) => box.x + box.width), ...routeEnds.map((point) => point[0]))
         const maxY = Math.max(...boxes.map((box) => box.y + box.height), ...routeEnds.map((point) => point[1]))
-        return { graph, layout, sizes, width: Math.max(1, maxX - Math.min(0, minX)), height: Math.max(1, maxY - Math.min(0, minY)) }
+        const led = new Set(graph.edges.map((edge) => edge.target))
+        const entryAt = graph.nodes.findIndex((node) => node.shape !== "container" && !led.has(node.id))
+        const first = entryAt >= 0 ? entryAt : graph.nodes.findIndex((node) => node.shape !== "container")
+        const entry = first >= 0 ? boxes[first] : undefined
+        return { graph, layout, sizes, ...(entry === undefined ? {} : { entry }), width: Math.max(1, maxX - Math.min(0, minX)), height: Math.max(1, maxY - Math.min(0, minY)) }
 }

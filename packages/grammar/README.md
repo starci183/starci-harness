@@ -190,6 +190,8 @@ root's semantic tokens (so family, theme and token overrides apply), and re-rend
 with a skeleton and loads nothing. A source Mermaid refuses becomes an error inside the same frame: an `Alert` with
 `errorTitle`, then the source as a `FencedCodeBlock`.
 
+The first view is the whole drawing when it stays readable; it is never opened under zoom 0.85 (caption-role words at 11px or more), so a sequence or a flowchart too wide for a phone opens at 0.85 from its first participant or entry node and is panned by touch and pinched, with the zoom controls kept.
+
 ```tsx
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
