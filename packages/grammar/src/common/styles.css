@@ -1558,7 +1558,10 @@
 
     /* One track split by share, the legend under it: the dot, the label and the amount. Tones are HeroUI tokens. */
     .starci-core-proportion-bar { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
-    .starci-core-proportion-track { display: flex; block-size: 0.75rem; overflow: hidden; border-radius: var(--grammar-radius-pill); background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))); }
+    /* The track is HeroUI ProgressBar's (ramps.css "BARS"): md 8px at the vendor's md corner by default, `size="sm"` 4px, `size="lg"` 12px. */
+    .starci-core-proportion-track { display: flex; block-size: var(--grammar-bar-md); overflow: hidden; border-radius: var(--grammar-bar-radius-md); background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))); }
+    .starci-core-proportion-bar[data-size="sm"] .starci-core-proportion-track { block-size: var(--grammar-bar-sm); border-radius: var(--grammar-bar-radius-sm); }
+    .starci-core-proportion-bar[data-size="lg"] .starci-core-proportion-track { block-size: var(--grammar-bar-lg); border-radius: var(--grammar-bar-radius-lg); }
     .starci-core-proportion-segment { flex: 0 0 var(--starci-core-proportion-share); min-inline-size: 0; background: var(--accent); }
     .starci-core-proportion-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
     .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
@@ -5488,8 +5491,8 @@
 
     .starci-core-progress-step {
         display: block;
-        height: 0.25rem;
-        border-radius: var(--grammar-radius-pill);
+        height: var(--grammar-bar-sm);
+        border-radius: var(--grammar-bar-radius-sm);
         background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }

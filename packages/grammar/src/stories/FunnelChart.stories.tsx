@@ -4,7 +4,8 @@ import * as G from '../common/index.js';
 import { Matrix, State, noop } from './fixtures.js';
 
 /**
- * FunnelChart: stages in order, a bar on one scale for each, a chip between two bars and the drop-off count. Each story draws a state
+ * FunnelChart: stages in order, each "label · count" with the step into it (the down arrow icon and "60%") over a HeroUI ProgressBar md track (8px), the largest
+ * drop in the danger ink; bars follow HeroUI ProgressBar sizes. Each story draws a state
  * and its play function proves it, at 1440 and at 390 (`npm run prove-plays`). The stages are generic (a name and a count); nothing
  * here is a product word.
  */
@@ -37,7 +38,7 @@ const boxOf = (root: HTMLElement, selector: string): HTMLElement => {
 };
 const all = (root: ParentNode, selector: string): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>(selector));
 
-/** Four stages: bars on tracks of one width that start at one edge, a chip and a drop-off between every two bars. */
+/** Four stages: tracks of one width at HeroUI ProgressBar's md height (8px), fills from one edge, the step text above each track. */
 export const FunnelChartSteps: Story = {
   render: () => (
     <Matrix maxWidth={720}>
@@ -53,65 +54,52 @@ export const FunnelChartSteps: Story = {
     const charts = all(canvasElement, '[data-component="FunnelChart"]');
     expect(charts.length).toBe(2);
     for (const chart of charts) {
-      const widths = all(chart, '.starci-core-funnel-track').map((track) => Math.round(track.getBoundingClientRect().width));
-      expect(new Set(widths).size).toBe(1);
+      const tracks = all(chart, '.starci-core-funnel-track');
+      expect(new Set(tracks.map((track) => Math.round(track.getBoundingClientRect().width))).size).toBe(1);
+      for (const track of tracks) expect(Math.round(track.getBoundingClientRect().height)).toBe(8);
       const starts = all(chart, '.starci-core-funnel-bar').map((bar) => Math.round(bar.getBoundingClientRect().left));
       expect(new Set(starts).size).toBe(1);
       const stages = all(chart, '.starci-core-funnel-stage');
       expect(all(chart, '.starci-core-funnel-step').length).toBe(stages.length - 1);
-      // The chip sits between its two bars: under the bar before, above its own.
-      stages.forEach((stage, index) => {
-        if (index === 0) return;
-        const step = boxOf(stage, '.starci-core-funnel-step').getBoundingClientRect();
-        const before = boxOf(stages[index - 1] as HTMLElement, '.starci-core-funnel-bar').getBoundingClientRect();
-        const own = boxOf(stage, '.starci-core-funnel-bar').getBoundingClientRect();
-        expect(step.top).toBeGreaterThanOrEqual(before.bottom - 0.5);
-        expect(step.bottom).toBeLessThanOrEqual(own.top + 0.5);
-      });
+      // Every text row sits above its own track.
+      for (const stage of stages) {
+        const head = boxOf(stage, '.starci-core-funnel-head').getBoundingClientRect();
+        expect(head.bottom).toBeLessThanOrEqual(boxOf(stage, '.starci-core-funnel-track').getBoundingClientRect().top + 0.5);
+      }
+      expect(all(chart, '[data-grammar-drop="largest"]').length).toBe(1);
     }
     const [first] = charts as [HTMLElement];
     const bars = all(first, '.starci-core-funnel-bar').map((bar) => bar.getBoundingClientRect().width);
     for (let index = 1; index < bars.length; index += 1) expect(bars[index] as number).toBeLessThan(bars[index - 1] as number);
     const list = within(first).getByRole('list', { name: 'Leads by stage' });
     expect(within(list).getAllByRole('listitem').length).toBe(4);
-    expect(first.textContent).toContain('1,240');
-    expect(first.textContent).toContain('63 %');
-    expect(first.textContent).toContain('−460');
-    expect(all(first, '.starci-core-funnel-drop').every((drop) => drop.getAttribute('data-grammar-drop') === 'lost')).toBe(true);
+    expect(first.textContent).toContain('Stage one · 1,240');
+    expect(first.textContent).toContain('62.9%');
+    expect(boxOf(first, '[data-grammar-drop="largest"]').textContent).toBe('31%');
     expect((charts[1] as HTMLElement).textContent).toContain('2,100 stopped here');
   },
 };
 
-/** At 33rem of chart width or less the label and value sit over the bar and the chip over the label, whatever the page. */
+/** At any width the text row sits over the track and the track keeps the chart's whole width. */
 export const FunnelChartStacks: Story = {
   render: () => (
     <Matrix>
-      <State label="In a 22rem column (stacked)" direction="column">
+      <State label="In a 22rem column" direction="column">
         <div style={{ maxWidth: '22rem' }}><G.FunnelChart label="Leads by stage" stages={four} empty={emptyLine} format={grouped} /></div>
       </State>
-      <State label="In a 44rem column (one line per stage)" direction="column">
+      <State label="In a 44rem column" direction="column">
         <div style={{ maxWidth: '44rem' }}><G.FunnelChart label="Leads by stage" stages={four} empty={emptyLine} format={grouped} /></div>
       </State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    const [narrow, wide] = all(canvasElement, '[data-component="FunnelChart"]');
-    if (narrow === undefined || wide === undefined) throw new Error('two charts expected');
-    expect(narrow.getBoundingClientRect().width).toBeLessThanOrEqual(33 * 16);
-    for (const stage of all(narrow, '.starci-core-funnel-stage')) {
-      const label = boxOf(stage, '.starci-core-funnel-label').getBoundingClientRect();
-      const value = boxOf(stage, '.starci-core-funnel-value').getBoundingClientRect();
-      const track = boxOf(stage, '.starci-core-funnel-track').getBoundingClientRect();
-      expect(label.bottom).toBeLessThanOrEqual(track.top + 0.5);
-      expect(value.bottom).toBeLessThanOrEqual(track.top + 0.5);
-      expect(track.width).toBeGreaterThan(label.width);
-      expect(track.right).toBeLessThanOrEqual(narrow.getBoundingClientRect().right + 0.5);
-    }
-    if (wide.getBoundingClientRect().width > 33 * 16) {
-      for (const stage of all(wide, '.starci-core-funnel-stage')) {
+    for (const chart of all(canvasElement, '[data-component="FunnelChart"]')) {
+      const box = chart.getBoundingClientRect();
+      for (const stage of all(chart, '.starci-core-funnel-stage')) {
         const label = boxOf(stage, '.starci-core-funnel-label').getBoundingClientRect();
         const track = boxOf(stage, '.starci-core-funnel-track').getBoundingClientRect();
-        expect(label.right).toBeLessThanOrEqual(track.left + 0.5);
+        expect(label.bottom).toBeLessThanOrEqual(track.top + 0.5);
+        expect(Math.abs(track.width - box.width)).toBeLessThan(1);
       }
     }
   },
@@ -135,14 +123,15 @@ export const FunnelChartEdges: Story = {
         />
       </State>
       <State label="One stage" direction="column"><G.FunnelChart label="One count" stages={[{ label: 'Only stage', count: 12 }]} empty={emptyLine} /></State>
+      <State label="Every stage at zero (empty)" direction="column"><G.FunnelChart label="Zero" stages={[{ label: 'Stage one', count: 0 }, { label: 'Stage two', count: 0 }]} empty={emptyLine} /></State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
     const [first, second] = all(canvasElement, '[data-component="FunnelChart"]');
-    const drops = all(first as HTMLElement, '.starci-core-funnel-drop').map((drop) => [drop.textContent, drop.getAttribute('data-grammar-drop')]);
-    expect(drops).toEqual([['+20', 'kept'], ['0', 'kept'], ['−120', 'lost'], ['0', 'kept']]);
-    expect((first as HTMLElement).textContent).toContain('–');
+    const steps = all(first as HTMLElement, '.starci-core-funnel-step').map((step) => [step.textContent, step.getAttribute('data-grammar-drop')]);
+    expect(steps).toEqual([['120%', 'kept'], ['100%', 'kept'], ['0%', 'largest'], ['–', 'kept']]);
     expect(second?.querySelectorAll('.starci-core-funnel-step').length).toBe(0);
+    expect(all(canvasElement, '[data-component="FunnelChart"]').length).toBe(2);
   },
 };
 

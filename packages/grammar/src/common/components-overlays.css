@@ -1235,10 +1235,10 @@
     }
 
     /* Loading meter (knowledge STATE-8, `isLoading`): the label stays real, the bar is a static Skeleton bar of the track height. */
-    .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: var(--grammar-radius-pill); }
+    .starci-core-meter-skeleton-bar { display: block; block-size: var(--grammar-bar-md); overflow: hidden; border-radius: var(--grammar-bar-radius-md); }
 
     /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */
-    .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: 0.25rem; }
+    .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: var(--grammar-bar-sm); border-radius: var(--grammar-bar-radius-sm); }
 
     .starci-core-meter-skeleton-bar > .starci-core-skeleton {
         block-size: 100%;
@@ -1248,7 +1248,7 @@
     /*
      * Segmented meter: the track spans the full width of its container,
      * like a Progress track, at HeroUI's h-1 (0.25rem, 4px) - thinner than the plain meter's h-2 -
-     * laid out as equal pill segments 0.25rem apart. The track itself goes transparent so the gaps
+     * laid out as equal segments 0.25rem apart, each at HeroUI's sm corner (ramps.css "BARS"). The track itself goes transparent so the gaps
      * read as gaps; each empty segment wears the track colour and each filled one the tone fill. The
      * track is HeroUI's `.meter__track` (a `components`-layer rule declared after this layer:
      * `h-2`, `bg-default`, `overflow-hidden`), and consumers import this sheet before or after
@@ -1258,9 +1258,9 @@
     .starci-core-meter-segments {
         display: flex !important;
         overflow: visible !important;
-        height: 0.25rem !important;
+        height: var(--grammar-bar-sm) !important;
         gap: 0.25rem;
-        border-radius: var(--grammar-radius-pill);
+        border-radius: var(--grammar-bar-radius-sm);
         background: transparent !important;
     }
 
