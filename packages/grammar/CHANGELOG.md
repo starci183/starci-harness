@@ -17,6 +17,7 @@ codemod: v0570 (`starci app codemod v0570`, or `--from 0.56.0 --to 0.57.0`).
 - Added (`Avatar kind="logo"`, `AvatarGroupItem.kind: "logo"`): a brand or channel logo image on a white surface in both themes (`--grammar-logo-surface`), fitted whole inside with a hairline edge. A row of channel logos is an `AvatarGroup` of them and a lone logo an `Avatar` of the same `size`; logos are sized by `size` alone. Story `Navigation/Data/Channel logos`.
 - Removed (`LogoStack`, owner 2026-11-23): channel logos are Avatars (above). Codemod v0570 marks each import and use.
 - Docs (contexts/ui/scale.md "The spacing roles"): the one spacing table (identity 4, inline 8, row 12, the card inset 16, section 24, region 32, the tab line 16) on HeroUI's 4px spacing, with the laws that hold it; eslint-grammar-core 0.57.0 adds `no-raw-spacing-style`.
+- Fixed (train-195 full gate, `starci-grammar/no-literal-look`): a graph with `height="content"` keeps its 20rem-to-most clamp in the sheet (`.starci-graph-canvas[data-hugs]`, the drawn height passed as `--starci-graph-drawn-block-size`; the most, `--starci-graph-max-block-size`, defaults to 80vh on `.starci-graph`), and the ReplyStrip glyph is sized 1em by its CSS only, no `width`/`height` on the svg.
 
 ## 0.56.0 - 2026-11-23 - Every diagram on the graph canvas, one routing law for every graph, a dot grid you can see, a trend line as wide as its cell, the codemod reads only Grammar elements
 

@@ -110,8 +110,8 @@ void test("one filled primary per region: a card, its nested section and the pag
     const laws = await runRegionLaw(REGION_PASSING)
     assert.equal(laws.length, 1)
     assert.equal(laws[0]?.id, "DNA-COMMON-ONE-PRIMARY-PER-REGION")
-    assert.equal(laws[0]?.evaluated, 6, "the page head, the card and its section are each counted, in both themes")
-    assert.equal(laws[0]?.status, "green", `${String(laws[0]?.broken)} of ${String(laws[0]?.evaluated)} broken`)
+    assert.equal(laws[0].evaluated, 6, "the page head, the card and its section are each counted, in both themes")
+    assert.equal(laws[0].status, "green", `${String(laws[0].broken)} of ${String(laws[0].evaluated)} broken`)
 })
 
 void test("two filled primaries in one Section fail, naming the region and the fix", { skip: browser === undefined }, async () => {

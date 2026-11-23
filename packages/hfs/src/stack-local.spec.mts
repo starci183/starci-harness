@@ -227,11 +227,12 @@ test('a recorded pid that another process now holds is discarded, not trusted: u
   const ours = host(root);
   assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], ours, { alive: () => true, commandLine: () => recordedCommand }), 0, ours.err.join(''));
   assert.equal(ours.calls.filter((call) => call.background).length, 0, 'the same command on a listening port is kept');
-  // the right command but nothing listening long after it started: the id was reused by a lookalike
+  // the right command but nothing listening long after it started: the environment's own tree whose server died, stopped and started fresh
   const quiet = host(root);
   quiet.io.now = () => 3_600_000;
   assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], quiet, { alive: () => true, commandLine: () => recordedCommand, tcpOpen: async () => false }), 0, quiet.err.join(''));
-  assert.match(quiet.out.join(''), /discarded a stale record: pid [0-9]+ is alive but nothing listens on its port/u);
+  assert.match(quiet.out.join(''), /process api: stopped its previous tree \(pid [0-9]+\): pid [0-9]+ still runs the recorded command but nothing listens on its port/u);
+  assert.equal(quiet.calls.filter((call) => call.background).length, 1, 'the api is started fresh');
   // down leaves a stranger alone
   const killed: number[] = [];
   const down = host(root);

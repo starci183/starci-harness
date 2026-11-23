@@ -24,7 +24,9 @@ test("parts: the glyph, the author, then the words; no colon label, no quotation
     assert.ok(!/[“”"]chào em[“”"]/.test(html.replace(/title="[^"]*"/, "")))
     assert.ok(!html.includes("Lan Nguyễn:<"))
     assert.ok(html.includes('aria-hidden="true"'), "the glyph is decorative")
-    assert.ok(html.includes('width="1em"') && html.includes('height="1em"'), "the glyph is 1em of its text")
+    // The sheet sizes the glyph (no literal length on the element, starci-grammar/no-literal-look).
+    assert.ok(!html.includes('width="1em"'), html)
+    assert.match(read("common/components-reply-strip.css"), /\.starci-core-reply-strip-glyph \{[^}]*inline-size: 1em;[^}]*block-size: 1em;/u, "the glyph is 1em of its text")
 })
 
 test("press: with onPress it is a button named by the app's label; without, a static group", () => {

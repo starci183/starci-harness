@@ -1,7 +1,7 @@
 "use client"
 
 import { Background, MiniMap, ReactFlow, ReactFlowProvider, useReactFlow, useStore, useStoreApi, type Edge, type EdgeTypes, type Node, type NodeChange, type NodeTypes } from "@xyflow/react"
-import { createElement as h, useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
+import { createElement as h, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
 import { structureKey } from "../build.js"
 import { ISLANDS_WIDTH, estimateLabel, layoutFlow, type Box, type FlowLayout, type LinkEnds, type Measure, type SizedNode } from "../layout.js"
 import { GraphSkeleton } from "./skeleton.js"
@@ -206,9 +206,9 @@ const Canvas = (props: CanvasInput): ReactElement => {
     // `height="content"`: the frame hugs the drawing at 100% (the fit insets round it), capped by the theme's most; the CSS keeps its 20rem least.
     const hugs = props.height === "content"
     const drawnHeight = ready === undefined ? undefined : contentHeight(ready, sizes)
-    // The canvas takes that height (a legend under it adds its own); the frame grows round both.
+    // The canvas takes that height (a legend under it adds its own); the frame grows round both. The CSS clamps it (`[data-hugs]`, shared/styles.css).
     const frameHeight = hugs ? { style: { blockSize: "auto" } } : {}
-    const canvasHeight = hugs && drawnHeight !== undefined ? { style: { flex: "none", blockSize: `clamp(20rem, ${String(drawnHeight + 2 * FIT_INSET)}px, var(--starci-graph-max-block-size, 80vh))` } } : {}
+    const canvasHeight = hugs && drawnHeight !== undefined ? { "data-hugs": true, style: { "--starci-graph-drawn-block-size": `${String(drawnHeight + 2 * FIT_INSET)}px` } as CSSProperties } : {}
 
     if (isLoading) return h("div", { ...frame, "aria-busy": true }, h(GraphSkeleton))
     if (sizes.length === 0) return h("div", { ...frame, "data-empty": true }, emptyLabel === undefined ? null : h("p", { className: "starci-graph-empty" }, emptyLabel))
