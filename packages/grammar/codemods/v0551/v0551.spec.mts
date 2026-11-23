@@ -39,6 +39,21 @@ test("an alias of shared and a destructured member are read; another module's sh
     assert.equal(transformSource(ts, "d.ts", fine).text, fine)
 })
 
+test("a MermaidDiagram import from a core entry moves to the graph ext with its types; the rest stays; a namespace use is marked", () => {
+    const whole = 'import { MermaidDiagram, type MermaidTone } from "@starci/grammar/core"\n'
+    const moved = transformSource(ts, "w.tsx", whole)
+    assert.equal(moved.text, 'import { MermaidDiagram, type MermaidTone } from "@starci/grammar/core/ext/graph"\n')
+    assert.equal(moved.findings.length, 1)
+    const split = transformSource(ts, "s.tsx", 'import { Text, MermaidDiagram } from "@starci/grammar/offset-pop";\n')
+    assert.equal(split.text, 'import { Text } from "@starci/grammar/offset-pop";\nimport { MermaidDiagram } from "@starci/grammar/core/ext/graph";\n')
+    assert.equal(transformSource(ts, "again.tsx", moved.text).text, moved.text)
+    const namespace = 'import * as G from "@starci/grammar/core"\nexport const A = () => <G.MermaidDiagram source="" label="x" />\n'
+    const marked = transformSource(ts, "n.tsx", namespace)
+    assert.match(marked.text, /TODO\(grammar-0\.55\.1\): MermaidDiagram is no longer in the core entries/u)
+    const other = 'import { MermaidDiagram } from "./local"\n'
+    assert.equal(transformSource(ts, "o.tsx", other).text, other)
+})
+
 test("runV0551 walks an app checkout, dry unless written, and is listed for an upgrade to 0.55.1", () => {
     const root = mkdtempSync(join(tmpdir(), "v0551-"))
     try {
@@ -49,7 +64,7 @@ test("runV0551 walks an app checkout, dry unless written, and is listed for an u
         const dry = runV0551({ root, write: false, ts })
         assert.equal(dry.findings.length, 1)
         assert.equal(readFileSync(file, "utf8"), `${IMPORT}const w = shared.PHONE_WIDTH\n`)
-        assert.match(v0551Markdown(dry), /1 uses of a deleted graph member in 1 files/u)
+        assert.match(v0551Markdown(dry), /1 uses of a deleted graph member or a moved MermaidDiagram in 1 files/u)
         runV0551({ root, write: true, ts })
         assert.match(readFileSync(file, "utf8"), /TODO\(grammar-0\.55\.1\)/u)
     } finally {

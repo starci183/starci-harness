@@ -1,0 +1,438 @@
+/*
+ * MermaidDiagram on the graph canvas (owner 2026-11-23): the frame, dot grid and zoom buttons are the graph's (.starci-graph, shared/styles.css); this
+ * sheet draws the diagram's own parts from the tokens: node shapes, containers, a sequence's headers, lifelines, messages, notes and block fields, and
+ * the Grammar's diagram theme over Mermaid's own SVG for the kinds the canvas does not lay out.
+ */
+.starci-graph-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-identity-gap);
+    min-inline-size: 0;
+    margin: 0;
+}
+
+/* The canvas takes the height the component gives it (the reserved box, grown to the drawing). */
+.starci-graph-diagram > .starci-graph {
+    min-block-size: 0;
+    outline: none;
+}
+
+.starci-graph-diagram > .starci-graph:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.starci-graph-diagram .starci-graph-canvas {
+    block-size: 100%;
+}
+
+.starci-graph-diagram .react-flow__node {
+    cursor: inherit;
+}
+
+.starci-graph-diagram .react-flow__pane {
+    cursor: grab;
+}
+
+.starci-graph-diagram .react-flow__pane.dragging {
+    cursor: grabbing;
+}
+
+/* Loading and error keep the reserved box in the graph's frame. */
+.starci-graph-diagram-loading,
+.starci-graph-diagram-error {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-row-gap);
+    padding: var(--grammar-inset);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-diagram-loading > .starci-core-skeleton {
+    inline-size: 100%;
+    block-size: 100%;
+    aspect-ratio: auto;
+}
+
+/* The zoom buttons: the graph's 40px IconButtons, in a row along the bottom of a diagram (a diagram's frame is short). */
+.starci-graph-diagram-controls {
+    position: absolute;
+    inset-block-end: var(--grammar-inline-gap);
+    inset-inline-start: var(--grammar-inline-gap);
+    z-index: 5;
+}
+
+.starci-graph-diagram-controls .starci-graph-zoom {
+    flex-direction: row;
+}
+
+/* The one-line caption under the canvas: the caption role, muted. */
+.starci-graph-diagram-caption {
+    color: var(--muted);
+    font-size: var(--grammar-type-caption-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+/* ---------------------------------------------------------------- nodes */
+
+.starci-graph-diagram-node,
+.starci-graph-diagram-group {
+    --starci-graph-diagram-fill: var(--surface);
+    --starci-graph-diagram-edge: var(--border);
+    --starci-graph-diagram-ink: var(--foreground);
+}
+
+.starci-graph-diagram-group {
+    --starci-graph-diagram-fill: var(--surface-secondary);
+    --starci-graph-diagram-edge: var(--separator);
+    --starci-graph-diagram-ink: var(--muted);
+}
+
+/* A toned node: the tone's soft pair and its edge. A colour the source wrote (a classDef, a style line) never paints. */
+:is(.starci-graph-diagram-node, .starci-graph-diagram-group)[data-tone="danger"] {
+    --starci-graph-diagram-fill: var(--danger-soft);
+    --starci-graph-diagram-edge: var(--danger);
+    --starci-graph-diagram-ink: var(--danger-soft-foreground);
+}
+
+:is(.starci-graph-diagram-node, .starci-graph-diagram-group)[data-tone="success"] {
+    --starci-graph-diagram-fill: var(--success-soft);
+    --starci-graph-diagram-edge: var(--success);
+    --starci-graph-diagram-ink: var(--success-soft-foreground);
+}
+
+:is(.starci-graph-diagram-node, .starci-graph-diagram-group)[data-tone="accent"] {
+    --starci-graph-diagram-fill: var(--accent-soft);
+    --starci-graph-diagram-edge: var(--accent);
+    --starci-graph-diagram-ink: var(--accent-soft-foreground);
+}
+
+.starci-graph-diagram-node {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: var(--grammar-inline-gap);
+    color: var(--starci-graph-diagram-ink);
+    font-size: var(--grammar-type-label-field-size);
+    font-weight: var(--grammar-weight-medium);
+    line-height: var(--grammar-type-label-field-line);
+    text-align: center;
+    background: var(--starci-graph-diagram-fill);
+    border: var(--grammar-hairline) solid var(--starci-graph-diagram-edge);
+    border-radius: var(--grammar-radius-md);
+}
+
+.starci-graph-diagram-words {
+    position: relative;
+    min-inline-size: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.starci-graph-diagram-node[data-shape="round"] {
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-diagram-node:is([data-shape="stadium"], [data-shape="note"]) {
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-diagram-node[data-shape="circle"] {
+    border-radius: var(--grammar-radius-round);
+}
+
+/* A decision and a database draw their outline as a shape; the box itself is clear. */
+.starci-graph-diagram-node:is([data-shape="diamond"], [data-shape="cylinder"]) {
+    background: transparent;
+    border-color: transparent;
+}
+
+.starci-graph-diagram-outline {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+}
+
+.starci-graph-diagram-outline :is(polygon, path) {
+    fill: var(--starci-graph-diagram-fill);
+    stroke: var(--starci-graph-diagram-edge);
+    stroke-width: var(--grammar-hairline);
+}
+
+.starci-graph-diagram-outline .starci-graph-diagram-rim {
+    fill: none;
+}
+
+.starci-graph-diagram-node[data-shape="cylinder"] .starci-graph-diagram-words {
+    margin-block-start: var(--grammar-identity-gap);
+}
+
+/* A state diagram's marks: the start a foreground dot, the end a dot in a ring, a fork or join a bar. */
+.starci-graph-diagram-node:is([data-shape="start"], [data-shape="end"], [data-shape="bar"]) {
+    padding: 0;
+    background: var(--foreground);
+    border-color: var(--foreground);
+    border-radius: var(--grammar-radius-round);
+}
+
+.starci-graph-diagram-node[data-shape="end"] {
+    outline: var(--grammar-stroke-fine) solid var(--foreground);
+    outline-offset: var(--grammar-hairline);
+    border-color: var(--surface);
+    border-width: 2px;
+}
+
+.starci-graph-diagram-node[data-shape="bar"] {
+    border-radius: var(--grammar-radius-2xs);
+}
+
+.starci-graph-diagram-node[data-shape="note"] {
+    --starci-graph-diagram-fill: var(--accent-soft);
+    --starci-graph-diagram-edge: transparent;
+    --starci-graph-diagram-ink: var(--accent-soft-foreground);
+
+    font-weight: var(--grammar-weight-regular);
+}
+
+/* A subgraph or composite state: a quiet tinted field with a separator edge, its name muted in its top corner. */
+.starci-graph-diagram-group {
+    position: relative;
+    box-sizing: border-box;
+    background: var(--starci-graph-diagram-fill);
+    border: var(--grammar-hairline) solid var(--starci-graph-diagram-edge);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-diagram-group-label {
+    position: absolute;
+    inset-block-start: var(--grammar-inline-gap);
+    inset-inline-start: var(--grammar-inline-gap);
+    color: var(--starci-graph-diagram-ink);
+    font-size: var(--grammar-type-label-field-size);
+    font-weight: var(--grammar-weight-medium);
+    line-height: var(--grammar-type-label-field-line);
+}
+
+/* A thick Mermaid link (`==>`) is the heavier stroke. */
+.starci-graph .starci-graph-diagram-edge--thick .react-flow__edge-path {
+    stroke-width: 2.5;
+}
+
+/* ---------------------------------------------------------------- a sequence */
+
+.starci-graph-diagram-participant[data-actor="true"] {
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-diagram-lifeline {
+    box-sizing: border-box;
+    inline-size: 0;
+    border-inline-start: var(--grammar-hairline) dashed var(--starci-graph-line);
+}
+
+.starci-graph-diagram-anchor {
+    inline-size: 1px;
+    block-size: 1px;
+}
+
+.starci-graph-diagram-note {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: var(--grammar-inline-gap);
+    color: var(--accent-soft-foreground);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-label-field-line);
+    text-align: center;
+    background: var(--accent-soft);
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-diagram-message {
+    --starci-graph-diagram-line: var(--foreground);
+}
+
+.starci-graph-diagram-message[data-tone="danger"] {
+    --starci-graph-diagram-line: var(--danger);
+}
+
+.starci-graph-diagram-message[data-tone="success"] {
+    --starci-graph-diagram-line: var(--success);
+}
+
+.starci-graph-diagram-message[data-tone="accent"] {
+    --starci-graph-diagram-line: var(--accent);
+}
+
+.starci-graph-diagram-message-line {
+    fill: none;
+    stroke: var(--starci-graph-diagram-line);
+    stroke-width: var(--grammar-stroke-fine);
+}
+
+.starci-graph-diagram-message[data-reply="true"] .starci-graph-diagram-message-line {
+    stroke-dasharray: 5 4;
+}
+
+.starci-graph-diagram-head {
+    fill: var(--starci-graph-diagram-line);
+    stroke: var(--starci-graph-diagram-line);
+    stroke-width: var(--grammar-hairline);
+    stroke-linejoin: round;
+}
+
+.starci-graph-diagram-cross {
+    fill: none;
+    stroke: var(--starci-graph-diagram-line);
+    stroke-width: var(--grammar-stroke-fine);
+}
+
+/* A message's words over its line, centred (beside its loop for a self-message); a toned one in the medium weight. */
+.starci-graph-diagram-message-text {
+    position: absolute;
+    inset: 0 auto auto 0;
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--grammar-identity-gap);
+    color: var(--foreground);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-label-field-line);
+    white-space: pre;
+    pointer-events: none;
+}
+
+.starci-graph-diagram-message-text[data-self="true"] {
+    justify-content: flex-start;
+}
+
+.starci-graph-diagram-message-text[data-tone] {
+    font-weight: var(--grammar-weight-medium);
+}
+
+.starci-graph-diagram-message-text[data-tone="danger"] {
+    color: var(--danger);
+}
+
+.starci-graph-diagram-message-text[data-tone="success"] {
+    color: var(--success-soft-foreground);
+}
+
+.starci-graph-diagram-message-text[data-tone="accent"] {
+    color: var(--accent-soft-foreground);
+}
+
+.starci-graph-diagram-message-number {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* A block: a quiet tinted field, its kind a small tag and its words in the top corner, a dashed divider per section. */
+.starci-graph-diagram-field {
+    position: relative;
+    box-sizing: border-box;
+    background: color-mix(in oklab, var(--surface-secondary) 70%, transparent);
+    border: var(--grammar-hairline) solid var(--separator);
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-diagram-field-head {
+    position: absolute;
+    inset-block-start: var(--grammar-identity-gap);
+    inset-inline-start: var(--grammar-identity-gap);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--grammar-identity-gap);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-label-field-line);
+}
+
+.starci-graph-diagram-field-kind {
+    padding-inline: var(--grammar-identity-gap);
+    color: var(--muted);
+    font-weight: var(--grammar-weight-medium);
+    background: var(--surface);
+    border: var(--grammar-hairline) solid var(--separator);
+    border-radius: var(--grammar-radius-xs);
+}
+
+.starci-graph-diagram-field-label {
+    color: var(--muted);
+}
+
+.starci-graph-diagram-field-section {
+    position: absolute;
+    inset-inline: 0;
+    padding-inline-start: var(--grammar-inline-gap);
+    border-block-start: var(--grammar-hairline) dashed var(--separator);
+    font-size: var(--grammar-type-label-field-size);
+    line-height: var(--grammar-type-label-field-line);
+}
+
+/* ---------------------------------------------------------------- Mermaid's own drawing (gantt, pie, journey, ...) */
+
+.starci-graph-diagram-svg > svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+}
+
+/*
+ * THE DIAGRAM THEME over Mermaid's own SVG: the Grammar's font at the caption role, boxes on the surface with a hairline edge, lines in the
+ * foreground at the fine stroke, groups a quiet tinted field. Mermaid's own sheet sits in the theme layer, so these rules win.
+ */
+[data-grammar-mermaid-svg] {
+    font-family: inherit;
+    font-size: var(--grammar-type-caption-size);
+    line-height: var(--grammar-type-caption-line);
+}
+
+[data-grammar-mermaid-svg] :where(text, tspan) {
+    font-family: inherit;
+}
+
+[data-grammar-mermaid-svg] :where(rect.actor, .node rect, .node polygon, .node circle, .node path.basic, .node ellipse) {
+    fill: var(--surface);
+    stroke: var(--border);
+    stroke-width: var(--grammar-hairline);
+}
+
+[data-grammar-mermaid-svg] :where(.node text, .node tspan, .nodeLabel) {
+    fill: var(--foreground);
+    color: var(--foreground);
+    font-weight: var(--grammar-weight-medium);
+}
+
+[data-grammar-mermaid-svg] :where(.flowchart-link, .edgePath .path, .transition) {
+    stroke: var(--foreground);
+    stroke-width: var(--grammar-stroke-fine);
+}
+
+[data-grammar-mermaid-svg] :where(marker path, marker circle, .marker, .arrowheadPath) {
+    fill: var(--foreground);
+    stroke: var(--foreground);
+}
+
+[data-grammar-mermaid-svg] :where(.edgeLabel rect, .labelBkg, .edgeLabel .background) {
+    fill: var(--surface);
+    opacity: 1;
+}
+
+[data-grammar-mermaid-svg] :where(.cluster rect) {
+    fill: var(--surface-secondary);
+    stroke: var(--separator);
+    stroke-width: var(--grammar-hairline);
+}
+
+[data-grammar-mermaid-svg] :where(.cluster-label text, .cluster-label tspan) {
+    fill: var(--muted);
+    font-weight: var(--grammar-weight-medium);
+}

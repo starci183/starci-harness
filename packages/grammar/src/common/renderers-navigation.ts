@@ -8,7 +8,6 @@ import { Disclosure } from "../core/branch/Disclosure/index.js"
 import { Expandable } from "../core/branch/Expandable/index.js"
 import { GeoMap } from "../core/branch/GeoMap/index.js"
 import { ListBox } from "../core/branch/ListBox/index.js"
-import { MermaidDiagram } from "../core/frame/MermaidDiagram/index.js"
 import { CodeBlock } from "../core/frame/CodeBlock/index.js"
 import { Sidenotes, SidenoteTerm } from "../core/frame/Sidenotes/index.js"
 import { GradedChoice } from "../core/composite/GradedChoice/index.js"
@@ -39,7 +38,6 @@ export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { Expandable, type ExpandableProps } from "../core/branch/Expandable/index.js"
 export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type GeoMapTiles } from "../core/branch/GeoMap/index.js"
-export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps, type MermaidTone, type MermaidZoomLabels } from "../core/frame/MermaidDiagram/index.js"
 export { CodeBlock, type CodeBlockLabels, type CodeBlockProps, type CodeBlockScheme } from "../core/frame/CodeBlock/index.js"
 export { Sidenotes, SidenoteTerm, type SidenoteItem, type SidenotesProps, type SidenoteTermProps } from "../core/frame/Sidenotes/index.js"
 export { GradedChoice, type GradedChoiceLabels, type GradedChoiceOption, type GradedChoiceProps } from "../core/composite/GradedChoice/index.js"
@@ -72,5 +70,5 @@ export { Video, pickVideoSource, playbackOf, type VideoLabels, type VideoPlaybac
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, CodeBlock, ColorSwatch, DataTable, DescriptionList, GradedChoice, Sidenotes, SidenoteTerm, TableOfContents,
-    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

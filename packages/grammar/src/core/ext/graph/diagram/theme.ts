@@ -34,6 +34,16 @@ export type MermaidThemeVariables = {
     readonly actorTextColor: string
     readonly signalColor: string
     readonly signalTextColor: string
+    /** A pie's slices: the accent's soft ground, then the quiet grounds, parted by the surface; the words stay the foreground. */
+    readonly pie1: string
+    readonly pie2: string
+    readonly pie3: string
+    readonly pie4: string
+    readonly pieStrokeColor: string
+    readonly pieOuterStrokeColor: string
+    readonly pieTitleTextColor: string
+    readonly pieSectionTextColor: string
+    readonly pieLegendTextColor: string
 }
 
 /** The HeroUI token each diagram colour reads. */
@@ -133,5 +143,14 @@ export const resolveMermaidTheme = (anchor: HTMLElement): MermaidThemeVariables 
         actorTextColor: token.foreground,
         signalColor: token.foreground,
         signalTextColor: token.foreground,
+        pie1: token.accentSoft,
+        pie2: token.border,
+        pie3: token.surfaceSecondary,
+        pie4: token.separator,
+        pieStrokeColor: token.surface,
+        pieOuterStrokeColor: token.border,
+        pieTitleTextColor: token.foreground,
+        pieSectionTextColor: token.foreground,
+        pieLegendTextColor: token.foreground,
     }
 }
