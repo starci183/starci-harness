@@ -20,6 +20,8 @@ export interface DiagramNode {
     /** The container (a subgraph, a composite state) the node stands in. */
     readonly parentId?: string
     readonly tone?: MermaidTone
+    /** A container that repeats its body (`class X foreach` on a subgraph): its frame is dashed, and the dashes mean "repeats". */
+    readonly repeat?: boolean
 }
 
 export interface DiagramEdge {
@@ -31,6 +33,8 @@ export interface DiagramEdge {
     readonly dashed: boolean
     /** A thick Mermaid link (`==>`): drawn heavier. */
     readonly thick: boolean
+    /** The end of a loop's body, returning to the loop's decision (see `loopBackEdges`): drawn dashed, round the outside. */
+    readonly back?: true
 }
 
 /** A flowchart or a state diagram as a graph, in the direction its source asked for (RL is drawn LR, BT is drawn TB). */
@@ -109,6 +113,36 @@ const FLOW_SHAPES: Readonly<Record<string, DiagramShape>> = {
     circle: "circle",
     doublecircle: "circle",
     cylinder: "cylinder",
+    // `F@{ shape: fork }` and `J@{ shape: join }`: the bars of a parallel (the same bar in a state diagram's `<<fork>>` and `<<join>>`).
+    fork: "bar",
+    join: "bar",
+}
+
+/**
+ * The edges that close a loop: the end of a loop's body returning to its decision. A depth-first walk from the steps nothing leads into, links in the order
+ * written; a link into a decision that is still being walked (one of its own ancestors) is the loop's back edge. Any other cycle is left to the layout.
+ */
+export const loopBackEdges = (nodes: readonly DiagramNode[], edges: readonly DiagramEdge[]): ReadonlySet<string> => {
+    const diamond = new Set(nodes.filter((node) => node.shape === "diamond").map((node) => node.id))
+    const out = new Map<string, DiagramEdge[]>()
+    for (const edge of edges) if (edge.source !== edge.target) out.set(edge.source, [...(out.get(edge.source) ?? []), edge])
+    const led = new Set(edges.filter((edge) => edge.source !== edge.target).map((edge) => edge.target))
+    const back = new Set<string>()
+    const walking = new Set<string>()
+    const seen = new Set<string>()
+    const visit = (id: string): void => {
+        seen.add(id)
+        walking.add(id)
+        for (const edge of out.get(id) ?? []) {
+            if (walking.has(edge.target)) {
+                if (diamond.has(edge.target)) back.add(edge.id)
+            } else if (!seen.has(edge.target)) visit(edge.target)
+        }
+        walking.delete(id)
+    }
+    for (const node of nodes) if (node.shape !== "container" && !led.has(node.id) && !seen.has(node.id)) visit(node.id)
+    for (const node of nodes) if (node.shape !== "container" && !seen.has(node.id)) visit(node.id)
+    return back
 }
 
 /**
@@ -126,18 +160,24 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
     for (const group of subgraphs) {
         const at = parent.get(group.id)
         const tone = toneOf(group.id, group.classes ?? [], tones)
-        nodes.push({ id: group.id, label: plainLabel(group.title ?? group.id), shape: "container", ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }) })
+        const repeat = (group.classes ?? []).includes("foreach")
+        nodes.push({ id: group.id, label: plainLabel(group.title ?? group.id), shape: "container", ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }), ...(repeat ? { repeat } : {}) })
     }
     for (const vertex of db.getVertices().values()) {
         if (groupIds.has(vertex.id)) continue
         const at = parent.get(vertex.id)
         const tone = toneOf(vertex.id, vertex.classes ?? [], tones)
-        nodes.push({ id: vertex.id, label: plainLabel(vertex.text ?? vertex.id), shape: FLOW_SHAPES[vertex.type ?? ""] ?? "box", ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }) })
+        const shape = FLOW_SHAPES[vertex.type ?? ""] ?? "box"
+        // A bar keeps the words its source wrote ("Song song"), never the id Mermaid falls back to.
+        const label = shape === "bar" && (vertex.text === undefined || vertex.text === vertex.id) ? "" : plainLabel(vertex.text ?? vertex.id)
+        nodes.push({ id: vertex.id, label, shape, ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }) })
     }
-    const edges = db.getEdges().map((edge, index): DiagramEdge => {
+    const links = db.getEdges().map((edge, index): DiagramEdge => {
         const label = plainLabel(edge.text)
         return { id: `e${String(index + 1)}`, source: edge.start, target: edge.end, ...(label === "" ? {} : { label }), dashed: edge.stroke === "dotted", thick: edge.stroke === "thick" }
     })
+    const loops = loopBackEdges(nodes, links)
+    const edges = links.map((edge): DiagramEdge => (loops.has(edge.id) ? { ...edge, back: true } : edge))
     return { kind: "flowchart", direction: direction(db.getDirection()), nodes, edges }
 }
 
@@ -151,7 +191,7 @@ export const branchesWithoutDecision = (graph: DiagramGraph): readonly string[] 
     if (graph.kind !== "flowchart") return []
     const labelled = new Map<string, number>()
     for (const edge of graph.edges) if (edge.label !== undefined && edge.source !== edge.target) labelled.set(edge.source, (labelled.get(edge.source) ?? 0) + 1)
-    return graph.nodes.filter((node) => node.shape !== "diamond" && node.shape !== "container" && (labelled.get(node.id) ?? 0) >= 2).map((node) => node.id)
+    return graph.nodes.filter((node) => node.shape !== "diamond" && node.shape !== "container" && node.shape !== "bar" && (labelled.get(node.id) ?? 0) >= 2).map((node) => node.id)
 }
 
 /** The part of Mermaid's state database the mapping reads (`getData()`, the layout data Mermaid's own renderers take). */

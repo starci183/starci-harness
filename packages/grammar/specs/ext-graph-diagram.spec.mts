@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs"
 import { after, before, describe, it } from "node:test"
 import { JSDOM } from "jsdom"
 import { parseDiagram } from "../src/core/ext/graph/diagram/mermaid.ts"
-import { branchesWithoutDecision, describeDiagram, plainLabel, type DiagramGraph, type ParsedDiagram, type SequenceModel } from "../src/core/ext/graph/diagram/model.ts"
+import { branchesWithoutDecision, describeDiagram, loopBackEdges, plainLabel, type DiagramGraph, type ParsedDiagram, type SequenceModel } from "../src/core/ext/graph/diagram/model.ts"
 import { layoutSequence } from "../src/core/ext/graph/diagram/sequence.ts"
 import { layoutDiagram } from "../src/core/ext/graph/diagram/graph.ts"
 import { STRAIGHT_SNAP, estimateLabel } from "../src/core/ext/graph/layout.ts"
@@ -479,4 +479,212 @@ describe("a branch is an if/else (owner 2026-11-23: a decision splits, its branc
             assert.equal(heads.length, 1, `one arrowhead into "Trả giá", not ${heads.join(", ")}`)
         })
     }
+})
+
+describe("switch, parallel, loop and foreach (owner 2026-11-23: the shapes of a flow beyond an if/else)", () => {
+    const SWITCH = `flowchart TB
+  A[Nhận thanh toán] --> S{Loại thanh toán?}
+  S -->|Thẻ| T[Cổng thẻ]
+  S -->|Ví| V[Ví điện tử]
+  S -->|Ngân hàng| C[Đối soát]
+  S -->|Trả sau| P[Hợp đồng]
+  S -->|Khác| K[Báo lỗi]
+  T --> Z([Xác nhận])
+  V --> Z
+  C --> Z
+  P --> Z
+  K --> Z`
+    const PARALLEL = `flowchart TB
+  A[Đơn được duyệt] --> F@{ shape: fork, label: "Song song" }
+  F --> B[Gửi email]
+  F --> C[Trừ kho]
+  F --> D[Giao hàng]
+  B --> J@{ shape: join }
+  C --> J
+  D --> J
+  J --> Z([Hoàn tất đơn])`
+    const LOOP = `flowchart TB
+  A[Lấy danh sách đơn] --> L{Còn nữa?}
+  L -->|Có| B[Xử lý đơn kế tiếp]
+  B --> C[Ghi kết quả]
+  C --> L
+  L -->|Không| Z([Xong])`
+    const FOREACH = `flowchart TB
+  A[Lấy danh sách đơn] --> E
+  subgraph E["Với mỗi đơn ×3"]
+    B[Kiểm tra tồn kho] --> C[Đóng gói]
+  end
+  class E foreach
+  E --> Z([Gửi báo cáo])`
+
+    type Laid = Awaited<ReturnType<typeof layoutDiagram>>
+    type Point = readonly [number, number]
+    const rect = (out: Laid, parsed: DiagramGraph, id: string) => {
+        const parentId = parsed.nodes.find((each) => each.id === id)?.parentId
+        const base = parentId === undefined ? { x: 0, y: 0 } : (out.layout.positions[parentId] ?? { x: 0, y: 0 })
+        const at = out.layout.positions[id]
+        const box = out.layout.boxes[id] ?? out.sizes.find((size) => size.id === id)
+        assert.ok(at !== undefined && box !== undefined, id)
+        return { l: base.x + at.x, t: base.y + at.y, r: base.x + at.x + box.width, b: base.y + at.y + box.height, cx: base.x + at.x + box.width / 2, cy: base.y + at.y + box.height / 2 }
+    }
+    const lay = async (source: string) => {
+        const parsed = graph(await parseDiagram(source))
+        return { parsed, out: await layoutDiagram(parsed, (text) => text.length * 7, estimateLabel) }
+    }
+    const route = (out: Laid, id: string) => {
+        const found = out.layout.routes[id]
+        assert.ok(found !== undefined, id)
+        return found
+    }
+    const bends = (points: readonly Point[]): number => points.length - 2
+
+    it("a switch is a decision with three or more labelled exits; a fork or join is a bar, its words kept; a foreach is a repeating container", async () => {
+        const switched = graph(await parseDiagram(SWITCH))
+        assert.equal(switched.edges.filter((edge) => edge.source === "S").length, 5)
+        assert.deepEqual(branchesWithoutDecision(switched), [])
+        const parallel = graph(await parseDiagram(PARALLEL))
+        assert.deepEqual(parallel.nodes.filter((each) => each.shape === "bar").map((each) => [each.id, each.label]), [["F", "Song song"], ["J", ""]])
+        assert.deepEqual(branchesWithoutDecision(parallel), [], "a fork is no box that branches")
+        const each = graph(await parseDiagram(FOREACH))
+        assert.equal(node(each, "E").repeat, true)
+        assert.equal(node(each, "E").label, "Với mỗi đơn ×3")
+        assert.equal(node(graph(await parseDiagram("flowchart TB\n  subgraph G [Group]\n    A --> B\n  end")), "G").repeat, undefined)
+    })
+
+    it("a loop's back edge is the link that closes the cycle on its decision, and nothing else", async () => {
+        const looped = graph(await parseDiagram(LOOP))
+        assert.deepEqual(looped.edges.filter((edge) => edge.back === true).map((edge) => [edge.source, edge.target]), [["C", "L"]])
+        // A cycle that does not close on a decision is the layout's own business.
+        assert.equal(graph(await parseDiagram("flowchart TB\n  A[One] --> B[Two]\n  B --> A")).edges.some((edge) => edge.back === true), false)
+        assert.equal(loopBackEdges([], []).size, 0)
+    })
+
+    it("a switch: every exit leaves the outline of the diamond with its words at its port and bends at most once, and the branches rejoin at one junction under the decision", async () => {
+        const { parsed, out } = await lay(SWITCH)
+        const d = rect(out, parsed, "S")
+        const w = d.r - d.l
+        const h = d.b - d.t
+        const exits = parsed.edges.filter((edge) => edge.source === "S")
+        const starts = exits.map((edge) => route(out, edge.id).points[0] as Point)
+        for (const [index, edge] of exits.entries()) {
+            const found = route(out, edge.id)
+            const start = starts[index]
+            assert.ok(start !== undefined)
+            // On the outline: the vertex row at the side vertices, the slanted side between them, the bottom vertex in the middle.
+            const x = start[0] - d.l
+            const outline = h / 2 + (h * Math.min(x, w - x)) / w
+            assert.ok(Math.abs(start[1] - d.t - outline) <= 2, `${edge.id} starts on the outline, ${String(start[1] - d.t)} vs ${String(outline)}`)
+            assert.ok(bends(found.points) <= 1, `${edge.id} bends at most once`)
+            const label = found.label
+            assert.ok(label !== undefined, `${edge.id} is labelled`)
+            assert.ok(Math.hypot(label.x + label.width / 2 - start[0], label.y + label.height / 2 - start[1]) <= 40 + Math.max(label.width, label.height), `${edge.id}'s words stand at its port`)
+        }
+        // Left to right in the order written.
+        const xs = starts.map((start) => start[0])
+        assert.deepEqual(xs, [...xs].sort((a, b) => a - b))
+        const targets = exits.map((edge) => rect(out, parsed, edge.target).cx)
+        assert.deepEqual(targets, [...targets].sort((a, b) => a - b), "the cases stand left to right in the order written")
+        // The join stands under the decision, every branch enters its top at one point, and between them they carry one arrowhead.
+        const z = rect(out, parsed, "Z")
+        assert.ok(Math.abs(z.cx - d.cx) <= 1.5, "the join is centred under the decision")
+        const rejoin = parsed.edges.filter((edge) => edge.target === "Z")
+        const once = dedupeRuns(rejoin.map((edge) => ({ id: edge.id, points: route(out, edge.id).points, rank: 3 })))
+        assert.equal(rejoin.filter((edge) => once.get(edge.id)?.joinEnd !== true).length, 1, "one arrowhead into the join")
+        for (const edge of rejoin) {
+            const last = route(out, edge.id).points.at(-1)
+            assert.ok(last !== undefined && Math.abs(last[0] - z.cx) <= 1.5 && Math.abs(last[1] - z.t) <= 1.5, `${edge.id} enters the top of the join`)
+        }
+    })
+
+    it("a switch across: the exits leave the right half of the diamond and rejoin on one line", async () => {
+        const { parsed, out } = await lay(SWITCH.replace("flowchart TB", "flowchart LR"))
+        const d = rect(out, parsed, "S")
+        for (const edge of parsed.edges.filter((each) => each.source === "S")) {
+            const found = route(out, edge.id)
+            assert.ok(bends(found.points) <= 1, `${edge.id} bends at most once`)
+            assert.ok((found.points[0]?.[0] ?? 0) >= d.cx - 1, `${edge.id} starts on the right half`)
+        }
+        const z = rect(out, parsed, "Z")
+        assert.ok(Math.abs(z.cy - d.cy) <= 1.5, "the join is centred across from the decision")
+        const rejoin = parsed.edges.filter((edge) => edge.target === "Z")
+        const once = dedupeRuns(rejoin.map((edge) => ({ id: edge.id, points: route(out, edge.id).points, rank: 3 })))
+        assert.equal(rejoin.filter((edge) => once.get(edge.id)?.joinEnd !== true).length, 1)
+    })
+
+    for (const direction of ["TB", "LR"] as const) {
+        it(`${direction} parallel: the fork and join bars span their branches, every line meets a bar straight at its branch's centre`, async () => {
+            const { parsed, out } = await lay(direction === "TB" ? PARALLEL : PARALLEL.replace("flowchart TB", "flowchart LR"))
+            const across = direction === "TB" ? 0 : 1
+            const centre = (r: ReturnType<typeof rect>): number => (across === 0 ? r.cx : r.cy)
+            for (const bar of ["F", "J"]) {
+                const b = rect(out, parsed, bar)
+                const lo = across === 0 ? b.l : b.t
+                const hi = across === 0 ? b.r : b.b
+                for (const id of ["B", "C", "D"]) {
+                    const c = centre(rect(out, parsed, id))
+                    assert.ok(c >= lo + 20 && c <= hi - 20, `${bar} reaches past ${id}`)
+                    const edge = parsed.edges.find((each) => (bar === "F" ? each.source === bar && each.target === id : each.source === id && each.target === bar))
+                    assert.ok(edge !== undefined)
+                    const found = route(out, edge.id)
+                    assert.equal(bends(found.points), 0, `${edge.id} is straight`)
+                    assert.ok(Math.abs((found.points[0]?.[across] ?? 0) - c) <= 1 && Math.abs((found.points[1]?.[across] ?? 0) - c) <= 1, `${edge.id} meets the bar at ${id}'s centre`)
+                }
+            }
+            // The single lines into the fork and out of the join meet the bar inside its span.
+            for (const id of ["e1", "e8"]) assert.equal(bends(route(out, id).points), 0, `${id} is straight`)
+        })
+    }
+
+    it("a loop: the back edge bends once, ends on the decision's side vertex, crosses no step; Có leads straight into the body, Không out to the side", async () => {
+        const { parsed, out } = await lay(LOOP)
+        const back = parsed.edges.find((edge) => edge.back === true)
+        assert.ok(back !== undefined)
+        const found = route(out, back.id)
+        assert.equal(bends(found.points), 1, "one bend")
+        const d = rect(out, parsed, "L")
+        const last = found.points.at(-1)
+        assert.ok(last !== undefined && Math.abs(last[0] - d.l) <= 1.5 && Math.abs(last[1] - d.cy) <= 1.5, "into the decision's side vertex")
+        const [a, b] = [found.points[0], found.points[1]]
+        assert.ok(a !== undefined && b !== undefined && a[1] === b[1], "out of the side of the last step")
+        for (const each of parsed.nodes) {
+            if (each.id === "C" || each.id === "L") continue
+            const r = rect(out, parsed, each.id)
+            for (let index = 1; index < found.points.length; index += 1) {
+                const [p, q] = [found.points[index - 1] as Point, found.points[index] as Point]
+                const hit = Math.min(p[0], q[0]) < r.r && r.l < Math.max(p[0], q[0]) && Math.min(p[1], q[1]) < r.b && r.t < Math.max(p[1], q[1])
+                assert.ok(!hit, `the back edge passes through ${each.id}`)
+            }
+        }
+        assert.equal(bends(route(out, "e2").points), 0, "Có runs straight into the body")
+        assert.ok(Math.abs(rect(out, parsed, "B").cx - d.cx) <= 1.5)
+        assert.ok(rect(out, parsed, "Z").l > d.r - 1, "Không leaves to the side")
+        // A body wider than the decision still gets the one-bend route: the decision is widened to clear it.
+        const body = rect(out, parsed, "B")
+        assert.ok(d.r - d.l >= body.r - body.l + 40)
+    })
+
+    it("a foreach: a repeating frame round its body, entered at its top and left at its bottom, each line straight", async () => {
+        const { parsed, out } = await lay(FOREACH)
+        const frame = rect(out, parsed, "E")
+        for (const id of ["B", "C"]) {
+            const r = rect(out, parsed, id)
+            assert.ok(r.l >= frame.l && r.r <= frame.r && r.t >= frame.t && r.b <= frame.b, `${id} is inside the frame`)
+        }
+        const into = route(out, "e1")
+        const outOf = route(out, "e3")
+        assert.equal(bends(into.points), 0)
+        assert.equal(bends(outOf.points), 0)
+        const entry = into.points.at(-1)
+        const exit = outOf.points[0]
+        assert.ok(entry !== undefined && Math.abs(entry[1] - frame.t) <= 1.5 && entry[0] >= frame.l && entry[0] <= frame.r, "enters the top of the frame")
+        assert.ok(exit !== undefined && Math.abs(exit[1] - frame.b) <= 1.5 && exit[0] >= frame.l && exit[0] <= frame.r, "leaves the bottom of the frame")
+    })
+
+    it("the repeat frame and the loop's back edge are dashed, the bar is solid: dashes mean something", () => {
+        const sheet = readFileSync(new URL("../src/core/ext/graph/diagram/styles.css", import.meta.url), "utf8")
+        assert.match(sheet, /\.starci-graph-diagram-group\[data-repeat="true"\] \{[^}]*border-style: dashed;/u)
+        const shared = readFileSync(new URL("../src/core/ext/graph/shared/styles.css", import.meta.url), "utf8")
+        assert.match(shared, /starci-graph-edge--back \.react-flow__edge-path \{\s*stroke-dasharray/u)
+        assert.doesNotMatch(sheet, /data-shape="bar"\][^{]*\{[^}]*dashed/u)
+    })
 })
