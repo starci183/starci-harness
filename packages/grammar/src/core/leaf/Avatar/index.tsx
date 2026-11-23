@@ -5,7 +5,7 @@ import { Avatar as HeroAvatar } from "@heroui/react"
 import { ChatBubbleOvalLeftEllipsisIcon } from "@heroicons/react/24/outline"
 import { createElement, isValidElement, useMemo, type ComponentType, type CSSProperties, type ReactNode } from "react"
 import { avatarDataUri } from "./dicebear.js"
-import { avatarHue, avatarInitials } from "./identity.js"
+import { agentToneOf, avatarHue, avatarInitials } from "./identity.js"
 import { Skeleton } from "../Skeleton/index.js"
 import type { IconSource } from "../Icon/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -28,7 +28,10 @@ export type AvatarProps = NoChildren & {
     readonly src?: string
     /** Stable identity id that picks the plate colour; otherwise `name` does. The same seed or name always gets the same colour. */
     readonly seed?: string
-    /** `agent` only names the avatar for assistive technology ("Name (AI)"); the avatar draws no badge. The visible "AI" is the Chip `AgentName` puts after the name. */
+    /**
+     * `agent` names the avatar for assistive technology ("Name (AI)") and, with no image, draws its initials on the AGENT TONE its seed (else its name) picks
+     * (`agentToneOf`, common/tones-agent.css), the same colour the agent wears everywhere; the avatar draws no badge. The visible "AI" is the Chip `AgentName` puts after the name.
+     */
     readonly kind?: AvatarKind
     /** A MARK instead of initials: an icon on a brand-colour circle, for a provider or a channel. `name` still names it. */
     readonly mark?: AvatarMark
@@ -51,7 +54,7 @@ export type AvatarProps = NoChildren & {
     readonly isLoading?: boolean
 }
 
-export { avatarInitials, avatarHue, avatarGroupTiles, avatarGroupSlots, AVATAR_PALETTE, type AvatarTile } from "./identity.js"
+export { avatarInitials, avatarHue, avatarGroupTiles, avatarGroupSlots, AVATAR_PALETTE, AGENT_TONES, agentToneOf, isAgentTone, type AgentTone, type AvatarTile } from "./identity.js"
 
 /**
  * The generated avatar image (DiceBear Initials, drawn locally): two letters on a solid Grammar tone, the colour from `seed` (else the name). The same image
@@ -116,8 +119,11 @@ export const avatarA11yProps = (name: string, isDecorative: boolean, kind: Avata
     ? { "aria-hidden": true as const }
     : { role: "img" as const, "aria-label": avatarAccessibleName(name, kind) }
 
-/** The plate an avatar with no image puts its initials on (0.46.0 adds `solid` and `strong`); `danger` is the default plate with a danger ring. */
-export type AvatarTone = "default" | "accent" | "solid" | "strong" | "danger"
+/**
+ * The plate an avatar with no image puts its initials on (0.46.0 adds `solid` and `strong`); `danger` is the default plate with a danger ring. `agent` (0.55.1) is the agent
+ * tone of the seed, the soft pair of one hue; an agent avatar takes it by default.
+ */
+export type AvatarTone = "default" | "accent" | "solid" | "strong" | "danger" | "agent"
 
 /** The plate of a tone: `danger` only adds the ring, the plate stays the generated one. */
 const plateOf = (tone: AvatarTone): Exclude<AvatarTone, "danger"> => tone === "danger" ? "default" : tone
@@ -138,11 +144,13 @@ export type AvatarMark = {
     /** The icon's colour on a brand `color`; `--accent-foreground` when omitted. */
     readonly ink?: string
     /** A Grammar token plate when there is no brand `color`: `solid` (the default, `--accent`), `accent` (the soft pair) or `strong` (`--foreground`). */
-    readonly tone?: Exclude<AvatarTone, "default" | "danger">
+    readonly tone?: Exclude<AvatarTone, "default" | "danger" | "agent">
 }
 
 const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
+    // an agent wears its own tone unless the caller chose a plate: the same colour as its IconTile and every other mark of it
+    const plate: AvatarTone = kind === "agent" && tone === "default" && mark === undefined ? "agent" : tone
     if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
             data-component="Avatar" data-contract="STATE-8" data-tier="leaf" data-grammar-avatar-size={size}
@@ -154,9 +162,10 @@ const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = 
         <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
             data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
             data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
-            data-grammar-avatar-tone={tone}
+            data-grammar-avatar-tone={plate}
+            {...(plate === "agent" ? { "data-grammar-agent-tone": agentToneOf(seed ?? name) } : {})}
             size={vendorAvatarSize(size)}>
-            {avatarParts(name, src, fallback, seed, tone, mark)}
+            {avatarParts(name, src, fallback, seed, plate, mark)}
         </HeroAvatar>
     )
 }
