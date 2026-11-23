@@ -2096,6 +2096,10 @@
     .starci-core-list-row[data-grammar-action-placement="end"] > .starci-core-list-row-detail { grid-column: 1 / -1; }
     .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-leading="true"] > .starci-core-list-row-detail { grid-column: 2 / -1; }
 
+    /* actionPlacement="foot" (0.55.1): the commands stand on a row of their own after the detail, on the copy's start edge, at every width; the copy keeps the row's width. */
+    .starci-core-list-row[data-grammar-action-placement="foot"] > :is(.starci-core-list-row-actions, .starci-core-list-row-detail) { grid-column: 1 / -1; justify-content: flex-start; }
+    .starci-core-list-row[data-grammar-action-placement="foot"][data-grammar-leading="true"] > :is(.starci-core-list-row-actions, .starci-core-list-row-detail) { grid-column: 2 / -1; }
+
 /*
      * Text first (G7-11): an end-placed row with two or more commands (an action and a menu) would leave the text column about 130px in a
      * 320px pane, so on a narrow container the commands stand under the text, start-aligned, and the text keeps the row's width. One
