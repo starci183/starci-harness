@@ -15,6 +15,7 @@ const CUSTODY = at("src/modules/integrations/ai-gateway/ai-gateway.config.ts")
 const CUSTODY_SPEC = at("src/modules/integrations/ai-gateway/ai-gateway.config.spec.ts")
 const AI = at("src/modules/integrations/ai/ai.client.ts")
 const AI_SPEC = at("src/modules/integrations/ai/ai.client.spec.ts")
+const BYOK = at("src/modules/integrations/ai-byok/ai-byok.client.ts")
 const DOMAIN = at("src/modules/domain/order/order.service.ts")
 const CONFIG = at("src/modules/platform/config/env-source.config.ts")
 const OTHER = at("src/modules/integrations/beta-pay/beta-pay.config.ts")
@@ -106,23 +107,26 @@ test("ai-client-through-gateway: the LangChain clients point at the gateway with
     })
 })
 
-test("infra-import-owner: LangChain lives in integrations/ai, the gateway in its custody owner, and no provider SDK or agent framework anywhere", () => {
+test("infra-import-owner: LangChain lives in integrations/ai, the gateway in its custody owner, the official openai and Anthropic SDKs only in integrations/ai-byok, and no other provider SDK or agent framework anywhere", () => {
     tester.run("infra-import-owner", infraImportOwner, {
         valid: [
             { filename: AI, code: `import { ChatOpenAI } from "@langchain/openai"\nimport { ChatPromptTemplate } from "@langchain/core/prompts"\nexport { ChatOpenAI, ChatPromptTemplate }` },
             { filename: AI, code: `import { BaseRetriever } from "@langchain/core/retrievers"\nexport { BaseRetriever }` },
             { filename: CUSTODY, code: `import { AiRouterModule, AiRouterGatewayModule } from "@starci/ai-router"\nexport { AiRouterModule, AiRouterGatewayModule }` },
             { filename: AI_SPEC, code: `import { AiRouterTestingModule } from "@starci/ai-router/testing"\nexport { AiRouterTestingModule }` },
+            { filename: BYOK, code: `import OpenAI from "openai"\nimport Anthropic from "@anthropic-ai/sdk"\nexport { OpenAI, Anthropic }` },
         ],
         invalid: [
             { filename: DOMAIN, code: `import { ChatOpenAI } from "@langchain/openai"\nexport { ChatOpenAI }`, errors: [{ messageId: "foreign" }] },
             { filename: CUSTODY, code: `import { ChatPromptTemplate } from "@langchain/core/prompts"\nexport { ChatPromptTemplate }`, errors: [{ messageId: "foreign" }] },
             { filename: AI, code: `import { AiRouterGatewayModule } from "@starci/ai-router"\nexport { AiRouterGatewayModule }`, errors: [{ messageId: "foreign" }] },
-            { filename: AI, code: `import OpenAI from "openai"\nexport { OpenAI }`, errors: [{ messageId: "nowhere" }] },
+            { filename: AI, code: `import OpenAI from "openai"\nexport { OpenAI }`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import OpenAI from "openai"\nexport { OpenAI }`, errors: [{ messageId: "foreign" }] },
             { filename: AI, code: `import { StateGraph } from "@langchain/langgraph"\nexport { StateGraph }`, errors: [{ messageId: "nowhere" }] },
             { filename: AI, code: `import { createAgent } from "langchain"\nexport { createAgent }`, errors: [{ messageId: "nowhere" }] },
             { filename: AI, code: `import { PGVectorStore } from "@langchain/community/vectorstores/pgvector"\nexport { PGVectorStore }`, errors: [{ messageId: "nowhere" }] },
-            { filename: CUSTODY, code: `import Anthropic from "@anthropic-ai/sdk"\nexport { Anthropic }`, errors: [{ messageId: "nowhere" }] },
+            { filename: CUSTODY, code: `import Anthropic from "@anthropic-ai/sdk"\nexport { Anthropic }`, errors: [{ messageId: "foreign" }] },
+            { filename: BYOK, code: `import { GoogleGenAI } from "@google/genai"\nexport { GoogleGenAI }`, errors: [{ messageId: "nowhere" }] },
             { filename: AI, code: `import { generateText } from "ai"\nimport { openai } from "@ai-sdk/openai"\nexport { generateText, openai }`, errors: [{ messageId: "nowhere" }, { messageId: "nowhere" }] },
         ],
     })
