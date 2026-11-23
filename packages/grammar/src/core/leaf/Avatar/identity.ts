@@ -111,3 +111,21 @@ export const avatarGroupTiles = (total: number, max: number = AVATAR_GRID_CAPACI
     const tiles: AvatarTile[] = Array.from({ length: shown }, (_, index) => ({ kind: "member", index }))
     return hidden === 0 ? tiles : [...tiles, { kind: "more", count: hidden }]
 }
+
+/**
+ * THE AGENT TONES (0.55.1, owner 2026-11-23: each agent has its own colour). The soft pairs of `common/tones-agent.css`, in a fixed order: an
+ * agent's tone is `agentToneOf(its key)`, so it wears the same colour on every screen and every machine. None is the danger or brand red.
+ */
+export const AGENT_TONES = ["agent-blue", "agent-teal", "agent-green", "agent-amber", "agent-purple", "agent-magenta"] as const
+
+/** One agent tone: a soft plate and its ink of one hue (`--<tone>-soft`, `--<tone>-soft-foreground`). */
+export type AgentTone = (typeof AGENT_TONES)[number]
+
+/** Whether a word names an agent tone. */
+export const isAgentTone = (value: string): value is AgentTone => (AGENT_TONES as ReadonlyArray<string>).includes(value)
+
+/**
+ * The tone an agent wears: the one its stable key (never its display name, which a person may change) hashes to, by the same FNV-1a as the avatar's
+ * colour. Give the tone a package or a person chose instead when there is one.
+ */
+export const agentToneOf = (key: string): AgentTone => AGENT_TONES[hash(key.trim()) % AGENT_TONES.length] ?? "agent-blue"

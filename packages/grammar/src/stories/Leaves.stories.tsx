@@ -360,6 +360,14 @@ export const IconTile: Story = {
         <G.IconTile source={BellGlyph} tone="warning" />
         <G.IconTile source={SettingsGlyph} tone="danger" ariaLabel="Needs attention" />
       </State>
+      <State label="Agent tones (0.55.1): each agent its own colour, the tile and the avatar alike">
+        {G.AGENT_TONES.map((tone) => (
+          <G.IconTile key={tone} source={StarGlyph} tone={tone} />
+        ))}
+        {["ads", "reception", "care", "social"].map((key) => (
+          <G.Avatar key={key} name={key} seed={key} kind="agent" />
+        ))}
+      </State>
       <State label="Sizes">
         <G.IconTile source={StarGlyph} tone="accent" />
       </State>
