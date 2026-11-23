@@ -11,7 +11,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { AVATAR_INKS, AVATAR_PALETTE, avatarGroupTiles, avatarHue, avatarInitials, avatarInk } from "../src/core/leaf/Avatar/identity.ts"
 import { avatarSvg } from "../src/core/leaf/Avatar/dicebear.ts"
-import { avatarGroupSlots } from "../src/core/leaf/Avatar/identity.ts"
+import { agentToneOf, avatarGroupSlots } from "../src/core/leaf/Avatar/identity.ts"
 import { Avatar } from "../src/core/leaf/Avatar/index.tsx"
 import { AgentName } from "../src/core/leaf/AgentName/index.tsx"
 import { ListRow } from "../src/core/composite/ListRow/index.tsx"
@@ -300,7 +300,7 @@ test("DiceBear Initials, local only: no network, no dicebear.com URL in the sour
     assert.deepEqual([...dicebear.matchAll(/from "(@dicebear\/[^"]+)"/g)].map((match) => match[1]), ["@dicebear/core", "@dicebear/styles/initials.json"])
     const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { dependencies: Record<string, string> }
     assert.deepEqual(Object.entries(manifest.dependencies).filter(([name]) => name.startsWith("@dicebear/")).sort(), [["@dicebear/core", "10.4.0"], ["@dicebear/styles", "10.4.0"]])
-    for (const markup of [render(createElement(Avatar, { name: "Lan", kind: "agent" })), group(5)]) {
+    for (const markup of [render(createElement(Avatar, { name: "Lan" })), group(5)]) {
         assert.ok(images(markup).length > 0)
         assert.ok(!/dicebear\.com/i.test(decodeURIComponent(markup)), "no dicebear.com in the markup")
         for (const svg of images(markup)) assert.ok(!/dicebear\.com|<metadata|<!--/i.test(svg))
@@ -332,12 +332,14 @@ test("sizes: two only (owner: \"40 và 24 thôi, không có 32\"): sm draws 24px
     assert.match(read("common/components-overlays.css"), /\.starci-core-skeleton\[data-shape="circle"\]\[data-size="sm"\] \{\s*width: var\(--grammar-avatar-sm-size\);/, "the loading circle is 24 too")
 })
 
-test("no AI pill: an agent's avatar is initials only, and the pill's markup, CSS and tokens are gone", () => {
+test("no AI pill: an agent's avatar is initials only, on its own agent tone (0.55.1), and the pill's markup, CSS and tokens are gone", () => {
     for (const size of ["sm", "md"] as const) {
-        const agent = render(createElement(Avatar, { name: "Claude", kind: "agent", size }))
+        const agent = render(createElement(Avatar, { name: "Claude", kind: "agent", seed: "claude", size }))
         assert.ok(!/data-grammar-avatar-ai|ai-badge|ai-glyph|ai-text|agent-anchor|agent-badge/.test(agent), size)
         assert.ok(agent.includes('aria-label="Claude (AI)"'), "the agent is still named once, by the avatar")
-        assert.equal(images(agent).length, 1)
+        assert.equal(images(agent).length, 0)
+        assert.ok(agent.includes('data-grammar-avatar-tone="agent"') && agent.includes(`data-grammar-agent-tone="${agentToneOf("claude")}"`), "the letters stand on the agent tone of its seed")
+        assert.ok(agent.includes(">CL<"), "two letters")
     }
     assert.ok(!/data-grammar-avatar-ai|ai-badge/.test(group(4, { items: [...people(3), { id: "bot", name: "Claude", kind: "agent" }] })))
     const sheets = ["common/ramps.css", "common/components-navigation.css", "common/components-avatar-group.css", "common/styles.css"].map(read).join("\n")
