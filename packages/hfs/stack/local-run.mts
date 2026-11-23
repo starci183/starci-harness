@@ -258,10 +258,10 @@ export function portHolder(ctx: Pick<StackContext, 'spawn' | 'platform'>, port: 
 
 /**
  * What the Windows relay runs: it starts the real command detached with the log as its output, writes the child's pid into the file named by
- * argv[1] and exits. The child's parent is then a process that is gone, so a tree kill of the caller (closing a terminal tab, `taskkill /T` of a
+ * `pidFile` of its spec (the STARCI_RELAY_SPEC environment variable, JSON) and exits. The child's parent is then a process that is gone, so a tree kill of the caller (closing a terminal tab, `taskkill /T` of a
  * lander) never reaches it; `detached: true` alone does not break that chain on Windows.
  */
-const RELAY = "const {spawn}=require('node:child_process'),fs=require('node:fs');const o=JSON.parse(process.argv[2]);" +
+const RELAY = "const {spawn}=require('node:child_process'),fs=require('node:fs');const o=JSON.parse(process.env.STARCI_RELAY_SPEC);delete process.env.STARCI_RELAY_SPEC;" +
   "const c=spawn(o.command,o.args,{cwd:o.cwd,env:process.env,detached:true,stdio:['ignore','inherit','inherit'],windowsHide:true});" +
   "c.on('error',(e)=>{fs.writeFileSync(o.pidFile+'.err',String(e.message));process.exit(1)});" +
   "if(typeof c.pid==='number'){fs.writeFileSync(o.pidFile,String(c.pid));c.unref();setTimeout(()=>process.exit(0),200)}";
@@ -293,7 +293,7 @@ export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCo
       const pidFile = path.join(dir, `${run.name}.relay-pid`);
       fs.rmSync(pidFile, { force: true });
       fs.rmSync(`${pidFile}.err`, { force: true });
-      const relay = ctx.spawn(process.execPath, ['-e', RELAY, JSON.stringify({ command, args, cwd, pidFile })], { background: true, detached: true, cwd, env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
+      const relay = ctx.spawn(process.execPath, ['-e', RELAY], { background: true, detached: true, cwd, env: { ...env, STARCI_RELAY_SPEC: JSON.stringify({ command, args, cwd, pidFile }) }, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
       relay.unref?.();
       const pid = relayedPid(pidFile, 10_000);
       fs.rmSync(pidFile, { force: true });
