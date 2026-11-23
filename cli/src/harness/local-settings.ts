@@ -29,6 +29,23 @@ const devSyncSchema = z.object({
     publishLocal: z.boolean().default(false),
     /** The stack processes of each side: a change under be/ restarts `be`, under fe/ restarts `fe`, anything else both. */
     processes: z.object({ be: z.array(z.string().min(1)).default(["api"]), fe: z.array(z.string().min(1)).default(["web"]) }).default({ be: ["api"], fe: ["web"] }),
+    /**
+     * Per repository a lander lands for (key: the repository path it runs in, e.g. D:/Repositories/starci-next-app): its own dev checkout and
+     * overrides of afterLand, env, debounceSeconds and processes. With any entry here, a repository without one syncs nothing, so a lander never
+     * syncs another app's checkout; without entries the top-level `checkout` is the single app's (a one-app machine).
+     */
+    repos: z
+        .record(
+            z.string().min(1),
+            z.object({
+                afterLand: z.boolean().default(true),
+                checkout: z.string().min(1).optional(),
+                env: z.string().min(1).optional(),
+                debounceSeconds: z.number().int().min(0).optional(),
+                processes: z.object({ be: z.array(z.string().min(1)).default(["api"]), fe: z.array(z.string().min(1)).default(["web"]) }).optional(),
+            }),
+        )
+        .default({}),
 })
 
 const settingsSchema = z.object({
@@ -57,6 +74,21 @@ export const writeDevSyncLocal = (file: string, entries: readonly string[]): voi
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, `${JSON.stringify({ ...record, devSync: { ...devSync, local: [...entries] } }, null, 2)}\n`)
     loadLocalSettings(file)
+}
+
+const repoKey = (path: string): string => path.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase()
+
+/**
+ * The dev sync settings the lander of `repo` uses: the machine-wide ones with that repository's entry laid over them (its own checkout, env,
+ * debounce, processes; `local` and `publishLocal` stay machine-wide). With entries listed and none for `repo`, afterLand is off: a lander never
+ * syncs a checkout that is not its own app's. Pure.
+ */
+export const devSyncForRepo = (settings: DevSyncSettings, repo: string): DevSyncSettings => {
+    const entries = Object.entries(settings.repos)
+    if (entries.length === 0) return settings
+    const own = entries.find(([key]) => repoKey(key) === repoKey(repo))?.[1]
+    if (own === undefined) return { ...settings, afterLand: false, checkout: undefined }
+    return { ...settings, afterLand: own.afterLand, checkout: own.checkout, env: own.env ?? settings.env, debounceSeconds: own.debounceSeconds ?? settings.debounceSeconds, processes: own.processes ?? settings.processes }
 }
 
 /** Reads this machine's settings; an absent file is every default, a damaged one is LOCAL_SETTINGS_INVALID naming the file. */

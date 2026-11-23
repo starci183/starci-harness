@@ -8,7 +8,7 @@ import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
 import { landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
 import { landProfile, lockScope, profileNameFor } from "../../harness/land-profile.js"
-import { loadLocalSettings } from "../../harness/local-settings.js"
+import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
 import { listWorktrees } from "../../harness/worktree-remove.js"
@@ -78,9 +78,10 @@ export const laneLandVerb = defineVerb({
         }, POLL_MS)
         heartbeat?.unref()
         const batches: BatchRecord[] = []
-        const settings = loadLocalSettings().devSync
+        // Each lander syncs the dev checkout of its own repository (devSync.repos), never another app's.
+        const settings = devSyncForRepo(loadLocalSettings().devSync, options.repo)
         // The harness lander syncs only the app checkout its settings name: its own repository is no app with a dev stack.
-        const autoSync = profileName === "harness" && settings.checkout === undefined ? undefined : landAutoSync(settings, options.repo, dryRun, context.progress, undefined, () => loadLocalSettings().devSync)
+        const autoSync = profileName === "harness" && settings.checkout === undefined ? undefined : landAutoSync(settings, options.repo, dryRun, context.progress, undefined, () => devSyncForRepo(loadLocalSettings().devSync, options.repo))
         const publish = profileName === "harness" ? landPublishDev(settings, dryRun, context.progress, (landed) => publishDev({ root: options.worktree, head: landed, execute: true, say: context.progress })) : undefined
         try {
             for (;;) {

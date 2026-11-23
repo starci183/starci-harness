@@ -93,6 +93,17 @@ state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
 }
 ```
 
+**One entry per app.** The file is machine-wide but each lander syncs only its own repository's dev checkout: `devSync.repos` maps the repository
+a lander runs in to its checkout (and optional `afterLand`, `env`, `debounceSeconds`, `processes`). With any entry listed, a repository without one syncs
+nothing; with none listed the top-level `checkout` is a one-app machine's. And two syncs of one checkout never run together: `dev sync --execute` takes
+a lock per checkout (temp folder, by path) and a second one waits for the first (`DEV_SYNC_BUSY` after 30 minutes; a dead holder is reclaimed).
+
+```json
+{ "devSync": { "afterLand": true, "repos": {
+  "D:/Repositories/nivoos-lite": { "checkout": "D:/Repositories/nivoos-lite" },
+  "D:/Repositories/starci-next-app": { "checkout": "D:/starci-lanes/_next/devstack" } } } }
+```
+
 `devSync.local` is this machine's standing overlay and the default way dev runs harness builds: the builds that dev keeps running from the
 local registry (e.g. `["grammar@0.55.0-content.4", "eslint-grammar-core@0.55.0-content.4"]`). Every sync installs it, the lander's auto-sync and a
 plain `starci dev sync` alike, until the setting is emptied, so dev runs the newest harness without waiting for npm. An app without
