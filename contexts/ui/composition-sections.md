@@ -25,7 +25,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - CTA-5 Group order · `CTA-5` · 1 KB — A decision group runs **way out, alternative, primary**: the `border` way out first, the primary last, as separate buttons at the inline gap (GAP-2).
   - 3. Accent · `contexts/ui/composition.md#3-accent` · 1 KB — Accent is an allocation, not a paint.
     - ACCENT-2 Identity is neutral · `ACCENT-2` · 1 KB — A compact identity anchor (an `IconTile`, an avatar) is neutral.
-    - ACCENT-3 Selection, destination, command and focus stay distinct · `ACCENT-3` · 1 KB — Each resolves to its own owner and treatment, and each carries a non-colour cue (state attribute, outline, indicator geometry, underline).
+    - ACCENT-3 Selection, destination, command and focus stay distinct · `ACCENT-3` · 1 KB — Each resolves to its own owner and treatment, and each carries a non-colour cue (state attribute, outline, indicator geometry, weight).
     - ACCENT-4 An accent fill states a real measurement · `ACCENT-4` · 1 KB — A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a decorative or ranking bar carries no progress semantics; the fill ...
     - ACCENT-5 Status hues and notices report authority · `ACCENT-5` · 1 KB — Success, warning and danger appear only where authority reports that state, never as a category, a peer marker or decoration.
     - ACCENT-6 Budget and the one strong mass · `ACCENT-6` · 1 KB — About nine tenths of the painted content area is neutral (canvas, surfaces, foreground, muted, separators); accent fills, soft grounds and accent text together stay under ...

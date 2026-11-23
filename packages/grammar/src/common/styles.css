@@ -17,6 +17,7 @@
 @import "./components-avatar-group.css";
 @import "./components-message-actions.css";
 @import "./components-dropzone.css";
+@import "./components-lesson.css";
 @import "./components-spacing.css";
 @import "./entry-frame.css";
 
@@ -6991,4 +6992,7 @@
     .starci-type-display-figure { font-size: var(--grammar-type-display-figure-size); line-height: var(--grammar-type-display-figure-line); font-weight: var(--grammar-type-display-figure-weight); letter-spacing: var(--grammar-type-display-figure-tracking); font-variant-numeric: tabular-nums; }
     .starci-type-lead { font-size: var(--grammar-type-lead-size); line-height: var(--grammar-type-lead-line); font-weight: var(--grammar-type-lead-weight); }
     .starci-type-title-card { font-size: var(--grammar-type-title-card-size); line-height: var(--grammar-type-title-card-line); font-weight: var(--grammar-type-title-card-weight); }
+    /* THE READING GROUP (0.55.1, owner 2026-11-23): a lesson's headline and prose; the phone step lives in ramps.css. The title balances its lines, the prose avoids a lone last word. */
+    .starci-type-reading-title { font-size: var(--grammar-type-reading-title-size); line-height: var(--grammar-type-reading-title-line); font-weight: var(--grammar-type-reading-title-weight); letter-spacing: var(--grammar-type-reading-title-tracking); text-wrap: balance; }
+    .starci-type-reading-body { font-size: var(--grammar-type-reading-body-size); line-height: var(--grammar-type-reading-body-line); font-weight: var(--grammar-type-reading-body-weight); text-wrap: pretty; }
 }
