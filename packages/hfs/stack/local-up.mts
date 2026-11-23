@@ -25,6 +25,7 @@ import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
 import { planTunnel, routeTunnel } from './local-tunnel.mjs';
+import { endEarlierTrees, ensureEdge, freePort, needsEdge } from './local-edge.mjs';
 
 const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
 
@@ -244,16 +245,28 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
 
 /**
  * Builds (serve mode, when the process declares a build) and starts one native process, recording its pid, port, command line and mode.
- * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file.
+ * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file. The caller ends every
+ * earlier tree of the same command from this checkout first (local-edge.mts endEarlierTrees). A web the dev tunnel publishes runs behind its edge
+ * (local-edge.mts): the edge keeps the declared port and the process gets a free backend port, `${port.<name>}` included.
  */
-export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>): Promise<string> {
+export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>, deps: LocalDeps = {}): Promise<string> {
+  const lines: string[] = [];
+  let target = local;
+  if (run.port !== null && needsEdge(local, run)) {
+    const backend = await (deps.freePort ?? freePort)();
+    const edge = await ensureEdge(ctx, local, run, record, backend, deps);
+    if (edge.line !== null) lines.push(edge.line);
+    if (edge.ok) target = { ...local, ports: { ...local.ports, [run.port]: backend } };
+  }
   const build = buildCommand(run, mode);
-  if (build !== null) await runCommand(ctx, local, build, runEnvironment(ctx, local, build, custody, null));
+  if (build !== null) await runCommand(ctx, target, build, runEnvironment(ctx, target, build, custody, null));
   const launched = launchedCommand(run, mode);
-  const pid = startProcess(ctx, local, launched, runEnvironment(ctx, local, run, custody, 'app'));
+  const pid = startProcess(ctx, target, launched, runEnvironment(ctx, target, run, custody, 'app'));
   const actual = modeOf(run, mode);
-  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null), command: processCommand(ctx, local, launched), mode: actual };
-  return `process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'})`;
+  const port = run.port === null ? null : (target.ports[run.port] ?? null);
+  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port, command: processCommand(ctx, target, launched), mode: actual };
+  lines.push(`process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'}${target === local ? '' : `, behind its edge on backend port ${String(port)}`})`);
+  return lines.join('\n');
 }
 
 /**
@@ -270,7 +283,15 @@ async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Cu
     const known = record.processes[run.name];
     if (known) {
       const owned = await ownedProcess(ctx, known, deps);
-      if (owned.ours) { out.push(`process ${run.name}: running (pid ${known.pid})`); continue; }
+      if (owned.ours) {
+        out.push(`process ${run.name}: running (pid ${known.pid})`);
+        // A web that runs behind its edge gets its edge back when the edge alone is gone (the port would answer nothing).
+        if (run.port !== null && known.port !== null && known.port !== local.ports[run.port] && needsEdge(local, run)) {
+          const edge = await ensureEdge(ctx, local, run, record, known.port, deps);
+          if (edge.line !== null) out.push(edge.line);
+        }
+        continue;
+      }
       if (owned.silent === true) {
         stopProcess(ctx, known.pid, deps);
         out.push(`process ${run.name}: stopped its previous tree (pid ${known.pid}): ${owned.stale ?? 'its port is silent'}; starting fresh`);
@@ -278,12 +299,15 @@ async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Cu
         out.push(`process ${run.name}: discarded a stale record: ${owned.stale}; starting fresh`);
       }
     }
+    // An earlier tree of the same command from this checkout (another state base's, or one whose record was lost) is ended, never refused.
+    out.push(...endEarlierTrees(ctx, local, run, record, deps));
     const port = run.port === null ? null : (local.ports[run.port] ?? null);
     const holder = port === null ? null : (deps.portHolder ?? ((value: number) => portHolder(ctx, value)))(port);
-    if (holder !== null) {
+    // The process's own edge holds its declared port: that is no second copy.
+    if (holder !== null && holder.pid !== record.edges?.[run.name]?.pid) {
       throw failure('STACK_LOCAL_SECOND_COPY', `process ${run.name}: port ${port} already listens (pid ${holder.pid}${holder.command === null ? '' : `, ${holder.command.slice(0, 160)}`}), which this environment's record does not hold: a second copy is refused; stop that one (starci app stack down --env ${local.env} from the checkout that started it, or end pid ${holder.pid}) and run up again`);
     }
-    out.push(await launchProcess(ctx, local, run, custody, mode, record));
+    out.push(await launchProcess(ctx, local, run, custody, mode, record, deps));
     writeRecord(dir, record);
   }
   record.ports = { ...local.ports };

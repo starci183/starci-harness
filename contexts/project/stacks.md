@@ -309,6 +309,19 @@ stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends on
 builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
 hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
 process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
+
+**The edge of a dev web.** A front-end process (its `cwd` under `fe/`) whose port a dev tunnel route publishes runs behind an edge
+(owner: `@starci/hfs` `stack/local-edge.mts`, `stack/edge-server.mts`): a small proxy that holds the declared port while the process
+listens on a free backend port (`${port.<name>}` in its argv and env is that port). The edge forwards to a backend only once its page
+probe passed: the health path answers 200 with HTML linking at least one stylesheet, every stylesheet answers 200, and in an app on
+Grammar one of them holds `.starci-core-icon`. Before that, and whenever the backend stops answering, every request gets a 503 page
+"<app> đang cập nhật, tải lại sau vài giây" (the app's name from its page title) that reloads itself every 5 seconds, never a
+half-built page. A restart points the edge at the new backend; the edge itself outlives restarts and `dev sync` (it is no recorded
+process and runs a copy of its script from the state folder, so no install touches it), `up` brings it back when it alone is gone, and
+`down` ends it. Before any process starts, `up` and `restart` end every earlier tree of the same command from the same checkout by
+its root process (a process that runs from `<checkout>/node_modules/` or the process's own folder with every literal argument of its
+argv, climbed through the shims above it that carry them): a tree another state base recorded, or whose record was lost, never runs
+beside the new one. Another checkout's tree (a lane worktree) and a process of another folder of the checkout (the gallery) are not it.
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (held by review; Docker is run by the harness verb, never by hand). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.

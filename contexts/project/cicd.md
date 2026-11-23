@@ -54,7 +54,9 @@ to `origin/dev` and its running dev stack onto that code:
    a checkout holding commits `origin/dev` lacks is `DEV_SYNC_DIVERGED`. Work reaches dev through a lane, never through this checkout.
 2. A recorded overlay (`deps install-local`) is put back to the committed pins first, so the overlay never survives a sync
    that does not name it again; then the checkout fast-forwards to `origin/dev` and `npm ci` runs (skipped when the lockfile did
-   not change and no overlay was dropped).
+   not change and no overlay was dropped). A sync that names exactly the overlay already installed (each package at the same
+   version), whose commits move no pinned manifest and no lockfile, keeps it: nothing is restored, installed, stopped or restarted
+   for it, so the web the owner has open keeps running and only the side a commit changed restarts.
 3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
    Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
    local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
@@ -80,7 +82,11 @@ to `origin/dev` and its running dev stack onto that code:
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
    checkout's code and runs the built artifact (the process's `serve` block: `next build` then `next start`, the api build then
    `node dist/...`), never a watcher, waits for its health on the loopback and over each tunnel hostname that routes its port, and
-   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6).
+   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6). A web the tunnel
+   publishes runs behind its edge, which keeps answering the tunnel with a page saying the app is updating (reloading itself) from
+   the stop before the install until the new web's page and its Grammar CSS answer, so the owner never loads a page with no Grammar
+   CSS; and a start first ends any earlier tree of the same command from the checkout, so one api watcher runs per checkout
+   ([stacks.md](stacks.md) "The edge of a dev web").
 6. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
 
 Hot reload is opt-in for live coding: `starci app stack up --env dev --execute --watch` (or `stack restart --watch`) runs the

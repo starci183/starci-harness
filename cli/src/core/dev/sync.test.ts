@@ -522,3 +522,31 @@ void test("a sync with no --local keeps this machine's standing overlay (devSync
     assert.deepEqual(syncLocal(["@starci/hfs@6.18.0-local.1"], { local: ["grammar@0.55.0-content.4"] }), ["@starci/hfs@6.18.0-local.1"])
     assert.deepEqual(syncLocal([], { local: [] }), [])
 })
+
+void test("a sync that asks for the overlay already installed leaves the running web alone: nothing restored, installed, stopped or restarted", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    const pinned = readFileSync(join(checkout, "package.json"), "utf8")
+    writeFileSync(join(checkout, "package.json"), pinned.replace("0.52.3", "0.57.1-dev.1"))
+    writeInstallRecord(checkout, { schema: "starci/deps-install-local@1", registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/grammar", version: "0.57.1-dev.1", pins: [{ file: "package.json", field: "dependencies", spec: "0.52.3" }] }] })
+    const log: string[] = []
+    const same = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(log))
+    assert.deepEqual(log, [], "no stop, no install, no prepare, no restart")
+    assert.equal(same.data.restart, "none")
+    assert.deepEqual(same.data.overlay, ["@starci/grammar@0.57.1-dev.1"], "the overlay stays in effect")
+    assert.match(same.message, /the local overlay is already installed \(@starci\/grammar@0\.57\.1-dev\.1\): nothing restored, reinstalled or restarted for it/u)
+    assert.match(readFileSync(join(checkout, "package.json"), "utf8"), /0\.57\.1-dev\.1/u, "the overlay pin is kept")
+    // a code change under be/ alone restarts the api only; the web keeps running
+    mkdirSync(join(pusher, "be"), { recursive: true })
+    writeFileSync(join(pusher, "be", "main.ts"), "export {}\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "be change")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const api: string[] = []
+    const be = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(api))
+    assert.deepEqual(api, ["prepare", "restart api"])
+    assert.deepEqual(be.data.restarted, ["api"])
+    // a new version of the overlay is a change the web consumes: restored, installed and both sides restarted, as before
+    const dry = await devSync(request(checkout, { local: ["@starci/grammar@0.57.2-dev.1"] }))
+    assert.match(dry.message, /would restore the committed pins of package-lock\.json, package\.json/u)
+    assert.deepEqual(dry.data.sides, ["be", "fe"])
+})

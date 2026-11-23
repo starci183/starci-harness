@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (`app stack up`, `app stack restart`, `stack/local-edge.mts`, `stack/edge-server.mts`): the edge of a dev web. A front-end process (cwd under fe/) whose port a dev tunnel route publishes runs behind a small proxy that holds the declared port, while the process listens on a free backend port. The edge forwards only once the backend's page answers 200, every stylesheet it links answers 200 and, in an app on Grammar, the CSS holds `.starci-core-icon`; until then, and whenever the backend stops answering, it serves a 503 "<app> đang cập nhật, tải lại sau vài giây" page that reloads itself, so the tunnel never serves a page with no Grammar CSS (every icon unsized) while `dev sync` installs and restarts. The edge outlives restarts and dev syncs (no recorded process, a copy of its script in the state folder), `up` restarts it when it alone is gone, `down` ends it; the process's own edge on its port is no `STACK_LOCAL_SECOND_COPY`. Specs: `src/stack-local.spec.mts`.
+- Fixed (`app stack up`, `app stack restart`): one tree per process and checkout. Before a process starts, every earlier tree of the same command started from the same checkout is ended by its root process (`endEarlierTrees`: a process running from `<checkout>/node_modules/` or the process's folder with every literal argument, climbed through the npx and cmd shims that carry them). A tree another state base recorded (a `stack up` from before the state base moved) kept running beside the one a dev sync started: two ts-node-dev api watchers of one checkout. Other checkouts and the gallery's own `next dev` are left alone. Specs: `src/stack-local.spec.mts`.
+
 ## 6.17.9 - 2026-11-23
 
 - Added (canon pins, fe-stack): `@assistant-ui/react` 0.15.38, the optional peer of the Grammar's core AI chat ext (`@starci/grammar/core/ext/chat`), as the fe-stack concern `ai-chat`; an app imports it only through the ext.

@@ -125,6 +125,13 @@ const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly o
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
 }
 
+/** True when the packages a sync names are exactly the overlay already installed: each with its version, the same name@version set. Pure. */
+export const sameOverlay = (named: readonly { readonly name: string; readonly version?: string | undefined }[], installed: readonly string[]): boolean => {
+    if (named.length !== installed.length || named.some((one) => one.version === undefined)) return false
+    const wanted = new Set(named.map((one) => `${one.name}@${String(one.version)}`))
+    return wanted.size === installed.length && installed.every((line) => wanted.has(line))
+}
+
 /** The packages one sync installs from the local registry: the ones the verb names, else this machine's standing overlay (`devSync.local`). Pure. */
 export const syncLocal = (named: readonly string[], settings: Pick<DevSyncSettings, "local">): readonly string[] => (named.length > 0 ? named : settings.local)
 
@@ -170,8 +177,13 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     }
     const commits = Number((await gitOk(root, ["rev-list", "--count", `${from}..${to}`])).out) || 0
     const files = from === to ? [] : (await git(root, ["diff", "--name-only", from, to])).split("\n").filter((file) => file !== "")
-    const requested = request.local.map(parseRequested)
-    const overlayChanged = overlayBefore.length > 0 || requested.length > 0
+    const named = request.local.map(parseRequested)
+    const aside = leftAside(root, deps.fs)
+    // The overlay this sync asks for is the one already installed (same name@version each, no committed pin or lockfile moved, a whole
+    // node_modules in place): nothing is restored, reinstalled or restarted for it, so the web the owner has open keeps running.
+    const keepsOverlay = overlayBefore.length > 0 && sameOverlay(named, overlayBefore) && !files.some((file) => ownFiles.includes(file)) && aside.length === 0 && existsSync(join(root, "node_modules"))
+    const requested = keepsOverlay ? [] : named
+    const overlayChanged = !keepsOverlay && (overlayBefore.length > 0 || requested.length > 0)
     // A tree the last sync could not build or migrate is built and restarted again whole, though the checkout has not moved since.
     const unprepared = existsSync(join(root, UNPREPARED))
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
@@ -179,8 +191,7 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
     const processes = processesFor(sides, request.processes)
     const lockChanged = files.includes(LOCKFILE)
-    const aside = leftAside(root, deps.fs)
-    const needInstall = lockChanged || overlayBefore.length > 0 || aside.length > 0 || !existsSync(join(root, "node_modules"))
+    const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
     // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
     // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
@@ -195,7 +206,8 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     if (!request.execute) {
         say(detached ? `would put ${root} back on dev at origin/dev ${to.slice(0, 9)} (detached at ${from.slice(0, 9)}, ${String(commits)} commit(s) behind)` : `would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
         if (unprepared) say(`the last sync could not build the workspace packages (${UNPREPARED}): would build them and restart both sides`)
-        if (overlayBefore.length > 0) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
+        if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing to restore or reinstall, and nothing restarts for it`)
+        if (overlayBefore.length > 0 && !keepsOverlay) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
         if (aside.length > 0) say(`would move back the copy an earlier sync left aside: ${aside.join(", ")}`)
         if (writesModules) say(`would stop the dev stack processes the ${request.env} environment records before node_modules is written, and restart them after`)
         say(needInstall ? "would run npm ci (the old node_modules moved aside until it passes)" : "npm ci: the lockfile did not change, skipped")
@@ -208,7 +220,8 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
         return { data: { ...base, overlay: overlayBefore, installed: false, migrated: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
     }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
-    if (record !== undefined) {
+    if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing restored, reinstalled or restarted for it`)
+    else if (record !== undefined) {
         const restored = await gitOk(root, ["checkout", "--", ...ownFiles])
         if (!restored.ok) throw new Refusal("DEV_SYNC_RESTORE", `git checkout -- ${ownFiles.join(" ")} in ${root}: ${restored.err}`)
         rmSync(installRecordFile(root), { force: true })
