@@ -3,12 +3,14 @@
  * is deleted: `shared.PHONE_WIDTH` and `shared.usePhone` of `@starci/grammar/core/ext/graph`. There is nothing to rewrite them to (a graph no longer differs
  * on a phone), so each use is marked `// TODO(grammar-0.55.1): <what to do>` and listed. The initial focus is the new optional `focusId` prop.
  * Additions of 0.55.1 (`focusId`, the ext BarChart's `highlightLast`) need no codemod; the fixed v0550 is re-run in place (`starci app codemod v0550`).
+ * Second pass (`agent-tone.mts`): the dev line's agent tones are deleted for the tone slot; `tone="agent"` and `agentToneOf(x)` become the app's `agentTone(x)`.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join, relative } from "node:path"
 import type * as Ts from "typescript"
 import type Compiler from "typescript"
 import { sourceRoots } from "../v0540/index.mts"
+import { transformAgentTone } from "./agent-tone.mts"
 
 /** The marker of a case left for a person. */
 export const MARK = "TODO(grammar-0.55.1)"
@@ -97,19 +99,21 @@ export function runV0551({ root, write, ts }: { readonly root: string; readonly 
     for (const path of all.sort()) {
         const rel = relative(root, path).replaceAll("\\", "/")
         const original = readFileSync(path, "utf8")
-        const out = transformSource(ts, rel, original)
-        if (out.findings.length === 0) continue
-        findings.push(...out.findings)
+        const graph = transformSource(ts, rel, original)
+        const tones = transformAgentTone(ts, rel, graph.text)
+        const found = [...graph.findings, ...tones.findings]
+        if (found.length === 0) continue
+        findings.push(...found)
         files.push(rel)
-        if (write && out.text !== original) writeFileSync(path, out.text)
+        if (write && tones.text !== original) writeFileSync(path, tones.text)
     }
     return { codemod: "v0551", version: "0.55.1", mode: write ? "execute" : "dry", findings, files }
 }
 
 /** The report as Markdown: every use of a deleted member, left for a person. */
 export function v0551Markdown(report: V0551Report): string {
-    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph opens at 100% on every screen), ${report.mode}`, ""]
-    lines.push(`${String(report.findings.length)} uses of a deleted graph member in ${String(report.files.length)} files, marked \`${MARK}\`.`, "")
+    const lines = [`# starci app codemod v0551 (Grammar ${report.version}: the graph opens at 100% on every screen; the agent tones become the app's tone slot), ${report.mode}`, ""]
+    lines.push(`${String(report.findings.length)} uses of a deleted graph member or agent tone in ${String(report.files.length)} files, marked \`${MARK}\`.`, "")
     if (report.findings.length) lines.push(...report.findings.map((f) => `- ${f.file}:${String(f.line)} ${f.reason}: \`${f.before.replaceAll("`", "'")}\``), "")
     return `${lines.join("\n")}\n`
 }

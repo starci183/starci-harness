@@ -49,7 +49,7 @@ test("runV0551 walks an app checkout, dry unless written, and is listed for an u
         const dry = runV0551({ root, write: false, ts })
         assert.equal(dry.findings.length, 1)
         assert.equal(readFileSync(file, "utf8"), `${IMPORT}const w = shared.PHONE_WIDTH\n`)
-        assert.match(v0551Markdown(dry), /1 uses of a deleted graph member in 1 files/u)
+        assert.match(v0551Markdown(dry), /1 uses of a deleted graph member or agent tone in 1 files/u)
         runV0551({ root, write: true, ts })
         assert.match(readFileSync(file, "utf8"), /TODO\(grammar-0\.55\.1\)/u)
     } finally {

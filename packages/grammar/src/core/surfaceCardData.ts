@@ -3,6 +3,7 @@ import type { PresentationState } from "./state.js"
 import type { MarkState } from "./statusMark.js"
 import type { DropdownMenuEntry } from "./branch/DropdownMenu/index.js"
 import type { AvatarKind, AvatarShape } from "./leaf/Avatar/index.js"
+import type { ToneSlot } from "./toneSlot.js"
 import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
@@ -25,6 +26,8 @@ export type AvatarData = {
     readonly src?: string
     readonly kind?: AvatarKind
     readonly shape?: AvatarShape
+    /** The app's own soft pair for the initials (`ToneSlot`, 0.55.1), as on an `Avatar`. */
+    readonly tone?: ToneSlot
 }
 
 /** A picture as data. `alt` is required; pass "" only for a purely decorative one. */
