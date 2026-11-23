@@ -1,1 +1,8 @@
 * text=auto eol=lf
+
+# Every changelog is append-only under "## Unreleased": lanes of one batch each add their own bullets, so two lanes always touch the
+# same hunk. Union merge keeps both sides' lines instead of conflicting (the batch lander merges with `git merge`, harness/land-batch.ts).
+CHANGELOG.md merge=union
+packages/*/CHANGELOG.md merge=union
+# Not unioned on purpose: packages/grammar/codemods/index.mts lists codemods by import + array entry; a union of two additions can
+# reorder or break the list, so a second codemod in one batch still conflicts there and rebases (a per-file registry is a larger change).
