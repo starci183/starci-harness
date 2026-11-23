@@ -36,10 +36,23 @@ const machineSchema = z.strictObject({
     adopted: z.record(z.string(), adoptedSchema).default({}),
 })
 
+/**
+ * The settings of this host as a machine (contexts/harness/host.md "Host settings"): the one place every CLI copy on the machine (the harness checkout,
+ * its lane worktrees, a CLI installed in an app's node_modules) reads them from, fresh at each use (harness/host-settings.ts).
+ */
+const hostSettingsSchema = z.strictObject({
+    // The free space a heavy command's drive keeps, in MB; over ops/liveness.yaml heavy.diskFloorMb, which is only the default of a host that sets none.
+    diskFloorMb: z.number().int().nonnegative().optional(),
+})
+
 const fileSchema = z.strictObject({
     schema: z.literal("starci/machines@1"),
+    host: hostSettingsSchema.optional(),
     machines: z.record(z.string().regex(MACHINE_NAME), machineSchema).default({}),
 })
+
+/** The `host` block of config.yaml. */
+export type HostSettingsBlock = z.infer<typeof hostSettingsSchema>
 
 /** One machine of config.yaml. */
 export type Machine = z.infer<typeof machineSchema>

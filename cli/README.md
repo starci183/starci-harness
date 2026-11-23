@@ -329,7 +329,11 @@ run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row 
 `governorStorePath` of `harness/ledger.ts`: `STARCI_LOCAL_ROOT`'s machine.sqlite when set, else one store per user, so every checkout and every installed
 CLI of the host counts against the same slots), whose admissions the store's lock serialises. `admission` is a count and nothing else: no free-RAM room,
 reserve, per-kind need or CPU rule decides a start (`slotCap`). The one floor is the disk: while the drive the command works on has under
-`heavy.diskFloorMb` free (`harness/host-floors.ts`), nothing starts, a lone command included, and the queue line names the floor. A command past the
+the host's disk floor free (`harness/host-floors.ts`), nothing starts, a lone command included, and the queue line names the floor and where it is
+set. The floor is the machine's, set in ONE place every CLI copy reads: `host.diskFloorMb` of config.yaml (`harness/host-settings.ts`,
+[contexts/harness/host.md](../contexts/harness/host.md) "Host settings"); `heavy.diskFloorMb` of ops/liveness.yaml is only the default of a host
+that sets none. A waiting command reads the rules again at every admission attempt (`currentHeavyRules`), so a floor or a cap changed while it
+waits reaches it without a restart. A command past the
 cap waits in a first come, first served queue (`servingOrder`), holding nothing; only the head may start; every minute it prints its place, why it waits
 and who runs (`waitLine`). A row whose process is gone is dropped at the next admission (`pidAlive`). A heavy command a running one starts (a
 `starci check run` inside a command check) is admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, and an admission leaves those

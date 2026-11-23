@@ -111,6 +111,19 @@ ops/vps/services/embeddings/. BuildKit's entry (`starci.buildkit`, `host-compose
 builds its definition (ops/vps/services/buildkit/) and registers its adapter (render, up, down, ping) in `cli/src/harness/host-compose.ts`;
 until then it reads `unbuilt` (`HOST_SERVICE_UNBUILT`) and nothing is deployed for it.
 
+### Host settings
+
+The settings of this host as a machine live in the `host` block of the same config.yaml, never in the repository, and every CLI copy of the
+machine (the harness checkout, a lane worktree, a CLI installed in an app's `node_modules`, which finds config.yaml through the harness home above
+its working folder) reads them fresh at each use (`harness/host-settings.ts`):
+
+```yaml
+host:
+  diskFloorMb: 15360   # the free space a heavy command's drive keeps; over heavy.diskFloorMb of ops/liveness.yaml, the default
+```
+
+A host with no config.yaml (a CI runner) reads every default.
+
 ### Machines
 
 A machine is an entry of **config.yaml** in the harness home's state (`<main checkout>/.runtime/config.yaml`, or `STARCI_LOCAL_ROOT`),

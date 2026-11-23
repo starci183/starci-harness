@@ -139,7 +139,7 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    route with several screen folders is current when any of their screen files is touched.
 2. **What is judged.** `starci app check` (a whole run) judges the files the commits since the base, the index and the work tree
    change. On a branch other than `main` and `dev` the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/dev`, else with
-   `origin/main`, so a lane's own check judges the whole diff the batch lander's gate judges (the lane merged into `origin/dev`); on `main`, on `dev`
+   `origin/main`, so a lane's own check judges the whole diff its landing brings to dev (the lane merged into `origin/dev`); on `main`, on `dev`
    or when none of those refs is behind `HEAD` it is the lint ratchet's base (`origin/<branch>`, else `HEAD^`). The same base serves
    `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7) and the UI Audit (PROJECT-GALLERY-8), and the run prints it
    (`gallery coupling: judged N file(s) changed since <sha>, <why>`). A lane's own `origin/<lane>` is never the base: once the lane is pushed it

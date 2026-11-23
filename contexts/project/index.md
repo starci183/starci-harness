@@ -184,8 +184,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 14 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
-  - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander · PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
+- [project/branches.md](../project/branches.md) · 12 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
+  - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 A lane lands on `dev` itself: one squashed commit, right after its gate · PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
 - [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
 - [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as an app, the business package its agents run from, and the seed standard that gives a ...
@@ -193,7 +193,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [project/check-cache.md](../project/check-cache.md) · 79 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
   - ids: Machine-local
-- [project/cicd.md](../project/cicd.md) · 57 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/cicd.md](../project/cicd.md) · 61 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Dev and prod · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/desktop.md](../project/desktop.md) · 12 KB — A project that offers its web app as an installable program (macOS, Windows, Linux) declares a desktop app.
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
@@ -212,7 +212,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [project/shared-services.md](../project/shared-services.md) · 13 KB — A managed VPS can run opt-in shared services beside the app stacks, the way it runs the monitoring stack (monitoring.md): one harness-owned stack per service per server, deployed ...
   - sections: PROJECT-SHARED-SERVICES-1 A catalog entry per service, every component a toggle · PROJECT-SHARED-SERVICES-2 The embeddings server · PROJECT-SHARED-SERVICES-3 The key · PROJECT-SHARED-SERVICES-4 An environment opts in · Refusals · Before the first `up` on a server
   - ids: opt-in
-- [project/stacks.md](../project/stacks.md) · 118 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
+- [project/stacks.md](../project/stacks.md) · 119 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
   - sections: PROJECT-STACKS-1 One root per app · PROJECT-STACKS-2 The manifest declares everything the app runs and reads · PROJECT-STACKS-3 Two kinds of environment, each with its runbook · PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · PROJECT-STACKS-6 Every runbook declares the same operations · PROJECT-STACKS-7 CI holds names; every value stays with its consumer · PROJECT-STACKS-8 Quality services are declared and required · PROJECT-STACKS-9 A remote application API is consumed, not administered · PROJECT-STACKS-10 Local runs · PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment · PROJECT-STACKS-12 Seed data lives in the seed levels of the stack · PROJECT-STACKS-13 Data lives in seed copies: a standard is how a thing is born, a backup is what it became · PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver · PROJECT-STACKS-15 An object store a dev environment runs has a public route; links are built on it, never on the loopback · Read with · PROJECT-STACKS-16 A stack command whose output is withheld still names why it failed · PROJECT-STACKS-17 Monitoring is the server's, opted into per environment · PROJECT-STACKS-21 Shared services are the server's, opted into per environment · PROJECT-STACKS-22 One web image per sha; its public config is read at runtime · PROJECT-STACKS-18 Moving a stack to new runtime names: standby, copy, adopt · PROJECT-STACKS-19 A Postgres major upgrade is a dump and restore into a declared new volume · PROJECT-STACKS-20 An environment pending its cutover: reported, never deployed
   - ids: shop-backup, shop-standard
 - [project/statics.md](../project/statics.md) · 10 KB — An app's own images and videos (empty-state illustrations, hero art, a product video) are not code and not user data.
@@ -242,7 +242,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/card.md](../ui/components/card.md) · 12 KB — Contract: Card.
   - sections: Job · Choose · Actions · Look · Icons are outline (ICONS-OUTLINE) · Size · States · Owner split · Rules · Rows and labels · A card that waits on the reader, and an agent's tile (0.55.0)
   - ids: CHOICE-ROW-CONTROL, LABEL-SUBLABEL-HIERARCHY, LIST-ROW-NAVIGATION, ROW-TITLES-NOUNS
-- [ui/components/charts.md](../ui/components/charts.md) · 4 KB — Contract: Charts.
+- [ui/components/charts.md](../ui/components/charts.md) · 5 KB — Contract: Charts.
   - sections: Job · Where it lives · Choose · API · Look
 - [ui/components/chip.md](../ui/components/chip.md) · 6 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -252,7 +252,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
 - [ui/components/data-views.md](../ui/components/data-views.md) · 9 KB — Contract: data-views.
   - sections: Meter reading voice (0.46.0) · Bars follow HeroUI ProgressBar sizes · Job · Choose
-- [ui/components/diagram.md](../ui/components/diagram.md) · 8 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 10 KB — Contract: Diagram.
   - sections: Job · Choose · The canvas · Variants · Size · States · Accessibility · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.46.2) · Popover edge and the phone sheet (0.48.0) · Scrolling · Size · States · Owner split · Rules
@@ -268,7 +268,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/graph-from-nivo.md](../ui/components/graph-from-nivo.md) · 3 KB — Where each prop of the nivo-lite app's own `FlowGraph` went.
   - ids: nivo-lite
-- [ui/components/graph.md](../ui/components/graph.md) · 27 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+- [ui/components/graph.md](../ui/components/graph.md) · 28 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Migrating from an app's own graph · Layout and helpers · The demo and the browser proof
   - ids: string;
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.

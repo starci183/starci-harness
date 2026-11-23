@@ -40,12 +40,12 @@ checkout and no lock: prod work never moves the dev checkout, and a dev batch ne
 
 | | dev | prod |
 |---|---|---|
-| source | lanes -> the batch lander -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
+| source | each lane lands itself: `lane gate --push --land` -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
 | harness packages | local first: every harness change goes to the local registry at once (`starci deps publish-local --execute` in the harness); the app adopts it on dev at once (`deps install-local` in a lane, `devSync.local` on the dev checkout); a lane never waits for npm | npm, published once per release train for prod only (`release push`, CI publish); the cut pins npm versions ONCE: `deps install-local --restore`, then each local pin bumped to its npm version |
 | local pins | committed on `dev` and lane branches when `hfs.json` declares `deps.devAllowsLocalRegistry` (the default for an app on local-first dev) (`deps check` accepts the local-registry codes there, [authority/packages.md](../authority/packages.md) "Dev-only local pins") | refused: `release push`, `release cut`, `app release`, a prod deploy and a push of main hold npm versions |
-| checks | the lander's one `app check --env prod` per batch | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
+| checks | the lane's own fast gate, and a fast re-check (codegen, typecheck) when dev moved before it landed | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
 | runs on | the app's main dev checkout and its dev stack (`starci app stack up --env dev`), exposed through the dev tunnel (Cloudflare, PROJECT-STACKS-15) | staging, then prod (Docker Swarm, below) |
-| moves by | `starci dev sync --execute`, by hand or by the lander after a landed batch | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
+| moves by | `starci dev sync --execute`: by its debounced runner after a landing (`dev sync-runner`), or by hand | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
 
 **`starci dev sync [--local <pkg>]... [--dir <checkout>] [--env <env>] [--no-restart] --execute`** brings an app's main dev checkout
 to `origin/dev` and its running dev stack onto that code:
@@ -58,6 +58,15 @@ to `origin/dev` and its running dev stack onto that code:
    version), whose commits move no pinned manifest and no lockfile, keeps it: nothing is restored, installed, stopped or restarted
    for it, so the web the owner has open keeps running and only the side a commit changed restarts.
 3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
+   **Build first.** When the sync installs, the new tree is installed and built before anything stops (`core/dev/stage.ts`): a staging
+   worktree of the checkout's repository at the new commit, `<parent>/.<checkout>.starci-next`, gets the `npm ci`, the `--local` packages and the
+   app's `codegen` and `build:modules`, each under the heavy governor, while the running api and web keep serving the old tree. A failure there is
+   `DEV_SYNC_BUILD` with nothing stopped or moved. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
+   entries of the staging tree: every `node_modules`, every `dist`, generated files) are moved in by rename on the same volume, the workspace
+   links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the tracked files the staged install changed
+   (an overlay's pins and lockfiles) are copied, and what they replaced is removed, retrying a file an antivirus holds for a moment. A move that
+   fails puts every move back (`DEV_SYNC_SWAP`). So the downtime of a sync is the swap and the restart. The in-place install below is the fallback
+   for a copy an interrupted in-place sync left aside.
    Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
    local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
    children and seen gone: on Windows a running process that loaded a `.node` file makes `npm ci` die halfway with EPERM. A
@@ -65,8 +74,7 @@ to `origin/dev` and its running dev stack onto that code:
    `node_modules` it replaces (the root's and each workspace's) renamed aside first, on the same volume: a folder a process still
    holds refuses the rename at once, one retry follows a short pause, then `DEV_SYNC_BUSY` with nothing deleted. A failed
    install puts every copy back; the copies are removed only once it passed, and a copy left aside by a sync that died is moved
-   back by the next sync, which installs again. (A staging install swapped in by a rename is not sound for npm workspaces:
-   their links and nested `node_modules` would point into the staging copy.) Then the tree is prepared as the lane gate and the
+   back by the next sync, which installs again. Then the tree is prepared as the lane gate and the
    lander prepare theirs (`harness/prepare-tree.ts`): the app's `codegen` and `build:modules` (its workspace packages, whose `main`
    is their `dist`), each it declares, whenever the sync installed or a running process reads a changed file. A step that fails is
    `DEV_SYNC_BUILD` with its output; the next sync builds again and restarts both sides though the checkout has not moved. The
@@ -92,8 +100,17 @@ to `origin/dev` and its running dev stack onto that code:
 Hot reload is opt-in for live coding: `starci app stack up --env dev --execute --watch` (or `stack restart --watch`) runs the
 process's own watcher argv.
 
-**The lander's auto-sync** is a setting of this machine alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the
-state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
+**The debounced dev sync.** A landing never syncs by itself: `lane gate --land` marks its app's dev checkout as wanting a sync, and one runner per
+checkout (`starci dev sync-runner`, started through a relay so that no terminal tab or agent owns it) waits until no landing marked it for
+`debounceSeconds` (120 s), stops the checkout's stray dev servers (a dev server running from inside the checkout that its stack does not record;
+nothing else), runs `dev sync --execute` once to the newest `origin/dev`, and syncs again only when a landing marked the checkout during that
+sync. Its files are in the checkout's git folder, the same for every CLI copy of the machine: `<git common dir>/starci-dev-sync/` holds the mark
+(`wanted.json`), the status (`status.json`: `waiting`, `syncing`, `synced`, or `failed` with the refusal's code and message), the runner's lock
+(its pid) and its log. `starci dev sync-runner --status --dir <checkout>` prints the status and the pending mark; `--request` marks and starts it
+by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once.
+
+Its settings are this machine's alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the state base `STARCI_LOCAL_ROOT` when set; a CLI
+installed in an app's `node_modules` reads the same file through the harness home above its working folder), schema `starci/local-settings@1`:
 
 ```json
 {
@@ -108,8 +125,8 @@ state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
 }
 ```
 
-**One entry per app.** The file is machine-wide but each lander syncs only its own repository's dev checkout: `devSync.repos` maps the repository
-a lander runs in to its checkout (and optional `afterLand`, `env`, `debounceSeconds`, `processes`). With any entry listed, a repository without one syncs
+**One entry per app.** The file is machine-wide but a landing marks only its own repository's dev checkout: `devSync.repos` maps the repository
+a lane lands in to its checkout (and optional `afterLand`, `env`, `debounceSeconds`, `processes`). With any entry listed, a repository without one syncs
 nothing; with none listed the top-level `checkout` is a one-app machine's. And two syncs of one checkout never run together: `dev sync --execute` takes
 a lock per checkout (temp folder, by path) and a second one waits for the first (`DEV_SYNC_BUSY` after 30 minutes; a dead holder is reclaimed).
 
@@ -120,22 +137,22 @@ a lock per checkout (temp folder, by path) and a second one waits for the first 
 ```
 
 `devSync.local` is this machine's standing overlay and the default way dev runs harness builds: the builds that dev keeps running from the
-local registry (e.g. `["grammar@0.55.0-content.4", "eslint-grammar-core@0.55.0-content.4"]`). Every sync installs it, the lander's auto-sync and a
+local registry (e.g. `["grammar@0.55.0-content.4", "eslint-grammar-core@0.55.0-content.4"]`). Every sync installs it, the debounced runner's and a
 plain `starci dev sync` alike, until the setting is emptied, so dev runs the newest harness without waiting for npm. An app without
 `deps.devAllowsLocalRegistry` keeps its committed pins on npm (its push gate refuses `DEPS_LOCAL_REGISTRY_COMMITTED`); with it, `dev` and lane
 branches carry the local pins too. `--local` on the verb overrides it for one sync.
 
-`publishLocal` (default `false`) is the harness lander's: after each batch lands on the harness's own `dev`, it runs `starci deps publish-dev
---execute` in its worktree (the changed packages and every package that pins one of them, as `X.Y.Z-dev.N`, their publish copies pinning each
-other exactly) and sets `local` to exactly those versions, before the sync ([branches.md](branches.md) PROJECT-BRANCH-3). The harness lander syncs
-only when `checkout` names the app's dev checkout (its own repository has no dev stack).
+A harness landing that changed a published package runs `starci deps publish-dev --execute` in the lane's worktree (the changed packages and every
+package that pins one of them, as `X.Y.Z-dev.N`, their publish copies pinning each other exactly), sets `local` to exactly those versions and marks
+every app checkout of `devSync.repos` for its sync ([branches.md](branches.md) PROJECT-BRANCH-3). `publishLocal` is read by the deprecated harness
+batch lander only.
 
-`afterLand` (default `false`) makes `starci lane land` run `dev sync --execute` on `checkout` (default: the lander's app main
-checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
-`local` keeps those packages on the local registry across syncs; empty restores the registry versions. `processes` names the
-stack processes of each side. A sync that is refused or fails is said in the lander's log and never stops the lander.
+`afterLand` (default `true` in a `repos` entry, `false` at the top level) lets a landing mark `checkout` (default: the repository's main checkout);
+landings inside `debounceSeconds` of each other give one sync after the last. `local` keeps those packages on the local registry across syncs;
+empty restores the registry versions. `processes` names the stack processes of each side. A sync that is refused or fails is written to the
+runner's status with its reason, and the next landing (or `--request`) tries again.
 
-The lander never runs from a checkout's `node_modules`: a `starci lane land` started from inside a worktree of the app (`npx
+The deprecated batch lander never runs from a checkout's `node_modules`: a `starci lane land` started from inside a worktree of the app (`npx
 starci lane land` in its main checkout) installs the same starci-harness version once into `<lanes>/_lander-cli/<version>`
 (staged, then renamed into place) and runs itself again from there, so a dev sync or any `npm ci` of the checkout cannot wipe
 the files under the running lander. Its `_batch-lander` worktree is no home: the lander runs `npm ci` there itself whenever a
@@ -143,9 +160,10 @@ batch's lockfile moves. A lander started from outside every worktree (a global i
 install) runs as it is.
 
 **The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
-"bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` through the
-same batch lander under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks and publish checks, no test suite; then `git push origin HEAD:dev`), and with
-`devSync.publishLocal` each landed batch goes to the local registry as the dev line and into the app's dev checkout at once. npm sees only the
+"bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` with
+`lane gate --push --land` under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks and publish checks, no test
+suite; then the squashed commit with `git push`), and each landing that changed a published package goes to the local registry as the dev line and
+into the apps' dev checkouts by their debounced syncs. npm sees only the
 train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
 `starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on
 `main`. The harness checkout's branch (`D:/.claude`, on `dev` today) is the owner's choice.
@@ -415,16 +433,16 @@ level; the target decides which one a push gets.
 
 | Level | Runs on | Gates | Skips |
 |---|---|---|---|
-| dev (fast) | a push whose every ref is `dev` or `lane/*` (the managed pre-push hook), `app push` of such a target, `lane gate`, the batch lander's gate | the deps check (dev-local pins allowed where declared), types with its package builds and codegen, the lane's own tests (the changed specs and those whose closure reaches a changed file), db, the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) | the hfs rule sweep (structure, machine, unused-symbol, contract-emit, secrets), the rule-188 first audits and the ui-audit stale and missing blocks, the project and nivoos package checks, the whole test suite and coverage, lint, format, wiring, sonar, the CI build and the audit |
+| dev (fast) | a push whose every ref is `dev` or `lane/*` (the managed pre-push hook), `app push` of such a target, `lane gate` (and its `--land` re-check after dev moved: codegen and typecheck only), the deprecated batch lander's gate | the deps check (dev-local pins allowed where declared), types with its package builds and codegen, the lane's own tests (the changed specs and those whose closure reaches a changed file), db, the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) | the hfs rule sweep (structure, machine, unused-symbol, contract-emit, secrets), the rule-188 first audits and the ui-audit stale and missing blocks, the project and nivoos package checks, the whole test suite and coverage, lint, format, wiring, sonar, the CI build and the audit |
 | full | a push of `main` or a `v*` tag, any other branch, `release cut`, `release push`, `app release` (its `app-check` row) | every gate: every hfs rule, the first audits of every screen changed since the last main, the full test suite and coverage, sonar, the CI parity families | nothing |
 
 The fast level prints one line first naming what it skips and that those gates run at the main cut. One pass per push: a green
 fast run on a clean tree is remembered by its content (outside `.starcistacks/cache`), the env, the harness version and
-`origin/dev`, beside the repository's git objects, so the hook of the push that follows the lander's gate does not run it again.
+`origin/dev`, beside the repository's git objects, so the hook of the push that follows a gate (the lane's push, then its landing's push of dev) does not run it again.
 The design approval stays at dev because it is a product decision. screen.yaml and audit records may be completed at the main cut.
 
-The lander lands each batch as ONE commit (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and a newer push or registration of a lane cancels the lane's
-running local gate or its batch gate (`superseded by <sha>` in the status).
+Each landing is ONE commit on dev (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and a newer push of a lane cancels the lane's
+running local gate (`superseded by <sha>` in the status).
 
 - **Branch and tag rules.** `main`: no force push, no deletion, updates only by the owner and the release push; a pull
   request needs the `verdict` check. Tags `v*`: creation only by the same, never moved or deleted. The canon pre-push hook

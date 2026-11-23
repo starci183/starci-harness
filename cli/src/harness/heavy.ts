@@ -10,6 +10,8 @@ import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
 import type { RunOptions } from "../shared/exec.js"
 import { floorsHeld, freeCommitMb, readFloors } from "./host-floors.js"
+import { readHostSettings } from "./host-settings.js"
+import type { HostSettings } from "./host-settings.js"
 import { governorStorePath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
 import { assertNotRemoving } from "./remove-lock.js"
@@ -60,6 +62,13 @@ const loaded = new Map<string, HeavyRules>()
 export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     const known = loaded.get(dir)
     if (known !== undefined) return known
+    const rules = readHeavyRules(dir)
+    loaded.set(dir, rules)
+    return rules
+}
+
+/** Reads and validates the `heavy` block of ops/liveness.yaml now, never from the cache of `loadHeavyRules`. */
+export const readHeavyRules = (dir: string = locateOps()): HeavyRules => {
     const file = join(dir, "liveness.yaml")
     let raw: unknown
     try {
@@ -69,8 +78,34 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     }
     const parsed = z.looseObject({ heavy: heavySchema }).safeParse(raw)
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: ${z.prettifyError(parsed.error)}`)
-    loaded.set(dir, parsed.data.heavy)
     return parsed.data.heavy
+}
+
+/**
+ * The disk floor this host keeps and where it is set: config.yaml `host.diskFloorMb` (harness/host-settings.ts), the one machine-level place every CLI copy
+ * reads, else the `heavy.diskFloorMb` default of ops/liveness.yaml. Pure over the settings it is handed.
+ */
+export const diskFloorOf = (rules: Pick<HeavyRules, "diskFloorMb">, settings: Pick<HostSettings, "diskFloorMb" | "source">): { readonly diskFloorMb: number; readonly source: string } =>
+    settings.diskFloorMb === undefined ? { diskFloorMb: rules.diskFloorMb, source: "heavy.diskFloorMb (ops/liveness.yaml)" } : { diskFloorMb: settings.diskFloorMb, source: `host.diskFloorMb (${settings.source})` }
+
+/**
+ * The heavy rules as they stand now: ops/liveness.yaml read again and the host's disk floor laid over it (`diskFloorOf`). A waiting command judges every
+ * admission attempt on these, so a floor or a cap the owner changes reaches a command already in the queue. A read that fails keeps `last`.
+ */
+export const currentHeavyRules = (last: HeavyRules, read: () => HeavyRules = readHeavyRules, settings: () => Pick<HostSettings, "diskFloorMb" | "source"> = readHostSettings): HeavyRules & { readonly diskFloorSource: string } => {
+    let rules = last
+    try {
+        rules = read()
+    } catch {
+        // ops/liveness.yaml mid-write or gone: the rules of the last attempt stand.
+    }
+    let floor = { diskFloorMb: rules.diskFloorMb, source: "heavy.diskFloorMb (ops/liveness.yaml)" }
+    try {
+        floor = diskFloorOf(rules, settings())
+    } catch {
+        // config.yaml unreadable this instant: the liveness default stands for this attempt.
+    }
+    return { ...rules, diskFloorMb: floor.diskFloorMb, diskFloorSource: floor.source }
 }
 
 /**
@@ -500,16 +535,21 @@ export interface Governed {
     readonly freeMb: () => number
     /** The host's physical RAM in MB, which sets the slot count; the live host's when absent. */
     readonly totalMb?: number
-    /** The host floors held now for a command working in `cwd` (harness/host-floors.ts); none when absent (a spec's host). */
-    readonly floors?: (cwd: string) => string[]
+    /** The host floors held now for a command working in `cwd` under `rules` (harness/host-floors.ts); none when absent (a spec's host). */
+    readonly floors?: (cwd: string, rules: HeavyRules) => string[]
+    /** The rules as they stand now, read again at every admission attempt (`currentHeavyRules`); `rules` throughout when absent. */
+    readonly reread?: (last: HeavyRules) => HeavyRules
 }
 
-/** The host floors held now for work in `cwd`: the free space of its drive under `heavy.diskFloorMb`. */
-export const heavyFloors = (rules: HeavyRules, cwd: string): string[] => floorsHeld({ diskFloorMb: rules.diskFloorMb }, readFloors(cwd))
+/** The host floors held now for work in `cwd`: the free space of its drive under the host's disk floor (`currentHeavyRules`). */
+export const heavyFloors = (rules: HeavyRules, cwd: string): string[] => {
+    const current = currentHeavyRules(rules, () => rules)
+    return floorsHeld({ diskFloorMb: current.diskFloorMb, source: current.diskFloorSource }, readFloors(cwd))
+}
 
 const liveHost = (): Governed => {
     const rules = loadHeavyRules()
-    return { rules, freeMb: hostFreeMb, floors: (cwd) => heavyFloors(rules, cwd) }
+    return { rules, freeMb: hostFreeMb, reread: (last) => currentHeavyRules(last), floors: (cwd, now) => floorsHeld({ diskFloorMb: now.diskFloorMb, source: (now as { readonly diskFloorSource?: string }).diskFloorSource }, readFloors(cwd)) }
 }
 
 /** How often a waiting command prints its position, so a hook that waits does not look hung. */
@@ -583,9 +623,11 @@ export const governed = async <T>(host: Governed, kind: HeavyKind, label: string
     const slot = { id: slotId, pid: process.pid, kind, label, cwd, task }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
+    let live = rules
     const admit = async (lastLineAt: number | null): Promise<{ readonly load: HostLoad; readonly waited: boolean }> => {
-        // Re-judged at every poll: the running count and the floors now.
-        const tried = tryAcquire(slot, rules, host.freeMb(), ancestors, host.floors?.(cwd) ?? [], host.totalMb)
+        // Re-judged at every poll: the rules as they stand now (the host's disk floor and the caps, read again), the running count and the floors now.
+        live = host.reread?.(live) ?? live
+        const tried = tryAcquire(slot, live, host.freeMb(), ancestors, host.floors?.(cwd, live) ?? [], host.totalMb)
         const { load } = tried
         if (tried.holders === null) return { load, waited: lastLineAt !== null }
         if (waitsRefused) {
