@@ -219,6 +219,12 @@ concerns:
     home: [fe.components]
     forbids: ['@react-pdf-viewer/core', react-pdf]
     why: "a PDF document is shown only by the PdfViewer of @starci/grammar/core/ext/pdf (its worker configured once); pdfjs-dist: an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/pdf (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
+  - id: ai-chat
+    tier: opt
+    packages: ['@assistant-ui/react']
+    home: [fe.components]
+    forbids: []
+    why: "a chat with an assistant (streaming answers, tool calls, a proposed result to approve) is the AiChatThread of @starci/grammar/core/ext/chat over assistant-ui's headless primitives and external store runtime; @assistant-ui/react: an app installs it as an optional peer of @starci/grammar and imports it only through @starci/grammar/core/ext/chat (Grammar lint starci-grammar/no-graph-or-animation-library); app code never imports it directly."
   - id: device-id
     tier: opt
     packages: ['@fingerprintjs/fingerprintjs']

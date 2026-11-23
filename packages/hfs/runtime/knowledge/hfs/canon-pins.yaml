@@ -637,6 +637,11 @@ pins:
     group: ui
     side: fe
     why: 'An optional peer of the Grammar''s core PDF ext (@starci/grammar/core/ext/pdf, fe-stack pdf), loaded lazily; an app installs it and imports it only through the ext.'
+  '@assistant-ui/react':
+    version: 0.15.38
+    group: ui
+    side: fe
+    why: 'An optional peer of the Grammar''s core AI chat ext (@starci/grammar/core/ext/chat, fe-stack ai-chat): its headless primitives and external store runtime; an app installs it and imports it only through the ext.'
   '@fingerprintjs/fingerprintjs':
     version: 5.2.0
     group: framework
