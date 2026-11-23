@@ -47,14 +47,17 @@ type RenderedCodeProps = {
     readonly highlightLines?: never
 }
 
-const isHighlighted = (ranges: readonly CodeLineRange[] | undefined, line: number): boolean =>
+export const isHighlighted = (ranges: readonly CodeLineRange[] | undefined, line: number): boolean =>
     ranges?.some((range) => typeof range === "number" ? range === line : line >= range[0] && line <= range[1]) === true
 
-/** Authored code as one block per line, so a line can be numbered and marked; the text copies as it was written. */
-const CodeLines = ({ code, numbered, ranges }: { readonly code: string; readonly numbered: boolean; readonly ranges: readonly CodeLineRange[] | undefined }) => (
+/**
+ * Authored code as one block per line, so a line can be numbered and marked; the text copies as it was written. `start` is the number of
+ * the first line (an excerpt of a file starts where the excerpt does), and `ranges` name lines by those numbers.
+ */
+export const CodeLines = ({ code, numbered, ranges, start = 1 }: { readonly code: string; readonly numbered: boolean; readonly ranges: readonly CodeLineRange[] | undefined; readonly start?: number }) => (
     <code data-grammar-code-lines="true" {...(numbered ? { "data-grammar-line-numbers": "true" } : {})}>
         {code.replace(/\n$/, "").split("\n").map((text, index) => (
-            <span key={index} className="starci-core-code-line" data-line={index + 1} {...(isHighlighted(ranges, index + 1) ? { "data-grammar-line-highlighted": "true" } : {})}>{text === "" ? "\n" : text}</span>
+            <span key={index} className="starci-core-code-line" data-line={start + index} {...(isHighlighted(ranges, start + index) ? { "data-grammar-line-highlighted": "true" } : {})}>{text === "" ? "\n" : text}</span>
         ))}
     </code>
 )

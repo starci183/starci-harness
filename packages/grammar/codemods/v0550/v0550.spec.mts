@@ -10,7 +10,7 @@ import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 import ts from "typescript"
-import { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
+import { READING_TEXT_ROLES, SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
 import { codemodsBetween } from "../index.mts"
 import { MARK, ROLES, SITE_ROLES, isSitePath, mapSiteClassList, pxOf, roleClass, runV0550, transformSiteSource, v0550Markdown } from "./index.mts"
 
@@ -39,8 +39,8 @@ const app = (): string => {
     return root
 }
 
-test("the roles and their classes are Grammar 0.55.0's: the ten and the site group", () => {
-    assert.deepEqual([...ROLES], [...TEXT_ROLES])
+test("the roles and their classes are Grammar 0.55.0's: the ten and the site group (the reading group of 0.55.1 maps no old size)", () => {
+    assert.deepEqual([...ROLES], TEXT_ROLES.filter((role) => !READING_TEXT_ROLES.includes(role)))
     assert.deepEqual([...SITE_ROLES], [...SITE_TEXT_ROLES])
     for (const role of ROLES) assert.equal(roleClass(role), typeRoleClassName(role))
 })

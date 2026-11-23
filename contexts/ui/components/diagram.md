@@ -23,8 +23,17 @@ loading box is the ready box. Paint is the grammar's, read from the root's token
 
 Tones and caption (owner 2026-11-23, a lesson's diagram): a flowchart node takes a tone, `danger` for the faulty step, `success` for the fix,
 `accent` for a part the change touches, either by `tones={{ B: "danger" }}` or by Mermaid's own `class B danger` in the source; the node is
-painted in the tone's soft pair and edge, and a colour the source writes (a `classDef`, a `style` line) never paints. `caption` is one line under
-the drawing in the caption role, saying what to look at.
+painted in the tone's soft pair and edge, and a colour the source writes (a `classDef`, a `style` line) never paints. A state diagram's state
+takes a tone the same way (`class Cu danger`). A sequence diagram's message takes one by its place among the arrows, counted from 1:
+`messageTones={{ 5: "danger" }}` paints the fifth arrow's line, head and words, in the drawing and in the phone's numbered list. `caption` is one
+line under the drawing in the caption role, saying what to look at.
+
+The Grammar's diagram theme (0.55.1, owner 2026-11-23: "giờ hơi xấu"): no drawing shows Mermaid's default look. Participant, node and state boxes
+are rounded on the surface with a hairline edge; words are the Grammar font at the caption role (12 / 16), a box's name in the medium weight;
+lifelines are muted and dashed; messages, edges and transitions are foreground lines at the fine stroke with clear heads, a reply dashed; a
+message's words stand a little over their arrow; notes are soft accent pills; groups are a quiet tinted field. Dark mode reads the same tokens.
+Mermaid's own sheet sits in the theme layer, so the Grammar's rules (`components-navigation.css` "THE DIAGRAM THEME") always win. Story
+`Content/Lesson diagrams (0.55.1)`: a sequence, a flowchart across and down, a state diagram, each light and dark, with tones.
 
 Full screen and phone (owner 2026-11-23): a press on the drawing, or its expand control in the frame's corner, opens the drawing in a full-screen
 `Dialog` the reader pans (drag, the arrow keys) and zooms (the wheel or a pinch, + and -, 0 resets; three controls); its words come from
@@ -40,7 +49,7 @@ lazily on the first diagram). A source Mermaid refuses is an error in the same r
 source as code, so the reader keeps the text (STATE-8).
 
 ## Owner split
-- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the error carrier, and loading Mermaid only when a diagram mounts.
+- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid and the diagram sheet over it, the tones, the error carrier, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; the height step.
 - **App author decides:** the source, the label, the error title copy.
 

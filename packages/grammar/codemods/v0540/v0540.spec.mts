@@ -10,15 +10,15 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 import ts from "typescript"
-import { SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
+import { READING_TEXT_ROLES, SITE_TEXT_ROLES, TEXT_ROLES, typeRoleClassName } from "../../src/common/typeRoles.ts"
 import { CODEMODS, codemodId, codemodsBetween } from "../index.mts"
 import { MARK, ROLES, mapClassList, roleClass, runV0540, sourceRoots, transformSource, v0540Markdown } from "./index.mts"
 
 const FIXTURES = fileURLToPath(new URL("./fixtures/", import.meta.url))
 const read = (side: "before" | "after", name: string): string => readFileSync(join(FIXTURES, side, name), "utf8")
 
-test("the roles and their classes are Grammar 0.54.0's (the site group of 0.55.0 is v0550's)", () => {
-    assert.deepEqual([...ROLES], TEXT_ROLES.filter((role) => !SITE_TEXT_ROLES.includes(role)))
+test("the roles and their classes are Grammar 0.54.0's (the site group of 0.55.0 is v0550's; the reading group of 0.55.1 maps no old size)", () => {
+    assert.deepEqual([...ROLES], TEXT_ROLES.filter((role) => !SITE_TEXT_ROLES.includes(role) && !READING_TEXT_ROLES.includes(role)))
     for (const role of ROLES) assert.equal(roleClass(role), typeRoleClassName(role))
 })
 

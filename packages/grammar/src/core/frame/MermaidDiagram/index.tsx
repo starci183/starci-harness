@@ -44,6 +44,11 @@ export type MermaidDiagramProps = NoChildren & {
      * pair and edge from the Grammar's tokens, never a colour written in the source.
      */
     readonly tones?: Readonly<Record<string, MermaidTone>>
+    /**
+     * The tone of a sequence diagram's message, by its place in the source counted from 1 (`{ 5: "danger" }`: the fifth arrow is the
+     * faulty step). Its line, head and words take the tone, in the drawing and in the phone's numbered list alike.
+     */
+    readonly messageTones?: Readonly<Record<number, MermaidTone>>
     /** One line under the drawing, in the caption role, saying what to look at. */
     readonly caption?: string
     /**
@@ -56,12 +61,55 @@ export type MermaidDiagramProps = NoChildren & {
 const ZOOM_LABELS: MermaidZoomLabels = { open: "Open full screen", close: "Close", zoomIn: "Zoom in", zoomOut: "Zoom out", reset: "Reset zoom" }
 const TONES: readonly MermaidTone[] = ["danger", "success", "accent"]
 
-/** Marks every toned node of a drawn flowchart: by the `tones` map (Mermaid names a node `flowchart-<id>-<n>`) or by a `class` the source gave it. */
-const markTones = (svg: SVGSVGElement, tones: Readonly<Record<string, MermaidTone>> | undefined) => {
+/**
+ * The source id of a drawn node. Mermaid names it `<svg id>-flowchart-<id>-<n>` in a flowchart and `<svg id>-state-<id>-<n>` in a state
+ * diagram (older releases drop the svg id).
+ */
+const nodeId = (node: SVGGElement): string => /(?:^|-)(?:flowchart|state)-(.+)-\d+$/.exec(node.id)?.[1] ?? node.id
+
+/** Paints a message of a sequence: its line, its words and a head of its own (the shared head would stay the foreground). */
+const toneMessage = (svg: SVGSVGElement, line: SVGElement, text: SVGElement | undefined, tone: MermaidTone) => {
+    line.setAttribute("data-grammar-mermaid-message-tone", tone)
+    text?.setAttribute("data-grammar-mermaid-message-tone", tone)
+    const head = /url\(["']?#([^"')]+)["']?\)/.exec(line.getAttribute("marker-end") ?? "")?.[1]
+    const marker = head === undefined ? null : svg.querySelector<SVGMarkerElement>(`marker[id="${head}"]`)
+    if (marker === null || head === undefined) return
+    const id = `${head}-${tone}`
+    if (svg.querySelector(`marker[id="${id}"]`) === null) {
+        const copy = marker.cloneNode(true) as SVGMarkerElement
+        copy.id = id
+        copy.setAttribute("data-grammar-mermaid-message-tone", tone)
+        marker.after(copy)
+    }
+    line.setAttribute("marker-end", `url(#${id})`)
+}
+
+/**
+ * Marks every toned part of a drawing: a flowchart or state node by the `tones` map or by a `class` the source gave it, a sequence
+ * message by `messageTones` (its place among the arrows, from 1).
+ */
+const markTones = (svg: SVGSVGElement, tones: Readonly<Record<string, MermaidTone>> | undefined, messageTones: Readonly<Record<number, MermaidTone>> | undefined) => {
     for (const node of svg.querySelectorAll<SVGGElement>("g.node")) {
-        const id = /^(?:flowchart-)?(.+?)-\d+$/.exec(node.id)?.[1] ?? node.id
-        const tone = tones?.[id] ?? TONES.find((name) => node.classList.contains(name))
+        const tone = tones?.[nodeId(node)] ?? TONES.find((name) => node.classList.contains(name))
         if (tone !== undefined) node.setAttribute("data-grammar-mermaid-tone", tone)
+    }
+    if (messageTones === undefined) return
+    const lines = [...svg.querySelectorAll<SVGElement>(":is(line, path):is(.messageLine0, .messageLine1)")]
+    const texts = [...svg.querySelectorAll<SVGElement>("text.messageText")]
+    lines.forEach((line, index) => {
+        const tone = messageTones[index + 1]
+        if (tone !== undefined) toneMessage(svg, line, texts[index], tone)
+    })
+}
+
+/** Rounds every note of a sequence into a pill: its corners are half its height. */
+const roundNotes = (svg: SVGSVGElement) => {
+    for (const note of svg.querySelectorAll<SVGRectElement>("rect.note")) {
+        const height = Number.parseFloat(note.getAttribute("height") ?? "")
+        if (Number.isFinite(height)) {
+            note.setAttribute("rx", String(height / 2))
+            note.setAttribute("ry", String(height / 2))
+        }
     }
 }
 
@@ -79,10 +127,15 @@ const useWidth = (target: RefObject<HTMLElement | null>): number | null => {
 }
 
 /** A sequence diagram on a phone: its messages as a numbered list, who to whom, then what. */
-const SequenceList = ({ source, label }: { readonly source: string; readonly label: string }) => (
+const SequenceList = ({ source, label, tones }: { readonly source: string; readonly label: string; readonly tones: Readonly<Record<number, MermaidTone>> | undefined }) => (
     <ol className="starci-core-mermaid-steps" data-grammar-mermaid-steps="true" aria-label={label}>
         {sequenceSteps(source).map((step, index) => (
-            <li key={`${String(index)}-${step.from}-${step.to}`} className="starci-core-mermaid-step" data-grammar-mermaid-reply={step.isReply ? "true" : "false"}>
+            <li
+                key={`${String(index)}-${step.from}-${step.to}`}
+                className="starci-core-mermaid-step"
+                data-grammar-mermaid-reply={step.isReply ? "true" : "false"}
+                {...(tones?.[index + 1] === undefined ? {} : { "data-grammar-mermaid-tone": tones[index + 1] })}
+            >
                 <span className="starci-core-mermaid-step-route">{step.from}<Icon source={glyphSource("arrow-end")} usage="text" />{step.to}</span>
                 <span className="starci-core-mermaid-step-text">{step.text}</span>
             </li>
@@ -123,9 +176,28 @@ const renderSerially = (id: string, source: string, theme: MermaidThemeVariables
             theme: "base",
             darkMode: theme.darkMode,
             fontFamily: theme.fontFamily,
+            // The top-level size is the one every kind lays its words out at (a sequence's per-part sizes yield to it).
+            fontSize: Number.parseFloat(theme.fontSize),
             themeVariables: theme,
             htmlLabels: false,
-            flowchart: { htmlLabels: false },
+            // The Grammar's layout of each kind (0.55.1, owner 2026-11-23: "giờ hơi xấu"): room around the words, no mirrored
+            // participants at the foot, wrapped long messages, gentle curves; the paint is the Grammar's sheet (components-navigation.css).
+            flowchart: { htmlLabels: false, curve: "basis", padding: 14, nodeSpacing: 40, rankSpacing: 48, diagramPadding: 8, useMaxWidth: true },
+            sequence: {
+                mirrorActors: false,
+                actorFontWeight: 500,
+                width: 140,
+                height: 40,
+                actorMargin: 56,
+                boxMargin: 8,
+                boxTextMargin: 6,
+                noteMargin: 10,
+                messageMargin: 36,
+                diagramMarginX: 8,
+                diagramMarginY: 8,
+                useMaxWidth: true,
+            },
+            state: { nodeSpacing: 56, rankSpacing: 56, useMaxWidth: true },
         })
         try {
             const { svg } = await mermaid.render(id, source)
@@ -146,7 +218,15 @@ const svgNode = (svg: string): SVGSVGElement | null => {
     if (root.nodeName.toLowerCase() !== "svg" || parsed.getElementsByTagName("parsererror").length > 0) return null
     const node = document.importNode(root, true) as unknown as SVGSVGElement
     node.setAttribute("aria-hidden", "true")
+    node.setAttribute("data-grammar-mermaid-svg", node.getAttribute("aria-roledescription") ?? "diagram")
     node.removeAttribute("height")
+    // Mermaid's own sheet sinks to the lowest Grammar layer, so every rule of the Grammar's diagram theme wins over it without
+    // `!important`; what the Grammar does not restyle still reads Mermaid's rules, themed from the tokens.
+    for (const style of node.querySelectorAll("style")) style.textContent = `@layer starci-grammar-theme { ${style.textContent ?? ""} }`
+    // Mermaid gives every flowchart node the class `default`, and a source may name a class `light` or `dark`: those are the vendor's
+    // theme scopes, which would reset the tokens inside the node to the light theme (a white box in a dark page). They are dropped.
+    for (const scoped of node.querySelectorAll(".default, .light, .dark")) scoped.classList.remove("default", "light", "dark")
+    roundNotes(node)
     return node
 }
 
@@ -186,6 +266,7 @@ export const MermaidDiagram = ({
     sourceLabel,
     isLoading = false,
     tones,
+    messageTones,
     caption,
     zoomLabels,
 }: MermaidDiagramProps) => {
@@ -217,9 +298,9 @@ export const MermaidDiagram = ({
         if (drawing.status !== "ready") return
         const node = svgNode(drawing.svg)
         if (node === null) return
-        markTones(node, tones)
+        markTones(node, tones, messageTones)
         host.replaceChildren(node)
-    }, [drawing, tones])
+    }, [drawing, messageTones, tones])
 
     useEffect(() => { if (canvas.current !== null) place(canvas.current) }, [place])
 
@@ -249,7 +330,7 @@ export const MermaidDiagram = ({
                     data-grammar-mermaid-canvas="true"
                     {...(state === "ready" ? { role: "region", "aria-label": label, tabIndex: 0 } : {})}
                 >
-                    {state === "loading" ? <Skeleton shape="rect" /> : asList ? <SequenceList source={source} label={label} /> : (
+                    {state === "loading" ? <Skeleton shape="rect" /> : asList ? <SequenceList source={source} label={label} tones={messageTones} /> : (
                         <div ref={canvas} className="starci-core-mermaid-diagram-drawing" role="img" aria-label={label} onClick={() => setZoomOpen(true)} />
                     )}
                 </div>

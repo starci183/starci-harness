@@ -14,6 +14,7 @@ Choice `text.choose.role`: what a run of words is. The first row that applies wi
 | --- | --- | --- | --- |
 | title of a group | the words name a group of blocks (a list, a table, a set of cards) | the group's own title: `Section` `title`, a card `label`, or `Heading` for a page outline level; never a strong `Text` | R358 |
 | emphasis | one word or phrase in a sentence matters more than the rest | `Text isStrong` inside the sentence | judgement |
+| lesson prose | long-form words a learner reads: a lesson's headline or its question, its story, its steps (never console chrome) | `Text role="reading.title"` for the headline, `role="reading.body"` for the prose | judgement |
 | copy | everything else | `Text` at the step the scale gives the place | judgement |
 
 Choice `text.choose.content`: what may stand inside a `Text`. Words, `Badge`, `Icon`, a link or a strong span. A block (a `Stack`,
@@ -27,6 +28,12 @@ size. `size="figure"` is the display size 20 of a big figure value. Measure: `ch
 (`packages/grammar/scripts/check-type-roles.mts`). Words that stand on one line share one size step, and `sm` next to `md` is the same step (FONT-8, lint `starci-grammar/same-line-size`), and a table cell
 or a list row takes the row type, never a size above 14 (FONT-9, lint `starci-grammar/table-cell-type`). A `Link` inside the
 words inherits their size.
+
+The reading group (0.55.1, owner 2026-11-23, lesson pages): `reading.title` 28 / 38 at 500 with a little tracking, its lines balanced, and
+`reading.body` 17 / 29 at 400; at most 30rem (a phone) they step down to 23 / 32 and 16 / 27. Tokens `--grammar-type-reading-*` in
+`src/common/ramps.css`, classes `starci-type-reading-title` and `starci-type-reading-body`. They are for prose a learner reads, so a
+lesson's answers (`GradedChoice`) read at `reading.body` too; console text stays on the ten roles. Story `Content/Lesson page parts (0.55.1)`
+`ReadingRoles`.
 
 ## States
 Loading draws the words as a skeleton bar of the same step.
