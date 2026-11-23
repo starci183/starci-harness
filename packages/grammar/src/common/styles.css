@@ -5193,7 +5193,7 @@
      * stroke 1.75): it is a control, not text. Bold words inside a sentence stay allowed. !important: a part sets its own weight at a higher
      * specificity (a selected navigation entry, a status label), and the pair wins over every one of them.
      */
-    :is(.starci-core-text:has(> .starci-core-icon), .starci-core-inline-status, [data-component="Badge"]:has(.starci-core-icon, .starci-core-inline-status-glyph), [data-grammar-menu-item]:has(.starci-core-icon), .starci-core-sidebar-item:has(.starci-core-icon)) {
+    :is(.starci-core-text:has(> .starci-core-icon), .starci-core-inline-status, [data-component="Badge"]:has(.starci-core-icon, .starci-core-inline-status-glyph), [data-grammar-menu-item]:has(.starci-core-icon), .starci-core-sidebar-item:has(.starci-core-icon), .starci-core-list-row:has(> .starci-core-list-row-leading .starci-core-icon) .starci-core-list-row-name) {
         font-weight: var(--grammar-weight-regular) !important;
         --grammar-icon-stroke: var(--grammar-icon-stroke-regular);
     }
