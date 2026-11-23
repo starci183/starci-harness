@@ -36,7 +36,7 @@ type AuthoredCodeProps = {
     readonly children?: never
     /** Number every line in a gutter the reader cannot select or copy. */
     readonly lineNumbers?: boolean
-    /** The lines to mark (a step, the fix): each takes the accent soft band across the whole block. */
+    /** The lines to mark (a step, the fix): each takes the code palette's highlight-line tint and edge across the whole block (never the brand). */
     readonly highlightLines?: readonly CodeLineRange[]
 }
 

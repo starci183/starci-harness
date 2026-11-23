@@ -47,13 +47,13 @@ interface Point {
 /** The room kept above a map taller than its canvas, so its first names stand in view below the zoom toolbar. */
 const OPEN_TOP = 12
 
-/** The view a map opens in, on every screen alike: 100%, the map in the middle of the canvas; a map larger than the canvas centred on its focus bubble (`openView`). */
+/** The view a map opens in, on every screen alike: the whole map fitted (at 100% or less) in the middle of the canvas (`openView`). */
 const openView = (layout: KnowledgeLayout, size: Size, focusId: string | undefined): View => {
     const heaviest = layout.bubbles.reduce<KnowledgeLayout["bubbles"][number] | undefined>((best, bubble) => (best === undefined || bubble.r > best.r ? bubble : best), undefined)
     const bubble = layout.bubbles.find((each) => each.id === focusId) ?? heaviest
     const focus = bubble === undefined ? undefined : { x: bubble.x - bubble.r, y: bubble.y - bubble.r, width: bubble.r * 2, height: bubble.r * 2 }
     const view = openAt(size, { x: 0, y: 0, width: layout.width, height: layout.height }, focus, { top: OPEN_TOP, right: OPEN_TOP, bottom: OPEN_TOP, left: OPEN_TOP })
-    return { k: 1, x: view.x, y: view.y }
+    return { k: view.zoom, x: view.x, y: view.y }
 }
 
 /** The view that shows the whole map, centred in the canvas; never enlarged beyond 1.25 so a sparse map stays small. */

@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
+import { MermaidDiagram } from '../core/ext/graph/index.js';
+import '../core/ext/graph/styles.css';
+
+/** A `mermaid` fence drawn by the graph ext's MermaidDiagram: the core never imports the ext, so the app hands it to `renderDiagram`. */
+const renderDiagram = (diagram: G.MarkdownDiagram) => <MermaidDiagram {...diagram} height="md" />;
 
 /**
  * Markdown: a markdown string drawn as document content. The text is parsed to a syntax tree and mapped to the grammar's own parts
@@ -129,6 +134,7 @@ export const NonLatinScript: Story = {
   render: () => (
     <div style={frame}>
       <G.Markdown
+        renderDiagram={renderDiagram}
         labels={{ copy: 'Copy snippet', copied: 'Snippet copied', copyError: 'Could not copy. Select the code and copy it by hand.', diagram: 'Diagram', diagramError: 'Could not draw this diagram.', table: 'Table', taskDone: 'Done', taskOpen: 'Not done', externalHint: '(opens in a new tab)' }}
         source={`# Part 3: HTTP status codes, a naïve résumé
 
@@ -182,8 +188,8 @@ sequenceDiagram
       expect(canvasElement.querySelectorAll('tbody tr')).toHaveLength(5);
       expect(within(canvasElement).getByRole('button', { name: 'Copy snippet' })).toBeTruthy();
       expect(within(canvasElement).getByRole('region', { name: 'Table' })).toBeTruthy();
-      expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')?.getAttribute('aria-label')).toBe('Diagram');
     });
+    await waitFor(() => expect(canvasElement.querySelector('[data-component="MermaidDiagram"] [data-grammar-mermaid-canvas]')?.getAttribute('aria-label')).toBe('Diagram'), { timeout: 15000 });
     // Type scale law: body 14, no 13 or 16.
     const sizes = new Set(Array.from(canvasElement.querySelectorAll('h2, h3, p, li, td, th')).map((node) => getComputedStyle(node).fontSize));
     expect(Array.from(sizes).every((size) => size === '14px' || size === '12px')).toBe(true);
@@ -191,12 +197,13 @@ sequenceDiagram
 };
 
 export const MermaidFence: Story = {
-  render: () => <div style={frame}><G.Markdown source={'```mermaid\nflowchart LR\n  A[Request] --> B[Server] --> C[Response]\n```\n\n```mermaid\nnot a diagram at all\n```'} labels={{ diagramError: 'Could not draw this diagram.' }} /></div>,
+  render: () => <div style={frame}><G.Markdown renderDiagram={renderDiagram} source={'```mermaid\nflowchart LR\n  A[Request] --> B[Server] --> C[Response]\n```\n\n```mermaid\nnot a diagram at all\n```'} labels={{ diagramError: 'Could not draw this diagram.' }} /></div>,
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const diagrams = Array.from(canvasElement.querySelectorAll('[data-component="MermaidDiagram"]'));
-      expect(diagrams.map((d) => d.getAttribute('aria-label'))).toEqual(['Diagram 1', 'Diagram 2']);
       expect(diagrams.map((d) => d.getAttribute('data-grammar-mermaid-state'))).toEqual(['ready', 'error']);
+      expect(diagrams[0]?.querySelector('[data-grammar-mermaid-canvas]')?.getAttribute('aria-label')).toBe('Diagram 1');
+      expect(diagrams[1]?.querySelector('[aria-label="Diagram 2 source"]')).not.toBeNull();
     }, { timeout: 15000 });
   },
 };
@@ -234,7 +241,7 @@ const LONG_LINE = 'export const handler = async (request: Request) => { return n
 export const HighlightedCodeSlot: Story = {
   render: () => (
     <div style={{ inlineSize: 360, maxInlineSize: '100%' }}>
-      <G.Markdown renderCode={fakeHighlight} source={'```ts\n' + LONG_LINE + '\n```\n\n```bash\nnpm install\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```'} />
+      <G.Markdown renderCode={fakeHighlight} renderDiagram={renderDiagram} source={'```ts\n' + LONG_LINE + '\n```\n\n```bash\nnpm install\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```'} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -262,6 +269,15 @@ export const HighlightedCodeSlot: Story = {
     // Mermaid never goes through the slot.
     await waitFor(() => expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')).not.toBeNull());
     expect(canvasElement.querySelectorAll('[data-fake-lang="mermaid"]')).toHaveLength(0);
+  },
+};
+
+/** Without `renderDiagram` a `mermaid` fence is its source, a code block: the core draws no diagram. */
+export const MermaidFenceWithoutSlot: Story = {
+  render: () => <div style={frame}><G.Markdown source={'```mermaid\nflowchart LR\n  A --> B\n```'} /></div>,
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')).toBeNull();
+    expect(canvasElement.querySelectorAll('[data-component="FencedCodeBlock"]')).toHaveLength(1);
   },
 };
 

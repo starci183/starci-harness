@@ -279,6 +279,17 @@ same order until it adopts a board.
 2. **Then the code, copying the board.** The code lane builds the screens of the approved revision, each state with the components its section
    draws; a section's `planned` mark goes once its route is coded. Code written before the approval is a draft: it is redone from the approved
    drawing, never approved after the fact. In an app with a canvas the same commit records the page's build in `design.json` (`built`).
+2b. **Look on dev with real data.** Green gates and gallery shots from clean demo data prove nothing about the page the owner opens next, and
+   the gallery (3) and review (4) wait for the owner's OK on dev (PROJECT-GALLERY-10), so this is the look between land and the owner. After the
+   lane lands and the app's dev sync has run, open every screen the change reaches on the app's dev workspace with its real data (NIVO: the demo
+   workspace Hiền Mai Spa; StarCi Next: real lesson content), at 1440 and 390, in every state the data can reach:
+   `starci app look --env dev --paths <route,…>` (it signs in as the app's seed owner as `gallery/look.json` declares, shoots the running dev
+   stack and never starts a server). Judge each shot with the existing lenses **tech-leak**, **truth** and **business** of PROJECT-GALLERY-8
+   item 3, plus three checks: the rows of a list or card share one left edge; buttons are 40 (md) or 32 (sm), as
+   [../ui/presentation.md](../ui/presentation.md) P7 and PHONE-1 say; every truncation is deliberate (an ellipsis on a long name, never a cut
+   label, a clipped chip or a raw `key: value; …` string). Fix, land, sync and look again until it is clean. The shots and their `index.json`
+   go in the lane's evidence bundle (`.starciwork/evidence/look/`, or `--out`) and are what the owner sees first. It is a process step held by
+   the lane's report ([../authority/lanes.md](../authority/lanes.md) "Processes and cleanup"), not a blocking check.
 3. **Then the gallery, shot from the code.** Every screen the change reaches (PROJECT-GALLERY-8 item 3) is shot at 1440 and 390 into
    `gallery/pages/<area>/<screen>/` with its `screen.yaml` (PROJECT-GALLERY-1 item 2, PROJECT-GALLERY-5); the shots are generated from the running
    code, never drawn.

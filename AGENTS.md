@@ -87,6 +87,10 @@ is fine). Neither one waits for the other, and neither moves the other's checkou
    the default way the dev checkout runs harness builds. A lane NEVER waits for npm. `deps install-local --restore` is
    needed only for main and a prod cut: main, release branches, tags and prod deploys still refuse local pins.
 5. Hot reload is opt-in, for live coding only: `starci app stack up --env dev --execute --watch`.
+6. **One web and one api server per app**, the shared dev stack's (owner: "chốt vậy chỉ có 1 next server fe chạy thôi, lane xong f5 lại,
+   chấp nhận giật ở fe", "Tương tự 1 be server"). A lane never starts its own to look or shoot: it lands, the dev sync brings the change in,
+   and it looks at the running stack (`starci app look`, `starci gallery shoot --port`); the owner presses F5
+   ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Shots and looks").
 
 **Prod (slow, careful, after dev).** npm is published once per release train, for prod only (`starci release push` /
 `release publish` on the harness). Prod pins npm versions ONCE, at release time: the cut bumps the app's local pins to the

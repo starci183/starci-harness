@@ -1,8 +1,11 @@
 /**
- * The first view of every graph mode, on every screen alike (owner: "size vẫn vậy chỉ có điều kéo = tay thôi"): 100%, never fitted. A graph that fits
- * its frame at 100% stands in the middle of it; a larger one is centred on its focus (the running step, the heaviest bubble or the app's `focusId`;
- * none: its start), held so that its start never stands further in than the inset (the zoom buttons' room on the left). Fitting is the explicit fit button only.
+ * The first view of every graph mode, on every screen alike (owner: "Chốt", the routing law, rule 4): fitted. The whole graph is visible, centred in the frame
+ * inside the insets (the zoom buttons' room), at 100% or less, never enlarged. Only a graph that would need less than `LEAST_FIT` is shown at that zoom, centred on
+ * its focus (the running step, the heaviest bubble or the app's `focusId`; none: its start), its start never further in than the inset.
  */
+
+/** The least zoom the first view fits to (xyflow's own least zoom of the graphs). */
+export const LEAST_FIT = 0.1
 
 /** A box in graph units. */
 export interface ViewRect {
@@ -23,7 +26,7 @@ export interface ViewInsets {
 export interface OpenView {
     readonly x: number
     readonly y: number
-    readonly zoom: 1
+    readonly zoom: number
 }
 
 /** One axis: the translation that puts `[start, start + size]` (the graph) in `[lead, frame - trail]`, or centres `centre` there when the graph does not fit. */
@@ -36,12 +39,17 @@ const axis = (frame: number, lead: number, trail: number, start: number, size: n
     return Math.min(lead - start, wanted)
 }
 
-/** The 100% view of `bounds` in a `frame` (screen pixels), centred on `focus` when the graph is larger than the frame. */
-export const openView = (frame: { readonly width: number; readonly height: number }, bounds: ViewRect, focus: ViewRect | undefined, insets: ViewInsets): OpenView => ({
-    x: axis(frame.width, insets.left, insets.right, bounds.x, bounds.width, focus === undefined ? undefined : focus.x + focus.width / 2),
-    y: axis(frame.height, insets.top, insets.bottom, bounds.y, bounds.height, focus === undefined ? undefined : focus.y + focus.height / 2),
-    zoom: 1,
-})
+/** The fitted view of `bounds` in a `frame` (screen pixels): the whole graph, centred, at 100% or less; centred on `focus` only below `LEAST_FIT`. */
+export const openView = (frame: { readonly width: number; readonly height: number }, bounds: ViewRect, focus: ViewRect | undefined, insets: ViewInsets): OpenView => {
+    const fit = Math.min((frame.width - insets.left - insets.right) / Math.max(1, bounds.width), (frame.height - insets.top - insets.bottom) / Math.max(1, bounds.height))
+    const zoom = Math.max(LEAST_FIT, Math.min(1, fit))
+    const scaled = (value: number): number => value * zoom
+    return {
+        x: axis(frame.width, insets.left, insets.right, scaled(bounds.x), scaled(bounds.width), focus === undefined ? undefined : scaled(focus.x + focus.width / 2)),
+        y: axis(frame.height, insets.top, insets.bottom, scaled(bounds.y), scaled(bounds.height), focus === undefined ? undefined : scaled(focus.y + focus.height / 2)),
+        zoom,
+    }
+}
 
 /** The gap kept between a step and the zoom buttons. */
 const CONTROLS_GAP = 8

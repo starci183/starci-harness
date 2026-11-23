@@ -211,7 +211,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                                     {row.href !== undefined
                                         ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
                                         : row.onPress === undefined
-                                            ? row.title
+                                            ? (row.titleContent ?? row.title)
                                             : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                                 </span>
                             )}

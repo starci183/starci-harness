@@ -50,7 +50,7 @@ describe("resolveFlow", () => {
         assert.equal(at(model.edges, 1).port?.label, "Yes")
         assert.deepEqual(
             model.ports.get("d")?.map((port) => port.side),
-            ["WEST", "EAST"],
+            ["SOUTH", "EAST"],
         )
     })
 

@@ -1,0 +1,97 @@
+/**
+ * The layout of a flowchart or a state diagram on the graph canvas (pure but for ELK): each node sized for its words in its shape, the containers round
+ * their nodes, then the graph ext's own ELK layout and routing law (`layoutFlow`): straight edges between aligned nodes, one bend between offset ones.
+ */
+import { layoutFlow, type FlowLayout, type LinkEnds, type Measure, type SizedNode } from "../layout.js"
+import type { DiagramGraph, DiagramNode } from "./model.js"
+import type { TextWidth } from "./sequence.js"
+
+/** The room a container keeps round its nodes: its name on top. */
+export const CONTAINER_INSETS = { top: 36, right: 16, bottom: 16, left: 16 } as const
+
+/** Words wrapped greedily into lines no wider than `max`. */
+const wrap = (text: string, max: number, textWidth: TextWidth): readonly string[] =>
+    text.split("\n").flatMap((paragraph) => {
+        const out: string[] = []
+        let line = ""
+        for (const word of paragraph.split(/\s+/u)) {
+            const next = line === "" ? word : `${line} ${word}`
+            if (line !== "" && textWidth(next) > max) {
+                out.push(line)
+                line = word
+            } else line = next
+        }
+        out.push(line)
+        return out
+    })
+
+const LINE = 18
+const BOX_MAX = 240
+
+/** The box a node needs for its words in its shape. */
+export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: TextWidth): { readonly width: number; readonly height: number } => {
+    const words = wrap(node.label, BOX_MAX - 32, textWidth)
+    const wide = Math.max(0, ...words.map(textWidth))
+    const tall = words.length * LINE
+    switch (node.shape) {
+        case "start":
+        case "end":
+            return { width: 20, height: 20 }
+        case "bar":
+            return direction === "LR" ? { width: 8, height: 64 } : { width: 64, height: 8 }
+        case "diamond": {
+            const width = Math.max(104, Math.round(wide * 1.5) + 40)
+            return { width, height: Math.max(64, Math.round(tall * 1.6) + 40, Math.round(width * 0.55)) }
+        }
+        case "circle": {
+            const side = Math.max(64, wide + 32, tall + 32)
+            return { width: side, height: side }
+        }
+        case "cylinder":
+            return { width: Math.max(96, wide + 40), height: Math.max(64, tall + 40) }
+        case "container":
+            return { width: Math.max(120, wide + 32), height: 0 }
+        default:
+            return { width: Math.max(node.shape === "stadium" ? 96 : 80, wide + 32), height: Math.max(40, tall + 22) }
+    }
+}
+
+/** A laid-out graph: ELK's positions and routes, the sizes it laid out, and the drawing's box (nodes, routes and words). */
+export interface DiagramLayout {
+    readonly graph: DiagramGraph
+    readonly layout: FlowLayout
+    readonly sizes: readonly SizedNode[]
+    readonly width: number
+    readonly height: number
+}
+
+/** Lays a flowchart or a state diagram out with the graph ext's ELK layout, in the graph's direction. */
+export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, measure: Measure): Promise<DiagramLayout> => {
+        const sizes: SizedNode[] = graph.nodes.map((node) => ({
+            id: node.id,
+            ...nodeSize(node, graph.direction, textWidth),
+            ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
+            ...(node.shape === "container" ? { insets: CONTAINER_INSETS } : {}),
+        }))
+        const links: LinkEnds[] = graph.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, ...(edge.label === undefined ? {} : { label: edge.label }) }))
+        const layout = await layoutFlow(sizes, links, { direction: graph.direction, islands: "wrap", width: 960, measure })
+        const parent = new Map(graph.nodes.flatMap((node) => (node.parentId === undefined ? [] : [[node.id, node.parentId] as const])))
+        const absolute = (nodeId: string): { x: number; y: number } => {
+            const own = layout.positions[nodeId] ?? { x: 0, y: 0 }
+            const up = parent.get(nodeId)
+            if (up === undefined) return own
+            const at = absolute(up)
+            return { x: at.x + own.x, y: at.y + own.y }
+        }
+        const boxes = sizes.map((size) => {
+            const at = absolute(size.id)
+            const box = layout.boxes[size.id] ?? size
+            return { x: at.x, y: at.y, width: box.width, height: box.height }
+        })
+        const routeEnds = Object.values(layout.routes).flatMap((route) => [...route.points, ...(route.label === undefined ? [] : [[route.label.x, route.label.y] as const, [route.label.x + route.label.width, route.label.y + route.label.height] as const])])
+        const minX = Math.min(...boxes.map((box) => box.x), ...routeEnds.map((point) => point[0]))
+        const minY = Math.min(...boxes.map((box) => box.y), ...routeEnds.map((point) => point[1]))
+        const maxX = Math.max(...boxes.map((box) => box.x + box.width), ...routeEnds.map((point) => point[0]))
+        const maxY = Math.max(...boxes.map((box) => box.y + box.height), ...routeEnds.map((point) => point[1]))
+        return { graph, layout, sizes, width: Math.max(1, maxX - Math.min(0, minX)), height: Math.max(1, maxY - Math.min(0, minY)) }
+}

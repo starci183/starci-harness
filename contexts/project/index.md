@@ -12,8 +12,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 11 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
-  - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Shots · Processes and cleanup
+- [authority/lanes.md](../authority/lanes.md) · 16 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+  - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Shots and looks: the one web and one api server of the app · Processes and cleanup
 - [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
@@ -160,8 +160,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 6 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/host.md](../harness/host.md) · 24 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
-  - sections: Spawning a process · The host stack · Roles and machines · Host services · Dependencies through a link · Files and folders
+- [harness/host.md](../harness/host.md) · 25 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+  - sections: Spawning a process · The host stack · Roles and machines · Host services · WSL memory · Dependencies through a link · Files and folders
   - ids: Self-healing
 - [harness/managed-vps.md](../harness/managed-vps.md) · 17 KB — The harness manages the owner's fleet of VPS servers from the harness host: it brings each server to one policy, watches its health, opens its doors under the owner's domain and ...
   - sections: Machines and roles · Clean boxes only · Two layers · Why the inventory is gitignored · The server and backup recipients are public and tracked · Keys, never passwords · The verbs · Remote BuildKit · Doors under the owner's domain · Who may run what
@@ -199,7 +199,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
 - [project/edition.md](../project/edition.md) · 14 KB — What the one app edition runs beyond the shared project model (README.md): the code structure, the front-end standard, the queue (BullMQ on Redis) and the three realtime doors are ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Resetting the chain to one baseline · Read with
-- [project/gallery.md](../project/gallery.md) · 49 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
+- [project/gallery.md](../project/gallery.md) · 51 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
   - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval · PROJECT-GALLERY-7 A UI change goes board first, then code, then the gallery, then one review · PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes · PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar · PROJECT-GALLERY-10 A screen's lane brief maps it to the Grammar first, and its screen.yaml waits for the owner's OK
   - ids: customers/import, customers/list
 - [project/lint.md](../project/lint.md) · 33 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
@@ -269,7 +269,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/graph.md](../ui/components/graph.md) · 22 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · Look · Migrating from an app's own graph · Layout and helpers · The demo and the browser proof
   - ids: string;
-- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 15 KB — Contract: Avatar and IconTile.
+- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile (0.55.0, owner "chốt") · Variants · Plates of an initials mark (0.46.0) · Size · States · Owner split · Initials, marks and the AI Chip · Rules
 - [ui/components/illustration.md](../ui/components/illustration.md) · 3 KB — Contract: Illustration.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

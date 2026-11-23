@@ -6,7 +6,7 @@
     /* ---------------------------------------------------------------- CodeBlock */
     /*
      * One bordered block on the card radius: the header on the surface (the file in the mono stack, the summary muted, the badge, Copy),
-     * the code on the code ground, numbered in a gutter, the note under it on the surface. Folded, the header is the whole block.
+     * the code on the code palette's ground (common/tones-code.css: its own inks, never the brand), numbered in a gutter, the note under it on the surface. Folded, the header is the whole block.
      */
     .starci-core-code-block {
         display: flex;
@@ -87,8 +87,8 @@
         margin: 0;
         padding-block: var(--grammar-row-gap);
         overflow-x: auto;
-        background: var(--code-surface, color-mix(in oklab, var(--foreground) 3%, var(--surface)));
-        color: var(--foreground);
+        background: var(--grammar-code-bg);
+        color: var(--grammar-code-fg);
         overscroll-behavior-inline: contain;
     }
 
@@ -103,7 +103,7 @@
 
     .starci-core-code-block-code .starci-core-code-line { padding-inline: var(--grammar-inset-card); }
     .starci-core-code-block-code [data-grammar-line-numbers="true"] .starci-core-code-line::before { min-inline-size: 4ch; margin-inline-end: var(--grammar-inset-card); font-variant-numeric: tabular-nums; }
-    .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--foreground); font-weight: var(--grammar-weight-medium); }
+    .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--grammar-code-fg); font-weight: var(--grammar-weight-medium); }
 
     .starci-core-code-block-note {
         padding: var(--grammar-row-gap) var(--grammar-inset-card);
@@ -180,6 +180,9 @@
     .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-key { border-color: var(--success); background: var(--success); color: var(--success-foreground); }
     .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-verdict { color: var(--success-soft-foreground); }
     .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-label { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-verdict { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] { cursor: progress; }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] .starci-core-graded-option-verdict { color: var(--muted); }
 
     /* ---------------------------------------------------------------- Sidenotes */
     /*

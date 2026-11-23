@@ -34,7 +34,7 @@ export type CodeBlockProps = NoChildren & {
     readonly start?: number
     /** Number every line in a gutter the reader cannot select or copy. Default true. */
     readonly lineNumbers?: boolean
-    /** The lines to mark (a step, the fix), by their numbers (counted from `start`): the accent soft band across the block. */
+    /** The lines to mark (a step, the fix), by their numbers (counted from `start`): the code palette's highlight-line tint and edge across the block (never the brand). */
     readonly highlightLines?: readonly CodeLineRange[]
     /** One short note under the code: what to notice. */
     readonly note?: ReactNode
@@ -67,7 +67,7 @@ const lineCount = (code: string): number => code.replace(/\n$/, "").split("\n").
 
 /**
  * FRAME - `CodeBlock`: a lesson's code on its own, outside an article (owner 2026-11-23). One bordered block: a header naming the file
- * and its language with the Copy command; the code numbered from `start`, the marked ranges in the accent soft band; a note under it.
+ * and its language with the Copy command; the code numbered from `start`, the marked ranges in the code palette's highlight-line tint; a note under it.
  * It may fold to one row that says which lines it holds and how many are marked, so a page can keep a long excerpt one press away.
  * `scheme` sets the block in the dark or the light theme whatever the page's, from the same tokens.
  * Contract: overflow OVERFLOW-4 (the code scrolls inline, a named Tab stop), the fold FOCUS-1 and STATE-7, loading STATE-8.

@@ -1,19 +1,14 @@
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import { captureTool } from "../shared/exec.js"
 import { redactSecrets } from "../shared/secrets.js"
 import type { HeavySlot } from "./heavy.js"
 import { stateBase } from "./ledger.js"
-import { listProcesses, psTimeMs } from "./process-table.js"
+import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
-import { inOrder } from "./sequential.js"
 
 /**
  * Who holds this host's memory: the processes with the largest working set, each grouped as managed (a heavy command the
  * governor admitted, a process under it, a seat or any process of the harness's own state folders and CLI) or unmanaged (other
  * node, the WSL VM and Docker, IDEs, agents, the rest), with its command line clipped and redacted. Read by `starci host load` and
- * by the starvation ticket of `supervisor tick`. And the CPU time the governor's running heavy commands have used
- * (`managedCpuTimes`), which the CPU rule of harness/heavy.ts (`managedCpuPercent`) samples. A read of the process table only,
+ * by the starvation ticket of `supervisor tick`. A read of the process table only,
  * never a kill.
  */
 
@@ -143,50 +138,3 @@ export const memoryHolders = async (slots: readonly HeavySlot[], top = 12): Prom
     return { top: holders.slice(0, top), managedMb: sum(holders.filter((item) => item.managed)), unmanagedMb: sum(holders.filter((item) => !item.managed)), processes: listed.length, unmanagedGroups: unmanagedByGroup(holders), unreadable: null }
 }
 
-// Linux counts a process's CPU time in clock ticks of USER_HZ, 100 on every architecture node supports there.
-const LINUX_TICK_MS = 10
-
-/** A process's CPU time in ms from /proc (its user and system ticks, counted after its parenthesised name); null without /proc or once it is gone. */
-const procCpuMs = (pid: number): number | null => {
-    const file = join("/proc", String(pid), "stat")
-    if (!existsSync(file)) return null
-    try {
-        const stat = readFileSync(file, "utf8")
-        const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ")
-        return (Number(fields[11]) + Number(fields[12])) * LINUX_TICK_MS
-    } catch {
-        return null
-    }
-}
-
-/** The CPU time of `pid` in ms where the process table does not carry it: /proc on Linux, `ps -o time=` elsewhere. */
-const cpuMsOf = async (pid: number): Promise<number | null> => {
-    const proc = procCpuMs(pid)
-    if (proc !== null || process.platform === "linux") return proc
-    const run = await captureTool("ps", ["-o", "time=", "-p", String(pid)], process.cwd(), { timeoutMs: 10_000 }).catch(() => null)
-    return run?.exitCode === 0 ? psTimeMs(run.stdout) : null
-}
-
-/**
- * The CPU time, in ms, that each process of the governor's running heavy commands has used so far: the process holding a running
- * row, its child and every process under them (`slots`, the rows `heavySlots` reads; a waiting row's process is not counted).
- * Empty when nothing runs, without reading the process table; why not, as a string, when the table cannot be read. What the CPU
- * rule of harness/heavy.ts (`managedCpuPercent`) samples.
- */
-export const managedCpuTimes = async (slots: readonly HeavySlot[]): Promise<Map<number, number> | string> => {
-    const roots = new Map<number, true>()
-    for (const slot of slots.filter((each) => each.state === "running")) {
-        roots.set(slot.pid, true)
-        if (slot.childPid !== null) roots.set(slot.childPid, true)
-    }
-    if (roots.size === 0) return new Map()
-    const listed = await listProcesses()
-    if (typeof listed === "string") return listed
-    const tree = withDescendants(listed, roots)
-    const times = new Map<number, number>()
-    await inOrder(listed.filter((each) => tree.has(each.pid)), async (item) => {
-        const cpuMs = item.cpuMs ?? (await cpuMsOf(item.pid))
-        if (cpuMs !== null) times.set(item.pid, cpuMs)
-    })
-    return times
-}
