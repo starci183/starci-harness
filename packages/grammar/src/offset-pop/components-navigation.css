@@ -9,6 +9,7 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Link"] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-bold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-bold), 400), 600) - 400) * 0.0025);
         text-decoration-color: var(--accent);
         text-decoration-thickness: var(--offset-pop-outline-width);
     }
@@ -27,6 +28,7 @@
     /* Breadcrumbs: ink ancestors, pink-marked current page. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Breadcrumbs"] [data-grammar-breadcrumb] {
         font-weight: var(--grammar-weight-bold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-bold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Breadcrumbs"] [data-grammar-breadcrumb][data-grammar-current="true"] {
@@ -45,6 +47,7 @@
         background: var(--surface);
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Pagination"] [data-grammar-current="true"] {
@@ -63,6 +66,7 @@
         background: var(--surface);
         color: var(--foreground);
         font-weight: var(--grammar-weight-black);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="complete"] [data-grammar-step-marker] {
@@ -89,6 +93,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-label] {
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* TopBar: ink rule under a canvas bar. */
@@ -105,6 +110,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] .starci-core-page-header-title {
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] [data-grammar-top-bar-trigger] {
@@ -125,6 +131,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Footer"] [data-grammar-footer-group] > p {
         font-weight: var(--grammar-weight-black);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-snug);
     }
 
@@ -143,6 +150,7 @@
         background: var(--warning);
         color: var(--foreground);
         font-weight: var(--grammar-weight-black);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
     }
 
     /* TagGroup: outlined chips. */
@@ -157,6 +165,7 @@
         background: var(--surface);
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* Forced colours: the current/selected decision stays visible without the pink fill. */

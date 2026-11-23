@@ -1,7 +1,6 @@
 "use client"
 
 import { Button as HeroButton } from "@heroui/react"
-import { ChevronDownIcon } from "@heroicons/react/24/outline"
 import { Fragment, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
@@ -9,6 +8,7 @@ import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
 import { ScheduleOverlay, useScheduleOverlay } from "./geometry.js"
 import { columnLabelOf, dependenciesOf, depthOf, hiddenRowIds, rangeOf, spanLanes, type SpanPlacement } from "./lanes.js"
+import { TablerChevronDown } from "../../leaf/Icon/tabler.js"
 
 export type ScheduleTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
 
@@ -375,7 +375,7 @@ export const ScheduleGrid = ({ label, columns, rows, items, cellLabels = [], emp
             <th scope="row" rowSpan={laneCount} className="starci-core-schedule-row-label" {...(depth > 0 ? { "data-grammar-depth": String(Math.min(depth, 3)) } : {})} {...(row.isGroup === true ? { "data-grammar-group": "true" } : {})}>
                 {row.isGroup === true && onRowToggle !== undefined && !isLoading ? (
                     <button type="button" className="starci-core-schedule-group-toggle" aria-expanded={row.isCollapsed !== true} onClick={() => onRowToggle(row.id, row.isCollapsed !== true)}>
-                        <ChevronDownIcon className="starci-core-schedule-group-chevron" aria-hidden="true" data-grammar-collapsed={row.isCollapsed === true ? "true" : "false"} />
+                        <TablerChevronDown className="starci-core-schedule-group-chevron" aria-hidden="true" data-grammar-collapsed={row.isCollapsed === true ? "true" : "false"} />
                         <span className="starci-core-schedule-group-label">{row.label}</span>
                     </button>
                 ) : row.label}

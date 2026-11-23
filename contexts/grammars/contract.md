@@ -415,10 +415,9 @@ An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a 
 beside it. Without an image it draws generated initials coloured by a stable seed, or, as a MARK, an icon on a round brand-colour plate (a
 provider or a channel); an agent's avatar is initials only with an accessible name that says so, and its "AI" is the neutral Chip that
 follows the NAME (`AgentName`, `isAgent` on the name slots); avatars in a row or from a list are one `AvatarGroup` of people and marks
-at one size, with `max - 1` items then a "+N" tile (lint `avatar-row-uses-group`). `LogoStack` shows which provider connections something
-uses: round 20px logos with no plate, at most three then a "+N" pill, an optional muted `xs` caption, static or one plain
-pressable (or a `DropdownMenu` trigger through `isTrigger`); the exported `PlainPressable` lets an app wrap its own content
-the same way.
+at one size, with `max - 1` items then a "+N" tile (lint `avatar-row-uses-group`). The provider connections something uses are an `AvatarGroup` of `kind: "logo"` items (a
+brand logo on a white surface in both themes, fitted inside, a hairline edge), and a lone logo an `Avatar kind="logo"` of the same
+`size`; logos are sized by `size` alone. The exported `PlainPressable` lets an app wrap its own content as a menu trigger.
 
 ### Mascot
 

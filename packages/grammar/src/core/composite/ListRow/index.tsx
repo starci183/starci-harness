@@ -17,9 +17,9 @@ import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Link } from "../../leaf/Link/index.js"
 import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
+import { TablerDots } from "../../leaf/Icon/tabler.js"
 
 /** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column of their own. */
 const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
@@ -92,7 +92,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 <DropdownMenu
                     placement="bottom end"
                     entries={row.menu.entries}
-                    trigger={<IconButton label={row.menu.label} source={EllipsisHorizontalIcon} variant="border" />}
+                    trigger={<IconButton label={row.menu.label} source={TablerDots} variant="border" />}
                 />
             )}
         </span>
@@ -219,7 +219,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                         {row.emphasis === "unread" ? <span className="starci-core-list-row-unread" data-grammar-unread-dot="true" aria-hidden="true" /> : null}
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
-                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{row.change.from} <Icon source={glyphSource("arrow-end")} usage="chip" /> {row.change.to}</span>}
+                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{row.change.from} <Icon source={glyphSource("arrow-end")} usage="control" /> {row.change.to}</span>}
                 </span>
                 {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true">{row.value}</span>}
                 {hasTrail ? (

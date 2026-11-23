@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { CalendarIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, EnvelopeIcon, MegaphoneIcon, ShoppingBagIcon, SparklesIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { TablerCalendar, TablerMessages, TablerFileText, TablerMail, TablerSpeakerphone, TablerShoppingBag, TablerSparkles, TablerUserPlus } from '../core/leaf/Icon/tabler.js';
 import * as G from '../common/index.js';
 import { Matrix, State } from './fixtures.js';
 
@@ -69,22 +69,22 @@ export const WhichIsWhich: Story = {
     <Matrix maxWidth={880}>
       <State label="A run list: the workflow's icon on the state's plate, the status trails as glyph + words + time" direction="column">
         <G.Section kind="list" title="Việc trợ lý làm hôm nay" empty={null} items={[
-          { id: 'r1', title: 'Trả lời khách hỏi giá', description: 'Chị Lan · Zalo', leading: { icon: ChatBubbleLeftRightIcon, state: 'done' }, value: <G.InlineStatus state="done" label="Đã xong" meta="09:12" /> },
-          { id: 'r2', title: 'Tạo đơn hàng', description: 'Anh Minh · Facebook', leading: { icon: ShoppingBagIcon, state: 'running' }, value: <G.InlineStatus state="running" label="Đang chạy" meta="1 phút" /> },
-          { id: 'r3', title: 'Gửi báo giá', description: 'Chị Hoa · Zalo', leading: { icon: DocumentTextIcon, state: 'waiting' }, value: <G.InlineStatus state="waiting" label="Chờ bạn duyệt" meta="5 phút" /> },
-          { id: 'r4', title: 'Gửi email cảm ơn', description: 'Khách mới', leading: { icon: EnvelopeIcon, state: 'error' }, value: <G.InlineStatus state="error" label="Lỗi" meta="09:20" /> },
-          { id: 'r5', title: 'Đăng bài khuyến mãi', description: 'TikTok', leading: { icon: MegaphoneIcon, state: 'skipped' }, value: <G.InlineStatus state="skipped" label="Bỏ qua" /> },
-          { id: 'r6', title: 'Chào khách mới', description: 'Lúc 18:00', leading: { icon: UserPlusIcon, state: 'notRun' }, value: <G.InlineStatus state="notRun" label="Chưa chạy" /> },
+          { id: 'r1', title: 'Trả lời khách hỏi giá', description: 'Chị Lan · Zalo', leading: { icon: TablerMessages, state: 'done' }, value: <G.InlineStatus state="done" label="Đã xong" meta="09:12" /> },
+          { id: 'r2', title: 'Tạo đơn hàng', description: 'Anh Minh · Facebook', leading: { icon: TablerShoppingBag, state: 'running' }, value: <G.InlineStatus state="running" label="Đang chạy" meta="1 phút" /> },
+          { id: 'r3', title: 'Gửi báo giá', description: 'Chị Hoa · Zalo', leading: { icon: TablerFileText, state: 'waiting' }, value: <G.InlineStatus state="waiting" label="Chờ bạn duyệt" meta="5 phút" /> },
+          { id: 'r4', title: 'Gửi email cảm ơn', description: 'Khách mới', leading: { icon: TablerMail, state: 'error' }, value: <G.InlineStatus state="error" label="Lỗi" meta="09:20" /> },
+          { id: 'r5', title: 'Đăng bài khuyến mãi', description: 'TikTok', leading: { icon: TablerSpeakerphone, state: 'skipped' }, value: <G.InlineStatus state="skipped" label="Bỏ qua" /> },
+          { id: 'r6', title: 'Chào khách mới', description: 'Lúc 18:00', leading: { icon: TablerUserPlus, state: 'notRun' }, value: <G.InlineStatus state="notRun" label="Chưa chạy" /> },
         ]} />
       </State>
       <State label="A chat run card (MessageCard): the workflow's icon on its state's plate, the status as (A) in the chip slot">
-        <G.MessageCard avatar={<G.IconTile source={DocumentTextIcon} state="waiting" />} title="Báo giá cho chị Hoa" chip={<G.InlineStatus state="waiting" label="Chờ bạn duyệt" />} body="3 sản phẩm, tổng 1.250.000đ." actions={[{ id: 'ok', label: 'Duyệt và gửi', kind: 'primary', onPress: noop }, { id: 'open', label: 'Xem chi tiết', kind: 'open', onPress: noop }]} meta="09:14" />
+        <G.MessageCard avatar={<G.IconTile source={TablerFileText} state="waiting" />} title="Báo giá cho chị Hoa" chip={<G.InlineStatus state="waiting" label="Chờ bạn duyệt" />} body="3 sản phẩm, tổng 1.250.000đ." actions={[{ id: 'ok', label: 'Duyệt và gửi', kind: 'primary', onPress: noop }, { id: 'open', label: 'Xem chi tiết', kind: 'open', onPress: noop }]} meta="09:14" />
       </State>
       <State label="IconTile: one round 40px plate; identity tiles in their tone, then every status, then a subject on every state">
-        <G.IconTile source={ChatBubbleLeftRightIcon} />
-        <G.IconTile source={ChatBubbleLeftRightIcon} tone="accent" />
+        <G.IconTile source={TablerMessages} />
+        <G.IconTile source={TablerMessages} tone="accent" />
         {G.MARK_STATES.map((state) => <G.IconTile key={state} state={state} />)}
-        {G.MARK_STATES.map((state) => <G.IconTile key={`s-${state}`} source={ShoppingBagIcon} state={state} />)}
+        {G.MARK_STATES.map((state) => <G.IconTile key={`s-${state}`} source={TablerShoppingBag} state={state} />)}
       </State>
       <State label="InlineStatus (A): every state">
         {G.MARK_STATES.map((state) => <G.InlineStatus key={state} state={state} label={{ done: 'Đã xong', running: 'Đang chạy', waiting: 'Chờ duyệt', error: 'Lỗi', skipped: 'Bỏ qua', notRun: 'Chưa chạy' }[state]} />)}
@@ -176,11 +176,11 @@ const people: ReadonlyArray<G.AvatarGroupItem> = [
   { id: 'binh', name: 'Phạm Bình', seed: 'm-binh' },
 ];
 const channels: ReadonlyArray<G.AvatarGroupItem> = [
-  { id: 'zalo', name: 'Zalo', mark: { logo: <ChatBubbleLeftRightIcon /> } },
-  { id: 'fb', name: 'Facebook', mark: { logo: <MegaphoneIcon />, tone: 'strong' } },
-  { id: 'mail', name: 'Email', mark: { logo: <EnvelopeIcon /> } },
-  { id: 'shop', name: 'Shopee', mark: { logo: <ShoppingBagIcon />, tone: 'strong' } },
-  { id: 'tt', name: 'TikTok', mark: { logo: <UserPlusIcon /> } },
+  { id: 'zalo', name: 'Zalo', mark: { logo: <TablerMessages /> } },
+  { id: 'fb', name: 'Facebook', mark: { logo: <TablerSpeakerphone />, tone: 'strong' } },
+  { id: 'mail', name: 'Email', mark: { logo: <TablerMail /> } },
+  { id: 'shop', name: 'Shopee', mark: { logo: <TablerShoppingBag />, tone: 'strong' } },
+  { id: 'tt', name: 'TikTok', mark: { logo: <TablerUserPlus /> } },
 ];
 const more = (count: number) => `${count} nữa`;
 
@@ -262,8 +262,8 @@ export const IconSizes: Story = {
         <G.Text role="caption">Zalo · <G.InlineStatus state="error" label="Lỗi" /></G.Text>
       </State>
       <State label="A Badge with an icon: the 20px chip icon">
-        <G.Badge tone="accent" startContent={<G.Icon source={SparklesIcon} usage="chip" />}>Mới</G.Badge>
-        <G.Badge tone="info" startContent={<G.Icon source={CalendarIcon} usage="chip" />}>Hôm nay</G.Badge>
+        <G.Badge tone="accent" startContent={<G.Icon source={TablerSparkles} usage="control" />}>Mới</G.Badge>
+        <G.Badge tone="info" startContent={<G.Icon source={TablerCalendar} usage="control" />}>Hôm nay</G.Badge>
       </State>
     </Matrix>
   ),

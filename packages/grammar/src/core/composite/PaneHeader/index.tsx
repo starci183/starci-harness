@@ -1,7 +1,6 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ArrowLeftIcon } from "@heroicons/react/24/outline"
 import { PaneDrawerOpener } from "../PaneDrawerOpener/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Heading } from "../../leaf/Heading/index.js"
@@ -10,6 +9,7 @@ import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
+import { TablerArrowLeft } from "../../leaf/Icon/tabler.js"
 
 export type PaneHeaderProps = NoChildren & {
     /** The pane's name: the subject it shows (a list's name, the opened item's name). Text, one line, truncated. */
@@ -63,7 +63,7 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
         >
             {back === undefined ? null : (
                 <span className="starci-core-pane-header-back" data-grammar-back-placement={back.placement ?? "narrow"}>
-                    <IconButton variant="border" source={ArrowLeftIcon} label={back.label} onPress={back.onPress} />
+                    <IconButton variant="border" source={TablerArrowLeft} label={back.label} onPress={back.onPress} />
                 </span>
             )}
             {mark === undefined ? null : <span className="starci-core-pane-header-mark" aria-hidden={isLoading || undefined}>{isLoading ? <SkeletonPlaceholder shape="block">{mark}</SkeletonPlaceholder> : mark}</span>}

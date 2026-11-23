@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowDownIcon } from "@heroicons/react/24/outline"
+import { TablerArrowDown } from "../../leaf/Icon/tabler.js"
 import type { CSSProperties, ReactNode } from "react"
 import { Icon } from "../../leaf/Icon/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
@@ -127,7 +127,7 @@ export const FunnelChart = ({ label, stages, empty, format = String, isLoading: 
                                             <Skeleton shape="text" />
                                         ) : (
                                             <>
-                                                <span className="starci-core-funnel-step-mark" aria-hidden="true"><Icon source={ArrowDownIcon} usage="text" /></span>
+                                                <span className="starci-core-funnel-step-mark" aria-hidden="true"><Icon source={TablerArrowDown} usage="text" /></span>
                                                 {stage.stepLabel ?? rateOf(previous, count)}
                                             </>
                                         )}

@@ -22,6 +22,7 @@
         color: var(--foreground);
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
         overflow-wrap: anywhere;
     }
@@ -50,6 +51,7 @@
         font: inherit;
         font-size: var(--grammar-type-label-item-size);
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-item-line);
         text-align: center;
     }
@@ -87,6 +89,7 @@
         flex: none;
         color: var(--muted);
         font-weight: var(--grammar-type-body-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-body-weight), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-choice-card-cell[data-chosen="true"] .starci-core-choice-card-hint { color: inherit; opacity: var(--grammar-opacity-secondary); }

@@ -1,13 +1,13 @@
 "use client"
 
 import { Button as HeroButton } from "@heroui/react"
-import { ArrowsPointingOutIcon, MinusIcon, PlusIcon } from "@heroicons/react/24/outline"
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 import { boundsOf, clusterPoints, fitBounds, panBy, tileAddress, tilesFor, zoomAbout, type Cluster, type GeoView, type Pixel, type Size } from "./projection.js"
+import { TablerArrowsMaximize, TablerMinus, TablerPlus } from "../../leaf/Icon/tabler.js"
 
 /** One place on the map: where it is, and how many things are there. */
 export type GeoMapPoint = {
@@ -323,9 +323,9 @@ const GeoMapSurface = ({ label, points, labels, tiles, height, defaultView, onSe
                     })}
                 </div>
                 <div className="starci-core-geomap-controls" data-grammar-geomap-control="true">
-                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomIn} isDisabled={!canZoomIn} onPress={() => zoomBy(1)}><PlusIcon aria-hidden="true" /></HeroButton>
-                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomOut} isDisabled={!canZoomOut} onPress={() => zoomBy(-1)}><MinusIcon aria-hidden="true" /></HeroButton>
-                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.showAll} onPress={() => { hasMoved.current = false; if (size !== null) animateTo(fitAll(size)) }}><ArrowsPointingOutIcon aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomIn} isDisabled={!canZoomIn} onPress={() => zoomBy(1)}><TablerPlus aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.zoomOut} isDisabled={!canZoomOut} onPress={() => zoomBy(-1)}><TablerMinus aria-hidden="true" /></HeroButton>
+                    <HeroButton isIconOnly size="sm" variant="outline" aria-label={labels.showAll} onPress={() => { hasMoved.current = false; if (size !== null) animateTo(fitAll(size)) }}><TablerArrowsMaximize aria-hidden="true" /></HeroButton>
                 </div>
                 {tiles === undefined ? null : <p className="starci-core-geomap-attribution">{tiles.attribution}</p>}
             </div>

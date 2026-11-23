@@ -124,7 +124,7 @@ export const Badge: Story = {
         <G.Badge tone="muted">Muted</G.Badge>
       </State>
       <State label="With leading content">
-        <G.Badge tone="accent" startContent={<G.Icon source={StarGlyph} usage="chip" />}>Featured</G.Badge>
+        <G.Badge tone="accent" startContent={<G.Icon source={StarGlyph} usage="control" />}>Featured</G.Badge>
       </State>
       <State label="Status dot (isDot)">
         <G.Badge isDot>Idle</G.Badge>
@@ -303,12 +303,12 @@ export const Icon: Story = {
   render: () => (
     <Matrix>
       <State label="Usages (decorative)">
-        <G.Icon source={SearchGlyph} usage="heading" />
-        <G.Icon source={SearchGlyph} usage="leading" />
-        <G.Icon source={SearchGlyph} usage="chip" />
+        <G.Icon source={SearchGlyph} usage="head" />
+        <G.Icon source={SearchGlyph} usage="control" />
+        <G.Icon source={SearchGlyph} usage="control" />
       </State>
       <State label="Meaningful (labelled)">
-        <G.Icon source={BellGlyph} ariaLabel="Notifications" usage="leading" />
+        <G.Icon source={BellGlyph} ariaLabel="Notifications" usage="control" />
       </State>
       <State label="Skeleton">
         <G.Icon source={SearchGlyph} isLoading />

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { CalendarDaysIcon, FunnelIcon } from "@heroicons/react/24/outline"
 import { useState } from "react"
 import { expect, userEvent, waitFor, within } from "storybook/test"
 import * as G from "../common/index.js"
 import type { TileGroundTone } from "../core/surfaceCardData.js"
 import { Matrix, State } from "./fixtures.js"
+import { TablerCalendar, TablerFilter } from "../core/leaf/Icon/tabler.js"
 
 /**
  * WORKBENCH GAPS (0.47.1). Six gaps a screen critique of a working surface (a floor plan, a product grid, a filtered list) found, each answered by a field of an existing
@@ -91,8 +91,8 @@ export const TileGroundAndBare: Story = {
       <State label="a marked tile shorter than its row keeps its rows at the top" direction="column">
         <div data-story-grid="rows">
           <G.Grid kind="cards" size="tile" columns={2} gap="inline">
-            <G.SurfaceCard kind="tile" name="Short" mark={{ icon: FunnelIcon }} byline="One line" groundTone="success" badge={{ label: "Open", tone: "success" }} />
-            <G.SurfaceCard kind="tile" name="Taller neighbour" mark={{ icon: CalendarDaysIcon }} byline="Version 2" description="A description that runs over several lines so that this tile sets the height of the row for its short neighbour on the left." facts={["Updated today", "3 members"]} />
+            <G.SurfaceCard kind="tile" name="Short" mark={{ icon: TablerFilter }} byline="One line" groundTone="success" badge={{ label: "Open", tone: "success" }} />
+            <G.SurfaceCard kind="tile" name="Taller neighbour" mark={{ icon: TablerCalendar }} byline="Version 2" description="A description that runs over several lines so that this tile sets the height of the row for its short neighbour on the left." facts={["Updated today", "3 members"]} />
           </G.Grid>
         </div>
       </State>
@@ -189,10 +189,10 @@ export const ActiveFilterValues: Story = {
 export const SelectWithIcon: Story = {
   render: () => (
     <Matrix maxWidth={360}>
-      <State label="field" direction="column"><G.Select label="Period" icon={CalendarDaysIcon} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="week" /></State>
-      <State label="pill with a prefix" direction="column"><G.Select label="Status" appearance="pill" icon={FunnelIcon} prefix="Status:" options={[{ id: "open", label: "Open" }, { id: "done", label: "Done" }]} defaultValue="open" /></State>
-      <State label="compact" direction="column"><G.Select label="Period" appearance="compact" icon={CalendarDaysIcon} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="month" /></State>
-      <State label="loading (same box)" direction="column"><G.Select label="Period" appearance="compact" icon={CalendarDaysIcon} options={[{ id: "week", label: "This week" }]} defaultValue="week" isLoading /></State>
+      <State label="field" direction="column"><G.Select label="Period" icon={TablerCalendar} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="week" /></State>
+      <State label="pill with a prefix" direction="column"><G.Select label="Status" appearance="pill" icon={TablerFilter} prefix="Status:" options={[{ id: "open", label: "Open" }, { id: "done", label: "Done" }]} defaultValue="open" /></State>
+      <State label="compact" direction="column"><G.Select label="Period" appearance="compact" icon={TablerCalendar} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="month" /></State>
+      <State label="loading (same box)" direction="column"><G.Select label="Period" appearance="compact" icon={TablerCalendar} options={[{ id: "week", label: "This week" }]} defaultValue="week" isLoading /></State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
@@ -224,7 +224,7 @@ export const ToolbarSearch: Story = {
         <div data-story-toolbar="true">
           <G.Cluster gap="inline" align="end">
             <G.SearchField label="Search orders" measure="toolbar" placeholder="Search" />
-            <G.Select label="Period" appearance="compact" icon={CalendarDaysIcon} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="week" />
+            <G.Select label="Period" appearance="compact" icon={TablerCalendar} options={[{ id: "week", label: "This week" }, { id: "month", label: "This month" }]} defaultValue="week" />
           </G.Cluster>
         </div>
       </State>

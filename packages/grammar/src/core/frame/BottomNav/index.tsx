@@ -34,7 +34,7 @@ const PlaceContent = ({ label, source, badge, badgeMax, badgeTone }: Place) => {
     return (
         <>
             <span className="starci-core-bottom-nav-glyph" data-grammar-bottom-nav-glyph="true">
-                <Icon source={source} usage="leading" />
+                <Icon source={source} usage="control" />
                 {badgeText === null ? null : <span aria-hidden="true" className="starci-core-icon-button-badge starci-core-bottom-nav-badge" data-grammar-badge-tone={badgeTone ?? "neutral"}>{badgeText}</span>}
             </span>
             <span className="starci-core-bottom-nav-label">{label}</span>

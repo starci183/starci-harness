@@ -3,11 +3,13 @@ import type { ComponentType, SVGProps } from "react"
 import type { NoChildren } from "../../tier.js"
 
 /**
- * Where a glyph stands, which sets its box (the icon size table, `src/common/ramps.css`): `heading` and `leading` 24 (a left navigation entry, a
- * section or heading lead), `chip` 20 (beside text, in a chip, a badge or a field), `text` 1em of the text it sits in, in that text's colour (a caret: a
- * disclosure, a select or menu trigger, the "goes somewhere" cue of a figure or a row; a status mark inside a line).
+ * THE ICON ROLES (owner 2026-11-23, the icon table of `src/common/ramps.css`): a glyph is sized by the ROLE of the place it stands in, never by
+ * pixels. `text`: 1em of the text beside it, in that text's colour, centred on its line (a caret, a status mark inside a line, a badge glyph, an
+ * icon written into a `Text`). `control`: 20 in a 40 control (a button, a menu or select entry, a field, a navigation entry), 16 in a 32 one.
+ * `row`: 20, the glyph of the 40 tile that leads a list row (`IconTile` size `row`). `head`: 24, the glyph of the 48 tile that leads a page or
+ * an empty state (`IconTile` size `head`). Every glyph is outline (Tabler); its stroke follows the weight of the text it stands with.
  */
-export type IconUsage = "heading" | "leading" | "chip" | "text"
+export type IconUsage = "text" | "control" | "row" | "head"
 /**
  * Minimal structural contract passed to an app-owned SVG glyph.
  *
@@ -58,7 +60,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
  * The app resolves the glyph and Common owns its usage box. Contract: A11Y-2 (named once when it
  * carries meaning, `aria-hidden` when it does not).
  */
-export const Icon = ({ source: Source, usage = "chip", ariaLabel, isLoading = false }: IconProps) => {
+export const Icon = ({ source: Source, usage = "control", ariaLabel, isLoading = false }: IconProps) => {
     if (isLoading) {
         // Skeleton parity: the resting glyph takes the same usage box as the glyph (`.starci-core-icon[data-usage]`).
         return <span data-tier="leaf" data-component="Icon" data-usage={usage} data-loading="true" aria-hidden className={SKELETON_CLASS_NAME} />

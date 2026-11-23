@@ -165,7 +165,7 @@ const SelectControl = ({
                 data-grammar-field-control="true"
                 isPending={isPending}
             >
-                {icon === undefined ? null : <span className="starci-core-select-icon" data-grammar-select-icon="true" aria-hidden="true"><Icon source={icon} usage="chip" /></span>}
+                {icon === undefined ? null : <span className="starci-core-select-icon" data-grammar-select-icon="true" aria-hidden="true"><Icon source={icon} usage="control" /></span>}
                 {prefix === undefined ? null : <span className="starci-core-select-prefix" aria-hidden="true">{prefix}</span>}
                 <HeroSelect.Value />
                 {isPending

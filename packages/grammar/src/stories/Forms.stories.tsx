@@ -553,7 +553,7 @@ export const FileDropzone: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
       <State label="Default" direction="column">
-        <G.FileDropzone label="Attachments" description="PNG or PDF, up to 5 MB." prompt="Drop files here or browse" icon={<G.Icon source={UploadGlyph} usage="heading" />} accept="image/png,application/pdf" multiple />
+        <G.FileDropzone label="Attachments" description="PNG or PDF, up to 5 MB." prompt="Drop files here or browse" icon={<G.Icon source={UploadGlyph} usage="head" />} accept="image/png,application/pdf" multiple />
       </State>
       <State label="Invalid" direction="column">
         <G.FileDropzone label="Avatar" prompt="Drop an image" isRequired isInvalid errorMessage="An image is required." />

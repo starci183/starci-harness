@@ -46,7 +46,7 @@ export const OverviewPageBlockBase = (props: OverviewPageBlockBaseProps) => {
                         variant="primary"
                         isDisabled
                         disabledReason={labels.newWorkflowReason}
-                        startContent={<Icon source={PlusIcon} usage="leading" />}
+                        startContent={<Icon source={PlusIcon} />}
                     >
                         {labels.newWorkflow}
                     </Button>

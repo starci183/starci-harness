@@ -1,9 +1,9 @@
 "use client"
 
-import { ArrowPathIcon, ArrowsPointingOutIcon, MinusIcon, PlusIcon } from "@heroicons/react/24/outline"
 import { Panel, useReactFlow, type FitViewOptions } from "@xyflow/react"
 import { createElement as h, type ReactElement } from "react"
 import { IconButton } from "../../../index.js"
+import { TablerArrowsMaximize, TablerMinus, TablerPlus, TablerRefresh } from "../../../leaf/Icon/tabler.js"
 
 /** The words of the zoom buttons, in the app's language. */
 export interface ZoomWords {
@@ -33,10 +33,10 @@ export const ZoomButtons = ({ words, onZoomIn, onZoomOut, onFit, reset }: ZoomBu
     h(
         "div",
         { className: "starci-graph-zoom", role: "group" },
-        h(IconButton, { key: "in", source: PlusIcon, label: words.zoomIn, onPress: onZoomIn }),
-        h(IconButton, { key: "out", source: MinusIcon, label: words.zoomOut, onPress: onZoomOut }),
-        h(IconButton, { key: "fit", source: ArrowsPointingOutIcon, label: words.fit, onPress: onFit }),
-        reset === undefined ? null : h(IconButton, { key: "reset", source: ArrowPathIcon, label: reset.label, onPress: reset.onPress }),
+        h(IconButton, { key: "in", source: TablerPlus, label: words.zoomIn, onPress: onZoomIn }),
+        h(IconButton, { key: "out", source: TablerMinus, label: words.zoomOut, onPress: onZoomOut }),
+        h(IconButton, { key: "fit", source: TablerArrowsMaximize, label: words.fit, onPress: onFit }),
+        reset === undefined ? null : h(IconButton, { key: "reset", source: TablerRefresh, label: reset.label, onPress: reset.onPress }),
     )
 
 /** The zoom buttons of an xyflow canvas, at its bottom left; `onFit` replaces xyflow's own fit (a graph that keeps clear of the buttons). */

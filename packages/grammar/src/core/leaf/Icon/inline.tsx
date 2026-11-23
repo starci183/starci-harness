@@ -7,5 +7,5 @@ import type { IconUsage } from "./index.js"
  * stepper, a search icon, an alert indicator): the vendor's defaults are filled glyphs, and Grammar's icons are outline only. Every glyph is sized by the Icon usage
  * box (`.starci-core-icon[data-usage]`: 20 at `chip`, 1em at `text`) and carries width and height 16 as a floor, so a slot with no size rule never stretches it to its container (0.37.5).
  */
-export const inlineGlyph = (name: GlyphName, extra: SVGProps<SVGSVGElement> = {}, usage: IconUsage = "chip"): ReactElement =>
+export const inlineGlyph = (name: GlyphName, extra: SVGProps<SVGSVGElement> = {}, usage: IconUsage = "control"): ReactElement =>
     createElement(glyphSource(name) as ComponentType<SVGProps<SVGSVGElement>>, { "aria-hidden": true, focusable: "false", className: "starci-core-icon", "data-usage": usage, width: 16, height: 16, ...extra } as SVGProps<SVGSVGElement>)

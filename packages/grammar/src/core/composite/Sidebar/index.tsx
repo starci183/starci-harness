@@ -216,7 +216,7 @@ export const Sidebar = ({
                                 {...(item.href === undefined ? {} : { href: item.href })}
                                 {...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled })}
                             >
-                                {item.source === undefined ? null : <Icon source={item.source} usage="leading" />}
+                                {item.source === undefined ? null : <Icon source={item.source} usage="control" />}
                                 {collapsed ? null : item.description === undefined ? <span className={sidebarItemLabelClassName} data-contract="FLOW-4 FONT-2">{item.label}</span> : (
                                     <div data-grammar-sidebar-copy="true">
                                         <HeroLabel className={sidebarItemLabelClassName} data-grammar-item-label="true" data-contract="FLOW-4 FONT-2">{item.label}</HeroLabel>
@@ -243,7 +243,7 @@ export const Sidebar = ({
                         />
                     ) : (
                         <AriaButton className="starci-core-sidebar-collapse-row" type="button" aria-expanded aria-controls={listId} onPress={() => { hideTooltip(); onCollapsedChange(true) }}>
-                            <Icon source={toggleSource} usage="leading" />
+                            <Icon source={toggleSource} usage="control" />
                             <span className="starci-core-sidebar-collapse-text">{toggleLabel}</span>
                         </AriaButton>
                     )}

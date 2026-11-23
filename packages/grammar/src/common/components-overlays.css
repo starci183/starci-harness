@@ -532,7 +532,7 @@
         color: var(--danger);
     }
 
-    /* Marks reuse Icon's chip box (20, an icon beside text); artwork fits that box without a second size rule. */
+    /* Marks reuse Icon's control box (16, an icon beside text); artwork fits that box without a second size rule. */
     [data-grammar-menu-mark] {
         display: inline-flex;
         align-items: center;
@@ -662,6 +662,7 @@
         margin: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
@@ -682,6 +683,7 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
     }
 
@@ -752,8 +754,8 @@
         line-height: var(--grammar-type-label-item-line);
     }
 
-    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); }
-    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
+    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-type-label-item-weight); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025); }
+    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025); }
 
     /* The glyph at its own 24px, no tile: HeroUI's p-1 goes, the 24px box rides 2px above the 20px title line so their centres meet. */
     .starci-core-alert .starci-core-alert-indicator {
@@ -829,6 +831,7 @@
         box-shadow: none !important;
         color: var(--starci-core-alert-ink) !important;
         font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-alert:not([data-loading="true"]) .starci-core-button:not([data-grammar-variant="danger"], [data-grammar-button-ground], [data-loading="true"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
@@ -1198,6 +1201,7 @@
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-meter-output {
@@ -1210,6 +1214,7 @@
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
         font-weight: var(--grammar-weight-regular);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
     }
 
     /*

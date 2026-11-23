@@ -1,6 +1,5 @@
 "use client"
 
-import { ArchiveBoxIcon, CloudArrowUpIcon, DocumentIcon, DocumentTextIcon, FilmIcon, MusicalNoteIcon, PhotoIcon, TableCellsIcon } from "@heroicons/react/24/outline"
 import { useId, type ReactNode } from "react"
 import { Button } from "../../leaf/Button/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
@@ -12,6 +11,7 @@ import { TextAction } from "../../leaf/TextAction/index.js"
 import type { MarkState } from "../../statusMark.js"
 import { fileKindOf, type DropzoneFileKind, type DropzoneRejection } from "./files.js"
 import type { DropzoneLabels, DropzoneStatusCounts } from "./labels.js"
+import { TablerArchive, TablerCloudUpload, TablerFile, TablerFileText, TablerMovie, TablerMusic, TablerPhoto, TablerTable } from "../../leaf/Icon/tabler.js"
 
 /** The upload state of one file, driven by the app: waiting in the queue, uploading (with `progress`), done, or failed. */
 export type DropzoneItemStatus = "waiting" | "uploading" | "done" | "error"
@@ -33,7 +33,7 @@ export type DropzoneItem = {
 export type DropzonePhase = "idle" | "over" | "rejected"
 
 const KIND_ICON: Readonly<Record<DropzoneFileKind, IconSource>> = {
-    image: PhotoIcon, video: FilmIcon, audio: MusicalNoteIcon, pdf: DocumentTextIcon, sheet: TableCellsIcon, archive: ArchiveBoxIcon, text: DocumentTextIcon, file: DocumentIcon,
+    image: TablerPhoto, video: TablerMovie, audio: TablerMusic, pdf: TablerFileText, sheet: TablerTable, archive: TablerArchive, text: TablerFileText, file: TablerFile,
 }
 
 const MARK_OF_STATUS: Readonly<Record<DropzoneItemStatus, MarkState>> = { waiting: "waiting", uploading: "running", done: "done", error: "error" }
@@ -69,7 +69,7 @@ export const announcementOf = (state: { readonly phase: DropzonePhase; readonly 
 
 const DropzoneRow = ({ item, labels, onRetry }: { readonly item: DropzoneItem; readonly labels: DropzoneLabels; readonly onRetry: ((id: string) => void) | undefined }) => (
     <li className="starci-core-dropzone-row" data-grammar-upload-status={item.status}>
-        <Icon source={KIND_ICON[fileKindOf(item.name, item.type)]} usage="chip" />
+        <Icon source={KIND_ICON[fileKindOf(item.name, item.type)]} usage="control" />
         <div className="starci-core-dropzone-row-main">
             <Text role="body" overflow="truncate">{item.name}</Text>
             <Progress label={labels.progressOf(item.name)} value={progressOfItem(item)} tone="info" />
@@ -123,7 +123,7 @@ export const DropzoneView = ({ phase, labels, target, acceptedTypes, limits, dra
                 aria-disabled={isDisabled ? true : undefined}
             >
                 {input}
-                <Icon source={CloudArrowUpIcon} usage="leading" />
+                <Icon source={TablerCloudUpload} usage="control" />
                 <Text id={titleId} role="label.item">{title}</Text>
                 <div id={detailId} className="starci-core-dropzone-detail">
                     {phase === "over" ? <Text role="caption">{labels.dragged(draggedCount)}</Text> : null}
@@ -157,7 +157,7 @@ export const DropzoneSkeleton = ({ rows }: { readonly rows: number }) => (
             <div className="starci-core-dropzone-list" aria-hidden="true">
                 {Array.from({ length: rows }, (_, index) => (
                     <div key={index} className="starci-core-dropzone-row">
-                        <Icon source={DocumentIcon} usage="chip" isLoading />
+                        <Icon source={TablerFile} usage="control" isLoading />
                         <div className="starci-core-dropzone-row-main"><Skeleton shape="text" /><Progress label="" isLoading /></div>
                         <div className="starci-core-dropzone-row-status"><Skeleton shape="text" /></div>
                     </div>

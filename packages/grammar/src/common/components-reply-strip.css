@@ -25,6 +25,7 @@
         font: inherit;
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-type-caption-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
         text-align: start;
     }
@@ -51,6 +52,7 @@
         flex: 0 1 auto;
         max-inline-size: 50%;
         font-weight: var(--grammar-weight-medium);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         text-overflow: ellipsis;
         white-space: nowrap;
     }

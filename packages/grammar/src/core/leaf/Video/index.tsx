@@ -3,11 +3,11 @@
 import { withRegionGeometry } from "../../regionScope.js"
 import { useEffect, useRef, useState } from "react"
 import { Skeleton as HeroSkeleton } from "@heroui/react"
-import { ExclamationTriangleIcon, NoSymbolIcon } from "@heroicons/react/24/outline"
 import { assetSlotAttributes, type AssetSlotProps } from "../Image/assetSlot.js"
 import { reportUnresolvedStatics, useMediaUrl, type MediaSourceRef } from "../Image/mediaSource.js"
 import { attachScriptPlayer, pickVideoSource, readVideoSupport, type VideoPlayback, type VideoPlayerHandle, type VideoSource } from "./playback.js"
 import type { NoChildren } from "../../tier.js"
+import { TablerAlertTriangle, TablerBan } from "../Icon/tabler.js"
 
 export type { VideoPlayback, VideoSource, VideoSourceType, VideoSupport } from "./playback.js"
 export { pickVideoSource, playbackOf } from "./playback.js"
@@ -200,7 +200,7 @@ const VideoInner = ({
             {status === "loading" ? <HeroSkeleton animationType="shimmer" aria-hidden="true" className="starci-core-skeleton starci-core-video-skeleton" data-contract="STATE-2 MOTION-2" /> : null}
             {failed ? (
                 <div className="starci-core-video-notice" role="status" data-grammar-video-notice={status}>
-                    {status === "error" ? <ExclamationTriangleIcon className="starci-core-video-glyph" aria-hidden="true" focusable="false" /> : <NoSymbolIcon className="starci-core-video-glyph" aria-hidden="true" focusable="false" />}
+                    {status === "error" ? <TablerAlertTriangle className="starci-core-video-glyph" aria-hidden="true" focusable="false" /> : <TablerBan className="starci-core-video-glyph" aria-hidden="true" focusable="false" />}
                     <span className="starci-core-video-notice-text">{status === "error" ? words.error : words.unsupported}</span>
                 </div>
             ) : null}
