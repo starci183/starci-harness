@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.57.2 - 2026-11-23 - PaneHeader: a long title ends in an ellipsis
+
+A patch: a fix.
+
+- Fixed (`PaneHeader title`): the wrapper of the title clipped with `text-overflow`, but the Heading inside it is a block, so a long title was cut hard beside the status tag ("Chăm" with no ellipsis). The Heading itself now takes `min-width: 0`, `overflow: hidden`, `text-overflow: ellipsis` and `white-space: nowrap`. Story `Navigation & Data/Pane header` `LongTitlePhone` (390).
+
 ## 0.57.1 - 2026-11-23 - AiChatThread: the assistant's mark, a node after the messages, a hint in the composer's foot row
 
 A patch: three new optional props and a type.

@@ -3915,6 +3915,14 @@
         white-space: nowrap;
     }
 
+    /* The Heading is a block inside the wrapper, so the wrapper's own text-overflow never drew: the cut belongs to the Heading, where the text is. */
+    .starci-core-pane-header-title > [data-component="Heading"] {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .starci-core-pane-header-status { display: inline-flex; flex: none; }
 
     /* The way back belongs to a grid that shows one pane at a time; from 48rem the list is beside the pane. */
