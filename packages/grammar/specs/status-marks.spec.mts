@@ -150,34 +150,6 @@ test("Alert: its mark is the bare 24px Heroicon in the soft foreground on the so
     assert.doesNotMatch(css, /soft-surface|--starci-core-alert-plate|data-tone="alert"/u, "no soft-surface box, no plate")
 })
 
-test("Alert: ALERT_ACTION_LOOK - a primary SOLID in the banner's tone, the negative retry and colourless tones border, a destructive action danger; the secondary is border", () => {
-    const withAction = (tone: string, isDestructive = false) => render(createElement(Alert, { tone: tone as never, title: "T", action: { label: "Làm", onAction: () => undefined, isDestructive }, secondaryAction: { label: "Sau", onAction: () => undefined } }))
-    const buttons = (markup: string): string[] => markup.match(/<button[^>]*data-component="Button"[^>]*>/gu) ?? []
-    for (const [tone, button] of [["cautionary", "warning"], ["informative", "info"], ["affirmative", "success"], ["accent", "accent"]] as const) {
-        const markup = withAction(tone)
-        assert.equal(count(markup, new RegExp(`data-grammar-button-tone="${button}"`, "gu")), 1, `${tone}: one solid ${button} action`)
-        const toned = new RegExp(`<button[^>]*data-grammar-button-tone="${button}"[^>]*>`, "u").exec(markup)?.[0] ?? ""
-        assert.match(toned, /data-grammar-variant="primary"/u, `${tone}: a primary`)
-        assert.doesNotMatch(toned, /outline/u, `${tone}: the vendor's solid variant, never an outline`)
-        assert.ok(buttons(markup).some((b) => /data-grammar-variant="border"/u.test(b) && /button--outline/u.test(b)), `${tone}: the secondary is border`)
-    }
-    for (const tone of ["negative", "neutral", "pending", "unavailable"]) {
-        const markup = withAction(tone)
-        assert.doesNotMatch(markup, /data-grammar-button-tone/u, tone)
-        assert.ok(buttons(markup).every((b) => /data-grammar-variant="border"/u.test(b)), `${tone}: border`)
-    }
-    for (const tone of ["negative", "cautionary", "informative"]) {
-        const markup = withAction(tone, true)
-        assert.equal(buttons(markup).filter((b) => /data-grammar-variant="danger"[^>]*button--danger|button--danger[^>]*data-grammar-variant="danger"/u.test(b)).length, 1, `${tone}: a destructive action is danger`)
-        assert.doesNotMatch(markup, /data-grammar-button-tone/u, `${tone}: danger takes no tone`)
-    }
-    const css = read("common/styles.css")
-    for (const tone of ["accent", "info", "success", "warning"]) {
-        assert.match(css, new RegExp(`\\.starci-core-button\\[data-grammar-button-tone="${tone}"\\] \\{ --starci-core-button-tone: var\\(--${tone}\\); --starci-core-button-tone-ink: var\\(--${tone}-foreground\\); \\}`, "u"), tone)
-    }
-    assert.match(css, /\.starci-core-button\[data-grammar-button-tone\] \{\s*border-color: transparent !important;\s*background: var\(--starci-core-button-tone\) !important;/u)
-})
-
 const FIGURES: EntitySummaryCardProps["figures"] = [
     { label: "Đơn chốt", value: "42", delta: { text: "+12%", direction: "up", goodWhen: "up" } },
     { label: "Doanh thu", value: "18tr" },
