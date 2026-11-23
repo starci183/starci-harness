@@ -2640,6 +2640,29 @@
         box-shadow: none;
     }
 
+    /*
+     * Narrow reading (under 40rem): a table's rows stack. Each cell names its column from `data-label` and the head row is kept for
+     * assistive technology only, so nothing is cut at the edge and nothing scrolls sideways.
+     */
+    @media (max-width: 40rem) {
+        .starci-core-markdown-table-frame { overflow: visible; mask-image: none; animation: none; }
+        .starci-core-markdown-table-frame :is(table, tbody, tr, td) { display: block; width: 100%; }
+        .starci-core-markdown-table-frame thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        .starci-core-markdown-table-frame tr { border-block-end: 1px solid var(--separator); }
+        .starci-core-markdown-table-frame tr:last-child { border-block-end: 0; }
+        .starci-core-markdown-table-frame td { min-width: 0; border-bottom: 0; padding-block: var(--grammar-identity-gap); }
+        .starci-core-markdown-table-frame td:first-child { padding-block-start: var(--grammar-inset-nested); font-weight: var(--grammar-type-label-item-weight); }
+        .starci-core-markdown-table-frame td:last-child { padding-block-end: var(--grammar-inset-nested); }
+        .starci-core-markdown-table-frame td[data-label]:not([data-label=""])::before {
+            content: attr(data-label);
+            display: block;
+            color: var(--muted);
+            font-size: var(--grammar-type-label-group-size);
+            font-weight: var(--grammar-type-label-group-weight);
+            line-height: var(--grammar-type-label-group-line);
+        }
+    }
+
     .starci-core-markdown-article hr {
         width: 100%;
         margin: var(--grammar-row-gap) 0;

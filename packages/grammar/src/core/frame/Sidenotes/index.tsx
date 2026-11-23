@@ -48,7 +48,7 @@ const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLay
 
 /**
  * FRAME - `Sidenotes`: prose with its terms explained in the margin (owner 2026-11-23, a lesson's vocabulary). On a wide frame the notes
- * stand in a column beside the prose, each level with the dotted term it explains (pushed down only when the one above needs the room);
+ * stand in a column beside the prose, in reading order from the heading down, each level with the dotted term it explains only where that costs at most two gaps of room (no void in the column); a frame with no notes draws no heading;
  * hovering or focusing a term marks its note, and its note is the term's description. On a narrow frame (under 52rem) the column folds
  * into one quiet line under the prose, "Terms (n)", and pressing a term opens it at that note; with `narrow="inline"` (0.57.1) there is no
  * fold and a pressed term opens its own note in place, under it in the paragraph.
@@ -104,9 +104,12 @@ export const Sidenotes = ({ children, notes, title, foldLabel, narrow = "fold" }
         let flow = (column.querySelector<HTMLElement>(".starci-core-sidenotes-list")?.getBoundingClientRect().top ?? columnTop) - columnTop
         list.forEach((node, index) => {
             const least = index === 0 ? 0 : gap
+            // The first note starts right under the heading; each later one may wait for its term only by two gaps, so the column reads
+            // as one stack with no void, and the active mark still pairs a term with its note.
+            const most = index === 0 ? 0 : least + gap * 2
             const term = terms.current.get(node.dataset.grammarSidenote ?? "")
             const wanted = term === undefined ? flow + least : term.getBoundingClientRect().top - columnTop
-            const offset = Math.max(least, wanted - flow)
+            const offset = Math.min(most, Math.max(least, wanted - flow))
             node.style.marginBlockStart = `${String(offset)}px`
             flow += offset + node.getBoundingClientRect().height
         })
@@ -156,10 +159,14 @@ export const Sidenotes = ({ children, notes, title, foldLabel, narrow = "fold" }
                             </div>
                         ) : null}
                     </div>
-                    <aside ref={side} className="starci-core-sidenotes-side" aria-label={title}>
-                        <p className="starci-core-sidenotes-title">{title}</p>
-                        {list("side")}
-                    </aside>
+                    {notes.length === 0 ? (
+                        <div className="starci-core-sidenotes-side" aria-hidden="true" />
+                    ) : (
+                        <aside ref={side} className="starci-core-sidenotes-side" aria-label={title}>
+                            <p className="starci-core-sidenotes-title">{title}</p>
+                            {list("side")}
+                        </aside>
+                    )}
                 </div>
             </div>
         </SidenotesContext.Provider>

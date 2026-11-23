@@ -277,6 +277,12 @@ const Figure = (props: { readonly node: PhrasingContent; readonly context: Conte
 const Blocks = (props: { readonly nodes: ReadonlyArray<RootContent>; readonly context: Context; readonly isTight?: boolean }) =>
     props.nodes.map((node, index) => <Block key={index} node={node} context={props.context} isTight={props.isTight === true} />)
 
+/** The plain words of inline nodes: a table column's name on a narrow frame, where its rows stack. */
+const wordsOf = (nodes: ReadonlyArray<{ readonly value?: string; readonly children?: ReadonlyArray<unknown> }>): string =>
+    nodes
+        .map((node) => (typeof node.value === "string" ? node.value : wordsOf((node.children ?? []) as typeof nodes)))
+        .join("")
+
 const alignStyle = (align: "left" | "right" | "center" | null | undefined) => (align === null || align === undefined ? undefined : { textAlign: align })
 
 const Block = (props: { readonly node: RootContent; readonly context: Context; readonly isTight: boolean }): ReactNode => {
@@ -314,7 +320,8 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
             }
             return <FenceOf node={node} context={context} />
         }
-        case "table":
+        case "table": {
+            const names = (node.children[0]?.children ?? []).map((cell) => wordsOf(cell.children as Parameters<typeof wordsOf>[0]))
             return (
                 <MarkdownTableFrame label={context.labels.table}>
                     <table>
@@ -331,7 +338,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
                             {node.children.slice(1).map((row, rowIndex) => (
                                 <tr key={rowIndex}>
                                     {row.children.map((cell, cellIndex) => (
-                                        <td key={cellIndex} style={alignStyle(node.align?.[cellIndex])}><Inline nodes={cell.children} context={context} /></td>
+                                        <td key={cellIndex} data-label={names[cellIndex] ?? ""} style={alignStyle(node.align?.[cellIndex])}><Inline nodes={cell.children} context={context} /></td>
                                     ))}
                                 </tr>
                             ))}
@@ -339,6 +346,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
                     </table>
                 </MarkdownTableFrame>
             )
+        }
         case "footnoteDefinition":
             return (
                 <Text as="div" role="caption">
