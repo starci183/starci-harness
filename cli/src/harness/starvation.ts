@@ -54,14 +54,14 @@ export const tickStarvation = async (): Promise<StarvationTick> => {
                   ...unmanaged.map((item) => `  ${String(item.pid)} ${item.name} ${String(item.workingSetMb)} MB [${item.group}] ${item.command}`),
               ]
             : [`who holds memory is unknown: ${holders.unreadable}`]
-    const tail = [`${HOST_STARVED}: ${parts.join("; ")}; free RAM ${gb(freeMb)}, reserve ${gb(rules.reserveMb)}, seat floor ${gb(rules.seatFreeMb)}`, ...holderLines].join("\n")
+    const tail = [`${HOST_STARVED}: ${parts.join("; ")}; free RAM ${gb(freeMb)}, seat floor ${gb(rules.seatFreeMb)}`, ...holderLines].join("\n")
     const harnessRoot = dirname(locateOps())
     const { ticket } = openTicket({
         kind: "harness-defect",
         severity: "normal",
         title: `host starved the harness for ${String(heldMinutes)} min: ${parts.join("; ")}`,
         evidence: { tail },
-        tried: `the governor kept its rules (ops/liveness.yaml heavy): it admitted only what fits and held seat launches; this ticket opens once a hold passes starvedTicketMinutes (${String(rules.starvedTicketMinutes)})`,
+        tried: `the governor kept its rules (ops/liveness.yaml heavy): it admitted one heavy command per slot and held seat launches; this ticket opens once a hold passes starvedTicketMinutes (${String(rules.starvedTicketMinutes)})`,
         proposedDefault: null,
         options: [],
         project: { root: harnessRoot, key: "harness", name: "starci-harness" },

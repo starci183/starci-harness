@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { gb, heavySlots, heldWhy, hostLoad, loadHeavyRules, runningHeavyRows, seatHolds, seatHoldWhy, seatRoom, starvation } from "../../harness/heavy.js"
-import type { HeavyKind, HeavyRules, HeavySlot, HostLoad, SeatHold, Starvation } from "../../harness/heavy.js"
+import { gb, heavyFloors, heavySlots, heldWhy, hostLoad, loadHeavyRules, seatHolds, seatHoldWhy, seatRoom, starvation } from "../../harness/heavy.js"
+import type { HeavyRules, HeavySlot, HostLoad, SeatHold, Starvation } from "../../harness/heavy.js"
 import { memoryHolders } from "../../harness/host-holders.js"
 import type { Holders } from "../../harness/host-holders.js"
 import { openExistingLedger, stateBase } from "../../harness/ledger.js"
@@ -137,17 +137,16 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
  */
 export const hostLoadVerb = defineVerb({
     path: ["host", "load"],
-    summary: "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+    summary: "show the host's heavy-command governor: the slots (one per heavy.gbPerSlot GB of RAM) and how many run, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
     effect: "read",
     roles: EVERYONE,
     schema: "starci/host-load@1",
     flags: {},
     run: async () => {
         const rules = loadHeavyRules()
-        const load = await hostLoad(rules)
+        const load = hostLoad(rules)
         const slots = heavySlots()
         const [rss, holders] = await Promise.all([residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid]))), memoryHolders(slots)])
-        const running = runningHeavyRows(rules)
         const nowMs = Date.now()
         const rows = slots.map((slot): LoadRow => {
             const queued = slot.state === "waiting"
@@ -155,7 +154,7 @@ export const hostLoadVerb = defineVerb({
                 ...slot,
                 rssMb: slot.childPid === null ? null : (rss.get(slot.childPid) ?? null),
                 waitedSeconds: queued ? Math.max(0, Math.round((nowMs - Date.parse(slot.at)) / 1000)) : null,
-                why: queued ? (heldWhy(rules, load, running, slot.kind as HeavyKind) ?? "admitted at its next poll") : null,
+                why: queued ? (heldWhy(rules, load.running, heavyFloors(rules, slot.cwd)) ?? "admitted at its next poll") : null,
             }
         })
         const starved = starvation(rules)
@@ -177,7 +176,7 @@ export const hostLoadVerb = defineVerb({
                 : [`who holds memory: unknown, the process table could not be read (${holders.unreadable})`]
         const okText = data.seat.ok ? "allowed" : `held: free RAM ${gb(data.seat.freeMb)} below seat floor ${gb(data.seat.floorMb)}`
         const message = [
-            `free RAM ${String(load.freeMb)} MB, CPU ${String(load.cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s: ${String(load.admitted)} heavy command(s) admitted now, ${String(load.running)} running, cap ${String(load.cap)} (${load.reason})`,
+            `heavy commands: ${String(load.running)} running of ${String(load.cap)} slots (one per heavy.gbPerSlot ${String(rules.gbPerSlot)} GB of RAM), ${String(load.admitted - load.running)} more may start now (${load.reason}); free RAM ${String(load.freeMb)} MB`,
             `seat launches: ${okText} (floor ${String(data.seat.floorMb)} MB)`,
             ...runningTable,
             ...queueTable,

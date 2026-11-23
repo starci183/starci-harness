@@ -2,6 +2,7 @@ import { hostUp, loadHost, selectServices } from "../../harness/host.js"
 import { UsageError } from "../../shared/errors.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { defineVerb } from "../../shared/verb.js"
+import { ensureWslReclaim } from "../../harness/wsl-config.js"
 import { machineUp } from "./machine.js"
 import type { MachineUp } from "./machine.js"
 
@@ -21,11 +22,12 @@ const describeUp = (up: MachineUp): string => {
  * `starci host up [ids] [--stack <name>]`: starts every named service, or every service of the stack (and what it requires), that is down, in
  * requires order; idempotent. `starci host up --host <name> [--execute]`: the role-driven verb (contexts/harness/host.md "Roles"): plans the
  * union of the services the machine's roles turn on (config.yaml) and, with --execute, adopts what runs under another name, deploys what is
- * missing and updates an owned service its deployer would render otherwise, each with its rollback, under one writer per host.
+ * missing and updates an owned service its deployer would render otherwise, each with its rollback, under one writer per host. On `--host local` it also merges `[experimental] autoMemoryReclaim=dropcache` into this
+ * user's .wslconfig (harness/wsl-config.ts), effective after the next WSL restart.
  */
 export const hostUpVerb = defineVerb({
     path: ["host", "up"],
-    summary: "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, and update an owned running one whose deployer would render it otherwise (config drift) or whose pinned images moved through the same deployer; wait for its health and roll it back when it never turns healthy; a service running under another name is adopted, never redeployed or restarted, its drift only reported; no app stack is touched; one writer per host (HOST_BUSY)",
+    summary: "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone. With --host <name>: plan the union of the services that machine's roles turn on (ops/host-roles.yaml, config.yaml) and with --execute bring each missing one up through its deployer, and update an owned running one whose deployer would render it otherwise (config drift) or whose pinned images moved through the same deployer; wait for its health and roll it back when it never turns healthy; a service running under another name is adopted, never redeployed or restarted, its drift only reported; no app stack is touched; one writer per host (HOST_BUSY); --host local also merges [experimental] autoMemoryReclaim=dropcache into %UserProfile%/.wslconfig (other keys kept; effective after the next WSL restart, never run by the harness)",
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-up@1",
@@ -41,7 +43,11 @@ export const hostUpVerb = defineVerb({
             if (flags.ids.length > 0 || flags.stack !== undefined) throw new UsageError("host up --host <name> brings up the machine's role services; it takes no service ids or --stack")
             const up = await machineUp(flags.host, context, { execute: flags.execute, rollback: !flags["no-rollback"] })
             const red = up.outcomes.some((outcome) => outcome.outcome === "failed" || outcome.outcome === "rolled back") || (up.execute && !up.status.reached)
-            return { data: up, message: describeUp(up), ...(red ? { exitCode: 1 } : {}) }
+            // This machine's WSL gives its page cache back (harness/wsl-config.ts); it applies after the next WSL restart, which the owner runs.
+            const wsl = flags.host === "local" ? ensureWslReclaim(flags.execute) : undefined
+            const message = wsl === undefined || wsl.state === "not windows" ? describeUp(up) : `${describeUp(up)}
+  wsl: ${wsl.note}`
+            return { data: { ...up, ...(wsl === undefined ? {} : { wsl }) }, message, ...(red ? { exitCode: 1 } : {}) }
         }
         if (flags.execute || flags["no-rollback"]) throw new UsageError("--execute and --no-rollback belong to host up --host <name>; host up of ops/host.yaml services runs as it always did")
         const config = loadHost()

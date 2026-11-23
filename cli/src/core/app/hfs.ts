@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { basename } from "node:path"
-import { availableParallelism, freemem } from "node:os"
+import { availableParallelism } from "node:os"
 import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, withOomNote, type Held } from "../../harness/heavy.js"
 import { peakProbe } from "../../harness/peak-rss.js"
 import { appRootOf, formatPlan, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory } from "../../harness/memory-plan.js"
@@ -148,7 +148,7 @@ export const applyMemoryPlan = (appRoot: string, argv: readonly string[], write:
     const plan = planMemory(measureScope(appRoot), loadHeavyRules())
     if (plan === null) return undefined
     process.env[MEMORY_PLAN_ENV] = JSON.stringify(plan)
-    if (argv.includes("--explain")) write(`${formatPlan(plan, loadHeavyRules(), Math.floor(freemem() / 1_048_576), availableParallelism()).join("\n")}\n`)
+    if (argv.includes("--explain")) write(`${formatPlan(plan, loadHeavyRules(), availableParallelism()).join("\n")}\n`)
     if (!needsReexec(plan)) return undefined
     const kept = (process.env.NODE_OPTIONS ?? "").replaceAll(/--max-old-space-size=\d+/g, "").trim()
     const flags = process.execArgv.filter((flag) => !flag.startsWith("--max-old-space-size"))

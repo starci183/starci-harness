@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs"
+import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
@@ -186,12 +187,15 @@ export const mainCheckoutOf = (root: string): string => {
 export const sharedStateBase = (): string => ((process.env[LOCAL_ROOT_ENV] ?? "") === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime") : stateBase())
 
 /**
- * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else
- * the machine.sqlite of the harness's main checkout, so a CLI run from any worktree of the harness takes the same slots.
+ * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else one store per user
+ * of the host (`%LOCALAPPDATA%/starci/governor.sqlite` on Windows, `~/.local/state/starci/governor.sqlite` elsewhere), so the harness checkout, its
+ * worktrees and every CLI installed in an app's node_modules count against the same heavy slots.
  */
 export const governorStorePath = (): string => {
     const local = process.env[LOCAL_ROOT_ENV]
-    return local === undefined || local === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime", "machine.sqlite") : machinePath()
+    if (local !== undefined && local !== "") return machinePath()
+    const base = process.platform === "win32" ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local")) : join(homedir(), ".local", "state")
+    return join(base, "starci", "governor.sqlite")
 }
 
 /** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */

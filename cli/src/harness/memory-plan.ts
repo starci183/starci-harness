@@ -84,15 +84,12 @@ export const planMemory = (scope: Scope, rules: HeavyRules): MemoryPlan | null =
     return { scope, parentMb, lintChunk: lintChunk.files }
 }
 
-/**
- * The plan in one line per part, as `app check --explain` names it, and the test run it would get on the RAM free now (`testRunSizing`).
- */
-export const formatPlan = (plan: MemoryPlan, rules: HeavyRules, freeMb: number, cores: number): string[] => {
-    const roomMb = freeMb - rules.reserveMb
-    const run = testRunSizing(rules, roomMb, cores)
+/** The plan in one line per part, as `app check --explain` names it, and the test run's fixed sizing (`testRunSizing`). */
+export const formatPlan = (plan: MemoryPlan, rules: HeavyRules, cores: number): string[] => {
+    const run = testRunSizing(rules, cores)
     return [
         `memory plan: records ${plan.scope.recordMb.toFixed(1)} MB (coverage ${plan.scope.coverageMb.toFixed(1)} MB, largest file ${plan.scope.largestMb.toFixed(1)} MB); parent heap ${String(plan.parentMb)} MB; lint chunk ${String(plan.lintChunk)} files`,
-        `memory plan: a test run on the ${String(freeMb)} MB free now (room ${String(roomMb)} MB after the ${String(rules.reserveMb)} MB reserve): parent ${String(run.parentMb)} MB, ${String(run.workers)} workers at ${String(run.workerMb)} MB`,
+        `memory plan: a test run: parent ${String(run.parentMb)} MB, ${String(run.workers)} workers at ${String(run.workerMb)} MB`,
     ]
 }
 

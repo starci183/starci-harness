@@ -13,7 +13,21 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import { publishDev } from "../deps/publish-dev.js"
 import { LANDER_OWN_INSTALL_ENV, landerHome, runningCliRoot } from "../../harness/lander-install.js"
 import { listWorktrees } from "../../harness/worktree-remove.js"
+import { pruneLanded } from "../../harness/install-janitor.js"
+import { liveReapProbe, reapLines, reapRuns } from "../../harness/runs.js"
 import { cliPackageName, packageVersion } from "../version.js"
+
+/** The orphan reaper on the lander's loop (harness/runs.ts): stops the harness runs whose launcher is gone past the grace; never fails the lander. */
+const reapOrphans = async (dir: string, graceMinutes: number, say: (line: string) => void): Promise<void> => {
+    try {
+        const probe = await liveReapProbe()
+        if (typeof probe === "string") return
+        const report = reapRuns(dir, probe, graceMinutes, true)
+        if (report.stopped.length > 0) for (const line of reapLines(report, true)) say(`reap: ${line}`)
+    } catch (error) {
+        say(`reap: ${error instanceof Error ? error.message : String(error)}`)
+    }
+}
 
 /** How long an idle lander waits before it reads the ready set again, and after a batch that failed before it judged its lanes. */
 const POLL_MS = 30_000
@@ -90,6 +104,11 @@ export const laneLandVerb = defineVerb({
             for (;;) {
                 const record = await runBatch(options)
                 if (record !== undefined) batches.push(record)
+                if (!dryRun) {
+                    // The janitor: a landed lane's worktree gives its install back to the drive (harness/install-janitor.ts), unless it is live.
+                    for (const lane of record?.landedLanes ?? []) await pruneLanded(dir, rules, lane, context.progress)
+                    await reapOrphans(dir, rules.reap?.graceMinutes ?? 10, context.progress)
+                }
                 if (record?.landed !== undefined) {
                     await publish?.(record.landed)
                     autoSync?.debounce.landed(Date.now())
