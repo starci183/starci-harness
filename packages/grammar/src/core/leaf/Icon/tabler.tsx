@@ -189,3 +189,6 @@ export const TablerUserPlus = tabler(["M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0","M16 1
 
 /** Tabler `arrow-down`. */
 export const TablerArrowDown = tabler(["M12 5l0 14","M18 13l-6 6","M6 13l6 6"])
+
+/** Tabler `player-stop`. */
+export const TablerPlayerStop = tabler(["M5 7a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -10"])

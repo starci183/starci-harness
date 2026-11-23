@@ -567,6 +567,10 @@ A PDF document is shown by the PDF extension of the core grammar (`@starci/gramm
 
 Every upload is taken by the upload extension of the core grammar (`@starci/grammar/core/ext/dropzone`, `Dropzone` over react-dropzone, loaded lazily), never by react-dropzone or another upload library imported in an app. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. The zone is a surface with a 1px dashed edge and no shadow that takes files and folders (a folder flattens into its files with their relative paths); drag-over paints the info soft surface, a refused drop the danger soft surface with the reason in words (too big, wrong type, too many). Each upload the app runs is a row: a 24px file-type icon, the name, an info Progress and an inline status of the three glyphs. Every word comes from the app's `labels`.
 
+### AI chat
+
+A chat with an assistant is the chat extension of the core grammar (`@starci/grammar/core/ext/chat`, `AiChatThread` over assistant-ui's headless primitives and its external store runtime), never assistant-ui or another chat library imported in an app and never a hand-built thread for an assistant. The library is imported only inside that extension; core never imports it; it is an optional peer dependency. The app owns the messages and the run; every part is Grammar: the chat frame on `--background`, the reader's turns brand bubbles at the end side, an assistant turn plain markdown across a centred reading column, a tool call a folded row with its status mark, the proposed result a card whose approve is its one primary, and the core chat composer whose send turns into stop while an answer runs. Every word comes from the app's `labels`.
+
 ### Shell
 
 The shell is the frame of an app: one shell owns the bar, the navigation and the mobile drawer, and one owner

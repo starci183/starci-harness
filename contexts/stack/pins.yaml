@@ -126,6 +126,7 @@ pins:
   micromark-extension-gfm: {version: 3.0.0, group: ui, side: fe, why: "an exact dependency of the grammar's Markdown (course content parsed to a syntax tree and mapped to grammar parts); apps never import it"}
   react-dropzone: {version: 15.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core upload ext (@starci/grammar/core/ext/dropzone); apps import it only through the ext"}
   pdfjs-dist: {version: 6.5.438, group: ui, side: fe, why: "an optional peer of the grammar's core PDF ext (@starci/grammar/core/ext/pdf), loaded lazily; apps import it only through the ext"}
+  '@assistant-ui/react': {version: 0.15.38, group: ui, side: fe, why: "an optional peer of the grammar's core AI chat ext (@starci/grammar/core/ext/chat), its headless primitives and external store runtime; apps import it only through the ext"}
   '@fingerprintjs/fingerprintjs': {version: 5.2.0, group: framework, side: fe}
   '@sentry/nextjs': {version: 11.7.0, group: framework, side: fe}
   '@nestjs/graphql': {version: 13.4.5, group: framework, side: be, why: "the GraphQL transport; held on the 13 line with an accepted advisory until the 14 upgrade"}

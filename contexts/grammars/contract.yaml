@@ -641,6 +641,18 @@ roles:
     dna: [DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY]
     lint: [starci-grammar/ext-boundary, starci-grammar/no-graph-or-animation-library]
 
+  - id: ai-chat
+    ui: ui/components/ai-chat.md
+    renderers: [AiChatThread]
+    vendorParity: []
+    slots: ["messages, isRunning, onSend, onStop, onRetry, preview, onApprove, onRevise, labels, header, disabled"]
+    variants: {}
+    sizes: none
+    states: [empty (the app's empty words), conversation, thinking (running mark), streaming (stop in place of send), tool call (running, done, error), preview (waiting, approving, approved), disabled (read-only composer)]
+    grammarMayChange: [frame, column and tool row paint through tokens]
+    dna: [DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY, DNA-COMMON-CHAT-FRAME-SCROLL]
+    lint: [starci-grammar/ext-boundary, starci-grammar/no-graph-or-animation-library]
+
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
 # only once it has a measure. A gate run for grammar <id> measures `common` plus `<id>`; roles[].dna lists the ids.
@@ -2022,7 +2034,7 @@ mustKeep:
       owner: ui/components/fragment.md
     - id: DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY
       role: fragment
-      law: "Chart, graph, markdown, PDF and upload libraries (recharts; @xyflow/react, elkjs, d3-force; unified, remark-*, mdast-util-directive, shiki, beautiful-mermaid; pdfjs-dist; react-dropzone) are imported only inside Grammar's core ext, each in its own ext (src/core/ext/recharts, src/core/ext/graph, src/core/ext/markdown, src/core/ext/pdf and src/core/ext/dropzone, lazily), and declared only as optional peers; the core entry, Common and the families never import an ext or its libraries, and an ext imports the core and itself. Apps never import those libraries directly: they draw through @starci/grammar/core/ext/recharts (EVERY chart and sparkline), @starci/grammar/core/ext/graph, @starci/grammar/core/ext/markdown and @starci/grammar/core/ext/pdf (ONLY a PDF document) and @starci/grammar/core/ext/dropzone (EVERY upload), each only in its own situation. No animation library (motion, framer-motion, gsap, react-spring, lottie, ...) is imported or declared anywhere: Grammar motion is the CSS transitions its tokens drive."
+      law: "Chart, graph, markdown, PDF and upload libraries (recharts; @xyflow/react, elkjs, d3-force; unified, remark-*, mdast-util-directive, shiki, beautiful-mermaid; pdfjs-dist; react-dropzone; @assistant-ui/react) are imported only inside Grammar's core ext, each in its own ext (src/core/ext/recharts, src/core/ext/graph, src/core/ext/markdown, src/core/ext/pdf, src/core/ext/dropzone, lazily, and src/core/ext/chat), and declared only as optional peers; the core entry, Common and the families never import an ext or its libraries, and an ext imports the core and itself. Apps never import those libraries directly: they draw through @starci/grammar/core/ext/recharts (EVERY chart and sparkline), @starci/grammar/core/ext/graph, @starci/grammar/core/ext/markdown and @starci/grammar/core/ext/pdf (ONLY a PDF document) and @starci/grammar/core/ext/dropzone (EVERY upload) and @starci/grammar/core/ext/chat (EVERY chat with an assistant), each only in its own situation. No animation library (motion, framer-motion, gsap, react-spring, lottie, ...) is imported or declared anywhere: Grammar motion is the CSS transitions its tokens drive."
       measure: { kind: source, check: "lint:starci-grammar/no-graph-or-animation-library, lint:starci-grammar/ext-boundary, npm run check:libraries" }
       owner: ui/components/fragment.md
     # --- diagram

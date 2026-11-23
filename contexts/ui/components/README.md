@@ -80,6 +80,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | draw a chart or a sparkline (a measure over a category or a date) | [charts](charts.md) |
 | show a PDF document, a page at a time | [pdf](pdf.md) |
 | take files or folders to upload, and show each upload until it is done | [upload](upload.md) |
+| a chat with an assistant: streaming answers, tool calls and a proposed result to approve | [ai-chat](ai-chat.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |

@@ -18,6 +18,7 @@ import {
     TablerPaperclip,
     TablerPencil,
     TablerPin,
+    TablerPlayerStop,
     TablerPlus,
     TablerSearch,
     TablerSend,
@@ -27,10 +28,10 @@ import {
 
 /**
  * The closed glyph vocabulary Grammar draws itself, for the few marks every product needs and an app with no icon registry cannot
- * supply: `empty` (an empty tray: nothing here yet), `arrow-end` (go on: the mark that follows a label that leads somewhere), `chevron-end` (a pressable row opens something: the quiet mark at its end), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close`, `search` (the magnifier, for a search that opens on press) `bell` (something is waiting) `menu` (the three lines that open a navigation menu), `attach` (a paperclip: add a file to what is being written) and `pin` (a pushpin: keep an item at the top).
+ * supply: `empty` (an empty tray: nothing here yet), `arrow-end` (go on: the mark that follows a label that leads somewhere), `chevron-end` (a pressable row opens something: the quiet mark at its end), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close`, `search` (the magnifier, for a search that opens on press) `bell` (something is waiting) `menu` (the three lines that open a navigation menu), `attach` (a paperclip: add a file to what is being written) `pin` (a pushpin: keep an item at the top) and `stop` (a rounded square: stop what is running, the send action of a chat composer while an answer streams).
  * Every one is a Tabler outline glyph (`tabler.tsx`), the one icon set; any other glyph stays app-owned (`Icon` with a `source`, from `@tabler/icons-react`).
  */
-export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end", "chevron-end", "empty", "plus", "upload", "external", "chevron-down", "chevron-start", "minus", "info", "success", "warning", "danger", "bell", "menu", "attach", "pin"] as const
+export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end", "chevron-end", "empty", "plus", "upload", "external", "chevron-down", "chevron-start", "minus", "info", "success", "warning", "danger", "bell", "menu", "attach", "pin", "stop"] as const
 
 export type GlyphName = (typeof GLYPH_NAMES)[number]
 
@@ -61,6 +62,7 @@ const SOURCES: Readonly<Record<GlyphName, IconSource>> = {
     menu: TablerMenu2,
     attach: TablerPaperclip,
     pin: TablerPin,
+    stop: TablerPlayerStop,
 }
 
 /** The SVG source of a glyph of the vocabulary, for `Icon`. */

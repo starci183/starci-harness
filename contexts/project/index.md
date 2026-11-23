@@ -149,10 +149,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and the Button looks · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 51 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 52 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Button variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 195 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-ONE-HEIGHT and 283 more
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-ONE-HEIGHT and 284 more
 - [grammars/contributing.md](../grammars/contributing.md) · 16 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -222,7 +222,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The tree · PROJECT-WORK-4 An integration is designed from the provider's current documentation · PROJECT-WORK-5 Each writer writes only its part · PROJECT-WORK-7 A product's concepts hold its persistent shared context and are read before its code · Lanes · Read with
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 13 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
-  - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 18 more
+  - ids: R244, R288, ai-chat, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons and 19 more
 - [stack/pins.yaml](../stack/pins.yaml) · 32 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
   - ids: CONTRIB-20, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
@@ -231,6 +231,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The Choose format · Choosing a role
 - [ui/components/action-group.md](../ui/components/action-group.md) · 3 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/ai-chat.md](../ui/components/ai-chat.md) · 5 KB — Contract: AI chat.
+  - sections: Job · Where it lives · API · Look
 - [ui/components/bottom-nav.md](../ui/components/bottom-nav.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/button.md](../ui/components/button.md) · 17 KB — Contract: Button.
