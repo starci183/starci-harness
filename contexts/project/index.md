@@ -24,7 +24,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/be/README.md](../code/be/README.md) · 9 KB — How back-end code is placed and shaped, one Markdown file per topic, true to the reference app and to `@starci/eslint-canon-be`, in the rule form of code/README.md.
   - sections: BE-MECHANISM-1 Choosing a mechanism: the smallest one the invariant needs
   - ids: Back-end
-- [code/be/ai.md](../code/be/ai.md) · 11 KB — How a back end calls a language or embedding model: every call goes through the `@starci/ai-router` gateway, code calls it through LangChain from one integration, and open ...
+- [code/be/ai.md](../code/be/ai.md) · 12 KB — How a back end calls a language or embedding model: every call goes through the `@starci/ai-router` gateway, code calls it through LangChain from one integration, and open ...
   - sections: BE-AI-1 Every model call goes through the ai-router gateway: a key pool below, one virtual key above · BE-AI-2 Choose: a code chain or the agent runtime · BE-AI-3 One integration owns LangChain, and its clients point at the gateway · BE-AI-4 A domain task is a chain: prompt, model, parser, then code's fixed tail · BE-AI-5 Context comes from a retriever the caller scopes to its access lane · BE-AI-6 The agent runtime acts only through the MCP gateway
 - [code/be/api-auth.md](../code/be/api-auth.md) · 10 KB — Which operations are open, who verifies the caller, how input and traffic are bounded and what the API edge trusts.
   - sections: BE-AUTH-1 Default deny through the global guard chain · BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource · BE-AUTH-3 Constant-time comparison and safe cookies · BE-AUTH-4 Every input is validated and bounded; doors are rate-limited · BE-AUTH-5 A state-changing request proves its origin · BE-AUTH-6 Lists page by opaque cursor · BE-AUTH-7 The API edge states what it trusts · BE-AUTH-8 Liveness and readiness are different signals
@@ -223,7 +223,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 13 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, ai-chat, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons and 19 more
-- [stack/pins.yaml](../stack/pins.yaml) · 32 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
+- [stack/pins.yaml](../stack/pins.yaml) · 33 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
   - ids: CONTRIB-20, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
