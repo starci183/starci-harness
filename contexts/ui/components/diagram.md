@@ -21,6 +21,16 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 `height` reserves the canvas box (`sm` 16rem, `md` 24rem, `lg` 32rem): pick the step the finished drawing fills, so the
 loading box is the ready box. Paint is the grammar's, read from the root's tokens; an app passes no colours.
 
+Tones and caption (owner 2026-11-23, a lesson's diagram): a flowchart node takes a tone, `danger` for the faulty step, `success` for the fix,
+`accent` for a part the change touches, either by `tones={{ B: "danger" }}` or by Mermaid's own `class B danger` in the source; the node is
+painted in the tone's soft pair and edge, and a colour the source writes (a `classDef`, a `style` line) never paints. `caption` is one line under
+the drawing in the caption role, saying what to look at.
+
+Full screen and phone (owner 2026-11-23): a press on the drawing, or its expand control in the frame's corner, opens the drawing in a full-screen
+`Dialog` the reader pans (drag, the arrow keys) and zooms (the wheel or a pinch, + and -, 0 resets; three controls); its words come from
+`zoomLabels`. Below a 480px frame a `sequenceDiagram` is drawn as a numbered list of its messages (who, the arrow, to whom, then the words), and a
+flowchart drawn across (`LR`, `RL`) is drawn down (`TD`). Story `Content/Lesson parts (0.55.1)`.
+
 ## Size
 No control size. A Mermaid drawing narrows to the frame up to its natural width.
 

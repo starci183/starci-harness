@@ -46,7 +46,7 @@ const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
 
 /** The quiet mark at the end of a pressable row: it opens something. Decorative (the title is the control); a right-to-left page mirrors it in CSS. */
 const RowChevron = () => (
-    <span className="starci-core-list-row-chevron" data-grammar-row-chevron="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span>
+    <span className="starci-core-list-row-chevron" data-grammar-row-chevron="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="text" /></span>
 )
 
 const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (

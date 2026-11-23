@@ -8,6 +8,7 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "leaf/AgentName": "the name slot that renders it (a row title, a card head, a sender line, a members row) draws its own skeleton while loading, with no Chip",
     "leaf/CalendarDay": "a cell the Calendar draws; the Calendar carries the loading state",
     "leaf/Code": "static copy: real text stays real",
+    "leaf/GlossaryTerm": "static copy: a term and its definition stay real text",
     "leaf/Divider": "a line, no data",
     "leaf/Heading": "static chrome: a heading stays real text",
     "leaf/Icon": "a glyph, no data",

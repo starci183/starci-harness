@@ -10,7 +10,7 @@ import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
 /**
- * `inline` (default): a text link in prose and meta, the accent colour, underlined on hover. It ends in the external anchor icon ONLY when it is `kind="external"` (0.37.14): an internal
+ * `inline` (default): a text link in prose and meta, HeroUI v3's own link (owner 2026-11-23): `--link`, the foreground, weight 500, a muted 1.5px underline on hover only; it only ever goes to another page. It ends in the external anchor icon ONLY when it is `kind="external"` (0.37.14): an internal
  * destination never draws it. `plain` (0.37.14): a destination named by its label where the surrounding component owns the affordance (a navigation list row, the brand in a shell,
  * a nav entry): the text colour, no underline, no icon; a row draws its own chevron. `head`: the section-head navigation (0.36.0): the label
  * ends in the outline arrow-right icon (16px, currentColor; never the typed glyph) that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
@@ -18,7 +18,7 @@ export type LinkKind = "internal" | "external"
  */
 export type LinkVariant = "inline" | "head" | "plain"
 /*
- * A Link has no size (owner, 2026-11-09): it is HeroUI v3's own link (the underline on hover only, the primary colour, the anchor icon
+ * A Link has no size (owner, 2026-11-09): it is HeroUI v3's own link (the underline on hover only, the foreground `--link`, the anchor icon
  * `Link.Icon` at the end of its label) and its type size and
  * leading are INHERITED from the text around it (14 in a body, 12 inside meta or caption text). The packaged sheet never sets a
  * size on it; lint `no-link-size` refuses a size prop or a class on a Link.

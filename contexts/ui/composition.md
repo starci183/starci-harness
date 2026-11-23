@@ -130,7 +130,7 @@ status tone; no tile takes accent to say who a peer is. A mark never replaces th
 
 ### ACCENT-3 Selection, destination, command and focus stay distinct
 Each resolves to its own owner and treatment, and each carries a non-colour cue (state attribute, outline,
-indicator geometry, underline). A destination in body copy is identifiable at rest. Proof: COLOR-3.
+indicator geometry, weight). A destination in body copy is identifiable at rest by its weight (a Link is HeroUI's own: 500, no underline until hovered, text.md "Link and Sublabel"). Proof: COLOR-3.
 
 ### ACCENT-4 An accent fill states a real measurement
 A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a

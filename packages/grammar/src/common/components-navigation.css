@@ -23,33 +23,17 @@
      */
     .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
-    /* HeroUI v3's own link: the vendor's underline on hover and press, the anchor icon at the end. */
+    /*
+     * A Link is HeroUI v3's own link, exactly (owner 2026-11-23): `--link` (the theme sets it to the foreground, never the accent), weight 500, no
+     * underline at rest; on hover a 1.5px underline 4px below the text in the muted colour, on press the full muted colour (the vendor's `.link`).
+     * Grammar draws none of it: it only lets the text wrap and paints `--link` where the vendor's utility class may be missing. A Link only ever goes
+     * to another page; a command is a Button. A current link keeps its own look (below).
+     */
     .starci-core-link {
         overflow-wrap: anywhere;
     }
 
-    /*
-     * An inline link is underlined at rest (0.41.0, COLOR-3: a destination in body copy is identifiable at rest, with colour removed too). The line is a
-     * hairline in the link's own colour at 40%, set off below the text, and turns to the full colour on hover and press. The head variant keeps the
-     * vendor's hover-only underline (its arrow is the affordance) and plain stays undecorated (its host is). The rules below win by order: a media, current or
-     * disabled link and a footer link draw no line at rest.
-     */
-    .starci-core-link[data-grammar-link-variant="inline"] {
-        text-decoration-line: underline;
-        text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
-        text-decoration-thickness: var(--grammar-hairline);
-        text-underline-offset: var(--grammar-link-underline-offset);
-    }
-
-    .starci-core-link[data-grammar-link-variant="inline"]:is(:hover, [data-hovered="true"], :active, [data-pressed="true"]) {
-        text-decoration-color: currentColor;
-    }
-
-    /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of a rose-accent theme,
-     * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
-     */
-    .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
+    .starci-core-link[data-grammar-link-content="text"] { color: var(--link); }
 
     /* The plain variant (0.37.14): a destination with no accent, no underline and no icon; the component around it (a navigation row with its chevron, a shell brand) is the affordance. */
     .starci-core-link[data-grammar-link-content="text"][data-grammar-link-variant="plain"] { color: inherit; text-decoration-line: none; }
@@ -120,7 +104,8 @@
 
     /* The trail reads small and muted, the separator a slash, and the current page is the one strong crumb. */
     .starci-core-breadcrumbs-list { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
-    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { color: var(--muted); font-size: var(--grammar-text-xs); }
+    /* The separator is text-sized (the text-sized glyph rule, styles.css): a 1em box of the crumbs' 12px, centred on their line. */
+    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--grammar-text-xs); }
 
     .starci-core-breadcrumb {
         display: inline-flex;
@@ -1957,7 +1942,8 @@
     }
 
     /*
-     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, pushed to the cell's end, and the cell takes the
+     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, a caret 1em of the term (12, the text-sized glyph rule
+     * of styles.css), pushed to the term's end (the term hugs its words, so it stands right after them), and the cell takes the
      * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
      */
     .starci-core-description-stat-term > .starci-core-figure-cue {
@@ -2233,7 +2219,7 @@
     [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(90deg); }
     [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
 
-    /* kind="quiet": a small link-toned line the size of its words; the touch floor still holds on a coarse pointer. */
+    /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
         display: inline-flex;
         width: auto;
@@ -2241,7 +2227,7 @@
         min-block-size: 1.5rem;
         justify-content: flex-start;
         gap: var(--grammar-inline-gap);
-        color: var(--accent-soft-foreground);
+        color: var(--muted);
         font-size: var(--grammar-text-sm);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-sm);
@@ -2691,6 +2677,70 @@
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset);
     }
+
+
+    /* The expand control stands in the frame's top end corner over the drawing; the drawing itself opens the full-screen view too. */
+    .starci-core-mermaid-diagram { position: relative; }
+    .starci-core-mermaid-diagram-expand { position: absolute; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); }
+    .starci-core-mermaid-diagram[data-grammar-mermaid-state="ready"] .starci-core-mermaid-diagram-drawing { cursor: zoom-in; }
+
+    /* The one-line caption under the drawing: the caption role, muted, inside the frame on its inset. */
+    .starci-core-mermaid-diagram-caption {
+        padding: 0 var(--grammar-inset) var(--grammar-inset);
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    /*
+     * A toned step (owner 2026-11-23): the faulty step danger, the fix success, a touched part accent, each the tone's soft pair with its
+     * edge, from the tokens, in the frame and the full-screen view alike; a colour the source wrote (a classDef, a style line) never paints (`!important` outranks Mermaid's inline style).
+     */
+    :is([data-grammar-mermaid-tone="danger"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--danger-soft) !important; stroke: var(--danger) !important; }
+    :is([data-grammar-mermaid-tone="success"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--success-soft) !important; stroke: var(--success) !important; }
+    :is([data-grammar-mermaid-tone="accent"]) :is(rect, circle, ellipse, polygon, path) { fill: var(--accent-soft) !important; stroke: var(--accent) !important; }
+    [data-grammar-mermaid-tone="danger"] :is(text, tspan, span) { fill: var(--danger-soft-foreground) !important; color: var(--danger-soft-foreground) !important; }
+    [data-grammar-mermaid-tone="success"] :is(text, tspan, span) { fill: var(--success-soft-foreground) !important; color: var(--success-soft-foreground) !important; }
+    [data-grammar-mermaid-tone="accent"] :is(text, tspan, span) { fill: var(--accent-soft-foreground) !important; color: var(--accent-soft-foreground) !important; }
+
+    /* The phone fallback of a sequence diagram: its messages as a numbered list, the route (who, the arrow, to whom) over the words. */
+    .starci-core-mermaid-steps {
+        display: flex;
+        inline-size: 100%;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        margin: 0;
+        padding-inline-start: var(--grammar-section-gap);
+        place-self: start;
+    }
+
+    .starci-core-mermaid-step { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-mermaid-step::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .starci-core-mermaid-step-route { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-weight: var(--grammar-weight-medium); }
+    .starci-core-mermaid-step-text { color: var(--muted); overflow-wrap: anywhere; }
+    .starci-core-mermaid-step[data-grammar-mermaid-reply="true"] .starci-core-mermaid-step-route { color: var(--muted); }
+
+    /* The full-screen view: the controls on one row, then the pane the reader drags and zooms; the drawing starts centred at 100%. */
+    .starci-core-mermaid-zoom { display: flex; min-block-size: 0; block-size: 100%; flex-direction: column; gap: var(--grammar-row-gap); }
+    .starci-core-mermaid-zoom-controls { display: flex; align-items: center; gap: var(--grammar-inline-gap); }
+    .starci-core-mermaid-zoom-level { min-inline-size: 4ch; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+    .starci-core-mermaid-zoom-pane {
+        display: grid;
+        min-block-size: 0;
+        flex: 1 1 auto;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid var(--separator);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .starci-core-mermaid-zoom-pane:active { cursor: grabbing; }
+    .starci-core-mermaid-zoom-pane:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-mermaid-zoom-drawing { transform-origin: center; }
+    .starci-core-mermaid-zoom-drawing > svg { display: block; max-inline-size: none; block-size: auto; }
 
     /* ---------------------------------------------------------------- expandable */
     /*

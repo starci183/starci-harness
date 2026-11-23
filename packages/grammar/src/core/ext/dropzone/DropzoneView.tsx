@@ -69,7 +69,7 @@ export const announcementOf = (state: { readonly phase: DropzonePhase; readonly 
 
 const DropzoneRow = ({ item, labels, onRetry }: { readonly item: DropzoneItem; readonly labels: DropzoneLabels; readonly onRetry: ((id: string) => void) | undefined }) => (
     <li className="starci-core-dropzone-row" data-grammar-upload-status={item.status}>
-        <Icon source={KIND_ICON[fileKindOf(item.name, item.type)]} usage="leading" />
+        <Icon source={KIND_ICON[fileKindOf(item.name, item.type)]} usage="chip" />
         <div className="starci-core-dropzone-row-main">
             <Text role="body" overflow="truncate">{item.name}</Text>
             <Progress label={labels.progressOf(item.name)} value={progressOfItem(item)} tone="info" />
@@ -157,7 +157,7 @@ export const DropzoneSkeleton = ({ rows }: { readonly rows: number }) => (
             <div className="starci-core-dropzone-list" aria-hidden="true">
                 {Array.from({ length: rows }, (_, index) => (
                     <div key={index} className="starci-core-dropzone-row">
-                        <Icon source={DocumentIcon} usage="leading" isLoading />
+                        <Icon source={DocumentIcon} usage="chip" isLoading />
                         <div className="starci-core-dropzone-row-main"><Skeleton shape="text" /><Progress label="" isLoading /></div>
                         <div className="starci-core-dropzone-row-status"><Skeleton shape="text" /></div>
                     </div>

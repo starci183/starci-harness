@@ -29,9 +29,12 @@ destructive, a "Cancel" that changes nothing is `border`).
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| danger | the press destroys something: delete, disconnect, stop for good (the entry that opens the confirmation and the confirming press alike) | `variant="danger"` | judgement |
-| primary | the ONE main action of the card or region (the next step of its one decision) | `variant="primary"` | `DNA-COMMON-ONE-ACCENT-FILL`; lint `single-commit-per-render`, `no-commit-in-collection-item` |
-| border | anything else: cancel, close, back, a retry, the other option beside the primary, a command outside the decision, any per-item command, a section head action, a suggestion pill | `variant="border"` or no `variant` | judgement |
+| danger | the press is destructive or irreversible: cancel an order, delete, disconnect, stop for good (the entry that opens the confirmation and the confirming press alike). It is always confirmed and never the filled primary | `variant="danger"` | judgement |
+| primary | the ONE main forward action of its region (a page head, a card, a review sheet): the next step of its one decision. At most one per region, and none when the region has no clear main action | `variant="primary"` | `DNA-COMMON-ONE-ACCENT-FILL`; lint `single-commit-per-render`, `no-commit-in-collection-item` |
+| border | every secondary action: opening another view, cancel, close, back, a retry, a negative outcome of the decision ("Not won", "Decline"), the other option beside the primary, a command outside the decision, any per-item command, a section head action, a suggestion pill | `variant="border"` or no `variant` | judgement |
+
+**The CTA rule** (owner 2026-11-23): primary is the one main forward action of a region, border is every secondary action (a negative
+outcome included), danger is the destructive one, confirmed and never filled. A destination to another page is a `Link`; a command is a Button.
 
 The view (a page, or the open modal) has one primary (CTA-1; the red budget, [composition.md](../composition.md) ACCENT-6: one accent CTA per
 view, every other call to action `border` or a `Link variant="plain"`; lint `single-commit-per-render` refuses a second `variant="primary"`, so a
@@ -125,7 +128,7 @@ Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
 Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, and the Alert status marks use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are replaced; the three-dot `more` glyph stays dots.
 
 ## Icon measures (0.37.5)
-A Button with a start icon or an end arrow uses HeroUI v3's measures: padding-inline 12 (sm) or 16 (md, lg) on both sides, gap 8, the icon 20px on a phone and 16px from 640px (16px on sm), a -2px inline margin on the icon. HeroUI has no 24px button icon. Enforcer: story `Controls/Button icon sizes`.
+A Button with a start icon or an end arrow uses HeroUI v3's padding: 12 (sm) or 16 (md, lg) on both sides, gap 8, a -2px inline margin on the icon. Its icon follows its height (the icon size table, `packages/grammar/src/common/ramps.css`): 20 in a 40 (md) or 48 (lg) button at every width, 16 in a 32 (sm) one; an IconButton the same (20 at md, 16 at sm). Enforcer: story `Controls/Button icon sizes`.
 
 ## App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
 `TopBar customButtons` (`{ id, glyph, label, badge?, onPress | href }`) are the app's own round outline icon buttons (a bell, a help) in the end cluster BEFORE the fixed cluster (language dropdown, light/dark switch, account avatar), whose order never changes. They are border `IconButton`s like the language button, `label` is the accessible name, `badge` draws the attention dot only when work is waiting. At phone width (under 48rem) only the first stays in the bar; the others are the entries `useTopBarOverflowEntries()` returns (glyph + label) for the account menu to append to its own entries. Never a hand-built button beside the bar's cluster. A `WorkspaceShell` takes the bar through its `header` slot, so the prop passes through with the `TopBar` the app composes. Story `Surfaces/Top bar custom buttons`.

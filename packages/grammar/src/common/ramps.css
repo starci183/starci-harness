@@ -131,8 +131,6 @@
         --grammar-radius-card: min(32px, var(--radius-3xl));
         --starci-core-surface-radius: var(--starci-core-card-radius, var(--grammar-radius-card));
         --grammar-link-arrow-travel: 0.1875rem;
-        /* How far an inline link's resting underline sits below its text: clear of the descenders, at any inherited size. */
-        --grammar-link-underline-offset: 0.2em;
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
@@ -311,12 +309,21 @@
         --grammar-message-emoji-cell: var(--starci-core-control-min-size);
         --grammar-message-emoji-grow: 1.15;
         /*
-         * THE TWO ICON SIZES (owner 2026-11-22): 24px before body text (text-sm, 14px: Icon `heading` and `leading`, InlineStatus beside a 14px
-         * line), 20px inside a chip or badge and before text-xs (12px: Icon `chip`, InlineStatus inside a 12px role, the 40px IconTile's glyph).
-         * No other icon size exists; a Button's own glyph keeps the Button's scale (20 on a phone, 16 from 640px and on sm).
+         * THE ICON SIZE TABLE (owner 2026-11-23). Text-sized, `--grammar-icon-text` (1em of the text beside it, in that text's colour, centred on
+         * its line; Icon `text`): a caret before or after words (a Disclosure or Accordion chevron, the "goes somewhere" cue of a figure or a
+         * pressable row, a Select or menu trigger caret, a submenu caret), a breadcrumb separator, a status mark inside a line (InlineStatus,
+         * a message receipt). Fixed: 16 in a 32 button (`--grammar-icon-xs`); 20 in a 40 button, beside text, in a chip, badge or field and in
+         * a 40 tile (`--grammar-icon-sm`, Icon `chip`); 24 for a left navigation entry and a section or heading lead (`--grammar-icon-md`,
+         * Icon `heading`, `leading`) and in the 48 tile of an empty state. No other icon size exists.
          */
+        /* The gap a Stack or Cluster keeps between its children (its `gap` role sets it); 0 outside one. A rule that adds to that gap reads it. */
+        --starci-core-flow-gap: 0px;
+        --grammar-icon-text: 1em;
+        --grammar-icon-xs: 1rem;
         --grammar-icon-md: 1.5rem;
         --grammar-icon-sm: 1.25rem;
+        /* The tile of an empty state (48, its glyph 24); every other IconTile is the round 40. */
+        --grammar-empty-tile-size: 3rem;
         /* A connection logo in a LogoStack: the 20px icon step. */
         --grammar-logo-stack-size: var(--grammar-icon-sm);
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */

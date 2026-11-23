@@ -100,7 +100,8 @@ worktree that is removed afterwards. The dev checkout never moves for prod work,
 
 The harness repository has `dev` and `main` too ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-3). Harness lanes
 fork from `origin/dev` and land through the batch lander exactly as an app's do, under the harness profile: the gate is the harness FAST gate
-(`starci release gate --level dev`: build, typecheck and tests of the changed packages and their dependents), the push `git push origin HEAD:dev`.
+(`starci release gate --level dev`: install, build and typecheck of the changed packages and their dependents plus the publish checks, NO test
+suite), the push `git push origin HEAD:dev`. Package tests run only in the FULL gate of the train (`--level full`), never on a landing.
 With `devSync.publishLocal: true` in `.runtime/local-settings.json`, every landed batch is published to the local registry as the dev line
 (`starci deps publish-dev --execute`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, pinned to each other exactly in
 the publish copies, never in committed files) and `devSync.local` names exactly those versions, so the after-land dev sync runs them in the app at

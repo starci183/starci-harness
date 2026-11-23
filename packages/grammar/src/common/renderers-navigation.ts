@@ -35,7 +35,7 @@ export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { Expandable, type ExpandableProps } from "../core/branch/Expandable/index.js"
 export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type GeoMapTiles } from "../core/branch/GeoMap/index.js"
-export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/frame/MermaidDiagram/index.js"
+export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps, type MermaidTone, type MermaidZoomLabels } from "../core/frame/MermaidDiagram/index.js"
 export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type ListBoxSize } from "../core/branch/ListBox/index.js"
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps, type AvatarButtonSize, type AvatarButtonStatus } from "../core/leaf/AvatarButton/index.js"

@@ -43,7 +43,7 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 | Select | As Input; selection indicator at the end; option rows as List |
 | CopyField | As Input; the copy action a muted in-field glyph at the end, the success foreground while copied, danger when the copy failed |
 | Dialog | Surface material with the soft shadow; vendor backdrop; overlays keep the grammar through the root |
-| Menu | Selection mark at the start (submenu mark at the end), 24px leading glyphs (the two icon sizes), separators between sections (Common arrangement) |
+| Menu | Selection mark at the start (submenu mark at the end), 20px glyphs beside the words, a text-sized submenu caret (the icon size table), separators between sections (Common arrangement) |
 | List | Vendor rows; selection as a fill without a check where the list is navigation-like; unread rows at the Common unread weight |
 | Alert | The vendor Alert on its tone's soft pair, flat: x-soft row, x-soft-foreground glyph, title and description; toasts keep the vendor surface |
 | EmptyState | Common's notice on the region's surface; the first-run artwork is Common's `Mascot` at `md` |

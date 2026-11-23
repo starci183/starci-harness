@@ -49,7 +49,7 @@ const PressableFieldControl = ({ label, placeholder, source, shortcut, isDisable
             onClick={() => onPress?.()}
         >
             <span className={pressableFieldContentClassName} data-contract="GAP-2">
-                {source === undefined ? null : <Icon source={source} usage="leading" />}
+                {source === undefined ? null : <Icon source={source} usage="chip" />}
                 <span className={pressableFieldPlaceholderClassName} data-contract="FLOW-4 FONT-2 TONE-2">{placeholder}</span>
             </span>
             {shortcut === undefined ? null : <kbd className={pressableFieldShortcutClassName} data-contract="FONT-1 PADDING-1 TONE-2">{shortcut}</kbd>}

@@ -1974,7 +1974,7 @@ mustKeep:
       owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BODY-GAP
       role: page
-      law: The page owns its rhythm, the region step between the band and the body and between the body's sections.
+      law: The page owns its rhythm, the region step between the band and the body and between the body's sections; under a band that carries tabs the body starts one tab line step (16) below the band's bottom border (ui/components/tabs.md "The second layer").
       measure:
         kind: style
         select: ':is([data-component="Page"], [data-component="Page"] > [data-grammar-page-body])'
@@ -2120,12 +2120,12 @@ mustKeep:
       owner: grammars/core.md; CHANGELOG 0.55.0 (the status-mark rule)
     - id: DNA-CORE-LINK-ACCENT-TEXT
       role: link
-      law: "A text link is the exact primary brand colour (--accent), underlined (owner overrule of P2, 2026-11-05, commit 1e502f15d: the raw accent may fall below 4.5 contrast as text on an app's grounds, so this law pins the token and no contrast law judges a link). The plain variant (0.37.14: a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
-      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent } }] }
+      law: "A text link is HeroUI v3's own link (owner 2026-11-23): --link, which the theme sets to the foreground, never the accent, weight 500, no underline at rest (a 1.5px muted underline 4px below the text on hover). The plain variant (0.37.14: a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
+      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --foreground } }, { metric: text-decoration-line, op: "=", value: none }] }
       owner: contract roles.link; grammars/core.md
     - id: DNA-CORE-ACCENT-TEXT
       role: root
-      law: "Where the accent is text other than a link (the current tab label, the section eyebrow, the soft accent pairing) it reads the text-safe accent --accent-soft-foreground, never the fill accent. A text Link is the exception: since the owner overrule of P2 (2026-11-05, commit 1e502f15d, DNA-CORE-LINK-ACCENT-TEXT) it is the exact brand --accent, underlined."
+      law: "Where the accent is text other than a link (the current tab label, the section eyebrow, the soft accent pairing) it reads the text-safe accent --accent-soft-foreground, never the fill accent. A text Link is no accent at all: it is the foreground (DNA-CORE-LINK-ACCENT-TEXT)."
       measure: { kind: count, select: '*:not(:empty):not(a, a *)', where: { metric: color, op: "=", value: { token: --accent } }, op: "=", value: 0 }
       owner: grammars/core.md; owner overrule of P2 (links)
       followUp: "owner-triage 2026-11-18: other components paint accent as text (a ring number, today in the Calendar, a step, a message status): rule on accent-as-text beyond links is stale (the current tab is the foreground)"
@@ -2192,7 +2192,7 @@ mustKeep:
       owner: grammars/offset-pop.md O-1
     - id: DNA-OFFSET-POP-LINK-INK
       role: link
-      law: "A text link is ink (--foreground) with a pink underline, never pink text: pink is a fill and a ring (O-2, DNA-OFFSET-POP-PINK-NEVER-TEXT), so the owner overrule of P2 (a text Link is the exact brand --accent, DNA-CORE-LINK-ACCENT-TEXT) is Core's and not this family's. The plain variant inherits its host's colour; a current link keeps its own look."
+      law: "A text link is ink (--foreground) with a pink underline, never pink text: pink is a fill and a ring (O-2, DNA-OFFSET-POP-PINK-NEVER-TEXT), as Core's link is too (DNA-CORE-LINK-ACCENT-TEXT). The plain variant inherits its host's colour; a current link keeps its own look."
       measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"], [data-grammar-link-visited="distinct"]:visited)', checks: [{ metric: color, op: "=", value: { token: --foreground } }] }
       owner: grammars/offset-pop.md; O-2
     - id: DNA-OFFSET-POP-INK-ON-PINK

@@ -32,8 +32,8 @@ const MessageStatusInner = (props: MessageStatusProps) => {
         <div className="starci-core-message-status" data-component="MessageStatus" data-tier="composite"
             data-grammar-message-status={props.kind} data-grammar-message-status-state={props.state}>
             <span className="starci-core-message-status-label" aria-live="polite" aria-atomic="true">
-                {props.kind === "receipt" ? <Icon source={props.state === "delivered" ? CheckCircleIcon : CheckIcon} usage="chip" /> : null}
-                {props.kind === "receipt" && props.state === "seen" ? <Icon source={CheckIcon} usage="chip" /> : null}
+                {props.kind === "receipt" ? <Icon source={props.state === "delivered" ? CheckCircleIcon : CheckIcon} usage="text" /> : null}
+                {props.kind === "receipt" && props.state === "seen" ? <Icon source={CheckIcon} usage="text" /> : null}
                 {props.label}
             </span>
             {readers === undefined || readers.items.length === 0 ? null : (
