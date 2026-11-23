@@ -150,7 +150,7 @@ answered 4xx/5xx is listed and the verb exits 1.
 - **Installs go back to the drive.** When the lander lands a lane it deletes the reinstallable folders of the lane's worktree
   (`janitor.dirs` of `ops/slots.yaml`: node_modules, .next, dist, .turbo, and a failed safe install's `.starci-trash-` folders), links unlinked
   first and never deleted through, the worktree, its branch and its tracked files kept, unless the worktree is live (a slot of the lane, a
-  removal lock, a git operation, a process working inside it). `starci lane prune-installs [--idle-hours N] [--execute]` does the same for every
+  removal lock, a git operation, a process working inside it, uncommitted work, commits on its branch after the landed sha because the lane moved on to a follow-up, or a touch within `janitor.touchedMinutes`, default 60). `starci lane prune-installs [--idle-hours N] [--execute]` does the same for every
   lane worktree idle that long (dry run first: it prints what and how many MB). The next `lane gate` installs again.
 - Code first: no new unit specs, existing specs stay green; integration and e2e suites run only when asked (R12).
 - At the end stop every process you started and remove the worktree with `starci lane remove <worktree> --execute` (it unlinks each

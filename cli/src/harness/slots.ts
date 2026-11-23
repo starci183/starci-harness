@@ -44,7 +44,7 @@ const slotsSchema = z
         root: z.string().min(1).nullable(),
         kinds: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), kindSchema),
         reap: z.strictObject({ graceMinutes: z.number().positive() }).optional(),
-        janitor: z.strictObject({ idleHours: z.number().positive(), dirs: z.array(z.string().regex(/^[A-Za-z0-9._-]+$/)).min(1) }).optional(),
+        janitor: z.strictObject({ idleHours: z.number().positive(), touchedMinutes: z.number().nonnegative().optional(), dirs: z.array(z.string().regex(/^[A-Za-z0-9._-]+$/)).min(1) }).optional(),
     })
     .superRefine((rules, issues) => {
         for (const [name, kind] of Object.entries(rules.kinds)) {

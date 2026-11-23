@@ -18,12 +18,15 @@
 #   has been gone this long, `starci ops reap --execute` and the batch lander stop the run's process tree (cli/src/harness/runs.ts).
 # janitor: what `starci lane prune-installs` and the batch lander's land step delete from a lane worktree (the ignored folders named in
 #   `dirs`, links unlinked first, never deleted through), and how long a worktree must be idle before prune-installs takes it (`idleHours`).
+#   A worktree still in use is never taken, by the land step or by prune-installs: touched within `touchedMinutes` (default 60; the newest of
+#   its git index, HEAD and top-level entries), uncommitted work in it, a branch with commits after the landed sha, a process inside it.
 schema: starci/slots@1
 root: null
 reap:
   graceMinutes: 10
 janitor:
   idleHours: 6
+  touchedMinutes: 60
   dirs: [node_modules, .next, dist, .turbo]
 kinds:
   npm:

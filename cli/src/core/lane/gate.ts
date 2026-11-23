@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGit, currentBranch, repositoryRoot, trackedChanges } from "../../shared/git.js"
+import { captureGit, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
@@ -173,7 +173,7 @@ export const laneGateVerb = defineVerb({
         if (branch === undefined) throw new Refusal("LANE_GATE_DETACHED", "the worktree is on no branch")
         const merging = !flags["skip-merge"]
         if (merging || flags.push) {
-            const dirty = await trackedChanges(root)
+            const dirty = await trackedWorkChanges(root)
             if (dirty.length > 0) throw new Refusal("LANE_GATE_DIRTY", `${String(dirty.length)} tracked path(s) are not committed (${dirty.slice(0, 3).join(", ")}): commit first; a merge and a push need a clean tree`)
         }
         const rules = loadSlotRules()

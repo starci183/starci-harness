@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
-import { captureGit, currentBranch, git, trackedChanges } from "../../shared/git.js"
+import { captureGit, currentBranch, git, trackedWorkChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { checkLaneName, landPaths, lanesDir, writeReady } from "../../harness/land-queue.js"
 import type { ReadyEntry } from "../../harness/land-queue.js"
@@ -20,7 +20,7 @@ export const registerReady = async (cwd: string, flags: { readonly lane?: string
     const branch = flags.branch ?? (await currentBranch(context.cwd))
     if (branch === undefined) throw new Refusal("LANE_READY_DETACHED", "the worktree is on no branch: name it with --branch")
     const lane = checkLaneName(flags.lane ?? branch.replace(/^lane\//, ""))
-    const dirty = await trackedChanges(context.cwd)
+    const dirty = await trackedWorkChanges(context.cwd)
     if (dirty.length > 0) throw new Refusal("LANE_READY_DIRTY", `${String(dirty.length)} tracked path(s) are not committed (${dirty.slice(0, 3).join(", ")}): the lander lands the pushed sha; commit, gate and push first`)
     const sha = await git(context.cwd, ["rev-parse", "HEAD"])
     const remote = await captureGit(["ls-remote", "origin", `refs/heads/${branch}`], context.cwd)
