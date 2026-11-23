@@ -13,6 +13,7 @@ import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
 import { describeDiagram, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
+import { INSETS, canvasHeight, openFloor, openView, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
@@ -43,7 +44,7 @@ export type MermaidDiagramProps = NoChildren & {
     readonly label: string
     /**
      * The least height of the canvas, kept by the loading, ready and error states alike so the page does not jump when the drawing arrives. A taller
-     * drawing grows the canvas up to 45rem; the first view always fits the whole drawing (the reader zooms in). Default `sm`.
+     * drawing grows the canvas up to 45rem; the first view fits the whole drawing when it stays readable (caption-role words at 11px or more, zoom 0.85), else opens at that zoom from the drawing's start and the reader pans and zooms. Default `sm`.
      */
     readonly height?: MermaidDiagramHeight
     /** The error title shown in the region when the source cannot be drawn; the source follows it as code. */
@@ -67,13 +68,8 @@ export type MermaidDiagramProps = NoChildren & {
 
 const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", fit: "Fit to frame", reset: "Reset view", start: "start", end: "end", to: "to" }
 
-/** The reserved box of each height step, and the tallest the canvas grows to fit a drawing. */
+/** The reserved box of each height step. */
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
-const TALLEST = 720
-/** The room round the drawing at the first view: the controls row along the bottom (40 + 2 × 8). */
-const INSETS = { top: 16, right: 16, bottom: 64, left: 16 } as const
-/** The first view fits the whole drawing (the routing law, rule 4: nothing clipped), never enlarged past 100% and never under this, the least zoom of the canvas. */
-const LEAST_OPEN_ZOOM = 0.2
 const PAN_STEP = 48
 const px = (n: number): `${number}px` => `${String(n)}px` as `${number}px`
 /** The fit button: the whole drawing, clear of the controls row. */
@@ -94,7 +90,7 @@ interface ShapeData extends Record<string, unknown> {
 }
 
 type Drawn =
-    | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly width: number; readonly height: number }
+    | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly entry?: Box; readonly width: number; readonly height: number }
     | { readonly kind: "sequence"; readonly model: SequenceModel; readonly layout: SequenceLayout; readonly width: number; readonly height: number }
     | { readonly kind: "other"; readonly type: string; readonly svg: string; readonly width: number; readonly height: number }
 
@@ -361,36 +357,23 @@ const useWidth = (target: RefObject<HTMLElement | null>): number | null => {
     return width
 }
 
-/** The zoom of the first view in a frame: the whole drawing when it fits at 100% or less, never under the least open zoom. */
-export const openZoom = (frame: { readonly width: number; readonly height: number }, drawing: { readonly width: number; readonly height: number }): number => {
-    const room = { width: frame.width - INSETS.left - INSETS.right, height: frame.height - INSETS.top - INSETS.bottom }
-    const fit = Math.min(room.width / Math.max(1, drawing.width), room.height / Math.max(1, drawing.height))
-    return Math.max(LEAST_OPEN_ZOOM, Math.min(1, fit))
-}
+/** The start of a drawing: a flowchart's entry node (a sequence's is its top left, its first participant and first message). */
+const startOf = (drawn: Drawn): Box | undefined => (drawn.kind === "graph" ? drawn.entry : undefined)
 
-/** The canvas height for a frame width: the drawing as large as the width lets it, between the reserved box and the tallest. */
-export const canvasHeight = (frameWidth: number, drawing: { readonly width: number; readonly height: number }, reserved: number): number => {
-    const zoom = Math.max(LEAST_OPEN_ZOOM, Math.min(1, (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width)))
-    return Math.round(Math.max(reserved, Math.min(Math.max(reserved, TALLEST), drawing.height * zoom + INSETS.top + INSETS.bottom)))
-}
-
-/** The first view: the drawing at its open zoom, centred where it fits, else from its start (top left) so the reader pans on from there. */
-const useOpenView = (drawing: { readonly width: number; readonly height: number }) => {
+/** The first view: the drawing at its open zoom (never under the readable floor), centred where it fits, else from its start so the reader pans on from there. */
+const useOpenView = (drawing: Drawn) => {
     const flow = useReactFlow()
     const width = useStore((state) => state.width)
     const height = useStore((state) => state.height)
     return useCallback(() => {
         if (width === 0 || height === 0) return undefined
-        const zoom = openZoom({ width, height }, drawing)
-        const room = { width: width - INSETS.left - INSETS.right, height: height - INSETS.top - INSETS.bottom }
-        const x = drawing.width * zoom <= room.width ? INSETS.left + (room.width - drawing.width * zoom) / 2 : INSETS.left
-        const y = drawing.height * zoom <= room.height ? INSETS.top + (room.height - drawing.height * zoom) / 2 : INSETS.top
+        const { x, y, zoom } = openView({ width, height }, drawing, openFloor(drawing.kind), startOf(drawing))
         return { x, y, zoom, set: () => void flow.setViewport({ x, y, zoom }) }
     }, [drawing, flow, height, width])
 }
 
 /** Opens the canvas on its first view once its frame is measured, and again when the frame's size changes. */
-const OpenOnce = ({ drawing }: { readonly drawing: { readonly width: number; readonly height: number } }): null => {
+const OpenOnce = ({ drawing }: { readonly drawing: Drawn }): null => {
     const open = useOpenView(drawing)
     useEffect(() => {
         const view = open()
@@ -602,7 +585,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const state = isLoading ? "loading" : drawing.status
     const reserved = RESERVED[height]
     const ready = state === "ready" && drawing.status === "ready" ? drawing.drawn : undefined
-    const canvas = ready === undefined || width === null ? reserved : canvasHeight(width, ready, reserved)
+    const canvas = ready === undefined || width === null ? reserved : canvasHeight(width, ready, reserved, openFloor(ready.kind))
     return (
         <figure
             ref={frame}

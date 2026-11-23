@@ -252,7 +252,7 @@ import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
 
 - Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
 - Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name card of a bubble on hover or focus (the Grammar Tooltip), `onOpen(id)` on click or Enter, a legend.
-- Every screen: the map is the same graph on a phone as on a desktop, fitted when it opens (the routing law, rule 4): the whole map, centred, at 100% or less (no list). A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
+- Every screen: the map is the same graph on a phone as on a desktop, fitted when it opens (the routing law, rule 4): the whole map, centred, at 100% or less (no list), never under a diagram's readable floor (a Mermaid diagram opens at 0.85 or more and pans on from its start, [diagram](diagram.md) "Variants"). A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
 - Words: `kindLabels`, `stateLabels`, `weightLabel`, `sourceLabel`, `zoomLabels`, `emptyLabel` and the `legend` are all passed in; the package has none of its own.
 
 ## The routing law
@@ -269,7 +269,8 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
 3. **A decision's main branch runs straight on.** The first branch of a decision leaves by the vertex on the flow's side (`SOUTH` top-down, `EAST` across) and its target
    stands on the decision's line (`alignDecisions` in `arrange.ts`); the other branches turn to the side. Every branch carries its words right at the split: on the first
    run it does not share with a sibling, clear of the sibling's words.
-4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down.
+4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down. A lesson
+   `MermaidDiagram` keeps a readable floor: never opened under zoom 0.85 (caption words at 11px or more), from its start when it does not fit whole (`diagram/open.ts`).
 5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
    edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight.
 6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the info tone, its dashes moving), never a second path over or

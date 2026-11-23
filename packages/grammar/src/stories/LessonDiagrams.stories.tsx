@@ -126,12 +126,15 @@ export const FlowchartAcross: Story = {
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="success"]').length).toBe(2);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="cylinder"]').length).toBe(4);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-group').length).toBe(2);
-    // The routing law: a read-only graph shows no handle dots, and the first view holds the whole drawing.
+    // The routing law: a read-only graph shows no handle dots, and the first view holds the whole drawing, or opens at the readable floor (0.85) from its entry node, which then stands in view.
     for (const dot of canvasElement.querySelectorAll('.starci-graph-edge-dot')) expect(getComputedStyle(dot).display).toBe('none');
     await waitFor(() => {
       for (const canvas of canvasElement.querySelectorAll<HTMLElement>('[data-grammar-mermaid-canvas]')) {
         const frame = canvas.getBoundingClientRect();
-        for (const node of canvas.querySelectorAll('.react-flow__node')) {
+        const zoom = new DOMMatrix(getComputedStyle(canvas.querySelector('.react-flow__viewport') as Element).transform).a;
+        // Under the floor the drawing fits whole; at it, only the entry node (the first) must be in view.
+        const nodes = zoom > 0.85 + 0.001 ? [...canvas.querySelectorAll('.react-flow__node')] : [...canvas.querySelectorAll('.react-flow__node')].slice(0, 1);
+        for (const node of nodes) {
           const box = node.getBoundingClientRect();
           expect(box.left >= frame.left - 1 && box.right <= frame.right + 1 && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1).toBe(true);
         }
