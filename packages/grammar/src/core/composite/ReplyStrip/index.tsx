@@ -19,9 +19,9 @@ export type ReplyStripProps = NoChildren & {
     readonly onPress?: () => void
 }
 
-/** The reply glyph at 1em of the strip's text (a caret-like mark beside words takes the words' size). */
+/** The reply glyph at 1em of the strip's text (a caret-like mark beside words takes the words' size; the CSS sizes it). */
 const ReplyGlyph = () => (
-    <svg aria-hidden="true" className="starci-core-reply-strip-glyph" viewBox="0 0 20 20" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" className="starci-core-reply-strip-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M8 5 3.5 9.5 8 14" />
         <path d="M4 9.5h7a5 5 0 0 1 5 5V16" />
     </svg>

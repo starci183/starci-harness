@@ -3,6 +3,7 @@ import { createServer } from "node:http"
 import type { Server } from "node:http"
 import type { AddressInfo } from "node:net"
 import { describe, test } from "node:test"
+import type { TestContext } from "node:test"
 import { HttpAdapterHost } from "@nestjs/core"
 import { Test } from "@nestjs/testing"
 import type { TestingModule } from "@nestjs/testing"
@@ -57,8 +58,13 @@ function pause(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** A fresh, unbound app server, and a port for it whose next port is free too, so `+1` is bindable. */
-async function appServer(): Promise<{ server: Server; port: number }> {
+/**
+ * A fresh, unbound app server and a port for it whose next port is free too, so `+1` is bindable. Both ports stay held by placeholders until
+ * the test hands them over (`freeApp` before the app binds `port`, `freeGateway` before the gateway binds `port + 1`): the test files run in
+ * parallel processes, and a port let go early is taken by another file's server (EADDRINUSE). Whatever the test leaves open is closed after
+ * it, a failed one too, so a red assertion reports instead of keeping the file's process alive.
+ */
+async function appServer(t: TestContext): Promise<{ server: Server; port: number; freeApp: () => Promise<void>; freeGateway: () => Promise<void> }> {
     for (;;) {
         const first = createServer()
         await bind(first, 0)
@@ -66,13 +72,23 @@ async function appServer(): Promise<{ server: Server; port: number }> {
         const probe = createServer()
         try {
             await bind(probe, port + 1)
-            await shut(probe)
-            await shut(first)
-            return { server: createServer(), port }
         } catch {
             await shut(first)
+            continue
         }
+        const server = createServer()
+        t.after(async () => {
+            await Promise.all([first, probe, server].map(async (open) => (open.listening ? shut(open) : undefined)))
+        })
+        return { server, port, freeApp: () => shut(first), freeGateway: () => shut(probe) }
     }
+}
+
+/** Compiles the module and closes it after the test, a failed one too (closing twice is harmless). */
+async function compiled(t: TestContext, ...args: Parameters<typeof compile>): Promise<TestingModule> {
+    const moduleRef = await compile(...args)
+    t.after(() => moduleRef.close())
+    return moduleRef
 }
 
 async function health(port: number): Promise<number> {
@@ -125,84 +141,78 @@ describe("gatewayPort and gatewayHost", () => {
 })
 
 describe("AiRouterGatewayModule listen derived from the app port", () => {
-    test("true waits for the app to listen, then serves on app port + 1 on 127.0.0.1", async () => {
-        const { server, port } = await appServer()
+    test("true waits for the app to listen, then serves on app port + 1 on 127.0.0.1", async (t) => {
+        const { server, port, freeApp, freeGateway } = await appServer(t)
         const before = server.listenerCount("listening")
-        const moduleRef = await compile(true, server)
+        const moduleRef = await compiled(t, true, server)
         await moduleRef.init()
         assert.equal(server.listenerCount("listening"), before + 1)
+        await freeGateway()
+        await freeApp()
         await bind(server, port)
         await served(port + 1)
         const gateway = moduleRef.get<AiRouterGateway>(getAiRouterGatewayToken())
         const { secret } = await gateway.admin.create({ label: "derived", models: ["m1"] })
         assert.equal((await http(`http://127.0.0.1:${String(port + 1)}`, "/v1/chat/completions", { key: secret, body: chatBody("m1") })).status, 200)
-        await moduleRef.close()
-        await shut(server)
     })
 
-    test("an app already listening is read at once, and the offset is added", async () => {
-        const { server, port } = await appServer()
+    test("an app already listening is read at once, and the offset is added", async (t) => {
+        const { server, port, freeApp, freeGateway } = await appServer(t)
+        await freeApp()
         await bind(server, port)
         const errors: unknown[] = []
-        const moduleRef = await compile({ offset: 1 }, server, errors)
+        const moduleRef = await compiled(t, { offset: 1 }, server, errors)
+        await freeGateway()
         await moduleRef.init()
         await served(port + 1)
         assert.deepEqual(errors, [])
-        await moduleRef.close()
-        await shut(server)
     })
 
-    test("an explicit port still wins over the app's", async () => {
-        const { server, port } = await appServer()
+    test("an explicit port still wins over the app's", async (t) => {
+        const { server, port, freeApp } = await appServer(t)
+        await freeApp()
         await bind(server, port)
-        const other = await appServer()
-        const moduleRef = await compile({ port: other.port }, server)
+        const other = await appServer(t)
+        const moduleRef = await compiled(t, { port: other.port }, server)
+        await other.freeApp()
         await moduleRef.init()
         await served(other.port)
-        await moduleRef.close()
-        await shut(server)
     })
 
-    test("a gateway port already taken is reported to onError, not thrown", async () => {
-        let { server, port } = await appServer()
+    test("a gateway port already taken is reported to onError, not thrown", async (t) => {
+        const { server, port, freeApp, freeGateway } = await appServer(t)
         const blocker = createServer()
-        for (;;) {
-            try {
-                await bind(blocker, port + 1)
-                break
-            } catch {
-                ;({ server, port } = await appServer())
-            }
-        }
+        t.after(async () => (blocker.listening ? shut(blocker) : undefined))
+        await freeGateway()
+        await bind(blocker, port + 1)
+        await freeApp()
         await bind(server, port)
         const errors: unknown[] = []
-        const moduleRef = await compile(true, server, errors)
+        const moduleRef = await compiled(t, true, server, errors)
         await moduleRef.init()
         for (let i = 0; i < 100 && errors.length === 0; i += 1) await pause(20)
         assert.match((errors[0] as Error).message, /EADDRINUSE/)
-        await moduleRef.close()
-        await shut(blocker)
-        await shut(server)
     })
 
-    test("closing before the app listens cancels the wait", async () => {
-        const { server, port } = await appServer()
+    test("closing before the app listens cancels the wait", async (t) => {
+        const { server, port, freeApp } = await appServer(t)
         const before = server.listenerCount("listening")
         const moduleRef = await compile(true, server)
         await moduleRef.init()
         assert.equal(server.listenerCount("listening"), before + 1)
         await moduleRef.close()
         assert.equal(server.listenerCount("listening"), before)
+        await freeApp()
         await bind(server, port)
-        await shut(server)
     })
 
-    test("with no HTTP server it uses PORT, and refuses without it", async () => {
+    test("with no HTTP server it uses PORT, and refuses without it", async (t) => {
         const saved = process.env.PORT
         try {
-            const { port } = await appServer()
+            const { port, freeGateway } = await appServer(t)
             process.env.PORT = String(port)
-            const moduleRef = await compile(true, undefined)
+            const moduleRef = await compiled(t, true, undefined)
+            await freeGateway()
             await moduleRef.init()
             await served(port + 1)
             await moduleRef.close()

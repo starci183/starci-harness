@@ -15,6 +15,8 @@
     --starci-graph-grid: color-mix(in oklab, var(--foreground) 22%, var(--surface));
     /* A graph's words are never under 13px: its core Badges (chips, tags, ports, the words on a line) take the label.field size, the size the layout measures them at. */
     --grammar-type-badge-size: var(--grammar-type-label-field-size);
+    /* The most a `height="content"` graph grows to; set it on the graph (its className) to change it. */
+    --starci-graph-max-block-size: 80vh;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -37,6 +39,12 @@
     position: relative;
     flex: 1;
     min-block-size: 0;
+}
+
+/* `height="content"`: the canvas is as tall as its drawing at 100% plus the fit insets (canvas.ts sets it), at least 20rem, at most the graph's most. */
+.starci-graph-canvas[data-hugs] {
+    flex: none;
+    block-size: clamp(20rem, var(--starci-graph-drawn-block-size), var(--starci-graph-max-block-size));
 }
 
 .starci-graph .react-flow {
