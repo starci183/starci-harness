@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.56.0 - 2026-11-23
 
 - Changed (`no-icon-size-class`, wording only; Grammar 0.55.1's icon size table, owner 2026-11-23): the message names the table: 24 for a navigation entry or a heading lead (`heading`, `leading`), 20 beside text and in a chip, badge or field (`chip`), 1em of its text for a caret or an inline status mark (`text`). The rule reads the same calls as before.
 
