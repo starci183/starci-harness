@@ -14,7 +14,7 @@ Choice `identity-mark.choose.role`: which mark anchors the name (an avatar or in
 | outcome | the mark would report an outcome | a toned `Badge` (`chip.choose.role:state`), not a tile (ACCENT-5) | judgement |
 | group | a group or conversation, a row of providers or channels, any avatars side by side or from a list | `AvatarGroup items max`: people (`name`, `seed`) and marks (`mark`) in one round group (COLLECTION-3); never two `Avatar` siblings or a mapped `Avatar` (owner 2026-11-22: "với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép tụi này render sáng tạo nhỉ") | `DNA-COMMON-AVATAR-GROUP-ONE-SIZE`, `DNA-COMMON-AVATAR-ROW-GROUP` (lint `starci-grammar/avatar-row-uses-group`) |
 | connections | the provider connections an agent or a workspace uses | `LogoStack`: round 20px logos with no plate, at most 3 then "+N", an optional muted xs `caption`; static, or one plain pressable (`onPress`, or `isTrigger` as a `DropdownMenu` trigger); an app's own content as a trigger is the exported `PlainPressable` | judgement |
-| person | a person or an agent | `Avatar`: uploaded image, else two initials on a name-coloured plate; the avatar of an agent is initials like the rest; its "AI" Chip follows the NAME (`isAgent` on the name slot) | `DNA-COMMON-AVATAR-INITIALS`, `DNA-COMMON-AGENT-NAMED`, `DNA-COMMON-AGENT-NAME-CHIP` |
+| person | a person or an agent | `Avatar`: uploaded image, else two initials on a name-coloured plate; the avatar of an agent is initials on its agent tone (Variants); its "AI" Chip follows the NAME (`isAgent` on the name slot) | `DNA-COMMON-AVATAR-INITIALS`, `DNA-COMMON-AGENT-NAMED`, `DNA-COMMON-AGENT-NAME-CHIP` |
 | floating | the reader's own identity as a floating entry point (an account or assistant launcher over the page) | `AvatarButton size="floating"` (56px, overlay shadow) with `status={{ tone, label }}`: a StatusDot at the top end on a surface ring, its `label` the button's accessible description | story `Navigation & Data/Spotlight/AvatarButtonFloating` |
 | kind | a feature, product area or entity kind | `IconTile` with a reviewed semantic glyph | candidate: an `IconTile` is painted neutral |
 
@@ -48,6 +48,14 @@ What the (B) tile carries depends on the reader's question (owner correction, 20
 ## Variants
 Tiles are neutral; a tile takes a status tone only when it reports a real outcome, never accent for identity
 (ACCENT-2). The mark never replaces the name.
+
+**An AI agent has its own colour (0.55.1, owner 2026-11-23: "mỗi agent một màu riêng").** Every mark of one agent wears one AGENT TONE, the
+same on every screen: its page header, its room and the room list, its chat author avatar, a task card, an approval sheet, a list of agents. The
+tone is `agentToneOf(agentKey)` (a stable hash of the key, never of the display name; a tone the package or a person chose wins when the app has
+one), one of six soft pairs of `common/tones-agent.css` (blue, teal, green, amber, purple, magenta; none is the danger or brand red; ink on plate
+4.5:1 in both themes, `specs/agent-tones.spec.mts`). `IconTile tone={agentToneOf(key)}` draws the agent's glyph on it, and an `Avatar` or an
+`AvatarGroup` item with `kind="agent"` and no image draws its initials on it by itself (`tone="agent"`, seeded like the colour). A status or an
+outcome never takes an agent tone, and an agent tone never stands for anything but which agent it is.
 
 ## Plates of an initials mark (0.46.0)
 An `Avatar` with no image draws a generated mark (default) or the name's initials on a plate: `tone="accent"` (the accent soft pair), `tone="solid"` (the solid accent plate, `--accent` with `--accent-foreground`: the brand mark) and `tone="strong"` (the neutral strong plate, `--foreground` with

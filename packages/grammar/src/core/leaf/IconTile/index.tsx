@@ -7,11 +7,12 @@ import type { NoChildren } from "../../tier.js"
 import type { CustomTone } from "../../../common/tones.js"
 import { useCustomTone } from "../../useCustomTone.js"
 import { MARK_STATE_TONE, StatusGlyph, StatusTile, type MarkState } from "../../statusMark.js"
+import { AGENT_TONES, isAgentTone, type AgentTone } from "../Avatar/identity.js"
 
 export type IconTileBuiltInTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger"
-/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
-export type IconTileTone = IconTileBuiltInTone | CustomTone
-const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "info", "success", "warning", "danger"]
+/** HeroUI's palette tones, an agent's own tone (`agentToneOf(key)`, 0.55.1), and any tone the app declared in `GrammarToneRegistry`. */
+export type IconTileTone = IconTileBuiltInTone | AgentTone | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "info", "success", "warning", "danger", ...AGENT_TONES]
 
 type IconTileShared = NoChildren & {
     /** Optional app-owned artwork replaces the fallback glyph without changing plate geometry. */
@@ -99,6 +100,7 @@ const IdentityTile = ({
             data-tier="leaf"
             data-component="IconTile"
             data-tone={tone}
+            {...(isAgentTone(tone) ? { "data-grammar-agent-tone": tone } : {})}
             data-artwork={showsArtwork ? "true" : "false"}
             data-loading={isLoading ? "true" : "false"}
             aria-hidden={isLoading || undefined}

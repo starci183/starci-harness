@@ -2,6 +2,7 @@
 @layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
 @import "./ramps.css";
 @import "./tones-info.css";
+@import "./tones-agent.css";
 @import "./tones-border.css";
 @import "./components-forms.css";
 @import "./components-overlays.css";
@@ -4556,6 +4557,15 @@
         font-weight: var(--grammar-weight-semibold);
     }
 
+    /* tone="agent" (0.55.1): the agent tone its seed picks (common/tones-agent.css), the same soft pair as the agent's IconTile; a lone avatar or a grid tile alike. */
+    :is(.starci-core-avatar, .starci-core-avatar-group-member)[data-grammar-avatar-tone="agent"] [data-grammar-avatar-fallback="true"] {
+        display: grid;
+        place-items: center;
+        background: var(--grammar-agent-soft);
+        color: var(--grammar-agent-soft-foreground);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
 
     /* PageIntro: the plain heading block of a public page: mark beside a title, fact lines and a sentence, on the page ground. */
     .starci-core-page-intro { display: flex; min-width: 0; align-items: flex-start; gap: var(--grammar-row-gap); }
@@ -5319,6 +5329,12 @@
     .starci-core-icon-tile[data-tone="warning"][data-artwork="false"][data-loading="false"] {
         background: var(--warning-soft);
         color: var(--warning-soft-foreground);
+    }
+
+    /* An agent tone (0.55.1): the agent's own soft pair, set from data-grammar-agent-tone by common/tones-agent.css. */
+    .starci-core-icon-tile[data-grammar-agent-tone][data-artwork="false"][data-loading="false"] {
+        background: var(--grammar-agent-soft);
+        color: var(--grammar-agent-soft-foreground);
     }
 
     .starci-core-icon-tile[data-tone="danger"][data-artwork="false"][data-loading="false"] {

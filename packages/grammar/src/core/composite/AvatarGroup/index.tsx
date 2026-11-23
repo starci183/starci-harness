@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type 
 import { Popover as AriaPopover } from "react-aria-components"
 import { AgentName } from "../../leaf/AgentName/index.js"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { Avatar, avatarA11yProps, avatarGroupSlots, avatarGroupTiles, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarMark, type AvatarSize } from "../../leaf/Avatar/index.js"
+import { Avatar, agentToneOf, avatarA11yProps, avatarGroupSlots, avatarGroupTiles, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarMark, type AvatarSize } from "../../leaf/Avatar/index.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
@@ -66,6 +66,9 @@ export type AvatarGroupProps = NoChildren & {
 }
 
 const itemTone = (item: AvatarGroupItem) => item.tone ?? "default"
+
+/** The plate of a tile of the grid: an agent with no plate of its own wears its agent tone, as a lone agent Avatar does. */
+const gridPlate = (item: AvatarGroupItem) => (item.kind === "agent" && item.tone === undefined && item.mark === undefined ? "agent" : itemTone(item))
 
 /** The "+N" mark: always the NEUTRAL muted pair (the default plate, the muted ink), never a hashed or accent colour (owner 2026-11-22: "+2 màu muted chớ"). */
 const OverflowCount = ({ count }: { readonly count: number }) => (
@@ -224,10 +227,11 @@ const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", 
                                 data-component="Avatar"
                                 data-contract="A11Y-2"
                                 data-grammar-avatar-kind={item.kind ?? "person"}
-                                data-grammar-avatar-tone={itemTone(item)}
+                                data-grammar-avatar-tone={gridPlate(item)}
+                                {...(gridPlate(item) === "agent" ? { "data-grammar-agent-tone": agentToneOf(item.seed ?? item.name) } : {})}
                                 size={vendorAvatarSize(size)}
                             >
-                                {avatarParts(item.name, item.src, item.fallback, item.seed, "default", item.mark)}
+                                {avatarParts(item.name, item.src, item.fallback, item.seed, gridPlate(item) === "agent" ? "agent" : "default", item.mark)}
                             </HeroAvatar>
                         )
                     })}
