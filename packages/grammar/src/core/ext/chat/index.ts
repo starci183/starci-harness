@@ -8,5 +8,5 @@
  * after the Grammar's styles.
  */
 export { AiChatThread } from "./AiChatThread.js"
-export type { AiChatLabels, AiChatMessage, AiChatPart, AiChatResultPreview, AiChatResultRow, AiChatThreadProps } from "./types.js"
+export type { AiChatAssistantAvatar, AiChatLabels, AiChatMessage, AiChatPart, AiChatResultPreview, AiChatResultRow, AiChatThreadProps } from "./types.js"
 export { DEFAULT_AI_CHAT_LATEST, formatValue, sendableText, textOfMessage, toolStatusOf, toThreadMessage } from "./model.js"

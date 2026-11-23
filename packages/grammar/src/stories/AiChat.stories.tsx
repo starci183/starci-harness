@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import '../core/ext/chat/styles.css';
 import { AiChatThread, type AiChatLabels, type AiChatMessage, type AiChatResultPreview } from '../core/ext/chat/index.js';
+import { Alert } from '../core/composite/Alert/index.js';
+import { Divider } from '../core/leaf/Divider/index.js';
 import { Text } from '../core/leaf/Text/index.js';
 
 /**
@@ -64,6 +66,10 @@ const preview: AiChatResultPreview = {
 };
 
 const noop = () => undefined;
+
+/** The provider's mark before each assistant turn, and the line under the composer's box that says whose key answers. */
+const assistantAvatar = { name: 'Claude' } as const;
+const composerHint = 'Claude · key của cửa hàng';
 
 /** The chat fills a phone-or-desktop tall box, as on its page. */
 const Frame = ({ children }: { readonly children: ReactNode }) => (
@@ -160,4 +166,42 @@ export const Live: Story = {
     const retry = () => stream(messages.slice(0, -1));
     return <Frame><AiChatThread messages={messages} isRunning={isRunning} onSend={send} onStop={stop} onRetry={retry} labels={labels} header={header} /></Frame>;
   },
+};
+
+/** The three slots: the assistant's `sm` mark before its turns, a divider after the last message once the reader approved, the hint in the composer box's foot row. */
+export const Slots: Story = {
+  render: () => (
+    <Frame>
+      <AiChatThread
+        messages={conversation}
+        isRunning={false}
+        onSend={noop}
+        labels={labels}
+        header={header}
+        assistantAvatar={assistantAvatar}
+        afterMessages={<Divider label="Bạn đã chốt bản 2 · luồng chạy tiếp" />}
+        composerHint={composerHint}
+        disabled
+      />
+    </Frame>
+  ),
+};
+
+/** An inline error after the last message: an Alert in the thread, the composer still open with its hint. */
+export const SlotsError: Story = {
+  render: () => (
+    <Frame>
+      <AiChatThread
+        messages={conversation}
+        isRunning={false}
+        onSend={noop}
+        onRetry={noop}
+        labels={labels}
+        header={header}
+        assistantAvatar={assistantAvatar}
+        afterMessages={<Alert tone="negative" title="Claude chưa trả lời được" description="Key hết hạn mức. Kiểm tra key trong Kết nối rồi thử lại." />}
+        composerHint={composerHint}
+      />
+    </Frame>
+  ),
 };

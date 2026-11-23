@@ -551,3 +551,119 @@ test('a restarted process is waited for over each tunnel hostname that routes it
   assert.deepEqual(restartProbes(local, process).map((row) => row.url), ['http://localhost:${port.api}/health/live', 'https://api.dev.example.com/health/live']);
   assert.deepEqual(restartProbes(local, { ...process, health: null }), []);
 });
+
+const EDGED = BLOCK.replace('ports: {db: 54322, api: 3001}', 'ports: {db: 54322, api: 3001, web: 3000}').replace(
+  '        - {name: api, argv: [node, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}}',
+  '        - {name: api, argv: [node, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}}\n        - {name: web, argv: [npx, next, dev, --port, "${port.web}"], cwd: fe/apps/web, port: web, health: {url: "http://localhost:${port.web}/"}}',
+);
+const TUNNELED = EDGED.replace('      ready:', '      tunnel: {name: t, routes: [{name: web, host: app.dev.example.com, port: web}]}\n      ready:');
+
+test('the owner never gets a half-built web: a web the tunnel publishes restarts behind its edge on a backend port, and the edge outlives the restart', async (t) => {
+  const root = app(t, { block: EDGED });
+  const up = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], up), 0, up.err.join(''));
+  const stacks = path.join(root, '.starcistacks', 'application-stacks.yaml');
+  fs.writeFileSync(stacks, fs.readFileSync(stacks, 'utf8').replace(EDGED, TUNNELED));
+  const configs: Array<{ listen: number; probePath: string; marker: string | null }> = [];
+  const edgeDeps = { freePort: async () => 4567, processTable: () => [], startEdge: async (config: { listen: number; probePath: string; marker: string | null }) => { configs.push(config); return { pid: 777, command: 'node edge-server.mjs' }; } };
+  const restart = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'web', '--execute'], restart, { ...edgeDeps, alive: () => false }), 0, restart.err.join(''));
+  const web = restart.calls.find((call) => call.background);
+  assert.ok(web?.args.includes('4567') && !web.args.includes('3000'), 'the web listens on the backend port, the declared one is the edge one');
+  assert.deepEqual(configs.map((config) => [config.listen, config.probePath, config.marker]), [[3000, '/', null]], 'the edge holds the declared port and probes the health path (no Grammar in this app, so no CSS rule is asked for)');
+  assert.match(restart.out.join(''), /edge web: listening on port 3000 \(pid 777\)/u);
+  assert.match(restart.out.join(''), /process web: started \(pid 4242, watch, behind its edge on backend port 4567\)/u);
+  assert.match(restart.out.join(''), /ok {4}ready web-tunnel: https:\/\/app\.dev\.example\.com\/ answered 200/u);
+  const again = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'web', '--execute'], again, { ...edgeDeps, freePort: async () => 4568, alive: () => true, kill: () => undefined, commandLine: (pid) => (pid === 777 ? 'node edge-server.mjs' : 'npx next dev --port 4567') }), 0, again.err.join(''));
+  assert.equal(configs.length, 1, 'a running edge of the same script is kept: the restart only points it at the new backend');
+  assert.match(again.out.join(''), /behind its edge on backend port 4568/u);
+  // the web died behind its edge: up starts it again, and the edge on the declared port is no second copy
+  const revive = host(root);
+  const cloudflared = path.join(root, '..', `${path.basename(root)}-cloudflared`);
+  fs.mkdirSync(cloudflared, { recursive: true });
+  t.after(() => fs.rmSync(cloudflared, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(cloudflared, 'cert.pem'), 'cert\n');
+  fs.writeFileSync(path.join(cloudflared, 't.yml'), 'tunnel: 00000000-0000-0000-0000-000000000000\ncredentials-file: x.json\ningress:\n  - hostname: app.dev.example.com\n    service: http://127.0.0.1:3000\n  - service: http_status:404\n');
+  revive.io.env.CLOUDFLARED_HOME = cloudflared;
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], revive, { ...edgeDeps, freePort: async () => 4569, alive: (pid) => pid === 777, commandLine: () => 'node edge-server.mjs', portHolder: (port) => (port === 3000 ? { pid: 777, command: 'node edge-server.mjs' } : null) }), 0, revive.err.join(''));
+  assert.match(revive.out.join(''), /process web: started \(pid 4242, watch, behind its edge on backend port 4569\)/u);
+  const killed: number[] = [];
+  const down = host(root);
+  assert.equal(await run(root, ['down', '--env', 'dev', '--execute'], down, { alive: () => true, commandLine: (pid) => (pid === 777 ? 'node edge-server.mjs' : 'npx next dev --port 4568'), kill: (pid) => killed.push(pid) }), 0, down.err.join(''));
+  assert.ok(killed.includes(777), 'stack down ends the edge');
+});
+
+test('a second watcher tree of one checkout never survives a start: the earlier tree is ended by its root, other checkouts and the gallery are left alone', async () => {
+  const { earlierTrees } = await import('../stack/local-edge.mjs');
+  const root = 'D:\\Repositories\\nivoos-lite';
+  const api = { argv: ['npx', 'ts-node-dev', '--respawn', '--transpile-only', '--debounce', '1000', '--watch', 'src,apps,../packages/nivoos-sdk/dist', '-r', 'tsconfig-paths/register', 'apps/api/src/main.ts'], cwd: 'be' };
+  const tail = '--respawn --transpile-only --debounce 1000 --watch src,apps,../packages/nivoos-sdk/dist -r tsconfig-paths/register apps/api/src/main.ts';
+  // The api tree a 13:02 `stack up` started under another state base, still running at 17:00 beside the tree the 16:59 sync started.
+  const table = [
+    { pid: 59308, ppid: 38228, command: `"C:\\Program Files\\nodejs\\node.exe" "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js" ts-node-dev ${tail}` },
+    { pid: 46688, ppid: 59308, command: `C:\\WINDOWS\\system32\\cmd.exe /d /s /c ts-node-dev ${tail}` },
+    { pid: 43172, ppid: 46688, command: `"node"   "D:\\Repositories\\nivoos-lite\\node_modules\\.bin\\\\..\\ts-node-dev\\lib\\bin.js" ${tail}` },
+    { pid: 69932, ppid: 43172, command: '"C:\\Program Files\\nodejs\\node.exe" -r C:/Users/x/AppData/Local/Temp/ts-node-dev-hook.js -r tsconfig-paths/register D:\\Repositories\\nivoos-lite\\node_modules\\ts-node-dev\\lib\\wrap.js apps/api/src/main.ts' },
+    // a lane worktree of the same app runs the same watcher: another checkout, never touched
+    { pid: 81000, ppid: 1, command: `"node" "D:\\starci-lanes\\nivo-x\\node_modules\\.bin\\\\..\\ts-node-dev\\lib\\bin.js" ${tail}` },
+  ];
+  assert.deepEqual(earlierTrees(table, root, api, new Set()), [59308], 'the whole earlier tree goes by its root, the npx shim');
+  assert.deepEqual(earlierTrees(table, root, api, new Set([69932])), [], 'never the tree of the command that runs the start');
+  const web = { argv: ['npx', 'next', 'dev', '--port', '${port.web}'], cwd: 'fe/apps/web' };
+  const webs = [
+    { pid: 27568, ppid: 1, command: '"C:\\Program Files\\nodejs\\node.exe" "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js" next dev --port 3500' },
+    { pid: 19592, ppid: 27568, command: 'C:\\WINDOWS\\system32\\cmd.exe /d /s /c next dev --port 3500' },
+    { pid: 73640, ppid: 19592, command: '"node"   "D:\\Repositories\\nivoos-lite\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" dev --port 3500' },
+    // the gallery's own next dev in the same checkout, from its own node_modules
+    { pid: 55920, ppid: 1, command: '"node" "D:\\Repositories\\nivoos-lite\\gallery\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" dev --port 3550' },
+  ];
+  assert.deepEqual(earlierTrees(webs, root, web, new Set()), [27568], 'a web on another port is the same web: the port is no literal argument');
+});
+
+test('the edge forwards to a web only once its page and Grammar CSS answer, and says the app is updating until then', async (t) => {
+  const { spawn } = await import('node:child_process');
+  const http = await import('node:http');
+  const { fileURLToPath } = await import('node:url');
+  const { freePort } = await import('../stack/local-edge.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-edge-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  let css: { status: number; body: string } = { status: 404, body: '' };
+  const page = '<!doctype html><html><head><title>NIVO OS · Hệ điều hành doanh nghiệp</title><link rel="stylesheet" href="/_next/static/chunks/app.css" data-precedence="next"/></head><body>app</body></html>';
+  const backend = http.createServer((request, response) => {
+    if (request.url === '/_next/static/chunks/app.css') { response.writeHead(css.status, { 'content-type': 'text/css' }); response.end(css.body); return; }
+    response.writeHead(200, { 'content-type': 'text/html' }); response.end(page);
+  });
+  const backendPort = await freePort();
+  await new Promise<void>((done) => { backend.listen(backendPort, '127.0.0.1', done); });
+  t.after(() => { backend.close(); });
+  const listen = await freePort();
+  const config = { listen, backendFile: path.join(dir, 'web.backend.json'), statusFile: path.join(dir, 'web.status.json'), probePath: '/', marker: '.starci-core-icon', title: 'demo' };
+  fs.writeFileSync(config.backendFile, JSON.stringify({ port: backendPort }));
+  fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify(config));
+  const edge = spawn(process.execPath, [fileURLToPath(new URL('../stack/edge-server.mjs', import.meta.url)), path.join(dir, 'config.json')], { stdio: 'ignore' });
+  t.after(() => { edge.kill(); });
+  const status = (): { listening?: boolean; live?: boolean; detail?: string } => { try { return JSON.parse(fs.readFileSync(config.statusFile, 'utf8')) as { listening?: boolean; live?: boolean; detail?: string }; } catch { return {}; } };
+  const until = async (ok: () => boolean, what: string): Promise<void> => {
+    for (let waited = 0; waited < 15_000; waited += 100) { if (ok()) return; await new Promise((done) => setTimeout(done, 100)); }
+    assert.fail(`${what}: ${JSON.stringify(status())}`);
+  };
+  const get = async (): Promise<{ status: number; body: string }> => { const response = await fetch(`http://127.0.0.1:${listen}/inbox`); return { status: response.status, body: await response.text() }; };
+  await until(() => status().detail === 'stylesheet /_next/static/chunks/app.css answered 404', 'a page whose CSS is not built yet is probed');
+  const holding = await get();
+  assert.equal(holding.status, 503);
+  assert.match(holding.body, /NIVO OS đang cập nhật, tải lại sau vài giây/u);
+  assert.match(holding.body, /http-equiv="refresh"/u);
+  css = { status: 200, body: '.starci-core-icon-button{opacity:1}' };
+  await until(() => status().detail === 'no linked stylesheet holds .starci-core-icon', 'CSS without the Grammar icon rule is not whole');
+  assert.equal((await get()).status, 503);
+  css = { status: 200, body: '.starci-core-icon{inline-size:1em}' };
+  await until(() => status().live === true, 'the whole page goes live');
+  const live = await get();
+  assert.equal(live.status, 200);
+  assert.equal(live.body, page, 'live, the edge forwards to the web as it is');
+  backend.close();
+  backend.closeAllConnections();
+  await until(() => status().live === false, 'a web that stops answering sends the edge back to the updating page');
+  assert.equal((await get()).status, 503);
+});

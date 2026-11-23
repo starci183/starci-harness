@@ -27,14 +27,18 @@ assistant-ui styled package, no shadcn styles.
   and `onRevise` (the composer takes the focus after it).
 - `labels`: EVERY word, in the app's language (`placeholder`, `send`, `stop`, `retry`, `copy`, `thinking`, `toolRunning`, `toolDone`,
   `toolError`, `empty?`, `latest?` with an English default). `header` is a slot above the thread; `disabled` makes the composer read-only.
+- Three optional slots: `assistantAvatar` (an Avatar item, `AiChatAssistantAvatar`: the provider's initials, a `mark`, or `kind: "logo"` with
+  its `src`), `afterMessages` (a node after the last message and the preview, inside the thread: a Divider such as "you approved version 2", an
+  inline Alert for an error) and `composerHint` (a string, the caption at the start of the composer's foot row).
 
 ## Look
 - **The frame** is the chat frame ([message bubble](message-bubble.md) "The chat frame"): head, thread and composer foot on `--background`,
   hairlines between them, only the thread scrolls. Turns and the composer stand in one centred reading column with the page gutter, so 390
   has no horizontal scroll.
-- **The reader's turn** is the brand `MessageBubble` at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
+- **The reader's turn** is the neutral soft `MessageBubble` (`tone="neutral"`, no accent fill) at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
   across the column (the core `Markdown`, fences in the code palette with their Copy), then its actions, the `sm` border icon buttons copy and,
-  on the last turn, retry.
+  on the last turn, retry. With `assistantAvatar` each assistant turn starts with its `sm` (24px) decorative Avatar, the answer beside it at the
+  row gap.
 - **Thinking**: while a run has nothing to show yet, the running `InlineStatus` with `labels.thinking`.
 - **A tool call** is one folded `Disclosure` row in a 1px `--border` edge: the app's title, then its status as an `InlineStatus` (glyph and
   words); open, the arguments as stacked facts and the result (a string as text, anything else as JSON in the code palette).
@@ -43,7 +47,8 @@ assistant-ui styled package, no shadcn styles.
   the border look; `approving` keeps approve's name and blocks a second press; `approved` puts the approve words marked done in place of the band.
 - **The viewport** follows the newest message while the reader is at the foot and stops when the reader scrolls up; a floating `sm` arrow
   (named `labels.latest`) brings the reader back.
-- **The composer** is the core chat composer (`Textarea onSubmitShortcut send`): one line growing to six, Enter sends, Shift+Enter breaks
-  the line, the send action its own 40px primary, `send.glyph="stop"` while a run goes.
+- **The composer** is one bordered box (a 1px --border edge, the focus ring on the box): the core `Textarea onSubmitShortcut` on top with its own frame
+  taken off (one line growing to six, Enter sends, Shift+Enter breaks the line), and a foot row inside the same box, `composerHint` as a caption at the
+  start and the round `sm` primary send at the end, which becomes stop (`labels.stop`) while a run goes.
 
-Story `Navigation & Data/AI chat`: empty, a conversation with a code block and a tool call, streaming, the preview, approving, disabled.
+Story `Navigation & Data/AI chat`: empty, a conversation with a code block and a tool call, streaming, the preview, approving, disabled, the three slots and an inline error.

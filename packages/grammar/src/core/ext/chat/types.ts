@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import type { AvatarGroupItem } from "../../composite/AvatarGroup/index.js"
 
 /**
  * One part of a message: its words (markdown, drawn with the core's `Markdown`) or one tool call the assistant made, with its own title in the
@@ -52,6 +53,9 @@ export interface AiChatLabels {
     latest?: string
 }
 
+/** The mark an assistant turn wears: an Avatar item (initials of `name`, a `mark`, or `kind: "logo"` with its `src`), without the id a group needs. */
+export type AiChatAssistantAvatar = Omit<AvatarGroupItem, "id">
+
 export interface AiChatThreadProps {
     messages: AiChatMessage[]
     /** An assistant answer is streaming or pending. */
@@ -70,6 +74,12 @@ export interface AiChatThreadProps {
     labels: AiChatLabels
     /** A slot above the thread (the app's title, a back link). */
     header?: ReactNode
+    /** The mark of the assistant (the provider's initials or logo): an `sm` (24px) Avatar before each assistant turn, decorative since the turn is the assistant's by its place. */
+    assistantAvatar?: AiChatAssistantAvatar
+    /** A slot after the last message (and the proposed result), inside the scrolling thread: a divider such as "you approved version 2", an inline Alert for an error. */
+    afterMessages?: ReactNode
+    /** One short caption in the composer box's foot row, left of the send button ("Claude · the shop's key"). */
+    composerHint?: string
     /** The composer is read-only (the session is closed). */
     disabled?: boolean
     className?: string

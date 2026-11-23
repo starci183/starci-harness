@@ -44,10 +44,10 @@ const conversation: AiChatMessage[] = [
 const render = (overrides: Partial<AiChatThreadProps> = {}): string =>
     renderToStaticMarkup(createElement(AiChatThread, { messages: conversation, isRunning: false, onSend: () => undefined, labels, ...overrides }))
 
-test("a conversation: the reader's turn is a brand bubble at the end side, the answer is markdown with copy and retry, the tool call carries its mark", () => {
+test("a conversation: the reader's turn is a neutral soft bubble at the end side, the answer is markdown with copy and retry, the tool call carries its mark", () => {
     const html = render({ onRetry: () => undefined })
     assert.match(html, /data-component="AiChatThread"/)
-    assert.match(html, /data-grammar-bubble-side="outgoing"[^>]*data-grammar-bubble-tone="brand"/)
+    assert.match(html, /data-grammar-bubble-side="outgoing"[^>]*data-grammar-bubble-tone="neutral"/)
     assert.match(html, /Greet new customers\non the chat channel\./, "the reader's words keep their line break")
     assert.match(html, /data-grammar-ai-chat-role="assistant"/)
     assert.match(html, /data-component="FencedCodeBlock"|<pre/, "a fence is a code block")
@@ -55,7 +55,8 @@ test("a conversation: the reader's turn is a brand bubble at the end side, the a
     assert.match(html, /Look up new customers/)
     assert.match(html, /aria-label="Copy"/)
     assert.match(html, /aria-label="Retry"/)
-    assert.match(html, /data-grammar-composer-send="true"/)
+    assert.match(html, /data-grammar-ai-chat-box="true"/)
+    assert.match(html, /aria-label="Send"/)
     assert.doesNotMatch(html, /aria-label="Stop"/)
 })
 
@@ -83,6 +84,24 @@ test("empty, preview and disabled: the app's words, the one primary approve, a r
     assert.match(approved, /data-grammar-ai-chat-preview="approved"/)
     assert.doesNotMatch(approved, />Revise</)
     assert.match(render({ disabled: true }), /data-grammar-readonly="true"/)
+})
+
+test("the three slots: the assistant's mark before each assistant turn, the node after the messages, the hint in the composer box's foot row", () => {
+    const html = render({
+        assistantAvatar: { name: "Claude", kind: "logo", src: "/claude.svg" },
+        afterMessages: createElement("p", { "data-after": "yes" }, "You approved version 2"),
+        composerHint: "Claude · the shop's key",
+    })
+    assert.equal(html.match(/data-grammar-ai-chat-mark="true"/g)?.length, 1, "one mark for the one assistant turn, none for the reader's")
+    assert.match(html, /data-grammar-avatar-size="sm"/, "the mark is the 24px Avatar")
+    const column = html.slice(html.indexOf("starci-ai-chat-viewport"), html.indexOf("starci-ai-chat-composer"))
+    assert.ok(column.lastIndexOf("data-grammar-ai-chat-role=\"assistant\"") < column.indexOf("data-after=\"yes\""), "the node stands after the last message, inside the thread")
+    assert.ok(html.indexOf("data-after=\"yes\"") < html.indexOf("starci-ai-chat-composer"))
+    const box = html.slice(html.indexOf("starci-ai-chat-box-foot"))
+    assert.match(box, /the shop&#x27;s key|the shop's key/)
+    assert.ok(box.indexOf("shop") < box.indexOf('aria-label="Send"'), "the hint stands before the send button, in the box's foot row")
+    const plain = render()
+    assert.doesNotMatch(plain, /data-grammar-ai-chat-mark|data-grammar-ai-chat-after/, "no slot, nothing drawn")
 })
 
 test("the app's messages convert to assistant-ui's: ids, roles, text and tool parts, a failed answer incomplete", () => {

@@ -12,6 +12,7 @@ import { fileEnvironment, grantDirectory } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostTool, launch } from './local-host.mjs';
 import type { HostDeps } from './local-host.mjs';
+import type { EdgeDeps } from './local-edge.mjs';
 import { tcpOpen } from './local-ports.mjs';
 import type { PeerBase } from './local-peers.mjs';
 import { logFile, stateDirectory } from './local-state.mjs';
@@ -19,7 +20,7 @@ import { expandPorts } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { HttpProbe, LocalCommand, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
 /** The seams a spec replaces besides the context's own. */
-export interface LocalDeps extends HostDeps {
+export interface LocalDeps extends HostDeps, EdgeDeps {
   alive?: ((pid: number) => boolean) | undefined;
   kill?: ((pid: number) => void) | undefined;
   /** The live command line of a process id, or null when the host cannot tell (a spec replaces it). */

@@ -6505,6 +6505,12 @@
         color: var(--accent-soft-foreground);
     }
 
+    /* The neutral face is the default soft pair: the reader's words with no accent fill. */
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="neutral"] .starci-core-message-bubble-body {
+        background: var(--default-soft);
+        color: var(--default-soft-foreground);
+    }
+
     .starci-core-message-bubble[data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-soft-foreground) 12%, transparent); }
 
     .starci-core-message-bubble[data-grammar-bubble-highlight="true"] .starci-core-message-bubble-body {
