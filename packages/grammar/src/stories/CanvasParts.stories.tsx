@@ -184,6 +184,10 @@ export const ProportionBarStates: Story = {
       <State label="Ready, three parts" direction="column">
         <G.ProportionBar label="Receivables by age" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8, valueLabel: '8 invoices' }, { id: 'b', label: '30 to 60 days', value: 3, valueLabel: '3 invoices' }, { id: 'c', label: 'Over 60 days', value: 1, valueLabel: '1 invoice' }]} />
       </State>
+      <State label="Sizes: HeroUI ProgressBar sm 4px, md 8px (default), lg 12px" direction="column">
+        <G.ProportionBar label="Receivables by age, small" size="sm" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8 }, { id: 'b', label: 'Over 30 days', value: 4 }]} />
+        <G.ProportionBar label="Receivables by age, large" size="lg" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8 }, { id: 'b', label: 'Over 30 days', value: 4 }]} />
+      </State>
       <State label="Loading" direction="column"><G.ProportionBar label="Receivables by age" empty="Nothing owed" parts={[]} isLoading /></State>
       <State label="Empty" direction="column"><G.ProportionBar label="Receivables by age" empty={<G.Text tone="muted">Nothing owed</G.Text>} parts={[]} /></State>
       <State label="Error" direction="column"><G.ProportionBar label="Receivables by age" empty="Nothing owed" parts={[]} error={{ message: 'Could not load', actionLabel: 'Try again', onAction: noop }} /></State>

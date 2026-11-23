@@ -141,6 +141,19 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
     return { kind: "flowchart", direction: direction(db.getDirection()), nodes, edges }
 }
 
+/**
+ * The boxes of a flowchart that branch without a decision: an ordinary node (not a `{…}` decision, not a subgraph) with two or more labelled edges out.
+ * A branch is an if/else (owner 2026-11-23: "if else mới rẽ nhánh"), so it comes out of a decision whose words ask the condition (`{Price in the cache?}`),
+ * one labelled edge per answer; edges that are always all taken carry no words, which go in the nodes. The renderer never invents the question: a
+ * development build warns with these ids, and the author writes the decision.
+ */
+export const branchesWithoutDecision = (graph: DiagramGraph): readonly string[] => {
+    if (graph.kind !== "flowchart") return []
+    const labelled = new Map<string, number>()
+    for (const edge of graph.edges) if (edge.label !== undefined && edge.source !== edge.target) labelled.set(edge.source, (labelled.get(edge.source) ?? 0) + 1)
+    return graph.nodes.filter((node) => node.shape !== "diamond" && node.shape !== "container" && (labelled.get(node.id) ?? 0) >= 2).map((node) => node.id)
+}
+
 /** The part of Mermaid's state database the mapping reads (`getData()`, the layout data Mermaid's own renderers take). */
 export interface StateData {
     readonly nodes: readonly { readonly id: string; readonly label?: string; readonly description?: readonly string[] | string; readonly shape?: string; readonly isGroup?: boolean; readonly parentId?: string; readonly cssClasses?: string }[]

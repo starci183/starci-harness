@@ -7,7 +7,7 @@
  */
 export { AreaChart, type AreaChartProps, type AreaChartSeries } from "./AreaChart.js"
 export { BarChart, DEFAULT_CHART_HEIGHT, barFills, type BarChartProps } from "./BarChart.js"
-export { DEFAULT_DONUT_SIZE, DEFAULT_OTHER_LABEL, DONUT_MAX_SEGMENTS, DonutChart, donutSlices, type DonutChartProps, type DonutSegment, type DonutSlice } from "./DonutChart.js"
+export { DEFAULT_DONUT_SIZE, DEFAULT_OTHER_LABEL, DONUT_MAX_SEGMENTS, DONUT_RING_WIDTH, DonutChart, donutSlices, type DonutChartProps, type DonutSegment, type DonutSlice } from "./DonutChart.js"
 export { LineChart, type LineChartProps } from "./LineChart.js"
 export { Sparkline, SPARKLINE_HEIGHT, type SparklineProps } from "./Sparkline.js"
 export { CHART_CATEGORY_TONES, CHART_TONES, CHART_TONE_TOKEN, chartCategoryTone, chartToneColor, chartToneSoftColor, type ChartTone } from "./tokens.js"

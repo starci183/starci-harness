@@ -26,7 +26,14 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
   ELK, layered, with as few crossings as the layout finds, routed by the routing law. A node is a rounded box in the shape its source
   names: `[(db)]` a cylinder, `{x}` a decision diamond, `((x))` a circle, `([x])` a stadium; a subgraph or a composite state is a container its
   nodes stand in; `[*]` is a start dot or an end ring; an edge's words are a pill on its line, a dotted link (`-.->`) dashed. RL draws across,
-  BT down.
+  BT down. A decision with two or more edges out is entered by its entry vertex and its branches leave by its other vertices, in the order the source
+  writes them (the first straight on, the second and third to the sides), each with its words at its own vertex; branches that lead on to one node
+  rejoin its line at a junction, and one arrowhead enters it.
+- **A branch is an if/else.** A flowchart splits only at a decision: a `{…?}` node whose words ask the condition, one labelled edge per answer
+  (yes / no), the branches rejoining with plain arrows where the flow goes on. An ordinary box with two or more labelled edges out is not a branch:
+  when the edges are all taken their words go in the nodes, and when they are an if/else the author writes the decision. The renderer never invents
+  the question; a development build (`NODE_ENV` not `production`) logs one `console.warn` per such box (`branchesWithoutDecision` in
+  `diagram/model.ts` is the pure check).
 - **Sequence**: participants are header boxes in one row (an actor pill-round), each with a dashed lifeline; each message is an edge between two
   anchor points of its row on the two lifelines, in the order written (a reply dashed, a lost message a cross, a self-message a loop to the
   right), its words over the line (numbered under `autonumber`); a note is a soft accent pill over the lifelines it spans; `alt`, `loop`, `opt`,
