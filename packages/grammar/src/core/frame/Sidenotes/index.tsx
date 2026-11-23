@@ -159,7 +159,7 @@ export const SidenoteTerm = ({ id, children }: SidenoteTermProps) => {
             type="button"
             className="starci-core-sidenote-anchor"
             data-component="SidenoteTerm"
-            data-tier="leaf"
+            data-tier="frame"
             data-grammar-sidenote-active={context.activeId === id ? "true" : "false"}
             aria-describedby={context.noteId(id)}
             onMouseEnter={() => context.setActive(id)}
