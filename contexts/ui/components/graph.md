@@ -270,6 +270,11 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    stands on the decision's line (`alignDecisions` in `arrange.ts`); the other branches leave by the side vertices and turn to the side. Every branch carries its words
    right at the split, at its own vertex: on the first run it does not share with a sibling, clear of the sibling's words, never two answers side by side on one stub.
    A branch on a side vertex runs straight only when its vertex stands inside its target's span; otherwise it turns round to its target, never dropping past it.
+   A decision with three or more answers (a lesson `MermaidDiagram` switch) fans its exits left to right in the order written instead (`switchAt` in
+   `diagram/graph.ts`): the first and last out of the side vertices, the ones between along the slanted sides, a middle exit straight on, each with its words at its
+   own port; the step the branches meet stands under the decision and they rejoin on one line above it with one arrowhead. A parallel's bar spans its branches and
+   every line meets it straight; a loop's back edge returns by one bend to the decision's side vertex; a foreach is a dashed frame (dashes mean "repeats"), see
+   [diagram](diagram.md) "Four shapes beyond an if/else".
    A lesson `MermaidDiagram` gives every `{…}` decision with two or more edges out these vertex ports (`decisionBranches` in `diagram/graph.ts`), in the order the
    source writes its edges, and enters it by its entry vertex.
 4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down. A lesson
@@ -285,7 +290,8 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
 Proof: `specs/ext-graph-diagram.spec.mts` "the routing law" (no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, the decision's
 main branch straight, branch words at the split, every point inside the fitted first view, the dot hidden read-only, one arrowhead size), "every stretch is
 drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge) , "a branch is an if/else" (a lesson decision: each branch out of its own
-vertex with its words there, the two answers apart, the side branch ending on its target, the branches rejoining at one junction with one arrowhead) and
+vertex with its words there, the two answers apart, the side branch ending on its target, the branches rejoining at one junction with one arrowhead) "switch, parallel, loop and foreach" (a switch's exits on the outline of the diamond, each with its words, at most one bend, the branches rejoining under it with one
+arrowhead; a bar spanning its branches with straight lines; a loop's back edge with one bend into the side vertex crossing no step; a foreach frame entered at its top and left at its bottom) and
 `specs/ext-graph-arrange.spec.mts` (a decision's main branch under it, the other to the side). Known gap: the one-bend route is refused where it would cross a node,
 and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends; the spec holds the law on
 graphs with room for it.

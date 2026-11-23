@@ -175,6 +175,133 @@ export const FlowchartDown: Story = {
   },
 };
 
+// The four shapes of a flow that is more than one if/else (owner 2026-11-23: "Chốt"): a switch, a parallel, a loop and a foreach. Each is plain Mermaid.
+const SWITCH_TB = `flowchart TB
+  A[Nhận thanh toán] --> S{Loại?}
+  S -->|Thẻ| T[Cổng thẻ]
+  S -->|Ví| V[Ví điện tử]
+  S -->|Khác| K[Báo lỗi]
+  T --> Z([Xác nhận])
+  V --> Z
+  K --> Z`;
+
+const SWITCH_MANY_TB = `flowchart TB
+  A[Nhận thanh toán] --> S{Loại thanh toán?}
+  S -->|Thẻ| T[Cổng thẻ]
+  S -->|Ví| V[Ví điện tử]
+  S -->|Ngân hàng| C[Đối soát]
+  S -->|Trả sau| P[Hợp đồng]
+  S -->|Khác| K[Báo lỗi]
+  T --> Z([Xác nhận])
+  V --> Z
+  C --> Z
+  P --> Z
+  K --> Z`;
+
+/**
+ * A switch: one decision with an exit for each case, left to right in the order written (the first out of the side vertex, the last out of the other,
+ * the ones between along the slanted sides), each case's words on its own edge at its port; the default ("Khác") is the one written last. The branches
+ * rejoin at one junction above "Xác nhận".
+ */
+export const Switch: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={SWITCH_TB} label="Chọn cổng theo loại thanh toán" height="lg" caption="Mỗi loại thanh toán một lối ra; lối cuối là Khác." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2), { timeout: 8000 });
+    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
+    for (const answer of ['Thẻ', 'Ví', 'Khác']) expect(links.some((link) => link?.endsWith(`: ${answer}`))).toBe(true);
+  },
+};
+
+/** A switch of five cases: the exits between the side vertices leave the slanted sides, each with its words clear of the side; the drawing is wider than a phone, so there it opens at the readable floor and the reader pans. */
+export const SwitchMany: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={SWITCH_MANY_TB} label="Chọn cổng theo loại thanh toán (năm loại)" height="lg" caption="Năm lối ra: hai ở đỉnh bên, ba dọc cạnh xiên và đáy." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2), { timeout: 8000 });
+    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
+    for (const answer of ['Thẻ', 'Ví', 'Ngân hàng', 'Trả sau', 'Khác']) expect(links.some((link) => link?.endsWith(`: ${answer}`))).toBe(true);
+  },
+};
+
+const PARALLEL_TB = `flowchart TB
+  A[Đơn được duyệt] --> F@{ shape: fork, label: "Song song" }
+  F --> B[Gửi email]
+  F --> C[Trừ kho]
+  F --> D[Giao hàng]
+  B --> J@{ shape: join }
+  C --> J
+  D --> J
+  J --> Z([Hoàn tất đơn])`;
+
+/** A parallel: a fork bar (a thin solid bar, "Song song" above its left end) splits the flow into branches side by side and a join bar merges them before the flow goes on. */
+export const Parallel: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={PARALLEL_TB} label="Xử lý đơn song song" height="lg" caption="Ba việc chạy cùng lúc; chỉ khi cả ba xong đơn mới hoàn tất." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await waitFor(() => {
+      expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="bar"]').length).toBe(4);
+      expect(canvasElement.querySelectorAll('.starci-graph-diagram-bar-words').length).toBe(2);
+    }, { timeout: 8000 });
+  },
+};
+
+const LOOP_TB = `flowchart TB
+  A[Lấy danh sách đơn] --> L{Còn nữa?}
+  L -->|Có| B[Xử lý đơn kế tiếp]
+  B --> C[Ghi kết quả]
+  C --> L
+  L -->|Không| Z([Xong])`;
+
+/** A loop: the end of the body returns to the decision ("Còn nữa?", Có into the body, Không out), by a dashed back edge on the outside with one bend. */
+export const Loop: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={LOOP_TB} label="Xử lý từng đơn trong danh sách" height="lg" caption="Nét đứt là đường quay lại: hết đơn thì ra." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await waitFor(() => {
+      expect(canvasElement.querySelectorAll('.starci-graph-edge--back').length).toBe(2);
+      expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2);
+    }, { timeout: 8000 });
+  },
+};
+
+const FOREACH_TB = `flowchart TB
+  A[Lấy danh sách đơn] --> E
+  subgraph E["Với mỗi đơn ×3"]
+    B[Kiểm tra tồn kho] --> C[Đóng gói]
+  end
+  class E foreach
+  E --> Z([Gửi báo cáo])`;
+
+/** A foreach: a dashed frame ("repeats") titled "Với mỗi đơn ×3" round the body steps, entered at its top and left at its bottom. */
+export const Foreach: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={FOREACH_TB} label="Xử lý từng đơn" height="lg" caption="Khung nét đứt lặp lại cho từng đơn." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-group[data-repeat="true"]').length).toBe(2), { timeout: 8000 });
+  },
+};
+
 const STATES = `stateDiagram-v2
   [*] --> Trong
   Trong --> Co: SET

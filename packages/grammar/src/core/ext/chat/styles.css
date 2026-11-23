@@ -57,6 +57,17 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* The caption of a turn's source: under the reader's bubble at the end side, under an assistant answer at the start. */
+    .starci-ai-chat-source {
+        display: block;
+        min-inline-size: 0;
+    }
+
+    .starci-ai-chat-source[data-grammar-ai-chat-source="end"] {
+        align-self: flex-end;
+        text-align: end;
+    }
+
     /* An assistant turn with the assistant's mark: the 24px mark at the start, the answer and its actions beside it, the row gap between. */
     .starci-ai-chat-turn[data-grammar-ai-chat-role="assistant"]:has(> .starci-ai-chat-mark) {
         flex-direction: row;

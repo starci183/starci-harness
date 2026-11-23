@@ -193,6 +193,23 @@
     border-radius: var(--grammar-radius-2xs);
 }
 
+/* A parallel's fork or join: the bar spans its branches, its words (a fork's "Song song") stand just above its left end, inside its span (right of an upright bar). */
+.starci-graph-diagram-bar-words {
+    position: absolute;
+    inset-block-end: calc(100% + 4px);
+    inset-inline-start: 0;
+    color: var(--muted);
+    font-size: var(--grammar-type-caption-size);
+    font-weight: var(--grammar-weight-regular);
+    line-height: var(--grammar-type-caption-line);
+    white-space: nowrap;
+}
+
+.starci-graph-diagram-node[data-shape="bar"][data-direction="LR"] .starci-graph-diagram-bar-words {
+    inset-block: 0 auto;
+    inset-inline-start: calc(100% + 6px);
+}
+
 .starci-graph-diagram-node[data-shape="note"] {
     --starci-graph-diagram-fill: var(--accent-soft);
     --starci-graph-diagram-edge: transparent;
@@ -208,6 +225,13 @@
     background: var(--starci-graph-diagram-fill);
     border: var(--grammar-hairline) solid var(--starci-graph-diagram-edge);
     border-radius: var(--grammar-radius-lg);
+}
+
+/* A repeating container (foreach): the dashes mean "repeats", so the frame is the muted line, not the quiet separator. */
+.starci-graph-diagram-group[data-repeat="true"] {
+    --starci-graph-diagram-edge: var(--muted);
+
+    border-style: dashed;
 }
 
 .starci-graph-diagram-group-label {

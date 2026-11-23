@@ -375,6 +375,8 @@
         --grammar-graded-key-size: 2rem;
         --grammar-graded-option-min-height: 4.25rem;
         --grammar-sidenote-width: 16rem;
+        /* The lead column of an outline section (a time such as 23:58) on the rail. */
+        --grammar-toc-meta-width: 3.25rem;
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
         --grammar-bubble-measure-standard: min(40rem, 85%);
         --grammar-bubble-measure-wide: 70%;

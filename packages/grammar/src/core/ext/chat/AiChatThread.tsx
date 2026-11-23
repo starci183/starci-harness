@@ -17,7 +17,7 @@ import { IconButton } from "../../leaf/IconButton/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { MessageBubble } from "../../composite/MessageBubble/index.js"
 import { DEFAULT_AI_CHAT_LATEST, isEmptyMessage, lastAssistantId, sendableText, textOfMessage, toolCallsById, toThreadMessage } from "./model.js"
-import { AiChatAssistantMark, AiChatEmpty, AiChatJumpToLatest, AiChatMessageActions, AiChatPreviewCard, AiChatText, AiChatThinking, AiChatToolCard, AiChatUserText } from "./parts.js"
+import { AiChatAssistantMark, AiChatEmpty, AiChatJumpToLatest, AiChatMessageActions, AiChatPreviewCard, AiChatSource, AiChatText, AiChatThinking, AiChatToolCard, AiChatUserText } from "./parts.js"
 import type { AiChatAssistantAvatar, AiChatLabels, AiChatMessage, AiChatPart, AiChatThreadProps } from "./types.js"
 
 type ToolCallPart = Extract<AiChatPart, { type: "tool-call" }>
@@ -59,6 +59,7 @@ const PART_COMPONENTS = { Text: TextPart, tools: { Fallback: ToolPart } }
 const UserTurn = ({ message }: { readonly message: AiChatMessage | undefined }) => (
     <MessagePrimitive.Root className="starci-ai-chat-turn" data-grammar-ai-chat-role="user">
         <MessageBubble side="outgoing" tone="neutral" body={<AiChatUserText text={message === undefined ? "" : textOfMessage(message)} />} />
+        {message?.source === undefined ? null : <AiChatSource text={message.source} side="end" />}
     </MessagePrimitive.Root>
 )
 
@@ -79,6 +80,7 @@ const AssistantTurn = ({ id, message, isLast }: { readonly id: string; readonly 
                     <MessagePrimitive.Parts components={PART_COMPONENTS} />
                     {thinking ? <AiChatThinking label={labels.thinking} /> : null}
                 </div>
+                {message?.source === undefined ? null : <AiChatSource text={message.source} side="start" />}
                 {isStreaming ? null : <AiChatMessageActions text={text} labels={labels} onRetry={retryId === id ? retry : undefined} />}
             </div>
         </MessagePrimitive.Root>

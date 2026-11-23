@@ -27,13 +27,30 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
   names: `[(db)]` a cylinder, `{x}` a decision diamond, `((x))` a circle, `([x])` a stadium; a subgraph or a composite state is a container its
   nodes stand in; `[*]` is a start dot or an end ring; an edge's words are a pill on its line, a dotted link (`-.->`) dashed. RL draws across,
   BT down. A decision with two or more edges out is entered by its entry vertex and its branches leave by its other vertices, in the order the source
-  writes them (the first straight on, the second and third to the sides), each with its words at its own vertex; branches that lead on to one node
-  rejoin its line at a junction, and one arrowhead enters it.
+  writes them (an if/else: the first straight on, the second to the side), each with its words at its own vertex; branches that lead on to one node
+  rejoin its line at a junction, and one arrowhead enters it. Three or more edges out make a switch (below).
 - **A branch is an if/else.** A flowchart splits only at a decision: a `{…?}` node whose words ask the condition, one labelled edge per answer
   (yes / no), the branches rejoining with plain arrows where the flow goes on. An ordinary box with two or more labelled edges out is not a branch:
   when the edges are all taken their words go in the nodes, and when they are an if/else the author writes the decision. The renderer never invents
   the question; a development build (`NODE_ENV` not `production`) logs one `console.warn` per such box (`branchesWithoutDecision` in
   `diagram/model.ts` is the pure check).
+- **Four shapes beyond an if/else**, all plain Mermaid (no new diagram type; each draws by the routing law, [graph](graph.md) "The routing law"):
+  - **Switch**: a `{…}` decision with three or more labelled edges out, one per case, the default ("Khác", "Else") written last. The exits stand left to right in
+    the order written: the first out of the side vertex, the last out of the other, the ones between along the slanted sides (the decision is as tall as the
+    exits need), a middle exit of an odd count out of the bottom vertex; each case's words are a pill on its own edge at its port. The branches rejoin on one
+    line just above the step they meet, which stands under the decision, with one arrowhead.
+  - **Parallel**: `F@{ shape: fork, label: "Song song" }` splits and `J@{ shape: join }` merges (Mermaid's own `fork` and `join` shapes; the label is
+    optional and short, since it stands above the bar's left end). A bar is a thin solid bar as wide as the branches it spans plus 24 past the outermost; every
+    line meets it straight, at its branch's centre, so the branches run side by side. A join's lines each end at the bar with an arrowhead; a state diagram's
+    `<<fork>>` and `<<join>>` are the same bar.
+  - **Loop**: no new syntax. A decision whose body leads back to it (`L{Còn nữa?}`, `L -->|Có| Body`, `Body --> L`, `L -->|Không| Out`) is a loop: write Có
+    (into the body) first, so it runs straight on, and Không second, out of the side vertex. The link that closes the cycle on the decision is the back edge
+    (`loopBackEdges` in `diagram/model.ts`), dashed because it returns: out of the side of the last step, along, and up into the decision's side vertex, one
+    bend, on the outside of the body. The decision is widened (taller across when the flow runs across) so the body stands clear of that line. Any other
+    cycle (not closing on a decision) is left to the layout.
+  - **Foreach**: a subgraph with `class E foreach`, titled with the author's words ("Với mỗi đơn ×3"), and plain links to and from the subgraph id
+    (`A --> E`, `E --> Z`): a dashed frame round the body steps, entered at its top and left at its bottom. The dashes mean "repeats", the one meaning a
+    dashed frame has; a subgraph without `foreach` is the quiet solid field.
 - **Sequence**: participants are header boxes in one row (an actor pill-round), each with a dashed lifeline; each message is an edge between two
   anchor points of its row on the two lifelines, in the order written (a reply dashed, a lost message a cross, a self-message a loop to the
   right), its words over the line (numbered under `autonumber`); a note is a soft accent pill over the lifelines it spans; `alt`, `loop`, `opt`,

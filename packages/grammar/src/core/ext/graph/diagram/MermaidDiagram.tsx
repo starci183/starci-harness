@@ -12,7 +12,7 @@ import { ZoomButtons } from "../shared/zoom.js"
 import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
-import { branchesWithoutDecision, describeDiagram, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
+import { branchesWithoutDecision, describeDiagram, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
 import { INSETS, canvasHeight, openFloor, openView, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
@@ -108,7 +108,8 @@ const toneProps = (tone: MermaidTone | undefined): Record<string, string> => (to
 /** A node of a flowchart or a state diagram in its shape: the words centred, the shape drawn from the tokens. */
 const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
     const { node, width, height, direction } = data
-    const words = node.label === "" ? null : <span className="starci-graph-diagram-words">{node.label}</span>
+    // A bar is the mark of a parallel: its words (a fork's "Song song") stand beside it, never in it.
+    const words = node.label === "" ? null : <span className={node.shape === "bar" ? "starci-graph-diagram-bar-words" : "starci-graph-diagram-words"}>{node.label}</span>
     const outline =
         node.shape === "diamond" ? (
             <svg className="starci-graph-diagram-outline" viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden="true">
@@ -121,7 +122,7 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
             </svg>
         ) : null
     return (
-        <div className="starci-graph-diagram-node" data-shape={node.shape} {...toneProps(node.tone)} style={{ inlineSize: width, blockSize: height }}>
+        <div className="starci-graph-diagram-node" data-shape={node.shape} data-direction={node.shape === "bar" ? direction : undefined} {...toneProps(node.tone)} style={{ inlineSize: width, blockSize: height }}>
             {outline}
             {handles(direction)}
             {words}
@@ -131,7 +132,7 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
 
 /** A subgraph or a composite state: a quiet tinted field, its name in its top corner. */
 const GroupNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => (
-    <div className="starci-graph-diagram-group" {...toneProps(data.node.tone)} style={{ inlineSize: data.width, blockSize: data.height }}>
+    <div className="starci-graph-diagram-group" data-repeat={data.node.repeat === true ? "true" : undefined} {...toneProps(data.node.tone)} style={{ inlineSize: data.width, blockSize: data.height }}>
         {handles(data.direction)}
         <span className="starci-graph-diagram-group-label">{data.node.label}</span>
     </div>
@@ -274,6 +275,9 @@ const parentsFirst = (nodes: readonly DiagramNode[]): readonly DiagramNode[] => 
     return [...nodes].sort((a, b) => depth(a.id) - depth(b.id))
 }
 
+/** A loop's back edge and an author's dotted link are dashed (dashes mean something); every other edge is plain. */
+const edgeStyle = (edge: DiagramEdge): "back" | "fallback" | "plain" => (edge.back === true ? "back" : edge.dashed ? "fallback" : "plain")
+
 /** The xyflow nodes and edges of a laid-out graph: shapes and containers where ELK put them, edges on ELK's routes with their words as pills. */
 const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { readonly nodes: Node[]; readonly edges: Edge[] } => {
     const { graph, layout, sizes } = drawn
@@ -300,10 +304,10 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { rea
     // Every shared stretch drawn once (the routing law, rule 6): a solid edge keeps it over a dashed one.
     const once = dedupeRuns(graph.edges.flatMap((edge) => {
         const route = layout.routes[edge.id]
-        return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edge.dashed ? "fallback" : "plain"] ?? 3 }]
+        return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edgeStyle(edge)] ?? 3 }]
     }))
     const edges = graph.edges.map((edge): Edge => {
-        const style = edge.dashed ? "fallback" : "plain"
+        const style = edgeStyle(edge)
         const route = layout.routes[edge.id]
         const drawn = once.get(edge.id)
         const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: drawn?.joinStart === true, joinEnd: drawn?.joinEnd === true }

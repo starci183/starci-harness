@@ -9,6 +9,7 @@ import { runV0540, v0540Markdown, type V0540Report } from "./v0540/index.mts"
 import { runV0550, v0550Markdown, type V0550Report } from "./v0550/index.mts"
 import { runV0551, v0551Markdown, type V0551Report } from "./v0551/index.mts"
 import { runV0570, v0570Markdown, type V0570Report } from "./v0570/index.mts"
+import { runV0571, v0571Markdown, type V0571Report } from "./v0571/index.mts"
 
 /** What one codemod run reports: its findings are the cases left for a person. */
 export interface GrammarCodemodReport {
@@ -62,6 +63,13 @@ export const CODEMODS: readonly GrammarCodemod[] = Object.freeze([
         summary: "the icon table: Icon usage chip and leading become control, heading becomes head (on Icon and inlineGlyph); Disclosure chevron is dropped (the caret always leads and turns when open); LogoStack is deleted, each use marked TODO(grammar-0.57.0) for an AvatarGroup of kind logo items",
         run: runV0570,
         markdown: (report) => v0570Markdown(report as V0570Report),
+    },
+    {
+        id: "v0571",
+        version: "0.57.1",
+        summary: "the neutral Sparkline: its tone and emptyLabel props are deleted and dropped (the line is always the muted ink; no data or only zeros draws nothing)",
+        run: runV0571,
+        markdown: (report) => v0571Markdown(report as V0571Report),
     },
 ])
 

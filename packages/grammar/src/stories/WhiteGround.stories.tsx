@@ -12,7 +12,7 @@ import { BookGlyph, noop } from './fixtures.js';
  */
 /** A figure's trend chart: the ext Sparkline (core takes the drawn chart, never its numbers). */
 const trend = (label: string, values: readonly number[]) => (
-  <E.Sparkline ariaLabel={label} emptyLabel="No data yet" data={values.map((value, week) => ({ week, value }))} xKey="week" yKey="value" />
+  <E.Sparkline ariaLabel={label} data={values.map((value, week) => ({ week, value }))} xKey="week" yKey="value" />
 );
 
 const meta: Meta = {
