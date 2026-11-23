@@ -4512,9 +4512,13 @@
      * never the selected button, so an app's dark selected edge cannot reach it; the edge keeps its width, transparent, so selecting moves nothing.
      */
     [data-grammar-choice-look="button"] .starci-core-choice-chip[data-selected="true"] { border-color: transparent; background: var(--accent-soft); color: var(--accent-soft-foreground); }
-    /* The focus ring is the keyboard's alone (FOCUS-2): a pointer press focuses the option and paints no ring; keyboard focus draws the one --focus ring. */
-    .starci-core-choice-chip:is(:focus, [data-focused="true"]):not(:focus-visible, [data-focus-visible="true"]) { outline: none; box-shadow: none; }
-    .starci-core-choice-chip:is(:focus-visible, [data-focus-visible="true"]) { outline: 2px solid var(--focus); outline-offset: 2px; }
+    /*
+     * The focus ring is the keyboard's alone (FOCUS-2; owner 2026-11-23: never stuck after a mouse click): a pointer press focuses the option and paints no ring,
+     * keyboard focus draws the one --focus ring. The browser's :focus-visible decides, never react-aria's data-focus-visible, which it also sets on focus that script
+     * moves after a click (a re-render, a restored focus): an option it marks and the browser does not wears neither the outline nor the vendor's ring.
+     */
+    .starci-core-choice-chip:not(:focus-visible) { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
+    .starci-core-choice-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     /* width="fill": the chips grow evenly from their own width and wrap only when they cannot fit (G-batch6). */
     .starci-core-choice-chips[data-grammar-width="fill"] :is(.starci-core-choice-chip, .starci-core-choice-chips-skeleton, .starci-core-tooltip-disabled-trigger) { flex: 1 0 auto; justify-content: center; }
     .starci-core-choice-chips[data-grammar-width="fill"] .starci-core-tooltip-disabled-trigger > .starci-core-choice-chip { inline-size: 100%; }
@@ -5984,6 +5988,13 @@
      * ring on it. The browser's own :focus-visible tells a keyboard from a script that follows a pointer, so it alone draws the ring: a button react-aria marks and the
      * browser does not wears neither the outline nor the vendor's ring shadow.
      */
+    /* The tabs of a tab bar (and its "more" trigger) follow the same rule: a tab pressed with the mouse keeps no ring when the page re-renders after the press. */
+    .starci-core-tabs .tabs__tab[data-focus-visible="true"]:not(:focus-visible) {
+        outline: none !important;
+        --tw-ring-shadow: 0 0 #0000 !important;
+        --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+
     .starci-core-button[data-focus-visible="true"]:not(:focus-visible) {
         outline: none !important;
         --tw-ring-shadow: 0 0 #0000 !important;

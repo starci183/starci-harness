@@ -230,7 +230,7 @@ export const Library = () => (
 The line runs from the field's own port to the head of the other entity, with a crow's foot where many stand and two bars where one stands (a ring beyond either when the end may be empty). Hovering a relation or an entity lights both ends. A link is drawn with an icon, never a typed arrow. On every screen the map opens fitted (the routing law, rule 4): the whole map, centred, at 100% or less. A finger drags it, two fingers zoom it, and the 40px controls fit it (the words of the controls are `ariaLabelConfig`); on a phone give the panel about 70vh.
 ## KnowledgeMap
 
-A map of what an app knows, for any app: topic clusters with names, a bubble for each item sized by its weight, and a line from an item to the item it came from. It is not tied to one product: the data is neutral (clusters, items with a weight, links) and every word is the app's.
+A map of what an app knows, for any app: topic clusters with names, a bubble for each item sized by its weight, a line from an item to the item it came from, and a line for each `links` pair of related items (`{ from, to }`; every pair drawn once, whichever way or however often it is given). It is not tied to one product: the data is neutral (clusters, items with a weight, links) and every word is the app's.
 
 ```tsx
 import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
@@ -250,9 +250,9 @@ import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
 />
 ```
 
-- Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
+- Layout: a seeded d3-force run (the same input always gives the same positions) on a wide grid of clusters (each column as wide as its widest cluster or cluster name; on a phone, under 480px, at most two clusters across, laid out top-down), a link pulling its two ends together; no two bubbles touch, no two cluster names overlap, and a name keeps 8px from every bubble.
 - Look: the shared bordered dot-grid panel, a toolbar of three 40px zoom buttons (in, out, fit), the name card of a bubble on hover or focus (the Grammar Tooltip), `onOpen(id)` on click or Enter, a legend.
-- Every screen: the map is the same graph on a phone as on a desktop, fitted when it opens (the routing law, rule 4): the whole map, centred, at 100% or less (no list), never under a diagram's readable floor (a Mermaid diagram opens at 0.85 or more and pans on from its start, [diagram](diagram.md) "Variants"). A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
+- Every screen: the map is the same graph on a phone as on a desktop, fitted when it opens (the routing law, rule 4): the whole map, centred, at 100% or less (no list), never under a diagram's readable floor (`READABLE_ZOOM`, 0.85, as a Mermaid diagram, [diagram](diagram.md) "Variants"): a map that needs less opens at 0.85 from its top, centred across when it fits the width, and the reader pans on. A finger drags it, two fingers pinch it, a double tap zooms in; keep the panel about 70vh tall so the page scrolls past it.
 - Words: `kindLabels`, `stateLabels`, `weightLabel`, `sourceLabel`, `zoomLabels`, `emptyLabel` and the `legend` are all passed in; the package has none of its own.
 
 ## The routing law
