@@ -5960,9 +5960,21 @@
         background: color-mix(in oklab, var(--starci-core-button-band-ink) 14%, transparent) !important;
     }
 
-    .starci-core-button[data-grammar-button-ground]:is(:focus-visible, [data-focus-visible="true"]) {
+    .starci-core-button[data-grammar-button-ground]:focus-visible {
         outline: 2px solid var(--starci-core-button-band-ink) !important;
         outline-offset: 2px;
+    }
+
+    /*
+     * A Button's focus ring is the keyboard's alone (FOCUS-2; owner 2026-11-23: never stuck after a mouse click). react-aria calls focus that script moves with no key or
+     * pointer event before it "virtual" and marks it `data-focus-visible`, so a sheet that gives focus back to the button that opened it with a mouse click left the vendor's
+     * ring on it. The browser's own :focus-visible tells a keyboard from a script that follows a pointer, so it alone draws the ring: a button react-aria marks and the
+     * browser does not wears neither the outline nor the vendor's ring shadow.
+     */
+    .starci-core-button[data-focus-visible="true"]:not(:focus-visible) {
+        outline: none !important;
+        --tw-ring-shadow: 0 0 #0000 !important;
+        --tw-ring-offset-shadow: 0 0 #0000 !important;
     }
 
         .starci-core-button[data-width="fill"] {
