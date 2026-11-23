@@ -5,6 +5,7 @@ import { defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { holdLander, landPaths, lanesDir, releaseLockFile, touchLander } from "../../harness/land-queue.js"
 import { runBatch } from "../../harness/land-batch.js"
+import { startDevCiWatch } from "../../harness/dev-ci-watch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
 import { loadSlotRules, slotKind } from "../../harness/slots.js"
 import { BEHIND_CHECK_MS, checkoutBehindDev, landAutoSync, landPublishDev } from "../../harness/land-dev-sync.js"
@@ -128,6 +129,8 @@ export const laneLandVerb = defineVerb({
                 }
                 if (record?.landed !== undefined) {
                     await publish?.(record.landed)
+                    // The pushed sha's GitHub CI is followed by a detached watcher; the lander never waits for it, and a red verdict never touches dev.
+                    if (!dryRun) await startDevCiWatch(options.repo, dir, record.landed, record.landedLanes, context.progress)
                     autoSync?.debounce.landed(Date.now())
                 }
                 if (record?.landed === undefined) await scheduleWhenBehind()

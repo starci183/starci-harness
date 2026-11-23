@@ -68,6 +68,10 @@ const fakeDeps = (log: string[], red?: string): LandDeps => ({
         log.push(`sync ${checkout.endsWith("devcheckout") ? "devcheckout" : checkout}: ${reason.split(" ")[0] ?? ""}`)
         return Promise.resolve()
     },
+    watchCi: (_root, _dir, sha, lanes) => {
+        log.push(`watch ${lanes.join(",")} ${sha.length === 40 ? "sha" : sha}`)
+        return Promise.resolve()
+    },
 })
 
 void test("a lane whose gate merged the dev that still stands lands as ONE squashed commit on dev, with no re-check, and marks its dev checkout", async (t) => {
@@ -75,7 +79,7 @@ void test("a lane whose gate merged the dev that still stands lands as ONE squas
     const gated = gitIn(lane, "rev-parse", "origin/dev")
     const log: string[] = []
     const done = await landLane({ root: lane, lane: "feature", branch: "lane/feature", profile: "app", dir, gatedBase: gated, say: () => undefined }, fakeDeps(log))
-    assert.deepEqual(log, ["push", "sync devcheckout: feature"])
+    assert.deepEqual(log, ["push", "sync devcheckout: feature", "watch feature sha"], "the landed sha's CI is watched once the landing stands")
     assert.equal(done.rechecked, false)
     const dev = gitIn(origin, "rev-parse", "dev")
     assert.equal(dev, done.sha)

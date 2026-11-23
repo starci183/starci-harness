@@ -98,6 +98,13 @@ One verb gates and lands (PROJECT-BRANCH-2):
    package publishes the dev line (`deps publish-dev`); and the app's dev checkout (`devSync.repos`), or after a harness publish every app's, is
    marked for its debounced sync (`starci dev sync-runner`, [project/cicd.md](../project/cicd.md) "The debounced dev sync"). A lane never runs
    the sync of the shared checkout itself.
+4. Last, the landing starts the watch of the pushed sha's GitHub CI, detached so nothing waits for it (`starci lane ci-watch <sha>`,
+   cli/src/harness/dev-ci-watch.ts); the batch lander does the same after each landed batch. The watcher reads the push runs of the sha
+   (`gh run list --commit`) until they settle or `lander.ciWatchMinutes` (45) of the local settings passes, and writes the verdict (`green`, `red`,
+   `superseded` when a newer push cancelled the run, `pending` past the limit, `none`, `unreadable`) into `<lanes>/_land-status/_dev-ci/<sha>.json`
+   and the `ci` of each landed lane's status. A red verdict is printed loudly in its log (`_dev-ci/<sha>.log`) and sent to the coordinator
+   session `lander.notifySession` names (`claude -p --resume <session>`) when one is set. It never reverts, blocks or pushes dev: a red dev
+   is fixed by a lane.
 
 **Deprecated, kept running:** `lane gate --push --ready` (and `lane ready`) registers the pushed sha with the batch lander instead, `starci lane land`
 lands the registered lanes in batches, and `lane withdraw` takes a registered lane out; their statuses `queued`, `conflict`, `rejected`, `parked`

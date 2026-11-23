@@ -143,6 +143,7 @@ import { lanePruneInstallsVerb } from "./core/lane/prune-installs.js"
 import { opsReapVerb } from "./core/ops/reap.js"
 import { laneReadyVerb } from "./core/lane/ready.js"
 import { laneStatusVerb } from "./core/lane/status.js"
+import { laneCiWatchVerb } from "./core/lane/ci-watch.js"
 import { laneWithdrawVerb } from "./core/lane/withdraw.js"
 import { laneGateVerb } from "./core/lane/gate.js"
 import { slotListVerb } from "./core/slot/list.js"
@@ -311,6 +312,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     laneReadyVerb,
     laneWithdrawVerb,
     laneStatusVerb,
+    laneCiWatchVerb,
     laneLandVerb,
     devSyncVerb,
     devSyncRunnerVerb,

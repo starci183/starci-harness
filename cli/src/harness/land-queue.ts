@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
 import { configuredSlotRoot, takeLiveLock, takeLockFile } from "./slots.js"
+import type { DevCiVerdict } from "./dev-ci-watch.js"
 
 /**
  * The batch lander of an app's `dev` branch (contexts/project/branches.md PROJECT-BRANCH-2). A lane whose full gate ran green on its
@@ -98,6 +99,8 @@ export interface LaneStatus {
     readonly reformedFrom?: string
     /** The newer sha of the lane whose push or registration cancelled the run this status described (harness/supersede.ts). */
     readonly supersededBy?: string
+    /** A landed lane only: the GitHub CI verdict of the dev commit that carries it, written by the watcher the landing started (harness/dev-ci-watch.ts). */
+    readonly ci?: DevCiVerdict
 }
 
 /** The folders and files of a lanes folder. */
