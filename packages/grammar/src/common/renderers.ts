@@ -83,7 +83,7 @@ export type {
 } from "../core/surfaceCardData.js"
 export type { AccentCorner } from "../core/accentCorner.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type CodeLineRange, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
-export { Markdown, type MarkdownCode, type MarkdownDiagram, type MarkdownLabels, type MarkdownProps } from "../core/frame/Markdown/index.js"
+export { Markdown, type MarkdownCode, type MarkdownDiagram, type MarkdownLabels, type MarkdownProps, type MarkdownTerm } from "../core/frame/Markdown/index.js"
 export { Tabs, type PrimaryTabItem, type PrimaryTabItems, type PrimaryTabsProps, type SecondaryTabsProps, type TabItem, type TabsProps } from "../core/branch/Tabs/index.js"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "../core/branch/Tooltip/index.js"
 export { formCompactSurfaceClassName, formFieldClassName, formPageClassName, formScreenReaderLabelClassName, formScrollViewportClassName, formSurfaceClassName, horizontalScrollRegionClassName } from "../core/classNames.js"

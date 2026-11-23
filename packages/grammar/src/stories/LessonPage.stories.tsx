@@ -262,3 +262,56 @@ export const Outline_: Story = {
     await waitFor(() => expect(links[3]?.getAttribute('aria-current')).toBe('location'), { timeout: 4000 });
   },
 };
+
+const TIMED = [
+    { id: 'toc-night', label: 'Đêm flash sale ở Bếp Xanh' },
+    { id: 'toc-del', label: 'Giá cũ quay lại sau DEL', meta: '23:58' },
+    { id: 'toc-order', label: 'Hai lần ghi đến sai thứ tự', meta: '23:59' },
+    { id: 'toc-expiry', label: 'Một key hết hạn, một lần nạp', meta: '00:00' },
+];
+
+/** 0.57.1: sections with a time lead, and the quiet note under the list. */
+export const OutlineTimed: Story = {
+  render: () => (
+    <div style={{ maxInlineSize: 240 }}>
+      <G.TableOfContents title="Trong phần này" items={TIMED} note="Tự kiểm tra: 1/4 đúng" />
+    </div>
+  ),
+};
+
+/** 0.57.1: the phone bar names the section in view; a press opens the list, a pick jumps and closes it. */
+export const OutlineBar: Story = {
+  render: () => (
+    <div style={{ inlineSize: 360 }}>
+      <G.TableOfContents kind="bar" title="Trong phần này" items={TIMED} position={(index, total) => `Chương ${String(index)}/${String(total)}`} />
+      {TIMED.map((section) => (
+        <section key={section.id} id={section.id} style={{ minBlockSize: 320 }}>
+          <G.Text as="p" role="title.section">{section.label}</G.Text>
+        </section>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('button', { expanded: false });
+    expect(bar.textContent).toContain('Chương 1/4');
+    await userEvent.click(bar);
+    await waitFor(() => expect(bar.getAttribute('aria-expanded')).toBe('true'));
+  },
+};
+
+/** 0.57.1: on a phone, `narrow="inline"` opens a term's note in the paragraph, under the term; the body marks its own terms (`terms`). */
+export const MarginNotesInline: Story = {
+  render: () => (
+    <div style={{ inlineSize: 360 }}>
+      <G.Sidenotes notes={NOTES} title="Thuật ngữ" foldLabel={(n) => `Thuật ngữ (${n})`} narrow="inline">
+        <G.Markdown source={'Máy chủ không thấy giá trong Redis nên đọc sổ giá. Trang vẫn hiện 249.000đ thêm gần một TTL; `TTL` trong code không bị đánh dấu.'} terms={NOTES.map((note) => ({ id: note.id, term: note.term }))} />
+      </G.Sidenotes>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const terms = canvasElement.querySelectorAll<HTMLElement>('[data-component="SidenoteTerm"]');
+    expect(terms).toHaveLength(2);
+    await userEvent.click(terms[0] as HTMLElement);
+    await waitFor(() => expect(terms[0]?.getAttribute('aria-expanded')).toBe('true'));
+  },
+};

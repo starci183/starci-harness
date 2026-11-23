@@ -3,7 +3,7 @@
 import { fromMarkdown } from "mdast-util-from-markdown"
 import { gfmFromMarkdown } from "mdast-util-gfm"
 import { gfm } from "micromark-extension-gfm"
-import type { Code as CodeNode, Definition, PhrasingContent, Root, RootContent } from "mdast"
+import type { Code as CodeNode, Definition, PhrasingContent, Root, RootContent, Text as TextNode } from "mdast"
 import { useMemo, type ReactNode } from "react"
 import { Code } from "../../leaf/Code/index.js"
 import { Image } from "../../leaf/Image/index.js"
@@ -11,6 +11,7 @@ import { Link } from "../../leaf/Link/index.js"
 import { MediaFrame } from "../../leaf/MediaFrame/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame } from "../MarkdownArticle/index.js"
+import { SidenoteTerm } from "../Sidenotes/index.js"
 import type { NoChildren } from "../../tier.js"
 import { CopyAction } from "./CopyAction.js"
 import { isExternalUrl, isSafeImage, isSafeLink } from "./urls.js"
@@ -55,6 +56,13 @@ export type MarkdownCode = {
     readonly value: string
 }
 
+/** A glossary term the body marks (0.57.1): the id of its note in the `Sidenotes` around the body, and the words as the prose writes them. */
+export type MarkdownTerm = {
+    readonly id: string
+    /** Matched case-sensitively, as a whole word. */
+    readonly term: string
+}
+
 export type MarkdownProps = NoChildren & {
     /** The markdown (CommonMark with GitHub tables, task lists, strikethrough, autolinks and footnotes). Raw HTML is never rendered. */
     readonly source: string
@@ -77,6 +85,11 @@ export type MarkdownProps = NoChildren & {
      * it: `renderDiagram={(diagram) => <MermaidDiagram {...diagram} height="md" />}`. Without it a `mermaid` fence is shown as its source, a code block.
      */
     readonly renderDiagram?: (diagram: MarkdownDiagram) => ReactNode
+    /**
+     * Glossary terms (0.57.1): the first place each term stands in the body's prose (never in a heading, a link or code) is drawn as a
+     * `SidenoteTerm` naming its note, so the body inside a `Sidenotes` explains its own words. Outside one the words stay plain.
+     */
+    readonly terms?: readonly MarkdownTerm[]
 }
 
 const DEFAULT_LABELS: Required<MarkdownLabels> = {
@@ -99,6 +112,57 @@ type Context = {
     readonly diagramLabels: ReadonlyMap<CodeNode, string>
     readonly renderCode: ((code: MarkdownCode) => ReactNode) | undefined
     readonly renderDiagram: ((diagram: MarkdownDiagram) => ReactNode) | undefined
+    /** The marked terms of each text node, in order, never overlapping. */
+    readonly termMarks: ReadonlyMap<TextNode, ReadonlyArray<TermMark>>
+}
+
+type TermMark = { readonly start: number; readonly end: number; readonly id: string }
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** The text nodes of the prose in document order: headings, links and code hold none a term may mark. */
+const proseTexts = (node: Root | RootContent | PhrasingContent, into: TextNode[]): void => {
+    if (node.type === "text") into.push(node)
+    if (node.type === "heading" || node.type === "link" || node.type === "linkReference") return
+    if ("children" in node) for (const child of node.children) proseTexts(child, into)
+}
+
+/** The first place of each term in the prose, as marks per text node. */
+const termMarksOf = (tree: Root, terms: readonly MarkdownTerm[]): ReadonlyMap<TextNode, ReadonlyArray<TermMark>> => {
+    const marks = new Map<TextNode, TermMark[]>()
+    if (terms.length === 0) return marks
+    const texts: TextNode[] = []
+    proseTexts(tree, texts)
+    for (const term of terms) {
+        if (term.term.trim() === "") continue
+        const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(term.term)}(?![\\p{L}\\p{N}_])`, "u")
+        for (const text of texts) {
+            const found = pattern.exec(text.value)
+            if (found === null) continue
+            const mark = { start: found.index, end: found.index + found[0].length, id: term.id }
+            const own = marks.get(text) ?? []
+            if (own.every((other) => mark.end <= other.start || mark.start >= other.end)) {
+                marks.set(text, [...own, mark].sort((a, b) => a.start - b.start))
+                break
+            }
+        }
+    }
+    return marks
+}
+
+/** A text node, its marked terms drawn as `SidenoteTerm`s. */
+const TextOf = (props: { readonly node: TextNode; readonly context: Context }): ReactNode => {
+    const marks = props.context.termMarks.get(props.node)
+    if (marks === undefined) return props.node.value
+    const parts: ReactNode[] = []
+    let at = 0
+    for (const mark of marks) {
+        if (mark.start > at) parts.push(props.node.value.slice(at, mark.start))
+        parts.push(<SidenoteTerm key={mark.start} id={mark.id}>{props.node.value.slice(mark.start, mark.end)}</SidenoteTerm>)
+        at = mark.end
+    }
+    if (at < props.node.value.length) parts.push(props.node.value.slice(at))
+    return parts
 }
 
 /** A fence: the plain block, or the frame around the app's highlighted body. */
@@ -165,7 +229,7 @@ const InlineNode = (props: { readonly node: PhrasingContent; readonly context: C
     const { node, context } = props
     switch (node.type) {
         case "text":
-            return node.value
+            return <TextOf node={node} context={context} />
         case "strong":
             return <Text as="span" isStrong><Inline nodes={node.children} context={context} /></Text>
         case "emphasis":
@@ -297,10 +361,11 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
  *
  * The text is parsed to a syntax tree (mdast) and mapped node by node to elements: no HTML string is built or injected. Raw HTML is
  * shown as text (a comment is dropped); a link or image whose scheme is not http(s), mailto, tel or relative is shown as its words.
+ * `terms` (optional) marks the first place of each glossary term in the prose as a `SidenoteTerm` (inside `Sidenotes`).
  * `renderCode` (optional) draws the code body of a fence (syntax highlighting supplied by the app); the frame, language label and Copy stay here.
  * Contract: overflow OVERFLOW-4 (tables and code scroll inline inside their frames).
  */
-export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl, renderCode, renderDiagram }: MarkdownProps) => {
+export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl, renderCode, renderDiagram, terms = NO_TERMS }: MarkdownProps) => {
     const tree = useMemo(() => parse(source), [source])
     const { copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint } = { ...DEFAULT_LABELS, ...stripUndefined(labels) }
     const context = useMemo<Context>(() => {
@@ -314,14 +379,17 @@ export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isEx
             renderDiagram,
             definitions: new Map(definitions.map((definition) => [definition.identifier, definition])),
             diagramLabels: new Map(diagrams.map((node, index) => [node, diagrams.length > 1 ? `${diagram} ${index + 1}` : diagram])),
+            termMarks: termMarksOf(tree, terms),
         }
-    }, [tree, isExternal, renderCode, renderDiagram, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
+    }, [tree, terms, isExternal, renderCode, renderDiagram, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
     return (
         <MarkdownArticle {...(measure === undefined ? {} : { measure })} {...(ariaLabel === undefined ? {} : { ariaLabel })}>
             <Blocks nodes={tree.children} context={context} />
         </MarkdownArticle>
     )
 }
+
+const NO_TERMS: readonly MarkdownTerm[] = []
 
 const stripUndefined = (labels: MarkdownLabels | undefined): MarkdownLabels =>
     Object.fromEntries(Object.entries(labels ?? {}).filter(([, value]) => value !== undefined))

@@ -257,6 +257,30 @@
     }
 
     .starci-core-sidenote-anchor[data-grammar-sidenote-active="true"] { text-decoration-color: var(--foreground); }
+    .starci-core-sidenote-anchor[aria-expanded="true"] { text-decoration-color: var(--foreground); }
+
+    /* `narrow="inline"` (0.57.1): an opened note stands in the paragraph, under its term, on the accent edge; never on a wide frame. */
+    .starci-core-sidenote-inline {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        margin-block: var(--grammar-inline-gap);
+        padding-inline-start: var(--grammar-row-gap);
+        border-inline-start: var(--grammar-ring-width) solid var(--accent);
+    }
+
+    .starci-core-sidenote-inline[hidden] { display: none; }
+    .starci-core-sidenote-inline-term {
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-sidenote-inline-note { color: var(--muted); font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); }
+    @container starci-core-sidenotes (min-width: 52rem) {
+        .starci-core-sidenote-inline { display: none; }
+    }
     .starci-core-sidenote-anchor:focus-visible { border-radius: var(--grammar-radius-2xs); outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
 
     /* ---------------------------------------------------------------- TableOfContents */
@@ -287,8 +311,59 @@
     .starci-core-toc-link:hover { color: var(--foreground); }
     .starci-core-toc-link:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
     .starci-core-toc-link[data-grammar-toc-active="true"] { border-inline-start-color: var(--foreground); color: var(--foreground); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
+    /* A section with a lead (a time): the lead in tabular caption figures over or before the label, the label wraps under itself. */
+    .starci-core-toc-link:has(.starci-core-toc-meta) { display: grid; grid-template-columns: var(--grammar-toc-meta-width) minmax(0, 1fr); column-gap: var(--grammar-identity-gap); align-items: baseline; }
+    .starci-core-toc-meta {
+        font-size: var(--grammar-type-caption-size);
+        font-variant-numeric: tabular-nums;
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    .starci-core-toc-note {
+        margin: 0;
+        padding-inline-start: var(--grammar-row-gap);
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    /* The bar (a phone): one sticky selector over the page, the section in view on two lines, the list folded under it. */
+    .starci-core-toc[data-grammar-toc-kind="bar"] { z-index: 1; gap: 0; padding-block: var(--grammar-inline-gap); border-block-end: var(--grammar-separator-edge); background: var(--background); }
+    .starci-core-toc-bar {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-inline-gap) var(--grammar-row-gap);
+        border: var(--grammar-border-edge);
+        border-radius: var(--grammar-radius-md);
+        background: var(--background);
+        color: var(--foreground);
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+    }
+
+    .starci-core-toc-bar:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-toc-bar-words { display: flex; min-width: 0; flex-direction: column; }
+    .starci-core-toc-bar-position { color: var(--muted); font-size: var(--grammar-type-caption-size); font-variant-numeric: tabular-nums; line-height: var(--grammar-type-caption-line); }
+    .starci-core-toc-bar-label {
+        overflow: hidden;
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-item-weight), 400), 600) - 400) * 0.0025);
+        line-height: var(--grammar-type-label-item-line);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-toc-bar-caret { display: inline-flex; color: var(--muted); transition: transform var(--grammar-motion-duration-base) var(--grammar-motion-ease-out); }
+    .starci-core-toc[data-grammar-toc-open="true"] .starci-core-toc-bar-caret { transform: rotate(180deg); }
+    .starci-core-toc-bar-panel { display: flex; flex-direction: column; gap: var(--grammar-inline-gap); padding-block-start: var(--grammar-inline-gap); }
+    .starci-core-toc-bar-panel[hidden] { display: none; }
 
     @media (prefers-reduced-motion: reduce) {
-        :is(.starci-core-code-block-caret, .starci-core-graded-option, .starci-core-sidenote, .starci-core-toc-link) { transition: none; }
+        :is(.starci-core-code-block-caret, .starci-core-graded-option, .starci-core-sidenote, .starci-core-toc-link, .starci-core-toc-bar-caret) { transition: none; }
     }
 }
