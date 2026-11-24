@@ -3631,7 +3631,7 @@
 
     /*
      * THE CHAT FRAME (law DNA-COMMON-CHAT-FRAME). One frame on any host (a `Pane content="chat"`, a `Drawer` body, a page section): the header zone, ONE 1px line, the
-     * thread, ONE 1px line, the footer zone; everything on the page tone `--background`, nothing else in it draws a divider (DNA-COMMON-CHAT-DIVIDERS). The thread is the only
+     * thread, ONE 1px line, the footer zone; everything on the page tone `--background`, nothing else in it draws a divider (held by the `Chat frame` story plays). The thread is the only
      * scroller (DNA-COMMON-CHAT-FRAME-SCROLL): the frame fills the height its host gives it, the header and the footer keep their height, the thread takes the rest and its content
      * stands at the foot when it is shorter, so a thread ends beside its composer.
      */
