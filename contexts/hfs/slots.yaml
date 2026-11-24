@@ -2148,7 +2148,7 @@ slots:
     parent: be.app.client-cli
     profiles:
       - be
-    path: apps/<app>/{package.json,tsconfig.build.json,README.md}
+    path: apps/<app>/{package.json,tsconfig.build.json,README.md,bundle.mjs}
     appKind: client-cli
     presence: opt-in
     tracked: tracked

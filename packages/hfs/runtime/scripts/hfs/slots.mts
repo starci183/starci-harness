@@ -72,6 +72,8 @@ export interface AppRef {
   package?: string;
   /** The command a client cli installs (hfs.json `bin`). */
   bin?: string;
+  /** True when a client cli ships one bundled file (hfs.json `bundle`, R397). */
+  bundle?: boolean;
   /** True on the one fe app that serves sign-in (hfs.json `signIn`); the managed auth client renders into it. */
   signIn?: boolean;
 }
@@ -267,7 +269,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     project: declaration.project,
     side: name,
     profile: name,
-    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }), ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }), ...(a.signIn === undefined ? {} : { signIn: a.signIn }), ...(a.boot === undefined ? {} : { boot: a.boot }) }))),
+    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }), ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }), ...(a.bundle === undefined ? {} : { bundle: a.bundle }), ...(a.signIn === undefined ? {} : { signIn: a.signIn }), ...(a.boot === undefined ? {} : { boot: a.boot }) }))),
     optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
     patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
     backing: Object.freeze([...(s.backing ?? [])]),

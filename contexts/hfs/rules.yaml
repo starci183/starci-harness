@@ -2598,7 +2598,7 @@ rules:
       - {kind: hfs, id: rest-contract}
   - id: R397
     code: BE_CLI_CLIENT
-    law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`)."
+    law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`). A client cli that declares `bundle: true` ships one self-contained file instead: `be/apps/<app>/bundle.mjs` bundles that output into `dist/bundle/<bin>.cjs`, the bin points there, `files` holds `dist/bundle`, `prepack` is `node bundle.mjs` and the manifest lists no runtime dependency; `bundle.mjs` with no declared bundle is refused."
     failureCodes:
       - BE_CLI_CLIENT
     enforcers:

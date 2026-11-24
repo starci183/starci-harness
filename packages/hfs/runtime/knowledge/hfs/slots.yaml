@@ -1605,7 +1605,8 @@ slots:
     # The npm package of a client cli, the one back-end app with a manifest of its own: package.json (name and bin as hfs.json
     # declares them, files [dist], its runtime dependencies at the app root's pins) and tsconfig.build.json, which emits the
     # import closure of src/main.ts into apps/<app>/dist/ (`npm run build:<app>`); README.md is the package's page.
-    path: "apps/<app>/{package.json,tsconfig.build.json,README.md}"
+    # bundle.mjs only when hfs.json declares the client cli's `bundle`: it bundles that output into dist/bundle/<bin>.cjs (R397).
+    path: "apps/<app>/{package.json,tsconfig.build.json,README.md,bundle.mjs}"
     appKind: client-cli
     presence: opt-in
     tracked: tracked
