@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readPath, withPath } from '../runtime/scripts/lib/env.mjs';
-import { backupFolder, decryptScript, dumpScript, managerBackup, managerDecrypt, measureScript } from '../stack/manager-backup.mjs';
+import { backupFolder, decryptCommand, decryptScript, dumpScript, managerBackup, managerDecrypt, measureScript } from '../stack/manager-backup.mjs';
 import { backupProblems } from '../stack/db-phases.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
 import type { StackContext } from '../stack/context.mjs';
@@ -42,7 +42,7 @@ test('the dump script reads the password inside the container, encrypts to every
 test('the scripts are valid shell', { skip: !hasBash }, () => {
   for (const script of [
     dumpScript({ dir: '/var/backups/shop/db', file: 'shop-1.tar.age', container: CONTAINER, url: URL, recipients: [RECIPIENT] }),
-    measureScript('/var/backups/shop/db/shop-1.tar.age'), decryptScript('/var/backups/shop/db/shop-1.tar.age'),
+    measureScript('/var/backups/shop/db/shop-1.tar.age'), decryptScript('/var/backups/shop/db/shop-1.tar.age'), decryptCommand('/var/backups/shop/db/shop-1.tar.age', CONTAINER),
   ]) assert.equal(spawnSync('bash', ['-n', '-c', script]).status, 0, script);
 });
 
@@ -102,11 +102,59 @@ test('a failed dump is a failure that withholds the tool output', async () => {
 
 test('the test decrypt runs as root with the manager identity and lists the parts; a failure names the likely cause', async () => {
   const ok = runner();
-  assert.deepEqual(await managerDecrypt(CTX, { run: ok.run, archive: '/var/backups/shop/db/shop-1.tar.age' }), ['roles.sql', 'schema.sql', 'data.sql', 'rowcounts.json']);
+  const archive = '/var/backups/shop/db/shop-1.tar.age';
+  assert.deepEqual(await managerDecrypt(CTX, { run: ok.run, archive, container: CONTAINER }), ['roles.sql', 'schema.sql', 'data.sql', 'rowcounts.json']);
   assert.ok(ok.commands[0]!.input!.includes('/root/.config/sops/age/keys.txt'));
+  assert.equal(ok.commands[0]!.command, decryptCommand(archive, CONTAINER));
   const bad = runner({ decrypt: { status: 1, stdout: '', stderr: 'no identity matched' } });
-  await assert.rejects(managerDecrypt(CTX, { run: bad.run, archive: '/var/backups/shop/db/shop-1.tar.age' }), /server recipient in \.sops\.yaml/u);
-  await assert.rejects(managerDecrypt(CTX, { run: ok.run, archive: '/var/backups/x; rm -rf /' }), /plain absolute path/u);
+  await assert.rejects(managerDecrypt(CTX, { run: bad.run, archive, container: CONTAINER }), /server recipient in \.sops\.yaml/u);
+  await assert.rejects(managerDecrypt(CTX, { run: ok.run, archive: '/var/backups/x; rm -rf /', container: CONTAINER }), /plain absolute path/u);
+  await assert.rejects(managerDecrypt(CTX, { run: ok.run, archive, container: 'abc; rm -rf /' }), /container id is not a plain id/u);
+});
+
+test('without root or passwordless sudo the decrypt runs in a container of the database image that sees only the identity, the archive and age, read-only', () => {
+  const command = decryptCommand('/var/backups/shop/db/shop-1.tar.age', CONTAINER);
+  assert.ok(command.startsWith('if [ "$(id -u)" -eq 0 ]; then sh -s; elif sudo -n true 2>/dev/null; then sudo -n sh -s; else '), 'root, then sudo only when it answers');
+  assert.ok(command.includes(`docker inspect --format '{{.Image}}' ${CONTAINER}`), "the image is the running database container's own");
+  assert.ok(command.includes('docker run --rm -i --network none --user 0:0 --entrypoint sh '));
+  assert.deepEqual(command.match(/--mount \S+/gu), [
+    "--mount 'type=bind,src=/root/.config/sops/age/keys.txt,dst=/root/.config/sops/age/keys.txt,readonly'",
+    "--mount 'type=bind,src=/var/backups/shop/db/shop-1.tar.age,dst=/var/backups/shop/db/shop-1.tar.age,readonly'",
+    '--mount "type=bind,src=$(readlink',
+  ]);
+  assert.ok(command.includes('dst=/usr/local/bin/age,readonly"'), "the manager's age, read-only, where the script's PATH finds it");
+  assert.ok(!/\s-v\s+\/|--volume|--privileged|--network host|--pid|--cap-add/u.test(command), 'no other mount, privilege or namespace');
+});
+
+/** Doubles for id, sudo and docker: the login is not root, sudo answers when FAKE_SUDO is set, docker records its arguments and runs the script. */
+const FAKE_ID = ['#!/bin/sh', 'echo 1000'].join('\n');
+const FAKE_SUDO = ['#!/bin/sh', '[ -n "$FAKE_SUDO" ] || exit 1', 'shift', 'if [ "$1" = true ]; then exit 0; fi', 'echo "sudo $*" >> "$LOG"', 'cat >/dev/null', 'echo ./roles.sql'].join('\n');
+const FAKE_RUN = ['#!/bin/sh', 'if [ "$1" = inspect ]; then echo sha256:feed; exit 0; fi', 'echo "docker $*" >> "$LOG"', 'cat >/dev/null', 'echo ./roles.sql'].join('\n');
+
+test('the decrypt command, run under bash with doubles, uses sudo where it answers and docker where it does not', { skip: !hasBash }, () => {
+  const work = spawnSync('bash', ['-c', 'd=$(mktemp -d); mkdir "$d/bin"; echo "$d"'], { encoding: 'utf8' }).stdout.trim();
+  assert.ok(work.length > 0);
+  try {
+    const write = (name: string, body: string) => spawnSync('bash', ['-c', `cat > ${work}/bin/${name} && chmod +x ${work}/bin/${name}`], { input: `${body}\n` });
+    write('id', FAKE_ID);
+    write('sudo', FAKE_SUDO);
+    write('docker', FAKE_RUN);
+    write('age', '#!/bin/sh');
+    const decrypt = (sudo: boolean) => {
+      spawnSync('bash', ['-c', `rm -f ${work}/log`]);
+      const result = spawnSync('bash', ['-c', decryptCommand('/var/backups/shop/db/shop-1.tar.age', CONTAINER)], { input: 'tar -tf x\n', encoding: 'utf8', env: { ...withPath(process.env, `${work}/bin${path.delimiter}${readPath()}`), LOG: `${work}/log`, ...(sudo ? { FAKE_SUDO: '1' } : {}) } });
+      return { result, log: spawnSync('bash', ['-c', `cat ${work}/log`], { encoding: 'utf8' }).stdout };
+    };
+    const withSudo = decrypt(true);
+    assert.equal(withSudo.result.status, 0, withSudo.result.stderr);
+    assert.equal(withSudo.log.trim(), 'sudo sh -s');
+    const withoutSudo = decrypt(false);
+    assert.equal(withoutSudo.result.status, 0, withoutSudo.result.stderr);
+    assert.equal(withoutSudo.result.stdout.trim(), './roles.sql');
+    assert.match(withoutSudo.log, /^docker run --rm -i --network none --user 0:0 --entrypoint sh --mount type=bind,src=\/root\/\.config\/sops\/age\/keys\.txt,dst=\/root\/\.config\/sops\/age\/keys\.txt,readonly --mount type=bind,src=\/var\/backups\/shop\/db\/shop-1\.tar\.age,dst=\/var\/backups\/shop\/db\/shop-1\.tar\.age,readonly --mount type=bind,src=\S+\/bin\/age,dst=\/usr\/local\/bin\/age,readonly sha256:feed -s$/mu);
+  } finally {
+    spawnSync('bash', ['-c', `rm -rf ${work}`]);
+  }
 });
 
 // The script run for real under bash with a docker, age and psql that only echo: the quoting survives the nesting, the archive and its measures come

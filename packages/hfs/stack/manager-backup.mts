@@ -14,7 +14,7 @@ import type { StackContext } from './context.mjs';
 import { failure, refusal } from './errors.mjs';
 import { shellQuote } from './remote.mjs';
 import type { Runner } from './remote.mjs';
-import { AS_ROOT, SERVER_AGE_IDENTITY } from './server-key.mjs';
+import { AGE_KEYGEN_DIRS, SERVER_AGE_IDENTITY, asRootOr } from './server-key.mjs';
 
 /** What was measured on an archive: whether it exists, its size, whether it starts with the age header and its sha256. */
 export interface ArchiveFacts { exists: boolean; size: number; header: boolean; sha256: string }
@@ -94,6 +94,25 @@ export function decryptScript(archive: string): string {
   ].join('\n');
 }
 
+/**
+ * The command that runs decryptScript (on stdin) as root: directly or over passwordless sudo where the login has them, else, for a deploy user with
+ * the docker group and no sudo, in a one-off container of the database container's own image (on the manager already, with sh and tar) that sees
+ * only the identity, the archive and the manager's age binary, each bind-mounted read-only at its own path, with no network. A missing source
+ * refuses the mount, so nothing is created on the host.
+ */
+export function decryptCommand(archive: string, container: string): string {
+  if (!BASE.test(archive)) throw refusal('STACK_DEPLOY_BACKUP_DECRYPT_FAILED', 'the archive path is not a plain absolute path');
+  if (!CONTAINER.test(container)) throw refusal('STACK_DEPLOY_BACKUP_DECRYPT_FAILED', 'the database container id is not a plain id');
+  const mount = (source: string): string => `--mount ${shellQuote(`type=bind,src=${source},dst=${source},readonly`)}`;
+  return asRootOr([
+    'a="$(command -v age 2>/dev/null || true)"',
+    `for d in ${AGE_KEYGEN_DIRS.join(' ')}; do if [ -z "$a" ] && [ -x "$d/age" ]; then a="$d/age"; fi; done`,
+    'if [ -z "$a" ]; then echo "age is not installed" >&2; exit 127; fi',
+    `i="$(docker inspect --format ${shellQuote('{{.Image}}')} ${container})"`,
+    `docker run --rm -i --network none --user 0:0 --entrypoint sh ${mount(SERVER_AGE_IDENTITY)} ${mount(archive)} --mount "type=bind,src=$(readlink -f "$a"),dst=/usr/local/bin/age,readonly" "$i" -s`,
+  ].join('; '));
+}
+
 const sh = (script: string): string => `bash -c ${shellQuote(script)}`;
 const stamp = (at: string): string => at.replaceAll(/[-:.]/gu, '');
 const projectName = (config: Pick<DeployConfig, 'project'>): string => config.project.replaceAll(/[^A-Za-z0-9_-]/gu, '-') || 'database';
@@ -134,10 +153,12 @@ export async function managerBackup(_ctx: StackContext, config: DeployConfig, { 
   return { receiptPath, receipt, archive, facts };
 }
 
-/** Opens the archive on the manager with the manager's own identity and lists its parts. Throws when the identity cannot open it. */
-export async function managerDecrypt(_ctx: StackContext, { run, archive }: { run: Runner; archive: string }): Promise<string[]> {
-  if (!BASE.test(archive)) throw refusal('STACK_DEPLOY_BACKUP_DECRYPT_FAILED', 'the archive path is not a plain absolute path');
-  const result = run(AS_ROOT, { input: `${decryptScript(archive)}\n` });
+/**
+ * Opens the archive on the manager with the manager's own identity and lists its parts (decryptCommand: as root, else in a container of the
+ * database's image). Throws when the identity cannot open it.
+ */
+export async function managerDecrypt(_ctx: StackContext, { run, archive, container }: { run: Runner; archive: string; container: string }): Promise<string[]> {
+  const result = run(decryptCommand(archive, container), { input: `${decryptScript(archive)}\n` });
   if (result.status !== 0) throw failure('STACK_DEPLOY_BACKUP_DECRYPT_FAILED', `the manager's identity could not open the archive (is the server recipient in .sops.yaml?); output withheld`);
   return result.stdout.split('\n').map((line) => line.replace(/^\.\//u, '').trim()).filter(Boolean);
 }
