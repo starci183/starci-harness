@@ -80,8 +80,8 @@ The owner's rule for landing, in his words:
 
 One verb gates and lands (PROJECT-BRANCH-2):
 
-1. `starci lane gate --push --land` in the worktree, tree committed: it merges `origin/dev`, runs `npm ci` under an `npm` slot when
-   the merge changed a manifest or lockfile (`--install` forces it), runs `codegen` (and `build:modules` after an install), then
+1. `starci lane gate --push --land` in the worktree, tree committed: it merges `origin/dev`, installs under an `npm` slot when
+   the merge changed a manifest or lockfile (`--install` forces a full `npm ci`; a fresh worktree is installed by the shared install below), runs `codegen` (and `build:modules` after an install), then
    under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, whose pre-push hook runs the fast level once. Without `--push`
    it runs `app check --env prod --level dev` only and reports the findings. A new `lane gate` of the same lane first cancels the lane's
    running gate: its process tree is killed, its slot released and its status says `superseded by <sha>`. A merge conflict refuses
@@ -123,8 +123,20 @@ and `withdrawn` are written only for lanes registered that way. A lane does not 
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
 gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
-dependents, the CLI and the desktop app when affected, and the publish checks; no test suite, which runs only in the train's full gate), with `--push`
+dependents, the CLI and the desktop app when affected, and the publish checks; the typechecks of those folders run together, each `tsc` on its own heavy slot; no test suite, which runs only in the train's full gate), with `--push`
 pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`.
+
+**The install of a fresh lane is shared.** When the lane's lockfiles and manifests equal those of a reference install, its `node_modules` is made
+by hard links from the repository's install cache (`<lanes>/_install-cache/<repo>/<key>`, keyed by the bytes of every lockfile, manifest and
+`.npmrc` and by the Node and npm versions) instead of `npm ci`: the entry is filled once per key by COPYING the app's dev checkout's install when that
+checkout holds a finished one with the same key, else from the first lane's own `npm ci` of the dev line's lockfile. The dev checkout is never a link
+source (the running dev stack serves from it, and a write through a hard link would change a served file), and a later `npm ci` there removes names, so
+no lane or entry is touched. npm's record (`node_modules/.package-lock.json`) and the `.bin` shims, which npm rewrites in place, are copied; a tool's
+`node_modules/.cache` is not shared; the workspace links are junctions re-made to the lane's own folders and unlinked first when the worktree is removed.
+The root lifecycle scripts of `npm ci` (`prepare` for husky and the like) run after the links. A differing lockfile, a node_modules already there, a
+workspace member with an install script, a link or a removal lock on the worktree, a failed link or a failed check of the result send the lane to
+`npm ci` and leave nothing behind. `STARCI_SHARED_INSTALL=off` turns it off, `copy` fills by copying. The gate prints where `node_modules` came from
+and the seconds each phase took.
 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the
 pre-push hook needs `.husky/_` present. Before every commit run `git diff --cached --stat`.

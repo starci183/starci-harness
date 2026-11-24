@@ -90,3 +90,30 @@ void test("a red build skips what needs it, names the folder in a finding the la
     assert.equal(green.verdict, "green")
     assert.deepEqual(blockingFindings(JSON.stringify({ data: green })), [])
 })
+
+void test("the typechecks of the folders run together, the other steps in order, and the result reads in step order with a red typecheck named", async () => {
+    let active = 0
+    let most = 0
+    const release: (() => void)[] = []
+    const started: string[] = []
+    const pending = runHarnessGate("/r", plan({ harness: true }), "dev", scriptsOf, async (_root, step) => {
+        started.push(`${step.kind} ${step.dir}`)
+        if (step.kind !== "typecheck") return { ok: true, output: "" }
+        active += 1
+        most = Math.max(most, active)
+        await new Promise<void>((resolve) => release.push(resolve))
+        active -= 1
+        return step.dir === "cli" ? { ok: false, output: "TS2322 in src/a.ts" } : { ok: true, output: "" }
+    })
+    // Both typechecks are in flight before either finishes: the second started while the first still ran.
+    for (let waited = 0; release.length < 2 && waited < 200; waited += 1) await new Promise<void>((resolve) => setTimeout(resolve, 5))
+    assert.equal(release.length, 2, "both typechecks started before either finished")
+    release.forEach((go) => {
+        go()
+    })
+    const gate = await pending
+    assert.equal(most, 2)
+    assert.deepEqual(gate.steps.map((step) => `${step.kind} ${step.dir}`), named(harnessGateSteps(plan({ harness: true }), "dev", scriptsOf)).map((line) => line.replace(/ $/, "")))
+    assert.deepEqual(gate.findings.map((finding) => [finding.code, finding.path]), [["HARNESS_GATE_TYPECHECK", "cli"]])
+    assert.equal(gate.verdict, "red")
+})

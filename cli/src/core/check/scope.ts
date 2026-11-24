@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { parse } from "yaml"
-import { runtimeRoot } from "../../harness/ledger.js"
+import { runtimeRoot, tsBuildInfoCachePath } from "../../harness/ledger.js"
 import { loadPolicy } from "../../harness/policy.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
@@ -171,13 +172,24 @@ export const resolveTsconfig = (root: string, dir: string): string | undefined =
     }
 }
 
+/**
+ * The arguments of one typecheck: `tsc -p <config> --noEmit --incremental --tsBuildInfoFile <file>`. The build info keeps each file's hash and its diagnostics, so tsc
+ * re-checks only the files whose hash, or whose imports' declarations, changed and reports the recorded errors of the rest: an unchanged program is not checked from
+ * zero, and a type error introduced after a cached run is found because its file's hash changed (check/scope.test.ts proves it). The file lives in the harness state
+ * cache, never in the checked tree.
+ */
+export const typecheckArgs = (config: string, buildInfo: string, extra: readonly string[] = []): string[] => ["-p", config, "--noEmit", "--incremental", "--tsBuildInfoFile", buildInfo, ...extra]
+
+/** The build info file of the program `config` of the folder `dir`: one per absolute folder, tsconfig and extra option set, so a program's cache is its own. */
+export const buildInfoFor = (dir: string, config: string, extra: readonly string[] = []): string => tsBuildInfoCachePath(createHash("sha1").update(`${resolve(dir, config).replaceAll("\\", "/").toLowerCase()} ${extra.join(" ")}`).digest("hex").slice(0, 20))
+
 /** One `tsc --noEmit -p <config>` over each tsconfig a folder holds, from that folder so relative paths and `extends` resolve. */
 const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, options: RunOptions, extra: readonly string[] = []): Promise<{ readonly label: string; readonly run: ToolRun | undefined }[]> =>
     Promise.all(tsconfigsOf(dir).map(async (config) => {
         const label = `tsconfig ${toSlash(relative(scope.root, join(dir, config)))}`
         const tsc = [dir, pkg.dir, scope.root].map((each) => join(each, "node_modules", "typescript", "bin", "tsc")).find((candidate) => existsSync(candidate))
         if (tsc === undefined) return { label, run: undefined }
-        return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, "-p", config, "--noEmit", ...extra], dir, held.options)) }
+        return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, ...typecheckArgs(config, buildInfoFor(dir, config, extra), extra)], dir, held.options)) }
     }))
 
 /** The tsconfig folders the judged TypeScript files of a package fall under, and the judged and unchanged files that fall under none. */

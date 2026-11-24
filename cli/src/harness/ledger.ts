@@ -204,6 +204,9 @@ export const hostLauncherPath = (service: string, extension: "cmd" | "vbs"): str
 /** The output of one workspace dependency's build, kept by its content key (core/check/workspace-deps.ts): `<state base>/cache/workspace-builds/<key>`. */
 export const workspaceBuildCachePath = (key: string): string => join(stateBase(), "cache", "workspace-builds", key)
 
+/** The incremental build info of one tsc program, kept by the program's folder and tsconfig (core/check/scope.ts): `<state base>/cache/tsbuildinfo/<key>.tsbuildinfo`. Host state, never a result: tsc re-reads every file it is stale for. */
+export const tsBuildInfoCachePath = (key: string): string => join(stateBase(), "cache", "tsbuildinfo", `${key}.tsbuildinfo`)
+
 /** One shared npm install, kept by its key (lockfile, Node and npm versions; harness/install-cache.ts): `<state base>/cache/installs/<key>`. */
 export const installCachePath = (key: string): string => join(stateBase(), "cache", "installs", key)
 
