@@ -392,15 +392,15 @@ roles:
 
   - id: pane-grid
     ui: ui/components/pane-grid.md
-    renderers: [PaneGrid, Pane, PaneSection, PaneHeader]
+    renderers: [PaneGrid, Pane, PaneSection, ChatFrame, PaneHeader]
     vendorParity: [Drawer]
-    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset", "PaneHeader: title, description, mark, status, actions, back (label, onPress): the head band of one pane"]
+    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset", "PaneHeader: title, description, mark, status, actions, back (label, onPress): the head band of one pane", "ChatFrame: label (the thread's name), header (a PaneHeader and, for a customer chat, the owner row in the same zone), children (the thread: MessageBubbles and day Dividers, oldest first), footer (the composer or the decision actions), scrollRef, isLoading, error: the one chat on a Pane content=chat, a Drawer body or a page section"]
     variants:
       surface: [true, false]
       scroll: [true, false]
       collapse: [drawer]
       inset: { values: [content, flush], chosenBy: app from pane-grid.choose.page }
-      content: { values: [cards, full, chat], chosenBy: "app from what the pane holds: a well of cards, a full-bleed canvas, or one chat (head, thread, composer footer: chat, DNA-COMMON-CHAT-FRAME)" }
+      content: { values: [cards, full, chat], chosenBy: "app from what the pane holds: a well of cards, a full-bleed canvas, or one ChatFrame (chat, DNA-COMMON-CHAT-FRAME; the pane takes no footer, head, surface or inset)" }
       section: { values: [grow, scroll, align, bleed, gap, as], chosenBy: app from pane-grid.choose.band }
       headingLevel: { values: [1, 2], chosenBy: app from the fact that the pane holds the page's subject }
       track: [auto, fill, fill-2, fill-3, compact, standard, wide]
@@ -408,7 +408,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-OUTLINE, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -1755,23 +1755,23 @@ mustKeep:
       owner: contract roles.motion
     - id: DNA-COMMON-CHAT-SURFACES
       role: pane-grid
-      law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge."
-      measure: { kind: style, select: '[data-grammar-pane-section-thread="true"]', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
+      law: "Every chat thread (the ChatFrame thread: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface; it meets the header line above and the footer line below edge to edge."
+      measure: { kind: style, select: '.starci-core-chat-frame-thread', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
       owner: ui/components/message-bubble.md
-    - id: DNA-COMMON-CHAT-INCOMING-OUTLINE
+    - id: DNA-COMMON-CHAT-INCOMING-FLAT
       role: pane-grid
-      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it. An app never restyles it; a theme may retune it with the bubble tokens."
+      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in every measure and every content kind: the --surface fill, --foreground words, no border, no shadow (a message is never a card). No surface changes it, and an app never restyles it."
       measure:
         kind: style
         select: '.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
-        checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: border-width, op: "=", value: 1px }, { metric: box-shadow, op: "=", value: none }]
+        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
       role: pane-grid
-      law: "The reader's own message (MessageBubble outgoing, tone brand) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own."
+      law: "The reader's own message (MessageBubble outgoing) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own."
       measure:
         kind: style
-        select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body'
+        select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"]:not([data-grammar-skeleton="true"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body'
         checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
       owner: ui/components/message-bubble.md
       followUp: "the theme-hooks story repaints the outgoing bubble on purpose: exempt a hooked app or keep"
@@ -1785,20 +1785,20 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME
       role: pane-grid
-      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it. The 1px lines between the zones stay; the composer field is the white primary field."
+      law: "A chat is one ChatFrame on any host (a Pane content=\"chat\", a Drawer body, a page section): the header zone, ONE 1px --separator line, the thread, ONE 1px line, the footer zone (no footer, no second line), all --background whatever surface it stands on; nothing else in the frame draws a divider. In a Drawer the sheet's title row and the frame header are one zone with no line between them. The rest of the page keeps its own rule (a room list and the page header band stay white); the composer field is the white primary field. Held by the measure for the ground; the two lines are held by the plays of the ChatFrame stories (InPane, InDrawer, Inline)."
       measure:
         kind: style
-        select: '.starci-core-pane[data-grammar-pane-content="chat"], .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-footer'
+        select: '.starci-core-chat-frame, .starci-core-chat-frame-header, .starci-core-chat-frame-footer'
         checks: [{ metric: background-color, op: "=", value: { token: --background } }]
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME-SCROLL
       role: pane-grid
-      law: "In a chat frame the thread is the only scroller between the fixed head and the fixed composer footer: the pane body above a footer is bounded and never scrolls, so a thread's scroll.scrollRef is the element that scrolls; a log thread opens at its newest message and follows new ones while the reader is at the foot."
-      measure: { kind: style, select: '.starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-body', checks: [{ metric: overflow-y, op: "=", value: hidden }] }
+      law: "In a ChatFrame the thread is the only scroller between the fixed header and the fixed footer: the frame is bounded by its host and never scrolls, so scrollRef is the element that scrolls; the thread opens at its newest message and follows new ones while the reader is at the foot."
+      measure: { kind: style, select: '.starci-core-chat-frame', checks: [{ metric: overflow-y, op: "=", value: hidden }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-PANE-FOOTER-NO-BAND
       role: pane-grid
-      law: "A pane footer (a chat composer) starts at its own hairline: its stack is never a head-row spacer (no empty band between the thread and the suggestions) and a PaneSection rule start in it draws no second line under the footer's."
+      law: "A pane footer (a form's action bar) starts at its own hairline: its stack is never a head-row spacer and a PaneSection rule start in it draws no second line under the footer's."
       measure: { kind: style, select: '.starci-core-pane-footer > .starci-core-pane-stack', checks: [{ metric: padding-block-start, op: "=", value: 0px }] }
       owner: contract roles.pane-grid
     - id: DNA-COMMON-PANE-SECTION-RULE
@@ -1806,7 +1806,6 @@ mustKeep:
       law: "A pane section with rule start draws a 1px separator on its block-start edge and none elsewhere (R4-27)."
       measure: { kind: style, select: '[data-grammar-pane-section-rule="start"]', checks: [{ metric: border-top-width, op: "=", value: 1px }, { metric: border-bottom-width, op: "=", value: 0px }, { metric: border-top-color, op: "=", value: { token: --separator } }] }
       owner: contract roles.pane-grid
-      followUp: "a PaneSection footer in the chat-frame story draws no top rule"
     - id: DNA-COMMON-BOARD-ONE-WIDTH
       role: data-views
       law: The columns of one board share one width.

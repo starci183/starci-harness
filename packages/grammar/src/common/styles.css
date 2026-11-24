@@ -1228,8 +1228,8 @@
     }
 
     /*
-     * THE TONE EDGE (0.55.0, src/core/toneEdge.ts): a card face that waits on the reader draws its own 1px edge in the tone's standard border token; the
-     * fill, width and style stay the face's. One rule for every face that carries it (`SurfaceCard tone`, `MessageBubble content="card" tone`).
+     * THE TONE EDGE (src/core/toneEdge.ts): a card face that waits on the reader draws its own 1px edge in the tone's standard border token; the
+     * fill, width and style stay the face's. The face that carries it is `SurfaceCard tone`.
      */
     [data-grammar-tone-edge="neutral"] { --grammar-tone-edge: var(--default-border); }
     [data-grammar-tone-edge="accent"] { --grammar-tone-edge: var(--accent-border); }
@@ -3483,15 +3483,6 @@
     }
 
     /*
-     * 0.36.0 (MEASURE-8 corrected): the grid and its side panes always span the full width (the aside is flush to the end edge); only the CONTENT of a pane that
-     * holds cards is capped and centred inside that pane. A pane that holds a chat thread is full-bleed unless it says `content="cards"`.
-     */
-    .starci-core-pane:not([data-grammar-pane-content-explicit]):has([data-grammar-pane-section-thread="true"]) .starci-core-pane-stack {
-        max-inline-size: none;
-        margin-inline: 0;
-    }
-
-    /*
      * THE SCROLL LAW (0.36.0). The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky at the
      * top of whatever scrolls. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page does not scroll; each
      * pane scrolls on its own with its head (a header band or a PaneHeader band) sticky, and a pane that holds a scroll band (a chat thread) keeps its head and
@@ -3517,21 +3508,21 @@
         overflow: clip;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not([data-grammar-pane-content="chat"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) {
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"])::-webkit-scrollbar {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not([data-grammar-pane-content="chat"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"])::-webkit-scrollbar {
         display: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) > .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not([data-grammar-pane-content="chat"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) > .starci-core-pane-stack {
         flex: 1 0 auto;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not([data-grammar-pane-content="chat"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
         position: sticky;
         z-index: 2;
         top: 0;
@@ -3639,46 +3630,95 @@
     }
 
     /*
-     * THE CHAT FRAME (0.37.33, law DNA-COMMON-CHAT-FRAME, owner-approved drawing chat-frame-anywhere). On ANY page a chat is one frame: its head, its thread and its
-     * composer footer are the page tone `--background`, whatever surface it stands on (a white pane, the aside, a drawer, a dialog, a popover); the rest of the page
-     * keeps its own rule (the room list stays white, an aside's other panes stay white). A chat frame is a Pane with `content="chat"` or any pane whose own stack
-     * holds a thread (`PaneSection scroll role="log"`); the role decides, the app chooses no tone (`surface` is ignored here). The 1px lines
-     * between head, thread and footer stay; the composer field keeps its own white field ground. The head bands are painted with `!important` because the shared
-     * head row and the sticky head paint white with selectors built for every pane. Inside the frame a message is flat: no border, no shadow (the 0.37.31 edge
-     * for a bubble on white never applies in a chat frame). An overlay (Drawer, Dialog, Popover) that holds a thread is the chat frame as a whole: its own head too.
+     * THE CHAT FRAME (law DNA-COMMON-CHAT-FRAME). One frame on any host (a `Pane content="chat"`, a `Drawer` body, a page section): the header zone, ONE 1px line, the
+     * thread, ONE 1px line, the footer zone; everything on the page tone `--background`, nothing else in it draws a divider (held by the `Chat frame` story plays). The thread is the only
+     * scroller (DNA-COMMON-CHAT-FRAME-SCROLL): the frame fills the height its host gives it, the header and the footer keep their height, the thread takes the rest and its content
+     * stands at the foot when it is shorter, so a thread ends beside its composer.
      */
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) {
+    .starci-core-chat-frame {
+        display: flex;
+        min-height: 0;
+        min-width: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        block-size: 100%;
+        overflow: hidden;
         background: var(--background);
     }
 
-    /*
-     * THE THREAD IS THE ONLY SCROLLER OF A CHAT FRAME (0.37.33, DNA-COMMON-CHAT-FRAME-SCROLL). Between the fixed head and the fixed composer footer only the thread
-     * scrolls: the pane body (the column above a footer) is bounded and never scrolls, its stack is bounded by it (never `1 0 auto`, which let the stack grow with
-     * the messages and made the body the scroller), the head band keeps its height and the thread takes the rest. So a `scroll.scrollRef` on the thread is the
-     * element that scrolls, and a thread with `align: "end"` opens at its newest message.
-     */
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) {
-        overflow: hidden;
+    .starci-core-chat-frame-header {
+        box-sizing: border-box;
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--grammar-row-gap);
+        min-block-size: var(--grammar-pane-head-size);
+        padding-block: var(--grammar-pane-inset-block-start);
+        padding-inline: var(--grammar-pane-inset-inline);
+        border-block-end: 1px solid var(--separator);
+        background: var(--background);
     }
 
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack,
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-stack {
+    .starci-core-chat-frame-thread {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: var(--background);
+    }
+
+    .starci-core-chat-frame-thread-content {
+        box-sizing: border-box;
+        display: flex;
+        min-width: 0;
+        flex: 1 0 auto;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: var(--grammar-inline-gap);
+        padding-block: var(--grammar-pane-inset-block-start);
+        padding-inline: var(--grammar-pane-inset-inline);
+    }
+
+    .starci-core-chat-frame-footer {
+        box-sizing: border-box;
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding-block: var(--grammar-row-gap) var(--grammar-pane-inset-block-end-outer);
+        padding-inline: var(--grammar-pane-inset-inline);
+        border-block-start: 1px solid var(--separator);
+        background: var(--background);
+    }
+
+    /* In a pane the frame is the pane's whole content: the pane stands on the page tone and its stack is bounded by it. */
+    .starci-core-pane[data-grammar-pane-content="chat"] {
+        background: var(--background);
+    }
+
+    .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-stack {
         flex: 1 1 0%;
         min-height: 0;
     }
 
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:not([data-grammar-pane-section-thread="true"]) {
-        flex-shrink: 0;
-    }
-
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack,
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:first-child,
-    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-footer {
-        background: var(--background) !important;
-    }
-
-    :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"]) {
+    /* In a drawer the sheet's title row and the frame's header are ONE header zone: no gap and no line between them, and the body is bounded so only the thread scrolls. */
+    .starci-core-drawer:has(> .starci-core-overlay-body > .starci-core-chat-frame) {
+        gap: 0;
         background: var(--background);
+    }
+
+    .starci-core-overlay-body:has(> .starci-core-chat-frame) {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .starci-core-drawer .starci-core-chat-frame-header {
+        padding-block-start: var(--grammar-row-gap);
     }
 
     /*
@@ -3733,12 +3773,6 @@
 
     .starci-core-pane-section[data-grammar-pane-section-gap="row"] { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
-
-    /*
-     * 0.37.31 (DNA-COMMON-CHAT-SURFACES): a chat thread is the page tone, so it meets the bands around it edge to edge: the head line above and the composer's
-     * rule below touch the thread, never a white strip of the stack's row gap (the head and composer bands keep their own padding).
-     */
-    .starci-core-pane-stack:has(> .starci-core-pane-section[data-grammar-pane-section-thread="true"]) { gap: 0; }
 
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
     .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
@@ -4575,7 +4609,7 @@
     }
 
     /* Inside a thread (a chat scroll band, a stack of messages) the notice is words on the thread's own ground: no card surface. */
-    .starci-core-pane-section[data-grammar-pane-section-thread="true"] .starci-core-empty-notice:not([data-grammar-error-layout]),
+    .starci-core-chat-frame-thread .starci-core-empty-notice:not([data-grammar-error-layout]),
     .starci-core-pane-section-content:has(.starci-core-message-bubble) .starci-core-empty-notice:not([data-grammar-error-layout]),
     .starci-core-message-bubble-thread .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 0;
@@ -6346,35 +6380,21 @@
      * A chip and a quote on the brand fill (0.52.0): a Badge (a mention, a tag) is the inverse pair, the fill's foreground as its ground and
      * the fill as its words; a Quote (the message replied to) is the foreground at the secondary tint, its words and byline inheriting it.
      */
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body [data-component="Badge"] {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Badge"] {
         border-color: transparent !important;
         background: var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) !important;
         color: var(--starci-core-bubble-outgoing, var(--accent)) !important;
     }
 
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-quote {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-quote {
         background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
         color: inherit;
     }
 
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body :is(.starci-core-quote-source, .starci-core-quote-byline) {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(.starci-core-quote-source, .starci-core-quote-byline) {
         color: inherit;
         opacity: var(--grammar-opacity-secondary);
     }
-
-    /* The soft face is the brand's tint with its own foreground: the AI bubble is `--accent-soft`, with no token of its own. */
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body {
-        background: var(--accent-soft);
-        color: var(--accent-soft-foreground);
-    }
-
-    /* The neutral face is the default soft pair: the reader's words with no accent fill. */
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="neutral"] .starci-core-message-bubble-body {
-        background: var(--default-soft);
-        color: var(--default-soft-foreground);
-    }
-
-    .starci-core-message-bubble[data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-soft-foreground) 12%, transparent); }
 
     .starci-core-message-bubble[data-grammar-bubble-highlight="true"] .starci-core-message-bubble-body {
         outline: 2px solid var(--focus);
@@ -6387,9 +6407,8 @@
      * side is the start for an incoming bubble and the end for an outgoing one; logical corners, so RTL mirrors. The avatar sits beside the last
      * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer.
      *
-     * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, owner-approved drawing chat-surfaces): every thread is on the page tone (`--background`, a
-     * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is ONE look everywhere (0.52.0,
-     * owner-approved chat canvas of 2026-11-20, law DNA-COMMON-CHAT-INCOMING-OUTLINE): the 1px `--border` edge, no fill, `--foreground` words, no shadow;
+     * THE CHAT FACES (law DNA-COMMON-CHAT-SURFACES): every thread is on the page tone (`--background`, the `ChatFrame` thread); a message of someone else (an incoming
+     * bubble, a MessageCard) is ONE flat look everywhere (law DNA-COMMON-CHAT-INCOMING-FLAT): `--surface` with its foreground, no border, no shadow, in every measure;
      * the reader's own message is `--accent` with `--accent-foreground`. No surface changes either face.
      */
     .starci-core-message-bubble {
@@ -6404,31 +6423,21 @@
     .starci-core-message-bubble .starci-core-message-bubble-body { border-radius: var(--grammar-bubble-radius); }
 
     /*
-     * THE BUBBLE TOKENS (0.40.0): optional, each defaulting to the faces above. The other party's message: `--starci-core-bubble-incoming` (fill,
-     * default `transparent`), `--starci-core-bubble-incoming-foreground` (default `--foreground`), `--starci-core-bubble-incoming-border`
-     * (a `border` value, default `--grammar-border-edge`, the 1px `--border` edge, 0.52.0). The reader's own: `--starci-core-bubble-outgoing` (default `--accent`), `--starci-core-bubble-outgoing-foreground`
-     * (default `--accent-foreground`), `--starci-core-bubble-outgoing-border` (default `0`). A MessageCard: `--starci-core-message-card` and
-     * `--starci-core-message-card-border`, defaulting to the incoming face. A theme whose thread and surface are both white gives the other party a
-     * quiet fill and its own message a hairline instead of the accent. The soft tone (`tone="soft"`) keeps the accent soft pair.
+     * THE BUBBLE TOKENS: optional, each defaulting to the faces above. The other party's message: `--starci-core-bubble-incoming` (fill, default `--surface`) and
+     * `--starci-core-bubble-incoming-foreground` (default `--foreground`); it has no edge. The reader's own: `--starci-core-bubble-outgoing` (default `--accent`),
+     * `--starci-core-bubble-outgoing-foreground` (default `--accent-foreground`), `--starci-core-bubble-outgoing-border` (default `0`). A MessageCard:
+     * `--starci-core-message-card`, defaulting to the incoming face.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: var(--grammar-border-edge);
-        background: transparent;
-        color: var(--foreground);
+        border: 0;
+        background: var(--starci-core-bubble-incoming, var(--surface));
+        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
         box-shadow: none;
     }
 
-    .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body {
-        border: var(--starci-core-bubble-incoming-border, var(--grammar-border-edge));
-        background: var(--starci-core-bubble-incoming, transparent);
-        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
-    }
-
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, var(--grammar-border-edge)));
-        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, transparent));
-        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
+        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, var(--surface)));
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }
@@ -6802,7 +6811,7 @@
     .starci-core-quote[data-grammar-quote-variant="line"] .starci-core-quote-source { margin-inline-end: var(--grammar-identity-gap); }
 
     /* On the brand face of the reader's own bubble the line keeps the bubble's ink, softened, and its rule. */
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-quote[data-grammar-quote-variant="line"] {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-quote[data-grammar-quote-variant="line"] {
         border-inline-start-color: currentcolor;
         background: transparent;
         opacity: var(--grammar-opacity-secondary);

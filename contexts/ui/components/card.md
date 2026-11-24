@@ -117,6 +117,6 @@ A section has exactly ONE Label (its head, 14 / 500) and Grammar sets it 12px (`
 
 - `SurfaceCard tone` (`neutral`, `accent`, `info`, `success`, `warning`, `danger`): only the 1px edge takes the tone's standard border token
   `--<tone>-border` ("card chờ duyệt có viền vàng" is `tone="warning"`); the fill stays the surface, and the reason is said in words (a status,
-  a needs-you line). Law `DNA-COMMON-CARD-TONE-BORDER`. A card in a chat bubble takes the same edge through `MessageBubble content="card" tone`
-  (one rule, `toneEdge.ts`); never wrap a SurfaceCard in the bubble for it (the layout collapses and the edges double).
+  a needs-you line). Law `DNA-COMMON-CARD-TONE-BORDER`. A card in a chat bubble is `MessageCard` and has no tone edge; never wrap a SurfaceCard in the bubble
+  (the layout collapses and the edges double).
 - `SurfaceCard kind="tile" isAgent agentLabel?`: the AgentName Chip follows the tile's name, as on a ListRow title and a card head.

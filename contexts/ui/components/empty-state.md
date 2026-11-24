@@ -45,7 +45,7 @@ Choice `empty-state.choose.actions`: what the notice offers.
 `EmptyNotice isAllClear` is the good-news state for a region that is empty because nothing needs the reader ("You are all caught up"): the success mark (`IconTile state="done"`: the check on the success plate, the one status mark with no subject of its own), the words, and no action. The type refuses every action prop, `steps`, `media`, `scope="page"` and `isError` with it. An empty region that the reader can fill is a plain notice with its one action; an all-clear has nothing to do. Stories `Media/Empty state` (FirstRunSteps, AllClear).
 
 ## Variants
-Inside a chat thread (a `PaneSection scroll role="log"` band or a stack of `MessageBubble`s) an `EmptyNotice` draws no card surface: no fill, border, radius or shadow, detected by context ([message-bubble](message-bubble.md)).
+Inside a chat thread (the `ChatFrame` thread or a stack of `MessageBubble`s) an `EmptyNotice` draws no card surface: no fill, border, radius or shadow, detected by context ([message-bubble](message-bubble.md)).
 While the region is empty, its notice owns the region's command as the view's commit and the header omits it
 (CTA-1). A notice that only explains is a dead end (UX-6). Its one mark is the `media`: `{ icon }` or, on a page-scope notice,
 `{ illustration }`, never both; a failed, filtered or drawing notice never carries art (DISCIPLINE-3).

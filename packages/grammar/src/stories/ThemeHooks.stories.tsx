@@ -99,7 +99,6 @@ const NEUTRAL_HOOKS = {
   '--starci-core-plate-border': '1px solid var(--border)',
   '--starci-core-plate-selected': 'var(--default)',
   '--starci-core-plate-selected-foreground': 'var(--foreground)',
-  '--starci-core-bubble-incoming': 'var(--default)',
   '--starci-core-bubble-outgoing': 'var(--surface)',
   '--starci-core-bubble-outgoing-foreground': 'var(--foreground)',
   '--starci-core-bubble-outgoing-border': '1px solid var(--border)',

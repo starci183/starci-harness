@@ -21,7 +21,7 @@ The `className` (or `class`) of any element in product source is a finding when 
 **Valid**
 
 ```tsx
-<PaneSection scroll={{ label: "Messages", role: "log" }}>{messages}</PaneSection>
+<PaneSection scroll={{ label: "Messages" }}>{messages}</PaneSection>
 <VerticalScrollRegion isScrollable aria-label="Files">{rows}</VerticalScrollRegion>
 ```
 

@@ -73,7 +73,7 @@ export const PaneFooter: Story = {
   },
 };
 
-const thread = Array.from({ length: 60 }, (_, index) => <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} body={`Message ${index + 1}`} />);
+const thread = Array.from({ length: 60 }, (_, index) => <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} avatar={<G.Avatar name={index % 3 === 0 ? 'You' : 'Chatbot'} size="md" />} body={`Message ${index + 1}`} />);
 
 /** The height chain through nested grids with `rows`, `inset="flush"` and `content` variants: only the thread scrolls, the outer pane does not. */
 export const NestedRowsHeightChain: Story = {
@@ -83,10 +83,8 @@ export const NestedRowsHeightChain: Story = {
         <G.PaneGrid label="Tab" areas={['tab']} rows={{ base: ['fill'] }}>
           <G.Pane area="tab" inset="flush" content="cards">
             <G.PaneGrid label="Chat" areas={['room']} rows={{ base: ['fill'] }}>
-              <G.Pane area="room" surface content="full" inset="flush" label="Room">
-                <G.PaneSection align="center"><G.PaneHeader title="Chatbot" /></G.PaneSection>
-                <G.PaneSection scroll={{ label: 'Thread', role: 'log', align: 'end', tone: 'background' }}>{thread}</G.PaneSection>
-                <G.PaneSection as="footer" rule="start"><G.Input id="c2" name="c2" label="Message" kind="text" /></G.PaneSection>
+              <G.Pane area="room" content="chat" label="Room">
+                <G.ChatFrame label="Thread" header={<G.PaneHeader title="Chatbot" mark={<G.Avatar name="Chatbot" size="md" />} />} footer={<G.Input id="c2" name="c2" label="Message" kind="text" />}>{thread}</G.ChatFrame>
               </G.Pane>
             </G.PaneGrid>
           </G.Pane>

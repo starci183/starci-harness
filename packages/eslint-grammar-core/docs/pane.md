@@ -44,7 +44,7 @@ finding: its cell renders blank.
 
 ## `starci-grammar/pane-children`
 
-A raw element, or a Grammar component other than `PaneSection`, `PaneGrid` and `Freestyle`, placed directly in a `Pane` is a
+A raw element, or a Grammar component other than `PaneSection`, `PaneGrid`, `ChatFrame` (the one child of a chat pane) and `Freestyle`, placed directly in a `Pane` is a
 finding: it skips the inset the pane publishes. A project component is allowed here and judged in its own file.
 
 **Invalid**

@@ -8,7 +8,7 @@ import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contr
 import type { Context, Node } from "./lib/types.ts"
 /**
  * The pane laws (HFS R345 `FE_PANE_GRID_CHILD_NOT_PANE`, R346 `FE_PANE_CHILD_NOT_SECTION`, R347 `FE_PANE_SECTION_PADDING`, R348
- * `FE_PANE_GRID_FRAME`): a `PaneGrid` holds `Pane`s, a `Pane` holds `PaneSection`s (or one nested `PaneGrid`), a
+ * `FE_PANE_GRID_FRAME`): a `PaneGrid` holds `Pane`s, a `Pane` holds `PaneSection`s (or one nested `PaneGrid`, or the one `ChatFrame` of a chat pane), a
  * `PaneSection` takes its inset from the pane it stands in, and a `PaneGrid` stands in a `Page chrome="panes"` or in a `Pane`;
  * the one child of `Page chrome="panes"` is a `PaneGrid` element written there, never a component that renders one (Page throws
  * `PAGE_PANES_CHILD_NOT_PANE_GRID` at run time for anything else).
@@ -186,7 +186,7 @@ export const paneGridChildren: Rule.RuleModule = exemptFreestyle(defineRule({
 const describePaneChild = (context: Context, element: TSESTree.JSXElement): string | null => {
   const name = element.openingElement.name
   const element_ = nameOf(name)
-  if (element_ === "PaneSection" || element_ === "PaneGrid" || element_ === "Freestyle") return null
+  if (element_ === "PaneSection" || element_ === "PaneGrid" || element_ === "ChatFrame" || element_ === "Freestyle") return null
   if (isDomName(name)) return `The raw \`<${element_ ?? "element"}>\``
   const root = rootOf(name)
   if (root === null) return null
@@ -207,11 +207,11 @@ const paneElements = (context: Context, parent: TSESTree.JSXElement | TSESTree.J
 export const paneChildren: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R346: a Pane holds PaneSection elements (or one PaneGrid), never a raw element or another Grammar component.", url: "knowledge/hfs/rules.yaml#R346" },
+    docs: { description: "R346: a Pane holds PaneSection elements (or one PaneGrid, or one ChatFrame), never a raw element or another Grammar component.", url: "knowledge/hfs/rules.yaml#R346" },
     schema: [],
     messages: {
       notSection:
-        "{{what}} is placed straight in a `Pane`, so it skips the inset the pane publishes to its bands. Wrap it in a `<PaneSection>` (with `grow`, `scroll`, `align` or `bleed` as the band needs), or make the pane's one child a nested `<PaneGrid>`.",
+        "{{what}} is placed straight in a `Pane`, so it skips the inset the pane publishes to its bands. Wrap it in a `<PaneSection>` (with `grow`, `scroll`, `align` or `bleed` as the band needs), make the pane's one child a nested `<PaneGrid>`, or for a chat pane (`content=\"chat\"`) its one child a `<ChatFrame>`.",
     },
   },
   create(context) {
