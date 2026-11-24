@@ -52,11 +52,10 @@ export interface FlowModel {
 export const isDiamond = (node: FlowNode): boolean => node.shape === "diamond" && node.container === undefined
 
 const isBranch = (node: FlowNode): boolean => node.kind === "condition" || isDiamond(node)
-
-/** A diamond leaves through its vertices: the end one first, then the two beside it. */
+/** A diamond leaves through its vertices: the main branch straight on in the flow (the end vertex), the others turning to the side (owner: "Chốt", the routing law). */
 const DIAMOND_SIDES: Readonly<Record<GraphDirection, readonly PortSide[]>> = {
     LR: ["EAST", "SOUTH", "NORTH"],
-    TB: ["WEST", "EAST", "SOUTH"],
+    TB: ["SOUTH", "EAST", "WEST"],
 }
 
 /** The side the n-th port of a node sits on. */

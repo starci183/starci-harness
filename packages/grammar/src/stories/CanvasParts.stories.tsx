@@ -14,14 +14,13 @@ type Story = StoryObj;
 
 const ago = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString();
 
-/** The AI's own words are the brand tint (`--accent-soft`), the reader's the solid fill, the customer's the surface. */
-export const MessageBubbleTones: Story = {
+/** The customer's words are the flat surface, the reader's the solid brand fill. */
+export const MessageBubbleFaces: Story = {
   render: () => (
     <Matrix maxWidth={520}>
-      <State label="Incoming, outgoing brand, outgoing soft" direction="column">
-        <G.MessageBubble side="incoming" author="Maria Garcia" meta="09:41" body="Is the store open on the second day of the holiday?" />
-        <G.MessageBubble side="outgoing" author="You" meta="09:42" body="Yes, from 9:00 to 17:00." />
-        <G.MessageBubble side="outgoing" tone="soft" author="Chatbot (AI)" meta="09:41" body="Please wait while I check the holiday schedule." />
+      <State label="Incoming, outgoing" direction="column">
+        <G.MessageBubble side="incoming" author="Maria Garcia" meta="09:41" avatar={<G.Avatar name="Maria Garcia" size="md" />} body="Is the store open on the second day of the holiday?" />
+        <G.MessageBubble side="outgoing" author="You" meta="09:42" avatar={<G.Avatar name="You" size="md" />} body="Yes, from 9:00 to 17:00." />
       </State>
     </Matrix>
   ),
@@ -183,6 +182,10 @@ export const ProportionBarStates: Story = {
     <Matrix maxWidth={520}>
       <State label="Ready, three parts" direction="column">
         <G.ProportionBar label="Receivables by age" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8, valueLabel: '8 invoices' }, { id: 'b', label: '30 to 60 days', value: 3, valueLabel: '3 invoices' }, { id: 'c', label: 'Over 60 days', value: 1, valueLabel: '1 invoice' }]} />
+      </State>
+      <State label="Sizes: HeroUI ProgressBar sm 4px, md 8px (default), lg 12px" direction="column">
+        <G.ProportionBar label="Receivables by age, small" size="sm" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8 }, { id: 'b', label: 'Over 30 days', value: 4 }]} />
+        <G.ProportionBar label="Receivables by age, large" size="lg" empty="Nothing owed" parts={[{ id: 'a', label: 'Under 30 days', value: 8 }, { id: 'b', label: 'Over 30 days', value: 4 }]} />
       </State>
       <State label="Loading" direction="column"><G.ProportionBar label="Receivables by age" empty="Nothing owed" parts={[]} isLoading /></State>
       <State label="Empty" direction="column"><G.ProportionBar label="Receivables by age" empty={<G.Text tone="muted">Nothing owed</G.Text>} parts={[]} /></State>

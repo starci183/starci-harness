@@ -7,7 +7,6 @@ import { AgentName } from "../../leaf/AgentName/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { MessageActions, type MessageActionsConfig } from "../MessageActions/index.js"
 import type { NoChildren } from "../../tier.js"
-import { toneEdgeProps, type ToneEdge } from "../../toneEdge.js"
 import { DEFAULT_REACTION_LABELS, ReactionBar, ReactionPill, topReaction, useReactionBursts, type MessageReaction, type MessageReactionLabels } from "./Reactions.js"
 
 export type { MessageReaction, MessageReactionLabels } from "./Reactions.js"
@@ -21,17 +20,10 @@ export { REACTION_EMOJI } from "./Reactions.js"
 export type MessageBubbleGroupPosition = "single" | "first" | "middle" | "last"
 
 /**
- * `incoming`: someone else wrote it (start side, the FLAT surface: `--surface` with its foreground, no border, no shadow, on the thread's `--background`).
+ * `incoming`: someone else wrote it (start side, the FLAT surface: `--surface` with its foreground, the edge line, no shadow, on the thread's `--background`).
  * `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). Law DNA-COMMON-CHAT-SURFACES; the app never restyles a face.
  */
 export type MessageBubbleSide = "incoming" | "outgoing"
-
-/**
- * `brand`: the solid brand fill (`--accent` with `--accent-foreground`), the reader's own words. `soft`: the brand's tint (`--accent-soft`
- * with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (an AI's reply the reader may approve) so it reads as
- * a second voice, not as the reader's own. It only changes the face of an `outgoing` bubble.
- */
-export type MessageBubbleTone = "brand" | "soft"
 
 /**
  * Where the message actions sit. `floating` (the default): a small bordered toolbar outside the bubble, over the thread.
@@ -55,7 +47,7 @@ type MessageBubbleMessage = {
     readonly isAgent?: boolean
     /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
     readonly agentLabel?: string
-    /** An `Avatar` or `IconTile` beside the bubble. Omit (or pass the same width of nothing) on grouped follow-ups. */
+    /** An `Avatar` or `IconTile` beside the bubble, on every bubble of a chat, both sides (an outgoing bubble draws it at the end). Omit (or pass the same width of nothing) on grouped follow-ups. */
     readonly avatar?: ReactNode
     /** The time or delivery state, muted after the author. */
     readonly meta?: ReactNode
@@ -91,24 +83,22 @@ type MessageBubbleMessage = {
     /** The words of the toolbar and the pill; Vietnamese when omitted. */
     readonly reactionLabels?: MessageReactionLabels
     /**
-     * The hover rail beside the bubble (`MessageActions`, owner 2026-11-21): react, reply and more as ghost icon buttons on the side away from the avatar,
+     * The hover rail beside the bubble (`MessageActions`): react, reply and more as ghost icon buttons on the side away from the avatar,
      * vertically centred on the bubble, shown on hover, on a long press or on keyboard focus inside the message. The bubble gives it its `side`; `reactions`
-     * still draws the chosen emoji as the chip on the bubble's bottom corner. Use it instead of `onReact`/`onReply`/`onShare` (the older tray), not with them.
+     * still draws the chosen emoji as the chip on the bubble's bottom corner. Use it instead of `onReact`/`onReply`/`onShare`, not with them.
      */
     readonly messageActions?: MessageActionsConfig
     readonly hasAvatar?: never
 } & MessageBubbleFace
 
 /**
- * `content="text"` (default): the body is words in the bubble face, and `tone` is the face of an outgoing bubble (the brand fill when omitted; never
- * set on an incoming bubble). `content="card"`: the body is a structured card (what `MessageCard` renders): the face is the surface card, its own
- * padding and line breaks, capped at the same measure as a text bubble with the avatar at the start; its `tone` draws the card face's 1px edge in
- * the tone's `--<tone>-border` (0.55.0: an approval card that waits is `tone="warning"`), the fill unchanged, by the same rule as `SurfaceCard tone`.
- * Never wrap a SurfaceCard in the bubble for that: the layout collapses and the edges double.
+ * `content="text"` (default): the body is words in the bubble face. `content="card"`: the body is a structured card (what `MessageCard` renders): the face is the
+ * flat surface, its own padding and line breaks, capped at the same measure as a text bubble with the avatar at the start. Never wrap a SurfaceCard in the bubble
+ * for that: the layout collapses and the edges double.
  */
 type MessageBubbleFace =
-    | { readonly content?: "text"; readonly tone?: MessageBubbleTone }
-    | { readonly content: "card"; readonly tone?: ToneEdge }
+    | { readonly content?: "text" }
+    | { readonly content: "card" }
 
 /**
  * One unresolved message (knowledge STATE-8): with a `side`, the bubble face on that side with two Skeleton text lines in the
@@ -170,8 +160,6 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
 const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
     const { body, side = "incoming", author, isAgent = false, agentLabel, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS, messageActions } = props
     const content = props.content ?? "text"
-    const tone: MessageBubbleTone = props.content === "card" ? "brand" : props.tone ?? "brand"
-    const edge = props.content === "card" ? props.tone : undefined
     const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar">{actions}</div>
     const hasHead = (author != null || meta != null || status != null) && (groupPosition === "single" || groupPosition === "first")
     const hasReactions = reactions !== undefined && reactions.some((reaction) => reaction.count > 0)
@@ -197,7 +185,6 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
     const bodyElement = (
         <div
             className="starci-core-message-bubble-body"
-            {...toneEdgeProps(edge)}
             onPointerDown={pressable ? () => { cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
             onPointerUp={pressable ? cancelPress : undefined}
             onPointerCancel={pressable ? cancelPress : undefined}
@@ -214,7 +201,6 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
             data-tier="composite"
             data-contract="SURFACE-3 SURFACE-4 RADIUS-6"
             data-grammar-bubble-side={side}
-            data-grammar-bubble-tone={side === "outgoing" ? tone : "brand"}
             data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
             data-grammar-bubble-footer={footer == null ? "false" : "true"}
             data-grammar-bubble-measure={measure}
@@ -273,7 +259,7 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
 /**
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
- * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (no border, no shadow) on the thread's `--background`, outgoing the brand
+ * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (edge line, no shadow) on the thread's `--background`, outgoing the brand
  * fill (the accent pair; inline content inherits its foreground); the corner on
  * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
  * whole loading thread; with `error` the failure.
@@ -298,7 +284,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
 /**
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
- * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (no border, no shadow) on the thread's `--background`, outgoing the brand
+ * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (edge line, no shadow) on the thread's `--background`, outgoing the brand
  * fill (the accent pair; inline content inherits its foreground); the corner on
  * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
  * whole loading thread; with `error` the failure.

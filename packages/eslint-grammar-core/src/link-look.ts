@@ -5,7 +5,7 @@ import { attributeOf, grammarName } from "./lib/grammar-jsx.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 
 /**
- * THE LINK LOOK (owner, 2026-11-09, LINK-LOOK). Grammar's `Link` is HeroUI v3's own link: the primary colour, the underline on hover only
+ * THE LINK LOOK (LINK-LOOK). Grammar's `Link` is HeroUI v3's own link: the primary colour, the underline on hover only
  * and the anchor icon at the end of its label. Its type size and leading are INHERITED from the line it stands in (14 in a body, 12 in
  * meta or caption text). An app never restyles it.
  *

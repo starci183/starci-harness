@@ -17,7 +17,7 @@ import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, portHolder, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, stopProcess, waitFor } from './local-run.mjs';
 import type { LocalDeps, ProcessMode } from './local-run.mjs';
 import type { LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { launch } from './local-host.mjs';
@@ -25,6 +25,7 @@ import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
 import { planTunnel, routeTunnel } from './local-tunnel.mjs';
+import { endEarlierTrees, ensureEdge, freePort, needsEdge } from './local-edge.mjs';
 
 const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
 
@@ -244,19 +245,36 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
 
 /**
  * Builds (serve mode, when the process declares a build) and starts one native process, recording its pid, port, command line and mode.
- * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file.
+ * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file. The caller ends every
+ * earlier tree of the same command from this checkout first (local-edge.mts endEarlierTrees). A web the dev tunnel publishes runs behind its edge
+ * (local-edge.mts): the edge keeps the declared port and the process gets a free backend port, `${port.<name>}` included.
  */
-export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>): Promise<string> {
+export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>, deps: LocalDeps = {}): Promise<string> {
+  const lines: string[] = [];
+  let target = local;
+  if (run.port !== null && needsEdge(local, run)) {
+    const backend = await (deps.freePort ?? freePort)();
+    const edge = await ensureEdge(ctx, local, run, record, backend, deps);
+    if (edge.line !== null) lines.push(edge.line);
+    if (edge.ok) target = { ...local, ports: { ...local.ports, [run.port]: backend } };
+  }
   const build = buildCommand(run, mode);
-  if (build !== null) await runCommand(ctx, local, build, runEnvironment(ctx, local, build, custody, null));
+  if (build !== null) await runCommand(ctx, target, build, runEnvironment(ctx, target, build, custody, null));
   const launched = launchedCommand(run, mode);
-  const pid = startProcess(ctx, local, launched, runEnvironment(ctx, local, run, custody, 'app'));
+  const pid = startProcess(ctx, target, launched, runEnvironment(ctx, target, run, custody, 'app'));
   const actual = modeOf(run, mode);
-  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null), command: processCommand(ctx, local, launched), mode: actual };
-  return `process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'})`;
+  const port = run.port === null ? null : (target.ports[run.port] ?? null);
+  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port, command: processCommand(ctx, target, launched), mode: actual };
+  lines.push(`process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'}${target === local ? '' : `, behind its edge on backend port ${String(port)}`})`);
+  return lines.join('\n');
 }
 
-/** Starts each native process that is not already running: built and served by default, its watcher only with `--watch`. */
+/**
+ * Starts each native process that is not already running: built and served by default, its watcher only with `--watch`. One copy of each process
+ * runs per environment: a recorded tree that still runs its command with its port silent (a watcher whose server died) is stopped before the fresh
+ * start, and a port some other process already listens on refuses STACK_LOCAL_SECOND_COPY, naming that process, instead of starting a second copy
+ * beside it (each copy a watcher with its own crons and consumers).
+ */
 async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps, mode: ProcessMode): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
@@ -265,12 +283,31 @@ async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Cu
     const known = record.processes[run.name];
     if (known) {
       const owned = await ownedProcess(ctx, known, deps);
-      if (owned.ours) { out.push(`process ${run.name}: running (pid ${known.pid})`); continue; }
-      if (owned.stale !== null) {
+      if (owned.ours) {
+        out.push(`process ${run.name}: running (pid ${known.pid})`);
+        // A web that runs behind its edge gets its edge back when the edge alone is gone (the port would answer nothing).
+        if (run.port !== null && known.port !== null && known.port !== local.ports[run.port] && needsEdge(local, run)) {
+          const edge = await ensureEdge(ctx, local, run, record, known.port, deps);
+          if (edge.line !== null) out.push(edge.line);
+        }
+        continue;
+      }
+      if (owned.silent === true) {
+        stopProcess(ctx, known.pid, deps);
+        out.push(`process ${run.name}: stopped its previous tree (pid ${known.pid}): ${owned.stale ?? 'its port is silent'}; starting fresh`);
+      } else if (owned.stale !== null) {
         out.push(`process ${run.name}: discarded a stale record: ${owned.stale}; starting fresh`);
       }
     }
-    out.push(await launchProcess(ctx, local, run, custody, mode, record));
+    // An earlier tree of the same command from this checkout (another state base's, or one whose record was lost) is ended, never refused.
+    out.push(...endEarlierTrees(ctx, local, run, record, deps));
+    const port = run.port === null ? null : (local.ports[run.port] ?? null);
+    const holder = port === null ? null : (deps.portHolder ?? ((value: number) => portHolder(ctx, value)))(port);
+    // The process's own edge holds its declared port: that is no second copy.
+    if (holder !== null && holder.pid !== record.edges?.[run.name]?.pid) {
+      throw failure('STACK_LOCAL_SECOND_COPY', `process ${run.name}: port ${port} already listens (pid ${holder.pid}${holder.command === null ? '' : `, ${holder.command.slice(0, 160)}`}), which this environment's record does not hold: a second copy is refused; stop that one (starci app stack down --env ${local.env} from the checkout that started it, or end pid ${holder.pid}) and run up again`);
+    }
+    out.push(await launchProcess(ctx, local, run, custody, mode, record, deps));
     writeRecord(dir, record);
   }
   record.ports = { ...local.ports };
@@ -316,8 +353,11 @@ function refuseTakenRange(ctx: StackContext, local: LocalConfig, deps: LocalDeps
 /**
  * Waits for each readiness row. The first failing row of the api, the web or a service stops `up` with STACK_LOCAL_READY; a failing gallery row (isAdvisoryRow)
  * is listed in `advisory` and the wait goes on, so the rest of the stack is reported and stays running while `up` still exits non-zero.
+ * The window is `timeoutSeconds` from this call, made once the processes are started: the time `up` spent before (a heavy-slot queue for
+ * compose, the migrate, the seeds) never shortens it, as in local-restart.
  */
-export async function waitReady(ctx: StackContext, local: LocalConfig, deadline: number, advisory: string[]): Promise<string[]> {
+export async function waitReady(ctx: StackContext, local: LocalConfig, timeoutSeconds: number, advisory: string[]): Promise<string[]> {
+  const deadline = ctx.now() + timeoutSeconds * 1000;
   const lines: string[] = [];
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
@@ -329,7 +369,22 @@ export async function waitReady(ctx: StackContext, local: LocalConfig, deadline:
 }
 
 /** `up` for a dev environment. */
-export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only, watch = false }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined; watch?: boolean } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+/**
+ * The environment `up` starts: every process but the on-demand ones (`onDemand`, the gallery) not named in `--with`, and no readiness row of a
+ * gallery left out. The owner: one web and one backend server per app run on the dev stack; a gallery or a landing runs only when asked for.
+ */
+export const withOnDemand = (local: LocalConfig, names: readonly string[]): LocalConfig => {
+  const wanted = new Set(names);
+  const runs = local.processes.filter((run) => run.onDemand !== true || wanted.has(run.name));
+  const galleries = runs.some((run) => isAdvisoryRow(run.name));
+  return { ...local, processes: runs, ready: local.ready.filter((row) => galleries || !isAdvisoryRow(row.name)) };
+};
+
+export async function upLocal(ctx: StackContext, declared: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only, watch = false, with: withNames }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined; watch?: boolean; with?: string | undefined } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+  const named = (withNames ?? '').split(',').map((name) => name.trim()).filter((name) => name !== '');
+  const unknown = named.filter((name) => !declared.processes.some((run) => run.name === name && run.onDemand === true));
+  if (unknown.length > 0) throw refusal('STACK_USAGE', `--with names an on-demand process (${declared.processes.filter((run) => run.onDemand === true).map((run) => run.name).join(', ') || 'none declared'}), not ${unknown.join(', ')}`);
+  const local = withOnDemand(declared, named);
   const mode: ProcessMode = watch ? 'watch' : 'serve';
   refuseTakenRange(ctx, local, deps);
   const host = await preflight(ctx, local, deps);
@@ -344,11 +399,13 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   lines.push(...await runSetup(ctx, local, custody, advisory));
   makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
-  const deadline = ctx.now() + timeoutSeconds * 1000;
+  // Each wait gets its own --timeout window, opened once what it waits for has started (as local-restart does): the heavy-slot queue of a
+  // compose up never eats a service's window, nor the migrate and the seeds the processes' readiness window (waitReady opens its own).
   const bring = async (names: string[]): Promise<void> => {
     if (names.length === 0) return;
     const started = await compose(ctx, local, ['up', '-d', '--build', ...names], { values, heavy: true, label: 'compose up' });
     if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
+    const deadline = ctx.now() + timeoutSeconds * 1000;
     for (const name of names) {
       const ready = await serviceReady(ctx, local, name, deadline, deps);
       lines.push(`service ${ready.detail}`);
@@ -372,7 +429,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     await bring(local.services.map((service) => service.name).filter((name) => name !== dbService));
   } else await bring(local.services.map((service) => service.name));
   lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await clearMovedRoutes(ctx, local, deps), ...await startProcesses(ctx, local, custody, deps, mode));
-  lines.push(...await waitReady(ctx, local, deadline, advisory));
+  lines.push(...await waitReady(ctx, local, timeoutSeconds, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));
   lines.push(...(local.tunnel?.routes ?? []).map((route) => `origin ${route.name} (public): https://${route.host}`));

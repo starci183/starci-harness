@@ -9,7 +9,7 @@ may import a model library is the infrastructure table (`ruleParams.be.infraOwne
 [hfs/slots.yaml](../../hfs/slots.yaml), BE-INFRA-1); the provider key list is the canon's
 (`@starci/eslint-canon-be src/ai-gateway.ts` `PROVIDER_KEY_VARIABLES`).
 
-Library APIs were read from the LangChain JS documentation on 2026-10-29 (`@langchain/openai` 1.8.0,
+Library APIs follow the LangChain JS documentation (`@langchain/openai` 1.8.0,
 `@langchain/core` 1.3.1): ChatOpenAI at docs.langchain.com/oss/javascript/integrations/chat/openai, OpenAIEmbeddings at
 docs.langchain.com/oss/javascript/integrations/text_embedding/openai, structured output at
 docs.langchain.com/oss/javascript/langchain/models, retrievers at reference.langchain.com/javascript/langchain-core/retrievers/BaseRetriever.
@@ -41,7 +41,15 @@ secret (`mountedKeys`, profiles `work` and `embed`); every client, the app's own
 runtime alike, authenticates with it. The gateway exposes no admin API and the app passes it no admin token: a key is
 rotated by resealing the member and deploying, and the gateway's key store keeps only the usage and quota counters of
 the mounted key. Dev and production each seal their own `STARCI_AI_KEY`; one is never shared across environments. No
-other file, spec or runtime holds a provider key, and no provider SDK is imported anywhere.
+other file, spec or runtime holds a platform provider key.
+
+One exception, bring-your-own-key chat. A workspace may chat with its own provider key, streamed token by token: the
+official SDKs `openai` and `@anthropic-ai/sdk` are imported only by the one integration `integrations/ai-byok`, only to
+build a client from that workspace's own key for a streaming chat call. The key comes only from the workspace's sealed
+provider account, read when the call is made, held in a `Secret` (BE-CONFIG-3), never written to a log, an error, a
+span or a stored row, and never reused for another workspace. A platform key, a gateway call, an embedding, a
+fixed-shape chain (BE-AI-4) and every other model call do not use the SDKs: they go through the gateway and
+`integrations/ai`, and no other file imports either SDK.
 
 Why: one door for every call gives one place for keys, quotas, failover and usage, and a leaked client key is rotated
 at the gateway without touching a provider. One client key per app trades per-caller revocation and attribution at
@@ -52,7 +60,7 @@ breaker state and the key store live in the hosting process, so the api that hos
 the gateway moves to a service of its own before the api scales out.
 
 Enforced by: `provider-key-custody` (R326), `infra-import-owner` (R90:
-`@starci/ai-router` in the custody owner, every provider SDK and `openai` nowhere); the embed pin is review only.
+`@starci/ai-router` in the custody owner, `openai` and `@anthropic-ai/sdk` in `integrations/ai-byok` alone, every other provider SDK nowhere); the embed pin and the key's origin in the sealed provider account are review only.
 
 ## BE-AI-2 Choose: a code chain or the agent runtime
 

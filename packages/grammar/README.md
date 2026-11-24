@@ -32,13 +32,13 @@ its root from one place.
 
 ### Button variant
 
-`Button` and `IconButton` have three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"):
+`Button` and `IconButton` have three looks, one prop:
 `variant` is `primary` (solid, the ONE main action of a card or region), `border` (an outline, every secondary action; the default) or
 `danger` (a destructive action: delete, disconnect, stop for good). Grammar draws them with HeroUI's `primary`, `outline` and `danger`
 (`BUTTON_VENDOR_VARIANT`); there is no intent, step, placement, ghost, tertiary, secondary or soft-danger look, and a Button looks the
 same in a row, a bar or a dialog. `tone` (`accent`, `info`, `success`, `warning`) is only the colour of a `primary` (a toned notice's action);
 the types refuse it on `border` and `danger`. A text link is a `Link`, never a Button. The [button props catalog](docs/button-variant-props.md)
-lists the published values. Codemod `v0550` moves an app's intents and vendor variants onto `variant`.
+lists the published values.
 
 `AlertDialog` renders its border cancel first, focuses it on entry, then renders its danger confirm last. The `Leaves/Button variant`
 stories show the three looks in light and dark, including a toned primary, destination, pending and skeleton states.
@@ -48,7 +48,7 @@ stories show the three looks in light and dark, including a toned primary, desti
 The [app-shell canon](../../contexts/ui/composition.md) owns `FE-APP-SHELL-1` through `FE-APP-SHELL-7`.
 The `Compositions/App shell` stories show the fixed shell, grouped sidebar, icon rail and mobile drawer.
 
-- `size="control"` is available on `TextAction`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input`, `SearchField` and `SegmentedControl` take the one control height.
+- `size="control"` is available on `TextAction`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input` and `SearchField` take the one control height.
 - `SidebarItem.badge`, `badgeLabel` and `badgeMax` show and announce unread counts in both sidebar presentations. `SidebarGroup.placement="end"` places settings groups after the main groups and pushes them to the bottom.
 - The collapsed Sidebar uses Grammar's internal `AnchoredTooltip` on hover and focus. HeroUI Tooltip positions the annotation beside the selected collection item and portals it into the same family DOM scope, preserving HeroUI's collection anatomy. `onAction` runs for every activated destination, including the selected item, so a drawer can close consistently.
 - A fixed `WorkspaceShell` frames its `compactHeader` slot as the mobile opener band; pass a client `Drawer` with an ellipsis `IconButton` trigger. The `navigationDrawer` form owns the same band when it supplies the opener.
@@ -190,11 +190,27 @@ root's semantic tokens (so family, theme and token overrides apply), and re-rend
 with a skeleton and loads nothing. A source Mermaid refuses becomes an error inside the same frame: an `Alert` with
 `errorTitle`, then the source as a `FencedCodeBlock`.
 
+The first view is the whole drawing when it stays readable; it is never opened under zoom 0.85 (caption-role words at 11px or more), so a sequence or a flowchart too wide for a phone opens at 0.85 from its first participant or entry node and is panned by touch and pinched, with the zoom controls kept.
+
+Every edge of a flowchart is its own line: two edges never leave or enter a node at one point and never share a stretch, so no junction dot is drawn. Tones (`danger`, `success`, `accent`, `info`) paint a node (`tones`, or `class B danger` in the source), a sequence message (`messageTones`, by its place from 1) or a flowchart edge (`edgeTones`, by its place among the links from 1, or Mermaid's own edge id and class: `A r1@--> R`, then `class r1 info`). `legend` draws a row under the canvas saying what each edge tone means. A node names an icon with Mermaid's own `R@{ icon: "redis" }` (its `[(…)]` shape stays) and `icons` maps the name to what the app draws, one line high before the words.
+
 ```tsx
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
+
+<MermaidDiagram
+    label="Read and write paths"
+    source={`flowchart LR
+  A[Web] r1@--> R[(Redis)]
+  M[Admin] w1@--> R
+  R@{ icon: "redis" }
+  class r1 info
+  class w1 accent`}
+    icons={{ redis: <img src="/logos/redis.svg" alt="" /> }}
+    legend={[{ tone: "info", label: "Read path" }, { tone: "accent", label: "Write path" }]}
+/>
 ```
 
-### Fragment (0.49.0)
+### Fragment
 
 `<Fragment reason="...">` is the escape hatch: a region that renders no element, only its children, like React's Fragment, where any markup, any class name and any library is allowed, because no Grammar component fits. It takes `reason` (required, for the lint and the inventory) and children, and adds no DOM node, paint or inset of its own. A file that also needs React's Fragment imports this one as `import { Fragment as GrammarFragment } from "@starci/grammar"` (the lint follows the alias; React's Fragment and `<>` open no region). The Grammar lint reports nothing inside it; every rule outside it stays. The Grammar draws no graph and imports no graph or animation library (`npm run check:libraries`; motion is the CSS transitions its tokens drive), so an app that needs `@xyflow/react` or `motion` uses it inside a `Fragment` and declares it itself. the fragment inventory script (from `@starci/eslint-grammar-core`) lists every use.
 
@@ -298,9 +314,9 @@ paywall, a 404, a 500). Its `media` is `{ icon }` (a glyph on a soft brand-tone 
   media={{ illustration: { staticsKey: "illustrations/errors/not-found.webp" } }} actionLabel="Back to the home page" actionHref="/" />
 ```
 
-**Forms (25).** Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
+**Forms (23).** Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, Input, NumberField, OtpInput,
-PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,
+PressableField, RadioGroup, Rating, SearchField, Select, Slider, Switch,
 Textarea, TimeField. Every Field-contract control takes `label`, `description`, `errorMessage`,
 `isRequired`, `isDisabled`, `isReadOnly` and `isInvalid`, and draws HeroUI's field order: label, control,
 description, error. `Select`, `ComboBox`, `SearchField` and `Form` also take `isPending`. `OtpInput` names the
@@ -358,9 +374,8 @@ page of timestamps does not repeatedly interrupt assistive technology. Grammar o
 **DropdownMenu entries.** `entries` is a list of items and sections; the app writes data and no markup, no separator, no
 className and no size. An item takes `id`, `label`, `description`, `descriptionLines`, `shortcut`, `href`, `isDisabled`, `submenu` and:
 
-- `iconSource`: a glyph component (the app's Heroicons). Grammar draws it in HeroUI's leading position at the canon icon size,
-  20px (`size-5`, `Icon` `leading`; the Heroicons rule R93 / FE-ICON). HeroUI's own docs example draws its sample glyph at
-  `size-4`, which is example content and not a component default, so 20px is StarCi's icon rule and not a vendor override.
+- `iconSource`: a glyph component (Tabler outline, the one set). Grammar draws it in HeroUI's leading position at 16 (`Icon` `control`,
+  the icon table of contexts/ui/scale.md: the one leading icon beside 14px words), the size HeroUI's own docs example draws (`size-4`).
 - `mark`: a decorative node instead of `iconSource`, e.g. an identity mark (`<Avatar size="sm" shape="rounded" isDecorative />`). The public type rejects both props together.
 - `tone: "danger"`: HeroUI's `danger` variant, which colours the label and the glyph. Sign out, delete, remove, leave workspace
   and revoke are destructive; the lint rule `starci-grammar/destructive-menu-entry-needs-danger-tone` of `@starci/eslint-grammar-core` refuses such an entry without it.
@@ -407,7 +422,7 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 **Data views.** `Board` (`label`, `columns` of `{ id, title, count, items, empty }`), `ScheduleGrid` (`label`, `columns`, `rows`,
 `items` placed by `row` and `column`, `cellLabels`, `empty`) each take `isLoading` and `error`. Charts are the ext's: `BarChart`,
 `LineChart`, `AreaChart` (activity over time, `series` and `stacked`), `DonutChart` (parts of a whole: `centerFigure`, `centerCaption`,
-a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts` (core's hand-drawn `BarChart` and `Sparkline` are deleted in 0.55.0).
+a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts`.
 A PDF document is shown ONLY with `PdfViewer` of `@starci/grammar/core/ext/pdf` (pdfjs-dist, an optional peer, loaded lazily; see `src/core/ext/pdf/README.md`).
 A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
 
@@ -417,7 +432,7 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 ```
 
 
-**A timeline, a key and a map (0.46.2).** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
+**A timeline, a key and a map.** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
 
 ```tsx
 <ScheduleGrid label="Launch plan" columns={days} rows={rows} onRowToggle={toggleGroup} empty={...}
@@ -427,13 +442,13 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 ```
 
 **Navigation & Data (15).** Accordion, AvatarGroup, Calendar, DataTable,
-DescriptionList, Disclosure, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+DescriptionList, Disclosure, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 
 **The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
-`ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
+`TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
 
-A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
+A `DataTable` row with an `href` is a real link in both layouts. In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
 the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
 anchor, stretched over the whole row, the one tab stop; the focus ring is drawn on the row. A plain click navigates once through the router in both, and `onRowAction` still runs alongside.
 
@@ -442,14 +457,12 @@ Enter / Space on the focused row (React Aria's row action, so the row is a focus
 and the pressable list row's hover fill (`--surface-secondary`). Buttons, links and editors inside a row keep their own press; the row
 title stays plain text, never a Link. `<DataTable label="Invoices" onRowAction={(id) => open(id)} columns={columns} rows={rows} renderCell={renderCell} emptyContent={empty} />`
 
-`LogoStack` shows which connections an agent uses: `items` (`{ id, label, src?, iconSource? }`, a provider logo image or an app
-icon), `max` (default 3) round 20px logos with no plate, one identity gap (4) apart (not overlapped, so no mark is cut by the next),
-then a "+N" pill, an optional muted `caption` ("3 connections") and `label` naming the group. It is static by default. With `onPress`,
-or `isTrigger` when it is the trigger of a `DropdownMenu` or `Popover`, the whole group is one `PlainPressable` (a focus ring, no
-button fill) named by `label`, and its logos are decorative. `isLoading` (or a loading region) draws the same box under a shimmer.
+Channel logos are Avatars: a row of them is an `AvatarGroup` of `kind: "logo"` items (`{ id, name, src, kind: "logo" }`, a
+brand logo on a white surface in both themes, fitted inside with a hairline edge), and a lone logo an `Avatar kind="logo"` of the same
+`size`. They are sized by `size` alone (`sm` 24 beside text, `md` 40), never by hand.
 
 ```tsx
-<DropdownMenu trigger={<LogoStack isTrigger label="Agent connections" items={connections} caption="3 connections" />} entries={entries} />
+<AvatarGroup label="Agent connections" size="sm" max={3} items={connections.map((c) => ({ id: c.id, name: c.name, src: c.logo, kind: "logo" }))} overflowLabel={(n) => `${n} more`} />
 ```
 
 `PlainPressable` is exported from `@starci/grammar/common` (outside the registry): `children`, `aria-label` (needed when the content has
@@ -529,11 +542,11 @@ in light and the dark success, warning and danger, `--foreground`); a hash of `s
 one, and the style draws white or black letters, at least 4.5:1 on every entry. The same seed is always the same colour.
 An uploaded `src` overrides the initials, which stay under it while it loads. The round crop and the size ramp are the Avatar's. Images have `alt=""`; the avatar shell carries its name, or `isDecorative`
 hides it beside a visible name. `AvatarButton` names the button and keeps its inner avatar
-decorative. `fallbackMark` is deprecated and ignored.
+decorative.
 
 `kind="person" | "agent"` defaults to `person` on `Avatar`, `AvatarButton` and `AvatarGroup` items.
 Agent names are free text and use the same initials rule. An agent's avatar is initials only, like a person's
-(owner 2026-11-22: the AI pill on the avatar is gone); `kind="agent"` only names it `Name (AI)` for assistive technology.
+(no AI pill on the avatar); `kind="agent"` only names it `Name (AI)` for assistive technology.
 The visible "AI" is the small neutral Chip that follows the NAME: `AgentName` (`isAgent`, `agentLabel` default `AI`), placed
 by `ListRow` (`isAgent` on the row), the card head (`CardHead.isAgent`), `MessageBubble` (`isAgent` beside `author`) and the
 members list (`ListBox` item `isAgent`). An app never places the Chip by hand.
@@ -600,8 +613,17 @@ label and authoritative `isToday`; it owns native time/current-date semantics wi
 `MessageCard` is an agent's rich message as data: `title` with an optional `chip`, then `body` or `details` (a compact `DescriptionList`), then
 `actions` (the `primary` first, an `open` action ending in the arrow last), then a muted xs `meta` line. It renders
 `MessageBubble content="card"` and is capped at the bubble measure (`measure="wide"` for the 70% step) with the `avatar` at the start. A `Tabs`
-strip that ends a `PaneSection` stands on the band's one full-width separator; a pane head band above a scroll band ends in one separator; an
-`EmptyNotice` inside a thread (a `PaneSection scroll role="log"`) draws no card surface.
+strip that ends a `PaneSection` stands on the band's one full-width separator; an
+`EmptyNotice` inside a thread (the `ChatFrame` thread) draws no card surface.
+
+`ChatFrame` is the one chat on any host: `label` (the thread's name), `header` (a `PaneHeader`, and for a customer chat the owner row in the same zone),
+the thread as children (`MessageBubble`s and day `Divider`s, oldest first), `footer` (the composer or the decision actions), `scrollRef`, `isLoading` and
+`error`. It draws the header, one 1px line, the thread (the only scroller, on `--background`, opening at the newest message and following new ones
+while the reader is at the foot), one 1px line and the footer, and fills the height its host gives it. A grid holds it as
+`<Pane area="chat" content="chat"><ChatFrame ... /></Pane>` (the pane takes no `footer`, `head`, `surface` or `inset`), a drawer as
+`<Drawer bodyInset="none"><ChatFrame ... /></Drawer>` (the sheet's title row and the frame header are one zone), a page as the frame in a box with a height.
+An incoming `MessageBubble` and every `MessageCard` are the flat `--surface` with no border and no shadow, an outgoing bubble is `--accent`, and every
+bubble passes its `avatar`.
 
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
@@ -637,7 +659,7 @@ exactly one `PaneGrid` attached flush to the band's separator, reaching both con
 ```tsx
 <Page chrome="panes" header={{ title: "Support agent", tabs }}>
   <PaneGrid label="Setup" areas={["chat side"]} columns={["fill", "standard"]}>
-    <Pane area="chat"><PaneSection scroll={{ label: "Conversation", role: "log" }}>{bubbles}</PaneSection></Pane>
+    <Pane area="chat" content="chat"><ChatFrame label="Conversation" header={<PaneHeader title="Support agent" />}>{bubbles}</ChatFrame></Pane>
     <Pane area="side" surface><PaneSection gap="section">{settings}</PaneSection></Pane>
   </PaneGrid>
 </Page>
@@ -652,10 +674,10 @@ Every side takes the container inset `--grammar-inset` (0.75rem) at every breakp
 bottom edge) and `--grammar-pane-inset-block-end-divider` (a divider below).
 A `collapse="drawer"` pane renders its children in the drawer under the same inset.
 
-`PaneSection` is the one band of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
+`PaneSection` is the one band of a pane: every child of a Pane is a `PaneSection`, one nested `PaneGrid` or, in a `content="chat"` pane, the one `ChatFrame`.
 It pads inline by the pane inset; the sections of a pane stack with the row gap between them, the first takes the
 block-start inset and the last the block-end inset. Props: `grow` (takes the remaining height), `scroll`
-(`{ label, role?: "log" | "region", tone?: "surface" | "background", scrollRef? }`: its own full-bleed scroll owner
+(`{ label, tone?: "surface" | "background", align?: "start" | "center" | "end" }`: its own full-bleed scroll owner
 with the inset on its content, so the scrollbar sits on the pane edge), `align` (`start` | `center`), `bleed="inline"`
 (the one `HorizontalScrollRegion` in it, such as a chip row, reaches both pane edges and takes the inset as its own
 padding and scroll padding), `gap` (`inline` | `row` | `section`) and `as` (`div` | `header` | `footer`). It takes no
@@ -713,7 +735,7 @@ refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollReg
 edge to edge across the sheet (the default `content` keeps the inset).
 
 **Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: one line at 40px, growing to 6, with `send` drawing its own 40px Send
-Button 12px after the box and `startAction` one icon button inside the box at its start (0.52.0). The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws DiceBear's Initials style: two letters on a solid Grammar tone. `Sublabel` is the 12 / 500 / muted
+Button 12px after the box and `startAction` one icon button inside the box at its start. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws DiceBear's Initials style: two letters on a solid Grammar tone. `Sublabel` is the 12 / 500 / muted
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 
@@ -722,7 +744,7 @@ approval), with an optional `actions` band at its foot: white, a 1px `--border` 
 in a card: a table, list, set of facts, strip of figures or chart stands flat under a `Section` (its `title`, its `filter` row and one muted
 `caption`). Lint `card-is-object` refuses a card around a lone collection, form or placeholder; a `DataTable` has no `surface` prop.
 
-**One look for a list** (0.43.0, owner 2026-11-17). A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
+**One look for a list.** A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
 canvas, a card body, a drawer or dialog, a pane band, a rail): plain rows on the surface, divided by hairlines, the rows aligned
 with the section title, with no frame, fill, radius or shadow. A list is never a card: `SurfaceCard` has no `list` kind, and cards stay for real objects. A hand-made row list (blocks divided by `Divider`) is refused (lint
 `surface-in-surface`).
@@ -786,7 +808,7 @@ a surface: the top layer is raised and a nested layer is subordinate; never rais
 Each family's DNA owns the paint. SurfaceCard and bounded
 SurfaceAccordionCard derive their depth from the parent context. SurfaceAccordionCard defaults to
 `frame="bounded"`; `frame="unpainted"` and Rail pass the parent's context through.
-A field has ONE look wherever it stands (0.40.0): Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField,
+A field has ONE look wherever it stands: Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField,
 Select, ComboBox, DatePicker, DateRangePicker, Checkbox, CheckboxGroup, RadioGroup, PressableField and OtpInput draw HeroUI's
 `primary` field in these surfaces and outside them alike; the theme gives it its edge (`--field-border`, `--field-border-width`).
 There is no field `variant` to pass. Overlay triggers keep their surrounding context.
@@ -811,7 +833,7 @@ A `ListBoxItem` is `label` (a string: the title, accessible name and typeahead t
 selects the visible line limit. The same prop and default apply to `DropdownMenuItem`, `SidebarItem`
 and the `ListOption` descriptions used by Select and ComboBox. The packaged stylesheet clamps the
 vendor `Description` slot; its full text stays available to assistive technology.
-A `ListBoxItem` with `href` (0.39.4) is a navigation row: a real anchor (`<a role="option">`) that opens the destination through `GrammarRoot`'s router, in a new tab on a modifier or middle click, with copy-link, Enter on the
+A `ListBoxItem` with `href` is a navigation row: a real anchor (`<a role="option">`) that opens the destination through `GrammarRoot`'s router, in a new tab on a modifier or middle click, with copy-link, Enter on the
 focused row and the focus ring; `onAction` runs alongside. An item is either selectable or a link: `href` belongs to a list with `selectionMode="none"` (the default when any item has an `href`) and is ignored in a selecting
 list, which draws no link. A Data nav or a mail list is `<ListBox label="Mail" selectionMode="none" items={[{ id: "inbox", label: "Inbox", href: "/mail/inbox" }]} />`.
 
@@ -819,7 +841,7 @@ list, which draws no link. A Data nav or a mail list is `<ListBox label="Mail" s
 DNA. Omit it for a read row, which keeps HeroUI's normal label and muted description.
 Optional `labelLeading` puts a decorative glyph in the title line itself, inside HeroUI's `Label` before the
 text and on its baseline, e.g. a status mark beside an item's name. Both glyph slots are
-`aria-hidden` (A11Y-2), so the name stays `label`; pass an `Icon usage="chip"` to keep the title line's height.
+`aria-hidden` (A11Y-2), so the name stays `label`; pass an `Icon usage="control"` to keep the title line's height.
 `ListBox size="sm" | "md" | "lg"` defaults to `md` and reserves a leading column of 2rem, 2.5rem
 or 3rem, respectively, so icons, avatars and group grids keep labels in one column. An item's
 `size` overrides the list's size.
@@ -866,8 +888,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   family's default theme as HeroUI tokens (`:root, .light` and `.dark`), in the first layer
   (`starci-grammar-theme`). They are optional: import one after `@heroui/styles` and write your own tokens after it, or
   skip it. Offset Pop's signature is geometry (outline width, the hard offset, radii) and `--offset-pop-shadow-ink`, the
-  colour of the offset, which reads `--foreground` when unset. `*_TOKEN_NAMES` / `*_TOKEN_DEFAULTS` list the same tokens
-  and are deprecated. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
+  colour of the offset, which reads `--foreground` when unset. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
   part follows, by computed style in a headless Chromium (`npm run prove-theme` after `npm run build`).
 - **App-overridable Grammar tokens.** Two defaults live in Grammar's base layer (`src/common/ramps.css`), so an app's brand CSS can
   override them on its root and Grammar's CSS follows; Grammar reads only the token, never a literal value.
@@ -882,12 +903,12 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   would shadow the app's value); every rule reads it with its fallback, which `npm run check:hooks` holds. They cover a card's edge
   on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
   cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
-  the toggle plates (ChoiceChips, RadioGroup rows, the Select pill), the destructive entry button's outline, the
+  the toggle plates (RadioGroup rows, the Select pill), the destructive entry button's outline, the
   chat faces, the Quote, and the Quote.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
 - **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no
-  `theme` (the prop is deprecated and sets nothing), because a mode switch inside a root would shadow the app's
+  `theme`, because a mode switch inside a root would shadow the app's
   tokens again.
 - **Forced colours.** Under `forced-colors: active` each family maps its surfaces, outlines,
   selection and focus onto system colours. Current and selected decisions remain visible through
@@ -963,7 +984,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
   HeroUI v3 / React Aria, and each ships Common anatomy CSS and a spec that renders it under bare
   Common, Core and Offset Pop.
   - Forms (19): Field, Fieldset, Form, Textarea, Select, ComboBox, SearchField, NumberField,
-    Checkbox, CheckboxGroup, RadioGroup, Switch, Slider, SegmentedControl, DateField, DatePicker,
+    Checkbox, CheckboxGroup, RadioGroup, Switch, Slider, DateField, DatePicker,
     DateRangePicker, TimeField, FileDropzone. They share one Field contract and one
     44px touch floor.
   - Overlays and feedback (14): Dialog, AlertDialog, Drawer (side, and bottom sheet with a handle),

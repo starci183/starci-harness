@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# Every changelog is append-only: lanes each add their own bullets under one section, so two lanes always touch the same hunk. Union
+# merge keeps both sides' lines instead of conflicting (a lane merges origin/dev with `git merge`, core/lane/gate.ts).
+CHANGELOG.md merge=union
+packages/*/CHANGELOG.md merge=union

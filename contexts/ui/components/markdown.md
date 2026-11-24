@@ -45,7 +45,7 @@ const { diagrams } = await prerender(text) // store beside the text, pass as <Ma
 | `@starci/grammar/core/ext/markdown/server` | `prepare(source, profile, options?)`, `highlight(tree)`, `highlightCode(code, lang)` (Shiki, css-variables theme) |
 | `@starci/grammar/core/ext/markdown/prerender` | `prerender(source \| tree, { fallback? })`: beautiful-mermaid, then the Grammar's Mermaid (neo look) where a DOM exists; recoloured onto Grammar tokens and sanitized |
 | `@starci/grammar/core/ext/markdown/react` | `<Markdown>`, `DEFAULT_LABELS`, the `MarkdownHandle` and `MarkdownHighlight` types |
-| `@starci/grammar/core/ext/markdown.css` | only what Grammar has no part for: the Shiki-to-token map, the code line grid, the compare columns, the highlight marks, the figure |
+| `@starci/grammar/core/ext/markdown.css` | only what Grammar has no part for: the Shiki-to-code-palette map (`--shiki-token-*` onto `--grammar-code-*`, see [lesson](lesson.md) "Code palette"), the code line grid, the compare columns, the highlight marks, the figure |
 
 ## `<Markdown>` props
 

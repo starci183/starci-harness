@@ -1,9 +1,6 @@
 # Content: business first
 
-What a screen SAYS, before how it looks. The owner's rulings of 2026-11-22: "không render ngôn ngữ kĩ thuật trừ tính chất dự án" (render no
-technical language unless the project's nature calls for it), and "k muốn render kĩ thuật là nói concepts để fe sửa thôi": this is a
-CONCEPT the front end writes to, not a word list, a translation map or a check. Adopted into the harness on "ok h update .claude lại"; a
-screen is approved by its look on "screen phải duyệt kĩ" ([../project/gallery.md](../project/gallery.md) PROJECT-GALLERY-10).
+What a screen SAYS, before how it looks. Render no technical language unless the project's nature calls for it: this is a CONCEPT the front end writes to, not a word list, a translation map or a check. A screen is approved by its look ([../project/gallery.md](../project/gallery.md) PROJECT-GALLERY-10).
 
 ## CONTENT-1 The reader sees business concepts, never system internals
 
@@ -50,7 +47,7 @@ English engine text never reaches a business reader; the app writes its own Viet
 ## How it is held
 
 - The UI audit's content lenses **business**, **hand-composed** and **tech-leak** ([../project/gallery.md](../project/gallery.md)
-  PROJECT-GALLERY-8 item 3): the auditor's judgement against this concept, with no word list.
+  PROJECT-GALLERY-8 item 2): the auditor's judgement against this concept, with no word list.
 - The lane brief names the screen's questions before code (PROJECT-GALLERY-10).
 - The Grammar contract laws `DNA-COMMON-CONTENT-BUSINESS-FIRST`, `DNA-COMMON-ENTITY-SUMMARY-THREE-FIGURES` and
   `DNA-COMMON-SCREEN-OWNER-REVIEWED` ([../grammars/contract.yaml](../grammars/contract.yaml)).

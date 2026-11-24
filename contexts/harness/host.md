@@ -39,7 +39,7 @@ What a shell on the harness host does differently from the textbook, and the one
 
 ### Self-healing
 
-Docker's embedded DNS can stop answering a name on a network whose containers all run and are healthy. On 2026-11-21 it stopped
+Docker's embedded DNS can stop answering a name on a network whose containers all run and are healthy. It has stopped
 resolving `embeddings-gate` on `starci_default` twice in one night: the tunnel answered 502 on `embed.starci.org`, 113 NIVO
 `vector.upsert` jobs waited, and only a manual restart cleared it. A healthcheck inside the gate cannot see that (it answers on its own
 loopback), and Compose never restarts a container that is merely unhealthy. The stack therefore carries five things, each a file
@@ -84,11 +84,8 @@ embeddings-gate cloudflared-embeddings` from the one process `host up` uses (the
 
 ## Roles and machines
 
-The owner's words (2026-11-21): "gõ cli starci cái là dựng lun chứ k phải hỏi lại" (one command brings a host up, no question asked);
-"phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái này là push xài chung" (the machines live in a local config.yaml, because the
-repository is pushed and shared); "tùy vps có vps kiểu [k3s, starci{sonar,embed,buildkit,...}, monitor(prom, portainer, grafana,...},...)
-chia thành các hạng mục 1 vps có thể có 1 hoặc N hạng mục để host, tối thiểu 1 cái ví dụ k3s để host services" (a machine hosts one or more
-roles, at least one).
+One command brings a host up, with no question asked; the machines live in a local config.yaml, because the repository is pushed and
+shared; a machine hosts one or more roles, at least one.
 
 ### Roles
 
@@ -110,6 +107,19 @@ and endpoint. Nothing runs differently because of the catalog: the host stack st
 ops/vps/services/embeddings/. BuildKit's entry (`starci.buildkit`, `host-compose`, project `buildkit`) is reserved: lane t190-buildkit
 builds its definition (ops/vps/services/buildkit/) and registers its adapter (render, up, down, ping) in `cli/src/harness/host-compose.ts`;
 until then it reads `unbuilt` (`HOST_SERVICE_UNBUILT`) and nothing is deployed for it.
+
+### Host settings
+
+The settings of this host as a machine live in the `host` block of the same config.yaml, never in the repository, and every CLI copy of the
+machine (the harness checkout, a lane worktree, a CLI installed in an app's `node_modules`, which finds config.yaml through the harness home above
+its working folder) reads them fresh at each use (`harness/host-settings.ts`):
+
+```yaml
+host:
+  diskFloorMb: 15360   # the free space a heavy command's drive keeps; over heavy.diskFloorMb of ops/liveness.yaml, the default
+```
+
+A host with no config.yaml (a CI runner) reads every default.
 
 ### Machines
 
@@ -193,7 +203,7 @@ of [ops/host.yaml](../../ops/host.yaml) whose check is its doctor and verify row
 
 The host's GPU embedding model, served at `https://embed.starci.org`: `starci.embed` of the machine `local`. The pinned model is
 `qwen3-embedding:4b` at its native 2560 dimensions, with no truncation, manifest `df5bd2e3c74c…` (ops/host-roles.yaml), the same on every
-machine (the owner: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc."). `qwen3-embedding:8b` stays pulled until the apps move.
+machine.
 
 - **Where it runs.** The model runs in the host's native Ollama on `127.0.0.1:11434` (service `embeddings`, up when
   `/api/tags` lists the pinned model, at any position), never in a container: the native install reaches the GPU today, Docker Desktop's GPU
@@ -232,6 +242,14 @@ machine (the owner: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũn
   `hostServices.needs: {starci.embed: [local, sv-hk-1]}` ("What an app needs" above).
 - **Data note.** A staging or production text sent to the PC travels over the Cloudflare tunnel with the gate key; the owner accepts this
   because the PC is his own machine.
+
+## WSL memory
+
+On a Windows host the WSL VM (vmmem, which Docker Desktop runs in) keeps the Linux page cache as committed memory and gives it back only when
+told: it held 32 GB of commit while its distro used 2 GB, and the host ran out of commit ("paging file is too small") with RAM still free.
+`starci host up --host local` merges `[experimental] autoMemoryReclaim=dropcache` into `%UserProfile%/.wslconfig`, keeping every other key and
+section (`cli/src/harness/wsl-config.ts`), and says so; WSL reads it at its next start, so it takes effect after the owner's next
+`wsl --shutdown` (or reboot), which the harness never runs.
 
 ## Dependencies through a link
 

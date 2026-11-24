@@ -104,7 +104,7 @@ family's duty to its own defaults, measured in the package's stories; COLOR-3 is
 
 | Id | Criterion | Falsified by |
 | --- | --- | --- |
-| COLOR-3 | command (button) vs destination (anchor, identifiable at rest), selection (state attribute plus a non-colour change) and focus (an outline distinct from selection) stay distinguishable with colour removed; non-text indicators meet `contrast.nonText` | an underline only on hover; focus and selection sharing one fill |
+| COLOR-3 | command (button) vs destination (anchor, identifiable at rest by its 500 weight beside regular copy; its underline is the hover cue), selection (state attribute plus a non-colour change) and focus (an outline distinct from selection) stay distinguishable with colour removed; non-text indicators meet `contrast.nonText` | a link at the weight of the copy around it; focus and selection sharing one fill |
 | COLOR-5 | a family's default theme: text meets `contrast.text` (large text `contrast.largeText`), soft status pairs and bare status glyphs `contrast.statusSoft`, required boundaries `contrast.nonText`, measured on composed pixels in every theme, in forced colours, and in every state | a token judged without its composed background; one theme measured for all |
 
 A nested field's fill against its surface is recorded, not scored: the field is carried by its fill, label and

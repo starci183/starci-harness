@@ -1,5 +1,5 @@
-// The memory plan of `app check` (RAM-SIZING) and the greedy sizing of a test run: the check's own heap from the cache records, the lint chunk, the
-// parent's re-execution rule, and a test run's workers, caps and arguments taken from the RAM free at admission and from nothing an earlier run left.
+// The memory plan of `app check` (RAM-SIZING) and the fixed sizing of a test run: the check's own heap from the cache records, the lint chunk, the
+// parent's re-execution rule, and a test run's workers, caps and arguments, process limits that never decide admission.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -7,29 +7,19 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { admission, heapFor, hfsLimitsEnv, loadHeavyRules, needsOf, testRunEnv, testRunSizing, testWorkerArgs, testWorkerCap, type Held, type HeavyRules } from "./heavy.js"
+import { heapFor, hfsLimitsEnv, loadHeavyRules, testRunEnv, testRunSizing, testWorkerArgs, testWorkerCap, type Held, type HeavyRules } from "./heavy.js"
 import { formatPlan, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory, type Scope } from "./memory-plan.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
 const rules: HeavyRules = { ...loadHeavyRules(opsDir), testWorkers: "50%" }
 
 const REFERENCE: Scope = { coverageMb: 494, recordMb: 520, largestMb: 31 }
-const GB = 1024
 
 /** The value, asserted present. */
 const must = <T>(value: T | null | undefined): T => {
     assert.ok(value !== null && value !== undefined)
     return value
 }
-
-/** The room a command finds on a host with `freeMb` free and nothing admitted lately. */
-const roomOf = (freeMb: number): number => freeMb - rules.reserveMb
-
-void test("one reserve of 4 GB is the only headroom, and a test run needs a parent and one worker to start", () => {
-    assert.equal(rules.reserveMb, 4096)
-    assert.equal(needsOf(rules).test, rules.testRun.parentMb + rules.testRun.workerMb)
-    assert.equal(needsOf(rules).tsc, rules.caps.tsc.minMb)
-})
 
 void test("the plan holds the check's own heap from the cache records, and the lint chunk", () => {
     const plan = must(planMemory(REFERENCE, rules))
@@ -40,46 +30,21 @@ void test("the plan holds the check's own heap from the cache records, and the l
     assert.equal(planMemory(REFERENCE, { ...rules, plan: undefined }), null, "an ops file without a plan block plans nothing")
 })
 
-void test("an app check test step takes the workers the RAM free at its start holds, whatever ran before it and with no lane cap", () => {
-    // 38 GB free on 12 cores, as the host that ran jest on one worker: the sizing reads the room and the cores alone.
-    const room = roomOf(38 * GB)
-    const sizing = testRunSizing(rules, room, 12)
-    const expected = Math.max(1, Math.min(testWorkerCap(rules, 12), Math.floor((room - rules.testRun.parentMb) / rules.testRun.workerMb)))
-    assert.equal(sizing.workers, expected)
-    assert.ok(sizing.workers > 1, "more than one worker")
-    assert.equal(sizing.workers, testRunSizing(rules, room, 12, Number.MAX_SAFE_INTEGER).workers, "no cap is the same as the room's own count")
-    assert.equal(testRunSizing(rules, room, 12, 1).workers, 1, "a caller that names a cap (the jest discovery) keeps it")
+void test("a test run takes min(testWorkers of the cores, its caller's cap) workers, at least one, one core left to the parent", () => {
+    assert.equal(testRunSizing(rules, 12).workers, testWorkerCap(rules, 12))
+    assert.equal(testRunSizing(rules, 28).workers, 14, "half the cores")
+    assert.equal(testRunSizing(rules, 2).workers, 1, "one core stays free for the parent")
+    assert.equal(testRunSizing(rules, 12, 1).workers, 1, "a caller that names a cap (the jest discovery) keeps it")
+    const sizing = testRunSizing(rules, 28)
+    assert.equal(sizing.holdMb, sizing.parentMb + sizing.workers * sizing.workerMb)
     assert.equal(hfsLimitsEnv(rules).STARCI_TSC_HEAP_MB, String(rules.caps.tsc.capMb), "the tsc heap cap reaches the app check, which sizes its tsc programs by it")
-})
-
-void test("reference numbers (22 GB free, 28 cores) give the workers the caps divide the room into", () => {
-    const sizing = testRunSizing(rules, roomOf(22 * GB), 28)
-    assert.equal(sizing.parentMb, rules.testRun.parentMb)
-    assert.equal(sizing.workers, 10, "floor((22528 - 4096 - 2048) / 1536)")
-    assert.equal(sizing.workerMb, rules.testRun.workerMb)
-    assert.equal(sizing.holdMb, sizing.parentMb + 10 * sizing.workerMb)
-    assert.equal(testRunSizing(rules, roomOf(200 * GB), 28).workers, 14, "never above half the cores")
-    assert.equal(testRunSizing(rules, roomOf(200 * GB), 2).workers, 1, "one core stays free for the parent")
-})
-
-void test("a low-RAM host (7 GB free) runs one worker, and the floor is one whatever the room", () => {
-    assert.equal(testRunSizing(rules, roomOf(7 * GB), 28).workers, 1)
-    assert.equal(testRunSizing(rules, -500, 28).workers, 1)
-    assert.equal(testRunSizing(rules, 0, 28).parentMb, rules.testRun.parentMb, "the parent keeps its cap")
-})
-
-void test("more room never gives fewer workers, and a tsc takes its cap or the room when that is less, never under its minimum", () => {
-    const sizes = [roomOf(10 * GB), roomOf(14 * GB), roomOf(22 * GB), roomOf(40 * GB)].map((room) => testRunSizing(rules, room, 28).workers)
-    for (let at = 1; at < sizes.length; at += 1) assert.ok(must(sizes[at]) >= must(sizes[at - 1]))
-    assert.equal(heapFor(rules, "tsc", 20 * GB), rules.caps.tsc.capMb)
-    assert.equal(heapFor(rules, "install", 1500), 1500, "less room than its cap: the room")
-    assert.equal(heapFor(rules, "install", 100), rules.caps.install.minMb, "alone on almost no room: its minimum")
-    assert.equal(heapFor(rules, "eslint", 6 * GB), rules.caps.eslint.capMb, "a typed lint chunk is never given less than its measured peak")
+    assert.equal(heapFor(rules, "tsc"), rules.caps.tsc.capMb, "a tool runs under its cap")
+    assert.equal(heapFor(rules, "eslint"), rules.caps.eslint.capMb)
 })
 
 void test("the worker args carry the worker count and the idle memory limit, and the environment the heap caps", () => {
-    const sizing = testRunSizing(rules, roomOf(22 * GB), 28)
-    const held: Held = { options: {}, roomMb: roomOf(22 * GB), rules, test: sizing }
+    const sizing = testRunSizing(rules, 28)
+    const held: Held = { options: {}, rules, test: sizing }
     assert.deepEqual(testWorkerArgs(["node", "jest", "--coverage"], held), ["node", "jest", "--coverage", `--maxWorkers=${String(sizing.workers)}`, `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
     assert.deepEqual(testWorkerArgs(["node", "jest.js"], held), ["node", "jest.js", `--maxWorkers=${String(sizing.workers)}`, `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
     assert.deepEqual(testWorkerArgs(["jest", "--maxWorkers=2", "--workerIdleMemoryLimit=1GB"], held), ["jest", "--maxWorkers=2", "--workerIdleMemoryLimit=1GB"], "an argv that sets them keeps them")
@@ -95,7 +60,7 @@ void test("the preload gives each forked worker the worker heap in place of the 
     t.after(() => {
         rmSync(dir, { recursive: true, force: true })
     })
-    const env = testRunEnv(testRunSizing(rules, roomOf(22 * GB), 28), "")
+    const env = testRunEnv(testRunSizing(rules, 28), "")
     const child = join(dir, "child.cjs")
     writeFileSync(child, "const v8 = require('node:v8'); process.stdout.write(String(Math.round(v8.getHeapStatistics().heap_size_limit / 1048576)) + ' ' + (process.env.NODE_OPTIONS ?? ''))\n")
     const parent = join(dir, "parent.cjs")
@@ -114,9 +79,9 @@ void test("the check re-executes itself only when node's heap is under the plan,
     assert.equal(needsReexec({ ...plan, parentMb: 5632 }, { [MEMORY_REEXEC_ENV]: "1" }, 4144), false)
 })
 
-void test("--explain prints the test run the RAM free now would get", () => {
-    const lines = formatPlan(must(planMemory(REFERENCE, rules)), rules, 22 * GB, 28)
-    assert.ok(lines.some((line) => line.includes("a test run on the 22528 MB free now") && line.includes("10 workers at 1536 MB")), lines.join("\n"))
+void test("--explain prints the test run's sizing", () => {
+    const lines = formatPlan(must(planMemory(REFERENCE, rules)), rules, 28)
+    assert.ok(lines.some((line) => line.includes("a test run: parent") && line.includes("14 workers at 1536 MB")), lines.join("\n"))
 })
 
 void test("the scope reads the cache folder's bytes from disk", (t) => {
@@ -131,26 +96,4 @@ void test("the scope reads the cache folder's bytes from disk", (t) => {
     assert.equal(scope.coverageMb, 2)
     assert.equal(scope.recordMb, 3)
     assert.equal(scope.largestMb, 2)
-})
-
-void test("admission counts only what lately admitted commands planned, and an older command shows as live free RAM", () => {
-    const free = 40 * GB
-    const lately = admission(rules, free, 10, [{ kind: "tsc", mb: 8192 }], "tsc", false, null)
-    const aged = admission(rules, free, 10, [{ kind: "tsc", mb: 0 }], "tsc", false, null)
-    assert.equal(lately.committedMb, 8192)
-    assert.equal(lately.roomMb, free - rules.reserveMb - 8192)
-    assert.equal(aged.roomMb, free - rules.reserveMb, "no longer planned: free RAM shows it")
-    assert.equal(admission(rules, 10 * GB, 10, [], "tsc", false, null).admits, true, "alone, a tsc starts on 10 GB free")
-})
-
-void test("nothing running admits a command whose need exceeds the room: waiting would free nothing", () => {
-    const alone = admission(rules, 6000, 10, [], "test", false, null)
-    assert.equal(alone.admits, true)
-    assert.equal(alone.roomMb, 6000 - rules.reserveMb)
-    assert.equal(alone.shortMb, needsOf(rules).test - alone.roomMb, "the shortfall is named so the caller can say it")
-    assert.equal(admission(rules, 40 * GB, 10, [], "test", false, null).shortMb, 0, "a command the room holds is short of nothing")
-    assert.equal(admission(rules, 200, 10, [], "tsc", false, null).admits, true, "even a host under its reserve admits the one command that runs")
-    const busy = admission(rules, 6000, 10, [{ kind: "tsc", mb: 4096 }], "test", false, null)
-    assert.equal(busy.admits, false, "with a command running its memory may free: the newcomer waits")
-    assert.equal(busy.shortMb, 0)
 })

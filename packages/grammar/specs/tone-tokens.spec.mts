@@ -2,7 +2,7 @@
  * Standard tone tokens only (Grammar 0.55.0, owner 2026-11-22: "không dùng màu chuẩn soft và soft-surface ko vì thế chỉnh màu trò", then "alert nói
  * rõ là icon 24 soft-foreground trên nền soft thôi mà?"): every tone has `-soft` (HeroUI's, or Grammar's for info) and `-border` (Grammar's, one
  * derivation for every tone); no soft-surface step is left (it served only the Alert's tile); AA for the soft foreground on soft. Plus the one
- * tone-edge rule (SurfaceCard tone, MessageBubble content="card" tone), the small AI Chip, the quiet chosen RadioGroup row, the tile's AgentName,
+ * tone-edge rule (SurfaceCard tone), the small AI Chip, the quiet chosen RadioGroup row, the tile's AgentName,
  * Progress info, and no typed arrow in Grammar's own text.
  *
  *   node --import ./specs/support/register.mts --test specs/tone-tokens.spec.mts
@@ -15,7 +15,6 @@ import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { SurfaceCard } from "../src/core/frame/SurfaceCard/index.tsx"
-import { MessageBubble } from "../src/core/composite/MessageBubble/index.tsx"
 import { AgentName } from "../src/core/leaf/AgentName/index.tsx"
 import { Progress } from "../src/core/leaf/Progress/index.tsx"
 import { TONE_EDGES } from "../src/core/toneEdge.ts"
@@ -93,7 +92,7 @@ test("AA in both themes, every tone: the soft foreground on the soft (an Alert b
     }
 })
 
-test("THE TONE EDGE: one rule, read by SurfaceCard tone and MessageBubble content=card tone; only the edge's colour, the fill and width stay the face's", () => {
+test("THE TONE EDGE: one rule, read by SurfaceCard tone; only the edge's colour, the fill and width stay the face's", () => {
     const css = read("common/styles.css")
     for (const tone of TONE_EDGES) {
         const token = tone === "neutral" ? "default" : tone
@@ -104,21 +103,6 @@ test("THE TONE EDGE: one rule, read by SurfaceCard tone and MessageBubble conten
     assert.doesNotMatch(css, /data-grammar-surface-tone/u, "no second implementation")
     const card = renderToStaticMarkup(createElement(SurfaceCard, { label: "Chờ duyệt", tone: "warning", children: "x" }))
     assert.match(card, /class="[^"]*starci-core-surface[^"]*"[^>]*data-grammar-tone-edge="warning"|data-grammar-tone-edge="warning"[^>]*class="[^"]*starci-core-surface/u)
-})
-
-test("MessageBubble content=card takes tone: the card face (the bubble body) carries the tone edge; a text bubble's tone stays its outgoing face", () => {
-    const bubble = renderToStaticMarkup(createElement(MessageBubble, { body: "Báo giá chờ duyệt", content: "card", tone: "warning" }))
-    assert.match(bubble, /class="starci-core-message-bubble-body"[^>]*data-grammar-tone-edge="warning"/u)
-    assert.match(bubble, /data-grammar-bubble-tone="brand"/u)
-    for (const tone of TONE_EDGES) assert.match(renderToStaticMarkup(createElement(MessageBubble, { body: "x", content: "card", tone })), new RegExp(`data-grammar-tone-edge="${tone}"`, "u"), tone)
-    const text = renderToStaticMarkup(createElement(MessageBubble, { body: "x", side: "outgoing", tone: "soft" }))
-    assert.match(text, /data-grammar-bubble-tone="soft"/u)
-    assert.doesNotMatch(text, /data-grammar-tone-edge/u)
-    assert.doesNotMatch(renderToStaticMarkup(createElement(MessageBubble, { body: "x", content: "card" })), /data-grammar-tone-edge/u)
-    // A text bubble takes the outgoing face, never an edge tone: its props do not admit one.
-    type TextBubble = Extract<Parameters<typeof MessageBubble>[0], { readonly content?: "text" }>
-    const edgeOnText: "warning" extends NonNullable<TextBubble["tone"]> ? true : false = false
-    assert.equal(edgeOnText, false)
 })
 
 test("AgentName: the AI Chip is SMALL, the caption size in a 16px box on the name's baseline, never the 24px Badge pill", () => {
@@ -135,12 +119,12 @@ test("AgentName: the AI Chip is SMALL, the caption size in a 16px box on the nam
     assert.match(ramps, /--grammar-type-caption-line: 1rem;/u)
 })
 
-test("RadioGroup rows: the chosen row is quiet, its unselected edge coloured at most --accent-border; the plate-selected-border hook never reaches it", () => {
+test("RadioGroup rows: the chosen row is quiet, its unselected edge coloured at most --accent-border", () => {
     const css = read("common/components-forms.css")
     const rule = /\[data-grammar-radio-appearance="rows"\] \.starci-core-radio\[data-selected="true"\] \{([^}]*)\}/u.exec(css)?.[1] ?? ""
     assert.match(rule, /border: var\(--starci-core-plate-border, 0\);/u)
     assert.match(rule, /border-color: var\(--accent-border\);/u)
-    assert.doesNotMatch(rule, /plate-selected-border|--foreground|outline/u)
+    assert.doesNotMatch(rule, /--foreground|outline/u)
 })
 
 test("SurfaceCard kind=tile takes isAgent: the AgentName Chip follows the tile's name", () => {
@@ -165,10 +149,4 @@ test("Grammar's own source and stories type no arrow character (U+2190-U+21FF, U
     const arrows = /[←-⇿➔-➿⟰-⟿]/u
     const found = walk(root).filter((file) => arrows.test(readFileSync(file, "utf8")))
     assert.deepEqual(found, [])
-})
-
-test("a negative Alert's border action draws its edge in the danger ink: the neutral edge would vanish on the danger soft box", () => {
-    const css = readFileSync(fileURLToPath(new URL("../src/common/components-overlays.css", import.meta.url)), "utf8")
-    const rule = /\[data-component="Alert"\]\[data-grammar-tone="negative"\] \.starci-core-alert-actions > \[data-component="Button"\]\[data-grammar-variant="border"\] \{\s*border-color: var\(--danger\);\s*\}/u
-    assert.match(css, rule)
 })

@@ -1,13 +1,13 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { CheckCircleIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline"
 import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroTooltip } from "@heroui/react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes } from "../../leaf/Field/index.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
 import type { NoChildren } from "../../tier.js"
+import { TablerAlertCircle, TablerCircleCheck, TablerCopy } from "../../leaf/Icon/tabler.js"
 
 type CopyFieldBase = {
     /** The visible accessible name of the value. */
@@ -142,7 +142,7 @@ const CopyFieldControl = (props: CopyFieldProps) => {
 
     const describedBy = [descriptionId, failed ? errorId : undefined].filter((part) => part !== undefined).join(" ")
     const actionName = state === "copied" ? copiedLabel : copyLabel
-    const Glyph = state === "copied" ? CheckCircleIcon : failed ? ExclamationCircleIcon : DocumentDuplicateIcon
+    const Glyph = state === "copied" ? TablerCircleCheck : failed ? TablerAlertCircle : TablerCopy
     const announcement = state === "copied" ? copiedLabel : failed ? copyErrorLabel : ""
     const showsTooltip = props.masked !== true && isTruncated && !isLoading
 

@@ -3,25 +3,8 @@
 Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs`
 templates: a release push builds the release's images and pushes them to the registry the app declares, and once every
 required check of that commit is green it deploys them to the app's Docker Swarm environments, verifies the release and
-rolls it back by itself when the verification fails. This page is the pipeline's design; where the built code differs,
-[As built by the work packages](#as-built-by-the-work-packages) says how, and there the code and the rules are the authority. It builds on the committed check cache of [check-cache.md](check-cache.md) and
+rolls it back by itself when the verification fails. It builds on the committed check cache of [check-cache.md](check-cache.md) and
 on the Swarm verbs of `starci app stack`, and it changes neither: it adds the order they run in.
-
-## What an app has today
-
-| file | trigger | does | problem |
-|---|---|---|---|
-| `ci.yml` | push of `main`, `release/candidate-*`, tags `v*`; dispatch | fast, lint per side, 6 test shards, coverage, build, Sonar (tags only) | the main push and the tag push of one release run the whole suite twice on the same commit; Dependabot pull requests get no CI at all |
-| `images.yml` | tags `v*` | builds every image with SBOM and provenance into OCI tarballs, never pushes | a third build of the same commit; the attested images are never the ones deployed |
-| `stack-deploy.yml` | dispatch only, from a `v*` tag | builds and pushes again (provenance off), then `stack deploy` (render, provision, converge, post-deploy, verify, accept; a red step redeploys the previous release) or `stack rollback` | manual; the deployed digests carry no SBOM or provenance; it waits for CI only through `requireCi` |
-| `db-deploy.yml` | dispatch only, from a `v*` tag | materializes `DATABASE_URL` and migrates from the runner after a tracked backup receipt | separate from the deploy, so a release can run against an unmigrated schema; needs the database reachable from the runner, which an in-stack self-hosted database is not |
-| `stack-key-restore.yml` | dispatch | restores the server's age identity from its GitHub Environment copy | none; kept |
-| `dependabot.yml` | schedule | npm, actions and docker updates | its pull requests are judged by nothing |
-
-The deploy verb already holds the hard parts: an immutable release whose id is the sha256 of the rendered stack,
-digests only (`STACK_DEPLOY_PLACEHOLDER`), pre-pull, convergence judged on the new task spec, the stored previous release
-redeployed from its bytes, the `current` pointer moved only after verification. What is missing is the trigger, one
-build per commit, the database step, a lock shared with the owner's urgent deploy, and records that say what really runs.
 
 ## Dev and prod
 
@@ -40,12 +23,12 @@ checkout and no lock: prod work never moves the dev checkout, and a dev batch ne
 
 | | dev | prod |
 |---|---|---|
-| source | lanes -> the batch lander -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
+| source | each lane lands itself: `lane gate --push --land` -> `dev` ([branches.md](branches.md) PROJECT-BRANCH-2) | one fixed release sha on `main` |
 | harness packages | local first: every harness change goes to the local registry at once (`starci deps publish-local --execute` in the harness); the app adopts it on dev at once (`deps install-local` in a lane, `devSync.local` on the dev checkout); a lane never waits for npm | npm, published once per release train for prod only (`release push`, CI publish); the cut pins npm versions ONCE: `deps install-local --restore`, then each local pin bumped to its npm version |
 | local pins | committed on `dev` and lane branches when `hfs.json` declares `deps.devAllowsLocalRegistry` (the default for an app on local-first dev) (`deps check` accepts the local-registry codes there, [authority/packages.md](../authority/packages.md) "Dev-only local pins") | refused: `release push`, `release cut`, `app release`, a prod deploy and a push of main hold npm versions |
-| checks | the lander's one `app check --env prod` per batch | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
+| checks | the lane's own fast gate, and a fast re-check (codegen, typecheck) when dev moved before it landed | the full checks, docker images built, `app check --env prod`, staging, the tag, CI (below) |
 | runs on | the app's main dev checkout and its dev stack (`starci app stack up --env dev`), exposed through the dev tunnel (Cloudflare, PROJECT-STACKS-15) | staging, then prod (Docker Swarm, below) |
-| moves by | `starci dev sync --execute`, by hand or by the lander after a landed batch | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
+| moves by | `starci dev sync --execute`: by its debounced runner after a landing (`dev sync-runner`), or by hand | `starci release cut --from <sha> --execute`, then the tag's CI and deploy |
 
 **`starci dev sync [--local <pkg>]... [--dir <checkout>] [--env <env>] [--no-restart] --execute`** brings an app's main dev checkout
 to `origin/dev` and its running dev stack onto that code:
@@ -54,8 +37,20 @@ to `origin/dev` and its running dev stack onto that code:
    a checkout holding commits `origin/dev` lacks is `DEV_SYNC_DIVERGED`. Work reaches dev through a lane, never through this checkout.
 2. A recorded overlay (`deps install-local`) is put back to the committed pins first, so the overlay never survives a sync
    that does not name it again; then the checkout fast-forwards to `origin/dev` and `npm ci` runs (skipped when the lockfile did
-   not change and no overlay was dropped).
+   not change and no overlay was dropped). A sync that names exactly the overlay already installed (each package at the same
+   version), whose commits move no pinned manifest and no lockfile, keeps it: nothing is restored, installed, stopped or restarted
+   for it, so the web the owner has open keeps running and only the side a commit changed restarts.
 3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
+   **Build first.** When the sync installs, the new tree is installed and built before anything stops (`core/dev/stage.ts`): a staging
+   worktree of the checkout's repository at the new commit, `<parent>/.<checkout>.starci-next`, gets the `npm ci`, the `--local` packages and the
+   app's `codegen` and `build:modules`, each under the heavy governor, while the running api and web keep serving the old tree. A failure there is
+   `DEV_SYNC_BUILD` with nothing stopped or moved. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
+   entries of the staging tree, each folder whole and nothing inside a listed folder: every `node_modules`, every `dist`, generated files such as husky's `.husky/_`) are moved in by rename on the same volume, the workspace
+   links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the tracked files the staged install changed
+   (an overlay's pins and lockfiles) are copied, and what they replaced is removed, retrying a file an antivirus holds for a moment. A move that
+   fails puts every move back (`DEV_SYNC_SWAP`) and marks the checkout (`<git dir>/starci-dev-sync-unswapped`): it is already on the new commit with the old
+   install, so the next sync, though dev has nothing new, installs, builds, migrates and restarts whole, and the runner retries a refused swap once after 20 s. A swap that passed is smoke-checked (`cli/src/core/dev/smoke.ts`): from the root and each workspace, a few declared packages and `next`, `postcss`, `picocolors`, and the dependencies of each down three levels, resolved by file the way Node does; a miss replaces the swapped install with a clean `npm ci` in place (the overlay and the prepare scripts again) before anything restarts. After any failed sync the runner checks every declared process and runs `app stack up` for those nothing listens for. So the downtime of a sync is the swap and the restart. The in-place install below is the fallback
+   for a copy an interrupted in-place sync left aside.
    Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
    local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
    children and seen gone: on Windows a running process that loaded a `.node` file makes `npm ci` die halfway with EPERM. A
@@ -63,9 +58,8 @@ to `origin/dev` and its running dev stack onto that code:
    `node_modules` it replaces (the root's and each workspace's) renamed aside first, on the same volume: a folder a process still
    holds refuses the rename at once, one retry follows a short pause, then `DEV_SYNC_BUSY` with nothing deleted. A failed
    install puts every copy back; the copies are removed only once it passed, and a copy left aside by a sync that died is moved
-   back by the next sync, which installs again. (A staging install swapped in by a rename is not sound for npm workspaces:
-   their links and nested `node_modules` would point into the staging copy.) Then the tree is prepared as the lane gate and the
-   lander prepare theirs (`harness/prepare-tree.ts`): the app's `codegen` and `build:modules` (its workspace packages, whose `main`
+   back by the next sync, which installs again. Then the tree is prepared as the lane gate and the
+   lane gate prepares its own (`harness/prepare-tree.ts`): the app's `codegen` and `build:modules` (its workspace packages, whose `main`
    is their `dist`), each it declares, whenever the sync installed or a running process reads a changed file. A step that fails is
    `DEV_SYNC_BUILD` with its output; the next sync builds again and restarts both sides though the checkout has not moved. The
    stopped processes restart after the install and the build, with the changed ones, even under `--no-restart`, and alone when the
@@ -80,14 +74,30 @@ to `origin/dev` and its running dev stack onto that code:
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
    checkout's code and runs the built artifact (the process's `serve` block: `next build` then `next start`, the api build then
    `node dist/...`), never a watcher, waits for its health on the loopback and over each tunnel hostname that routes its port, and
-   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6).
+   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6). A web the tunnel
+   publishes runs behind its edge, which keeps answering the tunnel with a page saying the app is updating (reloading itself) from
+   the stop before the install until the new web's page and its Grammar CSS answer, so the owner never loads a page with no Grammar
+   CSS; and a start first ends any earlier tree of the same command from the checkout, so one api watcher runs per checkout
+   ([stacks.md](stacks.md) "The edge of a dev web").
 6. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
 
 Hot reload is opt-in for live coding: `starci app stack up --env dev --execute --watch` (or `stack restart --watch`) runs the
 process's own watcher argv.
 
-**The lander's auto-sync** is a setting of this machine alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the
-state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
+**The debounced dev sync.** A landing never syncs by itself: `lane gate --land` marks its app's dev checkout as wanting a sync, and one runner per
+checkout (`starci dev sync-runner`, started through a relay so that no terminal tab or agent owns it) waits until no landing marked it for
+`debounceSeconds` (120 s), stops the checkout's stray dev servers (a process run from inside the checkout that is a dev server or listens on a port
+the environment declares, and that its stack does not record: neither a recorded process, one of its children, nor a web's edge; an earlier hand
+run, or a copy a moved checkout left, which `stack up` refuses as STACK_LOCAL_SECOND_COPY; nothing else), runs `dev sync
+--execute` once to the newest `origin/dev`, brings the stack up (`app stack up --execute`) when a declared process has nothing listening after it,
+and syncs again only when a landing marked the checkout during that sync. `npm ci` that dies on a held file (ENOTEMPTY, EPERM, EBUSY: an antivirus
+scanning a large file) runs again up to four times, its `node_modules` removed with retries before each try. Its files are in the checkout's git folder, the same for every CLI copy of the machine: `<git common dir>/starci-dev-sync/` holds the mark
+(`wanted.json`), the status (`status.json`: `waiting`, `syncing`, `synced`, or `failed` with the refusal's code and message), the runner's lock
+(its pid) and its log. `starci dev sync-runner --status --dir <checkout>` prints the status and the pending mark; `--request` marks and starts it
+by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once.
+
+Its settings are this machine's alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the state base `STARCI_LOCAL_ROOT` when set; a CLI
+installed in an app's `node_modules` reads the same file through the harness home above its working folder), schema `starci/local-settings@1`:
 
 ```json
 {
@@ -102,33 +112,39 @@ state base `STARCI_LOCAL_ROOT` when set), schema `starci/local-settings@1`:
 }
 ```
 
+**One entry per app.** The file is machine-wide but a landing marks only its own repository's dev checkout: `devSync.repos` maps the repository
+a lane lands in to its checkout (and optional `afterLand`, `env`, `debounceSeconds`, `processes`). With any entry listed, a repository without one syncs
+nothing; with none listed the top-level `checkout` is a one-app machine's. And two syncs of one checkout never run together: `dev sync --execute` takes
+a lock per checkout (temp folder, by path) and a second one waits for the first (`DEV_SYNC_BUSY` after 30 minutes; a dead holder is reclaimed).
+
+```json
+{ "devSync": { "afterLand": true, "repos": {
+  "D:/Repositories/nivoos-lite": { "checkout": "D:/Repositories/nivoos-lite" },
+  "D:/Repositories/starci-next-app": { "checkout": "D:/starci-lanes/_next/devstack" } } } }
+```
+
 `devSync.local` is this machine's standing overlay and the default way dev runs harness builds: the builds that dev keeps running from the
-local registry (e.g. `["grammar@0.55.0-content.4", "eslint-grammar-core@0.55.0-content.4"]`). Every sync installs it, the lander's auto-sync and a
+local registry (e.g. `["grammar@X.Y.Z-dev.N", "eslint-grammar-core@X.Y.Z-dev.N"]`). Every sync installs it, the debounced runner's and a
 plain `starci dev sync` alike, until the setting is emptied, so dev runs the newest harness without waiting for npm. An app without
 `deps.devAllowsLocalRegistry` keeps its committed pins on npm (its push gate refuses `DEPS_LOCAL_REGISTRY_COMMITTED`); with it, `dev` and lane
 branches carry the local pins too. `--local` on the verb overrides it for one sync.
 
-`publishLocal` (default `false`) is the harness lander's: after each batch lands on the harness's own `dev`, it runs `starci deps publish-dev
---execute` in its worktree (the changed packages and every package that pins one of them, as `X.Y.Z-dev.N`, their publish copies pinning each
-other exactly) and sets `local` to exactly those versions, before the sync ([branches.md](branches.md) PROJECT-BRANCH-3). The harness lander syncs
-only when `checkout` names the app's dev checkout (its own repository has no dev stack).
+A harness landing that changed a published package runs `starci deps publish-dev --execute` in the lane's worktree (the changed packages and every
+package that pins one of them, as `X.Y.Z-dev.N`, their publish copies pinning each other exactly), sets `local` to exactly those versions and marks
+every app checkout of `devSync.repos` for its sync ([branches.md](branches.md) PROJECT-BRANCH-3).
 
-`afterLand` (default `false`) makes `starci lane land` run `dev sync --execute` on `checkout` (default: the lander's app main
-checkout) once a batch lands on `dev`; batches that land inside `debounceSeconds` of each other give one sync after the last.
-`local` keeps those packages on the local registry across syncs; empty restores the registry versions. `processes` names the
-stack processes of each side. A sync that is refused or fails is said in the lander's log and never stops the lander.
-
-The lander never runs from a checkout's `node_modules`: a `starci lane land` started from inside a worktree of the app (`npx
-starci lane land` in its main checkout) installs the same starci-harness version once into `<lanes>/_lander-cli/<version>`
-(staged, then renamed into place) and runs itself again from there, so a dev sync or any `npm ci` of the checkout cannot wipe
-the files under the running lander. Its `_batch-lander` worktree is no home: the lander runs `npm ci` there itself whenever a
-batch's lockfile moves. A lander started from outside every worktree (a global install, the harness checkout's build, its own
-install) runs as it is.
+`afterLand` (default `true` in a `repos` entry, `false` at the top level) lets a landing mark `checkout` (default: the repository's main checkout);
+landings inside `debounceSeconds` of each other give one sync after the last. `local` keeps those packages on the local registry across syncs;
+empty restores the registry versions. `processes` names the stack processes of each side; a sync restarts the processes the app declares
+(`environments.<env>.local.processes` of its application-stacks.yaml, each by the side its `cwd` is under, `core/dev/declared.ts`) whenever the
+setting names one the app does not declare, so the default `api`/`web` never reaches an app whose processes are `core`, `app`, `landing`. A sync
+that is refused or fails is written to the runner's status with its reason, and the next landing (or `--request`) tries again.
 
 **The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
-"bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` through the
-same batch lander under the harness profile (the FAST gate `starci release gate --level dev`, then `git push origin HEAD:dev`), and with
-`devSync.publishLocal` each landed batch goes to the local registry as the dev line and into the app's dev checkout at once. npm sees only the
+"bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` with
+`lane gate --push --land` under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks and publish checks, no test
+suite; then the squashed commit with `git push`), and each landing that changed a published package goes to the local registry as the dev line and
+into the apps' dev checkouts by their debounced syncs. npm sees only the
 train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
 `starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on
 `main`. The harness checkout's branch (`D:/.claude`, on `dev` today) is the owner's choice.
@@ -136,7 +152,7 @@ train: the dev tip passes `starci release gate --level full`, `main` moves to it
 **Prod** is slow and careful, in this order: harness fixes go to npm (the harness's own release), then the app code is pushed
 with its full checks, the docker images are built, `app check --env prod`, staging, the tag, CI, prod (the sections below).
 `starci release cut --from <sha>` cuts the release from that fixed sha in a temporary worktree of its own, removed after the cut,
-so the release never checks out, moves or dirties the dev checkout; without `--from` it cuts the clean checkout's HEAD as before.
+so the release never checks out, moves or dirties the dev checkout; without `--from` it cuts the clean checkout's HEAD.
 
 ## Triggers and what runs
 
@@ -181,13 +197,12 @@ the same sha on its candidate branch, found through the API, whose run id become
 other job's `if:`; a skipped check job never means a green one, because the deploy gate below reads the evidence, not
 the job graph.
 
-**Concurrency.** A newer commit cancels the run it supersedes (owner 2026-11-22: "dồn!!! nhiều changes thì gộp 1 commit duy
-nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"). The run is grouped `ci-${{ github.ref }}` with
+**Concurrency.** A newer commit cancels the run it supersedes (many changes are gathered into one commit, and a newer push cancels the older run). The run is grouped `ci-${{ github.ref }}` with
 `cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}`: a pull request, main, dev, every profile branch and a
 release candidate cancel their older run; `cache-verify.yml` does the same. The one exception is a run that deploys or
 publishes, because a half-done deploy or publish is worse than a stale run: a release tag run carries the deploy jobs and
 GitHub cancels a whole run (a job's own group cannot shield it from the workflow's), so a tag run is never cancelled; a tag
-takes no new commit, so no newer run supersedes it anyway. `stack-deploy.yml`, `stack-key-restore.yml`,
+takes no new commit, so no newer run supersedes it anyway. `stack-deploy.yml`,
 `desktop-release.yml` and the harness's `publish.yml` keep `cancel-in-progress: false`. `images.yml` has no trigger of its
 own and is cancelled with the `ci.yml` run that calls it. Each deploy job has its own group `deploy-<app>-<env>`,
 `cancel-in-progress: false`: at most one deploy runs per environment, and a newer waiting release replaces an older
@@ -245,12 +260,8 @@ with the job's `GITHUB_TOKEN` and `packages: write`):
   when they are absent or it does not answer within 60 s ([harness/managed-vps.md](../harness/managed-vps.md#remote-buildkit));
 - the job's outputs are `<service>=<repo>@sha256:<digest>` per image, the only form the deploy accepts.
 
-**One image per sha, configured at runtime.** The owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?". The digest a release
-record names is the same in staging and production; only the environment differs. Next.js inlines `NEXT_PUBLIC_*` reads at build time,
-so an image whose `deploy.images.<service>` declares `runtimePublicEnv: true` is built without its NEXT_PUBLIC_* build values (images.yml's
-public `image` job, no environment, no secret when no other key is left) and the deploy passes them to the service as runtime
-environment, where the app's server renders them into `window.__ENV` and the client reads `publicEnv(key)` (`@starci/next-data`).
-An image without the declaration is built with the release environment's values, as before ([stacks.md](stacks.md) PROJECT-STACKS-22).
+**One image per sha, configured at runtime.** The digest a release record names is the same in staging and production; only the
+environment differs. The rule, the `runtimePublicEnv` declaration and the browser read are [stacks.md](stacks.md) PROJECT-STACKS-22.
 
 Pushing before the checks are green is deliberate (the owner's order: build, push, all pass, deploy): an image under
 `sha-<sha>` is immutable and inert until a release record names it. On a pull request the images build with
@@ -259,10 +270,10 @@ Pushing before the checks are green is deliberate (the owner's order: build, pus
 **Verdict.** One job, `verdict`, needs every check job and the images and fails unless each required job succeeded or
 `plan` reused a green run. It is the single check name branch protection requires and the only job a deploy needs.
 
-**Deploy.** One job per auto environment, `needs: verdict`, bound to the GitHub Environment of that name
-(`environment: {name: <env>, url: <first verify url>}`, so GitHub records a deployment with its link), calling the
-reusable `stack-deploy.yml` (`workflow_call`), which also keeps its `workflow_dispatch` for the owner's manual
-operations. The job assembles arguments only; the verb does the work:
+**Deploy.** One `deploy-<env>` job per environment with `deploy.auto`, `needs: verdict`, calling the reusable `stack-deploy.yml`
+(`workflow_call`, which also keeps its `workflow_dispatch` for the owner's manual operations) with `with.environment`. A job that calls a reusable
+workflow cannot bind a GitHub Environment, so the called job binds it (restricted to `v*` tags), reads that environment's `SOPS_AGE_KEY` and
+opens the transport; R251 judges both halves. The deployment record sets no environment URL. The job assembles arguments only; the verb does the work:
 
 ```text
 starci app stack deploy --env <env> --image <svc>=<ref>@sha256:<digest> ... --sha <sha> --ci-run <run id> --execute
@@ -283,7 +294,7 @@ its phases, each one a recorded step:
 | lock | takes `/srv/<stack>/deploy.lock` on the manager (flock, held for the run; the owner's urgent deploy takes the same) | waits up to 10 minutes, then refuses `STACK_DEPLOY_LOCKED`; nothing changed |
 | preflight | render and inspect locally, provision, store the release, pre-pull its images, and confirm the rollback target's images still pull | refuses; services untouched |
 | idempotence | when the accepted release already has this `sourceSha`, prints `already current` and ends green | none |
-| backup | when the migrate preview has pending migrations (always under the urgent floor): a fresh encrypted dump of the database, receipt verified, a test decrypt on the manager with its own identity; the urgent path takes the same step in the same place | refuses; services untouched |
+| backup | when the migrate preview has pending migrations (always under the urgent floor): a fresh encrypted dump of the database, receipt verified, a test decrypt on the manager with its own identity (as root, over passwordless sudo where the login has it, else, for a deploy user with the docker group and no sudo, in a one-off container of the database image that sees only the identity, the archive and age, read-only and with no network: `manager-backup.mts` `decryptCommand`); the urgent path takes the same step in the same place | refuses; services untouched |
 | migrate | `app db migrate` preview, then execute, inside the database service's own container through the Docker transport (expand migrations only) | refuses; services untouched; the applied part stays and the backup is its way back |
 | deploy | `docker stack deploy` of the stored bytes; Swarm's `update_config` rolls a failing service back on its own | stack rollback |
 | converge | desired against running, update state `completed`, no failed task of the new spec, twice | stack rollback |
@@ -303,11 +314,20 @@ only here. The job ends red either way, and the record says `rolled-back` or `ro
 **Rollback target.** The accepted release at the start of the deploy (the `current` pointer, never moved for a release
 that did not verify). Preflight proves its images still pull, so a registry clean-up cannot strand a rollback. A manual
 `rollback --release <id>` to an older one is refused when the database has applied a contract migration after that
-release was accepted (the record knows both), unless the owner passes `--data-acknowledged`.
+release was accepted (the record knows both), unless the owner passes `--data-acknowledged`. Each attempt document carries `contract`, the
+contract migrations that attempt applied; `stack rollback` (also as a dry run) refuses `STACK_ROLLBACK_CONTRACT` for a target older than the
+previous release of an attempt that applied one, or that the journal never saw once any is recorded. The workflow's `rollback` dispatch has no
+such input, so that case runs from the owner's machine.
 
 **Notification.** The deploy job writes the outcome to the run's summary (release id, digests, each phase with its
 verdict and time, rollback) and uploads `release.json` as an artifact. GitHub's own notification of a failed run reaches
-the pusher; an app that declares `deploy.notify` (a chat webhook URL in a sealed member, built as `deploy.notify` rather than `services.notify`) gets one message per deploy outcome.
+the pusher. `deploy.notify` is per environment: `notify: {webhook: {member, key}, on?: [...]}` names a key of a sealed member holding an https
+URL, and is off unless declared. After the journal closes it sends one JSON message (`text`, `content` and the facts as fields: outcome,
+environment, stack, commit, tag, release, attempt, CI run URL, failure code) for `accepted`, `rolled-back`, `rollback-failed` and `failed` by
+default (`refused` only when listed). A failing webhook is a line of the result, never a failed deploy, and the URL is never printed.
+**The brake is a step.** An environment variable is not readable in a job's `if` before the job is bound to its environment, so
+`STARCI_DEPLOY_PAUSED` is read by the first step of the bound deploy job; the later steps wait for it and the job ends green with a
+notice in the run summary.
 A red run is a red CI for the harness, which opens the fix (authority/ci.md).
 
 **Strategy.** Rolling, health-gated, `start-first` for stateless services and `stop-first` for a service that mounts a
@@ -370,12 +390,24 @@ several databases, and the owner confirms it holds no data to keep; the next dep
   are separate SSH identities by design, and one member would hand the CI key the owner's. Both carry the SSH group keys
   (`VPS_HOST`, `VPS_USER`), which is no duplicate: transport members never reach an app container, so `ENV_DUPLICATE` judges app
   env only and exempts exactly those keys in exactly those two members (R248). The CI key is named by its comment so it can be
-  revoked alone. `StrictHostKeyChecking yes` always; CI never accepts a new host key.
+  revoked alone. `StrictHostKeyChecking yes` always; CI never accepts a new host key. `stack connect` masks the host, the account and the
+  releases root in the log, and a missing member is refused `STACK_CONNECT_MISSING`.
 - **Least privilege, honestly.** Access to the Docker socket is root on that host, so the CI key's line in
   `authorized_keys` is `restrict` plus a forced command, the managed `starci-ssh-gate`, that admits only
   `docker system dial-stdio` and the release store's fixed scripts. That narrows what a stolen key can run without a
   shell; it does not make Docker access less than root, and the runbook says so. Key creation and rotation stay
-  owner-run steps.
+  owner-run steps. The release store's remote operations (`stack/ssh-gate.mts`) are named scripts (`pointer`, `list`, `read`, `store`, `accept`,
+  `lock-acquire`, `lock-refresh`, `lock-release`, `journal-write`, `journal-index`, `journal-read`), each with arguments of a closed alphabet. The
+  key's line is `restrict,command="starci-ssh-gate",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc <key>`; the gate admits
+  `docker system dial-stdio` and `starci-op <name> <args>` and refuses everything else with exit 126 and no echo. The owner's key runs the same
+  bodies through `sh -c`, so the gate admits no script the store does not run. `starci app stack ci-key --env <env>` prints the owner-run steps,
+  `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line. The gate is used only when the sealed `vps-ci` member says
+  `VPS_GATE: "1"` (`connect` then exports `STARCI_SSH_GATE=1`). Not admitted by the gate: the post-deploy tasks (`task.mts`) and the manager backup
+  and test decrypt of a `database.target: stack` database (`manager-backup.mts`) run `docker exec`-style scripts over ssh, so an environment that
+  uses them keeps an ungated key until they are named operations.
+- **Public repository.** GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI private key
+  never enter the repository. No secret is baked into an image (build arguments are public values), `main` is protected, the `v*` tags are
+  protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.
 - **Registry.** Pushes use the job's `GITHUB_TOKEN` with `packages: write` on the images job only; the manager pulls
   with `--with-registry-auth`, which forwards the deploy job's short-lived login, so no registry credential lives on the
   server. A private registry other than GHCR is a declared service with its credential as a CI secret of the environment.
@@ -398,16 +430,16 @@ level; the target decides which one a push gets.
 
 | Level | Runs on | Gates | Skips |
 |---|---|---|---|
-| dev (fast) | a push whose every ref is `dev` or `lane/*` (the managed pre-push hook), `app push` of such a target, `lane gate`, the batch lander's gate | the deps check (dev-local pins allowed where declared), types with its package builds and codegen, the lane's own tests (the changed specs and those whose closure reaches a changed file), db, the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) | the hfs rule sweep (structure, machine, unused-symbol, contract-emit, secrets), the rule-188 first audits and the ui-audit stale and missing blocks, the project and nivoos package checks, the whole test suite and coverage, lint, format, wiring, sonar, the CI build and the audit |
+| dev (fast) | a push whose every ref is `dev` or `lane/*` (the managed pre-push hook), `app push` of such a target, `lane gate` (and its `--land` re-check after dev moved: codegen and typecheck only) | the deps check (dev-local pins allowed where declared), types with its package builds and codegen, the lane's own tests (the changed specs and those whose closure reaches a changed file), db, the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) | the hfs rule sweep (structure, machine, unused-symbol, contract-emit, secrets), the rule-188 first audits and the ui-audit stale and missing blocks, the project and nivoos package checks, the whole test suite and coverage, lint, format, wiring, sonar, the CI build and the audit |
 | full | a push of `main` or a `v*` tag, any other branch, `release cut`, `release push`, `app release` (its `app-check` row) | every gate: every hfs rule, the first audits of every screen changed since the last main, the full test suite and coverage, sonar, the CI parity families | nothing |
 
 The fast level prints one line first naming what it skips and that those gates run at the main cut. One pass per push: a green
 fast run on a clean tree is remembered by its content (outside `.starcistacks/cache`), the env, the harness version and
-`origin/dev`, beside the repository's git objects, so the hook of the push that follows the lander's gate does not run it again.
+`origin/dev`, beside the repository's git objects, so the hook of the push that follows a gate (the lane's push, then its landing's push of dev) does not run it again.
 The design approval stays at dev because it is a product decision. screen.yaml and audit records may be completed at the main cut.
 
-The lander lands each batch as ONE commit (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and a newer push or registration of a lane cancels the lane's
-running local gate or its batch gate (`superseded by <sha>` in the status).
+Each landing is ONE commit on dev, and a newer push of a lane cancels the lane's
+running local gate (the new gate prints `superseded by <sha>`).
 
 - **Branch and tag rules.** `main`: no force push, no deletion, updates only by the owner and the release push; a pull
   request needs the `verdict` check. Tags `v*`: creation only by the same, never moved or deleted. The canon pre-push hook
@@ -456,117 +488,6 @@ and a manual `docker service update` is invisible. The fix:
   bound per release.
 - **Retention.** The manager keeps the last 10 attempts' releases and every accepted one in the last 30 days; the registry
   keeps every digest a kept release names (a managed clean-up job deletes other `sha-*` versions older than 30 days).
-
-## Compared with common practice
-
-The widespread GitHub Actions pattern for a small Swarm (build with buildx, push to GHCR by sha, then
-`docker stack deploy` over an SSH Docker context with `--with-registry-auth`) is what the harness already does, and it
-is kept. What the common pattern usually lacks and this design adds: deploying by digest only, one build whose attested
-digest is the deployed one, the in-run evidence gate instead of trusting the job graph, convergence judged on the new
-task spec rather than on `docker stack deploy` returning, functional verification after health, a whole-stack rollback
-from stored bytes in addition to Swarm's per-service rollback, migrations in the deploy under expand and contract, and a
-manager-side journal. `docker service rollback` alone is not enough: it reverts one service to its previous spec only
-([swarm services]).
-
-## Work packages
-
-Each package is independent until the integration order; every one ends with its own specs green and the dry runs of the
-verbs it touches unchanged for an app that does not opt in.
-
-**WP1. Deploy records, lock and status (`@starci/hfs` stack).** Files: `stack/deploy.mts`, `stack/release-store.mts`, a new
-`stack/journal.mts` and `stack/status.mts`, `stack/cli.mts` (action `status`, flags `--ci-run` passed through), the urgent
-floor. Interfaces: `ReleaseStore.journal(attempt)`, `lock()`/`unlock()` over the ssh runner with validated paths only;
-`observedServices(ctx, config)`. Tests: stubbed runner specs for lock contention, journal at each phase including a thrown
-step, drift detection after a simulated Swarm rollback, idempotence by `sourceSha`. Done: a deploy and an urgent deploy
-both write a journal; `stack status` reports drift; rollback target images are pre-pulled in preflight.
-
-**WP2. Migrations in the deploy (`@starci/hfs` stack and db).** Files: `stack/deploy.mts` phases backup, migrate and
-contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes), `db/postgres.mts` (`inContainer` for any
-migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
-Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
-after accept; first start chosen automatically on an empty database and refused on a non-empty one. Done: the
-a stack deploys and migrates in a scratch swarm with the db service internal only.
-
-**WP3. CI evidence and urgent trailers (`cli/`).** Files: `cli/src/core/check/ci.ts` (`requireCiGreen` accepts
-`--ci-run <id>`: the run's required jobs for that sha, or the reused run), `cli/src/core/app/stack.ts`, `release push
---urgent` writing the tag trailers through `@starci/hfs` `release/urgent.mts`, `release/records.mts` reading them back,
-`policy/quality.yaml` comment. Tests: a run with one required job skipped or failed is refused `CI_NOT_GREEN`; a
-reused candidate run of another sha is refused; trailers round-trip. Done: `stack deploy --ci-run` works inside a run that
-is still in progress.
-
-**WP4. The managed workflows (`@starci/hfs` templates, sync and rules).** Files: `templates/app/ci-workflows/github/
-workflows/ci.yml` (plan, images, verdict, deploy jobs; `pull_request`), `images.yml` and `stack-deploy.yml` as reusable
-workflows (`workflow_call`, dispatch kept on `stack-deploy.yml` with `deploy|redeploy|rollback`), `db-deploy.yml` retired
-(sync deletes it), `sync/ci-commands.mts`, `sync/stack-images.mts`, `runtime/knowledge/hfs/ci-standard.yaml` (jobs, the
-`verdict` and `plan` items), rules R251, R271 (`HFS_DB_DEPLOY_UNGUARDED` moves to the deploy's migrate phase) and the
-supply-chain SBOM check (now on the pushed build), the stacks schema keys `deploy.auto`, `deploy.approval`,
-`deploy.platforms`, `ci.imageCache`, `services.notify`, the `vps-ci` sealed member and `starci-ssh-gate`. Tests:
-`hfs-deploy-workflow.spec`, `hfs-release-provenance.spec`, `hfs-supply-chain.spec`, the render specs,
-prettier stability. Done: `app sync` renders a pipeline that `actionlint` and the CI standard accept.
-Needs WP1 to WP3 published (the workflows call their flags).
-
-**WP5. Knowledge and the move of existing apps.** Files: this document made the rule (its sections become ids),
-[stacks.md](stacks.md) PROJECT-STACKS-6 and PROJECT-STACKS-7, [authority/ci.md](../authority/ci.md),
-[harness/rules.md](../harness/rules.md) rule 5. The
-migration path of an app: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
-`images.yml`'s old form removed); seal the CI deploy key as `vps-ci` and install its `authorized_keys` line with the gate
-(an owner-run step); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
-name, so `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` are deleted from it (the sealed `vps-ci` is the only
-transport, including for `stack-key-restore.yml`); release a no-op patch and watch the first automatic deploy. The app-owned
-`authorize-deploy-key.yml` and `cli-deploy.yml` stay. Then the other apps, one per release.
-
-Integration order: WP1, WP2 and WP3 in parallel; WP4 after they are published; WP5 last, and its knowledge edits can
-start with WP4.
-
-## As built by the work packages
-
-Where the packages differ from the design above, or add to it, the code and the rules are the authority:
-
-- **The deploy is called, not owned.** A job that calls a reusable workflow cannot bind a GitHub Environment, so `ci.yml` has one `deploy-<env>` job per
-  environment with `deploy.auto` that passes `with.environment`, and the called `stack-deploy.yml` job binds it (restricted to `v*` tags), reads that
-  environment's `SOPS_AGE_KEY` and opens the transport. R251 judges both halves. The environment URL of a deployment record is not set.
-- **The brake is a step, not a job condition.** An environment variable is not readable in a job's `if` before the job is bound to the environment, so
-  `STARCI_DEPLOY_PAUSED` is read by the first step of the bound deploy job; the later steps wait for it and the job ends green with a notice in the run summary.
-- **The transport is one sealed member.** `.starcistacks/<env>/secrets/vps-ci.enc.yaml` holds `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER`;
-  `stack connect` masks the host, the account and the releases root in the log, and a missing member is refused (`STACK_CONNECT_MISSING`). `stack-key-restore.yml`
-  opens the same member with the environment's `SOPS_AGE_KEY` and writes the identity through the gate's `identity-restore` operation.
-- **Pull requests** run the checks and build the images without pushing (`push: false`); an image with sealed build values is built on release tag runs only.
-- **Public repositories.** GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
-  private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who
-  also seals it), the log prints no host, address or server path, no secret is baked into an image (build arguments are public values), `main` is protected and
-  the `v*` tags are protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.
-- **The gate is built** (`stack/ssh-gate.mts`). The release store's remote operations are named scripts (`pointer`, `list`, `read`, `store`, `accept`,
-  `lock-acquire`, `lock-refresh`, `lock-release`, `journal-write`, `journal-index`, `journal-read`), each with arguments of a closed alphabet. The CI key's
-  line is `restrict,command="starci-ssh-gate",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc <key>`; the gate admits
-  `docker system dial-stdio` and `starci-op <name> <args>` and refuses everything else with exit 126 and no echo. The same bodies run for the owner's key
-  through `sh -c`, so the gate admits no script the store does not run. `starci app stack ci-key --env <env>` prints the owner-run steps,
-  `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line. The gate is used only when the sealed `vps-ci` member says
-  `VPS_GATE: "1"` (`connect` then exports `STARCI_SSH_GATE=1`), so the key can be forced after the gate is installed and the switch undone by removing
-  the value. **Still free commands, so not admitted by the gate:** the post-deploy tasks (`task.mts`) and the manager backup and test decrypt of a
-  `database.target: stack` database (`manager-backup.mts`) run `docker exec`-style scripts over ssh; an environment that uses them keeps an ungated key
-  until they are named operations.
-- **Notification is `deploy.notify`, not `services.notify`:** it is per environment (the `services:` catalog is a closed per-repository list of providers).
-  `notify: {webhook: {member, key}, on?: [...]}` names a key of a sealed member holding an https URL; off unless declared; one JSON message (`text`,
-  `content` and the facts as fields: outcome, environment, stack, commit, tag, release, attempt, CI run URL, failure code) after the journal closes, for
-  `accepted`, `rolled-back`, `rollback-failed` and `failed` by default (`refused` only when listed). A failing webhook is a line of the result, never a failed
-  deploy, and the URL is never printed.
-- **The manual rollback guard is built:** each attempt document carries `contract` (the contract migrations that attempt applied). `stack rollback`
-  (also as a dry run) refuses `STACK_ROLLBACK_CONTRACT` for a target older than the previous release of an attempt that applied one, or that the journal never
-  saw once any is recorded, unless `--data-acknowledged`. The workflow's `rollback` dispatch has no such input, so that case runs from the owner's machine.
-- **Not built yet:** the environment URL of a deployment record.
-
-## Open decisions
-
-| decision | options | recommended |
-|---|---|---|
-| Who approves a production deploy | every green release tag deploys (`deploy.auto: true`) / GitHub required reviewers / staging auto and production by dispatch | auto, with the pause variable as the brake; reviewers need a public repository or Enterprise |
-| Agents push main, so agents deploy | accept it (the green pipeline is the guard) / only the owner's pushes deploy (the `verdict` job checks the pusher) | accept it; the pause variable and the rollback cover the risk, and the urgent path already lets the owner ship alone |
-| The CI SSH key | sealed member `vps-ci` opened with the server key / GitHub Environment secrets as today | sealed: one GitHub secret per environment and the pinned host keys reviewed in git |
-| Pull request CI | add `pull_request` (checks only, no secrets) / keep apps without it | add it, so Dependabot's updates are judged |
-| Contract migrations | after accept, in the same deploy / held for a dispatch by the owner | after accept, with the same-release finding as an error finding |
-| Sonar on every release run | every full run / tags only as today | every full run, so the gate judges before the deploy |
-| Image cache | GitHub Actions cache per image / registry cache | Actions cache by default, registry cache per app when the 10 GB limit evicts |
-| Multi-architecture images | `linux/amd64` only unless declared / always amd64 and arm64 | amd64 unless an environment declares another node |
 
 ## Sources
 

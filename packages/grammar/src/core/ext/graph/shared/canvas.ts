@@ -1,10 +1,12 @@
 "use client"
 
 import { Background, MiniMap, ReactFlow, ReactFlowProvider, useReactFlow, useStore, useStoreApi, type Edge, type EdgeTypes, type Node, type NodeChange, type NodeTypes } from "@xyflow/react"
-import { createElement as h, useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
+import { createElement as h, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
 import { structureKey } from "../build.js"
 import { ISLANDS_WIDTH, estimateLabel, layoutFlow, type Box, type FlowLayout, type LinkEnds, type Measure, type SizedNode } from "../layout.js"
 import { GraphSkeleton } from "./skeleton.js"
+import { STYLE_RANK, dedupeRuns } from "./overlap.js"
+import { useGraphScheme } from "./scheme.js"
 import { clearOfControls, openView } from "./view.js"
 import { FlowZoom, zoomWords } from "./zoom.js"
 import type { GraphCanvasProps, GraphPosition, GraphPositions } from "../types.js"
@@ -49,7 +51,7 @@ export interface CanvasInput extends GraphCanvasProps {
     /** Where each output port ended, by `portKey`. */
     readonly nodeTypes: NodeTypes
     readonly edgeTypes: EdgeTypes
-    /** The node the first view is centred on, at 100%, when the graph is larger than its frame: the app's `focusId` over the mode's own choice. */
+    /** The node the first view is centred on when even the least fitted zoom (`LEAST_FIT`) cannot show the whole graph: the app's `focusId` over the mode's own choice. */
     readonly focusId?: string | undefined
     /** Drawn under the canvas (the legend). */
     readonly footer?: ReactNode
@@ -62,16 +64,43 @@ interface Placed {
 
 const NO_POSITIONS: GraphPositions = {}
 
+/** The edges on ELK's routes with every shared stretch drawn once (the routing law, rule 6): the stronger state keeps it, the other meets it at a junction. */
+const onceDrawn = (edges: readonly Edge[], routes: FlowLayout["routes"]): Edge[] => {
+    const ranked = edges.flatMap((edge) => {
+        const route = routes[edge.id]
+        const style = (edge.data as { readonly style?: string } | undefined)?.style ?? "plain"
+        return route === undefined || style === "back" ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[style] ?? 3 }]
+    })
+    const once = dedupeRuns(ranked)
+    return edges.map((edge) => {
+        const route = routes[edge.id]
+        const drawn = once.get(edge.id)
+        if (route === undefined) return edge
+        return { ...edge, data: { ...edge.data, route: drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: drawn?.joinStart === true, joinEnd: drawn?.joinEnd === true } }
+    })
+}
+
 /** The saved positions that still name a node of this graph. */
 const known = (saved: GraphPositions, sizes: readonly SizedNode[]): GraphPositions => {
     const ids = new Set(sizes.map((size) => size.id))
     return Object.fromEntries(Object.entries(saved).filter(([id]) => ids.has(id)))
 }
 
+/** The height of a laid-out drawing in graph units: its top-level nodes from the highest top to the lowest bottom (a child sits inside its container's box). */
+const contentHeight = (layout: FlowLayout, sizes: readonly SizedNode[]): number => {
+    const tops = sizes.flatMap((node) => {
+        const at = layout.positions[node.id]
+        const box = layout.boxes[node.id]
+        return node.parentId !== undefined || at === undefined || box === undefined ? [] : [[at.y, at.y + box.height] as const]
+    })
+    if (tops.length === 0) return 0
+    return Math.max(...tops.map(([, bottom]) => bottom)) - Math.min(...tops.map(([top]) => top))
+}
+
 /** The first view's room round the graph: the zoom buttons on the left. */
 const OPEN_INSETS = { top: FIT_INSET, right: FIT_INSET, bottom: FIT_INSET, left: CONTROLS_ROOM } as const
 
-/** The first view, on every screen alike: the graph at 100%, centred on the focus step when it is larger than the frame (never fitted). */
+/** The first view, on every screen alike: the whole graph fitted (100% or less), centred (`openView`). */
 const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
     const flow = useReactFlow()
     const store = useStoreApi()
@@ -106,7 +135,8 @@ const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
             const inner = parents.has(each.id) ? undefined : flow.getInternalNode(each.id)
             return inner === undefined ? [] : [{ ...inner.internals.positionAbsolute, width: inner.measured.width ?? 0, height: inner.measured.height ?? 0 }]
         })
-        const view = buttons === undefined || pane === undefined ? centred : clearOfControls(centred, { width, height }, steps, focus, { x: buttons.left - pane.left, y: buttons.top - pane.top, width: buttons.width, height: buttons.height })
+        // A fitted view keeps the buttons' room in its insets; only a graph shown at 100% that still overflows is moved clear of them.
+        const view = buttons === undefined || pane === undefined || centred.zoom !== 1 ? centred : clearOfControls(centred, { width, height }, steps, focus, { x: buttons.left - pane.left, y: buttons.top - pane.top, width: buttons.width, height: buttons.height })
         // The pan and zoom handler may not be ready on the first frame: set it now and once more (kept when the effect runs again; cleared on unmount).
         void flow.setViewport(view)
         later.current = setTimeout(() => void flow.setViewport(view), 60)
@@ -116,6 +146,8 @@ const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
 }
 
 const Canvas = (props: CanvasInput): ReactElement => {
+    const anchor = useRef<HTMLDivElement | null>(null)
+    const scheme = useGraphScheme(anchor)
     const { sizes, links, rfEdges, makeNodes, nodeTypes, edgeTypes, label, direction = "LR", islands = "wrap", islandsWidth = ISLANDS_WIDTH, isLoading = false, emptyLabel, selectedId, onSelect, onNodePress } = props
     const editable = props.editable === true
     const interactive = props.interactive !== false
@@ -169,8 +201,14 @@ const Canvas = (props: CanvasInput): ReactElement => {
     }
 
     const classes = props.className === undefined ? "starci-graph" : `starci-graph ${props.className}`
-    const frame = { className: classes, role: "region", "aria-label": label }
+    const frame = { className: classes, role: "region", "aria-label": label, ref: anchor }
     const ready = placed?.key === key ? placed.layout : undefined
+    // `height="content"`: the frame hugs the drawing at 100% (the fit insets round it), capped by the theme's most; the CSS keeps its 20rem least.
+    const hugs = props.height === "content"
+    const drawnHeight = ready === undefined ? undefined : contentHeight(ready, sizes)
+    // The canvas takes that height (a legend under it adds its own); the frame grows round both. The CSS clamps it (`[data-hugs]`, shared/styles.css).
+    const frameHeight = hugs ? { style: { blockSize: "auto" } } : {}
+    const canvasHeight = hugs && drawnHeight !== undefined ? { "data-hugs": true, style: { "--starci-graph-drawn-block-size": `${String(drawnHeight + 2 * FIT_INSET)}px` } as CSSProperties } : {}
 
     if (isLoading) return h("div", { ...frame, "aria-busy": true }, h(GraphSkeleton))
     if (sizes.length === 0) return h("div", { ...frame, "data-empty": true }, emptyLabel === undefined ? null : h("p", { className: "starci-graph-empty" }, emptyLabel))
@@ -191,19 +229,19 @@ const Canvas = (props: CanvasInput): ReactElement => {
 
     return h(
         "div",
-        { ...frame, "data-editable": editable ? "true" : undefined, onKeyDown },
+        { ...frame, ...frameHeight, "data-height": hugs ? "content" : undefined, "data-editable": editable ? "true" : undefined, onKeyDown },
         h(
             "div",
-            { className: "starci-graph-canvas" },
+            { className: "starci-graph-canvas", ...canvasHeight },
             h(
                 ReactFlow,
                 {
                     key,
                     nodes,
-                    edges: arranged ? rfEdges.map((edge) => ({ ...edge, data: { ...edge.data, route: ready.routes[edge.id] } })) : [...rfEdges],
+                    edges: arranged ? onceDrawn(rfEdges, ready.routes) : [...rfEdges],
                     nodeTypes,
                     edgeTypes,
-                    // A still picture is fitted; a graph a person moves opens at 100% on its focus step (FocusStep), on every screen.
+                    // Every graph opens fitted (FocusStep, `openView`): the whole graph, centred, never enlarged; a still picture too.
                     fitView: !interactive,
                     fitViewOptions: FIT_OPTIONS,
                     defaultViewport: { x: 0, y: 0, zoom: 1 },
@@ -228,6 +266,8 @@ const Canvas = (props: CanvasInput): ReactElement => {
                         select(null)
                     },
                     proOptions: { hideAttribution: true },
+                    // xyflow's root class is a theme scope: it names the scheme the frame stands in, never a fixed light one.
+                    colorMode: scheme,
                     ...(props.ariaLabelConfig === undefined ? {} : { ariaLabelConfig: props.ariaLabelConfig }),
                 },
                 h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),
@@ -240,5 +280,5 @@ const Canvas = (props: CanvasInput): ReactElement => {
     )
 }
 
-/** The canvas both graphs share: laid out by ELK, panned and zoomed, at 100% on its focus step when it opens, selectable, draggable when `editable`, a skeleton while loading. */
+/** The canvas both graphs share: laid out by ELK, panned and zoomed, fitted when it opens, selectable, draggable when `editable`, a skeleton while loading. */
 export const GraphCanvas = (props: CanvasInput): ReactElement => h(ReactFlowProvider, null, h(Canvas, props))

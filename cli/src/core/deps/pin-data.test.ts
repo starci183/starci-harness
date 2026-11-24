@@ -113,6 +113,14 @@ void test("pin data nothing moves, and any other file, is kept byte for byte", (
     assert.equal(pinDataEdit(() => BATCH, true)("README.md", "x"), undefined)
 })
 
+/** The plain version one patch past `version` (a pin data row's version may be a range such as `^0.56.0`). */
+const nextPatch = (version: string | undefined): string => {
+    const match = /(\d+)\.(\d+)\.(\d+)/u.exec(version ?? "")
+    assert.ok(match !== null, `a committed version, found ${String(version)}`)
+    const [, major = "", minor = "", patch = ""] = match
+    return `${major}.${minor}.${String(Number(patch) + 1)}`
+}
+
 const pkgAt = (root: string, dir: string, manifest: { readonly name: string; readonly version: string }): WorkspacePackage => {
     mkdirSync(join(root, dir), { recursive: true })
     writeFileSync(join(root, dir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`)
@@ -123,17 +131,20 @@ void test("a gallery change republishes hfs on the dev line, and deps publish-lo
     const root = mkdtempSync(join(tmpdir(), "starci-pin-data-tree-"))
     try {
         const hfs = pkgAt(root, "packages/hfs", { name: "@starci/hfs", version: "6.17.8" })
-        const gallery = pkgAt(root, "packages/gallery", { name: "@starci/gallery", version: "0.1.21" })
-        const grammar = pkgAt(root, "packages/grammar", { name: "@starci/grammar", version: "0.55.1" })
+        // One past what the tree commits, so the rows move whatever release the committed pin data is at.
+        const galleryNext = nextPatch(rowOf(committed, "@starci/gallery")?.version)
+        const grammarNext = nextPatch(rowOf(committed, "@starci/grammar")?.version)
+        const gallery = pkgAt(root, "packages/gallery", { name: "@starci/gallery", version: galleryNext })
+        const grammar = pkgAt(root, "packages/grammar", { name: "@starci/grammar", version: grammarNext })
         const dataOf = (pkg: WorkspacePackage): string[] => (pkg.name === "@starci/hfs" ? [committed] : [])
         const nodes = devNodes([hfs, gallery, grammar], dataOf)
         assert.deepEqual([...devClosure(nodes, new Set(["@starci/gallery"]))].toSorted((left, right) => left.localeCompare(right)), ["@starci/gallery", "@starci/hfs"])
         const row = (pkg: WorkspacePackage) => ({ package: pkg.name, version: pkg.version, dir: pkg.relativeDir, npm: "unserved" as const, replaces: false, served: undefined, pins: [], pinned: new Map<string, string>() })
         const rows = await pinRows([row(hfs), row(gallery), row(grammar)], [hfs, gallery, grammar], undefined, dataOf)
         const hfsRow = rows.find((one) => one.package === "@starci/hfs")
-        assert.equal(hfsRow?.dataPinned?.get("@starci/gallery"), "0.1.21")
-        assert.equal(hfsRow.dataPinned.get("@starci/grammar"), "0.55.1")
-        assert.ok(hfsRow.pins.some((line) => line.startsWith("@starci/gallery ") && line.endsWith("-> 0.1.21 (canon-pins.yaml)")), hfsRow.pins.join("\n"))
+        assert.equal(hfsRow?.dataPinned?.get("@starci/gallery"), galleryNext)
+        assert.equal(hfsRow.dataPinned.get("@starci/grammar"), grammarNext)
+        assert.ok(hfsRow.pins.some((line) => line.startsWith("@starci/gallery ") && line.endsWith(`-> ${galleryNext} (canon-pins.yaml)`)), hfsRow.pins.join("\n"))
     } finally {
         rmSync(root, { recursive: true, force: true })
     }

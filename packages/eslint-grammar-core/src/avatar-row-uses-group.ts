@@ -6,8 +6,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 
 /**
- * AVATARS IN A ROW ARE ONE AVATARGROUP (DNA-COMMON-AVATAR-ROW-GROUP; owner, 2026-11-22: "với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép
- * tụi này render sáng tạo nhỉ"). Avatars that stand side by side, or that come out of a list, are `<AvatarGroup items max>`: it overlaps them, shows `max - 1` and the "+N" tile,
+ * AVATARS IN A ROW ARE ONE AVATARGROUP (DNA-COMMON-AVATAR-ROW-GROUP). Avatars that stand side by side, or that come out of a list, are `<AvatarGroup items max>`: it overlaps them, shows `max - 1` and the "+N" tile,
  * names every member on hover, and takes people and provider or channel marks alike. A hand-made row of `Avatar` has none of that and every app draws its own overflow.
  *
  * WHAT IT READS. In product source, a Grammar `Avatar` that (a) shares its parent with another Grammar `Avatar` (siblings, looked through fragments, conditions and `&&`), or

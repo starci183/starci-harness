@@ -40,8 +40,7 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: ".starci-core-data-table", holds: ["border: 0", "border-radius: 0", "background: transparent", "box-shadow: none"] },
     { selector: ".starci-core-data-table .table__column", holds: ["border-block-end: 1px solid var(--border)"] },
     { selector: ".starci-core-data-table .table__row .table__cell", holds: ["border-block-end: 1px solid var(--separator)"] },
-    { selector: '.starci-core-data-table-row[data-grammar-selected="true"]', holds: ["background: var(--default)"] },
-    { selector: '.starci-core-data-table-row[data-grammar-selected="true"] > :first-child', holds: ["box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent)"] },
+    { selector: '.starci-core-data-table-row[data-grammar-selected="true"]', holds: ["background: var(--accent-soft)"] },
     { selector: '.starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="ribbon"]', holds: ["border-block: 1px solid var(--border)", "border-inline: 0", "background: transparent"] },
     { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: ".starci-core-section-count[data-grammar-section-count]", holds: ["font-size: var(--grammar-text-xs)", "border-radius: var(--grammar-radius-pill)"] },
@@ -152,15 +151,15 @@ for (const [needle, message] of [
     ['[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-start-radius', "an incoming run squares the top-start corner of middle and last"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-end-radius', "an outgoing run mirrors it on the end side"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-end-radius', "an outgoing run mirrors it on the end side"],
-    ["border: var(--grammar-border-edge);\n        background: transparent;\n        color: var(--foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are one look on every host: the 1px border edge, no fill, no shadow (0.52.0, DNA-COMMON-CHAT-INCOMING-OUTLINE)"],
+    ["border: var(--grammar-border-edge);\n        background: var(--surface);\n        color: var(--foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are one flat look on every host: the surface fill, the 1px edge line, no shadow (DNA-COMMON-CHAT-INCOMING-FLAT)"],
     ["@keyframes starci-core-reaction-rise", "the reaction burst needs its keyframes"],
     [".starci-core-reaction-burst-layer { display: none; }", "the burst is off under prefers-reduced-motion"],
     [".starci-core-reaction-bar-emoji:hover", "a hovered emoji scales up"],
 ] as const) {
     if (!all.replace(/\r\n/g, "\n").includes(needle)) problems.push(`${message} (${needle.slice(0, 60)})`)
 }
-/* ONE LOOK (0.52.0): no host repaints the other party's message (no surface-dependent edge or fill). */
-if (/\)\s*\.starci-core-message-bubble:is\(\[data-grammar-bubble-side="incoming"\], \[data-grammar-bubble-content="card"\]\)[^{]*\{/.test(all.replace(/\/\*[\s\S]*?\*\//g, ""))) problems.push("an incoming bubble has one look: no host-dependent rule repaints it (0.52.0)")
+/* ONE LOOK: no host repaints the other party's message (no surface-dependent edge or fill). */
+if (/\)\s*\.starci-core-message-bubble:is\(\[data-grammar-bubble-side="incoming"\], \[data-grammar-bubble-content="card"\]\)[^{]*\{/.test(all.replace(/\/\*[\s\S]*?\*\//g, ""))) problems.push("an incoming bubble has one look: no host-dependent rule repaints it")
 const keyframes = all.match(/@keyframes starci-core-reaction-rise\s*\{([\s\S]*?)\n    \}/)?.[1] ?? ""
 if (/(?:^|[\s;{])(?:top|left|right|bottom|width|height|margin|inset)[a-z-]*\s*:/.test(keyframes)) problems.push("the reaction burst may animate transform and opacity only")
 const reactionSource = readFileSync(resolve(common, "..", "core", "composite", "MessageBubble", "Reactions.tsx"), "utf8")

@@ -74,8 +74,7 @@ with `bin` is a second CLI); `generated` marks copies made from an owner in `con
 
 `starci check shape` places every file of the tree as it stands (tracked and untracked, never what `.gitignore`
 ignores). Forbidden slots judge first: a match is `SHAPE_FORBIDDEN`. A file no other slot holds is `SHAPE_UNPLACED`; a
-required slot, or one instance of it, with no file is `SHAPE_MISSING`. A slot with `enforce: target` states a law the
-tree is still moving to (every package TypeScript in `src/` built to `dist/`, knowledge only in `contexts/`): a violation
+required slot, or one instance of it, with no file is `SHAPE_MISSING`. A slot with `enforce: target` states a law (every package TypeScript in `src/` built to `dist/`, knowledge only in `contexts/`): a violation
 is `SHAPE_TARGET` unless one of its dated `exceptions` (a literal file or folder, `until`, `owner`, `why`) covers it. An
 exception that covers nothing is `SHAPE_EXCEPTION_STALE` and one past its date `SHAPE_EXCEPTION_EXPIRED`, so the list
 only shrinks; a gate slot has no exceptions. A new place for a file is a new slot here, never a wider pattern elsewhere.

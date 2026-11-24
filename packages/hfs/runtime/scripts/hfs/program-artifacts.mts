@@ -1,6 +1,6 @@
 // program-artifacts.mts - the files a TypeScript program of an app must not read: build artifacts, what a framework's build or dev server writes into
 // the work tree and git ignores (a generated environment declaration, a build folder's route types, a package's dist, a .tsbuildinfo). A program
-// whose include globs reach them reads them in one checkout and not in another (a clean checkout, CI, the lander have none), so its result and its
+// whose include globs reach them reads them in one checkout and not in another (a clean checkout and CI have none), so its result and its
 // key would depend on build history rather than on the commit (contexts/project/check-cache.md "Untracked program inputs"). The rule is git's own:
 // a root file git ignores is an artifact, unless it is generated code the app's declared code generation writes (a folder named `__generated__`,
 // cache/codegen.mts), which is the one untracked input a program may read: `npm run codegen` writes it in every checkout alike.

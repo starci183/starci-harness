@@ -1,5 +1,5 @@
 // codemod/grammar.mts - the Grammar's own codemods, one per Grammar release that needs one, named after its version (0.54.0 is
-// v0540; owner 2026-11-21: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars"). They live in
+// v0540). They live in
 // packages/grammar/codemods and ship in @starci/grammar (its `./codemods` export, dist/codemods); this module finds the Grammar the
 // app has installed, imports its codemods and hands them the app's own TypeScript compiler, so neither package takes a runtime
 // dependency on the other.

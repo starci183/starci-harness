@@ -251,7 +251,7 @@ const identity = (): ReadonlyArray<Pair> => [
         ready: <G.Avatar name="Alex Morgan" size={size} />,
         loading: <G.Avatar name="Alex Morgan" size={size} isLoading />,
     })),
-    ...(["chip", "leading", "heading"] as const).map((usage) => ({
+    ...(["text", "control", "row", "head"] as const).map((usage) => ({
         id: `icon-${usage}`,
         ready: <G.Icon source={SettingsGlyph} usage={usage} />,
         loading: <G.Icon source={SettingsGlyph} usage={usage} isLoading />,

@@ -234,7 +234,6 @@ ruleParams:
       "@starci/auth/oidc": [integrations/keycloak]       # the OIDC client and the issuer presets, the GitHub Actions CI attestation included, reached only through integrations/keycloak
       "@starci/auth/contracts": [integrations/passport, integrations/keycloak]   # the door and OIDC contracts, for each glue
       "@starci/auth/testing": [integrations/passport, integrations/keycloak]     # the test doubles and the fake issuer, for each glue's specs
-      "@starci/auth-oidc": []                            # retired into @starci/auth/oidc: no app file imports it (starci app codemod auth-merge)
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -273,15 +272,15 @@ ruleParams:
       "@socket.io/redis-adapter": [platform/realtime]      # the sharded socket.io adapter of a scaled back end on the declared Redis
       pg: [platform/realtime]                              # the LISTEN connection of the Postgres hub; every other query goes through TypeORM
       # BE-AI-1, BE-AI-3: every model call goes through the ai-router gateway. Its custody owner registers @starci/ai-router with the
-      # provider keys; the one LangChain integration owns @langchain/*; no provider SDK, openai client or agent framework is imported.
+      # provider keys; the one LangChain integration owns @langchain/*; the provider SDKs `openai` and `@anthropic-ai/sdk` only in the BYOK streaming integration `integrations/ai-byok`; no other provider SDK or agent framework is imported.
       "@starci/ai-router": [integrations/ai-gateway]
       "@starci/ai-router/testing": [integrations/ai-gateway, integrations/ai]   # the fake provider a spec of either side boots the gateway with
       "@langchain": [integrations/ai]       # a scope key: every @langchain/* package
       "@langchain/langgraph": []            # an agent loop runs in the agent runtime, never in code
       "@langchain/community": []            # retrieval reads the app's own persistence through its owner
       langchain: []                          # createAgent is an agent loop
-      openai: []                             # code calls models through @langchain/openai
-      "@anthropic-ai/sdk": []
+      openai: [integrations/ai-byok]         # the official provider SDKs: only the bring-your-own-key streaming integration (BE-AI-1); every other model call is @langchain/openai through the gateway
+      "@anthropic-ai/sdk": [integrations/ai-byok]
       "@google/genai": []
       "@google/generative-ai": []
       "@mistralai/mistralai": []
@@ -659,17 +658,6 @@ slots:
     profiles: [app]
     # The Swarm stack deploy workflow: reusable (ci.yml calls it after the verdict for every environment with deploy.auto) and workflow_dispatch for the owner's manual operations; a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
-    presence: optional
-    tracked: tracked
-    tier: none
-    tests: none
-    managedBy: ci-workflows
-    rules: [HFS_MANAGED_FILE_DRIFT]
-  - id: app.ci-stack-key-restore
-    since: 3.14.0
-    profiles: [app]
-    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
-    path: ".github/workflows/stack-key-restore.yml"
     presence: optional
     tracked: tracked
     tier: none

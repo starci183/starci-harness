@@ -10,6 +10,7 @@ import type { LockResult } from '../scaffold/app.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import { appSource, bundledPresets, renderTargets } from '../sync/index.mjs';
 import { BUILD_MODULES, ciWorkflowCommands, packagesBuildStep } from '../sync/ci-commands.mjs';
+import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
@@ -52,7 +53,7 @@ test('the build command is the managed build:modules script, and its step render
   assert.match(bare.ciLintSteps ?? '', /run: npm run codegen --silent && npx --no-install turbo run build --filter=\.\/fe\/packages\/\*\n/, 'an app without root packages lints as before');
   assert.doesNotMatch(`${bare.ciLintSteps}${bare.sonarJob}${bare.ciBuildSteps}`, /build:modules/);
 
-  const built = ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', undefined, { packages: true, rootPackages: true });
+  const built = ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', { ...qualityServices({}), sonar: { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } }, { packages: true, rootPackages: true });
   assert.equal(built.ciPackagesBuild, packagesBuildStep(true));
   assert.match(built.ciLintSteps ?? '', /- name: build the lint inputs\n {8}run: npm run build:modules --silent && npm run codegen --silent && npx --no-install turbo run build --filter=\.\/fe\/packages\/\*\n/);
   const sonar = built.sonarJob ?? '';

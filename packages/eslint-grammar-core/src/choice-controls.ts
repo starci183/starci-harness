@@ -3,58 +3,20 @@ import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 /**
- * The rule that holds the one-way-to-choose law (HFS R380, `FE_GROUPED_CHOICE_CONTROL`): the Grammar draws no group of
- * attached buttons. Choosing among a few is one component by meaning: `Tabs` to switch a view or filter a list, `ChoiceChips`
- * or `RadioGroup` to choose a value of a form, separate `Button`s or a `DropdownMenu` for actions, and the Calendar and
- * `ChoiceChips` for a date and a time.
- *
- * WHAT IT READS. A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source, written
- * bare or as a member (`Grammar.ButtonGroup`). ButtonGroup and FilterButtonGroup were deleted in Grammar 0.55.0; the rule still names the replacement.
- *
- * A second rule holds the same law for loose buttons: two or more adjacent `Button` or `IconButton` elements (or one written in a
- * `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons acting as tabs, a pill toggle ("This month / Last
- * month"). A switch between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section` (a mode or period pill is `Section action`);
- * `ChoiceButtons`, `ChoiceChips` or `RadioGroup` choose a form value; a button holds a command, never a selection state.
+ * The rules that hold the one-way-to-choose law (HFS R380, `FE_GROUPED_CHOICE_CONTROL`). Two or more adjacent `Button` or
+ * `IconButton` elements (or one written in a `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons
+ * acting as tabs, a pill toggle ("This month / Last month"). A switch between views or periods of one block is `Tabs` (the
+ * primary underline) in the `filter` row of the block's `Section` (a mode or period pill is `Section action`); a form value is a
+ * `Select` or a `RadioGroup`; a button holds a command, never a selection state.
  */
 
-/** Each banned component with the replacement its message names. */
-export const REPLACEMENTS: Readonly<Record<string, string>> = {
-  ButtonGroup: "separate `Button`s (one commit, the rest alternative or dismiss), or a `DropdownMenu` for the overflow",
-  FilterButtonGroup: "`Tabs kind=\"filter\"` (compact underline tabs with a `count` each, under the list's search field) to narrow a list that stays in place",
-  SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs appearance=\"primary\"` (in the `action` of its `Section`) to switch a mode or period of one block",
-}
-
-/** The element name of a JSX opening element (`ButtonGroup`, or `Grammar.ButtonGroup` as `ButtonGroup`). */
+/** The element name of a JSX opening element (`Tabs`, or `Grammar.Tabs` as `Tabs`). */
 const elementName = (opening: TSESTree.JSXOpeningElement): string | null => {
   const name = opening.name
   if (name.type === "JSXIdentifier") return name.name
   if (name.type === "JSXMemberExpression") return name.property.name
   return null
 }
-
-/** No ButtonGroup, FilterButtonGroup or SegmentedControl in product source. */
-export const noGroupedChoiceControls: Rule.RuleModule = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "R380: no ButtonGroup, FilterButtonGroup or SegmentedControl; choose by meaning (Tabs, ChoiceChips, RadioGroup, separate Buttons, DropdownMenu)." },
-    schema: [],
-    messages: {
-      grouped: "`{{component}}` is deprecated: the Grammar draws no group of attached buttons, because a few choices have exactly one component by meaning. Use {{replacement}}.",
-    },
-  },
-  create(context) {
-    if (!isProductSource(context)) return {}
-    return {
-      JSXOpeningElement(opening) {
-        const component = elementName(opening)
-        if (component === null) return
-        const replacement = REPLACEMENTS[component]
-        if (replacement === undefined) return
-        context.report({ node: opening, messageId: "grouped", data: { component, replacement } })
-      },
-    }
-  },
-})
 
 /** The buttons whose pressed or selected state makes a set of them a switch. */
 const BUTTON_COMPONENTS = new Set(["Button", "IconButton"])
@@ -103,7 +65,7 @@ export const noButtonViewSwitch: Rule.RuleModule = defineRule({
     docs: { description: "R380: no row of Buttons carrying aria-pressed, isSelected or isActive as a view switch; a switch between views or periods is Tabs in the `filter` row of the block's Section." },
     schema: [],
     messages: {
-      switch: "Buttons that carry `{{attribute}}` side by side are a view switch drawn as joined buttons or pills. Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
+      switch: "Buttons that carry `{{attribute}}` side by side are a view switch drawn as joined buttons or pills. Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is a `Select` or a `RadioGroup`; a `Button` holds a command, never a selection state.",
     },
   },
   create(context) {
@@ -182,7 +144,6 @@ export const noPrimaryTabsMisuse: Rule.RuleModule = defineRule({
 
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
-  "no-grouped-choice-controls": noGroupedChoiceControls,
   "no-button-view-switch": noButtonViewSwitch,
   "no-primary-tabs-misuse": noPrimaryTabsMisuse,
 }

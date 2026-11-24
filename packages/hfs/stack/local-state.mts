@@ -8,6 +8,8 @@ import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
 /** What the environment recorded about itself. */
 export interface LocalRecord {
   processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string; /** serve (built) or watch (hot reload); absent in a record written before the built mode. */ mode?: 'serve' | 'watch' }>;
+  /** The edges of the web processes the dev tunnel publishes (local-edge.mts): each outlives the restarts of its process; stack down ends it. */
+  edges?: Record<string, { pid: number; startedAt: string; port: number; command: string; /** the digest of the edge script it runs */ digest: string }>;
   ports: Record<string, number>;
   receipts: {
     migrate?: { at: string; digest: string };
@@ -33,7 +35,7 @@ export function readRecord(dir: string): LocalRecord {
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')) as Partial<LocalRecord>;
     const base = empty();
-    return { processes: parsed.processes ?? base.processes, ports: parsed.ports ?? base.ports, receipts: { ...base.receipts, ...parsed.receipts } };
+    return { processes: parsed.processes ?? base.processes, ...(parsed.edges ? { edges: parsed.edges } : {}), ports: parsed.ports ?? base.ports, receipts: { ...base.receipts, ...parsed.receipts } };
   } catch { return empty(); }
 }
 

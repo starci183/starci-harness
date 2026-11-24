@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react"
-import { ArrowDownTrayIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from "@heroicons/react/24/outline"
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist"
 import { Alert } from "../../composite/Alert/index.js"
 import { Button } from "../../leaf/Button/index.js"
@@ -13,6 +12,7 @@ import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 import { PDF_ZOOM_MAX, PDF_ZOOM_MIN, clampPage, fitWidthZoom, pinchZoom, pointerDistance, rectAtZoom, textRangeRects, zoomIn, zoomOut, type PdfPageView, type PdfRect, type PdfTextItem } from "./math.js"
 import { loadPdfjs } from "./pdfjs.js"
+import { TablerDownload, TablerZoomIn, TablerZoomOut } from "../../leaf/Icon/tabler.js"
 
 /** What the viewer opens: a URL (same origin, or one that allows CORS), or the file's bytes. */
 export type PdfSource = string | ArrayBuffer | Uint8Array
@@ -199,10 +199,10 @@ export const PdfViewerFrame = (props: PdfViewerFrameProps) => {
                         <IconButton label={labels.nextPage} source={glyphSource("chevron-end")} variant="border" isDisabled={page >= total} onPress={props.onNext} />
                     </div>
                     <div style={groupStyle}>
-                        <IconButton label={labels.zoomOut} source={MagnifyingGlassMinusIcon} variant="border" isDisabled={zoom <= PDF_ZOOM_MIN + 1e-6} onPress={props.onZoomOut} />
-                        <IconButton label={labels.zoomIn} source={MagnifyingGlassPlusIcon} variant="border" isDisabled={zoom >= PDF_ZOOM_MAX - 1e-6} onPress={props.onZoomIn} />
+                        <IconButton label={labels.zoomOut} source={TablerZoomOut} variant="border" isDisabled={zoom <= PDF_ZOOM_MIN + 1e-6} onPress={props.onZoomOut} />
+                        <IconButton label={labels.zoomIn} source={TablerZoomIn} variant="border" isDisabled={zoom >= PDF_ZOOM_MAX - 1e-6} onPress={props.onZoomIn} />
                         <Button variant="border" aria-pressed={isFit} onPress={props.onFit}>{labels.fitWidth}</Button>
-                        <IconButton label={labels.download} source={ArrowDownTrayIcon} variant="border" onPress={props.onDownload} />
+                        <IconButton label={labels.download} source={TablerDownload} variant="border" onPress={props.onDownload} />
                     </div>
                 </div>
             )}

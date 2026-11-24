@@ -8,11 +8,13 @@ import { Disclosure } from "../core/branch/Disclosure/index.js"
 import { Expandable } from "../core/branch/Expandable/index.js"
 import { GeoMap } from "../core/branch/GeoMap/index.js"
 import { ListBox } from "../core/branch/ListBox/index.js"
-import { MermaidDiagram } from "../core/frame/MermaidDiagram/index.js"
+import { CodeBlock } from "../core/frame/CodeBlock/index.js"
+import { Sidenotes, SidenoteTerm } from "../core/frame/Sidenotes/index.js"
+import { GradedChoice } from "../core/composite/GradedChoice/index.js"
+import { TableOfContents } from "../core/composite/TableOfContents/index.js"
 import { AvatarButton } from "../core/leaf/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
-import { LogoStack } from "../core/composite/LogoStack/index.js"
 import { DescriptionList } from "../core/composite/DescriptionList/index.js"
 import { Pagination } from "../core/composite/Pagination/index.js"
 import { Stepper } from "../core/composite/Stepper/index.js"
@@ -35,12 +37,14 @@ export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { Expandable, type ExpandableProps } from "../core/branch/Expandable/index.js"
 export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type GeoMapTiles } from "../core/branch/GeoMap/index.js"
-export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/frame/MermaidDiagram/index.js"
+export { CodeBlock, type CodeBlockLabels, type CodeBlockProps, type CodeBlockScheme } from "../core/frame/CodeBlock/index.js"
+export { Sidenotes, SidenoteTerm, type SidenoteItem, type SidenotesProps, type SidenoteTermProps } from "../core/frame/Sidenotes/index.js"
+export { GradedChoice, type GradedChoiceLabels, type GradedChoiceLocalProps, type GradedChoiceOption, type GradedChoiceProps, type GradedChoiceServerProps, type GradedChoiceVerdict } from "../core/composite/GradedChoice/index.js"
+export { TableOfContents, type TableOfContentsItem, type TableOfContentsProps } from "../core/composite/TableOfContents/index.js"
 export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type ListBoxSize } from "../core/branch/ListBox/index.js"
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps, type AvatarButtonSize, type AvatarButtonStatus } from "../core/leaf/AvatarButton/index.js"
 export { IdentityLockup, type IdentityLockupProps } from "../core/composite/IdentityLockup/index.js"
-export { LogoStack, type LogoStackItem, type LogoStackProps } from "../core/composite/LogoStack/index.js"
 export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/PlainPressable.js"
 export { Spotlight, type SpotlightProps, type SpotlightShape } from "../core/Spotlight.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
@@ -63,6 +67,6 @@ export { Video, pickVideoSource, playbackOf, type VideoLabels, type VideoPlaybac
 
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
-    Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, ColorSwatch, DataTable, DescriptionList,
-    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, CodeBlock, ColorSwatch, DataTable, DescriptionList, GradedChoice, Sidenotes, SidenoteTerm, TableOfContents,
+    GeoMap, Disclosure, Expandable, DragItem, Footer, IdentityLockup, Illustration, Image, Link, ListBox, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

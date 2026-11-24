@@ -23,7 +23,7 @@ import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
 import { appCodemodVerb } from "./core/app/codemod.js"
 import { appAuditVerb } from "./core/app/audit.js"
-import { auditCycleVerb, auditRunVerb, auditStatusVerb, galleryMigrateVerb } from "./core/app/ui-audit.js"
+import { auditCycleVerb, auditRunVerb, auditStatusVerb } from "./core/app/ui-audit.js"
 import { appCoverageVerb } from "./core/app/coverage.js"
 import { appDataVerb } from "./core/app/data.js"
 import { dataStandardVerb } from "./core/data/standard.js"
@@ -135,17 +135,20 @@ import { ticketListVerb } from "./core/ticket/list.js"
 import { ticketOpenVerb } from "./core/ticket/open.js"
 import { ticketShowVerb } from "./core/ticket/show.js"
 import { ticketTakeVerb } from "./core/ticket/take.js"
-import { laneLandVerb } from "./core/lane/land.js"
 import { devSyncVerb } from "./core/dev/sync.js"
+import { devSyncRunnerVerb } from "./core/dev/sync-runner.js"
 import { laneRemoveVerb } from "./core/lane/remove.js"
-import { laneReadyVerb } from "./core/lane/ready.js"
+import { lanePruneInstallsVerb } from "./core/lane/prune-installs.js"
+import { opsReapVerb } from "./core/ops/reap.js"
 import { laneStatusVerb } from "./core/lane/status.js"
-import { laneWithdrawVerb } from "./core/lane/withdraw.js"
+import { laneCiWatchVerb } from "./core/lane/ci-watch.js"
 import { laneGateVerb } from "./core/lane/gate.js"
+import { hotfixAbortVerb, hotfixLandVerb, hotfixStatusVerb } from "./core/hotfix/hotfix.js"
 import { slotListVerb } from "./core/slot/list.js"
 import { slotReleaseVerb } from "./core/slot/release.js"
 import { slotRunVerb } from "./core/slot/run.js"
 import { slotTakeVerb } from "./core/slot/take.js"
+import { appLookVerb } from "./core/gallery/look.js"
 import { galleryShootVerb } from "./core/gallery/shoot.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
@@ -183,7 +186,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     auditRunVerb,
     auditCycleVerb,
     auditStatusVerb,
-    galleryMigrateVerb,
     appDataVerb,
     dataStandardVerb,
     appDbVerb,
@@ -304,18 +306,23 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     ticketTakeVerb,
     ticketCloseVerb,
     ticketAnswerVerb,
-    laneReadyVerb,
-    laneWithdrawVerb,
     laneStatusVerb,
-    laneLandVerb,
+    laneCiWatchVerb,
     devSyncVerb,
+    devSyncRunnerVerb,
     laneGateVerb,
+    hotfixLandVerb,
+    hotfixStatusVerb,
+    hotfixAbortVerb,
     slotTakeVerb,
     slotReleaseVerb,
     slotListVerb,
     slotRunVerb,
+    appLookVerb,
     galleryShootVerb,
     laneRemoveVerb,
+    lanePruneInstallsVerb,
+    opsReapVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees every verb but the runtime's own; the runtime and a bare directory see everything. */

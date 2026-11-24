@@ -6,7 +6,7 @@ import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contr
 import type { ReaderContext } from "./lib/types.ts"
 
 /**
- * THE TYPE ROLES (owner, 2026-11-21, TYPE-ROLES). Type in an app is a role the Grammar draws: `<Text role="label.item">`, or the
+ * THE TYPE ROLES (TYPE-ROLES). Type in an app is a role the Grammar draws: `<Text role="label.item">`, or the
  * public class of the role (`starci-type-label-item`) on an element of the app's own. A raw size is a second type scale.
  *
  * WHAT IT READS, in product source (Grammar's own sources are not product source):

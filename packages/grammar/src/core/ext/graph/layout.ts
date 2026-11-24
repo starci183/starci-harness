@@ -1,6 +1,6 @@
 import ElkModule from "elkjs/lib/elk.bundled.js"
 import type { ELK, ElkExtendedEdge, ElkNode, ElkPort, LayoutOptions } from "elkjs/lib/elk-api.js"
-import { separateLabels, symmetrise, type MutableRoute } from "./arrange.js"
+import { alignDecisions, separateLabels, type MutableRoute } from "./arrange.js"
 import type { GraphDirection, GraphPosition } from "./types.js"
 
 /** The fixed width of a node box: the layout reserves it and the stylesheet draws it. */
@@ -113,8 +113,8 @@ const options = (direction: GraphDirection, nested: boolean): LayoutOptions => (
     "elk.spacing.edgeEdge": "16",
     "elk.spacing.edgeLabel": "10",
     "elk.spacing.labelNode": "10",
-    // SIMPLE keeps the spine on one x and a decision's branches equally far either side; BRANDES_KOEPF left them 8 to 70px off (see the CHANGELOG).
-    "elk.layered.nodePlacement.strategy": "SIMPLE",
+    // NETWORK_SIMPLEX keeps the spine and each decision's main branch on one line (the routing law, rule 2 and 3); alignDecisions settles what it leaves off.
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
     "elk.spacing.portPort": "10",
     "elk.layered.spacing.nodeNodeBetweenLayers": direction === "LR" ? "96" : "64",
@@ -123,6 +123,8 @@ const options = (direction: GraphDirection, nested: boolean): LayoutOptions => (
     "elk.layered.considerModelOrder.strategy": "PREFER_EDGES",
     "elk.layered.cycleBreaking.strategy": "DEPTH_FIRST",
     "elk.layered.nodePlacement.favorStraightEdges": "true",
+    // One entry and one exit per side of a node: the edges without ports touch it at one point, never stacked (the routing law, simplifyRoutes).
+    "elk.layered.mergeEdges": "true",
     "elk.layered.edgeLabels.sideSelection": "ALWAYS_UP",
     "elk.json.edgeCoords": "ROOT",
     "elk.separateConnectedComponents": "false",
@@ -339,7 +341,7 @@ export const layoutFlow = async (nodes: readonly SizedNode[], links: readonly Li
         }
         const sides = new Map<string, PortSide>()
         for (const id of island) for (const port of tree.byId.get(id)?.ports ?? []) sides.set(`${id}\u0000${port.id}`, port.side)
-        symmetrise({ island, links: usable.filter((link) => inIsland(link.source) && inIsland(link.target)), sides, positions: local, boxes: sizes, routes: arranged })
+        alignDecisions({ island, links: usable.filter((link) => inIsland(link.source) && inIsland(link.target)), sides, positions: local, boxes: sizes, routes: arranged, direction })
         let right = 0
         let bottom = 0
         for (const id of island) {
@@ -380,7 +382,129 @@ export const layoutFlow = async (nodes: readonly SizedNode[], links: readonly Li
     const mutable: Record<string, MutableRoute> = Object.fromEntries(Object.entries(routes).map(([id, route]) => [id, { points: route.points.map(([x, y]) => [x, y] as [number, number]), ...(route.label === undefined ? {} : { label: { ...route.label } }) }]))
     separateLabels(usable, mutable, 8)
     snapEnds(tree, placed, mutable, positions, boxes)
+    simplifyRoutes(tree, placed, mutable, positions, boxes, direction)
     return { positions, boxes, routes: mutable, ports }
+}
+
+/** How far apart (in graph units) two ends may stand across the flow and still be drawn as one straight line: a jog under this is a rounding, never a bend. */
+export const STRAIGHT_SNAP = 8
+
+/**
+ * The edge-routing law of every graph (owner: "Chốt", 2026-11-23). An edge whose ends share a rank line (their boxes overlap across the flow, or stand within
+ * `STRAIGHT_SNAP`) is one straight run, no jog. A port-less edge between offset nodes takes exactly one bend: it leaves its source by the side facing its target
+ * across the flow (a decision's other branch turns to the side) and enters its target by the side facing the flow, so every node keeps one entry; when that
+ * L would cross a node, the other L (out along the flow, then into the target's top or bottom) is tried, and ELK's own route is kept when both would. The
+ * words of a branch stand right at the split. A back edge, an edge on a fixed port and an edge into or out of a container keep their routes.
+ */
+const simplifyRoutes = (tree: Tree, links: readonly LinkEnds[], routes: Record<string, MutableRoute>, positions: Readonly<Record<string, GraphPosition>>, boxes: Readonly<Record<string, Box>>, direction: GraphDirection): void => {
+    const across = direction === "LR" ? 1 : 0
+    const along = 1 - across
+    const leaves = [...tree.byId.keys()].filter((id) => (tree.kids.get(id) ?? []).length === 0)
+    const rects = new Map(leaves.flatMap((id) => {
+        const box = boxes[id]
+        return box === undefined ? [] : [[id, rectOf(absolute(tree, id, positions), box)] as const]
+    }))
+    const blocked = (points: readonly Point[], source: string, target: string): boolean => {
+        for (const [id, rect] of rects) {
+            if (id === source || id === target) continue
+            for (let index = 1; index < points.length; index += 1) {
+                const a = points[index - 1]
+                const b = points[index]
+                if (a !== undefined && b !== undefined && runMeets(a, b, grow(rect, 4))) return true
+            }
+        }
+        return false
+    }
+    const lo = (rect: Rect, axis: number): number => (axis === 0 ? rect.l : rect.t)
+    const hi = (rect: Rect, axis: number): number => (axis === 0 ? rect.r : rect.b)
+    const mid = (rect: Rect, axis: number): number => (lo(rect, axis) + hi(rect, axis)) / 2
+    const pt = (alongValue: number, acrossValue: number): [number, number] => (along === 0 ? [alongValue, acrossValue] : [acrossValue, alongValue])
+    for (const link of links) {
+        const route = link.id === undefined ? undefined : routes[link.id]
+        if (route === undefined || link.back === true) continue
+        const s = rects.get(link.source)
+        const t = rects.get(link.target)
+        if (s === undefined || t === undefined) continue
+        const first = route.points[0]
+        const last = route.points[route.points.length - 1]
+        if (first === undefined || last === undefined) continue
+        // A node's own entry and exit (the ports whose id starts with , model.ts IN_PORT and OUT_PORT) are not fixed: the edge may touch any side. A named
+        // output (a decision's branch, a card's output pill) is fixed where it stands.
+        const fixed = (port: string | undefined): boolean => port !== undefined && !port.startsWith("")
+        const ported = fixed(link.sourcePort) || fixed(link.targetPort)
+        // Straight: the exit (fixed when on a port) lies within the target's span across the flow, or both centres are a rounding apart.
+        const exitAcross = ported ? first[across] : mid(s, across)
+        const shared = [Math.max(lo(s, across), lo(t, across)) + 6, Math.min(hi(s, across), hi(t, across)) - 6] as const
+        const forward = lo(t, along) >= hi(s, along)
+        if (!forward) continue
+        // A fixed exit runs straight only from inside the target's span: a branch out of a decision's side vertex never drops past its target.
+        const exitInTarget = exitAcross !== undefined && exitAcross >= lo(t, across) + 6 && exitAcross <= hi(t, across) - 6
+        const straightAt = Math.abs(mid(s, across) - mid(t, across)) <= STRAIGHT_SNAP
+            ? (ported ? (exitInTarget ? exitAcross : undefined) : mid(t, across))
+            : !ported && shared[0] <= shared[1]
+              ? Math.min(Math.max(mid(t, across), shared[0]), shared[1])
+              : ported && exitInTarget && Math.abs(exitAcross - mid(t, across)) <= STRAIGHT_SNAP
+                ? exitAcross
+                : undefined
+        const towards = mid(t, across) > mid(s, across)
+        // Into the target by the side facing the flow, at its centre: one entry per node.
+        const entry = pt(lo(t, along), mid(t, across))
+        let points: [number, number][] | undefined
+        if (straightAt !== undefined && exitAcross !== undefined) {
+            const candidate = [pt(ported ? (first[along] ?? hi(s, along)) : hi(s, along), straightAt), pt(lo(t, along), straightAt)]
+            if (!blocked(candidate, link.source, link.target)) points = candidate
+        } else if (fixed(link.targetPort)) {
+            points = undefined
+        } else if (fixed(link.sourcePort)) {
+            // A branch on a side port (across the flow) turns once: out sideways to the target's centre line, then on into the target's flow-facing side.
+            const onSide = first[along] !== undefined && first[along] > lo(s, along) + 1 && first[along] < hi(s, along) - 1
+            const firstAcross = first[across]
+            const firstAlong = first[along]
+            if (onSide && firstAcross !== undefined && firstAlong !== undefined && Math.sign(mid(t, across) - firstAcross) === (towards ? 1 : -1)) {
+                const candidate = [pt(firstAlong, firstAcross), pt(firstAlong, mid(t, across)), entry]
+                if (!blocked(candidate, link.source, link.target)) points = candidate
+            }
+        } else if (route.points.length > 3 || route.points.length === 3) {
+            // Out by the side facing the target across the flow, once round the corner, into the target's flow-facing side; else out along the flow.
+            const sideExit = [pt(mid(s, along), towards ? hi(s, across) : lo(s, across)), pt(mid(s, along), mid(t, across)), entry]
+            const alongExit = [pt(hi(s, along), mid(s, across)), pt(mid(t, along), mid(s, across)), pt(mid(t, along), towards ? lo(t, across) : hi(t, across))]
+            points = [sideExit, alongExit].find((candidate) => !blocked(candidate, link.source, link.target))
+        }
+        // A route that keeps ELK's shape (an L would cross a node) still carries its words at the split, unless they sit on a named port.
+        if (points === undefined && ported) continue
+        const label = route.label
+        if (points !== undefined) route.points = points
+        points = route.points
+        if (label === undefined || points.length < 2) continue
+        // The words stand right at the split: on the first run this edge does not share with another edge of its source, a little past its start.
+        const siblings = links.filter((other) => other !== link && other.source === link.source && other.id !== undefined).flatMap((other) => {
+            const theirs = routes[other.id as string]
+            return theirs === undefined ? [] : [theirs.points]
+        })
+        const onRun = (p: readonly [number, number], q: readonly [number, number], at: readonly [number, number]): boolean =>
+            (Math.abs(p[0] - q[0]) <= 1 && Math.abs(at[0] - p[0]) <= 1 && at[1] >= Math.min(p[1], q[1]) - 1 && at[1] <= Math.max(p[1], q[1]) + 1) ||
+            (Math.abs(p[1] - q[1]) <= 1 && Math.abs(at[1] - p[1]) <= 1 && at[0] >= Math.min(p[0], q[0]) - 1 && at[0] <= Math.max(p[0], q[0]) + 1)
+        const sharedRun = (p: readonly [number, number], q: readonly [number, number]): boolean => {
+            const middle: [number, number] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+            return siblings.some((other) => other.some((point, index) => index > 0 && onRun(other[index - 1] ?? point, point, middle)))
+        }
+        let runAt = 0
+        while (runAt < points.length - 2 && sharedRun(points[runAt] ?? [0, 0], points[runAt + 1] ?? [0, 0])) runAt += 1
+        const a = points[runAt] ?? [0, 0]
+        const b = points[runAt + 1] ?? [0, 0]
+        const sideways = a[1] === b[1]
+        const room = Math.abs(sideways ? b[0] - a[0] : b[1] - a[1])
+        // Past a shared run, the words keep clear of the words a sibling carries on the line they leave.
+        const siblingHalf = runAt === 0 ? 0 : Math.max(0, ...links.filter((other) => other !== link && other.source === link.source && other.id !== undefined).map((other) => {
+            const theirs = routes[other.id as string]?.label
+            return theirs === undefined ? 0 : (sideways ? theirs.width : theirs.height) / 2
+        }))
+        const half = (sideways ? label.width : label.height) / 2
+        const step = Math.max(Math.min((siblingHalf > 0 ? siblingHalf + 8 : 12) + half, room - half), Math.min(12 + half, room / 2))
+        const cx = sideways ? a[0] + Math.sign(b[0] - a[0]) * step : a[0]
+        const cy = sideways ? a[1] : a[1] + Math.sign(b[1] - a[1]) * step
+        route.label = { ...label, x: Math.round(cx - label.width / 2), y: Math.round(cy - label.height / 2) }
+    }
 }
 
 /**

@@ -45,7 +45,7 @@ export type TabItem = {
 
 /**
  * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (the `filter` row of its
- * `Section`); `ChoiceChips` or `RadioGroup` choose a form value; a `Button` holds a command, never a selection state.
+ * `Section`); `Select` or `RadioGroup` chooses a form value; a `Button` holds a command, never a selection state.
  * Two joined buttons or pills acting as tabs are banned (R380, `no-button-view-switch`).
  *
  * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
@@ -72,11 +72,11 @@ type TabsCommon = NoChildren & {
 
 /**
  * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
- * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: the same underline one size
- * smaller (13px, tighter), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
+ * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: drawn exactly as the page tabs (the same text
+ * role, height, underline and count chip; a second tab row is never a smaller variant), each with its `count`; a strip wider than its row scrolls sideways (it never folds into a "+n" menu),
  * its edges fade where more tabs wait and the selected one is scrolled into view.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
- * form is `ChoiceChips` or `RadioGroup`.
+ * form is a `Select` or `RadioGroup`.
  */
 export type SecondaryTabsProps = TabsCommon & {
     readonly appearance?: "secondary"
@@ -121,8 +121,9 @@ export type PrimaryTabItems =
     | readonly [PrimaryTabItem, PrimaryTabItem, PrimaryTabItem, PrimaryTabItem]
 
 /**
- * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It switches a mode or period of the same data ("This
- * month / Last month", "Day / Week / Month", "List / Board") among 2 to 4 short, fixed options, and never navigates: no `count`, no
+ * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It toggles a period or mode of the same data ("7 days /
+ * 30 days", "Day / Week / Month") among 2 to 4 short, fixed options, and never navigates (owner 2026-11-23: whatever changes the route or
+ * switches a block's views, "Board / Calendar / List", is the underline, secondary): no `count`, no
  * `href`, no more than four items (refused by the types, and by a development throw for what the types cannot see). It has no
  * line; it stands at the trailing edge of the head it switches (a `Section` `action`).
  */

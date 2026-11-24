@@ -19,7 +19,6 @@ import { isOwnedEnumMember } from "./lib/declared.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { isDeclarationFile, normalizePath } from "./lib/path.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
-import { isNode } from "./lib/rule.ts"
 import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 const BODY_DECORATORS = new Set(["Body", "Args"])
@@ -40,8 +39,7 @@ const isUntyped = (annotation: TSESTree.TSTypeAnnotation | undefined) => {
     if (["TSUnknownKeyword", "TSAnyKeyword", "TSObjectKeyword"].includes(type.type)) return true
     if (type.type === "TSTypeLiteral" && type.members.length === 0) return true
     if (type.type === "TSTypeReference" && type.typeName.type === "Identifier" && type.typeName.name === "Record") {
-        const legacy: unknown = Reflect.get(type, "typeParameters")
-        const value = type.typeArguments?.params?.[1] ?? (isNode(legacy) && legacy.type === "TSTypeParameterInstantiation" ? legacy : undefined)?.params?.[1]
+        const value = type.typeArguments?.params?.[1]
         return value?.type === "TSUnknownKeyword" || value?.type === "TSAnyKeyword"
     }
     return false

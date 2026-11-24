@@ -21,8 +21,7 @@ permissions:
   contents: read
 
 jobs:
-  # Nothing publishes unless the WHOLE ci run of the commit is green, the Sonar quality gate and the app job included (2026-11-17:
-  # a red Sonar let three packages out): the run is taken only when ci succeeded, never when it failed or was cancelled by a newer
+  # Nothing publishes unless the WHOLE ci run of the commit is green, the Sonar quality gate and the app job included: the run is taken only when ci succeeded, never when it failed or was cancelled by a newer
   # push, and .github/scripts/publish-gate.mts holds every package and the CLI again when any job of that run is not green. One job, not one per phase: a job-level concurrency group
   # is taken only by a job that runs, so a run for a pull request, a manual run or a cancelled ci never queues here, and the
   # CLI's phase cannot be overtaken by the next run's packages phase.

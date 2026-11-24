@@ -36,7 +36,6 @@ interface WorkView {
     readonly trackedFiles: number
     readonly untrackedFiles: number
     readonly ignored: boolean
-    readonly legacyLedger: boolean
 }
 
 interface DoctorData {
@@ -108,15 +107,11 @@ const workOf = async (cwd: string): Promise<WorkView | null> => {
         trackedFiles: lineCount(tracked.stdout),
         untrackedFiles: lineCount(untracked.stdout),
         ignored: ignored.exitCode === 0,
-        legacyLedger: existsSync(join(dir, "runtime.sqlite")),
     }
 }
 
-const warningsOf = (work: WorkView | null, harness: HarnessState): string[] => {
+const warningsOf = (work: WorkView | null): string[] => {
     const warnings: string[] = []
-    if (work?.legacyLedger === true) {
-        warnings.push(`${work.repository}/.starciwork/runtime.sqlite is a ledger of the old layout: the harness never reads, copies or migrates it, and keeps its state under ${harness.stateBase}; move it out of the Work folder`)
-    }
     if (work?.ignored === true) warnings.push(`${work.repository}/.starciwork is git-ignored, but it is product content (Business, Architecture, features) and is committed`)
     return warnings
 }
@@ -165,7 +160,7 @@ export const doctorVerb = defineVerb({
         }
         const work = await workOf(context.cwd)
         const policy = policyOf(work?.repository, context.treeRoot)
-        const warnings = warningsOf(work, harness)
+        const warnings = warningsOf(work)
         const data: DoctorData = { tree: context.tree, treeRoot: context.treeRoot ?? null, probes, orca, harness, policy, work, warnings }
         const table = formatTable(probes.map((probe) => [probe.name, probe.found ?? (probe.required ? "MISSING" : "absent"), probe.required ? "required" : "optional"]))
         const treeNote = context.treeRoot === undefined ? "" : ` (${context.treeRoot})`

@@ -1,11 +1,10 @@
-// The two-level gate (owner: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"): `app check --level dev` is the fast level of a
-// landing on dev (the deps check with dev-local pins allowed, then @starci/hfs's fast families), once per push; a push of dev or a lane branch, the lander and
-// lane gate use it; main, a release tag and the release verbs use the full level (core/app/fast-check.ts, push.ts, harness/land-batch.ts, core/lane/gate.ts).
+// The two-level gate: `app check --level dev` is the fast level of a landing on dev (the deps check with dev-local pins allowed, then @starci/hfs's fast
+// families), once per push; a push of dev or a lane branch and lane gate use it; main, a release tag and the release verbs use the full level
+// (core/app/fast-check.ts, push.ts, core/lane/gate.ts).
 import assert from "node:assert/strict"
 import test from "node:test"
 import { Refusal } from "../../shared/errors.js"
 import type { VerbResult } from "../../shared/verb.js"
-import { LANDER_GATE_ARGS } from "../../harness/land-batch.js"
 import { LANE_CHECK_ARGS } from "../lane/gate.js"
 import type { PushTarget } from "../deps/dev-local.js"
 import { fastTarget, levelOfTarget, pushRefsOf, pushTargetOfArgs, runFastCheck } from "./fast-check.js"
@@ -17,7 +16,7 @@ const ZERO = "0".repeat(40)
 const line = (ref: string): string => `refs/heads/x ${"a".repeat(40)} ${ref} ${ZERO}`
 
 void test("a landing on dev is detected from the target: every ref dev or a lane branch; main, a tag or another branch is the full level", () => {
-    assert.equal(levelOfTarget(pushTargetOfArgs(["origin", "HEAD:dev"], "lane/x")), "dev", "the lander's push")
+    assert.equal(levelOfTarget(pushTargetOfArgs(["origin", "HEAD:dev"], "lane/x")), "dev", "a push of dev")
     assert.equal(levelOfTarget(pushTargetOfArgs(["-u", "origin", "HEAD"], "lane/x")), "dev", "a lane push of its own branch")
     assert.equal(levelOfTarget(pushTargetOfArgs(["--json", "origin", "HEAD:lane/x"], "lane/x")), "dev")
     assert.equal(levelOfTarget(pushTargetOfArgs([], "dev")), "dev", "no refspec: the current branch")
@@ -30,8 +29,7 @@ void test("a landing on dev is detected from the target: every ref dev or a lane
     assert.deepEqual(fastTarget(`${line("refs/heads/lane/x")}\n`).refs, ["refs/heads/lane/x"])
 })
 
-void test("the lane push and the lander use the fast level; the full push path uses the full level", () => {
-    assert.deepEqual(LANDER_GATE_ARGS, ["app", "check", "--env", "prod", "--level", "dev", "--json"])
+void test("the lane push uses the fast level; the full push path uses the full level", () => {
     assert.deepEqual(LANE_CHECK_ARGS, ["app", "check", "--env", "prod", "--level", "dev", "--json"])
     assert.deepEqual(FULL_CHECK_ARGS, ["app", "check", "--env", "prod", "--level", "full", "--json"])
 })
@@ -84,7 +82,7 @@ void test("one check pass per push: a green fast run on a clean tree is remember
     assert.equal(w.forwarded.length, 1, "the second pass ran nothing")
     assert.equal(w.targets.length, 1)
     assert.match(w.log.at(-1) ?? "", /already passed the fast level .*one check pass per push/)
-    assert.deepEqual((second.data as { findings: unknown[] }).findings, [], "a memo answer is a green report the lander reads")
+    assert.deepEqual((second.data as { findings: unknown[] }).findings, [], "a memo answer is a green report the gate reads")
 })
 
 void test("a red run or a dirty tree is never remembered", async () => {
@@ -147,4 +145,18 @@ void test("app push of a landing on dev runs no check of its own (its hook runs 
     const promoted = warmAndPush(main.ports, ["origin", "main"], "full")
     assert.equal(promoted.runs, 1)
     assert.deepEqual(main.log, ["check", "push origin main"])
+})
+
+void test("a standing hotfix pass skips the fast level for its one push: no deps check, no hfs, no memo", async () => {
+    const w = world()
+    const covered: FastPorts = { ...w.ports, hotfix: (refs) => (refs === undefined ? undefined : "hotfix: abc is the one commit of the running starci hotfix land") }
+    const run = await runFastCheck(["--env", "prod", "--level", "dev", "--push-refs", line("refs/heads/dev")], covered)
+    assert.equal(run.exitCode, 0)
+    assert.equal(w.forwarded.length, 0)
+    assert.equal(w.targets.length, 0)
+    assert.equal(w.memos.size, 0)
+    assert.match(w.log.at(-1) ?? "", /^hotfix: abc/u)
+    const open = await runFastCheck(["--env", "prod", "--level", "dev"], covered)
+    assert.equal(w.forwarded.length, 1, "a run with no push refs is judged as before")
+    assert.equal(open.exitCode, 0)
 })

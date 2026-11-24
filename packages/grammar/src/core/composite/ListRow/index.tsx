@@ -17,9 +17,9 @@ import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Link } from "../../leaf/Link/index.js"
 import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
+import { TablerDots } from "../../leaf/Icon/tabler.js"
 
 /** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column of their own. */
 const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
@@ -46,7 +46,7 @@ const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
 
 /** The quiet mark at the end of a pressable row: it opens something. Decorative (the title is the control); a right-to-left page mirrors it in CSS. */
 const RowChevron = () => (
-    <span className="starci-core-list-row-chevron" data-grammar-row-chevron="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span>
+    <span className="starci-core-list-row-chevron" data-grammar-row-chevron="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="text" /></span>
 )
 
 const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
@@ -82,6 +82,21 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
     const actionCount = [row.action, row.menu, row.control].filter((part) => part != null).length
     const drag = row.drag
     const hintId = useId()
+    const isFoot = row.actionPlacement === "foot"
+    const skeletonActions = <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span>
+    const actions = (
+        <span className="starci-core-list-row-actions" data-contract="GAP-2">
+            {row.control == null ? null : <span className="starci-core-list-row-control" data-contract="GAP-2">{row.control}</span>}
+            {row.action === undefined ? null : <RowAction action={row.action} />}
+            {row.menu === undefined ? null : (
+                <DropdownMenu
+                    placement="bottom end"
+                    entries={row.menu.entries}
+                    trigger={<IconButton label={row.menu.label} source={TablerDots} variant="border" />}
+                />
+            )}
+        </span>
+    )
     const pressKeys = drag?.onMoveKey === undefined ? {} : {
         "aria-keyshortcuts": "Alt+ArrowLeft Alt+ArrowRight",
         ...(drag.keyHint === undefined ? {} : { "aria-describedby": hintId }),
@@ -104,7 +119,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatmentFor("neutral").tone}
                 data-grammar-leading={hasLeading || row.diff !== undefined ? "true" : "false"}
                 data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
-                {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
+                {...(row.actionPlacement === "end" || row.actionPlacement === "foot" ? { "data-grammar-action-placement": row.actionPlacement } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff-skeleton": row.diff })}
@@ -139,8 +154,9 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                     </span>
                 ) : null}
                 {chevronOnly ? <span className="starci-core-list-row-actions"><RowChevron /></span> : null}
-                {hasActions ? <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span> : null}
+                {hasActions && !isFoot ? skeletonActions : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
+                {hasActions && isFoot ? skeletonActions : null}
             </li>
         )
     }
@@ -155,7 +171,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatment.tone}
                 data-grammar-leading={hasLeading || hasMark || row.diff !== undefined ? "true" : "false"}
                 data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
-                {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
+                {...(row.actionPlacement === "end" || row.actionPlacement === "foot" ? { "data-grammar-action-placement": row.actionPlacement } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.value == null ? {} : { "data-grammar-value": "true" })}
@@ -195,7 +211,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                                     {row.href !== undefined
                                         ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
                                         : row.onPress === undefined
-                                            ? row.title
+                                            ? (row.titleContent ?? row.title)
                                             : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                                 </span>
                             )}
@@ -203,7 +219,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                         {row.emphasis === "unread" ? <span className="starci-core-list-row-unread" data-grammar-unread-dot="true" aria-hidden="true" /> : null}
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
-                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{row.change.from} <Icon source={glyphSource("arrow-end")} usage="chip" /> {row.change.to}</span>}
+                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{row.change.from} <Icon source={glyphSource("arrow-end")} usage="control" /> {row.change.to}</span>}
                 </span>
                 {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true">{row.value}</span>}
                 {hasTrail ? (
@@ -218,20 +234,10 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                     </span>
                 ) : null}
                 {chevronOnly ? <span className="starci-core-list-row-actions" data-contract="GAP-2"><RowChevron /></span> : null}
-                {hasActions ? (
-                    <span className="starci-core-list-row-actions" data-contract="GAP-2">
-                        {row.control == null ? null : <span className="starci-core-list-row-control" data-contract="GAP-2">{row.control}</span>}
-                        {row.action === undefined ? null : <RowAction action={row.action} />}
-                        {row.menu === undefined ? null : (
-                            <DropdownMenu
-                                placement="bottom end"
-                                entries={row.menu.entries}
-                                trigger={<IconButton label={row.menu.label} source={EllipsisHorizontalIcon} variant="border" />}
-                            />
-                        )}
-                    </span>
-                ) : null}
+                {hasActions && !isFoot ? actions : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
+                {/* foot (0.55.1): the commands follow the detail in the reading and focus order, on a row of their own */}
+                {hasActions && isFoot ? actions : null}
             </li>
         </>
     )

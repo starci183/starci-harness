@@ -51,14 +51,14 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
               <G.PaneSection as="header" align="center"><G.PaneHeader title="Conversations" /></G.PaneSection>
               <G.PaneSection><G.ListBox label="Conversations" items={conversations} selectionMode="single" defaultSelectedIds={['linh']} inset="panel" /></G.PaneSection>
             </G.Pane>
-            <G.Pane area="chat" label="Chat">
-              <G.PaneSection align="center">
-                <G.PaneHeader title="Sam Lee" description="Email - 5 minutes ago" actions={<G.IconButton variant="border" source={EllipsisGlyph} label="More actions" />} />
-              </G.PaneSection>
-              <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end', tone: 'background' }}>
-                <G.MessageBubble author="Sam" meta="09:12" body="Can the order for table 4 move to 19:30?" />
-                <G.MessageBubble side="outgoing" meta="09:14" body="Yes, I moved it." />
-              </G.PaneSection>
+            <G.Pane area="chat" content="chat" label="Chat">
+              <G.ChatFrame
+                label="Conversation"
+                header={<G.PaneHeader title="Sam Lee" description="Email - 5 minutes ago" mark={<G.Avatar name="Sam Lee" size="md" />} actions={<G.IconButton variant="border" source={EllipsisGlyph} label="More actions" />} />}
+              >
+                <G.MessageBubble author="Sam" meta="09:12" avatar={<G.Avatar name="Sam Lee" size="md" />} body="Can the order for table 4 move to 19:30?" />
+                <G.MessageBubble side="outgoing" meta="09:14" avatar={<G.Avatar name="Assistant" size="md" />} body="Yes, I moved it." />
+              </G.ChatFrame>
             </G.Pane>
             <G.Pane area="aside" surface label="Needs you">
               <G.PaneSection as="header" align="center"><G.Heading level={2}>Needs your review</G.Heading></G.PaneSection>
@@ -190,7 +190,7 @@ export const NestedGrids: Story = {
  * thread that scrolls, a composer) and an aside (head, a long list), in the fixed shell. Only the thread and the aside list scroll: the page, the band, the head and the composer stay put.
  */
 const longThread = Array.from({ length: 60 }, (_, index) => (
-  <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} author={index % 3 === 0 ? undefined : 'Chatbot'} meta={`${String(9 + Math.floor(index / 6)).padStart(2, '0')}:${String((index % 6) * 9).padStart(2, '0')}`} body={`Message ${index + 1}: the support chatbot needs your decision, the assistant plan needs a reviewer.`} />
+  <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} avatar={<G.Avatar name={index % 3 === 0 ? 'Assistant' : 'Chatbot'} size="md" />} author={index % 3 === 0 ? undefined : 'Chatbot'} meta={`${String(9 + Math.floor(index / 6)).padStart(2, '0')}:${String((index % 6) * 9).padStart(2, '0')}`} body={`Message ${index + 1}: the support chatbot needs your decision, the assistant plan needs a reviewer.`} />
 ));
 const longAside: ReadonlyArray<G.ListBoxItem> = Array.from({ length: 40 }, (_, index) => ({ id: `s${index}`, label: `Source ${index + 1}`, description: 'Receive messages · Automatic' }));
 
@@ -198,10 +198,8 @@ const chatTabGrid = (
   <G.PaneGrid label="Chat tab" areas={['tab']}>
     <G.Pane area="tab" inset="flush">
       <G.PaneGrid label="Chat" areas={{ base: ['room'], medium: ['room rail'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
-        <G.Pane area="room" surface content="full" inset="flush" label="Room">
-          <G.PaneSection align="center"><G.PaneHeader title="Chatbot" description="Agent" /></G.PaneSection>
-          <G.PaneSection scroll={{ label: 'Thread', role: 'log', align: 'end', tone: 'background' }}>{longThread}</G.PaneSection>
-          <G.PaneSection as="footer" rule="start"><G.Input id="composer" name="composer" label="Message the assistant" kind="text" /></G.PaneSection>
+        <G.Pane area="room" content="chat" label="Room">
+          <G.ChatFrame label="Thread" header={<G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="md" />} />} footer={<G.Input id="composer" name="composer" label="Message the assistant" kind="text" />}>{longThread}</G.ChatFrame>
         </G.Pane>
         <G.Pane area="rail" surface scroll content="full" label="Sources">
           <G.PaneSection align="center"><G.PaneHeader title="Assistant answers from" /></G.PaneSection>

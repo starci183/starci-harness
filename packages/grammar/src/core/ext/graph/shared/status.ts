@@ -4,7 +4,7 @@ import type { BadgeTone, MarkState } from "../../../index.js"
 /** Each status draws in one Grammar tone: the node border, the status mark and the edge that leaves it. */
 export const STATUS_TONE: Readonly<Record<FlowStatus, GraphTone>> = {
     done: "success",
-    running: "info",
+    running: "success",
     wait: "warning",
     error: "danger",
     skipped: "muted",

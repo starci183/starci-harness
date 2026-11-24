@@ -17,7 +17,7 @@
 // The UI Audit gate (cache/uiaudit-family.mts, rules/screen-yaml.mts; contexts/project/gallery.md PROJECT-GALLERY-8; owner 2026-11-21, train 188): a screen the diff touches carries a
 // screen.yaml audit whose first cycle passes (2 to 4 rounds of the ten lenses by an auditor who is not the builder, on the shots it records, with the options considered); that pass is its
 // baseline, and after it nothing about the audit (drift, later cycles) is a finding. A malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID for every screen. An unchanged screen is
-// grandfathered; `audit run` prepares the next round and records the baseline; `audit cycle` opens the next cycle; `migrate-explain` turns explain.md into screen.yaml.
+// grandfathered; `audit run` prepares the next round and records the baseline; `audit cycle` opens the next cycle.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,9 +30,9 @@ import { spawnSync } from 'node:child_process';
 import { starterDeclaration } from '../scaffold/app.mjs';
 import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { appGalleryFindings } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { CONTENT_LENSES, CORE_LENSES, isoInstant, LENS_MEANING, LENSES, parseScreen, screenOfExplain, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { CONTENT_LENSES, CORE_LENSES, isoInstant, LENS_MEANING, LENSES, parseScreen, stringifyYaml, judgeAudit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 import { uiAuditFindings } from '../cache/uiaudit-family.mjs';
-import { galleryMain, uiauditMain } from '../uiaudit/cli.mjs';
+import { uiauditMain } from '../uiaudit/cli.mjs';
 
 const PAGE = 'fe/apps/web/src/app/[locale]/(console)/customers/page.tsx';
 const FEATURE = 'fe/apps/web/src/features/pages/CustomersPage/index.tsx';
@@ -283,7 +283,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(!legacy.includes('HFS_APP_GALLERY_EXPLAIN_MISSING') && !legacy.includes('HFS_APP_GALLERY_ROUTE_MISSING'), legacy.join(','));
   });
 
-  test(`audit run records the shots and writes ten open lenses; status lists it; migrate-explain converts and deletes`, (t) => {
+  test(`audit run records the shots and writes ten open lenses; status lists it`, (t) => {
     const { root } = app(t, edition, screen({ audit: null }));
     write(root, `${FOLDER}/1440.png`, 'x');
     write(root, `${FOLDER}/390.png`, 'y');
@@ -300,17 +300,5 @@ for (const edition of ['lite'] as const) {
     fs.rmSync(path.join(root, FOLDER, '390.png'));
     assert.equal(uiauditMain(['run', 'customers/list'], noShots.io), 2);
 
-    const migrate = app(t, edition, null);
-    write(migrate.root, `${FOLDER}/explain.md`, '---\ntitle: Khách hàng\nroute: /customers\narea: customers\n---\nGiới thiệu\n## Dải đầu\nVì sao: cần biết ngay\nLuật: l\nGrammar: `Page`\n## Phương án đã cân nhắc\n- Bảng, chọn vì quét nhanh\n');
-    const dry = io(migrate.root);
-    assert.equal(galleryMain(['migrate-explain'], dry.io), 0);
-    assert.ok(fs.existsSync(path.join(migrate.root, FOLDER, 'explain.md')), 'a dry run changes nothing');
-    const done = io(migrate.root);
-    assert.equal(galleryMain(['migrate-explain', '--execute'], done.io), 0, done.err.join(''));
-    assert.ok(!fs.existsSync(path.join(migrate.root, FOLDER, 'explain.md')));
-    const converted = fs.readFileSync(path.join(migrate.root, FOLDER, 'screen.yaml'), 'utf8');
-    assert.match(converted, /audit: null/);
-    assert.match(converted, /features\/pages\/CustomersPage/);
-    assert.deepEqual(screenOfExplain({ id: 'customers/list', markdown: '---\ntitle: T\nroute: /x\narea: customers\n---\n', disk: {} })['sections'], []);
   });
 }

@@ -50,7 +50,7 @@ export function ratchetBase(repoRoot: string, env: NodeJS.ProcessEnv, branch: st
 
 /**
  * The base of the gate that judges what a lane brings (the gallery coupling and the UI audit): the merge-base of HEAD with STARCI_BASE_REF, else with origin/dev, else origin/main, so a lane's own
- * check judges the same diff the batch lander's gate does (a detached merge of the lane into origin/dev, whose base is origin/dev). On `main` or `dev` themselves, or when none of those refs is
+ * check judges the same diff the lane gate does (a detached merge of the lane into origin/dev, whose base is origin/dev). On `main` or `dev` themselves, or when none of those refs is
  * behind HEAD, it is the range ratchet's base. The origin/<branch> of the lane is deliberately skipped: once the lane is pushed it equals HEAD, and the base would fall to HEAD^, the last commit alone.
  */
 export function landingBase(repoRoot: string, env: NodeJS.ProcessEnv, branch: string | null): { base: string | null; source: string } {

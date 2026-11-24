@@ -11,7 +11,7 @@ import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 /**
  * THE THREE LOOKS (owner, 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"). A Button is exactly one of:
  *
- *   - `primary`: solid, the ONE main action of a card or region (the CTA; lint `single-commit-per-render` counts it);
+ *   - `primary`: solid, the ONE main action of a card or region (the CTA; at most one per region, law `DNA-COMMON-ONE-PRIMARY-PER-REGION`, and lint `single-commit-per-render` counts it);
  *   - `border`: an outline, every secondary action (the default; a retry, a cancel, a row action, a head action);
  *   - `danger`: a destructive action (delete, disconnect, stop for good).
  *
@@ -236,8 +236,8 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
     const variant: ButtonVariant = props.variant ?? "border"
     const tone = props.ground === undefined && props.variant === "primary" ? props.tone : undefined
     const toneAttr = tone === undefined ? {} : { "data-grammar-button-tone": tone }
-    const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
-    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : undefined)
+    const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="control" />)
+    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="control" /></span> : undefined)
     const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {

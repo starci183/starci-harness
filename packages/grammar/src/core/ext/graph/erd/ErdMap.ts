@@ -1,16 +1,17 @@
 "use client"
 
 import { Background, BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStoreApi, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
-import { createElement as h, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
-import { LinkIcon } from "@heroicons/react/24/outline"
+import { createElement as h, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactElement } from "react"
 import { Badge, Icon, IconTile, Link, Text } from "../../../index.js"
 import { GraphSkeleton, measureLabel, openView, roundedPath, type ViewRect } from "../shared/index.js"
 import { FlowZoom, zoomWords } from "../shared/zoom.js"
+import { useGraphScheme } from "../shared/scheme.js"
 import { erdBounds, layoutErd, type ErdLayout, type ErdRoute, type Point } from "./layout.js"
 import { NO_GLYPH } from "./glyphs.js"
 import { endMarker, markerAngle, unitFrom, type Marker } from "./markers.js"
 import { ERD_DEFAULT_FIELDS, ERD_WIDTH, HEAD_PORT, erdPortId, erdPortY, erdStructureKey, resolveErd, type ErdEdge, type ErdModel, type ErdNode } from "./model.js"
 import type { ErdMapProps } from "./types.js"
+import { TablerLink } from "../../../leaf/Icon/tabler.js"
 
 const CORNER = 12
 /** The first view's room round the map: on the left the 40px zoom controls and their gap. */
@@ -82,7 +83,7 @@ const EntityView = ({ data }: NodeProps<EntityRfNode>): ReactElement => {
                           h("span", { className: "starci-erd-field", title: row.field.label }, h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label)),
                           row.links !== undefined && row.linksTo !== undefined
                               ? // The core's Link to the entity the field points at, after the link icon.
-                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: LinkIcon, usage: "leading" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
+                                h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: TablerLink, usage: "text" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
                               : row.field.type === undefined
                                 ? null
                                 : h("span", { className: "starci-erd-type" }, h(Text, { as: "span", role: "caption" }, row.field.type)),
@@ -173,7 +174,7 @@ const focusOf = (model: ErdModel, layout: ErdLayout, focusId: string | undefined
 }
 
 /**
- * The view of the map and its zoom controls. Every screen opens at 100% (`openView`): a map that fits stands in the middle, a larger one opens at its top-left corner (or centred on `focusId`), and
+ * The view of the map and its zoom controls. Every screen opens fitted (`openView`): the whole map, centred, at 100% or less, and
  * the person drags it and pinches to zoom. The fit button fits `bounds` (and, when something of the graph would stand under the controls, fits again with their room added at
  * the left, a few passes at most since the zoom changes with each).
  */
@@ -200,7 +201,7 @@ const Viewport = ({ bounds, focus, shapes, token, words }: { readonly bounds: Re
     }
     useEffect(() => {
         const frame = store.getState().domNode?.getBoundingClientRect()
-        // At 100% on every screen (never fitted on load): a map larger than its frame is centred on its focus entity.
+        // Fitted on every screen: the whole map, centred (`openView`).
         if (frame !== undefined) void flow.setViewport(openView(frame, bounds, focus, OPEN_INSETS))
         // The view is set when a layout lands (its token changes), never while the person pans.
     }, [token])
@@ -209,6 +210,8 @@ const Viewport = ({ bounds, focus, shapes, token, words }: { readonly bounds: Re
 }
 
 const Canvas = (props: ErdMapProps): ReactElement => {
+    const anchor = useRef<HTMLDivElement | null>(null)
+    const scheme = useGraphScheme(anchor)
     const { entities, relations, label, onOpen, maxFields = ERD_DEFAULT_FIELDS, moreLabel, isLoading = false, emptyLabel } = props
     const [placed, setPlaced] = useState<Placed | undefined>(undefined)
     const [lit, setLit] = useState<Lit>({ edge: undefined, node: undefined })
@@ -227,7 +230,7 @@ const Canvas = (props: ErdMapProps): ReactElement => {
     }, [key])
 
     const classes = props.className === undefined ? "starci-graph" : `starci-graph ${props.className}`
-    const outer = { className: classes, role: "region", "aria-label": label, "data-mode": "erd" }
+    const outer = { className: classes, role: "region", "aria-label": label, "data-mode": "erd", ref: anchor }
     const ready = placed?.key === key ? placed.layout : undefined
 
     if (isLoading) return h("div", { ...outer, "aria-busy": true }, h(GraphSkeleton))
@@ -329,6 +332,8 @@ const Canvas = (props: ErdMapProps): ReactElement => {
                         setLit({ edge: undefined, node: undefined })
                     },
                     proOptions: { hideAttribution: true },
+                    // xyflow's root class is a theme scope: it names the scheme the frame stands in.
+                    colorMode: scheme,
                     ...(props.ariaLabelConfig === undefined ? {} : { ariaLabelConfig: props.ariaLabelConfig }),
                 },
                 h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),

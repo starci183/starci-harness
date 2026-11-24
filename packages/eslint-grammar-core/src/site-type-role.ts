@@ -6,9 +6,9 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import { isSiteFile } from "./lib/site-scope.ts"
 
 /**
- * THE SITE GROUP (owner 2026-11-21, "3. THÊM NHÓM", then "cook"; SITE-TYPE-ROLES). Grammar 0.55.0 adds five type roles for the public
+ * THE SITE GROUP (SITE-TYPE-ROLES). The Grammar has five type roles for the public
  * marketing site: `display.hero`, `display.section`, `display.figure`, `lead` and `title.card`. They are the site's and never the
- * console's: a console draws with the ten roles of 0.54.0, so a display size there is a second, louder type scale.
+ * console's: a console draws with the ten roles, so a display size there is a second, louder type scale.
  *
  * WHAT IT READS, in product source outside the site (`isSiteFile`: the `Site…`/`Marketing…` owners, the `(site)` route group,
  * `modules/site…`, or the proposed `fe.site` slot):
@@ -38,7 +38,7 @@ export const siteTypeRole: Rule.RuleModule = defineRule({
     docs: { description: "SITE-TYPE-ROLES: display.hero, display.section, display.figure, lead and title.card are the public site's roles, never the console's." },
     schema: [],
     messages: {
-      role: "`{{role}}` is a role of the public marketing site (Grammar 0.55.0, the site group), and this file is not the site. A console draws with the ten roles: title.page for a page heading, title.section for a section or card title, figure for a value, body for copy.",
+      role: "`{{role}}` is a role of the public marketing site (the site group), and this file is not the site. A console draws with the ten roles: title.page for a page heading, title.section for a section or card title, figure for a value, body for copy.",
     },
   },
   create(context) {

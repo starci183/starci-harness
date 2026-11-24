@@ -5,7 +5,7 @@ import { FORM_CONTROLS, attributeOf, elementNameOf, grammarName, isFragmentEleme
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 /**
- * The proximity law (owner, 2026-11-09, GAP-PROXIMITY): inside any container, its children stand at least ONE step
+ * The proximity law (GAP-PROXIMITY): inside any container, its children stand at least ONE step
  * closer than the container stands to its siblings. The gap roles rise strictly: identity 4 < inline 8 < row 12 <
  * section 24 < region 32. A layout element whose role is the same as, or wider than, its parent's makes the child's
  * parts read as far apart as the parent's siblings, so the grouping disappears.
@@ -21,7 +21,7 @@ import type { Context, Node } from "./lib/types.ts"
  * - A `SurfaceCard`, `Drawer`, `Dialog`, `AlertDialog` or `Popover` is a reset: a surface is its own edge, so what
  *   stands inside it is not compared with anything outside it.
  * - A field stack: a `Stack gap="section"` whose children are all form controls (Input, Select, Textarea, NumberField,
- *   ComboBox, Autocomplete, CheckboxGroup, RadioGroup, ChoiceChips, ChoiceButtons, Switch, DatePicker, DateField, TimeField,
+ *   ComboBox, Autocomplete, CheckboxGroup, RadioGroup, Switch, DatePicker, DateField, TimeField,
  *   SearchField, Slider, CopyField, Fieldset, Field), directly inside a `Form` or a `Fieldset` (a Drawer body is
  *   a reset already). Fields stand 24 apart; that is the Field rule's own rhythm.
  * - `Grid kind="main-rail"`: nothing in it is compared with it, and it is not compared with a region parent. It fixes

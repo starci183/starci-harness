@@ -19,7 +19,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 export const BLOCK_COMPONENTS: ReadonlySet<string> = new Set([
   "Stack", "Cluster", "Grid", "Section", "SurfaceCard", "DataTable", "Heading", "DescriptionList",
   "Divider", "Page", "Pane", "PaneGrid", "PaneSection", "Form", "Fieldset", "Quote", "Alert", "Stepper", "Timeline", "MarkdownArticle", "EmptyNotice",
-  "ListRow", "StaticStateRow", "SegmentedControl", "FilterButtonGroup", "Tabs",
+  "ListRow", "Tabs",
 ])
 
 /** Plain elements that are blocks. */

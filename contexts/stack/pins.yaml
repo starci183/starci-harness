@@ -6,36 +6,38 @@
 # a patch of one of them then moves no other pin. @starci/hfs stays exact: an app takes it through starci-harness, and the check and the canon
 # lint read one hfs. `side` is the side whose code uses it; `install: registry` marks a published @starci package that
 # apps pin and CI installs from npm, never by path: an unreleased edit is installed only on one machine from the local registry
-# (`starci deps install-local`), outside every committed file. `why` is one line; history lives in the package CHANGELOG.
+# (`starci deps install-local`), outside every committed file. `why` is one line; history lives in git.
 schema: starci/stack-pins@1
 pins:
-  '@starci/common': {version: 1.0.1, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}
-  '@starci/heroicons': {version: 0.4.0, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
-  '@starci/event-stream': {version: 0.2.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
-  '@starci/next-data': {version: 0.2.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
-  '@starci/visual-effects': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the visual effects of a front end over the Grammar theme, confetti first, on an overlay canvas of their own and skipped for reduced motion"}
-  '@starci/object-storage': {version: 0.3.1, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
-  '@starci/nest-kit': {version: 0.2.2, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
-  '@starci/auth': {version: 0.7.2, group: starci, side: both, install: registry, why: "the sign-in package: the server module with its sign-in providers, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
-  '@starci/mail': {version: 0.3.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
-  '@starci/outbox': {version: 0.2.0, group: starci, side: be, install: registry, why: "the Postgres job outbox of a back end: enqueue in the caller's transaction, the fair fenced claim with sorted slot locks, ladders, dead letters, timers and graceful stop, job notifications and app events published in the transaction and served over SSE with Last-Event-ID resume; imported only by platform/jobs"}
-  '@starci/seed': {version: 0.3.0, group: starci, side: both, install: registry, why: "the data standard of a project: the store and driver ports, one export written to several copies, the copy contract and the line protocol, in-memory references with the store and driver contract suites (./testing) and the git driver (./git: renderStandard and runStandardAdapter for a standard that keeps raw/ and an adapter, seed-standard in plaintext, seed-backup sealed with sops and age, the 500 MiB snapshot cap); depends on @starci/common for DomainError"}
-  '@starci/gallery': {version: 0.1.20, group: starci, side: fe, install: registry, why: "the screenshot gallery of an app as one Vite config over the Grammar: the pages, the design canvas frames beside the shots, the status of each screen, its states and explanation, the flow map"}
-  '@starci/grammar': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
-  '@starci/next-i18n': {version: 0.1.1, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
-  '@starci/eslint-canon-be': {version: 3.28.4, range: '~3.28.4', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.22.0, range: '~9.22.0', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.55.0, range: '~0.55.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
-  '@starci/stylelint-canon': {version: 2.9.9, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
-  '@starci/tsconfig': {version: 2.1.1, group: starci, side: both, install: registry}
-  '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.12.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
-  '@starci/test-world': {version: 2.2.1, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
-  '@starci/ai-router': {version: 0.10.1, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.17.8, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/common': {version: 1.0.2, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}
+  '@starci/heroicons': {version: 0.5.0, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
+  '@starci/event-stream': {version: 0.2.1, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
+  '@starci/next-data': {version: 0.2.1, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
+  '@starci/visual-effects': {version: 0.1.1, group: starci, side: fe, install: registry, why: "the visual effects of a front end over the Grammar theme, confetti first, on an overlay canvas of their own and skipped for reduced motion"}
+  '@starci/object-storage': {version: 0.3.2, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
+  '@starci/nest-kit': {version: 0.2.3, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
+  '@starci/auth': {version: 0.7.3, group: starci, side: both, install: registry, why: "the sign-in package: the server module with its sign-in providers, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
+  '@starci/mail': {version: 0.3.1, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
+  '@starci/outbox': {version: 0.2.1, group: starci, side: be, install: registry, why: "the Postgres job outbox of a back end: enqueue in the caller's transaction, the fair fenced claim with sorted slot locks, ladders, dead letters, timers and graceful stop, job notifications and app events published in the transaction and served over SSE with Last-Event-ID resume; imported only by platform/jobs"}
+  '@starci/seed': {version: 0.3.1, group: starci, side: both, install: registry, why: "the data standard of a project: the store and driver ports, one export written to several copies, the copy contract and the line protocol, in-memory references with the store and driver contract suites (./testing) and the git driver (./git: renderStandard and runStandardAdapter for a standard that keeps raw/ and an adapter, seed-standard in plaintext, seed-backup sealed with sops and age, the 500 MiB snapshot cap); depends on @starci/common for DomainError"}
+  '@starci/gallery': {version: 0.1.24, group: starci, side: fe, install: registry, why: "the screenshot gallery of an app as one Vite config over the Grammar: the pages, the design canvas frames beside the shots, the status of each screen, its states and explanation, the flow map"}
+  '@starci/grammar': {version: 0.59.0, range: '~0.59.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/next-i18n': {version: 0.1.2, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
+  '@starci/eslint-canon-be': {version: 3.28.5, range: '~3.28.5', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.22.1, range: '~9.22.1', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.59.0, range: '~0.59.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.59.0, range: '~0.59.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/stylelint-canon': {version: 2.9.11, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/tsconfig': {version: 2.1.2, group: starci, side: both, install: registry}
+  '@starci/prettier-config': {version: 1.1.1, group: starci, side: both, install: registry}
+  '@starci/jest-preset': {version: 2.12.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/test-world': {version: 2.2.2, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
+  '@starci/ai-router': {version: 0.10.2, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
+  '@starci/hfs': {version: 6.17.11, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.5, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.2, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
+  openai: {version: 7.62.0, group: framework, side: be, why: "the official OpenAI SDK of the bring-your-own-key streaming integration integrations/ai-byok, a workspace's own key only (BE-AI-1)"}
+  '@anthropic-ai/sdk': {version: 1.12.0, group: framework, side: be, why: "the official Anthropic SDK of the bring-your-own-key streaming integration integrations/ai-byok, a workspace's own key only (BE-AI-1)"}
   typescript: {version: 5.9.3, group: tooling, side: both}
   turbo: {version: 2.11.6, group: tooling, side: fe, why: "runs build, dev, lint and typecheck over the fe workspaces"}
   prettier: {version: 3.9.6, group: tooling, side: both}
@@ -126,6 +128,7 @@ pins:
   micromark-extension-gfm: {version: 3.0.0, group: ui, side: fe, why: "an exact dependency of the grammar's Markdown (course content parsed to a syntax tree and mapped to grammar parts); apps never import it"}
   react-dropzone: {version: 15.0.0, group: ui, side: fe, why: "an optional peer of the grammar's core upload ext (@starci/grammar/core/ext/dropzone); apps import it only through the ext"}
   pdfjs-dist: {version: 6.5.438, group: ui, side: fe, why: "an optional peer of the grammar's core PDF ext (@starci/grammar/core/ext/pdf), loaded lazily; apps import it only through the ext"}
+  '@assistant-ui/react': {version: 0.15.38, group: ui, side: fe, why: "an optional peer of the grammar's core AI chat ext (@starci/grammar/core/ext/chat), its headless primitives and external store runtime; apps import it only through the ext"}
   '@fingerprintjs/fingerprintjs': {version: 5.2.0, group: framework, side: fe}
   '@sentry/nextjs': {version: 11.7.0, group: framework, side: fe}
   '@nestjs/graphql': {version: 13.4.5, group: framework, side: be, why: "the GraphQL transport; held on the 13 line with an accepted advisory until the 14 upgrade"}

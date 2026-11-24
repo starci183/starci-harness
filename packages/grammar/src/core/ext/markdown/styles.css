@@ -1,24 +1,24 @@
 /*
  * @starci/grammar/core/ext/markdown draws every element with Grammar core components and their CSS; this sheet holds only what Grammar has no part
- * for: the Shiki colours mapped onto Grammar tokens, the line grid of a code block (gutter, highlighted line, diff row), the compare's
+ * for: the Shiki colours mapped onto the Grammar's code palette (common/tones-code.css, never a status tone or the brand), the line grid of a code block (gutter, highlighted line, diff row), the compare's
  * two columns, the highlight marks, and the mermaid figure (the one Grammar Fragment). Every colour is a Grammar token, unmixed.
  * Import it after the Grammar's styles.
  */
 @layer starci-markdown {
     .starci-md {
-        --shiki-foreground: var(--foreground);
+        --shiki-foreground: var(--grammar-code-fg);
         --shiki-background: transparent;
-        --shiki-token-comment: var(--muted);
-        --shiki-token-punctuation: var(--muted);
-        --shiki-token-keyword: var(--accent-soft-foreground);
-        --shiki-token-string: var(--success-soft-foreground);
-        --shiki-token-string-expression: var(--success-soft-foreground);
-        --shiki-token-constant: var(--info-soft-foreground);
-        --shiki-token-function: var(--warning-soft-foreground);
-        --shiki-token-parameter: var(--foreground);
-        --shiki-token-link: var(--info-soft-foreground);
-        --shiki-token-inserted: var(--success-soft-foreground);
-        --shiki-token-deleted: var(--danger-soft-foreground);
+        --shiki-token-comment: var(--grammar-code-comment);
+        --shiki-token-punctuation: var(--grammar-code-punctuation);
+        --shiki-token-keyword: var(--grammar-code-keyword);
+        --shiki-token-string: var(--grammar-code-string);
+        --shiki-token-string-expression: var(--grammar-code-string);
+        --shiki-token-constant: var(--grammar-code-constant);
+        --shiki-token-function: var(--grammar-code-function);
+        --shiki-token-parameter: var(--grammar-code-fg);
+        --shiki-token-link: var(--grammar-code-function);
+        --shiki-token-inserted: var(--grammar-code-inserted);
+        --shiki-token-deleted: var(--grammar-code-deleted);
         display: flex;
         min-width: 0;
         flex-direction: column;
@@ -52,16 +52,20 @@
 
     .starci-md-gutter {
         padding-inline-end: var(--grammar-inline-gap);
-        color: var(--muted);
+        color: var(--grammar-code-gutter);
         text-align: end;
         user-select: none;
     }
 
-    .starci-md-line[data-highlighted="true"] { background: var(--warning-soft); }
-    .starci-md-line[data-sign="add"] { background: var(--success-soft); }
-    .starci-md-line[data-sign="remove"] { background: var(--danger-soft); }
-    .starci-md-line[data-sign="add"] .starci-md-gutter { color: var(--success-soft-foreground); }
-    .starci-md-line[data-sign="remove"] .starci-md-gutter { color: var(--danger-soft-foreground); }
+    /* A comment is italic whatever the Shiki theme says (the code palette's comment ink, grey). */
+    .starci-md-pre [style*="--shiki-token-comment"] { font-style: italic; }
+
+    /* The marked line and the diff rows: the code palette's neutral blue tint with its edge, the inserted and the deleted row tints. */
+    .starci-md-line[data-highlighted="true"] { background: var(--grammar-code-highlight-line); box-shadow: inset var(--grammar-ring-width) 0 0 var(--grammar-code-highlight-edge); }
+    .starci-md-line[data-sign="add"] { background: var(--grammar-code-inserted-bg); }
+    .starci-md-line[data-sign="remove"] { background: var(--grammar-code-deleted-bg); }
+    .starci-md-line[data-sign="add"] .starci-md-gutter { color: var(--grammar-code-inserted); }
+    .starci-md-line[data-sign="remove"] .starci-md-gutter { color: var(--grammar-code-deleted); }
 
     /* ---------------------------------------------------------------- compare: two columns, the differing part tinted */
     .starci-md-compare {
@@ -77,8 +81,8 @@
 
     .starci-md-compare-side { min-width: 0; }
     .starci-md-compare-change { color: inherit; }
-    .starci-md-compare-side[data-side="expected"] .starci-md-compare-change { background: var(--success-soft); color: var(--success-soft-foreground); }
-    .starci-md-compare-side[data-side="received"] .starci-md-compare-change { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+    .starci-md-compare-side[data-side="expected"] .starci-md-compare-change { background: var(--grammar-code-inserted-bg); color: var(--grammar-code-inserted); }
+    .starci-md-compare-side[data-side="received"] .starci-md-compare-change { background: var(--grammar-code-deleted-bg); color: var(--grammar-code-deleted); }
 
     /* ---------------------------------------------------------------- highlights: a Grammar soft pair per tone */
     .starci-md-highlight {

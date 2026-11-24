@@ -1,13 +1,12 @@
-// `starci dev sync` and the lander's auto-sync: the side a change restarts, the overlay line, a real fast-forward of a dev checkout from
-// its origin (a bare repository in a scratch folder), the refusals, and the debounce of consecutive landed batches. Built with the CLI, run by `npm test`.
+// `starci dev sync`: the side a change restarts, the overlay line, a real fast-forward of a dev checkout from
+// its origin (a bare repository in a scratch folder), the refusals. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { Refusal } from "../../shared/errors.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { LandDebounce, landAutoSync } from "../../harness/land-dev-sync.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
-import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { captureGitSync } from "../../shared/git.js"
 import { writeInstallRecord } from "../deps/install-local.js"
 import type { InstallRecord } from "../deps/install-local.js"
@@ -126,7 +125,7 @@ void test("a tracked change that is no overlay's, and a checkout off dev, are re
     await assert.rejects(devSync(request(checkout)), (error: unknown) => error instanceof Error && "code" in error && error.code === "DEV_SYNC_NOT_DEV")
 })
 
-void test("a checkout detached at origin/dev, where the lander leaves it, syncs and ends on dev tracking origin/dev", async (t) => {
+void test("a checkout detached at origin/dev, where a landing leaves it, syncs and ends on dev tracking origin/dev", async (t) => {
     const { checkout } = scratch(t)
     const at = gitIn(checkout, "rev-parse", "HEAD")
     gitIn(checkout, "checkout", "-q", "--detach", "origin/dev")
@@ -166,42 +165,10 @@ void test("a checkout detached on a commit origin/dev does not hold is refused, 
     assert.equal(gitIn(checkout, "branch", "--show-current"), "")
 })
 
-void test("consecutive landed batches give one sync, once the debounce window passed since the last of them", () => {
-    const debounce = new LandDebounce(60_000)
-    assert.equal(debounce.due(0), false)
-    assert.equal(debounce.waitMs(0), undefined)
-    debounce.landed(1_000)
-    debounce.landed(30_000)
-    assert.equal(debounce.due(80_000), false, "the window restarts at the last landed batch")
-    assert.equal(debounce.waitMs(80_000), 10_000)
-    assert.equal(debounce.due(90_000), true)
-    debounce.settle()
-    assert.equal(debounce.pending, false)
-})
-
-const settings = (extra: Partial<DevSyncSettings> = {}): DevSyncSettings => ({ ...loadLocalSettings(join(tmpdir(), "no-such-starci-settings.json")).devSync, ...extra })
-
-void test("the lander's auto-sync is off by default and in a dry run; on, it syncs the configured checkout and a failure never throws", async () => {
-    assert.equal(settings().afterLand, false)
-    assert.equal(settings().debounceSeconds, 120)
-    assert.equal(landAutoSync(settings(), "D:/app", false, () => undefined), undefined)
-    assert.equal(landAutoSync(settings({ afterLand: true }), "D:/app", true, () => undefined), undefined)
-    const asked: DevSyncRequest[] = []
-    const said: string[] = []
-    const auto = landAutoSync(settings({ afterLand: true, checkout: "D:/dev-checkout", local: ["grammar"] }), "D:/app", false, (line) => said.push(line), (one) => {
-        asked.push(one)
-        return Promise.reject(new Error("DEV_SYNC_DIRTY"))
-    })
-    assert.ok(auto)
-    auto.debounce.landed(0)
-    await auto.run()
-    assert.equal(auto.debounce.pending, false)
-    const [first] = asked
-    assert.ok(first)
-    assert.equal(first.checkout, "D:/dev-checkout")
-    assert.equal(first.execute, true)
-    assert.deepEqual(first.local, ["grammar"])
-    assert.ok(said.some((line) => line.includes("not run (DEV_SYNC_DIRTY)")))
+void test("the dev sync after a landing is off by default and debounced over 120 s", () => {
+    const settings = loadLocalSettings(join(tmpdir(), "no-such-starci-settings.json")).devSync
+    assert.equal(settings.afterLand, false)
+    assert.equal(settings.debounceSeconds, 120)
 })
 
 void test("a damaged local settings file is refused naming it", () => {
@@ -521,4 +488,152 @@ void test("a sync with no --local keeps this machine's standing overlay (devSync
     assert.deepEqual(syncLocal([], { local: ["grammar@0.55.0-content.4"] }), ["grammar@0.55.0-content.4"])
     assert.deepEqual(syncLocal(["@starci/hfs@6.18.0-local.1"], { local: ["grammar@0.55.0-content.4"] }), ["@starci/hfs@6.18.0-local.1"])
     assert.deepEqual(syncLocal([], { local: [] }), [])
+})
+
+void test("a sync that asks for the overlay already installed leaves the running web alone: nothing restored, installed, stopped or restarted", async (t) => {
+    const { checkout, pusher } = scratch(t)
+    const pinned = readFileSync(join(checkout, "package.json"), "utf8")
+    writeFileSync(join(checkout, "package.json"), pinned.replace("0.52.3", "0.57.1-dev.1"))
+    writeInstallRecord(checkout, { schema: "starci/deps-install-local@1", registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/grammar", version: "0.57.1-dev.1", pins: [{ file: "package.json", field: "dependencies", spec: "0.52.3" }] }] })
+    const log: string[] = []
+    const same = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(log))
+    assert.deepEqual(log, [], "no stop, no install, no prepare, no restart")
+    assert.equal(same.data.restart, "none")
+    assert.deepEqual(same.data.overlay, ["@starci/grammar@0.57.1-dev.1"], "the overlay stays in effect")
+    assert.match(same.message, /the local overlay is already installed \(@starci\/grammar@0\.57\.1-dev\.1\): nothing restored, reinstalled or restarted for it/u)
+    assert.match(readFileSync(join(checkout, "package.json"), "utf8"), /0\.57\.1-dev\.1/u, "the overlay pin is kept")
+    // a code change under be/ alone restarts the api only; the web keeps running
+    mkdirSync(join(pusher, "be"), { recursive: true })
+    writeFileSync(join(pusher, "be", "main.ts"), "export {}\n")
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "be change")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const api: string[] = []
+    const be = await devSync(request(checkout, { execute: true, restart: true, local: ["@starci/grammar@0.57.1-dev.1"] }), fakeDeps(api))
+    assert.deepEqual(api, ["prepare", "restart api"])
+    assert.deepEqual(be.data.restarted, ["api"])
+    // a new version of the overlay is a change the web consumes: restored, installed and both sides restarted, as before
+    const dry = await devSync(request(checkout, { local: ["@starci/grammar@0.57.2-dev.1"] }))
+    assert.match(dry.message, /would restore the committed pins of package-lock\.json, package\.json/u)
+    assert.deepEqual(dry.data.sides, ["be", "fe"])
+})
+
+void test("with the staging seam the new tree is installed and built before the stop, and only the swap and the restart happen after it", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: (_root, to) => {
+            log.push(`stage ${to.slice(0, 7)}`)
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+        },
+    }
+    const target = gitIn(pusher, "rev-parse", "HEAD")
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage }))
+    assert.deepEqual(log, [`stage ${target.slice(0, 7)}`, "npm ci (node_modules moved aside)", "prepare", "status", "stop api,web", "swap", "restart api,web"])
+    assert.equal(done.data.restart, "done")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), target)
+    // A staged build that fails stops nothing and moves nothing: the stack keeps serving the old tree.
+    writeFileSync(join(pusher, "package-lock.json"), '{"name":"app","lockfileVersion":3,"requires":true,"packages":{"":{"name":"app","version":"1.0.2"}}}\n')
+    gitIn(pusher, "add", ".")
+    gitIn(pusher, "commit", "-q", "-m", "lockfile again")
+    gitIn(pusher, "push", "-q", "origin", "dev")
+    const failed: string[] = []
+    const before = gitIn(checkout, "rev-parse", "HEAD")
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps(failed, { stage, prepare: () => Promise.resolve({ command: "npm run codegen", exitCode: 1, output: "boom" }) })), refused("DEV_SYNC_BUILD", "nothing was stopped"))
+    assert.equal(failed.some((line) => line.startsWith("stop") || line === "swap"), false)
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), before)
+})
+
+void test("a swap that fails after the fast-forward leaves a mark: the next sync, with nothing new on dev, installs and swaps the new tree whole", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    let refuse = true
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: () => {
+            log.push("stage")
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            if (!refuse) return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+            refuse = false
+            return Promise.reject(new Refusal("DEV_SYNC_SWAP", "the staged build could not be moved: ENOENT"))
+        },
+    }
+    const target = gitIn(pusher, "rev-parse", "HEAD")
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage })), (error: { code?: string }) => error.code === "DEV_SYNC_SWAP")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), target, "the checkout is on the new commit, with the old install")
+    const mark = gitIn(checkout, "rev-parse", "--path-format=absolute", "--git-path", "starci-dev-sync-unswapped")
+    assert.ok(existsSync(mark), "the failed swap is marked")
+    const first = log.length
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage }))
+    const again = log.slice(first)
+    assert.ok(again.includes("stage") && again.includes("swap"), `the retry stages and swaps again: ${again.join(", ")}`)
+    assert.equal(done.data.installed, true)
+    assert.equal(existsSync(mark), false, "a swap that passed clears the mark")
+})
+
+void test("a swapped install that does not resolve (picocolors from next/node_modules/postcss) is replaced by a clean npm ci in place, prepared again, and the restart follows", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: () => {
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+        },
+    }
+    let swapped = true
+    const smoke: NonNullable<DevSyncDeps["smoke"]> = () => {
+        log.push(swapped ? "smoke (swapped)" : "smoke (clean)")
+        const broken = swapped
+        swapped = false
+        return broken ? [{ from: "node_modules/next/node_modules/postcss", name: "picocolors", reason: "a dependency of postcss that is not found in any node_modules up the chain" }] : []
+    }
+    const said: string[] = []
+    await devSync({ ...request(checkout, { execute: true, restart: true }), say: (line) => said.push(line) }, fakeDeps(log, { stage, smoke }))
+    const from = log.indexOf("swap")
+    assert.deepEqual(log.slice(from).filter((line) => !line.startsWith("rename")), ["swap", "smoke (swapped)", "npm ci (node_modules moved aside)", "prepare", "smoke (clean)", "restart api,web"])
+    assert.ok(said.some((line) => line.includes("the swapped install does not resolve (picocolors from node_modules/next/node_modules/postcss)")))
+    assert.ok(said.includes("the clean install resolves"))
+    assert.equal(existsSync(join(gitIn(checkout, "rev-parse", "--path-format=absolute", "--git-path", "starci-dev-sync-unswapped"))), false, "a clean install clears the mark")
+})
+
+void test("a hotfix committed and pushed from the checkout itself is synced from where the checkout was: the side restarts, light skips the prepare, the full steps run it", async (t) => {
+    const { checkout } = scratch(t)
+    const start = gitIn(checkout, "rev-parse", "HEAD")
+    mkdirSync(join(checkout, "be"), { recursive: true })
+    writeFileSync(join(checkout, "be", "main.ts"), "export {}\n")
+    gitIn(checkout, "add", ".")
+    gitIn(checkout, "commit", "-q", "-m", "hotfix in place")
+    gitIn(checkout, "push", "-q", "origin", "dev")
+    const light: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true, since: start, light: true }), fakeDeps(light))
+    assert.deepEqual(light, ["restart api"], "the api restarts on its own build; nothing is installed or prepared")
+    assert.deepEqual(done.data.sides, ["be"])
+    assert.equal(done.data.from, start)
+    const full: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true, since: start, light: false }), fakeDeps(full))
+    assert.deepEqual(full, ["prepare", "restart api"], "without light the prepare scripts run before the restart")
 })

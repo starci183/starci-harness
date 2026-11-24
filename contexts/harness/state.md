@@ -16,10 +16,10 @@
   `stack/<project>/<env>/`, its `machine.sqlite` and blob store) lives under the same kind of base, owned by `starciLocalRoot`
   in `packages/hfs/runtime/engine/runtime-root.mts`: `STARCI_LOCAL_ROOT`, else a checkout's `.runtime/`, else, for a copy an
   install placed below a `node_modules` folder, the per-user base `installedStateBase`
-  (`%LOCALAPPDATA%`, else `$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`). Never inside a package, so
-  `npm ci` never deletes a running stack's data. The first `starci app` verb of a copy that still keeps
-  `.runtime/` inside itself moves it there (an entry the base already holds is kept under `legacy-<stamp>/`), and refuses
-  `HFS_STATE_LEGACY_HELD` while a running stack holds it (`starci app stack down` first).
+  (`$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`, on Windows too). Never inside a package, so
+  `npm ci` never deletes a running stack's data, and never under `%LOCALAPPDATA%`: an MSIX-packaged app (the Claude desktop app
+  and every agent it starts) writes each new file under AppData into its own `Packages/<package>/LocalCache`, so its processes
+  and the host's (a terminal, Docker) would see two different bases.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
 - **Product Work** lives in the app repository's `.starciwork/` (the product's concepts, the brand, `workspace.yaml`;

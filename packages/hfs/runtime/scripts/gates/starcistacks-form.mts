@@ -26,7 +26,7 @@ export interface StackServiceEntry {
   runtimeSecrets: string[];
   ci: {
     token: string | null; hostVar: string | null; organizationVar: string | null; wiring: string | null; workflow: string | null; permissions: string[];
-    secrets: Array<{ name: string | null; credential: string | null }>; vars: Array<{ name: string | null; value: string | null }>; provisioning: string | null;
+    secrets: Array<{ name: string | null; credential: string | null }>; provisioning: string | null;
   };
   ownerAction: 'none' | { needed: string | null; reason: string | null } | null;
 }

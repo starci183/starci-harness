@@ -239,7 +239,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
 
 /**
  * The short spec Orca hands the agent: a pointer to the brief file. The brief itself never travels in argv, which Windows caps
- * (legacy allocation.promptFile: a terminal prompt above 2000 characters goes to a file).
+ * (a terminal prompt above 2000 characters goes to a file).
  */
 export const pointerSpec = (taskId: string, files: BriefFiles): string =>
     [

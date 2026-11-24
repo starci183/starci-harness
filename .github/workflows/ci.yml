@@ -1,6 +1,6 @@
 name: ci
 
-# Two lines (contexts/project/branches.md PROJECT-BRANCH-3): `dev`, where the batch lander lands every harness batch, runs the FAST level (the plan's
+# Two lines (contexts/project/branches.md PROJECT-BRANCH-3): `dev`, where every harness lane lands, runs the FAST level (the plan's
 # packages built and tested, the CLI typechecked and tested, the light gates; no sonar, no Grammar theme proof, no CLI lint); `main`, moved once per
 # release train, runs the FULL level. publish.yml listens to main's runs only, so nothing of dev ever reaches npm.
 on:
@@ -14,8 +14,7 @@ permissions:
   contents: read
 
 # Only the newest run matters, on a pull request, on dev and on main alike: a push cancels the run still going for its older commit
-# (owner: "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"), and the newer run
-# tests the whole change. Nothing here writes to npm, main or dev, so a cancelled run leaves nothing half done: the publication is
+# and the newer run tests the whole change. Nothing here writes to npm, main or dev, so a cancelled run leaves nothing half done: the publication is
 # publish.yml's, which starts when a run of main completes and is never cancelled (CONTRIBUTING.md CONTRIB-20).
 concurrency:
   group: ci-${{ github.ref }}

@@ -82,8 +82,8 @@ const AccordionInner = ({
                     >
                         <HeroAccordion.Heading className="starci-core-generic-accordion-heading" level={headingLevel}>
                             <HeroAccordion.Trigger className="starci-core-generic-accordion-trigger" data-contract="FOCUS-1" data-grammar-accordion-trigger="true">
-                                <span className="starci-core-generic-accordion-title">{item.title}</span>
                                 <HeroAccordion.Indicator className="starci-core-generic-accordion-indicator" data-contract="MOTION-2" />
+                                <span className="starci-core-generic-accordion-title">{item.title}</span>
                             </HeroAccordion.Trigger>
                         </HeroAccordion.Heading>
                         <HeroAccordion.Panel className="starci-core-generic-accordion-panel">

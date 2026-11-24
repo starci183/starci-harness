@@ -80,7 +80,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | BE-API-3 | an e2e spec per resolver and controller (full) | c | review only (`Enforced by` says so) |
 | BE-TEST-5 | every branch, boundary and refusal per method | c | judgement; R273 measures the lines it reaches |
 | FE-FUNCTION-7 | a story per shape member | a | eslint `shape-has-story` |
-| CONTRIB-20 (harness) | a CHANGELOG entry per raised package version | c | `release cut` refuses a tag without its section (`cli/src/core/release/cut.ts:65`); a package published by `release publish` is not asked for one |
+| CONTRIB-20 (harness) | a CHANGELOG `## <version>` section for the version being released | c | `release cut` refuses a tag without its section (`cli/src/core/release/cut.ts:65`); a package published by `release publish` is not asked for one |
 | CONTRIB-20 (harness) | a raised version per changed package | a | `cli/src/core/release/publish.ts:247` |
 | harness verbs | documentation per verb | a | `starci explain` is generated from the verb definitions |
 
@@ -93,5 +93,5 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
   Extending it is a change of the law, not a missing check.
 - **Pinned contract copies (R177).** Whether a contract is published is not in the tree, so the absence of its pin cannot be decided.
 - **Concept coverage per folder (PROJECT-WORK-7).** No law requires it; adding one is the owner's decision.
-- **CHANGELOG entry per published version (CONTRIB-20).** Decidable, but it belongs to `release publish` in `cli/`, outside hfs.
+- **CHANGELOG section per released version (CONTRIB-20).** Decidable, but it belongs to `release publish` in `cli/`, outside hfs.
 - **Gallery shots per UI round (R395).** Owned by the lane that couples gallery coverage to UI changes.

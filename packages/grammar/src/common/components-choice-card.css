@@ -1,0 +1,105 @@
+@layer starci-grammar-common {
+    /*
+     * ChoiceCard (owner 2026-11-23, Telegram / iOS alert): a question and its answers as ONE card, the body of `MessageBubble content="card"`. The
+     * bubble gives the frame (its 1px edge and radius) and no padding of its own around the card, so the hairlines reach the frame's edges: the
+     * question on top in the card inset, then a grid of cells, each with a hairline over it and the second cell of a row a hairline on its start edge.
+     * Cells are the control height, their words the label.item role in the foreground ink (a destructive cell the danger ink, nothing more: no fill, no
+     * edge, never a Button look); the chosen cell the accent soft pair with its check; a closed card's other cells muted.
+     */
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body:has(> .starci-core-choice-card) {
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .starci-core-choice-card {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+    }
+
+    .starci-core-choice-card-question {
+        padding: var(--grammar-inset-card);
+        color: var(--foreground);
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-choice-card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .starci-core-choice-card-cell {
+        display: flex;
+        box-sizing: border-box;
+        min-inline-size: 0;
+        min-block-size: var(--starci-core-control-min-size);
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-identity-gap);
+        margin: 0;
+        padding-block: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-inline-gap);
+        border: 0;
+        border-block-start: var(--grammar-separator-edge);
+        background: transparent;
+        color: var(--foreground);
+        cursor: pointer;
+        font: inherit;
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+        text-align: center;
+    }
+
+    .starci-core-choice-card-cell[data-full="true"] { grid-column: 1 / -1; }
+    .starci-core-choice-card-cell[data-col="1"] { border-inline-start: var(--grammar-separator-edge); }
+    .starci-core-choice-card-cell[data-destructive="true"] { color: var(--danger); }
+    .starci-core-choice-card-cell[data-other="true"] { color: var(--muted); }
+
+    .starci-core-choice-card-cell:hover:not(:disabled) { background: color-mix(in oklab, var(--surface), var(--foreground) 6%); }
+
+    .starci-core-choice-card-cell:focus-visible {
+        position: relative;
+        z-index: 1;
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: calc(var(--grammar-ring-width) * -1);
+    }
+
+    .starci-core-choice-card-cell:disabled { cursor: default; }
+    .starci-core-choice-card-cell[aria-busy="true"] { cursor: progress; opacity: var(--grammar-opacity-faded); }
+
+    .starci-core-choice-card[data-closed="true"] .starci-core-choice-card-cell { color: var(--muted); }
+
+    .starci-core-choice-card .starci-core-choice-card-cell[data-chosen="true"] {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+    }
+
+    /* The words of a cell are ONE run of text: the label and its hint wrap together, centred, so a long label never squeezes into a column beside its hint. */
+    .starci-core-choice-card-words {
+        display: block;
+        min-inline-size: 0;
+        overflow-wrap: break-word;
+    }
+
+    .starci-core-choice-card-hint {
+        color: var(--muted);
+        font-weight: var(--grammar-type-body-weight);
+    }
+
+    .starci-core-choice-card-cell[data-chosen="true"] .starci-core-choice-card-hint { color: inherit; opacity: var(--grammar-opacity-secondary); }
+
+    .starci-core-choice-card-check {
+        flex: none;
+        inline-size: 1em;
+        block-size: 1em;
+    }
+
+    @media (forced-colors: active) {
+        .starci-core-choice-card-cell { border-color: CanvasText; }
+        .starci-core-choice-card-cell[data-chosen="true"] { outline: var(--grammar-hairline) solid Highlight; }
+    }
+}

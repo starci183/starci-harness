@@ -125,14 +125,14 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, k
     )
 }
 
-const SwitchTrack = ({ look, thumbIcon, selectedThumbIcon }: { readonly look: SwitchSize | "compact"; readonly thumbIcon: IconSource | undefined; readonly selectedThumbIcon: IconSource | undefined }) => (
+const SwitchTrack = ({ thumbIcon, selectedThumbIcon }: { readonly look: SwitchSize | "compact"; readonly thumbIcon: IconSource | undefined; readonly selectedThumbIcon: IconSource | undefined }) => (
     <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
         <HeroSwitch.Thumb data-grammar-switch-thumb="true">
             {thumbIcon === undefined ? null : (
                 <HeroSwitch.Icon>
-                    <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
+                    <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage="control" /></span>
                     {selectedThumbIcon === undefined ? null : (
-                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
+                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage="control" /></span>
                     )}
                 </HeroSwitch.Icon>
             )}

@@ -8,12 +8,12 @@ import { landsOnDev, prePushTarget } from "../deps/dev-local.js"
 import type { PushTarget } from "../deps/dev-local.js"
 
 /**
- * THE TWO-LEVEL GATE (owner 2026-11-22: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn").
+ * THE TWO-LEVEL GATE.
  * `app check --level dev` is the FAST level of a landing on dev: the deps check here (local-registry pins accepted for an app that declares
  * hfs.json deps.devAllowsLocalRegistry), then @starci/hfs's fast families (types with its package builds and codegen, the lane's own tests,
  * db, the design approval; packages/hfs/cache/fast-level.mts). `--level full` (the default) is every gate, run once at the main cut: a push
  * of main or a release tag, `release cut`, `release push`, `app release`. One pass per push: a green fast run on a clean tree is remembered by
- * the content of its tree (outside the cache folder), so the pre-push hook of the push that follows the lander's gate or `lane gate` finds
+ * the content of its tree (outside the cache folder), so the pre-push hook of the push that follows `lane gate` finds
  * the same tree judged and does not run it again.
  */
 export const LEVEL_FLAG = "level"
@@ -68,6 +68,11 @@ export interface FastPorts {
     readonly hfs: (args: readonly string[]) => Promise<VerbResult<unknown>>
     readonly say: (line: string) => void
     readonly json: boolean
+    /**
+     * The line naming the standing hotfix pass that covers this push (core/hotfix/pass.ts: `starci hotfix land` writes it for its one commit to dev, alive only
+     * with that process), else undefined. A covered push is the one push of the sanctioned hotfix path and is not judged (contexts/authority/lanes.md "Hotfix").
+     */
+    readonly hotfix?: (pushRefs: string | undefined) => string | undefined
 }
 
 /** The forwarded argv without `--push-refs` and its value: a flag the CLI resolves and @starci/hfs never sees. */
@@ -94,11 +99,16 @@ export const pushRefsOf = (args: readonly string[]): string | undefined => {
 /**
  * One fast check: a tree already judged green at this level is not judged again (one pass per push); else the deps check for the target,
  * then @starci/hfs's fast families, and a green run on a clean tree is remembered. A deps refusal is a finding of the report (DEPS_* on
- * package.json), so the lander blames the lane that changed the pins.
+ * package.json), so the gate blames the lane that changed the pins.
  */
 export const runFastCheck = async (args: readonly string[], ports: FastPorts): Promise<VerbResult<unknown>> => {
     const target = fastTarget(pushRefsOf(args))
     const forwarded = withoutPushRefs(args)
+    const hotfix = ports.hotfix?.(pushRefsOf(args))
+    if (hotfix !== undefined) {
+        ports.say(hotfix)
+        return { data: { level: "dev", hotfix: true, findings: [], ok: true }, message: hotfix, exitCode: 0 }
+    }
     const key = ports.memoKey()
     const memo = key === undefined ? undefined : ports.readMemo(key)
     if (key !== undefined && memo !== undefined) {

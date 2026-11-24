@@ -59,4 +59,4 @@ and UX are the owner's review after the checks, never a contract check.
 
 ## The end of a UI lane
 
-shoot (1440 and 390) → `starci audit run <area>/<screen> --builder <agent>` → an auditor subagent (not the builder) fills the round of seven lenses in `screen.yaml` → fix → shoot → `starci audit run` again until round 2 or later has no open lens (at most 4 rounds, then the owner) → sync the canvas → land. The screen is described by `screen.yaml` alone (`explain.md` and `audit.json` are gone; `starci gallery migrate-explain` converts an old screen).
+shoot (1440 and 390) → `starci audit run <area>/<screen> --builder <agent>` → an auditor subagent (not the builder) fills the round of seven lenses in `screen.yaml` → fix → shoot → `starci audit run` again until round 2 or later has no open lens (at most 4 rounds, then the owner) → sync the canvas → land. The screen is described by `screen.yaml` alone.

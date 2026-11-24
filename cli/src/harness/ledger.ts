@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs"
+import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
@@ -186,12 +187,15 @@ export const mainCheckoutOf = (root: string): string => {
 export const sharedStateBase = (): string => ((process.env[LOCAL_ROOT_ENV] ?? "") === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime") : stateBase())
 
 /**
- * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else
- * the machine.sqlite of the harness's main checkout, so a CLI run from any worktree of the harness takes the same slots.
+ * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else one store per user
+ * of the host (`%LOCALAPPDATA%/starci/governor.sqlite` on Windows, `~/.local/state/starci/governor.sqlite` elsewhere), so the harness checkout, its
+ * worktrees and every CLI installed in an app's node_modules count against the same heavy slots.
  */
 export const governorStorePath = (): string => {
     const local = process.env[LOCAL_ROOT_ENV]
-    return local === undefined || local === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime", "machine.sqlite") : machinePath()
+    if (local !== undefined && local !== "") return machinePath()
+    const base = process.platform === "win32" ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local")) : join(homedir(), ".local", "state")
+    return join(base, "starci", "governor.sqlite")
 }
 
 /** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */
@@ -199,6 +203,9 @@ export const hostLauncherPath = (service: string, extension: "cmd" | "vbs"): str
 
 /** The output of one workspace dependency's build, kept by its content key (core/check/workspace-deps.ts): `<state base>/cache/workspace-builds/<key>`. */
 export const workspaceBuildCachePath = (key: string): string => join(stateBase(), "cache", "workspace-builds", key)
+
+/** The incremental build info of one tsc program, kept by the program's folder and tsconfig (core/check/scope.ts): `<state base>/cache/tsbuildinfo/<key>.tsbuildinfo`. Host state, never a result: tsc re-reads every file it is stale for. */
+export const tsBuildInfoCachePath = (key: string): string => join(stateBase(), "cache", "tsbuildinfo", `${key}.tsbuildinfo`)
 
 /** One shared npm install, kept by its key (lockfile, Node and npm versions; harness/install-cache.ts): `<state base>/cache/installs/<key>`. */
 export const installCachePath = (key: string): string => join(stateBase(), "cache", "installs", key)
@@ -213,7 +220,7 @@ export const cleanCheckoutsPath = (): string => join(stateBase(), "checkouts")
 export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string => join(projectDir(root), "briefs", `${role}-${launchId}.md`)
 
 /**
- * The host store keeps only host-wide state: the registry of project ledgers (the legacy `ledgers` columns plus
+ * The host store keeps only host-wide state: the registry of project ledgers (the `ledgers` columns plus
  * repo_common_dir, the lookup key), provider health, since a provider's rate limit or circuit is the same for every project, and
  * the Supervisors, one live row per project (`project` is the ledger id of the repository owning its Work, `ended_by` who
  * retired a row: owner, gone, stalled). A host store from version 2 keeps its `supervisors` table of one host Supervisor,

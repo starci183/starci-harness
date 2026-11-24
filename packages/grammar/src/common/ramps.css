@@ -81,6 +81,16 @@
         --grammar-type-code-size: 0.75rem;
         --grammar-type-code-line: 1.125rem;
         --grammar-type-code-weight: var(--grammar-weight-regular);
+        /* THE READING GROUP (0.55.1, owner 2026-11-23, StarCi Next lesson pages): long-form prose a learner reads, never console chrome.
+           reading.title (28 / 38, 500, a little tracking) is the question or the lesson's headline; reading.body (17 / 29, 400) its prose and
+           steps. Both step down on a phone (at most 30rem, the @media block after this rule): 23 / 32 and 16 / 27. Lines hold the 1.33x floor. */
+        --grammar-type-reading-title-size: 1.75rem;
+        --grammar-type-reading-title-line: 2.375rem;
+        --grammar-type-reading-title-weight: var(--grammar-weight-medium);
+        --grammar-type-reading-title-tracking: -0.012em;
+        --grammar-type-reading-body-size: 1.0625rem;
+        --grammar-type-reading-body-line: 1.8125rem;
+        --grammar-type-reading-body-weight: var(--grammar-weight-regular);
         /* THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM", then "cook"): five roles for the public marketing site only,
            never the console (`starci-grammar/site-type-role`). Measured on the NIVO site (D:/starci-lanes/_display-roles/measure.md) and
            held to the owner's ranges: hero about 40-48, section about 28-32, lead about 18. Weights 400 and 500 only; every line is at
@@ -131,12 +141,27 @@
         --grammar-radius-card: min(32px, var(--radius-3xl));
         --starci-core-surface-radius: var(--starci-core-card-radius, var(--grammar-radius-card));
         --grammar-link-arrow-travel: 0.1875rem;
-        /* How far an inline link's resting underline sits below its text: clear of the descenders, at any inherited size. */
-        --grammar-link-underline-offset: 0.2em;
         --starci-core-pill-radius: var(--grammar-radius-pill);
+
+        /*
+         * BARS (owner 2026-11-23, "= size progress của heroui cả"). Every bar-like data mark (Meter and its segments, Progress and its
+         * steps, ProportionBar, a FunnelChart stage, the DonutChart ring) is HeroUI v3 ProgressBar's own track: its height in steps of the
+         * vendor's `--spacing` (sm h-1 4px, md h-2 8px, lg h-3 12px) and its corner a step of `--radius` (xs, sm, md: a quarter, a half,
+         * three quarters), never a full pill and never a height of the grammar's own.
+         */
+        --grammar-bar-sm: calc(var(--spacing) * 1);
+        --grammar-bar-md: calc(var(--spacing) * 2);
+        --grammar-bar-lg: calc(var(--spacing) * 3);
+        --grammar-bar-radius-sm: calc(var(--radius) * 0.25);
+        --grammar-bar-radius-md: calc(var(--radius) * 0.5);
+        --grammar-bar-radius-lg: calc(var(--radius) * 0.75);
+        /* The empty track every bar and ring is drawn on: the measures' one neutral (components-overlays.css "THE EMPTY TRACK"). */
+        --grammar-bar-track: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
         --grammar-hairline: 1px;
+        /* The ground of a brand logo (Avatar kind="logo"): white in both themes, so a logo keeps its own colours. */
+        --grammar-logo-surface: #fff;
         --grammar-stroke-fine: 1.5px;
         --grammar-ring-width: 2px;
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
@@ -172,6 +197,13 @@
         --grammar-loop-spin: 1s;
         --grammar-loop-spin-fast: 0.8s;
         --grammar-loop-pulse: 1.6s;
+        /* TypingDots: one rise-and-fade cycle, the delay between two dots, how high a dot rises and how big it is. */
+        --grammar-loop-typing: 1.2s;
+        --grammar-typing-stagger: 0.15s;
+        --grammar-typing-travel: 5px;
+        --grammar-typing-dot: 0.375rem;
+        /* ReplyStrip: the bar on its start edge in the replied author's tone. */
+        --grammar-reply-edge: 3px;
         /* How long a Spotlight rings its target before it settles. */
         --grammar-spotlight-duration: 3s;
         --grammar-loop-easing: linear;
@@ -306,17 +338,53 @@
         --grammar-message-emoji-cell: var(--starci-core-control-min-size);
         --grammar-message-emoji-grow: 1.15;
         /*
-         * THE TWO ICON SIZES (owner 2026-11-22): 24px before body text (text-sm, 14px: Icon `heading` and `leading`, InlineStatus beside a 14px
-         * line), 20px inside a chip or badge and before text-xs (12px: Icon `chip`, InlineStatus inside a 12px role, the 40px IconTile's glyph).
-         * No other icon size exists; a Button's own glyph keeps the Button's scale (20 on a phone, 16 from 640px and on sm).
+         * THE ICON TABLE (owner 2026-11-23). One set (Tabler outline), never filled, not even for a current or selected state (that is shown by
+         * colour and background); four roles, never pixels in an app (Icon `usage`):
+         *   control  16: the ONE leading icon beside words, always 14px words (body, label.item, label.field, a button label, a menu or
+         *            list entry) one inline step (8) away; every labelled button glyph (sm, md, lg), a field's or chip's, a navigation
+         *            entry's (14px label); an icon-only button is 20 at 40 (--grammar-icon-alone), 16 at 32; every meaning-icon beside 14px words.          --grammar-icon-control
+         *   row      20 in the 40 tile, radius 10, that leads a list row (IconTile size row).    --grammar-icon-row, --grammar-tile-row-*
+         *   head     24 in the 48 tile, radius 12, beside a page title or in an empty state (IconTile size head). A heading (18 to 28)
+         *            never carries a leading icon: it takes this tile.                       --grammar-icon-head, --grammar-tile-head-*
+         *   text     1em of its words, at any size, in their colour: a caret or "go" arrow AFTER them, a breadcrumb separator, a receipt,
+         *            and a status glyph BEFORE them (circle-check done, circle-x failed, empty circle pending, triangle warning).
+         *            A 12px caption or meta line carries no leading icon: words only.        --grammar-icon-text
+         * THE ICON STROKE (owner 2026-11-24): every icon strokes 1.5, buttons included; the stroke never follows the text weight (icons are
+         * bigger now). It is written once, on the glyph (styles.css "THE ICON STROKE"); there is no stroke variable.
          */
-        --grammar-icon-md: 1.5rem;
-        --grammar-icon-sm: 1.25rem;
-        /* A connection logo in a LogoStack: the 20px icon step. */
-        --grammar-logo-stack-size: var(--grammar-icon-sm);
+        --grammar-icon-text: 1em;
+        --grammar-icon-control: 1rem;
+        /* The glyph of an icon-only 40 button (IconButton md): 20, the one control glyph with no words beside it; a 32 one (sm) is 16. */
+        --grammar-icon-alone: 1.25rem;
+        --grammar-icon-row: 1.25rem;
+        --grammar-icon-head: 1.5rem;
+        --grammar-tile-row-size: 2.5rem;
+        --grammar-tile-row-radius: 0.625rem;
+        --grammar-tile-head-size: 3rem;
+        --grammar-tile-head-radius: 0.75rem;
+        /* The gap a Stack or Cluster keeps between its children (its `gap` role sets it); 0 outside one. A rule that adds to that gap reads it. */
+        --starci-core-flow-gap: 0px;
+        /* The lesson parts (0.55.1): a CodeBlock's header row (48), a GradedChoice key (32) and the least height of its plate (68, one line of
+           reading prose in the card inset), the Sidenotes margin column (256). */
+        --grammar-code-block-head-height: 3rem;
+        --grammar-graded-key-size: 2rem;
+        --grammar-graded-option-min-height: 4.25rem;
+        --grammar-sidenote-width: 16rem;
+        /* The lead column of an outline section (a time such as 23:58) on the rail. */
+        --grammar-toc-meta-width: 3.25rem;
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
         --grammar-bubble-measure-standard: min(40rem, 85%);
         --grammar-bubble-measure-wide: 70%;
+    }
+
+    /* The reading group's phone step (0.55.1): at most 30rem the lesson's title and prose step down. */
+    @media (max-width: 30rem) {
+        .grammar-common-root {
+            --grammar-type-reading-title-size: 1.4375rem;
+            --grammar-type-reading-title-line: 2rem;
+            --grammar-type-reading-body-size: 1rem;
+            --grammar-type-reading-body-line: 1.6875rem;
+        }
     }
 
     /* The site group's steps (0.55.0): from 48rem the hero and the figure grow; from 64rem (the desktop) every stepped role takes its

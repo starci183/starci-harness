@@ -1,13 +1,11 @@
-import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, ChartGlyph, GroupGlyph, HomeGlyph, MenuGlyph, SearchGlyph, SettingsGlyph } from './fixtures.js';
 
 /**
  * SHELL GAPS (0.46.0), each from NIVO's console shell canvas (`nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html`): a strong and a solid avatar plate and an
- * `AvatarButton` (`:20-24`, the account avatar), `IdentityLockup markTone="solid"` (`:9`, the brand mark), a Sidebar collapse row at the foot of the rail
- * (`:208`, "Thu gon"), a `TopBar density="adaptive"` (`:71`, `:186`, `:216`: 56px at 1440, 52px at 390) and a quiet `Meter` reading (`:208`, "Credit thang nay").
+ * `AvatarButton` (`:20-24`, the account avatar), `IdentityLockup markTone="solid"` (`:9`, the brand mark), a `TopBar density="adaptive"` (`:71`, `:186`, `:216`: 56px at 1440, 52px at 390) and a quiet `Meter` reading (`:208`, "Credit thang nay").
  */
 const meta: Meta = { title: 'Navigation/Shell gaps (0.46.0)', parameters: { layout: 'padded' } };
 export default meta;
@@ -50,50 +48,6 @@ const GROUPS: ReadonlyArray<G.SidebarGroup> = [
   { id: 'work', items: [{ id: 'overview', label: 'Overview', source: HomeGlyph }, { id: 'office', label: 'Office', source: BellGlyph, badge: 4, badgeTone: 'danger', badgeLabel: '4 waiting' }, { id: 'reports', label: 'Reports', source: ChartGlyph }] },
   { id: 'setup', placement: 'end', items: [{ id: 'team', label: 'Team', source: GroupGlyph }, { id: 'settings', label: 'Settings', source: SettingsGlyph }] },
 ];
-
-const Rail = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <div style={{ height: '32rem', display: 'flex' }}>
-      <G.Sidebar
-        label="Workspace"
-        groups={GROUPS}
-        selectedKey="overview"
-        isCollapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-        collapseLabel="Collapse"
-        expandLabel="Expand"
-        toggleSource={MenuGlyph}
-        collapsePlacement="bottom"
-        footer={<G.Meter label="Credit this month" valueLabel="7,200 / 10,000" value={72} size="sm" tone="foreground" labelTone="muted" />}
-      />
-    </div>
-  );
-};
-
-/** The collapse control is a labelled row at the foot of the rail under the footer; pressing it collapses the rail and the expand control stands at the same foot, icon only. */
-export const CollapseAtTheFoot: Story = {
-  render: () => <Rail />,
-  play: async ({ canvasElement }) => {
-    const scope = within(canvasElement);
-    const row = await scope.findByRole('button', { name: 'Collapse' });
-    const foot = canvasElement.querySelector<HTMLElement>('[data-grammar-sidebar-collapse="bottom"]');
-    expect(foot).not.toBeNull();
-    expect(canvasElement.querySelector('.starci-core-sidebar-toggle')).toBeNull();
-    expect(row.textContent).toBe('Collapse');
-    const sidebar = canvasElement.querySelector<HTMLElement>('[data-component="Sidebar"]') as HTMLElement;
-    const footer = canvasElement.querySelector<HTMLElement>('.starci-core-sidebar-footer') as HTMLElement;
-    expect(foot?.getBoundingClientRect().top).toBeGreaterThanOrEqual(footer.getBoundingClientRect().bottom - 1);
-    expect(Math.round((foot as HTMLElement).getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(Math.round(sidebar.getBoundingClientRect().bottom) - 1);
-    await userEvent.click(row);
-    const expand = await scope.findByRole('button', { name: 'Expand' });
-    expect(expand.textContent).toBe('');
-    expect(sidebar.getAttribute('data-collapsed')).toBe('true');
-    expect(Math.round(sidebar.getBoundingClientRect().bottom - (foot as HTMLElement).getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
-    await userEvent.click(expand);
-    await scope.findByRole('button', { name: 'Collapse' });
-  },
-};
 
 const Bar = () => (
   <G.TopBar

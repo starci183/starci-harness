@@ -566,7 +566,7 @@ export const EmptyNotice: Story = {
         <G.EmptyNotice message="No items yet." />
       </State>
       <State label="With icon and action" direction="column">
-        <G.EmptyNotice message="No saved items." description="Save an item to find it here." media={{ icon: BookGlyph }} actionLabel="Browse items" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
+        <G.EmptyNotice message="No saved items." description="Save an item to find it here." media={{ icon: BookGlyph }} actionLabel="Browse items" actionStartContent={<G.Icon source={PlusGlyph} usage="control" />} onAction={noop} />
       </State>
       <State label="Action pending" direction="column">
         <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" isActionPending onAction={noop} />

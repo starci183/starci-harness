@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { inOrder } from "../../harness/sequential.js"
@@ -13,23 +14,24 @@ import type { Affected } from "./affected.js"
 import { isHarnessCheckout } from "./harness-checkout.js"
 
 /**
- * The harness's own two-level gate, the harness counterpart of `app check --level dev|full` (owner: "rules là k check nhánh khi dev, khi nào
- * push mới check tổng 1 lần sửa 1 lần vẫn hơn"). The FAST level (`dev`) is what landing on the harness's `dev` runs once per batch: the
- * build, typecheck and tests of the packages the diff since `--base` changed and of every package that needs one of them (`release affected`,
- * CI's plan), the CLI when it is affected, the desktop app when it is. The FULL level runs once at the train's dev -> main merge: every package
- * and the CLI, with their lint, and CI's light gates (anatomy, loosening, secrets, shape, pins, heavy sites, anchors, search index).
+ * The harness's own two-level gate, the harness counterpart of `app check --level dev|full`. The FAST level (`dev`) is what landing on the harness's `dev` runs once per lane, before the
+ * landed packages go to the local registry: the install, build and typecheck of the packages the diff since `--base` changed and of every package
+ * that needs one of them (`release affected`, CI's plan), the CLI when it is affected, the desktop app when it is, and the cheap checks a publish
+ * needs (built declarations name `.js` only; a package's bundled copies match the build they copy, `bundles:check`). It runs NO test suite: tests
+ * belong to the release line. The FULL level runs once at the train's dev -> main merge, before npm: every package and the CLI, with their lint
+ * and their tests, and CI's light gates (anatomy, loosening, secrets, shape, pins, heavy sites, anchors, search index).
  */
 export type HarnessLevel = "dev" | "full"
 
 /** One step of the gate: where it runs and what it runs. */
 export interface GateStep {
     readonly dir: string
-    readonly kind: "install" | "build" | "typecheck" | "lint" | "test" | "check"
+    readonly kind: "install" | "build" | "typecheck" | "declarations" | "bundles" | "lint" | "test" | "check"
     /** A `check` step: the CLI verb CI's gates job runs (`check shape`, `contexts anchor`, ...). */
     readonly args?: readonly string[]
 }
 
-/** One blocking finding of the gate, in the shape the batch lander reads (`level: error`, a path under the folder that failed). */
+/** One blocking finding of the gate, in the shape `lane gate` reads (`level: error`, a path under the folder that failed). */
 export interface GateFinding {
     readonly level: "error"
     readonly code: string
@@ -54,9 +56,10 @@ const APP_DIR = "app"
 
 /**
  * The steps of one gate over a plan, in order and each once: every folder of a package's build order is installed and built before the package's own
- * typecheck, lint (full only) and test; the CLI is installed, built, typechecked (and linted at full) and tested when the plan names it; the desktop app
- * is installed and built after the packages it needs; the full level then runs CI's light gates with the tree's built CLI. `scriptsOf` reads a folder's
- * npm scripts: a step whose script a folder lacks is left out. Pure.
+ * typecheck and publish checks (its built declarations when it builds, its `bundles:check` when it has one), then, at full only, its lint and tests;
+ * the CLI is installed, built and typechecked when the plan names it (linted and tested at full only); the desktop app is installed and built after
+ * the packages it needs; the full level then runs CI's light gates with the tree's built CLI. `scriptsOf` reads a folder's npm scripts: a step whose
+ * script a folder lacks is left out. Pure.
  */
 export const harnessGateSteps = (
     plan: Pick<Affected, "packages" | "harness" | "app" | "appBuild">,
@@ -74,7 +77,10 @@ export const harnessGateSteps = (
     const own = (dir: string): void => {
         const scripts = scriptsOf(dir)
         if (scripts.typecheck !== undefined) steps.push({ dir, kind: "typecheck" })
-        if (level === "full" && scripts.lint !== undefined) steps.push({ dir, kind: "lint" })
+        if (dir !== CLI_DIR && scripts.build !== undefined) steps.push({ dir, kind: "declarations" })
+        if (scripts["bundles:check"] !== undefined) steps.push({ dir, kind: "bundles" })
+        if (level !== "full") return
+        if (scripts.lint !== undefined) steps.push({ dir, kind: "lint" })
         if (scripts.test !== undefined || dir === CLI_DIR) steps.push({ dir, kind: "test" })
     }
     for (const pkg of plan.packages) {
@@ -109,6 +115,25 @@ const npmStep = async (root: string, dir: string, kind: "tsc" | "eslint" | "test
     return { ok: run.exitCode === 0, output: tail(run.stdout, run.stderr) }
 }
 
+/** A built declaration that imports a `.ts` specifier, which a consumer's tsc cannot read (ci.yml "Declarations name .js", packages/README.md). */
+const TS_SPECIFIER = /(from |import\()["']\.\.?\/[^"']+\.ts["']/
+
+/** The built declarations under `folder`/dist that import a `.ts` specifier, as `dist/<file>:<line>`; none when it has no dist. */
+export const tsSpecifierDeclarations = (folder: string): string[] => {
+    const dist = join(folder, "dist")
+    if (!existsSync(dist)) return []
+    const hits: string[] = []
+    for (const file of readdirSync(dist, { recursive: true, encoding: "utf8" })) {
+        if (!file.endsWith(".d.ts")) continue
+        readFileSync(join(dist, file), "utf8")
+            .split("\n")
+            .forEach((line, index) => {
+                if (TS_SPECIFIER.test(line)) hits.push(`dist/${file.replaceAll("\\", "/")}:${String(index + 1)}`)
+            })
+    }
+    return hits
+}
+
 /** The real steps: npm in the folder under the heavy-command governor; the CLI's tests over its build, as CI's harness job runs them. */
 export const runStep: StepRunner = async (root, step) => {
     const folder = join(root, step.dir)
@@ -119,6 +144,11 @@ export const runStep: StepRunner = async (root, step) => {
         }
         if (step.kind === "build") return await npmStep(root, step.dir, "build", "build")
         if (step.kind === "typecheck") return await npmStep(root, step.dir, "tsc", "typecheck")
+        if (step.kind === "declarations") {
+            const hits = tsSpecifierDeclarations(folder)
+            return { ok: hits.length === 0, output: hits.length === 0 ? "" : `a built declaration imports a .ts specifier: ${hits.slice(0, 10).join(", ")}` }
+        }
+        if (step.kind === "bundles") return await npmStep(root, step.dir, "build", "bundles:check")
         if (step.kind === "lint") return await npmStep(root, step.dir, "eslint", "lint")
         if (step.kind === "test" && step.dir === CLI_DIR) {
             const run = await withHeavySlot("test", "release gate: the CLI's tests", folder, {}, (held) => captureTool(process.execPath, ["--test", "--test-concurrency=2", "dist/**/*.test.js"], folder, held.options))
@@ -153,22 +183,39 @@ export const runHarnessGate = async (root: string, plan: Affected, level: Harnes
     const steps = harnessGateSteps(plan, level, scriptsOf)
     const broken = new Set<string>()
     const needs = new Map(plan.packages.map((pkg) => [pkg.dir, pkg.build]))
-    const done: (GateStep & { ok: boolean | "skipped" })[] = []
-    const findings: GateFinding[] = []
-    await inOrder(steps, async (step) => {
-        const blocked = broken.has(step.dir) || (needs.get(step.dir) ?? []).some((dir) => dir !== step.dir && broken.has(dir)) || (step.kind === "check" && broken.has(CLI_DIR))
-        if (blocked) {
-            done.push({ ...step, ok: "skipped" })
-            return
-        }
+    const outcomes: (GateStep & { ok: boolean | "skipped" })[] = []
+    const failures: (GateFinding | undefined)[] = []
+    // A typecheck reads what its folder and the packages of its build order built before it, and writes nothing, so it starts at its place in the order and the next
+    // steps go on while it runs: the typechecks of the folders run together, each tsc taking its own heavy slot (cli/src/harness/heavy.ts), so the host's slots bound them.
+    const pending: Promise<void>[] = []
+    const record = (index: number, step: GateStep, result: StepRun): void => {
+        outcomes[index] = { ...step, ok: result.ok }
+        if (!result.ok) failures[index] = { level: "error", code: codeOf(step), path: step.dir, message: `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed: ${result.output}`.slice(0, 600) }
+    }
+    const execute = async (index: number, step: GateStep): Promise<void> => {
         say(`${step.kind} ${step.dir}${step.args === undefined ? "" : ` (${step.args.join(" ")})`}`)
-        const result = await run(root, step)
-        done.push({ ...step, ok: result.ok })
-        if (result.ok) return
-        if (step.kind === "install" || step.kind === "build") broken.add(step.dir)
-        findings.push({ level: "error", code: codeOf(step), path: step.dir, message: `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed: ${result.output}`.slice(0, 600) })
-    })
-    return { level, base: plan.base, head: plan.head, summary: plan.summary, steps: done, findings, verdict: findings.length === 0 ? "green" : "red" }
+        record(index, step, await run(root, step))
+    }
+    try {
+        await inOrder(steps.map((step, index) => ({ step, index })), async ({ step, index }) => {
+            const blocked = broken.has(step.dir) || (needs.get(step.dir) ?? []).some((dir) => dir !== step.dir && broken.has(dir)) || (step.kind === "check" && broken.has(CLI_DIR))
+            if (blocked) {
+                outcomes[index] = { ...step, ok: "skipped" }
+                return
+            }
+            if (step.kind === "typecheck") {
+                pending.push(execute(index, step))
+                return
+            }
+            await execute(index, step)
+            if (outcomes[index]?.ok === false && (step.kind === "install" || step.kind === "build")) broken.add(step.dir)
+        })
+    } finally {
+        await Promise.allSettled(pending)
+    }
+    await Promise.all(pending)
+    const findings = failures.filter((each): each is GateFinding => each !== undefined)
+    return { level, base: plan.base, head: plan.head, summary: plan.summary, steps: outcomes, findings, verdict: findings.length === 0 ? "green" : "red" }
 }
 
 /** The base of a FAST gate when none is given: where HEAD forks from origin/dev (the branch it lands on), else from origin/main. */
@@ -182,17 +229,17 @@ const defaultBase = async (root: string): Promise<string | undefined> => {
 }
 
 /**
- * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level the
- * batch lander and `lane gate` run when the harness lands on dev; `--level full` is the gate of the train's dev -> main merge.
+ * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level
+ * `lane gate` runs when the harness lands on dev (no test suite); `--level full` is the gate of the train's dev -> main merge, tests included.
  */
 export const releaseGateVerb = defineVerb({
     path: ["release", "gate"],
-    summary: "the harness's own gate: --level dev (default, the FAST level of a landing on dev) builds, typechecks and tests the packages changed since --base and their dependents, the CLI and the desktop app when affected; --level full (the train's dev -> main merge) every package and the CLI with lint, then CI's light gates",
+    summary: "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, and runs the publish checks (declarations name .js, bundles:check), no test suite; --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/release-gate@1",
     flags: {
-        level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents) or full (everything, with lint and CI's light gates)" },
+        level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents, built and typechecked, no tests) or full (everything, with lint, tests and CI's light gates)" },
         base: { kind: "string", summary: "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it" },
     },
     run: async (context, flags) => {

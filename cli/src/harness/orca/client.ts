@@ -59,8 +59,7 @@ const LAUNCH_GRACE_MS = 15_000
 export const UNKNOWN_STATES: readonly string[] = ["outcome_unknown", "unknown", "stop_unknown", "release_unknown", "unverifiable"]
 
 /**
- * The namespace of every --retry-request id this CLI derives; fixed forever, so a restarted process derives the same id
- * (the legacy runtime's ORCA_REQUEST_NAMESPACE, so both sides agree on one identity scheme).
+ * The namespace of every --retry-request id this CLI derives; fixed forever, so a restarted process derives the same id.
  */
 const REQUEST_NAMESPACE = "96fe63b0-5b42-4411-8490-6b5ae7b7dcb2"
 
@@ -505,7 +504,7 @@ export const worktreeList = async (binary: OrcaBinary, repo: string, cwd: string
     return listed.worktrees.map((row) => ({ path: row.path, parent: row.parentWorktreeId == null ? null : folderOfWorktreeId(row.parentWorktreeId) }))
 }
 
-/** `orca project setups`: where Orca has each project set up on a host (the registered repository of a legacy setup). */
+/** `orca project setups`: where Orca has each project set up on a host. */
 export interface OrcaSetup {
     readonly id: string
     readonly path: string

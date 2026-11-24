@@ -39,9 +39,10 @@ Loading keeps the box transparent (no plate); a failed load keeps the box.
 - **Grammar owns:** the scale and its tokens, fit contain, the transparent ground, the compact step-down, the hero's
   visibility, the `data-asset-*` attributes.
 - **Knowledge decides:** the step and whether the art is named (the tables above); where a mascot may appear is the
-  brand record's within DISCIPLINE-3 (never on an error, a table, a loading state or a form other than a first-run
-  wizard step), and its carriers are a `Mascot`, the `artwork` slot of an `EntryFrame`, or a first-run
-  `EmptyNotice`'s `artwork`.
+  brand record's within DISCIPLINE-3 (never on a table, a loading state, an inline or field error, or a form other than a
+  first-run wizard step), and its carriers are a `Mascot`, the `artwork` slot of an `EntryFrame`, or a page-level
+  `EmptyNotice`'s `artwork`. The brand's helper character may stand in the illustration of a whole-page state, the 404,
+  the 500 and the offline page included, since that art is the page's one signature moment.
 - **App author decides:** the asset slot and its delivered file, the step by the table, `alt` copy.
 
 ## Rules

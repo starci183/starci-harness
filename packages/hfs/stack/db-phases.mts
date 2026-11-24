@@ -60,7 +60,7 @@ export interface FloorDeps {
   /** The encrypted dump of a `stack` database, made and kept on the manager. */
   managerBackup: (ctx: StackContext, config: DeployConfig, args: { run: Runner; container: string; url: string; recipients: string[]; at: string }) => Promise<ManagerBackup>;
   /** The test decrypt of that dump on the manager with its own identity: the parts it lists. */
-  managerDecrypt: (ctx: StackContext, args: { run: Runner; archive: string }) => Promise<string[]>;
+  managerDecrypt: (ctx: StackContext, args: { run: Runner; archive: string; container: string }) => Promise<string[]>;
   /** One value of the environment's sealed custody, opened in memory and never written, printed or put in an argument list. */
   sealedValue: (ctx: StackContext, config: DeployConfig, ref: SealedRef) => Promise<unknown>;
   /** psql inside the container of `target` as the role that container holds, the SQL on stdin (never argv): its exit status and stderr. */
@@ -317,7 +317,7 @@ async function stackBackup(p: PhaseInput, reached: Reached, lines: string[], sta
   if (problems.length > 0) return { code: 'STACK_DEPLOY_BACKUP_UNVERIFIED', message: `${problems.join('; ')}; nothing was migrated or deployed` };
   lines.push(`db: backup ${path.posix.basename(made.archive)} on the manager (${made.receipt.bytes} bytes, sha256 ${made.receipt.sha256.slice(0, 12)}) receipt ${made.receiptPath}`);
   try {
-    const listed = await f.managerDecrypt(ctx, { run: p.run, archive: made.archive });
+    const listed = await f.managerDecrypt(ctx, { run: p.run, archive: made.archive, container: reached.container });
     const missing = made.receipt.parts.filter((part) => !listed.includes(part));
     if (missing.length > 0) throw new Error(`the decrypted archive lacks ${missing.join(', ')}`);
   } catch (error) {

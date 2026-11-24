@@ -23,7 +23,7 @@ import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-
 const LABEL_ARROW = /[›»]/u
 
 /**
- * A typed arrow (owner 2026-11-22: no arrow characters in ANY rendered text; "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar"):
+ * A typed arrow (no arrow characters in ANY rendered text):
  * the Unicode Arrows block U+2190-U+21FF, the dingbat arrows U+2794-U+27BF, the long arrows U+27F0-U+27FF, and the ASCII `->`.
  */
 export const TYPED_ARROW = /[\u2190-\u21FF\u2794-\u27BF\u27F0-\u27FF]|->/u
@@ -143,7 +143,7 @@ export const buttonArrow: Rule.RuleModule = defineRule({
 })
 
 /**
- * No typed arrow in ANY rendered text (`FE_NO_TYPED_ARROW`, owner 2026-11-22). In product source, JSX text, a string or template literal
+ * No typed arrow in ANY rendered text (`FE_NO_TYPED_ARROW`). In product source, JSX text, a string or template literal
  * rendered as a child (and the branches of a conditional), and a string attribute that is rendered text (`label`, `title`, `aria-label`,
  * `description`, ...) holding an arrow character is an error: direction is the Grammar's arrow or link icon, `Link`'s own arrow or
  * `Button endArrow`. i18n message values are JSON the lint does not read; the content concept (contexts/ui/content.md) holds them.

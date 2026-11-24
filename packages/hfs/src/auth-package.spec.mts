@@ -93,14 +93,11 @@ test('the identity libraries are owned by no app file, and each entry of @starci
   assert.deepEqual(owners['@starci/auth/oidc'], ['integrations/keycloak']);
   assert.deepEqual(owners['@starci/auth/contracts'], ['integrations/passport', 'integrations/keycloak']);
   assert.deepEqual(owners['@starci/auth/testing'], ['integrations/passport', 'integrations/keycloak']);
-  assert.deepEqual(owners['@starci/auth-oidc'], [], 'the retired package is owned nowhere');
 });
 
-test('the front-end stack installs @starci/auth in every edition and forbids the retired @starci/auth-oidc, so a full starter takes @starci/auth', () => {
+test('the front-end stack installs @starci/auth in every edition', () => {
   const { app } = coreFeStackPackages();
   assert.ok(app.includes('@starci/auth'));
-  assert.equal(app.includes('@starci/auth-oidc'), false);
-  assert.equal(canonPins()['@starci/auth-oidc'], undefined, 'the canon pins no longer name the retired package');
 });
 
 test('the pin of @starci/auth names the folder and the version of the package', () => {

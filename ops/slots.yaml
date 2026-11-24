@@ -1,8 +1,9 @@
-# The machine-wide slots that bound how many heavy jobs of one kind run at once across every checkout and agent of a host, read by
-# cli/src/harness/slots.ts (`starci slot take|release|list|run`, `starci lane gate`, `starci gallery shoot` and the batch lander's
-# own npm and gate slots). A slot is one lock file in the slot root, taken by an exclusive create, released only by the holder it names.
+# The machine-wide lane slots: how many lanes run one kind of job at once (an install, a gate, a shot, the shared stack) across every checkout
+# and agent of a host; each heavy command inside a job also takes one of the host's heavy slots (ops/liveness.yaml heavy, one per gbPerSlot GB of
+# RAM) while it runs. Read by
+# cli/src/harness/slots.ts (`starci slot take|release|list|run`, `starci lane gate`, and `starci gallery shoot`). A slot is one lock file in the slot root, taken by an exclusive create, released only by the holder it names.
 # root: the folder holding the slot files; null is `<shared harness state>/slots`. STARCI_LANES_DIR and a verb's --dir override it,
-#   and the lane verbs (`lane ready|land|status|withdraw`) fall back to it when neither is given.
+#   and the lane verbs (`lane gate`, `lane status`) fall back to it when neither is given.
 # Each kind: `count` numbered slots (`file` with {n}); `burst` more slots, numbered after them, open only while the host has
 #   `burst.minFreeMb` free; `minFreeMb` the free memory every take of the kind waits for; `pollSeconds` how often a waiting take tries
 #   again; `heavy` the heavy-command kind (ops/liveness.yaml heavy.caps) an npm command run under the slot is governed as.
@@ -10,10 +11,21 @@
 #   holder is gone: the host booted after it was taken, its pid is not alive, or its pid now belongs to a process started at another time.
 #   Age is never evidence: a slot older than `warnMinutes` is reported as old (`slot list`), never removed. Every reclaim is logged
 #   with its evidence in `<root>/_slots.log`.
-# One slot per lane per kind: a take for a lane that holds one returns it. A lock with no pid (the old helper) is also reclaimed when its lane
-#   has no worktree under the root (`gone`). A lane's slots are released when it lands, is rejected or is removed (`lane remove`).
+# One slot per lane per kind: a take for a lane that holds one returns it. A lane's slots are released when it lands or is removed (`lane remove`).
+# reap.graceMinutes: a run the harness started under a slot (or an app check) records its launchers in `<root>/_runs/`; once a launcher
+#   has been gone this long, `starci ops reap --execute` stops the run's process tree (cli/src/harness/runs.ts).
+# janitor: what `starci lane prune-installs` and the land step of `lane gate --land` delete from a lane worktree (the ignored folders named in
+#   `dirs`, links unlinked first, never deleted through), and how long a worktree must be idle before prune-installs takes it (`idleHours`).
+#   A worktree still in use is never taken, by the land step or by prune-installs: touched within `touchedMinutes` (default 60; the newest of
+#   its git index, HEAD and top-level entries), uncommitted work in it, a branch with commits after the landed sha, a process inside it.
 schema: starci/slots@1
 root: null
+reap:
+  graceMinutes: 10
+janitor:
+  idleHours: 6
+  touchedMinutes: 60
+  dirs: [node_modules, .next, dist, .turbo]
 kinds:
   npm:
     count: 3

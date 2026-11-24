@@ -3,6 +3,7 @@ import type { PresentationState } from "./state.js"
 import type { MarkState } from "./statusMark.js"
 import type { DropdownMenuEntry } from "./branch/DropdownMenu/index.js"
 import type { AvatarKind, AvatarShape } from "./leaf/Avatar/index.js"
+import type { ToneSlot } from "./toneSlot.js"
 import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
@@ -25,6 +26,8 @@ export type AvatarData = {
     readonly src?: string
     readonly kind?: AvatarKind
     readonly shape?: AvatarShape
+    /** The app's own soft pair for the initials (`ToneSlot`, 0.55.1), as on an `Avatar`. */
+    readonly tone?: ToneSlot
 }
 
 /** A picture as data. `alt` is required; pass "" only for a purely decorative one. */
@@ -97,6 +100,12 @@ export type RowGroundTone = RowEdgeTone
 export type ListRowData = {
     readonly id: string
     readonly title: string
+    /**
+     * The title drawn with inline marks (0.55.1): the same words as `title` with a term that carries its note (`GlossaryTerm`, `SidenoteTerm`) or
+     * inline `Code` among them. `title` stays the plain words that name the row. Only a row that is not itself a control (no `href`, no
+     * `onPress`) draws it: an interactive term inside a link or a button would nest one control in another.
+     */
+    readonly titleContent?: ReactNode
     /** The title names an AI agent: a small neutral "AI" Chip follows it (`AgentName`). The app never places the Chip by hand. */
     readonly isAgent?: boolean
     /** The Chip's word in the app's language; "AI" when omitted. Only with `isAgent`. */
@@ -126,9 +135,11 @@ export type ListRowData = {
     /**
      * Where the command and the menu stand. `below` (default) lets them wrap under the copy when the row is narrow (below 28rem of its
      * container); `end` keeps them at the END of the row, vertically centred against the copy, at every width (a two-line row whose
-     * one short command must not take a line of its own). The copy truncates instead of the commands wrapping.
+     * one short command must not take a line of its own). The copy truncates instead of the commands wrapping. `foot` (0.55.1) stands them on a row of their
+     * own at the FOOT of the row, after its `detail`, on the copy's start edge, at every width: a Board card whose facts (a phone to call, a booking) are read
+     * before its one command, and whose line under the name keeps the card's whole width.
      */
-    readonly actionPlacement?: "below" | "end"
+    readonly actionPlacement?: "below" | "end" | "foot"
     readonly menu?: ItemMenu
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode

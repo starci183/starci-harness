@@ -54,9 +54,6 @@ export const RESULT_FILE = "@result"
 /** The schema tag of a contract the harness writes. */
 export const CONTRACT_SCHEMA = "starci/contract@2"
 
-/** The schema tag of a contract written before the op pattern; it is still read, as the equivalent contract@2. */
-export const LEGACY_CONTRACT_SCHEMA = "starci/contract@1"
-
 /** The prefix of a context entry that names a file of the harness checkout instead of the repository. */
 export const HARNESS_PREFIX = "harness:"
 
@@ -114,32 +111,6 @@ export const contractSchema = z.strictObject({
 /** A parsed contract. */
 export type Contract = z.output<typeof contractSchema>
 
-// contract@1: `context.base` was the revision, `readPaths` the files to read and `expectedOutput.checks` every check.
-const legacyContractSchema = z.object({
-    schema: z.literal(LEGACY_CONTRACT_SCHEMA),
-    label: z.string().min(1),
-    context: z.object({ base: z.string().min(1), allowPaths: z.array(z.string()), readPaths: z.array(z.string()).optional(), cwd: z.string().optional(), setup: setupSchema.optional() }),
-    input: z.object({ summary: z.string(), details: z.string().optional() }),
-    expectedOutput: z.object({ checks: z.array(z.unknown()) }),
-    budget: z.unknown(),
-})
-
-/** The contract@2 a contract@1 means: readPaths become context.extend and its checks checks.extend; the op adds its base. */
-const fromLegacy = (legacy: z.infer<typeof legacyContractSchema>): unknown => ({
-    schema: CONTRACT_SCHEMA,
-    label: legacy.label,
-    context: {
-        revision: legacy.context.base,
-        allowPaths: legacy.context.allowPaths,
-        ...(legacy.context.cwd === undefined ? {} : { cwd: legacy.context.cwd }),
-        ...(legacy.context.setup === undefined ? {} : { setup: legacy.context.setup }),
-        ...(legacy.context.readPaths === undefined || legacy.context.readPaths.length === 0 ? {} : { extend: legacy.context.readPaths }),
-    },
-    input: { summary: legacy.input.summary, ...(legacy.input.details === undefined ? {} : { details: legacy.input.details }) },
-    checks: { extend: legacy.expectedOutput.checks },
-    budget: legacy.budget,
-})
-
 /** One expected check after expansion: its trust tier, and whether it proves behaviour (never when the tier is T2). */
 export interface ResolvedCheck {
     readonly name: string
@@ -148,15 +119,9 @@ export interface ResolvedCheck {
     readonly check: PrimitiveCheck
 }
 
-/** Schema-validates a contract and normalises its paths; a contract@1 is read as its contract@2. Every contract the harness holds comes through here. */
+/** Schema-validates a contract and normalises its paths. Every contract the harness holds comes through here. */
 export const parseContract = (raw: unknown): Contract => {
-    let value = raw
-    if (typeof raw === "object" && raw !== null && "schema" in raw && raw.schema === LEGACY_CONTRACT_SCHEMA) {
-        const legacy = legacyContractSchema.safeParse(raw)
-        if (!legacy.success) throw new Refusal("CONTRACT_INVALID", `a ${LEGACY_CONTRACT_SCHEMA} contract: ${z.prettifyError(legacy.error)}`)
-        value = fromLegacy(legacy.data)
-    }
-    const parsed = contractSchema.safeParse(value)
+    const parsed = contractSchema.safeParse(raw)
     if (!parsed.success) throw new Refusal("CONTRACT_INVALID", z.prettifyError(parsed.error))
     return parsed.data
 }

@@ -48,7 +48,13 @@ export interface LocalTunnel { name: string; routes: LocalTunnelRoute[] }
  */
 export interface LocalServe { argv: string[]; cwd: string | null; build: { argv: string[]; cwd: string | null } | null }
 /** A native app process. */
-export interface LocalProcess extends LocalCommand { port: string | null; health: HttpProbe | null; serve: LocalServe | null }
+export interface LocalProcess extends LocalCommand {
+  port: string | null;
+  health: HttpProbe | null;
+  serve: LocalServe | null;
+  /** Started by `stack up` only when named in `--with` (a gallery, a landing): the dev stack runs one web and one backend per app by default. */
+  onDemand?: boolean;
+}
 /** One HTTP probe: the readiness of a process, a `ready` row or a `verify` row. */
 export interface HttpProbe { name: string; url: string; method: string; status: number; contains: string | null }
 /** The per-environment database: its compose service, its own login role and where the app reads its URL. */
@@ -100,7 +106,14 @@ export interface LocalBlock {
 const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources', 'dbUpgrade'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after', 'mode'];
-const PROCESS = [...COMMAND, 'port', 'health', 'serve'];
+/** `onDemand` of a process: absent, or a boolean. */
+const onDemandOf = (c: { problem: (at: string, message: string) => void }, at: string, value: unknown): { onDemand?: boolean } => {
+  if (value === undefined) return {};
+  if (typeof value !== 'boolean') { c.problem(at, 'must be true or false'); return {}; }
+  return { onDemand: value };
+};
+
+const PROCESS = [...COMMAND, 'port', 'health', 'serve', 'onDemand'];
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
 
@@ -435,7 +448,7 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
       const at = `processes[${index}]`;
       const base = command(c, at, item, PROCESS, names);
       const value = plain(item) ? item as Record<string, unknown> : {};
-      return { ...base, port: value.port === undefined ? null : String(value.port), health: value.health === undefined ? null : probe(c, `${at}.health`, { name: base.name || 'health', ...(value.health as object) }), serve: serveOf(c, `${at}.serve`, value.serve) };
+      return { ...base, port: value.port === undefined ? null : String(value.port), health: value.health === undefined ? null : probe(c, `${at}.health`, { name: base.name || 'health', ...(value.health as object) }), serve: serveOf(c, `${at}.serve`, value.serve), ...onDemandOf(c, `${at}.onDemand`, value.onDemand) };
     }),
     ready: listOf(c, 'ready', entry.ready, (item, index) => probe(c, `ready[${index}]`, item)),
     verify: listOf(c, 'verify', entry.verify, (item, index) => probe(c, `verify[${index}]`, item)),

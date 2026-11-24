@@ -1,20 +1,17 @@
 // cli.mts - `starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`, `starci app uiaudit cycle <area>/<screen> --reason <why>`,
-// `starci app uiaudit status [--json]` and `starci app gallery migrate-explain [--execute]` (reached as `starci audit run|cycle|status` and `starci gallery migrate-explain`;
-// contexts/project/gallery.md PROJECT-GALLERY-8). The harness itself never calls a model: `run` prepares the round (the shot hashes taken now, the next round written as a
+// `starci app uiaudit status [--json]` (reached as `starci audit run|cycle|status`; contexts/project/gallery.md PROJECT-GALLERY-8). The harness itself never calls a model: `run` prepares the round (the shot hashes taken now, the next round written as a
 // skeleton of ten open lenses in the screen's screen.yaml) and prints the brief an auditor agent, a different agent from the builder, reads and fills. The rounds are evidence
 // for later fixes, never a gate (owner, 2026-11-21): no check judges what the auditor wrote. `cycle` closes a cycle into `considered` and opens the next, the lawful way back
 // after round 4. `status` lists every screen with its audit state.
-// `migrate-explain` turns each explain.md into a screen.yaml (audit: null: the screen is grandfathered until the diff touches it) and deletes the explain.md.
-// Exit 0 done, 1 a screen could not be migrated or prepared, 2 bad usage.
+// Exit 0 done, 1 a screen could not be prepared, 2 bad usage.
 import fs from 'node:fs';
 import path from 'node:path';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
-import { feRoutes, resolveScreenRoute } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { cropShots } from '../runtime/scripts/hfs/shot-crops.mjs';
-import { auditBrief, docProblems, lensesOf, nextCycle, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
+import { auditBrief, lensesOf, nextCycle, nextRound, parseScreen, SCREEN_FILE, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 
-export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit cycle <area>/<screen> --reason <why> | starci audit status [--json] | starci gallery migrate-explain [--execute]';
+export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit cycle <area>/<screen> --reason <why> | starci audit status [--json]';
 
 /** The laws an auditor holds a screen to: where they live in the repository the harness serves. */
 const LAWS = [
@@ -66,12 +63,12 @@ function parseAudit(argv: readonly string[]): RunOptions | StatusOptions | Cycle
 }
 
 /** How one screen stands, for `status`. */
-export type AuditState = 'grandfathered' | 'legacy' | 'invalid' | 'pending' | 'open' | 'needs-owner' | 'few-rounds' | 'stale' | 'ok' | 'no-shots';
+export type AuditState = 'grandfathered' | 'invalid' | 'pending' | 'open' | 'needs-owner' | 'few-rounds' | 'stale' | 'ok' | 'no-shots';
 
 /** The audit state of one screen: what `starci audit status` prints. */
 export function stateOf(repoRoot: string, folder: string, id: string): { state: AuditState; detail: string } {
   const text = readText(path.join(repoRoot, ...folder.split('/'), SCREEN_FILE));
-  if (text === null) return { state: 'legacy', detail: 'explain.md, not migrated (starci gallery migrate-explain)' };
+  if (text === null) return { state: 'invalid', detail: `no ${SCREEN_FILE} (PROJECT-GALLERY-8)` };
   const parsed = parseScreen(text, id);
   if (parsed.parseError !== null || parsed.doc.length > 0) return { state: 'invalid', detail: (parsed.parseError ?? parsed.doc[0]) as string };
   const audit = parsed.value?.['audit'];
@@ -106,7 +103,7 @@ export function uiauditMain(argv: string[], { cwd, stdout, stderr }: Io): number
   const folder = `${params.pages}/${opts.screen}`;
   const file = path.join(cwd, ...folder.split('/'), SCREEN_FILE);
   const text = readText(file);
-  if (text === null) { stderr(`starci audit: ${folder}/${SCREEN_FILE} does not exist: write it (PROJECT-GALLERY-8), or run starci gallery migrate-explain for an explain.md\n`); return 2; }
+  if (text === null) { stderr(`starci audit: ${folder}/${SCREEN_FILE} does not exist: write it (PROJECT-GALLERY-8)\n`); return 2; }
   const parsed = parseScreen(text, opts.screen);
   if (parsed.value === null || parsed.parseError !== null || parsed.doc.length > 0) { stderr(`starci audit: ${folder}/${SCREEN_FILE} ${parsed.parseError ?? parsed.doc.slice(0, 6).join('; ')}\n`); return 1; }
   if (opts.action === 'cycle') {
@@ -132,35 +129,4 @@ export function uiauditMain(argv: string[], { cwd, stdout, stderr }: Io): number
   if (opts.out !== undefined) { fs.writeFileSync(path.resolve(cwd, opts.out), `${brief}\n`); stdout(`starci audit: ${next.note}; brief written to ${opts.out}\n`); } else stdout(`${brief}\n\n`);
   stderr(`starci audit: ${next.note}; ${folder}/${SCREEN_FILE} is the skeleton for the auditor${(next.value['audit'] as Audit).builder.agent === '' ? '; name the builder with --builder' : ''}\n`);
   return 0;
-}
-
-/** `starci app gallery migrate-explain [--execute]`: every explain.md becomes a screen.yaml (audit: null) and is deleted. Dry run unless --execute. */
-export function galleryMain(argv: string[], { cwd, stdout, stderr }: Io): number {
-  const [action, ...rest] = argv;
-  if (action !== 'migrate-explain' || rest.some((arg) => arg !== '--execute')) { stderr(`starci gallery: ${USAGE}\n`); return 2; }
-  const execute = rest.includes('--execute');
-  const params = galleryParams();
-  const routes = feRoutes(cwd);
-  let migrated = 0;
-  let skipped = 0;
-  for (const { area, screen } of galleryScreens(cwd, params).screens) {
-    const id = `${area}/${screen}`;
-    const folder = `${params.pages}/${id}`;
-    const target = path.join(cwd, ...folder.split('/'), SCREEN_FILE);
-    const mdFile = path.join(cwd, ...folder.split('/'), 'explain.md');
-    const markdown = readText(mdFile);
-    if (markdown === null) continue;
-    if (fs.existsSync(target)) { stderr(`skipped ${id}: it holds screen.yaml and explain.md both; delete the explain.md by hand\n`); skipped += 1; continue; }
-    const value = screenOfExplain({ id, markdown, disk: shotsOnDisk(cwd, folder) });
-    const key = resolveScreenRoute(routes, { route: String(value['route'] ?? ''), ...(typeof value['app'] === 'string' ? { app: value['app'] } : {}) }).key;
-    const route = routes.find((candidate) => key !== null && candidate.key === key);
-    if (route !== undefined) value['code'] = route.sources.map((source) => source.replace(/^fe\/apps\/[^/]+\/src\//u, ''));
-    const problems = docProblems(value, id);
-    if (problems.length > 0) { stderr(`skipped ${id}: ${problems.slice(0, 3).join('; ')}: fix the explain.md front matter (title, route, area) and run again\n`); skipped += 1; continue; }
-    if (execute) { fs.writeFileSync(target, stringifyYaml(value)); fs.rmSync(mdFile); }
-    stdout(`${execute ? 'migrated' : 'would migrate'} ${id}\n`);
-    migrated += 1;
-  }
-  stdout(`gallery: ${migrated} screen(s) ${execute ? 'migrated' : 'to migrate (dry run, --execute writes)'}, ${skipped} skipped\n`);
-  return skipped > 0 ? 1 : 0;
 }

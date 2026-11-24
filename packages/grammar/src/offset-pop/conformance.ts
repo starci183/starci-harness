@@ -24,7 +24,7 @@ import { COMMON_UI_RULE_IDS, defineGrammarRuleConformance } from "../common/inde
 export const OFFSET_POP_SOURCE_OWNERSHIP_EVIDENCE = ["Every family edge lands on a hook a Common owner emits (`data-component`, `data-grammar-*`, the HeroUI slot, or the vendor's own state attribute); the family adds no wrapper shell."] as const
 
 export const OFFSET_POP_FAMILY_EVIDENCE = {
-    "ACCENT-1": ["`--accent` binds the one pink. The family fills with it only the decision it marks: the dialog confirm, toast and alert action (the single action in each), a checked, selected or current state inside a control, and a real measurement (slider, meter, rating, spinner); it never paints text with it."],
+    "ACCENT-1": ["`--accent` binds the one pink. The family fills with it only the decision it marks: the dialog confirm and the toast action (the single action in each; a banner's buttons take its tint), a checked, selected or current state inside a control, and a real measurement (slider, meter, rating, spinner); it never paints text with it."],
     "BOUNDARY-1": ["Band edges are the ink line at `--offset-pop-outline-width`: TopBar below, Footer above; `--border` and `--separator` resolve to the same ink in every theme and CanvasText under forced colours."],
     "BOUNDARY-4": ["Rail draws its inline-end column edge as the 2px `--offset-pop-outline-width` ink line in `--border`; Common draws none on Rail."],
     "BOUNDARY-5": ["Objects carry a `--offset-pop-outline-width` (2px) solid ink outline in place of Common's 1px: nested surfaces, Button, Badge, StateMark, field and choice controls, overlay surfaces, DataTable, Calendar, Avatar, tags and pagination; grouped Buttons overlap by one outline width so a shared edge draws once, and a row seam is Common's one between-rows edge repainted at the outline width (never a second edge)."],
@@ -39,7 +39,7 @@ export const OFFSET_POP_FAMILY_EVIDENCE = {
     "MOTION-1": ["The family's only movement is press travel: a translate plus shadow collapse keyed on `:active` or the vendor's `data-pressed` / `data-dragging`, repeating a press Common already handles; no state or meaning rides on it."],
     "MOTION-2": ["`prefers-reduced-motion: reduce` zeroes `--offset-pop-motion-duration` and `--offset-pop-transition`, and every sheet that moves something sets its `transform` or `translate` to none (navigation zeroes its disclosure transitions); the press itself still reaches Common."],
     "MOTION-3": ["Every family transition reads `--offset-pop-transition`, built from the DNA's `--offset-pop-motion-duration` (140ms) and `--offset-pop-motion-easing`."],
-    "OVERFLOW-2": ["The family clips (`overflow: clip`) only non-scrolling shells to their radius: a list that is not the scroll region, the DataTable sheet (its rows scroll in the inner table scroll container) and the SegmentedControl unit; a list that is the scroll region keeps Common's OVERFLOW-3 `overflow-y: auto`."],
+    "OVERFLOW-2": ["The family clips (`overflow: clip`) only non-scrolling shells to their radius: a list that is not the scroll region, the DataTable sheet (its rows scroll in the inner table scroll container); a list that is the scroll region keeps Common's OVERFLOW-3 `overflow-y: auto`."],
     "PADDING-2": ["The current Breadcrumb becomes an outlined pill with a .5rem inline inset."],
     "PADDING-3": ["The Calendar becomes an outlined sheet with a .75rem inset."],
     "PADDING-4": ["Disclosure and Accordion triggers take a 1rem inline inset inside their outlined box."],

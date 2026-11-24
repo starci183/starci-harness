@@ -1,6 +1,6 @@
 {
   "name": "@starci/test-world",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "The shared e2e library of every StarCi back end, including the implementation behind starci app stack.",
   "license": "MIT",
   "author": "starci183",
@@ -54,7 +54,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@starci/common": "1.0.1",
+    "@starci/common": "1.0.2",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {

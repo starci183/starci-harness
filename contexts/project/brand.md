@@ -18,9 +18,10 @@ folder is the sheet an agent prompts from, and it points at that record instead 
 | `media.yaml` | the named bases of that media: `bases: { <name>: { version, text } }`, the starter holding `social-image`, `video-broll` and `presenter` (PROJECT-BRAND-2). The one place those base texts are written; `media.md` links to it and never copies it |
 | `references/` | one to three approved reference images (PNG or WebP, tracked) that show the concept; a prompt names the reference it follows |
 
-The default concept a new app starts with, which the app edits to its own brand: 3D clay or soft-plastic, a white or transparent background,
-a soft light from the top left, one object plus at most one accent element; only the brand colours plus neutral grey and cream; no text, no
-medical crosses, no faces; square, 1024 px. An illustration stands on a page-level state only (a first visit, a whole-page empty state, a
+The default concept a new app starts with, which the app edits to its own brand: a calm, flat editorial
+illustration with soft shading and thin clean outlines on a plain off-white ground; off-white and light grey with the brand colour as the single
+accent; the brand's helper character (NIVO: a crimson star; StarCi Next: a violet chip) is OPTIONAL — it appears only where it adds meaning (an
+empty state, a 404, a first visit), never by default in a content or explainer picture, which shows the plain scene; when it appears it is the only face, and people are always faceless flat figures; no text, letters, logos or UI screenshots; the whole subject inside the frame with a margin; square, 1024 px. An illustration stands on a page-level state only (a first visit, a whole-page empty state, a
 paywall, the 404 and the 500 page), rendered at 160 px at 1440 and 120 px at 390; it never stands on a working screen.
 
 **Why `illustration.yaml` and not a fenced block of `illustration.md`.** A check reads the version on every run, and a prompt file records it; a YAML
@@ -91,4 +92,4 @@ Enforced by (R445, `packages/hfs/runtime/scripts/hfs/rules/brand-one.mts`):
 - `FE_BRAND_CANVAS_LITERAL`: a canvas generator writes a colour literal.
 - `FE_BRAND_CANVAS_TOKENS_STALE`: `.starcistacks/canvas/tokens.css` is absent or is not what the brand file generates.
 
-The colour literals in TypeScript, in CSS and in inline styles are the lint of R61 ([FE-CSS-3](../code/fe/ui.md#fe-css-3-colour-lives-in-one-brand-file): eslint `no-raw-brand-value`, which now also refuses a Tailwind arbitrary named colour and a default-palette class, and stylelint `raw-brand-value`, which now also refuses a named colour in a colour property).
+The colour literals in TypeScript, in CSS and in inline styles are the lint of R61 ([FE-CSS-3](../code/fe/ui.md#fe-css-3-colour-lives-in-one-brand-file): eslint `no-raw-brand-value`, which also refuses a Tailwind arbitrary named colour and a default-palette class, and stylelint `raw-brand-value`, which also refuses a named colour in a colour property).

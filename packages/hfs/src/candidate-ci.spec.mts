@@ -143,7 +143,6 @@ for (const edition of ['lite'] as const) {
       const on = parseWorkflow(target.content).on;
       if (/stack-deploy/.test(target.path)) assert.deepEqual(Object.keys(on).sort(), ['workflow_call', 'workflow_dispatch']);
       if (/images/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_call']);
-      if (/stack-key-restore/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_dispatch']);
     }
   });
 

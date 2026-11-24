@@ -13,8 +13,8 @@
 
     /* Each action is a HeroUI sm icon-only Button: its glyph keeps the Button's sm scale (16), not the text icon sizes. */
     .starci-core-message-actions .starci-core-icon {
-        width: 1rem;
-        height: 1rem;
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
     .starci-core-message-actions {

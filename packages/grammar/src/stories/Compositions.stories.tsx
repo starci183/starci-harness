@@ -742,7 +742,7 @@ const PaneInsetDemo = () => {
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="thread">
-          <G.PaneSection scroll={{ label: 'Messages', role: 'log', tone: 'background' }}>
+          <G.PaneSection scroll={{ label: 'Messages', tone: 'background' }}>
             <G.MessageBubble author="Sam" meta="09:12" body={"Can the order for table 4 move to 19:30?"} />
             <G.MessageBubble author="You" meta="09:14" side="outgoing" body={"Yes, I moved it."} />
           </G.PaneSection>
@@ -872,10 +872,10 @@ const PagePanesDemo = () => (
     }}
   >
     <G.PaneGrid label="Setup" areas={{ base: ['chat', 'side'], medium: ['chat side'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
-      <G.Pane area="chat">
-        <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background' }}>
-          <G.MessageBubble author="Agent" meta="09:12" body={"How can I help?"} />
-        </G.PaneSection>
+      <G.Pane area="chat" content="chat">
+        <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Support agent" mark={<G.Avatar name="Support agent" size="md" />} />}>
+          <G.MessageBubble author="Agent" meta="09:12" avatar={<G.Avatar name="Support agent" size="md" />} body={"How can I help?"} />
+        </G.ChatFrame>
       </G.Pane>
       <G.Pane area="side" surface>
         <G.PaneSection gap="section"><G.Text isStrong>Settings</G.Text><G.Text tone="muted">Greeting and tools.</G.Text></G.PaneSection>

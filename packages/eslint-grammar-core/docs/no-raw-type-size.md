@@ -2,7 +2,7 @@
 
 Law module: `no-raw-type-size.ts`. Finding code: `FE_RAW_TYPE_SIZE`. Knowledge: `runtime/knowledge/ui/presentation/grammar-laws.yaml#TYPE-ROLES`.
 
-Type is a Grammar role (owner, 2026-11-21). An app draws text with `<Text role="label.item">`, or puts the public class of a role (`starci-type-label-item`, dots as dashes) on an element of its own. The ten roles are figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge and code ([presentation](../../../contexts/ui/presentation.md) "The type roles").
+Type is a Grammar role. An app draws text with `<Text role="label.item">`, or puts the public class of a role (`starci-type-label-item`, dots as dashes) on an element of its own. The ten roles are figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge and code ([presentation](../../../contexts/ui/presentation.md) "The type roles").
 
 ## `starci-grammar/no-raw-type-size`
 

@@ -8,14 +8,14 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 ## `starci-grammar/no-typed-arrow`
 
-Owner 2026-11-22: "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar" (no typed arrow characters; a direction is a Grammar icon).
+No typed arrow characters; a direction is a Grammar icon.
 In product source, an arrow character in rendered text is a finding (`FE_NO_TYPED_ARROW`, message `typed`) on ANY element, not only a Button:
 
 - JSX text, a string or template literal rendered as a child, and the branches of a conditional;
 - a string attribute that is rendered text (`label`, `title`, `aria-label`, `description`, ...); `className`, `href`, `src`, `id`, `key`, `role`, `data-*` and event handlers are not text.
 
 The characters: the Unicode Arrows block U+2190-U+21FF (→ ← ↑ ↓ ↗ ⇒ …), the dingbat arrows U+2794-U+27BF (➔ ➜ …), the long arrows U+27F0-U+27FF (⟶),
-and ASCII `->`. i18n message values are JSON the lint does not read; contexts/ui/content.md holds them. That gap is accepted for now (owner 2026-11-22, "duyệt hết").
+and ASCII `->`. i18n message values are JSON the lint does not read; contexts/ui/content.md holds them. That gap is accepted.
 
 ```tsx
 <Text>Xem đơn →</Text>                 // refused

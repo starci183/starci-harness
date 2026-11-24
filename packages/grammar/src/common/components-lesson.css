@@ -1,0 +1,361 @@
+/*
+ * THE LESSON PARTS (0.55.1, owner 2026-11-23, StarCi Next lesson pages): CodeBlock, GradedChoice, Sidenotes and TableOfContents. Every
+ * colour, radius, type size and step is a Grammar token; the reading roles (ramps.css) carry the prose sizes.
+ */
+@layer starci-grammar-common {
+    /* ---------------------------------------------------------------- CodeBlock */
+    /*
+     * One bordered block on the card radius: the header on the surface (the file in the mono stack, the summary muted, the badge, Copy),
+     * the code on the code palette's ground (common/tones-code.css: its own inks, never the brand), numbered in a gutter, the note under it on the surface. Folded, the header is the whole block.
+     */
+    .starci-core-code-block {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: var(--grammar-border-edge);
+        border-radius: var(--grammar-radius-lg);
+        background: var(--surface);
+        color: var(--foreground);
+    }
+
+    .starci-core-code-block-head {
+        display: flex;
+        min-width: 0;
+        min-block-size: var(--grammar-code-block-head-height);
+        align-items: center;
+        gap: var(--grammar-row-gap);
+        padding-block: var(--grammar-inline-gap);
+        padding-inline: var(--grammar-inset-card) var(--grammar-inline-gap);
+    }
+
+    .starci-core-code-block[data-grammar-code-collapsed="false"] .starci-core-code-block-head { border-block-end: var(--grammar-border-edge); }
+
+    .starci-core-code-block-title,
+    .starci-core-code-block-fold {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        align-items: baseline;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-code-block-fold {
+        align-self: stretch;
+        align-items: center;
+        margin-inline-start: calc(-1 * var(--grammar-inline-gap));
+        padding: 0 var(--grammar-inline-gap);
+        border: 0;
+        border-radius: var(--grammar-radius-md);
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+    }
+
+    .starci-core-code-block-fold:hover { background: var(--surface-secondary); }
+    .starci-core-code-block-fold:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
+    .starci-core-code-block-caret { display: inline-flex; color: var(--muted); transition: transform var(--grammar-motion-duration-base) var(--grammar-motion-ease-out); }
+    .starci-core-code-block-fold[aria-expanded="true"] .starci-core-code-block-caret { transform: rotate(90deg); }
+    [dir="rtl"] .starci-core-code-block-fold[aria-expanded="false"] .starci-core-code-block-caret { transform: scaleX(-1); }
+
+    .starci-core-code-block-path {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: var(--grammar-type-label-field-size);
+        line-height: var(--grammar-type-label-field-line);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-code-block-summary {
+        flex: none;
+        margin-inline-start: auto;
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        font-variant-numeric: tabular-nums;
+        line-height: var(--grammar-type-caption-line);
+        white-space: nowrap;
+    }
+
+    .starci-core-code-block-body { display: flex; min-width: 0; flex-direction: column; }
+
+    .starci-core-code-block-code {
+        margin: 0;
+        padding-block: var(--grammar-row-gap);
+        overflow-x: auto;
+        background: var(--grammar-code-bg);
+        color: var(--grammar-code-fg);
+        overscroll-behavior-inline: contain;
+    }
+
+    .starci-core-code-block-code:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
+
+    .starci-core-code-block-code code {
+        font-family: var(--font-mono);
+        font-size: var(--grammar-type-label-field-size);
+        line-height: var(--grammar-type-body-line);
+        white-space: pre;
+    }
+
+    .starci-core-code-block-code .starci-core-code-line { padding-inline: var(--grammar-inset-card); }
+    .starci-core-code-block-code [data-grammar-line-numbers="true"] .starci-core-code-line::before { min-inline-size: 4ch; margin-inline-end: var(--grammar-inset-card); font-variant-numeric: tabular-nums; }
+    .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--grammar-code-fg); font-weight: var(--grammar-weight-medium); }
+
+    .starci-core-code-block-note {
+        padding: var(--grammar-row-gap) var(--grammar-inset-card);
+        border-block-start: var(--grammar-border-edge);
+        color: var(--muted);
+        font-size: var(--grammar-type-body-size);
+        line-height: var(--grammar-type-body-line);
+    }
+
+    /* ---------------------------------------------------------------- GradedChoice */
+    /*
+     * Large answer plates, one under another: the round key, then the answer at the reading size. A wrong pick is the danger soft plate
+     * with its edge, locked; the right one the success soft plate, its key filled with the check; the answers left open after it dim.
+     */
+    .starci-core-graded-choice-options { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+
+    .starci-core-graded-option {
+        display: grid;
+        inline-size: 100%;
+        min-block-size: var(--grammar-graded-option-min-height);
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset-card) var(--grammar-inset-card);
+        border: var(--grammar-border-edge);
+        border-radius: var(--grammar-radius-lg);
+        background: var(--surface);
+        color: var(--foreground);
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+        transition: background-color var(--grammar-motion-duration-base) var(--grammar-motion-ease-out), border-color var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
+    }
+
+    .starci-core-graded-option[data-grammar-graded-state="open"]:hover { border-color: var(--field-border-hover, var(--border)); background: var(--surface-secondary); }
+    .starci-core-graded-option:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-graded-option[aria-disabled="true"] { cursor: default; }
+
+    .starci-core-graded-option-key {
+        display: grid;
+        inline-size: var(--grammar-graded-key-size);
+        block-size: var(--grammar-graded-key-size);
+        place-items: center;
+        border: var(--grammar-border-edge);
+        border-radius: var(--grammar-radius-pill);
+        color: var(--muted);
+        font-size: var(--grammar-type-label-field-size);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-type-label-field-line);
+    }
+
+    .starci-core-graded-option-main { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); padding-block-start: var(--grammar-identity-gap); }
+    .starci-core-graded-option-label {
+        font-size: var(--grammar-type-reading-body-size);
+        font-weight: var(--grammar-type-reading-body-weight);
+        line-height: var(--grammar-type-reading-body-line);
+    }
+
+    .starci-core-graded-option-why { display: flex; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-graded-option-verdict {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-graded-option-explanation { color: var(--foreground); font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); }
+
+    .starci-core-graded-option[data-grammar-graded-state="wrong"] { border-color: var(--danger); background: var(--danger-soft); }
+    .starci-core-graded-option[data-grammar-graded-state="wrong"] :is(.starci-core-graded-option-key, .starci-core-graded-option-verdict) { border-color: var(--danger); color: var(--danger-soft-foreground); }
+    .starci-core-graded-option[data-grammar-graded-state="correct"] { border-color: var(--success); background: var(--success-soft); }
+    .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-key { border-color: var(--success); background: var(--success); color: var(--success-foreground); }
+    .starci-core-graded-option[data-grammar-graded-state="correct"] .starci-core-graded-option-verdict { color: var(--success-soft-foreground); }
+    .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-label { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="spent"] .starci-core-graded-option-verdict { color: var(--muted); }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] { cursor: progress; }
+    .starci-core-graded-option[data-grammar-graded-state="pending"] .starci-core-graded-option-verdict { color: var(--muted); }
+
+    /* ---------------------------------------------------------------- Sidenotes */
+    /*
+     * Wide (from 52rem of frame): the prose, then a 16rem margin column of notes level with their terms. Narrow: the column is gone and
+     * a quiet fold under the prose holds the same notes. A term keeps its sentence's type with a dotted underline; the active pair (a
+     * term hovered or focused, its note) takes the foreground underline and the accent edge.
+     */
+    .starci-core-sidenotes { min-width: 0; container: starci-core-sidenotes / inline-size; }
+    .starci-core-sidenotes-grid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+    .starci-core-sidenotes-main { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-section-gap); }
+    .starci-core-sidenotes-side { display: none; }
+    .starci-core-sidenotes-fold { border-block-start: var(--grammar-separator-edge); padding-block-start: var(--grammar-inline-gap); }
+
+    @container starci-core-sidenotes (min-width: 52rem) {
+        .starci-core-sidenotes-grid { grid-template-columns: minmax(0, 1fr) var(--grammar-sidenote-width); align-items: start; column-gap: var(--grammar-region-gap); }
+        .starci-core-sidenotes-side { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-section-gap); }
+        .starci-core-sidenotes-fold { display: none; }
+    }
+
+    .starci-core-sidenotes-title {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-type-label-group-size);
+        font-weight: var(--grammar-type-label-group-weight);
+        line-height: var(--grammar-type-label-group-line);
+    }
+
+    .starci-core-sidenotes-list { display: block; margin: 0; }
+    .starci-core-sidenotes-fold .starci-core-sidenotes-list { display: flex; flex-direction: column; gap: var(--grammar-row-gap); padding-block: var(--grammar-inline-gap); }
+
+    .starci-core-sidenote {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        padding-block-start: var(--grammar-row-gap);
+        border-block-start: var(--grammar-border-edge);
+        transition: border-color var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
+    }
+
+    .starci-core-sidenote[data-grammar-sidenote-active="true"] { border-block-start-color: var(--accent); }
+    .starci-core-sidenote-term {
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-sidenote-note {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-type-body-size);
+        line-height: var(--grammar-type-body-line);
+    }
+
+    .starci-core-sidenote-anchor {
+        display: inline;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        cursor: help;
+        font: inherit;
+        text-decoration-line: underline;
+        text-decoration-color: var(--muted);
+        text-decoration-style: dotted;
+        text-decoration-thickness: var(--grammar-stroke-fine);
+        text-underline-offset: 0.2em;
+    }
+
+    .starci-core-sidenote-anchor[data-grammar-sidenote-active="true"] { text-decoration-color: var(--foreground); }
+    .starci-core-sidenote-anchor[aria-expanded="true"] { text-decoration-color: var(--foreground); }
+
+    /* `narrow="inline"` (0.58.0): an opened note stands in the paragraph, under its term, on the accent edge; never on a wide frame. */
+    .starci-core-sidenote-inline {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        margin-block: var(--grammar-inline-gap);
+        padding-inline-start: var(--grammar-row-gap);
+        border-inline-start: var(--grammar-ring-width) solid var(--accent);
+    }
+
+    .starci-core-sidenote-inline[hidden] { display: none; }
+    .starci-core-sidenote-inline-term {
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+    }
+
+    .starci-core-sidenote-inline-note { color: var(--muted); font-size: var(--grammar-type-body-size); line-height: var(--grammar-type-body-line); }
+    @container starci-core-sidenotes (min-width: 52rem) {
+        .starci-core-sidenote-inline { display: none; }
+    }
+    .starci-core-sidenote-anchor:focus-visible { border-radius: var(--grammar-radius-2xs); outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+
+    /* ---------------------------------------------------------------- TableOfContents */
+    /* A sticky outline: its heading in the group label role, then its sections on a quiet rail; the one in view in the foreground on the rail. */
+    .starci-core-toc { position: sticky; display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+    .starci-core-toc-title {
+        margin: 0;
+        padding-inline-start: var(--grammar-row-gap);
+        color: var(--muted);
+        font-size: var(--grammar-type-label-group-size);
+        font-weight: var(--grammar-type-label-group-weight);
+        line-height: var(--grammar-type-label-group-line);
+    }
+
+    .starci-core-toc-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+    .starci-core-toc-link {
+        display: block;
+        padding: var(--grammar-identity-gap) var(--grammar-row-gap);
+        border-inline-start: var(--grammar-ring-width) solid var(--border);
+        color: var(--muted);
+        font-size: var(--grammar-type-body-size);
+        line-height: var(--grammar-type-body-line);
+        text-decoration: none;
+        transition: color var(--grammar-motion-duration-base) var(--grammar-motion-ease-out), border-color var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
+    }
+
+    .starci-core-toc-link:hover { color: var(--foreground); }
+    .starci-core-toc-link:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
+    .starci-core-toc-link[data-grammar-toc-active="true"] { border-inline-start-color: var(--foreground); color: var(--foreground); font-weight: var(--grammar-weight-medium); }
+    /* A section with a lead (a time): the lead in tabular caption figures over or before the label, the label wraps under itself. */
+    .starci-core-toc-link:has(.starci-core-toc-meta) { display: grid; grid-template-columns: var(--grammar-toc-meta-width) minmax(0, 1fr); column-gap: var(--grammar-identity-gap); align-items: baseline; }
+    .starci-core-toc-meta {
+        font-size: var(--grammar-type-caption-size);
+        font-variant-numeric: tabular-nums;
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    .starci-core-toc-note {
+        margin: 0;
+        padding-inline-start: var(--grammar-row-gap);
+        color: var(--muted);
+        font-size: var(--grammar-type-caption-size);
+        line-height: var(--grammar-type-caption-line);
+    }
+
+    /* The bar (a phone): one sticky selector over the page, the section in view on two lines, the list folded under it. */
+    .starci-core-toc[data-grammar-toc-kind="bar"] { z-index: 1; gap: 0; padding-block: var(--grammar-inline-gap); border-block-end: var(--grammar-separator-edge); background: var(--background); }
+    .starci-core-toc-bar {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-inline-gap) var(--grammar-row-gap);
+        border: var(--grammar-border-edge);
+        border-radius: var(--grammar-radius-md);
+        background: var(--background);
+        color: var(--foreground);
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+    }
+
+    .starci-core-toc-bar:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-toc-bar-words { display: flex; min-width: 0; flex-direction: column; }
+    .starci-core-toc-bar-position { color: var(--muted); font-size: var(--grammar-type-caption-size); font-variant-numeric: tabular-nums; line-height: var(--grammar-type-caption-line); }
+    .starci-core-toc-bar-label {
+        overflow: hidden;
+        font-size: var(--grammar-type-label-item-size);
+        font-weight: var(--grammar-type-label-item-weight);
+        line-height: var(--grammar-type-label-item-line);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-toc-bar-caret { display: inline-flex; color: var(--muted); transition: transform var(--grammar-motion-duration-base) var(--grammar-motion-ease-out); }
+    .starci-core-toc[data-grammar-toc-open="true"] .starci-core-toc-bar-caret { transform: rotate(180deg); }
+    .starci-core-toc-bar-panel { display: flex; flex-direction: column; gap: var(--grammar-inline-gap); padding-block-start: var(--grammar-inline-gap); }
+    .starci-core-toc-bar-panel[hidden] { display: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+        :is(.starci-core-code-block-caret, .starci-core-graded-option, .starci-core-sidenote, .starci-core-toc-link, .starci-core-toc-bar-caret) { transition: none; }
+    }
+}

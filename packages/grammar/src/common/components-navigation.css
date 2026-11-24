@@ -23,33 +23,17 @@
      */
     .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
-    /* HeroUI v3's own link: the vendor's underline on hover and press, the anchor icon at the end. */
+    /*
+     * A Link is HeroUI v3's own link, exactly (owner 2026-11-23): `--link` (the theme sets it to the foreground, never the accent), weight 500, no
+     * underline at rest; on hover a 1.5px underline 4px below the text in the muted colour, on press the full muted colour (the vendor's `.link`).
+     * Grammar draws none of it: it only lets the text wrap and paints `--link` where the vendor's utility class may be missing. A Link only ever goes
+     * to another page; a command is a Button. A current link keeps its own look (below).
+     */
     .starci-core-link {
         overflow-wrap: anywhere;
     }
 
-    /*
-     * An inline link is underlined at rest (0.41.0, COLOR-3: a destination in body copy is identifiable at rest, with colour removed too). The line is a
-     * hairline in the link's own colour at 40%, set off below the text, and turns to the full colour on hover and press. The head variant keeps the
-     * vendor's hover-only underline (its arrow is the affordance) and plain stays undecorated (its host is). The rules below win by order: a media, current or
-     * disabled link and a footer link draw no line at rest.
-     */
-    .starci-core-link[data-grammar-link-variant="inline"] {
-        text-decoration-line: underline;
-        text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
-        text-decoration-thickness: var(--grammar-hairline);
-        text-underline-offset: var(--grammar-link-underline-offset);
-    }
-
-    .starci-core-link[data-grammar-link-variant="inline"]:is(:hover, [data-hovered="true"], :active, [data-pressed="true"]) {
-        text-decoration-color: currentColor;
-    }
-
-    /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of a rose-accent theme,
-     * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
-     */
-    .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
+    .starci-core-link[data-grammar-link-content="text"] { color: var(--link); }
 
     /* The plain variant (0.37.14): a destination with no accent, no underline and no icon; the component around it (a navigation row with its chevron, a shell brand) is the affordance. */
     .starci-core-link[data-grammar-link-content="text"][data-grammar-link-variant="plain"] { color: inherit; text-decoration-line: none; }
@@ -120,7 +104,8 @@
 
     /* The trail reads small and muted, the separator a slash, and the current page is the one strong crumb. */
     .starci-core-breadcrumbs-list { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
-    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { color: var(--muted); font-size: var(--grammar-text-xs); }
+    /* The separator is text-sized (the text-sized glyph rule, styles.css): a 1em box of the crumbs' 12px, centred on their line. */
+    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--grammar-text-xs); }
 
     .starci-core-breadcrumb {
         display: inline-flex;
@@ -156,8 +141,8 @@
 
     .starci-core-breadcrumb-leading > svg,
     .starci-core-tag-leading > svg {
-        width: 1em;
-        height: 1em;
+        width: var(--grammar-icon-control);
+        height: var(--grammar-icon-control);
     }
 
     .starci-core-breadcrumb-label[data-grammar-current="true"] {
@@ -385,7 +370,7 @@
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap); }
     /* Dense is inline (A): the bare 20px status glyph (the icon size before 12px text) in the step's ink; the current step's number in a 20px accent ring. */
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; font-size: var(--grammar-text-xs); }
-    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker > .starci-core-inline-status-glyph { width: var(--grammar-icon-sm); height: var(--grammar-icon-sm); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker > .starci-core-inline-status-glyph { width: var(--grammar-icon-control); height: var(--grammar-icon-control); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker { color: var(--success-soft-foreground); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker { color: var(--starci-core-mark-danger, var(--danger)); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker { color: var(--starci-core-mark-warning, var(--warning)); }
@@ -1359,7 +1344,7 @@
         width: var(--starci-core-control-min-size);
     }
 
-    /* A row `edgeTone` (0.45.1) draws the same 2px bar on its start edge in its tone; a selected row, below, draws the accent bar over it. */
+    /* A row `edgeTone` (0.45.1) draws the same 2px bar on its start edge in its tone; a selected row, below, takes the accent soft fill and keeps this bar. */
     .starci-core-data-table-row[data-edge-tone] > :first-child {
         box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
     }
@@ -1393,21 +1378,23 @@
     }
 
     /*
-     * A selected row is grey with a 2px accent bar on its start edge, as the sidebar marks its selected item: the `--default` fill, the words
-     * unchanged, the bar an inset edge of the first cell (so nothing moves). A hovered pressable row takes `--surface-secondary`.
+     * A selected row is the accent soft pair: the `--accent-soft` fill and `--accent-soft-foreground` words in every cell, no bar on any edge. A pressable row under the pointer
+     * keeps the selected fill; an unselected one takes the neutral hover fill (`--surface-secondary`), the words unchanged.
      */
     .starci-core-data-table-row[data-grammar-selected="true"] {
-        background: var(--default);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
-    .starci-core-data-table-row[data-grammar-selected="true"] > :first-child {
-        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
+    .starci-core-data-table-row[data-grammar-selected="true"] .starci-core-data-table-cell {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
-    /* The phone list marks a selected row the same way. */
+    /* The phone list marks a selected row the same way, rounded like the row. */
     .starci-core-data-table-list-row[data-grammar-selected="true"] {
-        background: var(--default);
-        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-data-table-placeholder {
@@ -1451,7 +1438,7 @@
 
     /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint; */
     @media (hover: hover) {
-        .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:hover .table__cell {
+        .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:not([data-grammar-selected="true"]):hover .table__cell {
             background: var(--surface-secondary);
         }
     }
@@ -1638,7 +1625,7 @@
     /*
      * SELECTION ON THE PHONE LIST (0.46.2). A long press on a row selects it, then a press toggles; the platform's own text selection and callout stay out of the way. Every
      * row holds a real checkbox: it is invisible (still the keyboard's and assistive technology's control) until a row is selected or the checkbox has focus, when a 24px mark
-     * stands at the start of the title line and the selected row takes the same grey fill and accent bar as a selected table row.
+     * stands at the start of the title line and the selected row takes the same accent soft fill as a selected table row.
      */
     .starci-core-data-table-list-row[data-grammar-table-row-selectable="true"] {
         position: relative;
@@ -1957,7 +1944,8 @@
     }
 
     /*
-     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, pushed to the cell's end, and the cell takes the
+     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, a caret 1em of the term (12, the text-sized glyph rule
+     * of styles.css), pushed to the term's end (the term hugs its words, so it stands right after them), and the cell takes the
      * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
      */
     .starci-core-description-stat-term > .starci-core-figure-cue {
@@ -1994,14 +1982,14 @@
         overflow-wrap: anywhere;
     }
 
-    /* The change's direction mark, before the meta text: the mark takes the tone's pair, the text stays muted. */
+    /* The change's direction: the mark and the meta words stand in the tone's ink (success, danger, info; neutral stays muted), so the words carry the status and the line under them never does. */
     .starci-core-description-trend { margin-inline-end: var(--grammar-identity-gap); font-size: var(--grammar-text-2xs); }
-    .starci-core-description-trend[data-grammar-trend-tone="success"] { color: var(--success); }
-    .starci-core-description-trend[data-grammar-trend-tone="info"] { color: var(--info); }
-    .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
-
-    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). */
+    .starci-core-description-meta[data-grammar-trend-tone="success"] { color: var(--success-soft-foreground); }
+    .starci-core-description-meta[data-grammar-trend-tone="info"] { color: var(--info-soft-foreground); }
+    .starci-core-description-meta[data-grammar-trend-tone="danger"] { color: var(--danger-soft-foreground); }
+    /* The trend line stands under the value and meta and takes the cell's full width (the cell aligns its rows to the start, so this row stretches itself; a chart measures its parent). A figure with no trend to draw (no data, all zeros: the Sparkline renders nothing) is words only: its line row takes no space. */
     .starci-core-description-trend-line { align-self: stretch; min-width: 0; margin: 0; line-height: 0; }
+    .starci-core-description-trend-line:empty { display: none; }
 
     @container starci-core-description-strip (min-width: 18rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
@@ -2070,11 +2058,14 @@
     }
 
     /*
-     * HeroUI's selected list-box item rule is empty: only the end checkmark marks the row. Selection reuses the vendor's own
-     * hover fill token (--default), so a selected row reads as a filled row and not as a lone "seen" tick.
+     * HeroUI's selected list-box item rule is empty: only the end checkmark marks the row. A selected row is the accent soft pair (fill, words and
+     * glyphs), rounded as the item, with no bar on any edge; hover is the neutral `--default` fill with the words unchanged, and a selected row under
+     * the pointer keeps its accent soft fill.
      */
-    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]) {
-        background: var(--default);
+    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]),
+    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]):is(:hover, [data-hovered="true"]) {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     /* Selection is the fill alone: a press with the mouse leaves no ring (the vendor focus ring shows on keyboard focus only). */
@@ -2182,17 +2173,15 @@
         width: 100%;
         min-block-size: var(--starci-core-control-min-size);
         align-items: center;
-        justify-content: space-between;
-        gap: var(--grammar-row-gap);
+        justify-content: flex-start;
+        gap: var(--grammar-inline-gap);
         text-align: start;
     }
 
+    /* The label of a disclosure carries the caret, so it is regular (text that carries an icon is regular, owner 2026-11-23). */
     .starci-core-disclosure-trigger {
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-regular);
     }
-
-    /* The chevron first: the title follows it, left-aligned, instead of space-between pushing it to the row's end. */
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-trigger { justify-content: flex-start; }
 
     .starci-core-disclosure-trigger[data-focus-visible="true"],
     .starci-core-generic-accordion-trigger[data-focus-visible="true"] {
@@ -2227,13 +2216,13 @@
         transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
-    /* The chevron before the words (chevron="start"): pointing toward the reading direction closed, down when open. */
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(-90deg); }
-    .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
-    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(90deg); }
-    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+    /* The caret before the words: pointing toward the reading direction closed, turned 90 degrees down when open (one glyph, never swapped). */
+    :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(-90deg); }
+    :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
+    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(90deg); }
+    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
 
-    /* kind="quiet": a small link-toned line the size of its words; the touch floor still holds on a coarse pointer. */
+    /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
         display: inline-flex;
         width: auto;
@@ -2241,9 +2230,9 @@
         min-block-size: 1.5rem;
         justify-content: flex-start;
         gap: var(--grammar-inline-gap);
-        color: var(--accent-soft-foreground);
+        color: var(--muted);
         font-size: var(--grammar-text-sm);
-        font-weight: var(--grammar-weight-medium);
+        font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-sm);
     }
 
@@ -2251,10 +2240,6 @@
         .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger { min-block-size: var(--grammar-touch-size); }
     }
 
-    .starci-core-disclosure[data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator,
-    .starci-core-generic-accordion-item[data-grammar-disclosure-state="open"] .starci-core-generic-accordion-indicator {
-        transform: rotate(180deg);
-    }
 
     /* ---------- Image ---------- */
     .starci-core-image {
@@ -2640,56 +2625,6 @@
             outline-offset: -2px;
             forced-color-adjust: none;
         }
-    }
-
-    /* ---------- MermaidDiagram ----------
-     * The diagram frame (separator edge, surface radius, surface fill). Every state reserves the canvas height, so the
-     * drawing, its skeleton and the error take the same least box; a wider drawing scrolls inline in the canvas. */
-    .starci-core-mermaid-diagram {
-        --starci-mermaid-height: 16rem;
-        display: block;
-        min-width: 0;
-        margin: 0;
-        border: 1px solid var(--separator);
-        border-radius: var(--starci-core-surface-radius);
-        background: var(--surface);
-        color: var(--foreground);
-    }
-
-    .starci-core-mermaid-diagram[data-grammar-mermaid-height="md"] { --starci-mermaid-height: 24rem; }
-    .starci-core-mermaid-diagram[data-grammar-mermaid-height="lg"] { --starci-mermaid-height: 32rem; }
-
-    .starci-core-mermaid-diagram-canvas {
-        display: grid;
-        min-block-size: var(--starci-mermaid-height);
-        place-items: center;
-        padding: var(--grammar-inset);
-        overflow-x: auto;
-        border-radius: inherit;
-        outline: none;
-    }
-
-    .starci-core-mermaid-diagram-canvas:focus-visible {
-        outline: 2px solid var(--focus);
-        outline-offset: -2px;
-    }
-
-    .starci-core-mermaid-diagram-canvas > .starci-core-skeleton {
-        inline-size: 100%;
-        block-size: calc(var(--starci-mermaid-height) - 2 * var(--grammar-section-gap));
-        aspect-ratio: auto;
-    }
-
-    /* Mermaid sizes the svg to the canvas width up to its natural width (its own max-width); it sits centred. */
-    .starci-core-mermaid-diagram-drawing { min-width: 0; inline-size: 100%; }
-    .starci-core-mermaid-diagram-drawing > svg { display: block; block-size: auto; margin-inline: auto; }
-
-    .starci-core-mermaid-diagram-error {
-        display: flex;
-        min-block-size: var(--starci-mermaid-height);
-        flex-direction: column;
-        gap: var(--grammar-row-gap);
-        padding: var(--grammar-inset);
     }
 
     /* ---------------------------------------------------------------- expandable */

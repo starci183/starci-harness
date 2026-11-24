@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { configuredSlotRoot } from "../../harness/slots.js"
-import { holderLine, landPaths, releaseLockFile, takeLiveLock } from "../../harness/land-queue.js"
+import { configuredSlotRoot, takeLiveLock } from "../../harness/slots.js"
+import { holderLine, landPaths, releaseLockFile } from "../../harness/lane-state.js"
 import { lockScope, profileNameFor } from "../../harness/land-profile.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, repositoryRoot } from "../../shared/git.js"
@@ -93,11 +93,11 @@ export const backMerge = async (given: { readonly root: string; readonly remote?
 
 /**
  * `starci release back-merge`: main -> dev after a release train (contexts/project/branches.md PROJECT-BRANCH-3). Dry until --execute. While it pushes
- * it holds the dev lock of the lanes folder (when one is configured), so it never races the batch lander's push of dev.
+ * it holds the dev lock of the lanes folder (when one is configured), so it never races a landing's push of dev.
  */
 export const releaseBackMergeVerb = defineVerb({
     path: ["release", "back-merge"],
-    summary: "bring main back into dev after a release train (the cli-follow commit and anything else dev lacks): a fast-forward when dev is behind, else a merge commit made in a temporary worktree, pushed to dev under the lander's dev lock; dry until --execute",
+    summary: "bring main back into dev after a release train (the cli-follow commit and anything else dev lacks): a fast-forward when dev is behind, else a merge commit made in a temporary worktree, pushed to dev under the dev lock; dry until --execute",
     effect: "remote",
     roles: ["owner", "release", "coordinator", "lead"],
     schema: "starci/release-back-merge@1",
@@ -110,7 +110,7 @@ export const releaseBackMergeVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         const dir = flags.dir ?? configuredSlotRoot()
         const lock = flags.execute && dir !== undefined && dir !== "" ? landPaths(dir, lockScope(profileNameFor(root, undefined))).devLock : undefined
-        if (lock !== undefined && !takeLiveLock(lock, holderLine(), context.progress)) throw new Refusal("RELEASE_BACKMERGE_LOCKED", `${lock} is held (the batch lander is pushing dev): run it again in a moment`)
+        if (lock !== undefined && !takeLiveLock(lock, holderLine(), context.progress)) throw new Refusal("RELEASE_BACKMERGE_LOCKED", `${lock} is held (a landing is pushing dev): run it again in a moment`)
         try {
             const data = await backMerge({ root, remote: flags.remote, execute: flags.execute, say: context.progress })
             const what = data.kind === "in-sync" ? "dev already holds main: nothing to merge" : `${String(data.missing.length)} commit(s) on main that dev lacks (${data.kind})`

@@ -31,11 +31,9 @@ export const catalogOf = (id: string): CatalogEntry => {
   if (!entry) throw new TypeError(`${id} is not a catalogued service`);
   return entry;
 };
-export const checkServiceForm = (service: StackServiceEntry, id: string, entry: ServiceDeclaration, at: string, kind: string, add: AddFinding, ambiguous: Ambiguous): void => {
+export const checkServiceForm = (service: StackServiceEntry, id: string, at: string, kind: string, add: AddFinding, ambiguous: Ambiguous): void => {
   if (service.provider && !catalogOf(id).providers.includes(service.provider))
     add('refuse', 'STACKS_PROVIDER_UNKNOWN', `${at}.provider`, `${service.provider} is not a ${id} provider (${catalogOf(id).providers.join(', ')})`);
-  if (Object.hasOwn(entry?.ci ?? {}, 'vars') || service.ci.secrets.some((item) => !item.credential))
-    add('suspect', 'STACKS_CI_LEGACY_FORM', `${at}.ci`, 'move the names to the top-level ci block and name them by services.<id>.ci.token / hostVar');
   if (id === 'sonar' && service.provider === 'sonarcloud' && !service.organization
     && !(kind === 'example' && service.runtimeSecrets.length && !service.credentials.length && service.ci.organizationVar))
     ambiguous('provider sonarcloud requires organization; the runtime example form may use ci.organizationVar');

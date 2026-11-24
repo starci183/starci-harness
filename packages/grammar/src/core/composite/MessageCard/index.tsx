@@ -6,7 +6,6 @@ import { Text } from "../../leaf/Text/index.js"
 import { DescriptionList, type DescriptionListItem } from "../DescriptionList/index.js"
 import { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleMeasure, type MessageReaction, type MessageReactionLabels } from "../MessageBubble/index.js"
 import type { NoChildren } from "../../tier.js"
-import type { ToneEdge } from "../../toneEdge.js"
 
 /**
  * One action of a message card. `primary` (at most one) stands first as the commit Button; `neutral` (default) actions follow;
@@ -39,8 +38,6 @@ export type MessageCardProps = NoChildren & MessageCardBody & {
     readonly meta?: string
     /** The card's widest reach; `standard` (40rem or 85%) when omitted, `wide` (70%) for a chat stack that uses it. */
     readonly measure?: MessageBubbleMeasure
-    /** The card face's 1px edge in the tone's `--<tone>-border` (0.55.0; an approval card that waits is `warning`), as `MessageBubble content="card" tone`. */
-    readonly tone?: ToneEdge
     readonly id?: string
     /** As `MessageBubble groupPosition`. */
     readonly groupPosition?: MessageBubbleGroupPosition
@@ -65,10 +62,10 @@ const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
  * An agent's rich message as data: `MessageBubble content="card"` with a fixed order, the title with its chip, then the body (or a
  * nested key/value list through `details`), then the actions row (primary first, an `open` action with the arrow last), then the
  * meta line at xs. The card is capped at the bubble's measure with the avatar at the start; its content column fills the card (a nested
- * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (no border, no shadow) on the thread;
+ * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (the 1px edge line, no shadow) on the thread;
  * the replies it offers are `Section kind="list" layout="suggestions"` in `body` (flat rows, a pressable plain-text row per reply).
  */
-export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, tone, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
+export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
     const ordered = actions === undefined ? [] : [...actions].sort((a, b) => ORDER[a.kind ?? "neutral"] - ORDER[b.kind ?? "neutral"])
     return (
         <MessageBubble
@@ -77,7 +74,6 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
             {...(author === undefined ? {} : { author })}
             {...(avatar === undefined ? {} : { avatar })}
             {...(measure === undefined ? {} : { measure })}
-            {...(tone === undefined ? {} : { tone })}
             {...(groupPosition === undefined ? {} : { groupPosition })}
             {...(reactions === undefined ? {} : { reactions })}
             {...(onReact === undefined ? {} : { onReact })}

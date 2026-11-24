@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { basename } from "node:path"
-import { availableParallelism, freemem } from "node:os"
+import { availableParallelism } from "node:os"
 import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, withOomNote, type Held } from "../../harness/heavy.js"
 import { peakProbe } from "../../harness/peak-rss.js"
 import { appRootOf, formatPlan, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory } from "../../harness/memory-plan.js"
@@ -148,7 +148,7 @@ export const applyMemoryPlan = (appRoot: string, argv: readonly string[], write:
     const plan = planMemory(measureScope(appRoot), loadHeavyRules())
     if (plan === null) return undefined
     process.env[MEMORY_PLAN_ENV] = JSON.stringify(plan)
-    if (argv.includes("--explain")) write(`${formatPlan(plan, loadHeavyRules(), Math.floor(freemem() / 1_048_576), availableParallelism()).join("\n")}\n`)
+    if (argv.includes("--explain")) write(`${formatPlan(plan, loadHeavyRules(), availableParallelism()).join("\n")}\n`)
     if (!needsReexec(plan)) return undefined
     const kept = (process.env.NODE_OPTIONS ?? "").replaceAll(/--max-old-space-size=\d+/g, "").trim()
     const flags = process.execArgv.filter((flag) => !flag.startsWith("--max-old-space-size"))
@@ -176,12 +176,13 @@ export const sizedTestArgv = (argv: readonly string[], held: Held): readonly str
 
 /**
  * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up), of an app check's CI-parity steps and
- * Sonar scan and of the rows `starci app release gate` still runs itself (a `test` kind is sized, `sizedTestArgv`): one slot of the host-wide semaphore per command, run without a shell, the result handed back as the spawn seam's shape with the tree's
- * measured RAM peak; `onAdmit`, when the request names one, is told once it was admitted.
+ * Sonar scan and of the rows `starci app release gate` still runs itself (a `test` kind is sized, `sizedTestArgv`): one row of the host-wide semaphore per command, run without a shell, the result handed back as the spawn seam's shape with the tree's
+ * measured RAM peak; `onAdmit`, when the request names one, is told once it was admitted. A `build` @starci/hfs asks for is an app's own build, governed
+ * as `appBuild` (its weight is the heaviest), never as the package build the CLI's own `build` kind is.
  */
 export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request: Parameters<HeavyCommandRun>[0] & { readonly onAdmit?: ((admitted: { readonly heapMb?: number | undefined }) => void) | undefined }) => {
     const probe = peakProbe()
-    const ran = await admit(request.kind, request.label, request.cwd, { baseEnv: request.env, env: probe.env(request.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") }, async (held) => {
+    const ran = await admit(request.kind === "build" ? "appBuild" : request.kind, request.label, request.cwd, { baseEnv: request.env, env: probe.env(request.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") }, async (held) => {
         request.onAdmit?.({ heapMb: held.heapMb })
         const run = withOomNote(await capture(request.kind === "test" ? sizedTestArgv(request.argv, held) : request.argv, request.cwd, held.options), held)
         return {

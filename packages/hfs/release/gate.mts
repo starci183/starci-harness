@@ -56,8 +56,6 @@ export const RELEASE_CODE = 'RELEASE_CONFIG_INVALID';
 const SONAR_UNREACHABLE = 'SONAR_UNREACHABLE';
 
 const FIELDS = new Set(['gates', 'tagPrefix', 'defaultBranch', 'requireCi']);
-/** Release-block keys that no longer exist, each with what replaced it. */
-const REMOVED_FIELDS = new Map([['tagMatchesVersion', 'the release tag is always <tagPrefix><package.json version>; delete the key']]);
 /** The note a release that does not wait for CI carries in its L4 record and its push output. */
 export const CI_NOT_REQUIRED = 'CI not required by release.requireCi=false: the local release gate, this L4 record and the annotated tag, is the release proof';
 const GATE_FIELDS = new Set(['name', 'command', 'summary', 'env']);
@@ -149,13 +147,11 @@ function defaultGates(scripts: Record<string, unknown> | undefined, audit: Gate 
   return [{ name: 'app-check', command: [...APP_CHECK_COMMAND], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
 }
 
-/** Shared quality settings retain the release reader's audit validation, disabled mode and legacy string host compatibility. */
+/** Shared quality settings retain the release reader's audit validation and disabled mode. */
 function releaseServices(services: Services, options: Record<string, unknown>): Services {
   const audit = services?.audit ?? {};
   if (!plain(audit) || (audit.in !== undefined && (!Array.isArray(audit.in) || !audit.in.every((scope: unknown) => typeof scope === 'string'))) || (audit.omitDev !== undefined && typeof audit.omitDev !== 'boolean')) throw refusal(RELEASE_CODE, 'services.audit must be a mapping with a string-list in and boolean omitDev');
-  const sonar = services?.sonar;
-  const compatible = typeof sonar?.host === 'string' ? { ...sonar, host: { public: sonar.host } } : sonar;
-  const quality = qualityServices({ services: { ...services, sonar: compatible } }, options);
+  const quality = qualityServices({ services }, options);
   if (audit.mode === 'disabled') quality.audit = null;
   return quality;
 }
@@ -255,8 +251,7 @@ export function normalizeRelease(block: unknown, scripts: Record<string, unknown
   const raw: Record<string, any> = given; // reason: the release block is YAML parsed from disk; every field is judged below
   const problems: string[] = [];
   for (const key of Object.keys(raw)) {
-    if (REMOVED_FIELDS.has(key)) problems.push(`release.${key}: is removed (${REMOVED_FIELDS.get(key)})`);
-    else if (!FIELDS.has(key)) problems.push(`release.${key}: is not a field of the release block`);
+    if (!FIELDS.has(key)) problems.push(`release.${key}: is not a field of the release block`);
   }
   const tagPrefix = raw.tagPrefix ?? 'v';
   const defaultBranch = raw.defaultBranch ?? 'main';

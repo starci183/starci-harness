@@ -62,7 +62,7 @@ src/
 - **One parser behaviour.** Every verb of both layers reads `--x v` and `--x=v`, a boolean also as `--x=true|false`; a value
   never starts with `--`; a repeated single-value flag is refused, and so is a flag the action does not take, never ignored
   (a read-only action refuses `--execute`); an unknown verb or flag fails with one message and code. A spelling outside the
-  dictionary is unknown (CONTRIB-15), and help is generated from the parser tables, so it cannot drift.
+  dictionary is unknown, and help is generated from the parser tables, so it cannot drift.
 - **One name, one object.** A verb name appears twice only where the object differs, which its help says once: `release push`
   (the harness repository) and `app release push` (an app); `check lint` and `app check --gate lint` (`check *` judges the
   harness repository and its packages, `app check` a product app); `stack backup` (volumes) and `db dump` (the database);
@@ -320,66 +320,77 @@ plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
 
 ### Heavy-command governor
 
-Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
-build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
-`harness/heavy.ts`: a row of a machine-wide queue (`heavy_slots` in the machine.sqlite of the harness's main checkout,
-or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
-it), whose admissions the store's lock serialises. A command sizes itself greedily to the room it finds when it starts: the free RAM now (`hostFreeMb`: on
-Windows never more than the free commit charge, since a process that cannot commit fails to start however much RAM is free), which already
-excludes what running commands use, less `heavy.reserveMb` (the one headroom of the machine) and what the commands admitted in the last `heavy.plannedSeconds`
-planned (they have not grown into the free RAM yet, so two commands that start together never take the same room; after that long a command counts as the
-free RAM shows it). A test run takes the workers its room holds (`testRunSizing`): jest and vitest as `--maxWorkers`, any other runner from
-`STARCI_TEST_WORKERS` (a package's `node --test` run as its `--test-concurrency`), any other node tool runs under the smaller of its cap and the room
-(`heapFor`), and `heavy.caps` and `heavy.testRun` hold the numbers. RAM free: it starts at once, when the room covers its least need (`needsOf`) and fewer
-than floor(logical cores / 2) run. RAM short: it waits in a first come, first served queue (`servingOrder`), holding nothing, only the head may start,
-and it starts when a running command ends or ages; every minute it prints its place, the MB it needs against the room and the running commands
-(`waitLine`). While nothing runs the head starts on the room there is, whatever its need, since no running command will release memory and waiting could not
-help: a test run with the workers that fit (one at least), and a warning line names the shortfall. A row whose process is gone is dropped at the next
-admission (`pidAlive`), so a killed command never holds the queue. A heavy command a running one starts (a `starci check run` inside a command check) is
-admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids it runs under, and an admission leaves those ancestors' rows out of its count,
-its plan and its room (`heavyRoomMb` reads the room the same way), since they wait on it and counting them could hold it forever. `starci app check` holds no
-row at all: it is the orchestrator, and each heavy child of its steps (a tsc program, an ESLint chunk, the jest run, a CI build step, the boot proof, the
-contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it (`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`, which
-also pass the `workers` a request names as a cap on a test run (the jest discovery asks for one; the test step names none, so its run takes what the room holds at its start), tell the step what it was admitted with, and measure the tree's RAM peak through a preload,
-`harness/peak-rss.ts`); its steps, run one after another in priority order so each is sized on the RAM free at its own start, are `@starci/hfs` `cache/schedule.mts`
-([contexts/project/check-cache.md](../contexts/project/check-cache.md) "Orchestration"). `starci app release gate` is no orchestrator of heavy children either: its `app-check` row is `app check`, the rows that command covers reuse its verdict, and every other row that runs a heavy command (a world layer's npm script, an app's own row, the Sonar scanner) reaches `hfsCommandRunner` as a request of kind `test` or `build`; a `test` request runs under the parent heap, the worker heap and the workers its room holds, an `npm run <script>` getting `--maxWorkers` and `--workerIdleMemoryLimit` after `--` (`sizedTestArgv`; [check-cache.md](../contexts/project/check-cache.md) "Release with starci app release gate"). A CI runner (`CI` set) keeps no queue and no lock: its one job is sized from that runner's own free RAM and cores, and nothing it
-reads comes from another machine or run. A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission
-(`oomNote`), so the cause is never silent. RAM that a process outside the governor takes (a browser, Docker, WSL, a dev server) shows only as lower
-free RAM: nothing is admitted while a command runs and the room is short, and the running commands stay inside their heap caps and
-`--workerIdleMemoryLimit`. Heavy commands therefore run through starci verbs (`starci app check`, `starci check run`, `starci task verify`): a raw `npx eslint`,
-`tsc` or `jest` takes no admission and only lowers the free RAM the next admission reads. The CPU ceiling governs the harness's own
-contribution: while the CPU average over a window (samples in `cpu_samples`) is above it, `managedCpuPercent` reads the share
-of the host's CPU the running heavy commands and their process trees burn over the same window (`managedCpuTimes` of
-`harness/host-holders.ts`, the Windows process table's kernel and user time or `/proc` on Linux, readings in
-`managed_cpu_samples`, one process host-wide taking one per `MANAGED_SAMPLE_MS`). Under `managedCpuFloorPercent` the load is foreign:
-holding the harness back would not lower it, so up to `underForeignPressureSlots` commands run under it (`cpuRuleOf`). At or
-above the floor, or with the table unreadable, none starts until the queue admitted nothing for `cpuStarveMinutes`
-(`last-admit-ms` in `heavy_meta`): then its first command RAM admits starts anyway, one at a time, so a hot CPU slows the
-queue and never stops it. The CPU never lifts a RAM rule. The reserve, shares, per-kind timeouts and seat floor are
-the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
-queue. A command not admitted waits in the queue, prints its place on stderr and records a `heavy-wait` host event; waiting never
-fails it: a coordinator's turn is refused `HEAVY_DEFERRED` at once instead of waiting, and a command of `task verify` (or a
-process it started) still in the queue at the verify's timeout, its contract budget (`withHeavyBound`), is refused
-`HOST_HELD` (exit 75): a host-held verify reached no verdict and records `verify-host-held` on the task's attempt, whichever
-way it ran; the settling one returns its task to reported with no try spent and no count toward `settleNoVerdictMax`, and the
-next step verifies it again. An attempt whose verify the host held and whose worker then filed blocked or failed is
-harness-held (`hostHeldAttempt` of `harness/tasks.ts`): its retry spends no try and the decision on it no route of
-[ops/routes.yaml](../ops/routes.yaml), whose limit never closes on it. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
-`harness/clean-verify.ts`): an install or setup out of time, or an install red although the work changed no file an install
-reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
-(`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
-due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
-its heap cap as `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` of the room its admission measured
-(`testRunSizing`: floor((room - parent cap) / worker cap), at least one and at most min(cores - 1, `heavy.testWorkers`); each worker is held to its cap by
-`--workerIdleMemoryLimit` and a heap cap a preload gives every fork, and nothing an earlier run left is read; at most the caller's `workers`), and inherits
-`STARCI_HEAVY_PARENTS` with its own slot added. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
+The rule, the owner's, in one sentence: the host has one slot unit per `heavy.gbPerSlot` GB of its physical RAM (at least one; 64 GB at 4 GB a unit is
+16), and each heavy command holds its weight, 1, 2 or 3 units, for as long as it runs, so a gate or `app check` that runs several in turn takes each
+step's units as it starts and lets them go when the step ends, and a running web or api server takes none.
+
+The weight comes from the caps alone, never from a second table (`heavyWeight`): ceil(planned MB / (`gbPerSlot` x 1024)), clamped to 1..3, where the
+planned MB is the kind's `heavy.caps.<kind>.capMb` and, for a test run, its parent and every worker it is sized to (`testRunSizing`). A measured cap that
+changes moves the weight with it. On this host (4 GB a unit, 28 cores):
+
+| kind | what runs as it | planned | units |
+|---|---|---|---|
+| `install` | `npm ci`, `npm install` | 2 GB | 1 |
+| `build` | a package or CLI build, codegen, `build:modules`, `npm pack`, `npm publish`, `prepare` | 4 GB | 1 |
+| `uat` | a uat container | 4 GB | 1 |
+| `tsc` | a typecheck | 8 GB | 2 |
+| `eslint` | one ESLint chunk of an app check | 8 GB | 2 |
+| `appBuild` | a `build` @starci/hfs asks for: the api and web builds of `app stack` (`next build`), a compose build, pull or up, the CI-parity build of `app check`, the Sonar scan | 12 GB | 3 |
+| `test` | a test or suite run: the jest parent and its workers | 2 GB + workers x 1.5 GB | 3 (1 for a one-worker run) |
+
+`appBuild`'s 12 GB is an estimate of a Next.js production build of an app the size of NIVO with its build workers, not a measurement; the CI-parity
+build of `app check` prints the measured peak of its run, the number its cap takes once read. A row another CLI copy wrote without a weight holds
+its kind's weight.
+
+Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package build, `npm ci` or `npm install`, a contract's setup, a test
+run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row of one queue per host (`heavy_slots` in the governor's store,
+`governorStorePath` of `harness/ledger.ts`: `STARCI_LOCAL_ROOT`'s machine.sqlite when set, else one store per user, so every checkout and every installed
+CLI of the host counts against the same units), whose admissions the store's lock serialises. `admission` is a sum and nothing else: a command starts when
+it heads the queue and `used + weight <= units` (`slotCap`; a weight above the units counts as all of them, so the heaviest command still runs alone on a
+small host); no free-RAM room, reserve or CPU rule decides a start. The one floor is the disk: while the drive the command works on has under
+the host's disk floor free (`harness/host-floors.ts`), nothing starts, a lone command included, and the queue line names the floor and where it is
+set. The floor is the machine's, set in ONE place every CLI copy reads: `host.diskFloorMb` of config.yaml (`harness/host-settings.ts`,
+[contexts/harness/host.md](../contexts/harness/host.md) "Host settings"); `heavy.diskFloorMb` of ops/liveness.yaml is only the default of a host
+that sets none. A waiting command reads the rules again at every admission attempt (`currentHeavyRules`), so a floor or a cap changed while it
+waits reaches it without a restart. A command that does not fit waits in a first come, first served queue (`servingOrder`), holding nothing; only the
+head may start, so a light command behind a heavy head waits with it even when it would fit, and the heavy one is never starved; every minute it prints its
+place, why it waits ("9 of 16 slot units in use; next build needs 3") and who runs with the units each holds (`waitLine`). `starci host load` prints
+the units in use and free, the weight of every kind, and the units of each running and queued command. A row whose process is gone is dropped at the next admission (`pidAlive`). A heavy command a running one starts (a
+`starci check run` inside a command check) is admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, and an admission leaves those
+ancestors' rows out of its count, since they wait on it. `starci app check` holds no row: each heavy child of its steps (a tsc program, an ESLint chunk,
+the jest run, a CI build step, the boot proof, the contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it
+(`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`); the room it hands @starci/hfs for its parallel children (`heavyRoomMb`) is how many eslint
+children the free units admit, at least one, times the eslint cap, so it starts as many as can be admitted at once. `starci app release gate` reaches `hfsCommandRunner` the same way. A CI
+runner (`CI` set) keeps no queue and no lock: its one job runs at once.
+
+Process limits, never admission: each child runs below normal priority, a node tool under `--max-old-space-size` of its kind's `heavy.caps` (`heapFor`), a
+uat container under `--memory`, a test run's parent under `heavy.testRun.parentMb` and min(`heavy.testWorkers` of the cores, cores - 1, the caller's
+`workers`) workers (`testRunSizing`), jest and vitest as `--maxWorkers`, any other runner from `STARCI_TEST_WORKERS`, each worker held to
+`heavy.testRun.workerMb` by `--workerIdleMemoryLimit` and a heap cap a preload gives every fork. A command that runs out of memory names the heap cap it
+hit and the RAM free at its admission (`oomNote`). A command's timeout starts at its admission. A command not admitted records a `heavy-wait` host
+event; waiting never fails it: a coordinator's turn is refused `HEAVY_DEFERRED` at once instead of waiting, and a command of `task verify` (or a process
+it started) still in the queue at the verify's timeout, its contract budget (`withHeavyBound`), is refused `HOST_HELD` (exit 75): a host-held verify
+reached no verdict and records `verify-host-held` on the task's attempt; the settling one returns its task to reported with no try spent and no count
+toward `settleNoVerdictMax`, and the next step verifies it again. An attempt whose verify the host held and whose worker then filed blocked or failed
+is harness-held (`hostHeldAttempt` of `harness/tasks.ts`): its retry spends no try and the decision on it no route of [ops/routes.yaml](../ops/routes.yaml).
+A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of `harness/clean-verify.ts`): an install or setup out
+of time, or an install red although the work changed no file an install reads, which also opens one harness-defect ticket (`INSTALL_RED_HARNESS`). Heavy
+commands run through starci verbs: a raw `npx eslint`, `tsc` or `jest` takes no slot. `check heavy-sites` (a CI gate) is red for a spawn site in
+`cli/src` that runs a heavy command outside the governor. The numbers are the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml).
+
+### Harness runs and the orphan reaper
+
+A run the harness starts for a caller (`slot run`, `lane gate`, `gallery shoot`, `app look`, each under its slot, and `app check`) records itself in
+`<slot root>/_runs/<pid>.json` with its launchers, the two processes above it, each with its start (`harness/runs.ts` `registerRun`). A run whose
+launcher is gone has nobody to report to: `starci ops reap --execute` stamps when it first saw that, and once the stamp
+is `reap.graceMinutes` (ops/slots.yaml) old it stops the run's whole process tree (the server and browser of a shoot, the app check of a gate) and
+logs it in `<slot root>/_reap.log`. A process the harness did not record is never touched, nor the reaper and its ancestors.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.
 `workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM
-2.6 GB below seat floor 6 GB (since 21:02Z)"), a verify waiting for a heavy slot ("held: heavy-command slot for test, free
-RAM 2.6 GB below reserve 4 GB (since …)"), a task awaiting the owner with the reason its verify recorded.
-`host load` prints the load with the CPU rule that applied ("CPU 94% is foreign (managed 3%, under
-heavy.managedCpuFloorPercent 25%): 2 slots under foreign pressure, 0 in use"), the slots in use with each child's pid and RSS, the queue with how long each command waited
+2.6 GB below seat floor 6 GB (since 21:02Z)"), a verify waiting for a heavy slot ("held: heavy-command slot for test, 4 heavy
+command(s) run, at the cap of 4 (since …)"), a task awaiting the owner with the reason its verify recorded.
+`host load` prints the slots and how many run, the disk floor when it holds, the slots in use with each child's pid and RSS, the queue with how long each command waited
 and why, the seat holds, and who holds the memory (`harness/host-holders.ts`): the top processes by working set, managed
 (a recorded heavy command or seat, a process under one, or one working in the harness's state folder) or unmanaged (other
 node, WSL and Docker, IDEs, agents, the rest), each command line clipped and redacted. Another app's `starci app` run is
@@ -393,11 +404,9 @@ harness never runs.
 
 ### Machine-wide slots
 
-The governor admits by RAM inside one harness state; an app's installed CLI keeps a state of its own (`governorStorePath` of a
-package install is that install's `.runtime`), so it never sees the heavy commands of another worktree. `harness/slots.ts` bounds
-work across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
-floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate`, `gallery shoot` and the batch lander's own npm and gate
-slots all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
+The heavy-command governor counts every heavy command of the host in one per-user store (`governorStorePath`); the slots of
+`harness/slots.ts` coordinate the lanes themselves (one gate of a lane at a time, the shared stack, shots) across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
+floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate` (a fresh worktree's install is hard-linked from the per-repository install cache, `harness/shared-install.ts`, and the gate prints its phase timings), `gallery shoot`, `app look` all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
 time, the pid and that process's start, the host's boot time and the host, and it is released only once read and found to name its
 holder, through a rename aside so a slot taken again in between stays. A holder is reclaimed only on evidence (`judgeHolder`): a pid
 not alive, a pid whose process started at another time, or a slot taken before this boot (or recording another boot) with no live

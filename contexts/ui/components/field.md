@@ -5,7 +5,7 @@ Contract: [Input](../../grammars/contract.md#input). Vendor: [TextField](../../v
 ## Job
 Space the parts of every control the same way: the label, the control, its help, error or counter, and the fields of one
 form. The field rule is the one spacing contract of Input, Select, NumberField, Textarea, ComboBox, the date and time
-fields, Search, CopyField, Checkbox and Radio groups, ChoiceChips, Switch and Slider, so a form built of any mix of them
+fields, Search, CopyField, Checkbox and Radio groups, Switch and Slider, so a form built of any mix of them
 comes out with one rhythm. What each control *is* is [text-field](text-field.md) and [select](select.md).
 
 ## Choose
@@ -18,8 +18,7 @@ Choice `field.choose.label`: who draws the label of a control. The first row tha
 | group | the control is a group (`RadioGroup`, `CheckboxGroup`, `Fieldset`) | the group's `label` (a `Fieldset` legend), its `description` between the label and the options | lint `starci-grammar/field-label` |
 | none | the control stands in a bar or a row whose own text names it (a search in a toolbar, a switch in a row) | no visible label, the accessible name through `aria-label`, as the situation allows | judgement |
 
-`RadioGroup appearance="rows"` draws each option as its own row; the chosen row is quiet (0.55.0, owner: the dark selected edge was
-"màu lạ"): the radio dot says which, the row keeps its unselected edge, coloured at most `--accent-border`, never a dark or thicker outline;
+`RadioGroup appearance="rows"` draws each option as its own row; the chosen row is quiet: the radio dot says which, the row keeps its unselected edge, coloured at most `--accent-border`, never a dark or thicker outline;
 keyboard focus keeps the standard ring (`DNA-COMMON-RADIO-ROW-SELECTED-QUIET`).
 
 A hand-made `Text` or `span` placed before a control as its label is spaced by whoever placed it, so the

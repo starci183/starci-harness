@@ -65,7 +65,7 @@ export function runtimeGranted(doc: ParsedDoc, environment: string, member: stri
     && list<ParsedDoc>(grant.from).some((source) => source?.member === member && (source.keys === undefined || list(source.keys).includes(key))));
 }
 
-/** Read an actual member path, retaining the legacy dotenv suffix without guessing a plaintext twin. */
+/** Read an actual member path, without guessing a plaintext twin. */
 export function serviceMemberPath(value: unknown): { environment: string; member: string; path: string } | null {
   if (typeof value !== 'string') return null;
   const match = /^\.starcistacks\/([a-z][a-z0-9-]*)\/secrets\/([a-z][a-z0-9-]*)\.enc(?:\.yaml)?$/u.exec(value);
@@ -238,7 +238,7 @@ export function workflowReferences(root: string, { fs }: { fs: CiFsSeam }): Arra
   return out;
 }
 
-/** Service CI bindings name the shared declaration classes, including the readable legacy lists. */
+/** Service CI bindings name the shared declaration classes. */
 export function ciNamesOfServices(doc: ParsedDoc): Array<{ service: string; name: unknown; kind: 'secret' | 'var' }> {
   const out: Array<{ service: string; name: unknown; kind: 'secret' | 'var' }> = [];
   for (const [service, entry] of Object.entries((doc?.services ?? {}) as Record<string, ParsedDoc>)) {
@@ -247,7 +247,6 @@ export function ciNamesOfServices(doc: ParsedDoc): Array<{ service: string; name
     if (ci.hostVar) out.push({ service, name: ci.hostVar, kind: entry?.host?.fromCredential ? 'secret' : 'var' });
     if (ci.organizationVar) out.push({ service, name: ci.organizationVar, kind: 'var' });
     for (const item of list(ci.secrets) as ParsedDoc[]) out.push({ service, name: nameOf(item), kind: 'secret' });
-    for (const item of list(ci.vars) as ParsedDoc[]) out.push({ service, name: nameOf(item), kind: 'var' });
   }
   return out;
 }

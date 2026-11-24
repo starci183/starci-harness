@@ -36,7 +36,7 @@ function cacheRecordFindings(file: string, text: string) {
   const faults = secretRecordFaults(text);
   if (faults.length === 0) return [];
   const more = faults.length > 1 ? ` (and ${faults.length - 1} more)` : '';
-  return [found(PLAINTEXT_SECRET, file, `${file}: ${faults[0]}${more}; the secrets cache holds codes, paths, positions and digests only, so a file that holds more may carry secret material; regenerate it with starci app check --gate secrets, or migrate it with starci app codemod secrets-cache --execute`, { pattern: 'secrets-cache-record' })];
+  return [found(PLAINTEXT_SECRET, file, `${file}: ${faults[0]}${more}; the secrets cache holds codes, paths, positions and digests only, so a file that holds more may carry secret material; regenerate it with starci app check --gate secrets`, { pattern: 'secrets-cache-record' })];
 }
 
 /**

@@ -315,8 +315,8 @@ const DATA_STATUS = new Set([
   "skeleton", "closed", "idle", "refreshing", "retrying",
 ])
 
-/** The name of a pure half's shape union: `XShape`, and still the retired `XState`, so a status word is caught during the rename. */
-const SHAPE_NAME = /^[A-Z][A-Za-z0-9]*(?:Shape|State)$/
+/** The name of a pure half's shape union: `XShape`. */
+const SHAPE_NAME = /^[A-Z][A-Za-z0-9]*Shape$/
 
 /** A boolean member that names a status or an open/closed lifecycle: `isOpen`, `isLoading`, `isRenewing`. */
 const STATUS_FLAG = /^is[A-Z]/

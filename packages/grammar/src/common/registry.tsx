@@ -1,11 +1,11 @@
 "use client"
 
 import {
-    Badge, Button, CalendarDay, Code, MessageActions, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Fragment, GrammarRoot,
-    EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
+    Badge, Button, CalendarDay, Code, MessageActions, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, ChatFrame, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, ProportionBar, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Fragment, GrammarRoot,
+    EntryFrame, GlossaryTerm, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
+    Progress, Quote, RelativeTime, ReplyStrip, ChoiceCard, Section, Sidebar, StateMark, StatusDot,
     Stack, Cluster, Grid, Reveal, Marquee, CountUp, ExpandableText, StickyStory,
     SurfaceCard, Tabs, Terminal, Text, InlineStatus, EntitySummaryCard,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
@@ -27,11 +27,11 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     IntervalChart, FunnelChart, Legend,
-    Badge, Button, CalendarDay, Code, MessageActions, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Fragment, GrammarRoot,
-    EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
+    Badge, Button, CalendarDay, Code, MessageActions, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, ChatFrame, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, ProportionBar, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Fragment, GrammarRoot,
+    EntryFrame, GlossaryTerm, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
+    Progress, Quote, RelativeTime, ReplyStrip, ChoiceCard, Section, Sidebar, StateMark, StatusDot,
     Stack, Cluster, Grid, Reveal, Marquee, CountUp, ExpandableText, StickyStory,
     SurfaceCard, Tabs, Terminal, Text, InlineStatus, EntitySummaryCard,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,

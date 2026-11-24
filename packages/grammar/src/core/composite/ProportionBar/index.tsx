@@ -22,6 +22,9 @@ export type ProportionBarPart = {
     readonly tone?: ProportionBarTone
 }
 
+/** The track's height, HeroUI ProgressBar's own: sm 4px, md 8px (default), lg 12px, each at the vendor's corner for that size. */
+export type ProportionBarSize = "sm" | "md" | "lg"
+
 export type ProportionBarProps = NoChildren & {
     /** Names the bar for assistive technology, e.g. "Receivables by age". */
     readonly label: string
@@ -32,6 +35,8 @@ export type ProportionBarProps = NoChildren & {
     readonly isLoading?: boolean
     /** The read failed: this takes the bar's place. Loading comes first, then error, then empty. */
     readonly error?: ErrorData
+    /** The track's height, HeroUI ProgressBar's: `md` (default, 8px), `sm` (4px) in a dense row, `lg` (12px). */
+    readonly size?: ProportionBarSize
 }
 
 const SEQUENCE: readonly ProportionBarTone[] = ["accent", "success", "warning", "danger", "neutral"]
@@ -40,10 +45,10 @@ type SegmentStyle = CSSProperties & { readonly "--starci-core-proportion-share":
 
 /**
  * One track split into segments, each part's share of the whole, with a legend under it (a dot in the part's tone, its label and
- * its amount as real text). A list for assistive technology: every item reads "label, amount". It draws no axis, no percentage
+ * its amount as real text). The track is HeroUI ProgressBar's (8px at md, its corner, never a pill). A list for assistive technology: every item reads "label, amount". It draws no axis, no percentage
  * and no animation; two or three parts of one whole are this, many columns on one scale are the ext `BarChart`.
  */
-export const ProportionBar = ({ label, parts, empty, isLoading: ownLoading, error }: ProportionBarProps) => {
+export const ProportionBar = ({ label, parts, empty, isLoading: ownLoading, error, size = "md" }: ProportionBarProps) => {
     const isLoading = useIsLoading(ownLoading)
     const ownsBusy = useRegionOwnsBusy()
     if (!isLoading && error !== undefined) return <ErrorView error={error} />
@@ -58,6 +63,7 @@ export const ProportionBar = ({ label, parts, empty, isLoading: ownLoading, erro
             data-component="ProportionBar"
             data-contract="GAP-1 STATE-8"
             className="starci-core-proportion-bar"
+            data-size={size}
             {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
         >
             <div className="starci-core-proportion-track" aria-hidden="true">

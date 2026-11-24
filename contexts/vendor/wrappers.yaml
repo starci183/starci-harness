@@ -71,7 +71,6 @@ wrappers:
         { kind: style, target: "Pagination.Link:background", reason: "the current page paints its exclusive mark" },
         { kind: style, target: "Pagination.Link:color", reason: "the current page paints its exclusive mark" } ] }
   - { file: core/composite/RadioGroup/index.tsx, wraps: [Radio, RadioGroup] }
-  - { file: core/choiceToggles.tsx, wraps: [ToggleButton, ToggleButtonGroup, Tooltip] }
   - { file: core/frame/ScheduleGrid/index.tsx, wraps: [Button] }
   - { file: core/composite/TagGroup/index.tsx, wraps: [Tag, TagGroup] }
   - { file: core/frame/VerticalScrollRegion/index.tsx, wraps: [ScrollShadow],

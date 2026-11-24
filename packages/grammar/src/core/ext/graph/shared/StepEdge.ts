@@ -7,10 +7,12 @@ import type { StepEdgeData } from "../build.js"
 
 const CORNER = 12
 /** The Badge tone of an edge's words, by the way the run went. */
-const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "info", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
+const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "success", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
 /** The hollow circle at the source port (8px) and the open triangle at the target port (10px long, 10px across). */
 const DOT = 4
 const ARROW = 10
+/** The junction dot where an edge meets another edge's line. */
+const JOIN = 3
 /** How far a back edge runs below the line of its ends before it turns back, and how far it leaves its source first. */
 const BACK_DROP = 56
 const BACK_LEAVE = 16
@@ -77,7 +79,8 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
                     : [0, -1]
             : [Math.sign(end[0] - before[0]), Math.sign(end[1] - before[1])]
     const start = given?.points[0] ?? [sourceX, sourceY]
-    const shortened = given === undefined ? undefined : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW, end[1] - dir[1] * ARROW] as const]
+    const joinEnd = given !== undefined && data?.joinEnd === true
+    const shortened = given === undefined ? undefined : joinEnd ? given.points : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW, end[1] - dir[1] * ARROW] as const]
     const [path, labelX, labelY] =
         given !== undefined && shortened !== undefined
             ? [roundedPath(shortened, CORNER), 0, 0]
@@ -91,17 +94,19 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
         "g",
         { "data-edge-source": source, "data-edge-target": target },
         h(BaseEdge, { path, interactionWidth: 0 }),
-        // Flowing into the running step: moving dots over the solid line.
-        data?.style === "running" ? h("path", { className: "starci-graph-edge-flow", d: path }) : null,
         h("circle", { className: "starci-graph-edge-dot", cx: start[0], cy: start[1], r: DOT }),
-        h("path", { className: "starci-graph-edge-arrow", d: `M0 0L${String(-ARROW)} ${String(-ARROW / 2)}L${String(-ARROW)} ${String(ARROW / 2)}Z`, transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }),
+        // One arrowhead per target (the routing law, rule 6): an edge that ends on another edge's line draws a junction dot there instead.
+        joinEnd
+            ? h("circle", { className: "starci-graph-edge-join", cx: end[0], cy: end[1], r: JOIN })
+            : h("path", { className: "starci-graph-edge-arrow", d: `M0 0L${String(-ARROW)} ${String(-ARROW / 2)}L${String(-ARROW)} ${String(ARROW / 2)}Z`, transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }),
+        given !== undefined && data?.joinStart === true ? h("circle", { className: "starci-graph-edge-join", cx: start[0], cy: start[1], r: JOIN }) : null,
         pill === undefined
             ? null
             : h(
                   EdgeLabelRenderer,
                   null,
                   // The words of an edge are the core's Badge, in the tone of the way the run went, on the surface so no line runs through them.
-                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
+                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: data?.pillTone ?? PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
               ),
     )
 }

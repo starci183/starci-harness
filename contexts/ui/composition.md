@@ -83,7 +83,7 @@ inside an empty or failed region forwards pending through that region's owner (`
 An owner that publishes no pending prop is a grammar gap, not an app substitute.
 
 ### CTA-6 Three looks
-A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary`
+A Button has three looks, one prop: `variant` is `primary`
 (solid, the one main action of the card or region), `border` (an outline, every other action; the default) or `danger` (a destructive action).
 The app picks the look from the spec's facts by the decision table `button.choose.variant`
 ([components/button.md](components/button.md#choose)): the press destroys something, it is `danger`; it is the region's one next step, it is
@@ -97,9 +97,8 @@ next step of the page's one job. Every other next step on that view is `border`.
 Equal-consequence peers get no commit at all: no paint breaks a tie. A landing may repeat its one conversion
 command once, never in the same viewport (`budgets.commitPerView`).
 Peer choices are not buttons and there is one component for each meaning: `Tabs` switches a view or filters a list that stays in place
-(`kind="filter"`), `ChoiceChips` or `RadioGroup` chooses a value of a form, a `Calendar` with `ChoiceChips` picks a date and a time,
-and separate `Button`s or a `DropdownMenu` carry actions. The Grammar draws no group of attached buttons (`ButtonGroup`,
-`FilterButtonGroup` and `SegmentedControl` are deleted; R380 names the replacement), chosen by [components/tabs.md](components/tabs.md), and no commit
+(`kind="filter"`) and `Tabs appearance="primary"` switches a mode or period, a `Select` chooses a value of a form or a toolbar, a `Calendar` with a `Select` of its free times picks a date and a time,
+and separate `Button`s or a `DropdownMenu` carry actions. The Grammar draws no group of attached buttons; the choice is made by [components/tabs.md](components/tabs.md) and [components/select.md](components/select.md), and no commit
 sits among them.
 Lint: `starci-fe/single-commit-per-render`, `starci-fe/no-commit-in-collection-item`.
 
@@ -130,7 +129,7 @@ status tone; no tile takes accent to say who a peer is. A mark never replaces th
 
 ### ACCENT-3 Selection, destination, command and focus stay distinct
 Each resolves to its own owner and treatment, and each carries a non-colour cue (state attribute, outline,
-indicator geometry, underline). A destination in body copy is identifiable at rest. Proof: COLOR-3.
+indicator geometry, weight). A destination in body copy is identifiable at rest by its weight (a Link is HeroUI's own: 500, no underline until hovered, text.md "Link and Sublabel"). Proof: COLOR-3.
 
 ### ACCENT-4 An accent fill states a real measurement
 A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a
@@ -143,7 +142,7 @@ takes `tone="foreground"` on `Meter` or `Progress`: the fill is the text colour 
 Success, warning and danger appear only where authority reports that state, never as a category, a peer marker
 or decoration. A figure that reports a state keeps the default tone with a toned `Badge` beside it. Status is
 never a text colour choice. A notice is the grammar `Alert`, never a hand-built row and never an `IconTile` posing
-as its indicator: it has one look, its tone's soft pair. An informative notice is neutral (the default soft pair, 0.37.17) and spends no accent; the `accent` tone is the brand "new" band and counts in the budget. The Alert's action variant per
+as its indicator: it has one look, its tone's soft pair. An informative notice is neutral (the default soft pair) and spends no accent; the `accent` tone is the brand "new" band and counts in the budget. The Alert's action variant per
 tone is contract data. See [components/toast-alert.md](components/toast-alert.md).
 
 ### ACCENT-6 Budget and the one strong mass
@@ -153,7 +152,7 @@ treatments is the same in every state and at every width. The commit is the one 
 no second full-strength painted slab (accent, or an inverted ink band) shares a working page's first screen with
 it, and figures, headers and summaries stay on neutral surfaces. A full-strength slab carries no copy and no
 control (SURFACE-6), so it is never a KPI band; it is used only as the page's signature moment (DISCIPLINE-3), on
-an overview or an entry page. Red budget (owner, 2026-11-10): the primary red is the one main CTA of a view plus links inside sentences. A standalone secondary or navigation link (back, cancel, legal footer) is `Link variant="plain"` (foreground); an informative `Alert` is neutral. Proof: TASTE-5.
+an overview or an entry page. Red budget: the primary red is the one main CTA of a view plus links inside sentences. A standalone secondary or navigation link (back, cancel, legal footer) is `Link variant="plain"` (foreground); an informative `Alert` is neutral. Proof: TASTE-5.
 
 ## 4. State and feedback
 
@@ -197,8 +196,7 @@ its size is known. A failed region fails in place (its `EmptyNotice` with a safe
 ships its own loading and error views. Lint: `starci-fe/no-resting-twin-component`,
 `starci-fe/no-placeholder-prop`.
 
-The owner's rule of 2026-11-21 (Grammar 0.53.0) sets what the geometry is:
-- In his words: "không có xxxx -> ske. và không có plain text như label -> ske nốt", "ý là đơn giản code ske là if else, if trả về Skeleton của heroui thôi chứ không đi sửa màu hay gì", "cái khung đỏ cũng bỏ nhe!!! cùng về plain nè".
+Loading geometry:
 - **Loading is a plain conditional, `isLoading ? <Skeleton/> : <Real/>`, with HeroUI's Skeleton as shipped.** A loading form control draws Skeleton shapes in its field anatomy: a line for its label and description, and its control box at its own size (a 40px field, a Switch track at its kind's size, a check box, pills, marks). It never draws its real control painted over.
 - **No fake text and no real label.** No "xxxx" in a loading view; a label, description, section title, count or value is a skeleton line.
 - **No tone, no border.** A loading card, region, alert or button keeps only the plain neutral surface and border, and a skeleton has no border or ring.
@@ -272,7 +270,7 @@ status, a saved view) is a `Select`, never a second tab strip under the page's t
 destinations), not for views of one collection. On desktop the toolbar is one row; on 390 it is two lines (the picker with the
 count above, search, filter and the create action below), never a third strip, and the create action keeps its place. A second
 toolbar, a search that stands apart from the filter, or a view strip repeated under the tabs is one fact on two carriers.
-Reason: the shop-table case, where the view picker was drawn as a second tab strip under the page tabs, so two navigation strips and a search row stood before the first record (LAYOUT-6). See [components/list-table.md](components/list-table.md).
+Two navigation strips and a search row before the first record break LAYOUT-6. See [components/list-table.md](components/list-table.md).
 
 ## 6. Layout
 
@@ -282,10 +280,10 @@ Choice `grid.choose.content`: which track owner carries the content.
 | --- | --- | --- | --- |
 | week | dated events or appointments belong to seven consecutive day regions | `Grid kind="week"` with an accessible region `label` and seven ordered days, including empty days | one-column agenda in a narrow container, seven tracks at the medium container width |
 | week-summary | each of seven consecutive days reports a daily metric summary | `Grid kind="week-summary"` with an accessible region `label` and seven ordered days | one, four and seven tracks by container width, same reading order |
-| sections | independent named working regions retain separate tasks and heading owners | `Grid kind="sections"` of those regions | one column, two equal tracks in a wide workspace viewport; a theme may draw a hairline between the two tracks with `--starci-core-grid-section-divider` (0.42.0, default none), never before the row-start column nor in one column |
+| sections | independent named working regions retain separate tasks and heading owners | `Grid kind="sections"` of those regions | one column, two equal tracks in a wide workspace viewport; a theme may draw a hairline between the two tracks with `--starci-core-grid-section-divider` (default none), never before the row-start column nor in one column |
 | pair | two equal portions form one reading or comparison unit | `Grid kind="pair"` with required `leading` and `trailing` slots | one column, two equal tracks when their container supports both measures |
 | featured | one central focus has two symmetric secondary support groups | `Grid kind="featured"` with required `leading`, `featured` and `trailing` slots | one reading column or three symmetric tracks, preserving source order |
-| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles (0.37.3: the card gap, 12 phone / 24 from 48rem, `gap="inline"` for tiles; `align="stretch"` by default so a row stands at one height; a cell that is a `Section fill` lets its `SurfaceCard height="fill"` or `DataTable fill` fill it; `pair` and `featured` slots stretch too) | `card.choose.role:tile` |
+| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles (the card gap, 12 phone / 24 from 48rem, `gap="inline"` for tiles; `align="stretch"` by default so a row stands at one height; a cell that is a `Section fill` lets its `SurfaceCard height="fill"` or `DataTable fill` fill it; `pair` and `featured` slots stretch too) | `card.choose.role:tile` |
 | form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
 | main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
 
@@ -331,7 +329,7 @@ width. Order differences across widths are composition only; DOM, reading, focus
 
 ### LAYOUT-6 No two stacked navigation strips of the same level
 Navigation of one level appears once: the page tabs, a view strip, a breadcrumb trail and a step list each stand alone in their band.
-Two strips of the same level stacked under one another (page tabs over view tabs, two tab rows, a segmented bar under tabs) are one
+Two strips of the same level stacked under one another (page tabs over view tabs, two tab rows, a pill bar under tabs) are one
 fact on two carriers, and the lower one becomes a `Select` in the collection's toolbar (COLLECTION-5) or a panel inside the tab. The
 shop-table case is the reason: a view strip drawn under the page tabs.
 
@@ -339,7 +337,7 @@ shop-table case is the reason: a view strip drawn under the page tabs.
 | Id | Rule |
 | --- | --- |
 | FE-APP-SHELL-1 | One shell owns the frame: a fixed viewport, a persistent navbar with one full-width separator, an optional sidebar; sidebar and main scroll independently; the document never scrolls; regions sit flush. Inline navigation shows on wide viewports only, with a leading drawer below them. |
-| FE-APP-SHELL-2 | Every bar control shares the bar-control height ([scale.md](scale.md)) and one glyph size. The workspace identity is one named control; search is named and has a visible shortcut hint. The bar is 64 high by default, 56 `compact`, or `density="adaptive"` (0.46.0): 64 from 48rem and 52 below it, its controls staying the md 40; no law fixes the bar height (`DNA-COMMON-BAR-ONE-HEIGHT` measures the controls; evidence NIVO canvas `01-shell-app.html:71`, `:186`, `:216`). |
+| FE-APP-SHELL-2 | Every bar control shares the bar-control height ([scale.md](scale.md)) and one glyph size. The workspace identity is one named control; search is named and has a visible shortcut hint. The bar is 64 high by default, 56 `compact`, or `density="adaptive"`: 64 from 48rem and 52 below it, its controls staying the md 40; no law fixes the bar height (`DNA-COMMON-BAR-ONE-HEIGHT` measures the controls; evidence NIVO canvas `01-shell-app.html:71`, `:186`, `:216`). |
 | FE-APP-SHELL-3 | The right cluster runs language, theme, notifications, account; notifications are required only when the shell has a notification source (its file calls a hook that reads notifications, `use…Notification…()`), so a shell with none (a platform-admin shell with no workspace) runs language, theme, account and draws no placeholder popover. Sign-out and every destructive menu entry carry danger. A public site's bar (flow shell, no account) is site chrome: brand, links, language, sign-in, one call to action, still at the bar-control height, and it is `TopBar fit` (`navigationItems`, `actionItems`, `overflowLabel`), never hand-built: what does not fit the row moves into the three-line menu, no label wraps and no control is under 40px at 320, 360 and 390 ([presentation.md](presentation.md#controls-and-headers-on-a-phone) PHONE-1..4). |
 | FE-APP-SHELL-4 | On compact widths the navbar keeps identity, search, notifications and account; a row of the same band height below it holds only the named navigation opener; the drawer opens from the leading edge, holds all groups plus language and theme, traps focus, closes on destination, backdrop or Escape. No tab row. The one bottom bar is the Grammar `BottomNav` as the `compactNavigation` of the `WorkspaceShell` (two to five places, its more place a bottom sheet; the phone slot, drawn below 48rem); a hand-made bottom tab bar and a `BottomNav` anywhere else are refused (R316). |
 | FE-APP-SHELL-5 | A create action lives on the page whose content it changes, never in the navbar. |
@@ -366,7 +364,7 @@ Exactly one form of a composition exists at a time; the other leaves no layout o
 
 ### RESPONSIVE-5 The page tiers
 Grammar owns every breakpoint of a page, through `Page layout` and `PaneGrid`; an app writes no media query. Desktop is from 1280, tablet 768
-to 1279, phone below 768. Type keeps its roles at every tier (the ten type roles of [presentation](presentation.md), 0.54.0): no size changes with the width. Page inset 32 / 24 / 16; the gap between a report page's cards 24, 16 on a phone
+to 1279, phone below 768. Type keeps its roles at every tier (the ten type roles of [presentation](presentation.md)): no size changes with the width. Page inset 32 / 24 / 16; the gap between a report page's cards 24, 16 on a phone
 (`--grammar-card-gap`; both are 12 on a phone until the spacing scale 0 4 8 12 24 32 gains a 16 step); content at most 1280 wide (`--grammar-content-max`).
 
 | Piece | Desktop | Tablet | Phone |

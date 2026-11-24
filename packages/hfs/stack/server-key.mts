@@ -1,4 +1,4 @@
-// server-key.mts - `starci app secret server-key --env <env> [--rotate | --restore github] [--execute]`: the deploy
+// server-key.mts - `starci app secret server-key --env <env> [--rotate] [--execute]`: the deploy
 // server's own age identity, made ON the server and never leaving it, and the environment sealed to it
 // (contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
@@ -9,10 +9,6 @@
 //              file as <identity>.retired-<UTC stamp> until the owner deletes it, then the old recipient leaves the rule.
 //   --backup   refused: the server key is never copied into a repository. Its break-glass backup lives only in the harness
 //              repository's break-glass environment; an app's CI reads its own CI key (a recipient of the environment) instead.
-//   --restore github  legacy, for an old Environment backup only (nothing writes one any more): dispatches the managed
-//              .github/workflows/stack-key-restore.yml, which writes the GitHub Environment <env>'s
-//              SOPS_AGE_KEY to the server only when its public key is the recorded deploy.remote.serverRecipient.
-// The restore notes when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment reads it.
 // The server is reached only through the deploy's own transport (remote.mts withRunner): the same host, user and key source.
 // Every effect is a dry run until --execute.
 import path from 'node:path';
@@ -21,7 +17,6 @@ import { readFileSync } from 'node:fs';
 import { configuredRecipients, environmentRecipients } from '../runtime/scripts/hfs/secret-init.mjs';
 import { recordServerRecipient } from '../runtime/scripts/hfs/secret-standard.mjs';
 import { sealedFiles } from '../runtime/scripts/hfs/secret-store.mjs';
-import { github } from '../ci/github.mjs';
 import { AGE_INSTALL, installAge } from './age-install.mjs';
 import { STACKS_DIR, STACKS_FILE, loadDeployConfig } from './config.mjs';
 import type { DeployConfig } from './config.mjs';
@@ -31,64 +26,32 @@ import { failure, refusal } from './errors.mjs';
 import { shellQuote, withRunner } from './remote.mjs';
 import type { ActionResult, RemoteResult, Runner, RunnerDeps } from './remote.mjs';
 
-/** The gh port of ci/github.mts that server-key reads and writes through. */
-export interface GithubPort {
-  repository(): string;
-  // reason: gh api output, parsed JSON whose shape the callers narrow with the interfaces below
-  json(args: string[]): any;
-  run(args: string[]): unknown;
-}
-
 /** The collaborators the specs inject. */
-export interface ServerKeyDeps extends RunnerDeps {
-  github?: GithubPort;
-}
+export type ServerKeyDeps = RunnerDeps;
 
 /** The action a server-key call performs. */
 export interface ServerKeyOptions {
   execute?: boolean | undefined;
   rotate?: boolean | undefined;
-  restore?: string | undefined;
 }
-
-/** The parts of a GitHub Environment that decide whether it is protected. */
-interface EnvironmentInfo {
-  protection_rules?: { type?: string; reviewers?: unknown[] }[];
-  deployment_branch_policy?: { custom_branch_policies?: boolean };
-}
-/** The deployment branch policies of a GitHub Environment. */
-interface BranchPolicies { branch_policies?: { name?: string; type?: string }[] }
-/** One repository ruleset, as the list (`repos/<repo>/rulesets`) and the detail (`repos/<repo>/rulesets/<id>`) answer it. */
-interface Ruleset {
-  id?: number;
-  target?: string;
-  enforcement?: string;
-  conditions?: { ref_name?: { include?: string[]; exclude?: string[] } } | null;
-  rules?: { type?: string }[];
-}
-
-/** The deployment ref of a release Environment: the release tags `v*` that stack-deploy.yml alone deploys. */
-const RELEASE_TAGS = 'v*';
-/** What an active tag ruleset must forbid on the release tags, so that only its bypass actors (admins) make, move or delete one. */
-const TAG_RULES = ['creation', 'update', 'deletion'];
-/** The repository secrets listing. */
-interface SecretsListing { secrets?: { name?: string }[] }
 
 /** The part of a remote result that names a recipient. */
 type ScriptResult = Pick<RemoteResult, 'status' | 'stdout' | 'stderr'>;
 
 /**
  * The deploy server's age identity: sops' default key file of root, so a decrypt on the server reads it with nothing set, and
- * SOPS_AGE_KEY_FILE names it where one is set. The one owner of this path; the restore workflow is rendered from it.
+ * SOPS_AGE_KEY_FILE names it where one is set. The one owner of this path.
  */
 export const SERVER_AGE_IDENTITY = '/root/.config/sops/age/keys.txt';
 
-/** The managed workflow `--restore github` dispatches (templates/app/ci-workflows*). */
-export const RESTORE_WORKFLOW = 'stack-key-restore.yml';
-
 const RECIPIENT = /^age1[a-z0-9]+$/u;
-/** A command run as root: directly when the deploy user is root, else over passwordless sudo, the script read from stdin. */
-export const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
+/**
+ * A command that runs the script on stdin as root: directly when the login is root, over passwordless sudo when the login has it, else
+ * `otherwise` (a project's deploy user has the docker group and no sudo, contexts/harness/managed-vps.md).
+ */
+export const asRootOr = (otherwise: string): string => `if [ "$(id -u)" -eq 0 ]; then sh -s; elif sudo -n true 2>/dev/null; then sudo -n sh -s; else ${otherwise}; fi`;
+/** A command run as root: directly when the login is root, else over passwordless sudo (whose own refusal is the answer without it). */
+export const AS_ROOT = asRootOr('sudo -n sh -s');
 
 /**
  * The directories, after root's PATH, where age-keygen is looked for: sudo's secure_path (AlmaLinux 10, RHEL) leaves out
@@ -105,12 +68,6 @@ export const RESOLVE_AGE_KEYGEN = [
 
 /** The root script that only resolves age-keygen and prints its path: the presence check, run exactly as the calls run. */
 export const ageKeygenScript = (): string => ['set -eu', RESOLVE_AGE_KEYGEN, String.raw`printf '%s\n' "$k"`].join('\n');
-
-/**
- * The GitHub Environment secret that holds an environment's server identity. It carries the name the deploy workflows read
- * (secrets.SOPS_AGE_KEY), scoped to the Environment <env>: for a job bound to <env> it overrides a repository secret of that name.
- */
-export const BACKUP_SECRET = 'SOPS_AGE_KEY';
 
 /** The shell that keeps `file` when it is an ordinary file, else makes it with age-keygen (umask 077), then prints only its public key. */
 export function ensureIdentityScript(file: string): string {
@@ -277,99 +234,16 @@ async function rotateKey(ctx: StackContext, config: DeployConfig, { execute }: S
   });
 }
 
-/**
- * True when an active tag ruleset of `repo` covers every release tag (`refs/tags/v*`, or `~ALL`, with no exclusion) and forbids creating,
- * updating and deleting it, so a release tag (the only ref a release Environment deploys) is made or moved only by the ruleset's bypass
- * actors. A ruleset list or detail that cannot be read counts as none.
- */
-export function releaseTagsRuleset(gh: GithubPort, repo: string): boolean {
-  let listed: Ruleset[];
-  try { listed = (gh.json(['api', `repos/${repo}/rulesets?targets=tag&per_page=100`]) as Ruleset[] | null) ?? []; } catch { return false; }
-  for (const entry of listed) {
-    if (entry?.target !== 'tag' || entry.enforcement !== 'active' || typeof entry.id !== 'number') continue;
-    let detail: Ruleset | null;
-    try { detail = gh.json(['api', `repos/${repo}/rulesets/${entry.id}`]) as Ruleset | null; } catch { continue; }
-    const include = detail?.conditions?.ref_name?.include ?? [];
-    const exclude = detail?.conditions?.ref_name?.exclude ?? [];
-    const covers = (include.includes(`refs/tags/${RELEASE_TAGS}`) || include.includes('~ALL')) && exclude.length === 0;
-    const types = new Set((detail?.rules ?? []).map((rule) => rule?.type));
-    if (detail?.enforcement === 'active' && covers && TAG_RULES.every((type) => types.has(type))) return true;
-  }
-  return false;
-}
-
-/**
- * The GitHub Environment the restore reads, refused unless it exists in the app's origin repository and is protected. Protected is one of:
- * required reviewers; deployment branches limited to main; or deployment refs limited to the release tags `v*` (tag policies only) while an
- * active tag ruleset forbids making, moving or deleting a release tag (releaseTagsRuleset). Names what is missing.
- */
-export function protectedEnvironment(gh: GithubPort, env: string): string {
-  let repo: string;
-  try { repo = gh.repository(); } catch { throw refusal('STACK_SERVER_KEY_GITHUB', 'the app\'s origin repository cannot be read with gh (gh repo view); authenticate gh in the app checkout'); }
-  let environment: EnvironmentInfo | null;
-  try { environment = gh.json(['api', `repos/${repo}/environments/${env}`]); } catch {
-    throw refusal('STACK_SERVER_KEY_GITHUB_ENVIRONMENT', `the GitHub Environment ${env} of ${repo} does not exist or cannot be read; create it with required reviewers, deployment branches limited to main, or deployment refs limited to the release tags ${RELEASE_TAGS} under an active tag ruleset`);
-  }
-  const reviewers = (environment?.protection_rules ?? []).some((rule) => rule?.type === 'required_reviewers' && (rule.reviewers ?? []).length > 0);
-  let mainOnly = false;
-  let tagsOnly = false;
-  if (environment?.deployment_branch_policy?.custom_branch_policies === true) {
-    const policies = (gh.json(['api', `repos/${repo}/environments/${env}/deployment-branch-policies`]) as BranchPolicies | null)?.branch_policies ?? [];
-    mainOnly = policies.length > 0 && policies.every((policy) => policy?.name === 'main' && (policy.type ?? 'branch') === 'branch');
-    tagsOnly = policies.length > 0 && policies.every((policy) => policy?.name === RELEASE_TAGS && policy.type === 'tag');
-  }
-  if (reviewers || mainOnly) return repo;
-  if (tagsOnly) {
-    if (releaseTagsRuleset(gh, repo)) return repo;
-    throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} deploys only the release tags ${RELEASE_TAGS}, but no active tag ruleset covers refs/tags/${RELEASE_TAGS} and forbids ${TAG_RULES.join(', ')}; add that ruleset before it holds the server identity`);
-  }
-  throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} has no protection rule: it has no required reviewers, its deployment branches are not limited to main and its deployment refs are not limited to the release tags ${RELEASE_TAGS}; add one before it holds the server identity`);
-}
-
-/**
- * The warning lines about a repository-level SOPS_AGE_KEY of `repo`, read by name only (gh api repos/<repo>/actions/secrets): a job
- * bound to no Environment, or to one without its own SOPS_AGE_KEY, reads that one (the app's CI key under deploy.custody ci-key, never
- * the server key, so the restore refuses it). Empty when the repository holds none.
- */
-export function repositoryKeyWarnings(gh: GithubPort, repo: string): string[] {
-  let names: (string | undefined)[];
-  try {
-    names = ((gh.json(['api', `repos/${repo}/actions/secrets?per_page=100`]) as SecretsListing | null)?.secrets ?? []).map((secret) => secret?.name);
-  } catch {
-    return [`warning: the repository secret names of ${repo} cannot be read (gh api repos/${repo}/actions/secrets needs admin access); make sure the repository holds no ${BACKUP_SECRET} of its own`];
-  }
-  if (!names.includes(BACKUP_SECRET)) return [];
-  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. It may only be the app's CI key (deploy.custody ci-key), never the server key or the owner key.`];
-}
-
 /** Why --backup is refused: the server key never leaves the server for an app repository. */
 export const NO_REPOSITORY_BACKUP = 'the server key is never copied into a repository; its break-glass backup lives only in the harness repository\'s break-glass environment';
 
-async function restoreKey(ctx: StackContext, config: DeployConfig, { execute }: ServerKeyOptions, deps: ServerKeyDeps): Promise<ActionResult> {
-  const recipient = config.remote.serverRecipient;
-  if (!recipient)
-    throw refusal('STACK_SERVER_KEY_NO_RECIPIENT', `environments.${config.env}.deploy.remote records no serverRecipient, so the restore cannot tell the server key from another identity: starci app secret server-key --env ${config.env} --execute records it`);
-  const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
-  const repo = protectedEnvironment(gh, config.env);
-  const warnings = repositoryKeyWarnings(gh, repo);
-  const args = ['workflow', 'run', RESTORE_WORKFLOW, '--repo', repo, '-f', `environment=${config.env}`, '-f', `recipient=${recipient}`];
-  const data = { env: config.env, repo, recipient, repositorySecret: warnings.length > 0, execute };
-  if (!execute) return { ok: true, lines: [`dry run: would run gh ${args.join(' ')}; the workflow writes the ${config.env} Environment's ${BACKUP_SECRET} to ${SERVER_AGE_IDENTITY} on the server when none is there and its public key is ${recipient} (--execute)`, ...warnings], data };
-  try { gh.run(args); } catch { throw failure('STACK_SERVER_KEY_RESTORE', `gh could not dispatch ${RESTORE_WORKFLOW} in ${repo}; is the managed workflow rendered (starci app sync --execute) and pushed?`); }
-  return { ok: true, lines: [`dispatched ${RESTORE_WORKFLOW} in ${repo} for ${config.env}; follow it with gh run list --workflow ${RESTORE_WORKFLOW} --repo ${repo}`, ...warnings], data };
-}
-
 /**
- * Runs one server-key action. `options`: { execute, rotate, restore } (a --backup is refused by the parser: NO_REPOSITORY_BACKUP);
- * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mts) }.
+ * Runs one server-key action. `options`: { execute, rotate } (a --backup is refused by the parser: NO_REPOSITORY_BACKUP);
+ * `deps` (specs): { ssh (an injected runner) }.
  */
 export async function serverKey(ctx: StackContext, env: string, options: ServerKeyOptions, deps: ServerKeyDeps = {}): Promise<ActionResult> {
   const config = loadDeployConfig({ repoRoot: ctx.cwd, env });
   declaredRemote(ctx.cwd, env);
-  if (options.restore !== undefined && options.restore !== 'github') throw refusal('STACK_USAGE', '--restore takes github');
-  if (options.rotate === true && options.restore !== undefined)
-    throw refusal('STACK_USAGE', '--rotate and --restore are separate actions; pass one');
-  if (options.restore) return restoreKey(ctx, config, options, deps);
   if (options.rotate) return rotateKey(ctx, config, options, deps);
   return ensureKey(ctx, config, options, deps);
 }

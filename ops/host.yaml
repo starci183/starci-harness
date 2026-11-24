@@ -224,7 +224,7 @@ services:
       name: edge
       aliases: [embeddings-gate]
       ip: 10.77.84.2
-      # By name (the lookup that failed on 2026-11-21) and by the address the tunnel's ingress calls (ops/host/stack/embeddings-tunnel.yml).
+      # By name and by the address the tunnel's ingress calls (ops/host/stack/embeddings-tunnel.yml).
       probes:
         - url: http://embeddings-gate:8080/v1/models
           status: 401

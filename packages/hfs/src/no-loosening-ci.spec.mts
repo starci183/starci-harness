@@ -17,7 +17,8 @@ const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, projec
   be: { apps: [{ name: 'api', kind: 'api' }] },
   fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
 } });
-const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }).find((item) => item.path === file)?.content;
+const source = { files: [], read: () => '', hasImage: () => true, quality: { ...qualityServices({}), sonar: { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } } } as never;
+const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }, { source }).find((item) => item.path === file)?.content;
 
 for (const edition of ['lite'] as const) {
   test(`managed CI renders no escape hatch and its Sonar token check fails the job`, () => {

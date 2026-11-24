@@ -1,5 +1,5 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force"
-import type { KnowledgeCluster, KnowledgeItem } from "./types.js"
+import type { KnowledgeCluster, KnowledgeItem, KnowledgeLink } from "./types.js"
 
 /** The smallest and the largest bubble radius, in graph units; the busiest item gets the largest. */
 export const MIN_RADIUS = 11
@@ -58,6 +58,23 @@ export const labelWidth = (name: string): number => Math.min(220, Math.ceil(name
 /** The radius of a bubble from its use count, by area: an item used twice as much covers twice the ground. */
 export const radiusOf = (weight: number, most: number): number => MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * Math.sqrt(Math.max(0, weight) / Math.max(1, most))
 
+/** Every line of the map once: each item to its source, then each link, an unordered pair kept only the first time it is met and never an item to itself. */
+export const linePairs = (items: readonly KnowledgeItem[], links: readonly KnowledgeLink[]): readonly (readonly [string, string])[] => {
+    const seen = new Set<string>()
+    const ids = new Set(items.map((item) => item.id))
+    const pairs: (readonly [string, string])[] = []
+    const add = (from: string, to: string): void => {
+        if (from === to || !ids.has(from) || !ids.has(to)) return
+        const key = JSON.stringify(from < to ? [from, to] : [to, from])
+        if (seen.has(key)) return
+        seen.add(key)
+        pairs.push([from, to])
+    }
+    for (const item of items) if (item.sourceId !== undefined) add(item.id, item.sourceId)
+    for (const link of links) add(link.from, link.to)
+    return pairs
+}
+
 const meets = (a: Box, b: Box): boolean => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b
 const grown = (b: Box, by: number): Box => ({ l: b.l - by, t: b.t - by, r: b.r + by, b: b.b + by })
 const circleMeets = (x: number, y: number, r: number, box: Box): boolean => {
@@ -67,16 +84,18 @@ const circleMeets = (x: number, y: number, r: number, box: Box): boolean => {
 }
 
 /**
- * Where each cluster stands: a lone one at the origin, otherwise a wide grid (one row up to four clusters, two rows for five to eight, and so on) whose columns
- * and rows are as wide as the largest cluster in them; the last row is centred. A wide map is the one that fits a wide panel at 100%.
+ * Where each cluster stands: a lone one at the origin, otherwise a wide grid (one row up to four clusters, two rows for five to eight, and so on; at most
+ * `maxColumns` across, so a phone gets a tall grid it reads top-down) whose columns are as wide as the widest cluster or cluster name in them and whose rows are
+ * as tall as the largest cluster in them; the last row is centred. A wide map is the one that fits a wide panel.
  */
-const centres = (reach: readonly number[]): [number, number][] => {
+const centres = (reach: readonly number[], names: readonly number[], maxColumns: number): [number, number][] => {
     const n = reach.length
     if (n === 1) return [[0, 0]]
-    const rows = Math.max(1, Math.round(Math.sqrt(n / 2.2)))
-    const cols = Math.ceil(n / rows)
+    const cols = Math.max(1, Math.min(maxColumns, Math.ceil(n / Math.max(1, Math.round(Math.sqrt(n / 2.2))))))
+    const rows = Math.ceil(n / cols)
     const room = (r: number): number => 2 * r + 44
-    const colWidth = Array.from({ length: cols }, (_, c) => Math.max(...reach.filter((_, i) => i % cols === c).map(room)))
+    const across = (i: number): number => Math.max(room(reach[i] ?? 0), (names[i] ?? 0) + 2 * LABEL_GAP)
+    const colWidth = Array.from({ length: cols }, (_, c) => Math.max(...reach.map((_, i) => i).filter((i) => i % cols === c).map(across)))
     const rowHeight = Array.from({ length: rows }, (_, r) => Math.max(...reach.filter((_, i) => Math.floor(i / cols) === r).map(room)) + 36)
     const total = colWidth.reduce((a, b) => a + b, 0)
     const tall = rowHeight.reduce((a, b) => a + b, 0)
@@ -92,11 +111,16 @@ const centres = (reach: readonly number[]): [number, number][] => {
 }
 
 /**
- * Lays out the knowledge map: the clusters on a wide grid, each bubble pulled to its cluster's centre, a fact drawn toward its source, no two bubbles allowed to touch.
+ * Lays out the knowledge map: the clusters on a wide grid (at most `options.maxColumns` across), each bubble pulled to its cluster's centre, a fact drawn toward
+ * its source and a linked item toward the other end of its link, no two bubbles allowed to touch.
  * Pure and seeded: the start is computed from the order of the input (a sunflower spiral per cluster) and d3-force runs a fixed number of ticks on a fixed random
  * source, so the same input gives the same positions every time. Cluster names are placed last, each above its cluster, clear of every bubble and every other name.
  */
-export const layoutKnowledge = (clusters: readonly KnowledgeCluster[], items: readonly KnowledgeItem[]): KnowledgeLayout => {
+export const layoutKnowledge = (
+    clusters: readonly KnowledgeCluster[],
+    items: readonly KnowledgeItem[],
+    options: { readonly links?: readonly KnowledgeLink[]; readonly maxColumns?: number } = {},
+): KnowledgeLayout => {
     const most = items.reduce((max, item) => Math.max(max, item.weight), 0)
     const clusterIds = new Set(clusters.map((cluster) => cluster.id))
     const known = items.filter((item) => clusterIds.has(item.clusterId))
@@ -109,7 +133,11 @@ export const layoutKnowledge = (clusters: readonly KnowledgeCluster[], items: re
         const area = (byCluster.get(cluster.id) ?? []).reduce((sum, item) => sum + Math.PI * (radiusOf(item.weight, most) + BUBBLE_GAP) ** 2, 0)
         return Math.sqrt(area / 0.62 / Math.PI)
     })
-    const where = centres(reach)
+    const where = centres(
+        reach,
+        live.map((cluster) => labelWidth(cluster.name)),
+        options.maxColumns ?? Number.POSITIVE_INFINITY,
+    )
 
     const bodies: Body[] = []
     const members = new Map<string, Body[]>()
@@ -125,10 +153,10 @@ export const layoutKnowledge = (clusters: readonly KnowledgeCluster[], items: re
         bodies.push(...own)
     })
     const byId = new Map(bodies.map((body) => [body.id, body] as const))
-    const links: SimulationLinkDatum<Body>[] = known.flatMap((item) => {
-        const source = item.sourceId === undefined ? undefined : byId.get(item.sourceId)
-        const own = byId.get(item.id)
-        return source === undefined || own === undefined || source === own ? [] : [{ source: own, target: source }]
+    const links: SimulationLinkDatum<Body>[] = linePairs(known, options.links ?? []).flatMap(([from, to]) => {
+        const a = byId.get(from)
+        const b = byId.get(to)
+        return a === undefined || b === undefined ? [] : [{ source: a, target: b }]
     })
 
     const simulation = forceSimulation(bodies)

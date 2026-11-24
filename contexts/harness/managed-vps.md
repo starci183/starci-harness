@@ -7,8 +7,7 @@ health, opens its doors under the owner's domain and hands each project the narr
 
 ## Machines and roles
 
-The owner's words (2026-11-21): "phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái này là push xài chung" and "gõ cli starci cái
-là dựng lun chứ k phải hỏi lại". A machine is registered once in this host's config.yaml (never pushed) with its roles, and one command
+A machine is registered once in this host's config.yaml (never pushed) with its roles, and one command
 brings it up:
 
 ```
@@ -107,8 +106,7 @@ stdin (`cli/src/harness/vps/ssh.ts`, the pattern of @starci/hfs `stack/remote.mt
 
 ## Remote BuildKit
 
-The owner's decision "A" (2026-11-21): a remote BuildKit on sv-hk-1 that CI and dev build through. **Rootless only** (the
-coordinator's hard line, 2026-11-21): `moby/buildkit:<pin>-rootless` as uid 1000, never `privileged: true` (a privileged container is
+A remote BuildKit on sv-hk-1 that CI and dev build through. **Rootless only** (a hard line): `moby/buildkit:<pin>-rootless` as uid 1000, never `privileged: true` (a privileged container is
 root on the prod host), never the Docker socket, never host PID, IPC or network. If the kernel cannot run it rootless, the step stops with
 the exact reason; there is no privileged fallback, that would be an owner decision.
 

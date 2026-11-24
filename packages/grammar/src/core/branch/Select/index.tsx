@@ -165,12 +165,12 @@ const SelectControl = ({
                 data-grammar-field-control="true"
                 isPending={isPending}
             >
-                {icon === undefined ? null : <span className="starci-core-select-icon" data-grammar-select-icon="true" aria-hidden="true"><Icon source={icon} usage="chip" /></span>}
+                {icon === undefined ? null : <span className="starci-core-select-icon" data-grammar-select-icon="true" aria-hidden="true"><Icon source={icon} usage="control" /></span>}
                 {prefix === undefined ? null : <span className="starci-core-select-prefix" aria-hidden="true">{prefix}</span>}
                 <HeroSelect.Value />
                 {isPending
                     ? <HeroSpinner size="sm" color="current" aria-hidden="true" className="starci-core-field-spinner" />
-                    : <HeroSelect.Indicator className="starci-core-select-indicator">{inlineGlyph("chevron-down")}</HeroSelect.Indicator>}
+                    : <HeroSelect.Indicator className="starci-core-select-indicator">{inlineGlyph("chevron-down", {}, "text")}</HeroSelect.Indicator>}
             </HeroSelect.Trigger>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>

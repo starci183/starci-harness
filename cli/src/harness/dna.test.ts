@@ -35,7 +35,7 @@ void test("the shipped contract loads: every group, every kind, every value form
 
 void test("a threshold is read from thresholds.yaml by key, as a floor or a ceiling", () => {
     const contract = loadDnaContract()
-    // the coarse-pointer hit-area law was removed (owner, 2026-11-21): no entry may assert it
+    // the coarse-pointer hit-area law: no entry may assert it
     assert.equal(contract.entries.find((entry) => entry.id === "DNA-COMMON-TARGET-COARSE"), undefined)
     const accent = contract.entries.find((entry) => entry.id === "DNA-COMMON-ONE-ACCENT-FILL")?.variants[0]
     assert.equal(accent?.value, 1)

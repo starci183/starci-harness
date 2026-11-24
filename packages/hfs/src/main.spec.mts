@@ -18,7 +18,7 @@ test('the app implementation loads with no installed dependency and refuses a mi
   assert.match(err, /^starci app scaffold <name>/m);
   assert.match(err, /^starci app secret list/m);
   assert.match(err, /^starci app coverage merge --out <lcov>/m);
-  assert.deepEqual(VERBS, ['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'uiaudit', 'gallery', 'codemod']);
+  assert.deepEqual(VERBS, ['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'uiaudit', 'codemod']);
   assert.match(err, /^starci app desktop build /m);
 });
 

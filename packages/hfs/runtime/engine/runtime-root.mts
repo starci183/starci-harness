@@ -35,12 +35,15 @@ export const runtimeStateDir = (root: string = skillRoot): string => path.join(r
 /** True when `root` is a copy an install placed below a node_modules folder, not a checkout. */
 export const installedRoot = (root: string = skillRoot): boolean => path.resolve(root).split(/[\\/]/).includes('node_modules');
 /**
- * The per-user state base of an installed copy: LOCALAPPDATA (Windows), else XDG_STATE_HOME, else ~/.local/state, then
- * starci-harness/state. It lies outside every package and every product repository, so `npm ci` and a package copy never delete a
- * running stack's data, and every installed copy on the host shares one machine.sqlite and one stack/<project>/<env> per environment.
+ * The per-user state base of an installed copy: XDG_STATE_HOME, else ~/.local/state, then starci-harness/state, on every platform. It
+ * lies outside every package and every product repository, so `npm ci` and a package copy never delete a running stack's data, and every
+ * installed copy on the host shares one machine.sqlite and one stack/<project>/<env> per environment. Never under %LOCALAPPDATA% on
+ * Windows: an MSIX-packaged app (the Claude desktop app and every agent it starts) writes each new file there into its own
+ * Packages/<package>/LocalCache, so the processes it starts and the ones outside it (a terminal, a lane, Docker) would each see a
+ * different state base.
  */
 export const installedStateBase = (env: NodeJS.ProcessEnv = process.env): string =>
-  path.join(env['LOCALAPPDATA'] || env['XDG_STATE_HOME'] || path.join(os.homedir(), '.local', 'state'), 'starci-harness', 'state');
+  path.join(env['XDG_STATE_HOME'] || path.join(os.homedir(), '.local', 'state'), 'starci-harness', 'state');
 /**
  * The per-host state base, the one owner of every host-state location: machine.sqlite, projects/<ledger_id>/runtime.sqlite, archive/,
  * artifacts/ (the blob store), guards/, host-lock/, stack/<project>/<env>/ and the other process state sit under it. LOCAL_ROOT_ENV
@@ -50,78 +53,6 @@ export const starciLocalRoot = (env: NodeJS.ProcessEnv = process.env, root: stri
   if (env[LOCAL_ROOT_ENV]) return path.resolve(env[LOCAL_ROOT_ENV]);
   return installedRoot(root) ? installedStateBase(env) : runtimeStateDir(root);
 };
-
-/** The refusal of a legacy state base a running process still holds (a stack's bind mounts, an open log). */
-export class LegacyStateHeld extends Error {
-  readonly code = 'HFS_STATE_LEGACY_HELD';
-  readonly legacy: string;
-  constructor(legacy: string, cause: unknown) {
-    super(`${legacy} holds the state of a running stack and cannot move out of the package yet; run \`starci app stack down --env <env>\` for each running environment, then any \`starci app\` verb moves it`, { cause });
-    this.legacy = legacy;
-  }
-}
-
-/** What adopting a legacy state base moved: the entries now under `to`, and the ones `to` already held, kept under `to/legacy-<stamp>/`. */
-export interface StateAdoption {
-  readonly from: string;
-  readonly to: string;
-  readonly moved: readonly string[];
-  readonly kept: readonly string[];
-}
-
-const HELD = new Set(['EPERM', 'EBUSY', 'EACCES']);
-const isHeld = (error: unknown): boolean => HELD.has(String((error as NodeJS.ErrnoException | null)?.code));
-
-/** Gives `to` and everything below it the mode, owner and group of the matching entry of `from` (a copy keeps neither on its own). */
-function keepOwnership(from: string, to: string): void {
-  const source = fs.lstatSync(from);
-  const target = fs.lstatSync(to);
-  if (!source.isSymbolicLink()) fs.chmodSync(to, source.mode & 0o7777);
-  if (source.uid !== target.uid || source.gid !== target.gid) fs.lchownSync(to, source.uid, source.gid);
-  if (source.isDirectory()) for (const name of fs.readdirSync(from)) keepOwnership(path.join(from, name), path.join(to, name));
-}
-
-/** Moves one entry by rename, which keeps its owner and mode; across volumes (EXDEV) it is copied, its ownership restored, then removed. */
-function moveEntry(from: string, to: string): void {
-  try {
-    fs.renameSync(from, to);
-    return;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException | null)?.code !== 'EXDEV') throw error;
-  }
-  fs.cpSync(from, to, { recursive: true, verbatimSymlinks: true, errorOnExist: true, force: false });
-  keepOwnership(from, to);
-  fs.rmSync(from, { recursive: true, force: true });
-}
-
-/**
- * Moves the state an installed copy kept inside itself (<copy>/.runtime, before installedStateBase) out to the state base, once: the
- * folder is first renamed to <copy>/.runtime.adopting (a rename a running stack's open files refuse, LegacyStateHeld), then each entry
- * is moved with its owner and mode (a bind folder a container user owns stays that user's) and the folder removed. An entry the state base already holds is kept beside it under legacy-<stamp>/, never overwritten. An
- * interrupted adoption resumes from .runtime.adopting. Null when there is nothing to adopt: a checkout, LOCAL_ROOT_ENV set, or no
- * legacy folder.
- */
-export function adoptLegacyState(env: NodeJS.ProcessEnv = process.env, root: string = skillRoot, now: () => Date = () => new Date()): StateAdoption | null {
-  if (env[LOCAL_ROOT_ENV] || !installedRoot(root)) return null;
-  const from = runtimeStateDir(root);
-  const parked = `${from}.adopting`;
-  if (!fs.existsSync(parked)) {
-    if (!fs.existsSync(from)) return null;
-    try { fs.renameSync(from, parked); } catch (error) { if (isHeld(error)) throw new LegacyStateHeld(from, error); throw error; }
-  }
-  const to = installedStateBase(env);
-  const aside = path.join(to, `legacy-${now().toISOString().replace(/[^0-9]/g, '').slice(0, 14)}`);
-  const moved: string[] = [];
-  const kept: string[] = [];
-  for (const name of fs.readdirSync(parked).sort()) {
-    const taken = fs.existsSync(path.join(to, name));
-    fs.mkdirSync(taken ? aside : to, { recursive: true });
-    moveEntry(path.join(parked, name), path.join(taken ? aside : to, name));
-    (taken ? kept : moved).push(name);
-  }
-  fs.rmSync(parked, { recursive: true, force: true });
-  return { from, to, moved, kept };
-}
 
 /**
  * Read a runtime contract document. `parts` are path segments under `skillRoot`

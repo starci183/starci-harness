@@ -22,7 +22,7 @@ import {
 } from "../../../index.js"
 import { createElement as h, Fragment, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react"
 import { compareSegments } from "../compare.js"
-import { parse, plainText, type ParseOptions } from "../parse.js"
+import { parse, plainText } from "../parse.js"
 import { profileOf, type Profile } from "../profiles.js"
 import type { Block, CalloutBlock, CodeBlock, CodeToken, CompareBlock, Diagrams, DiffBlock, Inline, MarkdownTree, MermaidBlock, ProfileName, SourcePoint, TabsBlock, TerminalBlock } from "../types.js"
 
@@ -94,8 +94,6 @@ export interface MarkdownProps {
     readonly source?: string
     /** A tree from `parse()` or `prepare()` (Shiki tokens included). Wins over `source`. */
     readonly tree?: MarkdownTree
-    /** How `source` is parsed (a legacy caption pattern). */
-    readonly parseOptions?: ParseOptions
     /** The prerendered SVG of each mermaid figure, by key (`prerender()`); a figure missing here is drawn in the browser by Mermaid. */
     readonly diagrams?: Diagrams
     readonly labels?: Partial<MarkdownLabels>
@@ -539,8 +537,8 @@ const blockNode = (node: Block, context: Context): ReactNode => {
  * `@starci/grammar/core/ext/markdown.css` once, after the Grammar's styles.
  */
 export const Markdown = (props: MarkdownProps): ReactNode => {
-    const { profile = "prose", source, tree, parseOptions, diagrams, labels, highlights, onHighlightPress, isLoading = false, measure, ariaLabel, renderPreview, ref } = props
-    const read = useMemo(() => tree ?? parse(source ?? "", parseOptions), [tree, source, parseOptions])
+    const { profile = "prose", source, tree, diagrams, labels, highlights, onHighlightPress, isLoading = false, measure, ariaLabel, renderPreview, ref } = props
+    const read = useMemo(() => tree ?? parse(source ?? ""), [tree, source])
     const root = useRef<HTMLDivElement>(null)
     useImperativeHandle(
         ref,

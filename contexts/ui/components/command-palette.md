@@ -1,6 +1,6 @@
 # Command palette
 
-Contract: [dialog](../../grammars/contract.md#dialog). Vendor: [Modal, ListBox, SearchField](../../vendor/heroui.md#modal). Added in 0.46.0 (owner approved 2026-11-18).
+Contract: [dialog](../../grammars/contract.md#dialog). Vendor: [Modal, ListBox, SearchField](../../vendor/heroui.md#modal).
 
 ## Job
 Take one query from anywhere in the app and list what matches, grouped, to go to or to run.
@@ -27,14 +27,14 @@ Choice `command-palette.choose.search`: which search the person gets. The first 
   A result is a destination (`href`: the app root's router) or a command (`onAction(id)`); `onAction` runs for both and the palette closes.
 - The palette does not filter. The app searches (`query`, `onQueryChange`) and passes the groups, so a server search and a local one are the same call.
 - `isLoading` draws skeleton rows in the list's shape and marks the field pending; `error` takes the place of the results with its retry; `empty` stands where the results would when a search finds nothing (an `EmptyNotice`).
-- `footer` is the keys hint in the app's language; it is not drawn on a coarse pointer, a touch screen having no keys (0.48.0, `DNA-COMMON-PALETTE-NO-KEYS-ON-TOUCH`, contextual). Every string (`label`, `closeLabel`, `placeholder`, `clearLabel`, the group labels) is the app's.
+- `footer` is the keys hint in the app's language; it is not drawn on a coarse pointer, a touch screen having no keys (`DNA-COMMON-PALETTE-NO-KEYS-ON-TOUCH`, contextual). Every string (`label`, `closeLabel`, `placeholder`, `clearLabel`, the group labels) is the app's.
 - Opened with `isOpen`/`onOpenChange` (or `defaultOpen`). `useCommandPaletteShortcut(onTrigger)` registers Ctrl K and Command K on the window once, in the shell, and the bar's search control (an `IconButton` or a `Button` with a `Kbd`) opens it by press; an app does not bind the shortcut itself.
 
 ## Keyboard
-Focus lands in the field and stays there (virtual focus): ArrowDown and ArrowUp move the active result, Home and End jump, Enter chooses it, Escape closes, Tab leaves to the close button. The active result is named by `aria-activedescendant` and drawn as a selected row (the `--default` fill), never a focus ring (0.48.0). The page behind is inert and focus returns to the control that opened it.
+Focus lands in the field and stays there (virtual focus): ArrowDown and ArrowUp move the active result, Home and End jump, Enter chooses it, Escape closes, Tab leaves to the close button. The active result is named by `aria-activedescendant` and drawn as a selected row (the `--default` fill), never a focus ring. The page behind is inert and focus returns to the control that opened it.
 
 ## Size
-`Dialog size="lg"` (48rem at most), standing at the top of the page (not centred) so the field never moves while results change; below 40rem it takes the full width at the top and is as tall as its results, capped by the screen (0.48.0: it no longer fills the screen; `DNA-COMMON-PALETTE-PHONE-NOT-FULL`). The field is the `md` control and the rows are the `ListBox` rows at `sm` (32 leading, 14 label, 12 hint).
+`Dialog size="lg"` (48rem at most), standing at the top of the page (not centred) so the field never moves while results change; below 40rem it takes the full width at the top and is as tall as its results, capped by the screen (`DNA-COMMON-PALETTE-PHONE-NOT-FULL`). The field is the `md` control and the rows are the `ListBox` rows at `sm` (32 leading, 14 label, 12 hint).
 
 ## States
 Closed, open with results, open with a query and no result (`empty`), loading, failed, a disabled result (`isDisabled`). A group with no results is not drawn.

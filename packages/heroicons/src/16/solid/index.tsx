@@ -116,33 +116,3 @@ export const SandboxIcon = solidIcon("SandboxIcon", (
 export const BrainIcon = solidIcon("BrainIcon", (
     <path fillRule="evenodd" d="M7.4 3.2a1.9 1.9 0 0 0-3.55-.6A1.95 1.95 0 0 0 2.3 5.2a2.1 2.1 0 0 0 .05 3.5A1.95 1.95 0 0 0 4.4 12.1a1.9 1.9 0 0 0 3 .7V3.2Zm1.2 0a1.9 1.9 0 0 1 3.55-.6 1.95 1.95 0 0 1 1.55 2.6 2.1 2.1 0 0 1-.05 3.5 1.95 1.95 0 0 1-2.05 3.4 1.9 1.9 0 0 1-3 .7V3.2Z" clipRule="evenodd" />
 ))
-
-/** @deprecated use InsetHomeIcon; removed in the next minor. */
-export const CourseOverviewIcon = InsetHomeIcon
-
-/** @deprecated use OpenBookLinesIcon; removed in the next minor. */
-export const CourseContentIcon = OpenBookLinesIcon
-
-/** @deprecated use PodiumIcon; removed in the next minor. */
-export const CourseLeaderboardIcon = PodiumIcon
-
-/** @deprecated use QuestionAnswerIcon; removed in the next minor. */
-export const CourseQaIcon = QuestionAnswerIcon
-
-/** @deprecated use SplitPaneIcon; removed in the next minor. */
-export const CourseRailIcon = SplitPaneIcon
-
-/** @deprecated use CodeWindowIcon; removed in the next minor. */
-export const PersonalProjectIcon = CodeWindowIcon
-
-/** @deprecated use CardStackIcon; removed in the next minor. */
-export const FlashcardsIcon = CardStackIcon
-
-/** @deprecated use MicNotesIcon; removed in the next minor. */
-export const MockInterviewIcon = MicNotesIcon
-
-/** @deprecated use FoundationBlocksIcon; removed in the next minor. */
-export const FoundationsIcon = FoundationBlocksIcon
-
-/** @deprecated use SandboxIcon; removed in the next minor. */
-export const PlaygroundIcon = SandboxIcon

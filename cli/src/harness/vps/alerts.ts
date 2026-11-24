@@ -5,8 +5,7 @@ import { openMachine } from "../ledger.js"
 import { shellQuote } from "./ssh.js"
 
 /**
- * The alerts of a server go to the bot of each app it runs, never the harness bot (ops/telegram.yaml). The owner's words (2026-11-21): "bot giám
- * sát server là bot khác nhé, setup trong từng dự án ở starcistacks". An app environment names its bot with `monitoring.alerts.telegram.member`
+ * The alerts of a server go to the bot of each app it runs, never the harness bot (ops/telegram.yaml). An app environment names its bot with `monitoring.alerts.telegram.member`
  * of its .starcistacks/application-stacks.yaml: a sealed member of that environment (its server, backup and CI recipients) holding
  * ALERTS_TELEGRAM_BOT_TOKEN and ALERTS_TELEGRAM_CHAT_ID. This machine never opens it: `vps monitor up` ships the member's ciphertext to the
  * server, whose own key opens it there, into a swarm secret (the token, read by file) and the receiver's chat id. Which keys a member holds is

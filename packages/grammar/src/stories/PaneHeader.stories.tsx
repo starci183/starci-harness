@@ -56,6 +56,21 @@ export const PaneHeaderStates: Story = {
 }
 
 /**
+ * A long title on a phone (390): the title ends in an ellipsis before its status tag and the actions, which keep their size. A head whose title
+ * is cut hard (no "...") is the defect this story holds.
+ */
+export const LongTitlePhone: Story = {
+    parameters: { viewport: { defaultViewport: "mobile1" } },
+    render: () => (
+        <Matrix>
+            <State label="Title, tag and two actions" direction="column">
+                <G.PaneHeader title="Chăm sóc khách hàng thân thiết" description="Private room with this agent" status={<G.Badge>Agent</G.Badge>} actions={actions} back={{ label: "Back to the list", onPress: noop }} headingLevel={1} />
+            </State>
+        </Matrix>
+    ),
+}
+
+/**
  * `drawerOpener` on a PaneHeader opens the drawer of a pane of the same grid (`collapse="drawer" trigger="head"`): the grid owns the open
  * state, so no page state is held. The icon button shows only where the rail's area is not arranged (below 48rem here) and takes the
  * action slot's place, so the head keeps its height at every width.

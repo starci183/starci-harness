@@ -4,8 +4,9 @@ An app session, or a worker whose input names a `@starci` package (the Superviso
 fixes that package, never a shim in the app. The edit is a tier 1 branch ([branch.md](branch.md)) of the harness repository:
 
 1. `starci pkg branch <topic>` cuts `pkg/<app>-<topic>` into a worktree under the harness's `.claude/worktrees/`.
-2. Edit and commit there. Bump only the package you changed, with its CHANGELOG entry, in the commit that changes it; a
-   package that requires it moves only when it needs the new API.
+2. Edit and commit there. Bump only the package you changed, in the commit that changes it; a
+   package that requires it moves only when it needs the new API. A CHANGELOG holds a `## <version>` section with a one-line summary for the
+   version being released; versioned history starts at beta.
 3. Publish the changed package to the local registry, the one build a branch takes, and install it in the app (below).
 4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 
@@ -34,7 +35,7 @@ The flow, in order:
    (or the ones `--package` names) and publishes each under the version committed in git (`1.2.3` stays `1.2.3`), so the pins, the
    peer ranges (a canon's `~6.2.0` of `@starci/hfs`) and the check-cache keys are the ones npm's build has. Two contents never share a
    version: a version npm does not serve is published, one npm serves is published only when npm's copy carries the same `starciSource`
-   digest, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (raise the version with its CHANGELOG entry, as every package edit
+   digest, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (raise the version, as every package edit
    does). A rebuild of the same version replaces the registry's copy (an unpublish, then the publish).
    The publish also judges its peer line against what the registry lists (`core/deps/peer-line.ts`): a published version that a
    sibling peers (`@starci/hfs`, peered by both canons and the Grammar lint) with no release of that sibling admitting it, listed or
@@ -63,7 +64,7 @@ The flow, in order:
    manifest) at exactly that member's version is not unpublished: `npm ci` links it (`"link": true` in the committed lockfile), so the
    workspace satisfies the pin and the urgent push can put the commit on main; the member still publishes through the normal release. A
    pin on a member at another version, a lock that installs the name from a registry, and a name that is no member and not on npm stay refused.
-   **Dev-only local pins** (owner 2026-11-22: "test local là nhánh dev mà nó dùng local để test output chứ ci gì ở đâu ông"): an app that
+   **Dev-only local pins**: an app that
    declares `"deps": { "devAllowsLocalRegistry": true }` in its committed `hfs.json` may commit exact local-registry pins and their lockfile
    entries to `dev` and to lane branches (which land on dev). On such a push, `starci deps check --push-refs "<the pre-push hook's stdin>"`
    accepts `DEPS_PIN_UNPUBLISHED` for an exact version the local registry (127.0.0.1:4873) serves, `DEPS_LOCAL_REGISTRY_COMMITTED` for

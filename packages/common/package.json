@@ -1,6 +1,6 @@
 {
   "name": "@starci/common",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "The concepts every StarCi app and package share, with no runtime dependency, shipped as CommonJS and ESM over one class identity: the coded error base DomainError (code, params, cause) with its guard and the closed ErrorKind set, the Outcome result, the object guards isRecord and isPlainRecord and the sequential runner eachInOrder.",
   "keywords": [
     "error",

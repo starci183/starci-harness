@@ -1800,7 +1800,7 @@ DB_APP_ROLE:
     - "Vi phạm R255: app role vượt qua RLS hoặc được cấp quyền rộng hơn công việc của back end."
     - "Role không khai báo rõ noinherit và nobypassrls, hoặc nhận grant all trên schema hay bảng."
     - "Role nhận grant trên schema auth: tài khoản chỉ được truy cập qua các hàm SECURITY DEFINER be_auth_* (account doors) của baseline."
-  nextStep_vi: "Khai báo app role với noinherit, nobypassrls và các thuộc tính không đặc quyền; bỏ superuser, bypassrls và grant all, rồi cấp từng quyền cần thiết. Với grant trên schema auth: chạy `starci app codemod account-doors --execute`, `starci app sync --execute`, rồi `starci app codemod account-doors --contract --execute`."
+  nextStep_vi: "Khai báo app role với noinherit, nobypassrls và các thuộc tính không đặc quyền; bỏ superuser, bypassrls và grant all, rồi cấp từng quyền cần thiết. Với grant trên schema auth: đi qua các account door do `starci app sync --execute` sinh ra, không cấp grant trên schema auth."
   owner: op-retry
   kind: check-finding
 
@@ -2106,9 +2106,9 @@ FE_BUTTON_INTENT:
   title_vi: "Nút dùng kiểu ngoài primary, border và danger"
   meaning_vi: "Button hoặc IconButton của ứng dụng dùng một kiểu ngoài ba kiểu primary, border, danger, có nhiều hơn một nút primary trong một lần render, hoặc đặt nút primary trong từng phần tử của danh sách."
   causes_vi:
-    - "Dùng variant cũ (secondary, tertiary, ghost, danger-soft) hoặc intent đã bị xoá"
+    - "Dùng variant ngoài primary, border, danger (secondary, tertiary, ghost, danger-soft)"
     - "Đặt hai nút primary trong cùng một lần render hoặc một nút primary trong mỗi thẻ của danh sách"
-  nextStep_vi: "Chọn variant primary, border hoặc danger theo vai trò của nút, và chạy `starci app codemod v0550` cho các nút cũ."
+  nextStep_vi: "Chọn variant primary, border hoặc danger theo vai trò của nút."
   owner: "op-retry"
   kind: "check-finding"
 
@@ -2210,12 +2210,12 @@ FE_CHIP_LABEL_CASE:
   kind: check-finding
 
 FE_GROUPED_CHOICE_CONTROL:
-  title: "A group of attached buttons is drawn"
-  title_vi: "Vẽ một nhóm nút dính liền nhau"
-  meaning_vi: "Mã tại <file> dùng ButtonGroup, FilterButtonGroup hoặc SegmentedControl, trong khi Grammar chỉ có một cách chọn trong vài lựa chọn theo ý nghĩa."
+  title: "Buttons or primary tabs are used as a view switch"
+  title_vi: "Dùng hàng nút hoặc tab primary sai cách để chuyển góc nhìn"
+  meaning_vi: "Mã tại <file> đặt nhiều Button mang aria-pressed, isSelected hoặc isActive cạnh nhau để chuyển góc nhìn, hoặc Tabs appearance primary có quá bốn lựa chọn, count, href hay isAttention."
   causes_vi:
-    - "Dùng ButtonGroup để gom nhiều thao tác, hoặc FilterButtonGroup và SegmentedControl để lọc hay chọn một giá trị."
-  nextStep_vi: "Đổi sang thành phần đúng ý nghĩa: Tabs (kind filter) để chuyển màn hoặc lọc danh sách, ChoiceChips hoặc RadioGroup để chọn giá trị trong biểu mẫu, Button riêng hoặc DropdownMenu cho thao tác (quy định one-way-to-choose)."
+    - "Dùng hàng nút bấm làm công tắc chuyển màn, hoặc dùng tab primary cho điều hướng hay bộ lọc có số đếm."
+  nextStep_vi: "Chuyển góc nhìn hay lọc bằng Tabs (kind filter); Tabs appearance primary chỉ giữ hai đến bốn lựa chọn cố định không có count, href hay isAttention."
   owner: op-retry
   kind: check-finding
 
@@ -2731,16 +2731,6 @@ FE_PACKAGE_SHAPE:
   owner: op-retry
   kind: check-finding
 
-FE_PAGE_HEADER_HAND_ROLLED:
-  title: "A page head is composed by hand instead of PageHeader"
-  title_vi: "Phần đầu trang được ghép tay thay vì dùng PageHeader"
-  meaning_vi: "Tại <file>, một PageHeader hoặc Breadcrumbs được nhập trực tiếp từ Grammar, vốn là bộ phận riêng của Page và không còn được export: phần đầu trang ghép tay không có dải nền, không có khoảng đệm trên và không có đường phân cách, nên mỗi trang tự quyết khoảng cách riêng."
-  causes_vi:
-    - "Nhập PageHeader hoặc Breadcrumbs từ Grammar để ghép đầu trang ở trang hoặc layout."
-  nextStep_vi: "Dùng khe header của Page với breadcrumbs, title và các khe cần thiết (description, meta, status, mark, actions, tabs) (quy định page-header-band)."
-  owner: op-retry
-  kind: check-finding
-
 FE_PAGE_METADATA_MISSING:
   title: "Every page exports metadata"
   title_vi: "Trang không khai báo metadata"
@@ -2904,10 +2894,9 @@ FE_ROUTE_ONE_PAGE:
 FE_ROUTE_PAGE_OUTSIDE_PAGE:
   title: "A page owner draws something outside its Page"
   title_vi: "Trang vẽ nội dung nằm ngoài Page"
-  meaning_vi: "Tại <file>, page owner vẽ một phần tử bên cạnh Page, hoặc tự dùng PageHeader hay PageContainer: khoảng đệm và nhịp dọc của trang bị quyết định lại ngoài Page."
+  meaning_vi: "Tại <file>, page owner vẽ một phần tử bên cạnh Page: khoảng đệm và nhịp dọc của trang bị quyết định lại ngoài Page."
   causes_vi:
     - "Đặt banner, footer hay khối khác cạnh Page trong page owner."
-    - "Ghép PageHeader và PageContainer bằng tay thay vì dùng Page."
   nextStep_vi: "Vẽ đúng một Page: dải đầu trang là header, mọi thứ khác trong thân, measure là measure của Page (quy định page-frame)."
   owner: op-retry
   kind: check-finding
@@ -4022,7 +4011,7 @@ HFS_E2E_IN_AUTOMATIC_GATE:
 HFS_EDITION_DEPRECATED:
   title: "hfs.json names the deprecated edition field"
   title_vi: "hfs.json còn trường edition đã bỏ"
-  meaning_vi: "Ứng dụng chỉ còn một ấn bản (luật R212, quyết định của chủ dự án ngày 2026-11-20), nên trường edition của hfs.json bị bỏ qua với mọi giá trị. Đây là cảnh báo, không chặn; một đợt phát hành sau sẽ xoá hẳn trường này."
+  meaning_vi: "Ứng dụng chỉ còn một ấn bản (luật R212), nên trường edition của hfs.json bị bỏ qua với mọi giá trị. Đây là cảnh báo, không chặn."
   causes_vi:
     - "hfs.json vẫn ghi edition (lite hoặc full) từ trước khi gộp ấn bản"
   nextStep_vi: "Xoá trường edition khỏi hfs.json; không cần đổi gì khác."
@@ -4197,7 +4186,7 @@ HFS_CHECK_CACHE_UNWARMED:
   causes_vi:
     - "Sửa mã rồi chạy `starci app check` nhưng chưa commit bản ghi vừa ghi"
     - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nên mọi họ phải tính lại một lần"
-  nextStep_vi: "Không cần làm gì để lần chạy xanh. Để push, dùng `npx --no-install starci app push` (tự commit bản ghi rồi push); bộ gộp lane (`lane land`) cũng tự commit. Không sửa tay thư mục cache."
+  nextStep_vi: "Không cần làm gì để lần chạy xanh. Để push, dùng `npx --no-install starci app push` (tự commit bản ghi rồi push); `lane gate --push --land` cũng tự commit. Không sửa tay thư mục cache."
   owner: op-retry
   kind: check-finding
 
@@ -4933,7 +4922,7 @@ HFS_SOPS_RECIPIENTS:
   title_vi: "Rule .sops.yaml của một môi trường không đúng bộ recipient"
   meaning_vi: "Rule mà sops dùng cho member của một môi trường không nêu đúng bộ recipient của policy (R451, PROJECT-STACKS-5): dev chỉ có recipient của harness (`age173qf…`); staging và production có đúng khóa của VPS mà môi trường deploy tới cùng khóa backup của server đó, và không bao giờ có khóa harness. Một recipient không phải khóa nào được khai trong ops/vps/recipients.yaml là identity riêng của app, không được phép."
   causes_vi:
-    - "App được tạo trước policy 2026-11-21: `starci app secret init` cũ sinh một identity riêng cho app."
+    - "`starci app secret init` đã sinh một identity riêng cho app."
     - "Rule staging hoặc production còn khóa harness hoặc khóa owner cũ."
     - "Mức độ là dữ liệu: khi `enforce` của ops/vps/recipients.yaml (hoặc của server) còn false, mọi phát hiện R451 chỉ là cảnh báo ở mọi env; khi true thì là lỗi, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Dev: `starci app secret recipients --env dev --add <harness> --remove <khóa riêng> --execute`, rồi seal lại từng member. Staging/production: ghi rule `age: <khóa server>,<khóa backup>` và reseal member TRÊN server bằng khóa server (sops updatekeys, không ghi plaintext ra đĩa); máy dev chỉ giữ nửa public."
@@ -4946,7 +4935,7 @@ HFS_SOPS_IDENTITY_MISMATCH:
   title_vi: "SOPS_AGE_KEY trên máy này không mở được member dev"
   meaning_vi: "`starci app check --env local` so nửa public của SOPS_AGE_KEY mà lookup sẽ chọn (biến môi trường, `.claude/secret.env` của app, của main checkout, rồi secret.env của harness) với recipient của member dev đầu tiên. Không khớp thì `stack up` sẽ bị từ chối. Thông báo nêu tệp đã đọc, prefix recipient của nó và prefix cần có. Chỉ là cảnh báo, chỉ cho môi trường dev: máy dev không giữ khóa của staging/production là đúng."
   causes_vi:
-    - "Một khóa khác (ví dụ khóa package) bị dán đè lên SOPS_AGE_KEY trong `.claude/secret.env` của app (sự cố 2026-11-21)."
+    - "Một khóa khác (ví dụ khóa package) bị dán đè lên SOPS_AGE_KEY trong `.claude/secret.env` của app."
     - "Member dev còn seal cho một identity riêng của app (R451)."
   nextStep_vi: "Xóa hoặc đổi tên dòng SOPS_AGE_KEY sai; khóa package luôn nằm dưới tên riêng (ví dụ NIVO_PACKAGE_AGE_KEY), không bao giờ là SOPS_AGE_KEY. Khóa harness nằm trong secret.env của harness."
   owner: op-retry

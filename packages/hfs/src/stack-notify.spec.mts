@@ -35,7 +35,7 @@ function world(options: { url?: unknown; answer?: number; fail?: Error; declared
   };
   const ctx = {
     env: {}, now: () => Date.UTC(2026, 9, 31, 8, 30, 15), sleep: async () => {}, fetch: fetchDouble,
-    sops: { decrypt: () => ({ WEBHOOK_URL: options.url ?? URL_VALUE }), decryptBinary: () => '' },
+    sops: { decrypt: () => ({ WEBHOOK_URL: options.url ?? URL_VALUE }) },
   } as unknown as StackContext;
   const declared = options.declared === undefined ? { webhook: { member: 'notify', key: 'WEBHOOK_URL' }, on: ['accepted', 'rolled-back', 'rollback-failed', 'failed'] } : options.declared;
   const config = { notify: declared, secretsDir, stack: 'shop', env: 'production' } as unknown as DeployConfig;

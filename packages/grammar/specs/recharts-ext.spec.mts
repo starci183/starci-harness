@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url"
 import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { AreaChart, BarChart, CHART_TONES, CHART_TONE_TOKEN, DonutChart, LineChart, Sparkline, barFills, chartToneColor, chartToneSoftColor, donutSlices, type DonutSegment } from "../src/core/ext/recharts/index.ts"
+import { AreaChart, BarChart, CHART_TONES, CHART_TONE_TOKEN, DONUT_RING_WIDTH, DonutChart, LineChart, Sparkline, barFills, chartToneColor, chartToneSoftColor, donutSlices, type DonutSegment } from "../src/core/ext/recharts/index.ts"
 import { AreaFill } from "../src/core/ext/recharts/AreaChart.tsx"
 import { ChartTooltip } from "../src/core/ext/recharts/shared.tsx"
 
@@ -75,12 +75,18 @@ test("loading is a Grammar Skeleton of the box, with no name announced and the b
 })
 
 test("empty shows the label from props in the same box, and no drawing", () => {
-    for (const Chart of [BarChart<Week>, LineChart<Week>, Sparkline<Week>, AreaChart<Week>]) {
+    for (const Chart of [BarChart<Week>, LineChart<Week>, AreaChart<Week>]) {
         const html = renderToStaticMarkup(createElement(Chart, { ...words, data: [] }))
         assert.match(html, /data-state="empty"/)
         assert.match(html, /No orders yet/)
         assert.doesNotMatch(html, /role="img"/)
     }
+})
+
+test("a Sparkline with no data, or only zeros, draws nothing", () => {
+    assert.equal(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: [] })), "")
+    assert.equal(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: weekly.map((row) => ({ ...row, orders: 0 })) })), "")
+    assert.match(renderToStaticMarkup(createElement(Sparkline<Week>, { ...words, data: [], isLoading: true })), /data-state="loading"/)
 })
 
 test("a tone is a Grammar token, never a literal colour", () => {
@@ -223,5 +229,13 @@ test("a donut loads as all Skeleton, and with no positive part shows the empty l
         assert.match(empty, /data-state="empty"/)
         assert.match(empty, /No lessons yet/)
         assert.doesNotMatch(empty, /role="img"/)
+        assert.match(empty, /data-slot="track"[^>]*border:8px solid var\(--grammar-bar-track/, "the empty state is the bare track ring")
     }
+})
+
+test("bars follow HeroUI ProgressBar sizes: the ring is the md track thick (8px) over a ring of the track colour", () => {
+    assert.equal(DONUT_RING_WIDTH, 8)
+    const html = renderToStaticMarkup(createElement(DonutChart, { ...donut, data: topics.slice(0, 3), size: 120 }))
+    assert.match(html, /data-slot="track"[^>]*border:8px solid var\(--grammar-bar-track/)
+    assert.ok(html.indexOf('data-slot="track"') < html.indexOf('role="img"'), "the track ring is under the parts")
 })

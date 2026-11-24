@@ -160,7 +160,7 @@ owner and call it from each input object's zod `superRefine`, converting every r
 Nested input schemas compose their own refinement. The reader
 applies changed and newly added bounds automatically; required fields, types and formats remain in zod. Conflicting GraphQL
 bounds across services and undecidable backend bounds refuse generation; snapshot checks detect changed limits.
-Emit contracts with matching HFS and CLI versions before codegen; legacy or unsupported bounds metadata refuses generation.
+Emit contracts with matching HFS and CLI versions before codegen; unsupported bounds metadata refuses generation.
 
 The edition is chosen once at scaffold: a lite app stays lite and a full app stays full, and `starci app upgrade` refuses a lite app (`HFS_UPGRADE_EDITION_FIXED`). `starci app check --edition <edition>` accepts only the edition `hfs.json` declares.
 
@@ -325,8 +325,7 @@ Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (no
 ## Secrets
 
 `starci app secret` keeps an app's sealed members (the standard is the harness's PROJECT-STACKS-5): one per provider,
-`.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte, a legacy dotenv `<member>.enc`
-read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mts` names both). `set --env <env> <provider> <KEY> [KEY ...]`
+`.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte (`runtime/scripts/lib/sealed-member.mts` names it). `set --env <env> <provider> <KEY> [KEY ...]`
 seals every named key in one sops write (`runtime/scripts/hfs/secret.mts`): on a terminal it prompts `<KEY>: ` for each with
 masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
 one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
@@ -343,9 +342,7 @@ looked and the one line that fixes it. `audit [--env <env>]` names every deviati
 <provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mts`). `server-key --env <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
 owner key, `--rotate` replaces it, `--backup` is refused (the server key is never copied into a repository; its break-glass
-backup lives only in the harness repository's break-glass environment), and `--restore github`, legacy for an old Environment backup only
-(nothing writes one any more), writes the GitHub Environment
-`<env>`'s SOPS_AGE_KEY back to the server (`stack/server-key.mts`). No output carries a value
+backup lives only in the harness repository's break-glass environment) (`stack/server-key.mts`). No output carries a value
 except `get --reveal`.
 
 ## Sonar

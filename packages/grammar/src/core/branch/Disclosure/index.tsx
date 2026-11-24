@@ -27,15 +27,10 @@ export type DisclosureProps = NoChildren & {
     /** Heading level of the trigger's heading element. */
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
     /**
-     * What the trigger is. `row` (default) is the full-size row of a list or a card. `quiet` is a small link-toned line with the
+     * What the trigger is. `row` (default) is the full-size row of a list or a card. `quiet` is a small muted line (the secondary text colour, owner 2026-11-23), its caret 1em of its words, with the
      * chevron before the words and the content folded under it (a note such as "Evidence (2)" that a reader may skip).
      */
     readonly kind?: "row" | "quiet"
-    /**
-     * The side of the chevron. `end` (default for `row`) draws it after the words; `start` draws it before them, pointing toward the
-     * reading direction while closed and down when open (a source text folded under its title). A `quiet` disclosure defaults to `start`.
-     */
-    readonly chevron?: "start" | "end"
 }
 
 /*
@@ -61,9 +56,13 @@ const DisclosureInner = ({
     isDisabled = false,
     headingLevel = 3,
     kind = "row",
-    chevron,
 }: DisclosureProps) => {
-    const chevronSide = chevron ?? (kind === "quiet" ? "start" : "end")
+    /*
+     * THE DISCLOSURE CARET (owner 2026-11-23): it expands HERE, so it stands BEFORE the label at 1em of it, in its colour, pointing toward the
+     * reading direction while closed and turning 90 degrees down when open (one glyph, never swapped). A caret AFTER words means "goes
+     * elsewhere" and never turns. The whole row (caret and label) is the press target.
+     */
+    const chevronSide = "start"
     const indicator = <HeroDisclosure.Indicator className="starci-core-disclosure-indicator" data-contract="MOTION-2" />
     const [uncontrolled, setUncontrolled] = useState(defaultExpanded)
     const expanded = isExpanded ?? uncontrolled
@@ -89,13 +88,12 @@ const DisclosureInner = ({
         >
             <HeroDisclosure.Heading className="starci-core-disclosure-heading" level={headingLevel}>
                 <HeroDisclosure.Trigger className="starci-core-disclosure-trigger" data-contract="FOCUS-1" data-grammar-disclosure-trigger="true" {...(hasSummary ? { "aria-describedby": summaryId } : {})}>
-                    {chevronSide === "start" ? indicator : null}
+                    {indicator}
                     {leading === undefined ? null : isLoading
                         ? <SkeletonPlaceholder shape="circle"><StepMark state={leading.state} position={leading.position} /></SkeletonPlaceholder>
                         : <StepMark state={leading.state} position={leading.position} />}
                     <span className="starci-core-disclosure-title">{title}</span>
                     {hasSummary ? <span id={summaryId} aria-hidden="true" className="starci-core-disclosure-summary" data-grammar-disclosure-summary="true">{isLoading ? <SkeletonPlaceholder>{summary}</SkeletonPlaceholder> : summary}</span> : null}
-                    {chevronSide === "end" ? indicator : null}
                 </HeroDisclosure.Trigger>
             </HeroDisclosure.Heading>
             <HeroDisclosure.Content className="starci-core-disclosure-panel" data-grammar-disclosure-panel="true">

@@ -2,7 +2,6 @@
 
 import { Description as HeroDescription, Header, Label as HeroLabel, ListBox, Separator } from "@heroui/react"
 import { useContext, useId, useRef, useState, type ReactNode } from "react"
-import { Button as AriaButton } from "react-aria-components"
 import { OverlayTriggerStateContext } from "react-aria-components/Dialog"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import { AnchoredTooltip } from "../../branch/Tooltip/index.js"
@@ -66,14 +65,12 @@ export type SidebarProps = NoChildren & {
     readonly presentation?: "rail" | "drawer"
     readonly isCollapsed?: boolean
     /**
-     * The collapse control's name. With `collapsePlacement="bottom"` (0.46.0) it is also the visible words of the labelled row at the foot of the rail ("Collapse"); the collapsed rail
-     * then shows the expand control as the icon alone, named by `expandLabel`, at the same place.
+     * The collapse control is always Grammar's icon button at the top of the rail, expanded and collapsed. `collapseLabel` and `expandLabel` are its names, `toggleSource` its glyph; the
+     * button stands once the app passes all three and `onCollapsedChange`.
      */
     readonly collapseLabel?: string
     readonly expandLabel?: string
     readonly toggleSource?: IconSource
-    /** Where the collapse control stands (0.46.0): `top` (default) the icon button above the list; `bottom` a labelled row at the foot of the rail, under the footer. */
-    readonly collapsePlacement?: "top" | "bottom"
     readonly header?: ReactNode
     readonly footer?: ReactNode
     readonly onAction?: (id: string) => void
@@ -101,7 +98,6 @@ export const Sidebar = ({
     collapseLabel,
     expandLabel,
     toggleSource,
-    collapsePlacement = "top",
     header,
     footer,
     onAction,
@@ -145,7 +141,7 @@ export const Sidebar = ({
             className={sidebarClassName}
             data-contract={["FE-APP-SHELL-6", "OVERFLOW-2", presentation === "drawer" ? "MEASURE-2" : "MEASURE-6"].join(" ")}
         >
-            {canToggle && collapsePlacement === "top" ? (
+            {canToggle ? (
                 <div className={sidebarToggleClassName} data-contract="PADDING-2">
                     <IconButton
                         source={toggleSource}
@@ -216,7 +212,7 @@ export const Sidebar = ({
                                 {...(item.href === undefined ? {} : { href: item.href })}
                                 {...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled })}
                             >
-                                {item.source === undefined ? null : <Icon source={item.source} usage="leading" />}
+                                {item.source === undefined ? null : <Icon source={item.source} usage="control" />}
                                 {collapsed ? null : item.description === undefined ? <span className={sidebarItemLabelClassName} data-contract="FLOW-4 FONT-2">{item.label}</span> : (
                                     <div data-grammar-sidebar-copy="true">
                                         <HeroLabel className={sidebarItemLabelClassName} data-grammar-item-label="true" data-contract="FLOW-4 FONT-2">{item.label}</HeroLabel>
@@ -231,24 +227,6 @@ export const Sidebar = ({
                 ])}
             </ListBox>
             {collapsed || footer == null ? null : <div className={sidebarFooterClassName} data-contract="PADDING-3 PADDING-0">{footer}</div>}
-            {canToggle && collapsePlacement === "bottom" && toggleLabel !== undefined ? (
-                <div className="starci-core-sidebar-collapse-foot" data-grammar-sidebar-collapse="bottom" data-contract="PADDING-3">
-                    {collapsed ? (
-                        <IconButton
-                            source={toggleSource}
-                            label={toggleLabel}
-                            aria-expanded={false}
-                            aria-controls={listId}
-                            onPress={() => { hideTooltip(); onCollapsedChange(false) }}
-                        />
-                    ) : (
-                        <AriaButton className="starci-core-sidebar-collapse-row" type="button" aria-expanded aria-controls={listId} onPress={() => { hideTooltip(); onCollapsedChange(true) }}>
-                            <Icon source={toggleSource} usage="leading" />
-                            <span className="starci-core-sidebar-collapse-text">{toggleLabel}</span>
-                        </AriaButton>
-                    )}
-                </div>
-            ) : null}
         </div>
         <AnchoredTooltip id={tooltipId} target={tooltip?.target ?? null} content={tooltip?.label} isOpen={collapsed && tooltip !== null} />
         </>

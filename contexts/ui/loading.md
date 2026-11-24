@@ -28,7 +28,7 @@ loading and error together cannot be built. `isValidating` is the one flag that 
 and one `error` slot (`{ message, description?, actionLabel?, onAction? }`); every leaf, branch and composite takes `isLoading` and
 nothing else. The component derives its skeleton from the rows and fields it was given (the same-shape placeholder), or draws a
 default of three rows when it was given none. `PaneSection` and `Section` tell every Grammar component inside them, so one flag
-covers the band. `loadingRows`, `loadingContent` and `isSkeleton` no longer exist.
+covers the band.
 
 ## The region carries it
 
@@ -46,7 +46,7 @@ button. A component draws the box it has when ready, inert (not focusable) and u
 - a create form is never loading, an edit form is while it waits for the existing data.
 
 `aria-busy` has one owner: the region. `Section`, `PaneSection`, `SurfaceCard`, `Form` and a `Dialog` or `Drawer` body carry it, and nothing inside them adds
-another (the components read `useRegionOwnsBusy`). A component that loads on its own, outside any region (an explicit `isLoading`: a field, `ChoiceChips`,
+another (the components read `useRegionOwnsBusy`). A component that loads on its own, outside any region (an explicit `isLoading`: a field,
 `DescriptionList`, `Alert`, `Calendar`, a chart of the ext, `Meter`, `Board`, `ScheduleGrid`, a table or list that publishes its own scope), is its own region and carries it.
 A `Dialog`, `Drawer`, `Popover`, `DropdownMenu`, `Select` and `ComboBox` popover starts a fresh region, so their content never inherits the page's loading.
 
@@ -98,7 +98,6 @@ A skeleton equals the ready box: the shape comes from the same fields the ready 
 R367: `starci-fe/no-swr-default-array` (a hook that folds a read to `[]` returns that read's `isLoading`),
 `no-foreign-slot-status` (a slot never copies another slot's loading or error; build it from every read it draws with the one
 `slotOfReads` helper of hooks/slot), `no-validating-as-loading`, `no-placeholder-object` and `no-hand-skeleton` (an app draws no
-`Skeleton` or a hand-drawn bubble skeleton; the plugin requests every published rule at error). The older
+`Skeleton` or a hand-drawn bubble skeleton; the plugin requests every published rule at error). The
 LOADING-1 to LOADING-5 laws (`no-resting-twin-component`, `no-placeholder-prop`, `no-resting-branch-at-call-site`) stand beside
-them. The codemod `starci app codemod loading-states` renames `isSkeleton` to `isLoading`, drops `loadingRows`, rewrites the old
-slot literals, and reports with a code what it cannot rewrite.
+them.

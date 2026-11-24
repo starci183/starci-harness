@@ -21,11 +21,11 @@ import { rules as mascotRules } from "./mascot.ts"
 import { rules as mediaRules } from "./media.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
+import { rules as noRawSpacingStyleRules } from "./no-raw-spacing-style.ts"
 import { rules as noRawTypeSizeRules } from "./no-raw-type-size.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
-import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
 import { rules as rowsInCardRules } from "./rows-in-card.ts"
@@ -90,11 +90,11 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "media", rules: mediaRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
+  { law: "no-raw-spacing-style", rules: noRawSpacingStyleRules },
   { law: "no-raw-type-size", rules: noRawTypeSizeRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
   { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
-  { law: "page-header", rules: pageHeaderRules },
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },
@@ -142,6 +142,7 @@ export const rules: Readonly<Record<string, Rule.RuleModule>> = Object.fromEntri
  */
 export const COUNTING: Readonly<Record<string, { readonly law: string; readonly until: string }>> = Object.freeze({
   "starci-grammar/no-raw-type-size": { law: "TYPE-ROLES", until: "both apps have moved their raw type sizes onto the type roles" },
+  "starci-grammar/no-raw-spacing-style": { law: "SPACING-ROLES", until: "both apps have moved their raw style spacing onto the spacing roles" },
 })
 
 /** The level of one published rule: warn in the counting cohort, error otherwise. */

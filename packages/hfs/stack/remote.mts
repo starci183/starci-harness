@@ -9,7 +9,7 @@
 // `bash -s` fail with `set: pipefail`). Key material lives in memory and in a private temp directory only; it is never in argv (only the key
 // FILE path is), in a line, in a result or in an error message.
 import fs from 'node:fs';
-import { CI_MEMBER, isLegacyName, memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
+import { CI_MEMBER, memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import type { DeployConfig, SealedRemote } from './config.mjs';
@@ -103,21 +103,6 @@ function sshCommandArgv(sshCmd: unknown): Argv {
  */
 export const SEALED_SSH_KEYS = Object.freeze({ sshKey: 'privateKey', knownHosts: 'knownHosts' });
 
-/** A legacy binary member is the file itself; a JSON object around it ({ data | <key> }, the re-sealed shape of `starci app secret rename`) is unwrapped. */
-function unwrap(text: string, key: string): string {
-  const body = lfOnly(text);
-  const trimmed = body.trim();
-  if (!trimmed.startsWith('{')) return body;
-  // reason: the envelope is JSON parsed from a sealed member; only string fields are read
-  let parsed: any;
-  try { parsed = JSON.parse(trimmed); } catch { return body; }
-  for (const name of ['data', key]) if (typeof parsed[name] === 'string') return lfOnly(parsed[name]);
-  return body;
-}
-
-/** The sops format a sealed member is read as: a `.enc.yaml` member is YAML, a legacy `.enc` one dotenv. */
-const memberFormat = (file: string): string => (isLegacyName(file) ? 'dotenv' : 'yaml');
-
 /** Opens one member through the sops seam; a failure is refused naming the member and the seam's own reason (format, recipients, identity). */
 function openMember<T>(slug: string, read: () => T): T {
   try { return read(); } catch (error) { throw refusal('STACK_REMOTE_SEALED', `cannot open the sealed member ${slug}: ${(error as Error).message}`); }
@@ -135,7 +120,7 @@ export function sealedPort(value: unknown, slug: string): number | undefined {
 function opsMember(ctx: StackContext, config: DeployConfig, sealed: SealedRemote): { account: string; port: number | undefined } {
   const slug = sealed.ops;
   const file = memberFile(config.secretsDir, slug);
-  const map = openMember(slug, () => ctx.sops.decrypt(file, memberFormat(file)));
+  const map = openMember(slug, () => ctx.sops.decrypt(file, 'yaml'));
   for (const name of ['VPS_HOST', 'VPS_USER']) {
     const value = map[name];
     if (typeof value !== 'string' || !ACCOUNT.test(value) || value.startsWith('-')) throw refusal('STACK_REMOTE_OPS', `${slug} must hold ${name} (letters, digits, . _ @ -)`);
@@ -144,12 +129,10 @@ function opsMember(ctx: StackContext, config: DeployConfig, sealed: SealedRemote
 }
 
 /**
- * The text a sealed SSH member holds under `key` (SEALED_SSH_KEYS): a `.enc.yaml` member is read as YAML and the key taken from
- * its map; a legacy `.enc` member is the sops binary or JSON envelope it was sealed as.
+ * The text a sealed SSH member holds under `key` (SEALED_SSH_KEYS): the `.enc.yaml` member is read as YAML and the key taken from its map.
  */
 function sshMember(ctx: StackContext, config: DeployConfig, slug: string, key: string): string {
   const file = memberFile(config.secretsDir, slug);
-  if (isLegacyName(file)) return unwrap(openMember(slug, () => ctx.sops.decryptBinary(file)), key);
   const map = openMember(slug, () => ctx.sops.decrypt(file, 'yaml'));
   const held = map[key];
   if (typeof held !== 'string' || held === '')

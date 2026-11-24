@@ -4,7 +4,7 @@ import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 
 /**
- * Grammar never shows scrollbars (owner, 2026-11-09, OVERFLOW-6). Every scroll area is drawn by Grammar, which hides the bar and
+ * Grammar never shows scrollbars (OVERFLOW-6). Every scroll area is drawn by Grammar, which hides the bar and
  * fades the edge where content continues (HeroUI's ScrollShadow behaviour). An app element that makes its own scroll area with
  * an `overflow-y-auto` / `overflow-auto` class (or the `-x-`, `-scroll` forms) has no such edge and, in a browser that draws bars, shows one.
  *

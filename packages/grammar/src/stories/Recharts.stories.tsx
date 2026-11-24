@@ -86,19 +86,22 @@ export const LineChart: Story = {
   },
 };
 
-/** The bare trend line: no axes, no tooltip, 32px high, in a tone, beside a figure. */
+/** The bare trend line: no axes, no tooltip, 32px high, always the neutral muted ink; no data or only zeros draws nothing. */
 export const Sparkline: Story = {
   render: () => (
     <Matrix maxWidth={360}>
-      {(['accent', 'success', 'danger', 'default'] as const).map((tone) => (
-        <State key={tone} label={`Sparkline, ${tone}`} direction="column">
-          <E.Sparkline data={weekly} xKey="week" yKey="orders" tone={tone} ariaLabel={`Orders, last 7 weeks, ${tone}`} emptyLabel="No orders yet" />
-        </State>
-      ))}
+      <State label="Sparkline, a trend" direction="column">
+        <E.Sparkline data={weekly} xKey="week" yKey="orders" ariaLabel="Orders, last 7 weeks" />
+      </State>
+      <State label="Sparkline, no data or all zeros: nothing is drawn" direction="column">
+        <E.Sparkline data={none} xKey="week" yKey="orders" ariaLabel="Orders, last 7 weeks" />
+        <E.Sparkline data={weekly.map((row) => ({ ...row, orders: 0 }))} xKey="week" yKey="orders" ariaLabel="Orders, last 7 weeks" />
+      </State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-component="Sparkline"] .recharts-line-curve').length).toBe(4));
+    await waitFor(() => expect(canvasElement.querySelectorAll('[data-component="Sparkline"] .recharts-line-curve').length).toBe(1));
+    expect(canvasElement.querySelectorAll('[data-component="Sparkline"]')).toHaveLength(1);
     expect(canvasElement.querySelector('[data-component="Sparkline"] .recharts-xAxis')).toBeNull();
   },
 };
@@ -109,18 +112,17 @@ export const LoadingAndEmpty: Story = {
     <Matrix maxWidth={720}>
       <State label="Loading" direction="column">
         <E.BarChart data={weekly} xKey="week" yKey="orders" isLoading ariaLabel="Orders per week" emptyLabel="No orders yet" />
-        <E.Sparkline data={weekly} xKey="week" yKey="orders" isLoading ariaLabel="Orders, last 7 weeks" emptyLabel="No orders yet" />
+        <E.Sparkline data={weekly} xKey="week" yKey="orders" isLoading ariaLabel="Orders, last 7 weeks" />
       </State>
       <State label="Empty" direction="column">
         <E.LineChart data={none} xKey="week" yKey="orders" ariaLabel="Orders per week" emptyLabel="No orders yet" />
-        <E.Sparkline data={none} xKey="week" yKey="orders" ariaLabel="Orders, last 7 weeks" emptyLabel="No orders yet" />
       </State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
     expect(frames(canvasElement, 'loading')).toHaveLength(2);
-    expect(frames(canvasElement, 'empty')).toHaveLength(2);
-    expect(within(canvasElement).getAllByText('No orders yet')).toHaveLength(2);
+    expect(frames(canvasElement, 'empty')).toHaveLength(1);
+    expect(within(canvasElement).getAllByText('No orders yet')).toHaveLength(1);
   },
 };
 

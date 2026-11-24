@@ -49,8 +49,8 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                     <dt className="starci-core-description-term starci-core-description-stat-term">
                         {item.icon === undefined ? null : <IconTile source={item.icon} tone="neutral" />}
                         <span>{item.term}</span>
-                        {/* The pressable cue (0.48.0): a figure that leads somewhere ends its term with the quiet chevron a pressable row ends with, so a link reads as one before a hover. */}
-                        {follows ? <span className="starci-core-figure-cue" data-grammar-figure-cue="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span> : null}
+                        {/* The pressable cue (0.48.0): a figure that leads somewhere ends its term with the quiet chevron a pressable row ends with, so a link reads as one before a hover. A caret, so 1em of the term (12, label.group), in its muted colour. */}
+                        {follows ? <span className="starci-core-figure-cue" data-grammar-figure-cue="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="text" /></span> : null}
                     </dt>
                     <dd className="starci-core-description-value starci-core-description-figure" data-contract="FONT-5">
                         <span className="starci-core-description-figure-value">{isLoading ? pending(item.value) : item.value}</span>
@@ -66,10 +66,10 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                         )}
                     </dd>
                     {item.meta === undefined ? null : (
-                        <dd className="starci-core-description-meta" data-contract="FONT-2">
+                        <dd className="starci-core-description-meta" data-contract="FONT-2" {...(item.trend === undefined || isLoading ? {} : { "data-grammar-trend-tone": trendTone(item) })}>
                             {item.trend === undefined || isLoading ? null : (
                                 <>
-                                    <span className="starci-core-description-trend" data-grammar-trend={item.trend} data-grammar-trend-tone={trendTone(item)} aria-hidden="true">{TREND_MARKS[item.trend]}</span>
+                                    <span className="starci-core-description-trend" data-grammar-trend={item.trend} aria-hidden="true">{TREND_MARKS[item.trend]}</span>
                                     <span className="starci-core-visually-hidden">{item.trendLabel ?? TREND_WORDS[item.trend]}{". "}</span>
                                 </>
                             )}

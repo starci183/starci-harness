@@ -16,7 +16,7 @@ import {validateResources,RESOURCE_KEYS} from './resources-config.mjs';
 import type {ResourcesBlock} from './resources-config.mjs';
 import { ENV_NAME, connectorSecret } from './secrets.mjs';
 import {byCodeUnit} from './by-code-unit.mjs';
-import {EFFORT_LEVELS,MODELS_KEYS,validateModelsBlock,refuseRemovedKeys,shippedTiers} from './model-config.mjs';
+import {EFFORT_LEVELS,MODELS_KEYS,validateModelsBlock,shippedTiers} from './model-config.mjs';
 import type {AllocationSettings,ModelsBlock,RuntimePool,RuntimeProfile} from './model-config.mjs';
 const knownNames=(names: Iterable<string>): string=>[...names].sort(byCodeUnit).join(', ');
 export {readDotenv,connectorSecret} from './secrets.mjs';
@@ -396,7 +396,6 @@ const validateConfigBlocks=(config: unknown,_knownProviders: ReadonlySet<string>
 /** Validates a parsed config.yaml against the closed schema and returns it as the owner config; throws `Invalid config.yaml: ...` otherwise. */
 export function validateConfig(config: unknown): OwnerConfig{
   const profile=runtimeProfile(),runtimes=profile?.runtimes??{};
-  refuseRemovedKeys(config);
   validateEarlyConfigBlocks(config);
   const knownProviders=new Set(Object.values(runtimes).map(runtime=>runtime?.provider).filter((provider): provider is string=>Boolean(provider)));
   validateConfigBlocks(config,knownProviders,runtimes,profile);

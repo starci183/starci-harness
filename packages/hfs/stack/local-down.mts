@@ -7,6 +7,7 @@ import type { LocalConfig } from './local-config.mjs';
 import { compose, ownedProcess, stateOf, stopProcess } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
+import { stopEdges } from './local-edge.mjs';
 
 /** `down` for a dev environment. */
 export async function downLocal(ctx: StackContext, local: LocalConfig, { execute = false }: { execute?: boolean } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
@@ -19,13 +20,15 @@ export async function downLocal(ctx: StackContext, local: LocalConfig, { execute
     if (owned.ours) running.push([name, entry]);
     else if (owned.stale !== null) discarded.push(`process ${name}: discarded a stale record, left running: ${owned.stale}`);
   }
-  const lines = [`processes to end: ${running.map(([name, entry]) => `${name} (pid ${entry.pid})`).join(', ') || 'none'}`, `compose project to stop: ${local.project} (volumes and images stay)`, ...discarded];
+  const edges = Object.keys(record.edges ?? {});
+  const lines = [`processes to end: ${running.map(([name, entry]) => `${name} (pid ${entry.pid})`).join(', ') || 'none'}${edges.length > 0 ? `; edges: ${edges.join(', ')}` : ''}`, `compose project to stop: ${local.project} (volumes and images stay)`, ...discarded];
   if (!execute) return { ok: true, lines: [...lines, 'dry run: nothing was stopped; arm it with --execute'], data: { processes: running.map(([name]) => name) } };
   for (const [name, entry] of running) {
     stopProcess(ctx, entry.pid, deps);
     lines.push(`process ${name}: ended`);
   }
-  writeRecord(dir, { ...record, processes: {} });
+  lines.push(...await stopEdges(ctx, record, deps));
+  writeRecord(dir, { ...record, processes: {}, edges: {} });
   const stopped = await compose(ctx, local, ['down'], { label: 'compose down' });
   lines.push(stopped.status === 0 ? `compose ${local.project}: stopped, volumes kept` : `compose ${local.project}: down failed (${(stopped.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 160)})`);
   return { ok: stopped.status === 0, lines, data: { processes: running.map(([name]) => name) } };

@@ -55,14 +55,14 @@ export const RowActionEndAndHashNumber: Story = {
     ),
 }
 
-/** Chevron before the title, and the quiet link-toned disclosure (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
+/** Chevron before the title, and the quiet disclosure: a muted line, its caret 1em of its words (DNA-COMMON-DISCLOSURE-CHEVRON-START). */
 export const DisclosureChevronAndQuiet: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="chevron end (default) / start / start, open" direction="column">
                 <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" body={<G.Text>The original passage.</G.Text>} />
-                <G.Disclosure title="Source text" chevron="start" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" body={<G.Text>The original passage.</G.Text>} />
+                <G.Disclosure title="Source text" defaultExpanded body={<G.Text>The original passage.</G.Text>} />
             </State>
             <State label="quiet, closed / open" direction="column">
                 <G.Disclosure kind="quiet" title="Evidence (2)" body={<G.Text>Two messages from the customer.</G.Text>} />
@@ -156,7 +156,7 @@ const AlignGrid = ({ align, content }: { readonly align: "end" | "center"; reado
     <div style={{ height: "18rem", display: "flex" }}>
         <G.PaneGrid label="Chat" areas={["main"]} columns={["fill"]}>
             <G.Pane area="main" surface label="Thread">
-                <G.PaneSection scroll={{ label: "Messages", role: "log", align }}>{content}</G.PaneSection>
+                <G.PaneSection scroll={{ label: "Messages", align }}>{content}</G.PaneSection>
             </G.Pane>
         </G.PaneGrid>
     </div>
@@ -179,44 +179,6 @@ export const AlertAccentTone: Story = {
             <State label="accent, with a dismiss / loading" direction="column">
                 <G.Alert tone="accent" title="Welcome to Acme" description="Ask a question to begin." dismissLabel="Dismiss" />
                 <G.Alert tone="accent" title="Welcome to Acme" description="Ask a question to begin." isLoading />
-            </State>
-        </Matrix>
-    ),
-}
-
-const levelOptions = ["2.4M", "3.5M", "4.8M", "8M", "12M"].map((level) => ({ value: level, label: level }))
-
-const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ value: day, label: day }))
-
-/**
- * The two choice groups: ChoiceChips at a Chip's height beside a Badge (DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT), and ChoiceButtons at a
- * Button's height, md and sm (DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT).
- */
-export const ChoiceChipsAndButtons: Story = {
-    render: () => (
-        <Matrix maxWidth={420}>
-            <State label="choice chips / a badge of the same height / loading" direction="column">
-                <G.ChoiceChips label="Days" options={dayOptions} defaultValue="Mon" empty={empty} />
-                <G.Badge tone="accent">Mon</G.Badge>
-                <G.ChoiceChips label="Days loading" options={dayOptions} isLoading empty={empty} />
-            </State>
-            <State label="choice buttons md / sm / loading" direction="column">
-                <G.ChoiceButtons label="Level" options={levelOptions} defaultValue="3.5M" empty={empty} />
-                <G.ChoiceButtons label="Level small" size="sm" options={levelOptions} defaultValue="3.5M" empty={empty} />
-                <G.ChoiceButtons label="Level loading" options={levelOptions} isLoading empty={empty} />
-            </State>
-        </Matrix>
-    ),
-}
-
-/** ChoiceChips width fill: the chips share the row evenly, and wrap only when they cannot fit (DNA-COMMON-CHOICE-CHIPS-FILL). */
-export const ChoiceChipsFill: Story = {
-    render: () => (
-        <Matrix maxWidth={420}>
-            <State label="fill, one row / narrow, wrapped / loading" direction="column">
-                <G.ChoiceChips label="Days" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} />
-                <div style={{ maxWidth: 200 }}><G.ChoiceChips label="Days narrow" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} /></div>
-                <G.ChoiceChips label="Days loading" width="fill" options={dayOptions} isLoading empty={empty} />
             </State>
         </Matrix>
     ),
@@ -353,8 +315,8 @@ const LinkOn = ({ ground, label }: { readonly ground: string; readonly label: st
     </div>
 )
 
-/** A text link is the accent as text, underlined, on every ground (DNA-CORE-LINK-ACCENT-TEXT). */
-export const LinkAccentOnEveryGround: Story = {
+/** A text link is HeroUI v3's own link on every ground: the foreground, weight 500, no underline until hovered (DNA-CORE-LINK-ACCENT-TEXT). */
+export const LinkOnEveryGround: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="background / surface / secondary / tertiary" direction="column">

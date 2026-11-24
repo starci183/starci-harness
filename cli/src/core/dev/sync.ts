@@ -7,11 +7,17 @@ import { captureGit, currentBranch, git, repositoryRoot, resolveSha, trackedChan
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
-import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord } from "../deps/install-local.js"
+import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord, writeInstallRecord } from "../deps/install-local.js"
+import { stageTree, stagedOutputs, stagedTrackedChanges, swapStaged } from "./stage.js"
+import { declaredProcesses, processesOfApp } from "./declared.js"
+import type { Swapped } from "./stage.js"
 import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
-import { installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
+import { syncLockFile, withSyncLock } from "./sync-lock.js"
+import { smokeInstall, smokeLine } from "./smoke.js"
+import type { SmokeFailure } from "./smoke.js"
+import { installPlaces, installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import type { PrepareFailure } from "../../harness/prepare-tree.js"
@@ -29,6 +35,12 @@ const UNPREPARED = join("node_modules", ".starci-dev-sync-unprepared")
 
 /** Written in the git folder when a sync's migration failed, removed once one passes: the next sync migrates again even if nothing moved. */
 const UNMIGRATED = "starci-dev-sync-unmigrated"
+
+/**
+ * Written in the git folder when the swap of a staged build failed, removed once a swap or an in-place install passes. The failed sync had already
+ * fast-forwarded the checkout, so the next sync sees no commit to move: this mark makes it install, build, migrate and restart again whole.
+ */
+const UNSWAPPED = "starci-dev-sync-unswapped"
 
 /** Files no running process reads: a change of these alone restarts nothing. */
 const INERT = (file: string): boolean => file.endsWith(".md") || file.startsWith(".starciwork/") || file.startsWith(".github/") || file.startsWith("gallery/")
@@ -82,7 +94,7 @@ export interface DevSyncData {
     readonly restart: "done" | "skipped" | "failed" | "planned" | "none"
 }
 
-/** How one sync is asked for: by the verb, or by the batch lander from this machine's local settings. */
+/** How one sync is asked for: by the verb, or by a landing from this machine's local settings. */
 export interface DevSyncRequest {
     readonly checkout: string
     readonly local: readonly string[]
@@ -91,6 +103,37 @@ export interface DevSyncRequest {
     readonly restart: boolean
     readonly processes: DevSyncSettings["processes"]
     readonly say: (line: string) => void
+    /**
+     * A coordinator hotfix (core/hotfix/land.ts) committed in the checkout and pushed dev from it, so HEAD already is origin/dev: the commit the checkout was at
+     * before the hotfix, which the changed files, the install, the migration and the restarted sides are read from.
+     */
+    readonly since?: string
+    /** With `since`, a hotfix that touched no lockfile, migration, schema or workspace package: the api and web restart on their own build, the prepare scripts do not run. */
+    readonly light?: boolean
+}
+
+/** How many times a sync runs `npm ci` when it dies on a file something holds. */
+export const NPM_CI_TRIES = 4
+
+/** An install error of a file something holds for a moment (an antivirus scanning a large file it just saw written). */
+const HELD_FILE = /\b(?:ENOTEMPTY|EPERM|EBUSY|EACCES)\b/u
+
+/**
+ * `npm ci` at `root`, run again up to NPM_CI_TRIES times when it dies on a held file: before each new try every `node_modules` it wrote is removed
+ * with retries and a pause lets the holder go. Any other failure, or the last one, is thrown as it is.
+ */
+export const npmCiRetried = async (root: string, ci: (root: string) => Promise<void>, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms)), tries: number = NPM_CI_TRIES): Promise<void> => {
+    for (let attempt = 1; ; attempt += 1) {
+        try {
+            await ci(root)
+            return
+        } catch (error) {
+            const text = error instanceof Error ? error.message : String(error)
+            if (attempt >= tries || !HELD_FILE.test(text)) throw error
+            for (const place of installPlaces(root)) rmSync(place, { recursive: true, force: true, maxRetries: 10, retryDelay: 1000 })
+            await pause(5000 * attempt)
+        }
+    }
 }
 
 /** The seams of a sync that touch processes and node_modules, real by default and replaced by the specs. */
@@ -108,21 +151,42 @@ export interface DevSyncDeps {
     readonly pause: (ms: number) => Promise<void>
     /** One run of the app's pinned CLI (`app stack up` to migrate, `app stack restart`). */
     readonly appRun: (root: string, args: readonly string[]) => Promise<ToolRun>
+    /** The smoke check of a swapped install (core/dev/smoke.ts): what does not resolve; absent, none is made. */
+    readonly smoke?: (root: string) => readonly SmokeFailure[]
+    /**
+     * The build-first install (core/dev/stage.ts): a staging worktree at the new commit, its outputs and the tracked files its install changed, and the
+     * swap into the checkout. Absent, the install runs in place after the stop (safe-install.ts).
+     */
+    readonly stage?: {
+        readonly tree: (root: string, to: string) => Promise<string>
+        readonly outputs: (staging: string) => Promise<readonly string[]>
+        readonly tracked: (staging: string) => Promise<readonly string[]>
+        readonly swap: (staging: string, root: string, outputs: readonly string[], tracked: readonly string[]) => Promise<Swapped>
+    }
 }
 
 export const realDevSyncDeps: DevSyncDeps = {
     stackProcesses: readStackProcesses,
     stop: stopStackProcesses,
-    npmCi: (root) => appNpm(root, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci"),
+    npmCi: (root) => npmCiRetried(root, (at) => appNpm(at, ["ci", "--no-audit", "--no-fund"], "dev sync: npm ci")),
     prepare: async (root) => (await prepareTree(root, "dev sync")).failure,
     fs: realInstallFs,
     pause: (ms) => new Promise((done) => setTimeout(done, ms)),
     appRun: (root, args) => captureTool(process.execPath, [appCli(root), ...args], root),
+    smoke: smokeInstall,
+    stage: { tree: stageTree, outputs: stagedOutputs, tracked: stagedTrackedChanges, swap: (staging, root, outputs, tracked) => swapStaged(staging, root, outputs, tracked) },
 }
 
 const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
     const run = await captureGit(args, cwd)
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
+}
+
+/** True when the packages a sync names are exactly the overlay already installed: each with its version, the same name@version set. Pure. */
+export const sameOverlay = (named: readonly { readonly name: string; readonly version?: string | undefined }[], installed: readonly string[]): boolean => {
+    if (named.length !== installed.length || named.some((one) => one.version === undefined)) return false
+    const wanted = new Set(named.map((one) => `${one.name}@${String(one.version)}`))
+    return wanted.size === installed.length && installed.every((line) => wanted.has(line))
 }
 
 /** The packages one sync installs from the local registry: the ones the verb names, else this machine's standing overlay (`devSync.local`). Pure. */
@@ -145,6 +209,12 @@ export const overlayLine = (overlay: readonly string[]): string =>
  */
 export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     const root = await repositoryRoot(request.checkout)
+    // One sync of a checkout at a time, whoever asks (two landings, a hand run): a second one waits for the first. A dry run writes nothing and takes no lock.
+    if (!request.execute) return devSyncLocked(request, deps, root)
+    return withSyncLock(syncLockFile(root), request.say, () => devSyncLocked(request, deps, root), deps.pause)
+}
+
+const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: string): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     assertNpm(root)
     const lines: string[] = []
     const say = (line: string): void => {
@@ -157,12 +227,12 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const dirty = (await trackedChanges(root)).filter((file) => !ownFiles.includes(file))
     if (dirty.length > 0) throw new Refusal("DEV_SYNC_DIRTY", `${root} has tracked changes that are not a local overlay's: ${dirty.slice(0, 5).join(", ")}; the dev checkout only follows origin/dev, commit them on a lane instead`)
     const branch = await currentBranch(root)
-    // A detached HEAD is where the lander leaves the main checkout (at origin/dev): it is accepted once it is origin/dev or behind it.
+    // A detached HEAD at origin/dev is a valid main checkout: it is accepted once it is origin/dev or behind it.
     const detached = branch === undefined
     if (!detached && branch !== "dev") throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on ${branch}, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
     const fetched = await gitOk(root, ["fetch", "--quiet", "origin", "dev"])
     if (!fetched.ok) throw new Refusal("DEV_SYNC_FETCH", `git fetch origin dev in ${root}: ${fetched.err}`)
-    const from = await resolveSha(root, "HEAD")
+    const from = request.since === undefined ? await resolveSha(root, "HEAD") : await resolveSha(root, request.since)
     const to = await resolveSha(root, "origin/dev")
     if (!(await gitOk(root, ["merge-base", "--is-ancestor", from, to])).ok) {
         if (detached) throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on a detached HEAD (${from.slice(0, 9)}) that is not origin/dev (${to.slice(0, 9)}) or behind it, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
@@ -170,32 +240,41 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     }
     const commits = Number((await gitOk(root, ["rev-list", "--count", `${from}..${to}`])).out) || 0
     const files = from === to ? [] : (await git(root, ["diff", "--name-only", from, to])).split("\n").filter((file) => file !== "")
-    const requested = request.local.map(parseRequested)
-    const overlayChanged = overlayBefore.length > 0 || requested.length > 0
+    const named = request.local.map(parseRequested)
+    const aside = leftAside(root, deps.fs)
+    // The overlay this sync asks for is the one already installed (same name@version each, no committed pin or lockfile moved, a whole
+    // node_modules in place): nothing is restored, reinstalled or restarted for it, so the web the owner has open keeps running.
+    const keepsOverlay = overlayBefore.length > 0 && sameOverlay(named, overlayBefore) && !files.some((file) => ownFiles.includes(file)) && aside.length === 0 && existsSync(join(root, "node_modules"))
+    const requested = keepsOverlay ? [] : named
+    const overlayChanged = !keepsOverlay && (overlayBefore.length > 0 || requested.length > 0)
     // A tree the last sync could not build or migrate is built and restarted again whole, though the checkout has not moved since.
     const unprepared = existsSync(join(root, UNPREPARED))
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
     const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
-    const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
-    const processes = processesFor(sides, request.processes)
+    const unswappedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNSWAPPED])).out
+    const unswapped = unswappedMark !== "" && existsSync(unswappedMark)
+    const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated || unswapped ? [LOCKFILE] : [])])
+    // The processes the app declares for this environment (core/dev/declared.ts), not names the settings assumed.
+    const processes = processesFor(sides, processesOfApp(request.processes, declaredProcesses(root, request.env)))
     const lockChanged = files.includes(LOCKFILE)
-    const aside = leftAside(root, deps.fs)
-    const needInstall = lockChanged || overlayBefore.length > 0 || aside.length > 0 || !existsSync(join(root, "node_modules"))
+    const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || unswapped || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
-    // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
+    // The tree a restart builds from is prepared first, as the lane gate prepares its own: a workspace package that moved or
     // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
-    const prepares = writesModules || processes.length > 0
+    const prepares = writesModules || unprepared || (processes.length > 0 && request.light !== true)
     // New migration files are applied before the api restarts on code that needs them, by the stack's own migrate step and its receipt
     // (`app stack up`, idempotent: what runs is kept). A migration that failed last time is tried again though nothing moved.
     const newMigrations = files.filter((file) => file.startsWith(MIGRATIONS_FOLDER))
-    const migrates = newMigrations.length > 0 || unmigrated
+    // A swap that failed after the fast-forward never reached the migration step: it runs now (the stack's migrate step is idempotent).
+    const migrates = newMigrations.length > 0 || unmigrated || unswapped
     const upArgs = ["app", "stack", "up", "--env", request.env, "--execute"]
     const restartArgs = (names: readonly string[]): string[] => ["app", "stack", "restart", "--env", request.env, "--process", names.join(","), "--execute"]
     const base: Omit<DevSyncData, "overlay" | "installed" | "migrated" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
     if (!request.execute) {
         say(detached ? `would put ${root} back on dev at origin/dev ${to.slice(0, 9)} (detached at ${from.slice(0, 9)}, ${String(commits)} commit(s) behind)` : `would fast-forward ${root} dev ${from.slice(0, 9)} -> ${to.slice(0, 9)} (${String(commits)} commit(s))`)
         if (unprepared) say(`the last sync could not build the workspace packages (${UNPREPARED}): would build them and restart both sides`)
-        if (overlayBefore.length > 0) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
+        if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing to restore or reinstall, and nothing restarts for it`)
+        if (overlayBefore.length > 0 && !keepsOverlay) say(`would restore the committed pins of ${ownFiles.join(", ")} (drop the overlay ${overlayBefore.join(", ")})`)
         if (aside.length > 0) say(`would move back the copy an earlier sync left aside: ${aside.join(", ")}`)
         if (writesModules) say(`would stop the dev stack processes the ${request.env} environment records before node_modules is written, and restart them after`)
         say(needInstall ? "would run npm ci (the old node_modules moved aside until it passes)" : "npm ci: the lockfile did not change, skipped")
@@ -207,8 +286,27 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
         say("dry run: nothing moved; add --execute")
         return { data: { ...base, overlay: overlayBefore, installed: false, migrated: false, stopped: [], restarted: [], restart: processes.length === 0 ? "none" : "planned" }, message: lines.join("\n") }
     }
+    // Build first: with a staging seam, an install is done and the tree built in a worktree of the new commit while the stack keeps serving, and only the
+    // swap and the restart happen after the stop. A copy an interrupted in-place sync left aside goes through the in-place path, which restores it.
+    const stage = writesModules && aside.length === 0 ? deps.stage : undefined
+    let staged: { readonly staging: string; readonly outputs: readonly string[]; readonly tracked: readonly string[] } | undefined
+    if (stage !== undefined) {
+        const staging = await stage.tree(root, to)
+        say(`building the new tree in ${staging} first (npm ci${requested.length > 0 ? ", the local packages" : ""}, ${PREPARE_SCRIPTS.join(", ")}); the running api and web keep serving until the swap`)
+        await deps.npmCi(staging)
+        say("npm ci (staged): done")
+        if (requested.length > 0) {
+            const installed = await installLocal(staging, requested, PORT, true)
+            say(`(staged) ${installed.message.split("\n")[0] ?? "installed the local packages"}`)
+        }
+        const failed = await deps.prepare(staging)
+        if (failed !== undefined) throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in the staged tree of ${to.slice(0, 9)} (${staging}): nothing was stopped and nothing moved, the stack keeps serving the previous build; fix it on a lane and sync again:\n${failed.output}`)
+        staged = { staging, outputs: await stage.outputs(staging), tracked: await stage.tracked(staging) }
+        say(`staged build ready: ${String(staged.outputs.length)} built path(s) to swap in`)
+    }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
-    if (record !== undefined) {
+    if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing restored, reinstalled or restarted for it`)
+    else if (record !== undefined) {
         const restored = await gitOk(root, ["checkout", "--", ...ownFiles])
         if (!restored.ok) throw new Refusal("DEV_SYNC_RESTORE", `git checkout -- ${ownFiles.join(" ")} in ${root}: ${restored.err}`)
         rmSync(installRecordFile(root), { force: true })
@@ -231,25 +329,66 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
         return run.exitCode === 0
     }
     try {
-        const restored = restoreLeftAside(root, deps.fs)
+        if (stage !== undefined && staged !== undefined) {
+            let swapped: Swapped
+            try {
+                swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
+            } catch (error) {
+                // Every move was put back, but the checkout is on the new commit with the old install: the next sync redoes it whole.
+                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
+                throw error
+            }
+            if (requested.length > 0) {
+                const record = readInstallRecord(staged.staging)
+                if (record !== undefined) writeInstallRecord(root, record)
+                rmSync(installRecordFile(staged.staging), { force: true })
+            }
+            rmSync(join(root, UNPREPARED), { force: true })
+            say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.leftover.length > 0 ? `; left for the next sync (held): ${swapped.leftover.join(", ")}` : ""}`)
+        }
+        if (stage !== undefined && staged !== undefined) {
+            // The swapped install must load: a package that does not resolve (a nested `picocolors` of `postcss`, say) is not left for the web's first
+            // request. A clean `npm ci` in place, with the overlay and the prepare scripts, replaces it, and the restart below runs on that.
+            const broken = deps.smoke?.(root) ?? []
+            if (broken.length > 0) {
+                say(`the swapped install does not resolve (${smokeLine(broken)}): a clean npm ci in place replaces it`)
+                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
+                await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+                say("npm ci: done in place")
+                if (requested.length > 0) {
+                    const installed = await installLocal(root, requested, PORT, true)
+                    say(installed.message.split("\n")[0] ?? "installed the local packages")
+                }
+                const failed = await deps.prepare(root)
+                if (failed !== undefined) {
+                    writeFileSync(join(root, UNPREPARED), `${to}\n`)
+                    throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the clean install of ${to.slice(0, 9)}: the workspace packages are not built; fix it on a lane and sync again`)
+                }
+                const still = deps.smoke?.(root) ?? []
+                say(still.length === 0 ? "the clean install resolves" : `the clean install still lacks ${smokeLine(still)}: continuing on what npm ci made`)
+            }
+        }
+        const restored = stage === undefined ? restoreLeftAside(root, deps.fs) : []
         if (restored.length > 0) say(`moved back the copy an earlier sync left aside: ${restored.join(", ")}`)
-        if (needInstall) {
+        if (stage !== undefined) say("npm ci: done in the staged tree")
+        else if (needInstall) {
             await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
             say("npm ci: done")
         } else say("npm ci: the lockfile did not change, skipped")
-        if (requested.length > 0) {
+        if (requested.length > 0 && stage === undefined) {
             const installed = await installLocal(root, requested, PORT, true)
             say(installed.message.split("\n")[0] ?? "installed the local packages")
         }
-        if (prepares) {
+        if (prepares && stage === undefined) {
             const failed = await deps.prepare(root)
             if (failed !== undefined) {
                 writeFileSync(join(root, UNPREPARED), `${to}\n`)
-                throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the workspace packages are not built, so the changed side was not rebuilt (only the processes stopped for the install come back); fix it on a lane (the lander's gate runs the same script) and sync again:\n${failed.output}`)
+                throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the workspace packages are not built, so the changed side was not rebuilt (only the processes stopped for the install come back); fix it on a lane (lane gate runs the same script) and sync again:\n${failed.output}`)
             }
             rmSync(join(root, UNPREPARED), { force: true })
             say(`prepared the tree: ${PREPARE_SCRIPTS.join(", ")} (each the app declares)`)
         }
+        if (unswappedMark !== "") rmSync(unswappedMark, { force: true })
         if (migrates) {
             say(`migrating the ${request.env} database before the restart (${newMigrations.length > 0 ? newMigrations.join(", ") : "the last sync's migration failed"}): ${upArgs.join(" ")}`)
             const up = await deps.appRun(root, upArgs)
@@ -263,7 +402,11 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     } catch (error) {
         // The install, the build of the workspace packages or the migration failed: the stopped processes come back before the refusal is said
         // (after a failed install, on the previous node_modules put back in place); nothing else restarts on the new code.
-        if (stopped.length > 0 && !(await restartNames(stopped, "the install, the build or the migration failed; restarting the stopped"))) say(`the stopped ${stopped.join(", ")} did not come back: starci app stack up --env ${request.env} --execute`)
+        if (stopped.length > 0 && !(await restartNames(stopped, "the install, the build or the migration failed; restarting the stopped"))) {
+            // `stack restart` of a process that is not running can fail: `stack up` starts what does not run.
+            const up = await deps.appRun(root, upArgs)
+            say(up.exitCode === 0 ? `the stopped ${stopped.join(", ")} came back through ${upArgs.join(" ")}` : `the stopped ${stopped.join(", ")} did not come back: starci ${upArgs.join(" ")}`)
+        }
         throw error
     }
     const overlay = overlayOf(readInstallRecord(root))
@@ -311,7 +454,7 @@ export const summaryLine = (data: DevSyncData): string => {
 
 /**
  * `starci dev sync`: brings an app's main dev checkout to the current origin/dev and its running dev stack onto that code, so the owner tests
- * dev the moment a batch lands (contexts/project/cicd.md "Dev and prod"). It never moves prod and never waits for it.
+ * dev the moment a lane lands (contexts/project/cicd.md "Dev and prod"). It never moves prod and never waits for it.
  */
 export const devSyncVerb = defineVerb({
     path: ["dev", "sync"],
@@ -330,7 +473,7 @@ export const devSyncVerb = defineVerb({
         const settings = loadLocalSettings().devSync
         const named = flags.local.flatMap((one) => one.split(",")).map((one) => one.trim()).filter((one) => one !== "")
         const result = await devSync({
-            // With no --local, the sync keeps this machine's standing overlay (devSync.local), as the lander's auto-sync does: dev keeps running the
+            // With no --local, the sync keeps this machine's standing overlay (devSync.local), as the dev sync after a landing does: dev keeps running the
             // local harness builds until the setting is cleared, instead of losing them on every plain sync.
             checkout: flags.dir ?? context.cwd, local: syncLocal(named, settings),
             env: flags.env ?? settings.env, execute: flags.execute, restart: !flags["no-restart"], processes: settings.processes, say: context.progress,

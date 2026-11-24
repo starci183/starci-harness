@@ -44,19 +44,28 @@ type Models = Readonly<Record<PaneBreakpoint, PaneGridModel>>
 
 const PaneModelsContext = createContext<Models | undefined>(undefined)
 
-/**
- * What a pane holds: a well of capped `cards`, `full` bleed (a graph canvas, an editor), or a `chat` frame (0.37.33, law DNA-COMMON-CHAT-FRAME): the head, the
- * thread and the composer footer of one chat, full-bleed and painted `--background` as one frame wherever it stands.
- */
+/** What a pane holds: a well of capped `cards`, `full` bleed (a graph canvas, an editor), or one `chat` (a `ChatFrame`). */
 export type PaneContent = "cards" | "full" | "chat"
 
-type PaneBaseProps = {
+type PaneAreaProps = {
     /** The name of this pane in the grid's `areas`. */
     readonly area: string
-    /**
-     * `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. A chat frame
-     * (`content="chat"`, or any pane whose own stack holds a `PaneSection scroll role="log"`) takes no tone: it is `--background`.
-     */
+}
+
+/** A pane that holds one chat: its one child is a `ChatFrame`, which draws the header, the thread and the footer, so the pane takes no `footer`, `head`, `surface` or `inset`. */
+type PaneChatProps = {
+    /** `chat`: the pane IS one chat, full-bleed on the page tone `--background` (law DNA-COMMON-CHAT-FRAME). */
+    readonly content: "chat"
+    /** The one `ChatFrame`. */
+    readonly children: ReactNode
+    readonly surface?: never
+    readonly inset?: never
+    readonly footer?: never
+    readonly head?: never
+}
+
+type PaneBandsProps = {
+    /** `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. */
     readonly surface?: boolean
     /**
      * `content` (default): the pane publishes the Grammar pane inset to its PaneSections. `flush`: zero inset, for a
@@ -64,24 +73,20 @@ type PaneBaseProps = {
      */
     readonly inset?: PaneInset
     /**
-     * What the pane holds (0.36.0, MEASURE-8). `cards`: a pink well of cards; its content is capped at `--grammar-content-max` (80rem) and centred INSIDE the pane,
-     * while the pane itself spans its grid track. `full`: a chat, a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
-     * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) is `full`
-     * unless this prop says `cards`.
-     * `chat` (0.37.33, DNA-COMMON-CHAT-FRAME): the pane IS one chat (its head, the thread, the composer `footer`): full-bleed, and the whole frame (head band,
-     * thread, footer) is `--background` on any page, in an aside or in a drawer, whatever `surface` says; the composer field stays white, the 1px lines between
-     * the zones stay, and a message in it is flat (no border, no shadow). A pane whose own stack holds a thread is drawn as a chat frame without the word.
+     * What the pane holds (MEASURE-8). `cards`: a well of cards; its content is capped at `--grammar-content-max` (80rem) and centred INSIDE the pane,
+     * while the pane itself spans its grid track. `full`: a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
+     * canvas, `full` for a pane on the surface (a side pane).
      */
-    readonly content?: PaneContent
+    readonly content?: "cards" | "full"
     /** PaneSection elements, or one PaneGrid. */
     readonly children?: ReactNode
     /**
-     * A band fixed at the bottom of the pane (0.37.5): a chat composer, a form's action bar. Give it a `PaneSection as="footer"` (or several PaneSections). The pane body above it
+     * A band fixed at the bottom of the pane: a form's action bar. Give it a `PaneSection as="footer"` (or several PaneSections). The pane body above it
      * is the pane's own scroll region (no visible scrollbar) and only the body scrolls; the footer never leaves the pane's bottom edge. The footer shares the pane's inset.
      */
     readonly footer?: ReactNode
     /**
-     * A sticky one-row head for an aside or detail pane (0.37.5): the title, a muted sublabel under it and, when `onClose` is given, a small close icon button at the end. It is the
+     * A sticky one-row head for an aside or detail pane: the title, a muted sublabel under it and, when `onClose` is given, a small close icon button at the end. It is the
      * first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the shared head-row mode and the head height token apply; it stays at the top while the body scrolls.
      */
     readonly head?: PaneHeadSlot
@@ -160,7 +165,7 @@ type PaneCollapseProps =
         readonly onOpenChange?: never
     }
 
-export type PaneProps = PaneBaseProps & PaneScrollProps & PaneCollapseProps
+export type PaneProps = PaneAreaProps & (PaneChatProps & { readonly scroll?: never; readonly label?: string } | PaneBandsProps & PaneScrollProps) & PaneCollapseProps
 
 const isDevelopment = process.env.NODE_ENV !== "production"
 
@@ -188,12 +193,10 @@ const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneC
  * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface: surfaceProp = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
-    // A chat frame takes no tone (0.37.33): it is the page tone whatever `surface` says, and keeps the surface nesting (a card in it is bordered, never lifted).
+    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
     const isChat = contentKind === "chat"
-    const surface = surfaceProp && !isChat
     const models = useContext(PaneModelsContext)
-    const pane = usePaneRegistry(area, inset, true)
+    const pane = usePaneRegistry(area, inset, !isChat)
     const shown = "flex"
     const vars: Record<string, string> = {}
     let hasEdge = false
@@ -240,7 +243,7 @@ export const Pane = (props: PaneProps) => {
             </div>
         </>
     )
-    const surfaced = isChat ? <SurfaceNesting host="chat">{footed}</SurfaceNesting> : surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
+    const surfaced = surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
     const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
         className: "starci-core-pane",
@@ -361,7 +364,7 @@ const STACKED_UNDER_PX = 768
 
 /**
  * PANE-GRID-STACKED (0.37.14): CSS container queries pick the arrangement, but they cannot restyle the grid's own box, so the grid writes `data-grammar-pane-stacked="grow"`
- * on itself while it is narrower than the stacking breakpoint and holds no chat thread or footer; the stylesheet then lets the grid, its tracks and its panes grow with their content (the page scrolls once).
+ * on itself while it is narrower than the stacking breakpoint and holds no chat frame or footer; the stylesheet then lets the grid, its tracks and its panes grow with their content (the page scrolls once).
  */
 const useStackedMode = () => {
     const ref = useRef<HTMLElement>(null)
@@ -369,8 +372,8 @@ const useStackedMode = () => {
         const grid = ref.current
         if (grid === null) return undefined
         const decide = () => {
-            // A grid with a chat thread (a scrolling band) or a pane footer keeps its bounded height: only those scroll inside their pane. A `Pane scroll` is no such band (0.37.21): stacked, it grows too and the page scrolls once.
-            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"]') !== null
+            // A grid with a chat frame, a scrolling band or a pane footer keeps its bounded height: only those scroll inside their pane. A `Pane scroll` is no such band: stacked, it grows too and the page scrolls once.
+            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"], .starci-core-chat-frame') !== null
             const isGrowing = grid.getBoundingClientRect().width < STACKED_UNDER_PX && !hasBounded
             if (isGrowing) grid.setAttribute("data-grammar-pane-stacked", "grow")
             else grid.removeAttribute("data-grammar-pane-stacked")

@@ -22,7 +22,6 @@ updates:
       - /cli
       - /packages/ai-router
       - /packages/auth
-      - /packages/auth-oidc
       - /packages/common
       - /packages/event-stream
       - /packages/gallery

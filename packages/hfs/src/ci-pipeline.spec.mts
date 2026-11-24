@@ -37,7 +37,7 @@ type Doc = any;
 // reason: the stub carries only the facts the workflow templates read.
 type AppSource = NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
 
-const WORKFLOWS = ['ci', 'images', 'stack-deploy', 'stack-key-restore'];
+const WORKFLOWS = ['ci', 'images', 'stack-deploy'];
 const environment = (name: string, auto = true) => ({ name, auto, approval: 'none' as const, platforms: ['linux/amd64'] });
 const TWO: DeclaredStack = {
   images: [{ service: 'api', app: 'core', buildArgs: false, sealed: false }, { service: 'web', app: 'web', buildArgs: true, sealed: true }],
@@ -47,9 +47,12 @@ const TWO: DeclaredStack = {
   imageCache: 'gha',
 };
 
+/** The quality declaration of an app that declares a Sonar service. */
+const SONAR_QUALITY = { ...qualityServices({}), sonar: { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } };
+
 /** The managed workflows of the sample app in an edition, by file name without the extension. */
 function rendered(edition: string, stack: DeclaredStack, quality?: Record<string, unknown>): Record<string, string> {
-  const source = { files: [], read: () => '', stack, hasImage: () => true, ...(quality ? { quality, qualityDeclared: true } : {}) } as unknown as AppSource;
+  const source = { files: [], read: () => '', stack, hasImage: () => true, quality: quality ?? SONAR_QUALITY } as unknown as AppSource;
   const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source });
   return Object.fromEntries(targets.filter((target) => target.path.startsWith('.github/workflows/')).map((target) => [path.basename(target.path, '.yml'), target.content]));
 }
