@@ -1,6 +1,6 @@
 {
   "name": "@starci/object-storage",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Object storage for a StarCi back end in one package: a NestJS module and a port over S3-compatible storage (MinIO in lite) with presigned PUT and GET that sign the content type and size, head, get, put, list, whole-bucket key listing, batched delete, bucket setup, size and content-type limits, coded errors, no environment read, and an in-memory double with the same checks.",
   "keywords": [
     "s3",
@@ -58,7 +58,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.1150.0",
     "@aws-sdk/s3-request-presigner": "3.1150.0",
-    "@starci/common": "1.0.1"
+    "@starci/common": "1.0.2"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
