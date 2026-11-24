@@ -151,7 +151,7 @@ for (const [needle, message] of [
     ['[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-start-radius', "an incoming run squares the top-start corner of middle and last"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-end-radius', "an outgoing run mirrors it on the end side"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-end-radius', "an outgoing run mirrors it on the end side"],
-    ["border: 0;\n        background: var(--surface);\n        color: var(--foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are one flat look on every host: the surface fill, no border, no shadow (DNA-COMMON-CHAT-INCOMING-FLAT)"],
+    ["border: var(--grammar-border-edge);\n        background: var(--surface);\n        color: var(--foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are one flat look on every host: the surface fill, the 1px edge line, no shadow (DNA-COMMON-CHAT-INCOMING-FLAT)"],
     ["@keyframes starci-core-reaction-rise", "the reaction burst needs its keyframes"],
     [".starci-core-reaction-burst-layer { display: none; }", "the burst is off under prefers-reduced-motion"],
     [".starci-core-reaction-bar-emoji:hover", "a hovered emoji scales up"],

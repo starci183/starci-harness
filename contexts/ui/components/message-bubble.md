@@ -64,7 +64,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | mine | the reader wrote it, or a draft the reader may send (marked by its `meta`) | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | `DNA-COMMON-CHAT-OUTGOING-ACCENT` |
-| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the flat `--surface` with `--foreground` words (no border, no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-FLAT` |
+| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the flat `--surface` with `--foreground` words (the 1px edge line, no shadow), at the start side | `DNA-COMMON-CHAT-INCOMING-FLAT` |
 
 Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent`: the bubble draws the AI Chip right after the name, which [identity-mark](identity-mark.md) "The AI Chip" owns.
 

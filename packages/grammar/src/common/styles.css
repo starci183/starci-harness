@@ -6408,7 +6408,7 @@
      * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer.
      *
      * THE CHAT FACES (law DNA-COMMON-CHAT-SURFACES): every thread is on the page tone (`--background`, the `ChatFrame` thread); a message of someone else (an incoming
-     * bubble, a MessageCard) is ONE flat look everywhere (law DNA-COMMON-CHAT-INCOMING-FLAT): `--surface` with its foreground, no border, no shadow, in every measure;
+     * bubble, a MessageCard) is ONE flat look everywhere (law DNA-COMMON-CHAT-INCOMING-FLAT): `--surface` with its foreground, the 1px edge line, no shadow, in every measure;
      * the reader's own message is `--accent` with `--accent-foreground`. No surface changes either face.
      */
     .starci-core-message-bubble {
