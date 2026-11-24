@@ -3152,57 +3152,6 @@
         justify-content: center;
     }
 
-    /*
-     * THE COLLAPSE ROW AT THE FOOT (0.46.0, collapsePlacement="bottom"): a labelled row under the footer, one hairline above it, drawn as a sidebar item (glyph, muted words, the
-     * item's hover fill); the collapsed rail shows the expand icon button centred in the same place.
-     */
-    .starci-core-sidebar-collapse-foot {
-        display: flex;
-        min-width: 0;
-        justify-content: center;
-        border-block-start: 1px solid var(--separator);
-        padding: 0.75rem;
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-collapse-foot {
-        justify-content: stretch;
-    }
-
-    .starci-core-sidebar-collapse-row {
-        display: flex;
-        min-width: 0;
-        flex: 1 1 auto;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.5rem 0.75rem;
-        border: 0;
-        border-radius: var(--grammar-radius-md);
-        background: none;
-        color: var(--muted);
-        font: inherit;
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        text-align: start;
-        cursor: pointer;
-    }
-
-    .starci-core-sidebar-collapse-row[data-hovered="true"] {
-        background: var(--default);
-        color: var(--foreground);
-    }
-
-    .starci-core-sidebar-collapse-row[data-focus-visible="true"] {
-        outline: var(--grammar-ring-width) solid var(--focus);
-        outline-offset: calc(-1 * var(--grammar-ring-width));
-    }
-
-    .starci-core-sidebar-collapse-text {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
     .starci-core-sidebar-header {
         min-width: 0;
         padding-inline: 0.75rem;
