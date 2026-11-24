@@ -15,6 +15,8 @@ import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
 import { syncLockFile, withSyncLock } from "./sync-lock.js"
+import { smokeInstall, smokeLine } from "./smoke.js"
+import type { SmokeFailure } from "./smoke.js"
 import { installPlaces, installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
@@ -142,6 +144,8 @@ export interface DevSyncDeps {
     readonly pause: (ms: number) => Promise<void>
     /** One run of the app's pinned CLI (`app stack up` to migrate, `app stack restart`). */
     readonly appRun: (root: string, args: readonly string[]) => Promise<ToolRun>
+    /** The smoke check of a swapped install (core/dev/smoke.ts): what does not resolve; absent, none is made. */
+    readonly smoke?: (root: string) => readonly SmokeFailure[]
     /**
      * The build-first install (core/dev/stage.ts): a staging worktree at the new commit, its outputs and the tracked files its install changed, and the
      * swap into the checkout. Absent, the install runs in place after the stop (safe-install.ts).
@@ -162,6 +166,7 @@ export const realDevSyncDeps: DevSyncDeps = {
     fs: realInstallFs,
     pause: (ms) => new Promise((done) => setTimeout(done, ms)),
     appRun: (root, args) => captureTool(process.execPath, [appCli(root), ...args], root),
+    smoke: smokeInstall,
     stage: { tree: stageTree, outputs: stagedOutputs, tracked: stagedTrackedChanges, swap: (staging, root, outputs, tracked) => swapStaged(staging, root, outputs, tracked) },
 }
 
@@ -323,8 +328,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
                 swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
             } catch (error) {
                 // Every move was put back, but the checkout is on the new commit with the old install: the next sync redoes it whole.
-                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}
-`)
+                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
                 throw error
             }
             if (requested.length > 0) {
@@ -334,6 +338,28 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
             }
             rmSync(join(root, UNPREPARED), { force: true })
             say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.leftover.length > 0 ? `; left for the next sync (held): ${swapped.leftover.join(", ")}` : ""}`)
+        }
+        if (stage !== undefined && staged !== undefined) {
+            // The swapped install must load: a package that does not resolve (2026-11-24: `picocolors` from next/node_modules/postcss) is not left for the web's first
+            // request. A clean `npm ci` in place, with the overlay and the prepare scripts, replaces it, and the restart below runs on that.
+            const broken = deps.smoke?.(root) ?? []
+            if (broken.length > 0) {
+                say(`the swapped install does not resolve (${smokeLine(broken)}): a clean npm ci in place replaces it`)
+                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
+                await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+                say("npm ci: done in place")
+                if (requested.length > 0) {
+                    const installed = await installLocal(root, requested, PORT, true)
+                    say(installed.message.split("\n")[0] ?? "installed the local packages")
+                }
+                const failed = await deps.prepare(root)
+                if (failed !== undefined) {
+                    writeFileSync(join(root, UNPREPARED), `${to}\n`)
+                    throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the clean install of ${to.slice(0, 9)}: the workspace packages are not built; fix it on a lane and sync again`)
+                }
+                const still = deps.smoke?.(root) ?? []
+                say(still.length === 0 ? "the clean install resolves" : `the clean install still lacks ${smokeLine(still)}: continuing on what npm ci made`)
+            }
         }
         const restored = stage === undefined ? restoreLeftAside(root, deps.fs) : []
         if (restored.length > 0) say(`moved back the copy an earlier sync left aside: ${restored.join(", ")}`)
