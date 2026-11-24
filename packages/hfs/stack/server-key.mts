@@ -45,8 +45,13 @@ type ScriptResult = Pick<RemoteResult, 'status' | 'stdout' | 'stderr'>;
 export const SERVER_AGE_IDENTITY = '/root/.config/sops/age/keys.txt';
 
 const RECIPIENT = /^age1[a-z0-9]+$/u;
-/** A command run as root: directly when the deploy user is root, else over passwordless sudo, the script read from stdin. */
-export const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
+/**
+ * A command that runs the script on stdin as root: directly when the login is root, over passwordless sudo when the login has it, else
+ * `otherwise` (a project's deploy user has the docker group and no sudo, contexts/harness/managed-vps.md).
+ */
+export const asRootOr = (otherwise: string): string => `if [ "$(id -u)" -eq 0 ]; then sh -s; elif sudo -n true 2>/dev/null; then sudo -n sh -s; else ${otherwise}; fi`;
+/** A command run as root: directly when the login is root, else over passwordless sudo (whose own refusal is the answer without it). */
+export const AS_ROOT = asRootOr('sudo -n sh -s');
 
 /**
  * The directories, after root's PATH, where age-keygen is looked for: sudo's secure_path (AlmaLinux 10, RHEL) leaves out
