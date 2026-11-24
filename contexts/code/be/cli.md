@@ -99,3 +99,24 @@ build and manifest, and the ops commands cannot ride along in its package.
 Enforced by: R397 (the declaration, the feature root, the manifest and the build config), `cli-client-boundary` (R398),
 R156 (no feature of another kind), R45 (it composes only its own root). That the package lists every dependency its
 closure needs, and its publication, are held by review: the harness publishes no app package.
+
+## BE-CLI-6 A client cli installs with one global command and runs by its own name
+
+The owner's words (2026-11-24): "cài một lần bằng npm i -g nivoos-relay, sau đó gõ nivoos-relay pair <MÃ>, áp dụng cả nivoos cli, áp
+dụng cả StarCi Next relay". Every client cli (BE-CLI-5) of every app is installed and run the same way:
+
+| Rule | Shape |
+| --- | --- |
+| one install command | `npm i -g <package>`; the docs and the app's console show this, never `npx` (at most one footnote) |
+| the command is the package name | `bin` names `<package>` itself (e.g. `nivoos-relay`, `nivoos`); a short alias may stay beside it |
+| self-contained | the published package carries no workspace-only dependency: a workspace package it imports is bundled into `dist` or published on its own; every runtime dependency is pinned exactly |
+| runtime | `engines.node` `>=22`; `<bin> --version` prints the package version |
+| status | `<bin> status` says whether it is set up and connected, in the user's language |
+| long-running agent | a cli that keeps a connection open (a relay) also has `<bin> install-service` and `<bin> uninstall-service`: start at login at user level, no admin (Windows Startup or Task Scheduler for the user, macOS launchd user agent, Linux systemd user unit) |
+| guide | the app's help holds a page "Cài <tên>" in the user's language: prerequisites, the install command, first use, auto-start, update (`npm i -g <package>@latest`), remove (`npm rm -g <package>`), the common errors; the console's own setup step shows the same commands, copyable, under "Chi tiết kỹ thuật" |
+| publishing | dry-runs (`npm pack --dry-run`, `npm publish --dry-run`) are part of the lane; the publish itself, the package name and the npm account are the owner's |
+
+Why: an SME installs once and then types one word; a package that needs the monorepo, or a doc that teaches three ways, breaks on the
+customer's machine.
+
+Enforced by: review (the owner's rule, 2026-11-24); R397 checks the manifest shape.
