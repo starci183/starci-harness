@@ -620,3 +620,36 @@ void test("a swap that fails after the fast-forward leaves a mark: the next sync
     assert.equal(done.data.installed, true)
     assert.equal(existsSync(mark), false, "a swap that passed clears the mark")
 })
+
+void test("a swapped install that does not resolve (picocolors from next/node_modules/postcss) is replaced by a clean npm ci in place, prepared again, and the restart follows", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: () => {
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+        },
+    }
+    let swapped = true
+    const smoke: NonNullable<DevSyncDeps["smoke"]> = () => {
+        log.push(swapped ? "smoke (swapped)" : "smoke (clean)")
+        const broken = swapped
+        swapped = false
+        return broken ? [{ from: "node_modules/next/node_modules/postcss", name: "picocolors", reason: "a dependency of postcss that is not found in any node_modules up the chain" }] : []
+    }
+    const said: string[] = []
+    await devSync({ ...request(checkout, { execute: true, restart: true }), say: (line) => said.push(line) }, fakeDeps(log, { stage, smoke }))
+    const from = log.indexOf("swap")
+    assert.deepEqual(log.slice(from).filter((line) => !line.startsWith("rename")), ["swap", "smoke (swapped)", "npm ci (node_modules moved aside)", "prepare", "smoke (clean)", "restart api,web"])
+    assert.ok(said.some((line) => line.includes("the swapped install does not resolve (picocolors from node_modules/next/node_modules/postcss)")))
+    assert.ok(said.includes("the clean install resolves"))
+    assert.equal(existsSync(join(gitIn(checkout, "rev-parse", "--path-format=absolute", "--git-path", "starci-dev-sync-unswapped"))), false, "a clean install clears the mark")
+})
