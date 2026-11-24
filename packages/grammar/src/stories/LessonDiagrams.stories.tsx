@@ -143,6 +143,56 @@ export const FlowchartAcross: Story = {
   },
 };
 
+const PATHS_LR = `flowchart LR
+  K[Khách xem trang] --> A[3 máy chủ web]
+  A r1@--> R[(Redis: hỏi giá trước)]
+  A r2@--> P[(Postgres: giá gốc)]
+  M[Marketing đổi giá] w1@--> P
+  M w2@--> R
+  R@{ icon: "cache" }
+  P@{ icon: "database" }
+  class r1,r2 info
+  class w1,w2 accent`;
+
+/** A small glyph standing in for the logo an app passes: a database drum, in the current colour. */
+const Glyph = ({ rings }: { readonly rings: number }) => (
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4}>
+    <ellipse cx={8} cy={3.5} rx={5.5} ry={2} />
+    {Array.from({ length: rings }, (_, index) => <path key={index} d={`M2.5 ${String(3.5 + (index + 1) * 4)}c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2`} />)}
+    <path d="M2.5 3.5v9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-9" />
+  </svg>
+);
+
+/**
+ * Two flows through the same stores (owner 2026-11-24): the read path in `info`, the write path in `accent`, by Mermaid's own edge ids and `class`; a
+ * legend says which is which; the stores carry the app's icons (`R@{ icon: … }`, drawn from `icons`). Every edge is its own line: two edges never leave or
+ * enter a node at one point, so no junction dot is drawn and each edge keeps its arrowhead.
+ */
+export const TonedPaths: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram
+        source={PATHS_LR}
+        label="Đường đọc và đường ghi giá"
+        height="md"
+        icons={{ cache: <Glyph rings={1} />, database: <Glyph rings={2} /> }}
+        legend={[{ tone: 'info', label: 'Đường đọc' }, { tone: 'accent', label: 'Đường ghi' }]}
+        caption="Đường ghi đổi cả Postgres và Redis."
+      />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--info').length).toBe(4);
+    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--accent').length).toBe(4);
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(4);
+    expect(canvasElement.querySelectorAll('[data-grammar-mermaid-legend] li').length).toBe(4);
+    // No junction dot, and every edge its own arrowhead.
+    expect(canvasElement.querySelectorAll('.starci-graph-edge-join').length).toBe(0);
+    expect(canvasElement.querySelectorAll('.starci-graph-edge-arrow').length).toBe(10);
+  },
+};
+
 // The lesson's cache-aside read (owner 2026-11-23: "if else mới rẽ nhánh và arrow nối nhau"): the condition is a decision, each answer its own edge, and
 // both branches rejoin before "Trả giá".
 const ASIDE_TB = `flowchart TB
