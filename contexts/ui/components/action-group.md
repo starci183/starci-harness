@@ -13,7 +13,7 @@ Choice `action-group.choose.kind`: which kind of group the actions form. The fir
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| value | the actions choose one value | not a group of buttons: `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
+| value | the actions choose one value | not a group of buttons: a `Select`, or `Tabs` when the value switches a view, a filter or a mode (`segmented-control.choose.role`) | judgement |
 | item | per-item commands on a collection row | the row's actions slot: one visible `border`, the rest behind `menu.choose.placement:overflow` | candidate: at most one visible command per item |
 | pinned | a page decision that must stay in thumb reach on a narrow screen | `PinnedActionBar`: the one primary, or a `summary` (a selection count, unsaved changes) with its `border` way out and its `primary` | judgement |
 | decision | one decision with its way out and maybe an alternative, unequal in rank: a dialog, drawer, form or wizard footer, a page-header decision | separate `Button`s at the inline gap (GAP-2) at the footer's trailing edge, ordered way out, alternative, commit (CTA-5) | candidate: in a footer the commit is the last button and the gaps equal `--grammar-inline-gap` |
