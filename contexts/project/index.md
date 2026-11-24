@@ -304,7 +304,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/select.md](../ui/components/select.md) · 3 KB — Contract: Select.
   - sections: Job · Choose · Variants · Size · States · Owner split · Leading icon · Compact · Rules
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 5 KB — Contract: shell.
-  - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules · TopBar start inset and the search slot (0.48.0)
+  - sections: Job · Choose · The tone of a count · Destination · Collapse control · Size · States · Owner split · Rules · TopBar start inset and the search slot (0.48.0)
 - [ui/components/tabs.md](../ui/components/tabs.md) · 10 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Filter presets as pills (0.46.2) · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 6 KB — Contract: Input, CopyField.
