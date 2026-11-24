@@ -353,8 +353,11 @@ function refuseTakenRange(ctx: StackContext, local: LocalConfig, deps: LocalDeps
 /**
  * Waits for each readiness row. The first failing row of the api, the web or a service stops `up` with STACK_LOCAL_READY; a failing gallery row (isAdvisoryRow)
  * is listed in `advisory` and the wait goes on, so the rest of the stack is reported and stays running while `up` still exits non-zero.
+ * The window is `timeoutSeconds` from this call, made once the processes are started: the time `up` spent before (a heavy-slot queue for
+ * compose, the migrate, the seeds) never shortens it, as in local-restart.
  */
-export async function waitReady(ctx: StackContext, local: LocalConfig, deadline: number, advisory: string[]): Promise<string[]> {
+export async function waitReady(ctx: StackContext, local: LocalConfig, timeoutSeconds: number, advisory: string[]): Promise<string[]> {
+  const deadline = ctx.now() + timeoutSeconds * 1000;
   const lines: string[] = [];
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
@@ -396,11 +399,13 @@ export async function upLocal(ctx: StackContext, declared: LocalConfig, { execut
   lines.push(...await runSetup(ctx, local, custody, advisory));
   makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
-  const deadline = ctx.now() + timeoutSeconds * 1000;
+  // Each wait gets its own --timeout window, opened once what it waits for has started (as local-restart does): the heavy-slot queue of a
+  // compose up never eats a service's window, nor the migrate and the seeds the processes' readiness window (waitReady opens its own).
   const bring = async (names: string[]): Promise<void> => {
     if (names.length === 0) return;
     const started = await compose(ctx, local, ['up', '-d', '--build', ...names], { values, heavy: true, label: 'compose up' });
     if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
+    const deadline = ctx.now() + timeoutSeconds * 1000;
     for (const name of names) {
       const ready = await serviceReady(ctx, local, name, deadline, deps);
       lines.push(`service ${ready.detail}`);
@@ -424,7 +429,7 @@ export async function upLocal(ctx: StackContext, declared: LocalConfig, { execut
     await bring(local.services.map((service) => service.name).filter((name) => name !== dbService));
   } else await bring(local.services.map((service) => service.name));
   lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await clearMovedRoutes(ctx, local, deps), ...await startProcesses(ctx, local, custody, deps, mode));
-  lines.push(...await waitReady(ctx, local, deadline, advisory));
+  lines.push(...await waitReady(ctx, local, timeoutSeconds, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));
   lines.push(...(local.tunnel?.routes ?? []).map((route) => `origin ${route.name} (public): https://${route.host}`));
