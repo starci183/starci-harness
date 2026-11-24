@@ -18,10 +18,14 @@ import { assertNotRemoving } from "./remove-lock.js"
 import { locateOps } from "./ops.js"
 import { trimEndChars } from "../shared/trim.js"
 
-/** What a heavy command is, for its memory cap: a typecheck, a lint, a test or suite run, a build, an npm install, a uat container. */
-export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
+/**
+ * What a heavy command is, for its memory cap and its weight: a typecheck, a lint, a test or suite run, a build of a package or a script (`build`), an
+ * app's own build that @starci/hfs asks for (`appBuild`: the api and web builds of `app stack`, a compose build, the CI-parity build of `app check`, the
+ * Sonar scan), an npm install, a uat container.
+ */
+export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "appBuild" | "install" | "uat"
 
-const HEAVY_KINDS = ["tsc", "eslint", "test", "build", "install", "uat"] as const
+const HEAVY_KINDS = ["tsc", "eslint", "test", "build", "appBuild", "install", "uat"] as const
 
 /** The memory free for heavy commands, in MB: the free RAM, and on Windows never more than the free commit (`freeCommitMb`). */
 export const hostFreeMb = (): number => {
@@ -31,7 +35,7 @@ export const hostFreeMb = (): number => {
 }
 
 /** The kinds whose one process has a heap cap of its own (`heavy.caps`); a test run's parent and workers have theirs in `heavy.testRun`. */
-const FIXED_KINDS = ["tsc", "eslint", "build", "install", "uat"] as const
+const FIXED_KINDS = ["tsc", "eslint", "build", "appBuild", "install", "uat"] as const
 type FixedKind = (typeof FIXED_KINDS)[number]
 
 const heavySchema = z.strictObject({
@@ -53,7 +57,7 @@ const heavySchema = z.strictObject({
     }).optional(),
 })
 
-/** The `heavy` block of ops/liveness.yaml: the host's heavy-command slots (one per `gbPerSlot` GB of RAM), the disk floor, each kind's heap cap and the seat RAM floor. */
+/** The `heavy` block of ops/liveness.yaml: the host's heavy-command slot units (one per `gbPerSlot` GB of RAM), the disk floor, each kind's heap cap and the seat RAM floor. */
 export type HeavyRules = z.infer<typeof heavySchema>
 
 const loaded = new Map<string, HeavyRules>()
@@ -131,47 +135,91 @@ export const HEAVY_PARENTS_ENV = "STARCI_HEAVY_PARENTS"
 const heavyParents = (): string[] => (process.env[HEAVY_PARENTS_ENV] ?? "").split(",").filter((id) => id !== "")
 
 /**
- * The host's heavy-command load: `cap` slots (one per `heavy.gbPerSlot` GB of the host's RAM, `slotCap`), how many run, the host floors held
- * now (the free disk under `heavy.diskFloorMb`), `admitted` (how many may run now) with why, and `pressure` when no command beyond the running
- * ones may start. The free RAM is shown, never judged.
+ * The host's heavy-command load: `cap` slot units (one per `heavy.gbPerSlot` GB of the host's RAM, `slotCap`), the units the running commands hold
+ * (`used`, each its weight, `heavyWeight`) and how many commands run, the host floors held now (the free disk under `heavy.diskFloorMb`), the units
+ * free now and why, and `pressure` when the command judged (`need` units) may not start. The free RAM is shown, never judged.
  */
 export interface HostLoad {
     readonly freeMb: number
     readonly cap: number
+    readonly used: number
     readonly running: number
     readonly floors: readonly string[]
-    readonly admitted: number
+    /** The units a new command may take now: none while a floor holds. */
+    readonly free: number
+    /** The units the command judged needs (its weight, never above `cap`). */
+    readonly need: number
     readonly pressure: boolean
     readonly reason: string
 }
 
 /**
- * The count cap, the owner's rule: one heavy command per `heavy.gbPerSlot` GB of the host's physical RAM, at least one (64 GB, 16 GB a slot: 4). The
- * RAM is counted in whole GB as installed: the OS reports 64 GB less what the firmware and GPU reserve (about 63.8 GB), which must still be 4.
+ * The slot units of the host, the owner's rule: one per `heavy.gbPerSlot` GB of the host's physical RAM, at least one (64 GB at 4 GB a unit: 16). The
+ * RAM is counted in whole GB as installed: the OS reports 64 GB less what the firmware and GPU reserve (about 63.8 GB), which must still be 64.
  */
-export const slotCap = (rules: HeavyRules, totalMb: number = Math.floor(totalmem() / 1_048_576)): number => Math.max(1, Math.floor(Math.round(totalMb / 1024) / rules.gbPerSlot))
+export const slotCap = (rules: Pick<HeavyRules, "gbPerSlot">, totalMb: number = Math.floor(totalmem() / 1_048_576)): number => Math.max(1, Math.floor(Math.round(totalMb / 1024) / rules.gbPerSlot))
+
+/** The most units one heavy command holds, the owner's rule: light 1, medium 2, the heaviest 3. */
+export const MAX_WEIGHT = 3
 
 /**
- * Admission is a count: a heavy command starts when fewer than `slotCap` run and no host floor holds (`floors`, the free disk; harness/host-floors.ts).
- * Nothing else decides it: no free-RAM room, no reserve, no per-kind need, no CPU rule. Each heavy command (a tsc, an eslint, a build, an install,
- * a test run, a uat) holds its slot only while it runs, so a gate that runs several in turn takes one slot for each as it starts. A running web or
- * api server takes none. Pure.
+ * The memory a command of `kind` plans to take, in MB: its kind's heap cap (`heavy.caps`), and for a test run the parent and every worker it is sized to
+ * (`testRunSizing`: `heavy.testRun` and `heavy.testWorkers` of the cores, at most `workers` when its caller names them).
  */
-export const admission = (rules: HeavyRules, running: number, floors: readonly string[] = [], freeMb = 0, totalMb?: number): HostLoad & { readonly admits: boolean } => {
-    const cap = slotCap(rules, totalMb)
-    const full = running >= cap
+export const plannedMb = (rules: HeavyRules, kind: HeavyKind, cores: number = availableParallelism(), workers?: number): number =>
+    kind === "test" ? testRunSizing(rules, cores, workers).holdMb : rules.caps[kind].capMb
+
+/**
+ * The units a heavy command holds while it runs: its planned memory (`plannedMb`) in slot units, rounded up, from 1 to MAX_WEIGHT. Nothing else sets it: the
+ * caps of ops/liveness.yaml are the one table, so a measured cap that changes moves the weight with it. A kind this CLI does not know (a row another CLI
+ * copy wrote) weighs 1.
+ */
+export const heavyWeight = (rules: HeavyRules, kind: string, cores: number = availableParallelism(), workers?: number): number => {
+    if (!(HEAVY_KINDS as readonly string[]).includes(kind)) return 1
+    const unitMb = rules.gbPerSlot * 1024
+    return Math.min(MAX_WEIGHT, Math.max(1, Math.ceil(plannedMb(rules, kind as HeavyKind, cores, workers) / unitMb)))
+}
+
+/** Every kind with its weight on this host, lightest first: what `host load` prints. */
+export const kindWeights = (rules: HeavyRules, cores: number = availableParallelism()): { readonly kind: HeavyKind; readonly weight: number }[] =>
+    HEAVY_KINDS.map((kind) => ({ kind, weight: heavyWeight(rules, kind, cores) })).sort((left, right) => left.weight - right.weight)
+
+/** What one admission is judged on: the units in use, the commands running, the weight and name of the command, the floors held, the free RAM shown. */
+export interface Judged {
+    readonly used: number
+    readonly running?: number
+    readonly weight?: number
+    readonly what?: string
+    readonly floors?: readonly string[]
+    readonly freeMb?: number
+    readonly totalMb?: number
+}
+
+/**
+ * Admission is a sum: a heavy command of weight W starts when `used + W <= cap` (`slotCap`) and no host floor holds (`floors`, the free disk;
+ * harness/host-floors.ts). A weight above the cap counts as the cap, so the heaviest command still runs alone on a small host. Nothing else decides it:
+ * no free-RAM room, no reserve, no CPU rule. Each heavy command holds its units only while it runs, so a gate that runs several in turn takes each one's
+ * as it starts. A running web or api server takes none. Pure.
+ */
+export const admission = (rules: Pick<HeavyRules, "gbPerSlot">, judged: Judged): HostLoad & { readonly admits: boolean } => {
+    const { used, floors = [], freeMb = 0 } = judged
+    const cap = slotCap(rules, judged.totalMb)
+    const need = Math.min(judged.weight ?? 1, cap)
+    const full = used + need > cap
     const floored = floors.length > 0
-    const admitted = floored ? running : Math.max(running, cap)
-    const reasons = [...floors, ...(full ? [`${String(running)} heavy command(s) run, at the cap of ${String(cap)} (one per heavy.gbPerSlot ${String(rules.gbPerSlot)} GB of RAM)`] : [])]
+    const inUse = `${String(used)} of ${String(cap)} slot units in use`
+    const reasons = [...floors, ...(full ? [`${inUse}; ${judged.what ?? "the next command"} needs ${String(need)}`] : [])]
     return {
         freeMb,
         cap,
-        running,
+        used,
+        running: judged.running ?? used,
         floors,
-        admitted,
+        free: floored ? 0 : Math.max(0, cap - used),
+        need,
         admits: !floored && !full,
-        pressure: admitted <= running,
-        reason: reasons.length === 0 ? `${String(running)} of ${String(cap)} slots in use` : reasons.join("; "),
+        pressure: floored || full,
+        reason: reasons.length === 0 ? inUse : reasons.join("; "),
     }
 }
 
@@ -187,28 +235,38 @@ CREATE TABLE IF NOT EXISTS seat_holds (
 CREATE TABLE IF NOT EXISTS host_starvation (id INTEGER PRIMARY KEY CHECK (id = 1), since TEXT NOT NULL, ticket TEXT);
 `
 
-/** Creates the governor's tables, adding the `task` column a store made before it lacks. */
+/** Creates the governor's tables, adding the `task` and `weight` columns a store made before them lacks. */
 const ensureTables = (db: DatabaseSync): void => {
     db.exec(TABLES)
     const columns = db.prepare("PRAGMA table_info(heavy_slots)").all().map((column) => column.name)
     if (!columns.includes("task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
+    if (!columns.includes("weight")) db.exec("ALTER TABLE heavy_slots ADD COLUMN weight INTEGER")
 }
 
-/** How many heavy commands run now (live rows) but the `except` ones (the caller's ancestors, which wait on it). */
-const runningCount = (db: DatabaseSync, except: ReadonlySet<string> = new Set()): number =>
-    db.prepare("SELECT id FROM heavy_slots WHERE state = 'running'").all().filter((row) => !except.has(String(row.id))).length
+/** The units a row holds: the weight it was admitted with, else (a row a CLI copy without weights wrote) its kind's weight now. */
+const rowWeight = (rules: HeavyRules, row: { readonly kind?: unknown; readonly weight?: unknown }): number =>
+    typeof row.weight === "number" || typeof row.weight === "bigint" ? Number(row.weight) : heavyWeight(rules, String(row.kind))
 
-/** The host's load now: the running commands against the cap, and the floors held for work in the current folder. */
+/** The running commands (live rows) but the `except` ones (the caller's ancestors, which wait on it): how many, and the units they hold. */
+const inUse = (db: DatabaseSync, rules: HeavyRules, except: ReadonlySet<string> = new Set()): { readonly running: number; readonly used: number } => {
+    const rows = db.prepare("SELECT id, kind, weight FROM heavy_slots WHERE state = 'running'").all().filter((row) => !except.has(String(row.id)))
+    return { running: rows.length, used: rows.reduce((sum, row) => sum + rowWeight(rules, row), 0) }
+}
+
+/**
+ * The host's load now: the units the running commands hold against the cap, judged for the head of the queue (its weight and label) when one
+ * waits, and the floors held for work in the current folder.
+ */
 export const hostLoad = (rules: HeavyRules = loadHeavyRules()): HostLoad => {
-    heavySlots()
-    const running = withGovernor((db) => runningCount(db))
-    return admission(rules, running, heavyFloors(rules, process.cwd()), hostFreeMb())
+    const head = heavySlots(rules).find((slot) => slot.state === "waiting")
+    const { running, used } = withGovernor((db) => inUse(db, rules))
+    return admission(rules, { used, running, ...(head === undefined ? {} : { weight: head.weight, what: head.label }), floors: heavyFloors(rules, process.cwd()), freeMb: hostFreeMb() })
 }
 
 /** The waiting rows in the order the governor serves them: first come, first served (the order they joined the queue). */
 const servingOrder = (rows: readonly { readonly id: string; readonly kind: string; readonly state: string }[]): { readonly id: string; readonly kind: string }[] => rows.filter((row) => row.state === "waiting")
 
-/** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for a slot. */
+/** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for its slot units. */
 export interface HeavySlot {
     readonly id: string
     readonly pid: number
@@ -218,12 +276,14 @@ export interface HeavySlot {
     readonly cwd: string
     /** The task whose verify the command runs for (`withHeavyBound`), else null. */
     readonly task: string | null
+    /** The slot units it holds while it runs (`heavyWeight`). */
+    readonly weight: number
     readonly state: "running" | "waiting"
     readonly at: string
 }
 
 /** Every slot row of a live process, running first; rows of a process that is gone are dropped on the way. */
-export const heavySlots = (): HeavySlot[] =>
+export const heavySlots = (rules: HeavyRules = loadHeavyRules()): HeavySlot[] =>
     withGovernor((db) => {
         ensureTables(db)
         const rows = db.prepare("SELECT * FROM heavy_slots ORDER BY state, at").all()
@@ -241,6 +301,7 @@ export const heavySlots = (): HeavySlot[] =>
                 label: String(row.label),
                 cwd: String(row.cwd),
                 task: typeof row.task === "string" ? row.task : null,
+                weight: rowWeight(rules, row),
                 state: row.state === "running" ? "running" : "waiting",
                 at: String(row.at),
             })
@@ -249,24 +310,26 @@ export const heavySlots = (): HeavySlot[] =>
     })
 
 /**
- * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last slot). The row joins the
+ * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last units). The row joins the
  * queue (keeping its place), and the queue is first come, first served (`servingOrder`): only the head may start, and it starts when `admission`
- * admits it against the commands running at this instant. The rows of the caller's ancestors (`parents`) are not counted: they wait on it. The
- * load it was judged on, and the holders when it waits.
+ * admits its weight against the units the commands running at this instant hold. A light command behind a heavy head waits with it, so the heavy one
+ * is never starved by light ones that would fit. The rows of the caller's ancestors (`parents`) are not counted: they wait on it. The load it was
+ * judged on, and the holders when it waits.
  */
 const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, freeMb: number, parents: ReadonlySet<string> = new Set(), floors: readonly string[] = [], totalMb?: number): { readonly load: HostLoad; readonly holders: string[] | null; readonly place: number } =>
     withGovernor((db) => {
         ensureTables(db)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now())
+        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, weight, state, at) VALUES (?, ?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, slot.weight, now())
         const rows = db.prepare("SELECT id, kind, state FROM heavy_slots ORDER BY rowid").all().map((row) => ({ id: String(row.id), kind: String(row.kind), state: String(row.state) }))
-        const running = db.prepare("SELECT id, label, pid, at FROM heavy_slots WHERE state = 'running'").all().filter((row) => !parents.has(String(row.id)))
-        const load = admission(rules, running.length, floors, freeMb, totalMb)
+        const running = db.prepare("SELECT id, label, pid, at, kind, weight FROM heavy_slots WHERE state = 'running'").all().filter((row) => !parents.has(String(row.id)))
+        const used = running.reduce((sum, row) => sum + rowWeight(rules, row), 0)
+        const load = admission(rules, { used, running: running.length, weight: slot.weight, what: slot.label, floors, freeMb, ...(totalMb === undefined ? {} : { totalMb }) })
         const order = servingOrder(rows)
         if (order[0]?.id !== slot.id || !load.admits) {
             const place = order.findIndex((row) => row.id === slot.id)
             const queued = place <= 0 ? "first in the queue" : `${String(place)} ahead of it in the queue`
-            return { load: { ...load, reason: `${load.reason}; ${queued}` }, holders: running.map((row) => `${String(row.label)} (pid ${String(row.pid)}, since ${String(row.at)})`), place: Math.max(0, place) }
+            return { load: { ...load, reason: `${load.reason}; ${queued}` }, holders: running.map((row) => `${String(row.label)} (${String(rowWeight(rules, row))} units, pid ${String(row.pid)}, since ${String(row.at)})`), place: Math.max(0, place) }
         }
         db.prepare("UPDATE heavy_slots SET state = 'running', at = ? WHERE id = ?").run(now(), slot.id)
         return { load, holders: null, place: 0 }
@@ -558,9 +621,9 @@ const WAIT_LINE_MS = 60_000
 /** Whether this process runs on a CI runner: one job on its own machine, so no other command shares it and no queue is kept. */
 const onCiRunner = (): boolean => process.env.CI === "true" || process.env.CI === "1"
 
-/** The line a waiting command prints: its place in the first come, first served queue, why it waits (the cap or a floor) and who runs. Waiting holds nothing. */
-export const waitLine = (label: string, place: number, load: Pick<HostLoad, "cap" | "reason">, holders: readonly string[]): string =>
-    `starci: ${label} waits for a heavy-command slot (${String(load.cap)} on this host): ${place === 0 ? "first in the queue" : `${String(place)} ahead of it`}; ${load.reason}; running: ${holders.join("; ") || "none"}`
+/** The line a waiting command prints: its place in the first come, first served queue, why it waits (the units or a floor) and who runs. Waiting holds nothing. */
+export const waitLine = (label: string, place: number, load: Pick<HostLoad, "cap" | "need" | "reason">, holders: readonly string[]): string =>
+    `starci: ${label} waits for a heavy-command slot (${String(load.need)} of the ${String(load.cap)} slot units on this host): ${place === 0 ? "first in the queue" : `${String(place)} ahead of it`}; ${load.reason}; running: ${holders.join("; ") || "none"}`
 
 /** The heap-exhaustion signatures of node and jest in a command's output. */
 const HEAP_EXHAUSTED = /heap out of memory|JavaScript heap|ERR_WORKER_OUT_OF_MEMORY|ran out of memory/i
@@ -578,11 +641,9 @@ export const withOomNote = <R extends { readonly exitCode: number | null; readon
 /**
  * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a row of the machine-wide queue (`heavy_slots` in
  * machine.sqlite, taken under the store's lock, so admissions are serialised); nothing the harness spawns that is heavy runs any other way (the
- * heavy-sites audit holds it). The command sizes itself greedily to the room now, the RAM free less `reserveMb` and the plan of the commands admitted in
- * the last `plannedSeconds` (`admission`): a test run takes the workers the room holds (`testRunSizing`), any other kind its cap or the room when that is
- * less (`heapFor`). It starts at once when the room covers its least need (`needsOf`), else waits in a first come, first served queue, holding nothing,
- * polls every `heavy.pollSeconds` and prints its place, its need and the running commands every minute; with nothing running it starts on the room there
- * is. A wait is recorded as a `heavy-wait` host event and never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED at once
+ * heavy-sites audit holds it). It holds its weight in slot units (`heavyWeight`) and starts when it heads the queue and those units are free
+ * (`admission`), else waits in a first come, first served queue, holding nothing, polls every `heavy.pollSeconds` and prints its place, why it waits and
+ * the running commands every minute. A test run is sized by `testRunSizing`, any other kind runs under its heap cap (`heapFor`). A wait is recorded as a `heavy-wait` host event and never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED at once
  * instead of waiting, and a verify's command (`withHeavyBound`) still in the queue at the verify's bound is refused HOST_HELD, a non-verdict. The child
  * runs below normal priority under its heap caps and inherits HEAVY_PARENTS_ENV with this slot added: a heavy command it starts is admitted on its own,
  * and its ancestors' rows never count against it, so it never waits on them. `options.workers` caps a test run's workers when its caller names a cap. A CI
@@ -590,7 +651,7 @@ export const withOomNote = <R extends { readonly exitCode: number | null; readon
  */
 export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
     // An install or an npm command writes node_modules and its links: never in a worktree `lane remove` is unlinking (harness/remove-lock.ts).
-    if (kind === "install" || kind === "build") assertNotRemoving(cwd)
+    if (kind === "install" || kind === "build" || kind === "appBuild") assertNotRemoving(cwd)
     return governed(liveHost(), kind, label, cwd, options, work)
 }
 
@@ -620,7 +681,9 @@ export const governed = async <T>(host: Governed, kind: HeavyKind, label: string
     if (onCiRunner()) return work({ rules, freeMb: host.freeMb(), ...limits })
     const task = process.env[TASK_ENV] ?? null
     const ancestors = new Set(parents)
-    const slot = { id: slotId, pid: process.pid, kind, label, cwd, task }
+    // The units it holds: its kind's planned memory in slot units, a test run's from the workers it is sized to.
+    const weight = heavyWeight(rules, kind, availableParallelism(), options.workers)
+    const slot = { id: slotId, pid: process.pid, kind, label, cwd, task, weight }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
     let live = rules
@@ -687,33 +750,33 @@ export const clockOf = (at: string): string => {
     return date.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10) ? clock : `${date.toISOString().slice(0, 10)} ${clock}`
 }
 
-/** Why a heavy command is not admitted now, in one short clause (the cap, or a floor); undefined when it would be admitted. */
-export const heldWhy = (rules: HeavyRules, running: number, floors: readonly string[] = []): string | undefined => {
-    const judged = admission(rules, running, floors)
+/** Why a heavy command of `weight` (named `what`) is not admitted now, in one short clause (the units, or a floor); undefined when it would be admitted. */
+export const heldWhy = (rules: HeavyRules, used: number, floors: readonly string[] = [], weight = 1, what?: string): string | undefined => {
+    const judged = admission(rules, { used, floors, weight, ...(what === undefined ? {} : { what }) })
     return judged.admits ? undefined : judged.reason
 }
 
 /**
- * What @starci/hfs reads as the room of an app check's parallel children (`io.heavyRoom`): the slots free now (this process's ancestors aside)
- * times the eslint heap cap, so it starts as many children as can be admitted at once; each child still takes its own slot. On a CI runner,
- * its one job's free RAM.
+ * What @starci/hfs reads as the room of an app check's parallel children (`io.heavyRoom`): how many eslint children the units free now admit (this
+ * process's ancestors aside), at least one, times the eslint heap cap, so it starts as many children as can be admitted at once; each child still
+ * takes its own units. On a CI runner, its one job's free RAM.
  */
 export const heavyRoomMb = (host: Governed = liveHost()): number => {
     const { rules } = host
     if (onCiRunner()) return host.freeMb()
     const ancestors = new Set(heavyParents())
-    const running = withGovernor((db) => {
+    const { used } = withGovernor((db) => {
         ensureTables(db)
-        return runningCount(db, ancestors)
+        return inUse(db, rules, ancestors)
     })
-    return Math.max(1, slotCap(rules, host.totalMb) - running) * rules.caps.eslint.capMb
+    return Math.max(1, Math.floor((slotCap(rules, host.totalMb) - used) / heavyWeight(rules, "eslint"))) * rules.caps.eslint.capMb
 }
 
-/** How many heavy commands run now, from the governor's store (live rows only after `heavySlots`). */
-export const runningHeavyCount = (): number =>
+/** The slot units the running heavy commands hold now, from the governor's store (live rows only after `heavySlots`). */
+export const heavyUnitsInUse = (rules: HeavyRules = loadHeavyRules()): number =>
     withGovernor((db) => {
         ensureTables(db)
-        return runningCount(db)
+        return inUse(db, rules).used
     })
 
 /** A queued task whose worker seat the RAM floor held: since when, last seen, and the memory it was judged on. */
@@ -775,7 +838,7 @@ export interface Starvation {
 /** Reads the starvation now (`Starvation`). */
 export const starvation = (rules: HeavyRules = loadHeavyRules()): Starvation => {
     if (seatRoom(rules).ok) clearSeatHolds()
-    const waiting = heavySlots().filter((slot) => slot.state === "waiting")
+    const waiting = heavySlots(rules).filter((slot) => slot.state === "waiting")
     const holds = seatHolds()
     return { admissionSince: waiting.map((slot) => slot.at).sort((left, right) => left.localeCompare(right))[0] ?? null, waiting: waiting.length, seatSince: holds[0]?.since ?? null, seatHeld: holds.length }
 }
