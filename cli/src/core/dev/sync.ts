@@ -34,6 +34,12 @@ const UNPREPARED = join("node_modules", ".starci-dev-sync-unprepared")
 /** Written in the git folder when a sync's migration failed, removed once one passes: the next sync migrates again even if nothing moved. */
 const UNMIGRATED = "starci-dev-sync-unmigrated"
 
+/**
+ * Written in the git folder when the swap of a staged build failed, removed once a swap or an in-place install passes. The failed sync had already
+ * fast-forwarded the checkout, so the next sync sees no commit to move: this mark makes it install, build, migrate and restart again whole.
+ */
+const UNSWAPPED = "starci-dev-sync-unswapped"
+
 /** Files no running process reads: a change of these alone restarts nothing. */
 const INERT = (file: string): boolean => file.endsWith(".md") || file.startsWith(".starciwork/") || file.startsWith(".github/") || file.startsWith("gallery/")
 
@@ -233,11 +239,13 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const unprepared = existsSync(join(root, UNPREPARED))
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
     const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
-    const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated ? [LOCKFILE] : [])])
+    const unswappedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNSWAPPED])).out
+    const unswapped = unswappedMark !== "" && existsSync(unswappedMark)
+    const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated || unswapped ? [LOCKFILE] : [])])
     // The processes the app declares for this environment (core/dev/declared.ts), not names the settings assumed.
     const processes = processesFor(sides, processesOfApp(request.processes, declaredProcesses(root, request.env)))
     const lockChanged = files.includes(LOCKFILE)
-    const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || !existsSync(join(root, "node_modules"))
+    const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || unswapped || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
     // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
     // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
@@ -245,7 +253,8 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     // New migration files are applied before the api restarts on code that needs them, by the stack's own migrate step and its receipt
     // (`app stack up`, idempotent: what runs is kept). A migration that failed last time is tried again though nothing moved.
     const newMigrations = files.filter((file) => file.startsWith(MIGRATIONS_FOLDER))
-    const migrates = newMigrations.length > 0 || unmigrated
+    // A swap that failed after the fast-forward never reached the migration step: it runs now (the stack's migrate step is idempotent).
+    const migrates = newMigrations.length > 0 || unmigrated || unswapped
     const upArgs = ["app", "stack", "up", "--env", request.env, "--execute"]
     const restartArgs = (names: readonly string[]): string[] => ["app", "stack", "restart", "--env", request.env, "--process", names.join(","), "--execute"]
     const base: Omit<DevSyncData, "overlay" | "installed" | "migrated" | "stopped" | "restarted" | "restart"> = { checkout: root, dryRun: !request.execute, from, to, commits, overlayBefore, sides }
@@ -309,7 +318,15 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     }
     try {
         if (stage !== undefined && staged !== undefined) {
-            const swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
+            let swapped: Swapped
+            try {
+                swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
+            } catch (error) {
+                // Every move was put back, but the checkout is on the new commit with the old install: the next sync redoes it whole.
+                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}
+`)
+                throw error
+            }
             if (requested.length > 0) {
                 const record = readInstallRecord(staged.staging)
                 if (record !== undefined) writeInstallRecord(root, record)
@@ -338,6 +355,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
             rmSync(join(root, UNPREPARED), { force: true })
             say(`prepared the tree: ${PREPARE_SCRIPTS.join(", ")} (each the app declares)`)
         }
+        if (unswappedMark !== "") rmSync(unswappedMark, { force: true })
         if (migrates) {
             say(`migrating the ${request.env} database before the restart (${newMigrations.length > 0 ? newMigrations.join(", ") : "the last sync's migration failed"}): ${upArgs.join(" ")}`)
             const up = await deps.appRun(root, upArgs)
@@ -351,7 +369,11 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     } catch (error) {
         // The install, the build of the workspace packages or the migration failed: the stopped processes come back before the refusal is said
         // (after a failed install, on the previous node_modules put back in place); nothing else restarts on the new code.
-        if (stopped.length > 0 && !(await restartNames(stopped, "the install, the build or the migration failed; restarting the stopped"))) say(`the stopped ${stopped.join(", ")} did not come back: starci app stack up --env ${request.env} --execute`)
+        if (stopped.length > 0 && !(await restartNames(stopped, "the install, the build or the migration failed; restarting the stopped"))) {
+            // `stack restart` of a process that is not running can fail: `stack up` starts what does not run.
+            const up = await deps.appRun(root, upArgs)
+            say(up.exitCode === 0 ? `the stopped ${stopped.join(", ")} came back through ${upArgs.join(" ")}` : `the stopped ${stopped.join(", ")} did not come back: starci ${upArgs.join(" ")}`)
+        }
         throw error
     }
     const overlay = overlayOf(readInstallRecord(root))

@@ -2,6 +2,7 @@
 // its origin (a bare repository in a scratch folder), the refusals, and the debounce of consecutive landed batches. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { Refusal } from "../../shared/errors.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -584,4 +585,38 @@ void test("with the staging seam the new tree is installed and built before the 
     await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps(failed, { stage, prepare: () => Promise.resolve({ command: "npm run codegen", exitCode: 1, output: "boom" }) })), refused("DEV_SYNC_BUILD", "nothing was stopped"))
     assert.equal(failed.some((line) => line.startsWith("stop") || line === "swap"), false)
     assert.equal(gitIn(checkout, "rev-parse", "HEAD"), before)
+})
+
+void test("a swap that fails after the fast-forward leaves a mark: the next sync, with nothing new on dev, installs and swaps the new tree whole", async (t) => {
+    const { checkout, pusher, base } = scratch(t)
+    lockfileMoved(pusher, checkout)
+    const log: string[] = []
+    const staging = join(base, ".checkout.starci-next")
+    let refuse = true
+    const stage: NonNullable<DevSyncDeps["stage"]> = {
+        tree: () => {
+            log.push("stage")
+            mkdirSync(staging, { recursive: true })
+            return Promise.resolve(staging)
+        },
+        outputs: () => Promise.resolve(["node_modules"]),
+        tracked: () => Promise.resolve([]),
+        swap: () => {
+            log.push("swap")
+            if (!refuse) return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+            refuse = false
+            return Promise.reject(new Refusal("DEV_SYNC_SWAP", "the staged build could not be moved: ENOENT"))
+        },
+    }
+    const target = gitIn(pusher, "rev-parse", "HEAD")
+    await assert.rejects(devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage })), (error: { code?: string }) => error.code === "DEV_SYNC_SWAP")
+    assert.equal(gitIn(checkout, "rev-parse", "HEAD"), target, "the checkout is on the new commit, with the old install")
+    const mark = gitIn(checkout, "rev-parse", "--path-format=absolute", "--git-path", "starci-dev-sync-unswapped")
+    assert.ok(existsSync(mark), "the failed swap is marked")
+    const first = log.length
+    const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps(log, { stage }))
+    const again = log.slice(first)
+    assert.ok(again.includes("stage") && again.includes("swap"), `the retry stages and swaps again: ${again.join(", ")}`)
+    assert.equal(done.data.installed, true)
+    assert.equal(existsSync(mark), false, "a swap that passed clears the mark")
 })
