@@ -108,8 +108,8 @@ installed and run the same way:
 
 | Rule | Shape |
 | --- | --- |
-| one install command, NestJS style | `npm i -g @<org>/<name>` (like `npm i -g @nestjs/cli`); the docs and the app's console show this, never `npx` (at most one footnote) |
-| scoped package, short command | the package is scoped to the app's npm org (`@nivoos/cli`, `@nivoos/relay`, `@starci/next-relay`) and `bin` is a short, unscoped command (`nivoos`, `nivoos-relay`, `starci-relay`), like `@nestjs/cli` installs `nest`; the org and names are the owner's |
+| one install command, NestJS style | `npm i -g @starci/<name>` (like `npm i -g @nestjs/cli`); the docs and the app's console show this, never `npx` (at most one footnote) |
+| scoped package, short command | the package is scoped to `@starci` for every app (owner 2026-11-24: "tất cả phải là @starci cả"): `@starci/nivoos-cli`, `@starci/nivoos-relay`, `@starci/next-relay` and `bin` is a short, unscoped command (`nivoos`, `nivoos-relay`, `starci-relay`), like `@nestjs/cli` installs `nest`; the names are the owner's |
 | self-contained | the published package carries no workspace-only dependency: a workspace package it imports is bundled into `dist` or published on its own; every runtime dependency is pinned exactly |
 | runtime | `engines.node` `>=22`; `<bin> --version` prints the package version |
 | status | `<bin> status` says whether it is set up and connected, in the user's language |
