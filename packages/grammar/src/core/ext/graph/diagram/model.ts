@@ -5,10 +5,13 @@
  * Every function here is pure over the parser's database, so the specs read the same mapping the browser draws.
  */
 
-/** A tone a part of the drawing takes, in the Grammar's tokens: `danger` the faulty step, `success` the fix, `accent` a part the change touches. */
-export type MermaidTone = "danger" | "success" | "accent"
+/**
+ * A tone a part of the drawing takes, in the Grammar's tokens: `danger` the faulty step, `success` the fix, `accent` a part the change touches, `info` a
+ * second, neutral flow beside the accent one (a read path beside a write path), never an alarm.
+ */
+export type MermaidTone = "danger" | "success" | "accent" | "info"
 
-export const MERMAID_TONES: readonly MermaidTone[] = ["danger", "success", "accent"]
+export const MERMAID_TONES: readonly MermaidTone[] = ["danger", "success", "accent", "info"]
 
 /** The shape a node is drawn in. */
 export type DiagramShape = "box" | "round" | "stadium" | "diamond" | "circle" | "cylinder" | "start" | "end" | "bar" | "note" | "container"
@@ -22,6 +25,8 @@ export interface DiagramNode {
     readonly tone?: MermaidTone
     /** A container that repeats its body (`class X foreach` on a subgraph): its frame is dashed, and the dashes mean "repeats". */
     readonly repeat?: boolean
+    /** The name of the icon drawn before the words (`R@{ icon: "redis" }`); the app maps the name to what to draw (`MermaidDiagram` `icons`). */
+    readonly icon?: string
 }
 
 export interface DiagramEdge {
@@ -35,6 +40,8 @@ export interface DiagramEdge {
     readonly thick: boolean
     /** The end of a loop's body, returning to the loop's decision (see `loopBackEdges`): drawn dashed, round the outside. */
     readonly back?: true
+    /** The tone of the line, its arrowhead and its words: `edgeTones[place]`, else `class <edge id> <tone>` on an edge with an id (`A e1@--> B`). */
+    readonly tone?: MermaidTone
 }
 
 /** A flowchart or a state diagram as a graph, in the direction its source asked for (RL is drawn LR, BT is drawn TB). */
@@ -98,8 +105,9 @@ const direction = (given: string | undefined): "LR" | "TB" => (given === "LR" ||
 
 /** The part of Mermaid's flowchart database the mapping reads. */
 export interface FlowchartDb {
-    readonly getVertices: () => ReadonlyMap<string, { readonly id: string; readonly text?: string; readonly type?: string; readonly classes?: readonly string[] }>
-    readonly getEdges: () => readonly { readonly start: string; readonly end: string; readonly text?: string; readonly stroke?: string; readonly type?: string }[]
+    readonly getVertices: () => ReadonlyMap<string, { readonly id: string; readonly text?: string; readonly type?: string; readonly classes?: readonly string[]; readonly icon?: string }>
+    /** Mermaid 11 keeps the classes `class <edge id> <name>` gives an edge with an id (`A e1@--> B`) on the edge. */
+    readonly getEdges: () => readonly { readonly start: string; readonly end: string; readonly text?: string; readonly stroke?: string; readonly type?: string; readonly classes?: readonly string[] }[]
     readonly getSubGraphs: () => readonly { readonly id: string; readonly title?: string; readonly nodes: readonly string[]; readonly classes?: readonly string[] }[]
     readonly getDirection: () => string | undefined
 }
@@ -148,9 +156,11 @@ export const loopBackEdges = (nodes: readonly DiagramNode[], edges: readonly Dia
 /**
  * A flowchart as a graph: each vertex a node in its shape (`[(db)]` a cylinder, `{x}` a decision, `((x))` a circle, `(x)` round, `([x])` a stadium,
  * anything else a rounded box), each subgraph a container its nodes stand in (the innermost one a node is listed in), each link an edge with its words,
- * a dotted link dashed. A node's tone is `tones[id]`, else a `class X danger|success|accent` the source gave it.
+ * a dotted link dashed. A node's tone is `tones[id]`, else a `class X danger|success|accent|info` the source gave it; its icon is the name Mermaid's own
+ * `X@{ icon: "name" }` gives it (the shape stays the one `X[(…)]` wrote). An edge's tone is `edgeTones[place]` (its place among the links, from 1), else
+ * the tone class Mermaid keeps on an edge with an id (`A e1@--> B`, then `class e1 info`).
  */
-export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, MermaidTone>>): DiagramGraph => {
+export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, MermaidTone>>, edgeTones?: Readonly<Record<number, MermaidTone>>): DiagramGraph => {
     const subgraphs = db.getSubGraphs()
     const parent = new Map<string, string>()
     // Mermaid lists an inner subgraph before the one around it, and the outer one lists the inner one's nodes too: the first listing wins.
@@ -170,11 +180,13 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
         const shape = FLOW_SHAPES[vertex.type ?? ""] ?? "box"
         // A bar keeps the words its source wrote ("Song song"), never the id Mermaid falls back to.
         const label = shape === "bar" && (vertex.text === undefined || vertex.text === vertex.id) ? "" : plainLabel(vertex.text ?? vertex.id)
-        nodes.push({ id: vertex.id, label, shape, ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }) })
+        const icon = typeof vertex.icon === "string" && vertex.icon.trim() !== "" ? vertex.icon.trim() : undefined
+        nodes.push({ id: vertex.id, label, shape, ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }), ...(icon === undefined ? {} : { icon }) })
     }
     const links = db.getEdges().map((edge, index): DiagramEdge => {
         const label = plainLabel(edge.text)
-        return { id: `e${String(index + 1)}`, source: edge.start, target: edge.end, ...(label === "" ? {} : { label }), dashed: edge.stroke === "dotted", thick: edge.stroke === "thick" }
+        const tone = edgeTones?.[index + 1] ?? MERMAID_TONES.find((each) => (edge.classes ?? []).includes(each))
+        return { id: `e${String(index + 1)}`, source: edge.start, target: edge.end, ...(label === "" ? {} : { label }), dashed: edge.stroke === "dotted", thick: edge.stroke === "thick", ...(tone === undefined ? {} : { tone }) }
     })
     const loops = loopBackEdges(nodes, links)
     const edges = links.map((edge): DiagramEdge => (loops.has(edge.id) ? { ...edge, back: true } : edge))
@@ -214,7 +226,7 @@ const STATE_SHAPES: Readonly<Record<string, DiagramShape>> = {
 /**
  * A state diagram as a graph: a state a rounded box named by its description when it has one, `[*]` a start dot or an end ring, a composite state a
  * container, a choice a decision, a fork or join a bar, a note a soft pill; each transition an edge with its words. A state's tone is `tones[id]`, else
- * `class X danger|success|accent`.
+ * `class X danger|success|accent|info`.
  */
 export const stateGraph = (data: StateData, tones?: Readonly<Record<string, MermaidTone>>): DiagramGraph => {
     const nodes = data.nodes.map((node): DiagramNode => {
@@ -310,9 +322,9 @@ export interface ParsedSource {
 }
 
 /** The drawing of a parsed source: a flowchart or a state diagram as a graph, a sequence as its rows, any other kind as Mermaid's own. */
-export const diagramOf = (parsed: ParsedSource, tones?: Readonly<Record<string, MermaidTone>>, messageTones?: Readonly<Record<number, MermaidTone>>): ParsedDiagram => {
+export const diagramOf = (parsed: ParsedSource, tones?: Readonly<Record<string, MermaidTone>>, messageTones?: Readonly<Record<number, MermaidTone>>, edgeTones?: Readonly<Record<number, MermaidTone>>): ParsedDiagram => {
     const { type, db } = parsed
-    if (type === "flowchart" || type === "flowchart-v2" || type === "graph") return flowchartGraph(db as FlowchartDb, tones)
+    if (type === "flowchart" || type === "flowchart-v2" || type === "graph") return flowchartGraph(db as FlowchartDb, tones, edgeTones)
     if (type === "stateDiagram" || type === "state") return stateGraph((db as { readonly getData: () => StateData }).getData(), tones)
     if (type === "sequence") return sequenceModel(db as SequenceDb, messageTones)
     return { kind: "other", type }

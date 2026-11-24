@@ -46,6 +46,8 @@ export interface StepEdgeData extends Record<string, unknown> {
     joinStart?: boolean
     /** The route ends on another edge's line, which carries the one arrowhead: a junction dot there and no arrowhead. */
     joinEnd?: boolean
+    /** The tone of the pill's words when the edge has one of its own (a diagram edge's tone); else the pill takes the tone of its style. */
+    pillTone?: "accent" | "info" | "success" | "danger"
 }
 
 const SIDES: Readonly<Record<GraphDirection, { readonly source: Position; readonly target: Position }>> = {
