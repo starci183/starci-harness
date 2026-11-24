@@ -68,6 +68,11 @@ export interface FastPorts {
     readonly hfs: (args: readonly string[]) => Promise<VerbResult<unknown>>
     readonly say: (line: string) => void
     readonly json: boolean
+    /**
+     * The line naming the standing hotfix pass that covers this push (core/hotfix/pass.ts: `starci hotfix land` writes it for its one commit to dev, alive only
+     * with that process), else undefined. A covered push is the one push of the sanctioned hotfix path and is not judged (contexts/authority/lanes.md "Hotfix").
+     */
+    readonly hotfix?: (pushRefs: string | undefined) => string | undefined
 }
 
 /** The forwarded argv without `--push-refs` and its value: a flag the CLI resolves and @starci/hfs never sees. */
@@ -99,6 +104,11 @@ export const pushRefsOf = (args: readonly string[]): string | undefined => {
 export const runFastCheck = async (args: readonly string[], ports: FastPorts): Promise<VerbResult<unknown>> => {
     const target = fastTarget(pushRefsOf(args))
     const forwarded = withoutPushRefs(args)
+    const hotfix = ports.hotfix?.(pushRefsOf(args))
+    if (hotfix !== undefined) {
+        ports.say(hotfix)
+        return { data: { level: "dev", hotfix: true, findings: [], ok: true }, message: hotfix, exitCode: 0 }
+    }
     const key = ports.memoKey()
     const memo = key === undefined ? undefined : ports.readMemo(key)
     if (key !== undefined && memo !== undefined) {

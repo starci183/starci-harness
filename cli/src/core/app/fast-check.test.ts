@@ -148,3 +148,17 @@ void test("app push of a landing on dev runs no check of its own (its hook runs 
     assert.equal(promoted.runs, 1)
     assert.deepEqual(main.log, ["check", "push origin main"])
 })
+
+void test("a standing hotfix pass skips the fast level for its one push: no deps check, no hfs, no memo", async () => {
+    const w = world()
+    const covered: FastPorts = { ...w.ports, hotfix: (refs) => (refs === undefined ? undefined : "hotfix: abc is the one commit of the running starci hotfix land") }
+    const run = await runFastCheck(["--env", "prod", "--level", "dev", "--push-refs", line("refs/heads/dev")], covered)
+    assert.equal(run.exitCode, 0)
+    assert.equal(w.forwarded.length, 0)
+    assert.equal(w.targets.length, 0)
+    assert.equal(w.memos.size, 0)
+    assert.match(w.log.at(-1) ?? "", /^hotfix: abc/u)
+    const open = await runFastCheck(["--env", "prod", "--level", "dev"], covered)
+    assert.equal(w.forwarded.length, 1, "a run with no push refs is judged as before")
+    assert.equal(open.exitCode, 0)
+})
