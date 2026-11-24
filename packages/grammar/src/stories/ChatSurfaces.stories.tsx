@@ -136,7 +136,7 @@ export const ChatPane: Story = {
   },
 };
 
-/** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the flat surface, no border, no shadow. */
+/** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the flat surface, the edge line, no shadow. */
 export const BubblesOnWhite: Story = {
   render: () => (
     <G.Drawer title="Pinned messages" closeLabel="Close" isOpen onOpenChange={noop}>
