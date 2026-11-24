@@ -62,7 +62,7 @@ const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
  * An agent's rich message as data: `MessageBubble content="card"` with a fixed order, the title with its chip, then the body (or a
  * nested key/value list through `details`), then the actions row (primary first, an `open` action with the arrow last), then the
  * meta line at xs. The card is capped at the bubble's measure with the avatar at the start; its content column fills the card (a nested
- * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (no border, no shadow) on the thread;
+ * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (the 1px edge line, no shadow) on the thread;
  * the replies it offers are `Section kind="list" layout="suggestions"` in `body` (flat rows, a pressable plain-text row per reply).
  */
 export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
