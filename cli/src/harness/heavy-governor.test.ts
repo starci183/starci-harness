@@ -1,7 +1,8 @@
-// The heavy-command governor is a count: one slot per heavy.gbPerSlot GB of the host's RAM, at least one; each heavy command holds one slot while it
-// runs; a command past the cap waits first come, first served and starts when one frees; the disk floor holds every start, a lone one too; a dead
-// holder is dropped; a command a held command starts is admitted on its own, its ancestors left out; a CI runner never queues; a test run takes no
-// more workers than its caller can use; the heap caps are passed as process limits; an out-of-memory run names the cause; the wait line says why.
+// The heavy-command governor is a sum: one slot unit per heavy.gbPerSlot GB of the host's RAM, at least one; each heavy command holds its weight (its
+// kind's planned MB in units, 1 to 3) while it runs; a command starts when it heads the first come, first served queue and its weight fits, so a heavy
+// one is never starved by light ones behind it; the disk floor holds every start, a lone one too; a dead holder is dropped; a command a held command
+// starts is admitted on its own, its ancestors left out; a CI runner never queues; a test run takes no more workers than its caller can use; the heap
+// caps are passed as process limits; an out-of-memory run names the cause; the wait line says why.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -11,7 +12,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { governorStorePath } from "./ledger.js"
 import { readHostSettings } from "./host-settings.js"
-import { HEAVY_PARENTS_ENV, HOST_HELD, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
+import { HEAVY_PARENTS_ENV, HOST_HELD, MAX_WEIGHT, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, heavyWeight, kindWeights, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
 import { withMachine } from "./machine.js"
 
 const state = mkdtempSync(join(tmpdir(), "starci-governor-"))
@@ -22,8 +23,10 @@ delete process.env.CI
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
 const rules: HeavyRules = { ...loadHeavyRules(opsDir), pollSeconds: 0.05, testWorkers: "50%" }
 const GB = 1024
-/** A host of 32 GB: two slots at 16 GB a slot. */
-const host: Governed = { rules: { ...rules, gbPerSlot: 16 }, freeMb: () => 20 * GB, totalMb: 32 * GB }
+/** A host of 16 GB: four units at 4 GB a unit. */
+const host: Governed = { rules: { ...rules, gbPerSlot: 4 }, freeMb: () => 20 * GB, totalMb: 16 * GB }
+/** A host of 8 GB: two units. */
+const small: Governed = { ...host, totalMb: 8 * GB }
 
 test.after(() => {
     rmSync(state, { recursive: true, force: true })
@@ -69,16 +72,41 @@ const run = (on: Governed, kind: HeavyKind, name: string, order: string[], hold?
         await hold
     })
 
-void test("the cap is one slot per gbPerSlot GB of RAM, at least one", () => {
-    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 64 * GB), 4)
-    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 65_380), 4, "64 GB installed, reported as 63.8 GB, is 4 slots")
-    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 62 * GB), 3)
-    assert.equal(slotCap({ ...rules, gbPerSlot: 16 }, 8 * GB), 1)
-    assert.equal(admission({ ...rules, gbPerSlot: 16 }, 3, [], 0, 64 * GB).admits, true)
-    assert.equal(admission({ ...rules, gbPerSlot: 16 }, 4, [], 0, 64 * GB).admits, false)
-    assert.match(admission({ ...rules, gbPerSlot: 16 }, 4, [], 0, 64 * GB).reason, /4 heavy command\(s\) run, at the cap of 4/u)
-    const floored = admission({ ...rules, gbPerSlot: 16 }, 0, ["free disk 4 GB on the drive of D: is under heavy.diskFloorMb 15 GB"], 0, 64 * GB)
+void test("the units are one per gbPerSlot GB of RAM, at least one", () => {
+    assert.equal(rules.gbPerSlot, 4, "ops/liveness.yaml: 4 GB a unit")
+    assert.equal(slotCap(rules, 64 * GB), 16)
+    assert.equal(slotCap(rules, 65_380), 16, "64 GB installed, reported as 63.8 GB, is 16 units")
+    assert.equal(slotCap(rules, 62 * GB), 15)
+    assert.equal(slotCap(rules, 2 * GB), 1)
+})
+
+void test("a command's weight is its kind's planned MB in units, rounded up, from 1 to 3, read from the caps alone", () => {
+    assert.deepEqual(
+        Object.fromEntries(kindWeights(rules, 28).map((one) => [one.kind, one.weight])),
+        { tsc: 2, eslint: 2, test: 3, build: 1, appBuild: 3, install: 1, uat: 1 },
+        "npm ci, codegen and package builds 1; tsc and an ESLint chunk 2; an app build and a full test run 3",
+    )
+    assert.equal(heavyWeight(rules, "test", 28, 1), 1, "a test run sized to one worker (the jest discovery) plans the parent and one worker")
+    assert.equal(heavyWeight(rules, "test", 2), 1, "a two-core runner plans one worker")
+    assert.equal(heavyWeight(rules, "codegen-of-another-copy", 28), 1, "a kind this CLI does not know weighs 1")
+    assert.equal(heavyWeight({ ...rules, caps: { ...rules.caps, tsc: { capMb: 4096 } } }, "tsc"), 1, "a measured cap that drops moves the weight with it")
+    assert.equal(heavyWeight({ ...rules, caps: { ...rules.caps, tsc: { capMb: 40_000 } } }, "tsc"), MAX_WEIGHT, "never above 3")
+})
+
+void test("admission is used + weight <= the units; a floor holds even a lone command; a weight above the units counts as all of them", () => {
+    assert.equal(admission(rules, { used: 13, weight: 3, totalMb: 64 * GB }).admits, true)
+    const full = admission(rules, { used: 14, running: 6, weight: 3, what: "next build", totalMb: 64 * GB })
+    assert.equal(full.admits, false)
+    assert.equal(full.reason, "14 of 16 slot units in use; next build needs 3")
+    assert.equal(full.running, 6)
+    assert.equal(full.free, 2)
+    assert.equal(admission(rules, { used: 7, totalMb: 64 * GB }).reason, "7 of 16 slot units in use")
+    const alone = admission(rules, { used: 0, weight: 3, totalMb: 8 * GB })
+    assert.equal(alone.admits, true, "a weight-3 command on a two-unit host runs alone")
+    assert.equal(alone.need, 2)
+    const floored = admission(rules, { used: 0, floors: ["free disk 4 GB on the drive of D: is under heavy.diskFloorMb 15 GB"], totalMb: 64 * GB })
     assert.equal(floored.admits, false, "a floor holds a lone command too")
+    assert.equal(floored.free, 0)
     assert.match(floored.reason, /under heavy\.diskFloorMb/u)
 })
 
@@ -103,24 +131,41 @@ void test("a test run takes its fixed workers, with the heap caps and the idle l
     assert.equal(held.options.env?.STARCI_WORKER_HEAP_MB, String(rules.testRun.workerMb), "the workers' heap cap")
 })
 
-void test("past the cap a command waits first come, first served, and starts when a slot frees", async () => {
+void test("light commands share the units: four of weight 1 run at once on four units, the fifth waits", async () => {
+    const order: string[] = []
+    const holder = gate()
+    await stderrOf(async () => {
+        const held = ["I1", "I2", "I3", "I4"].map((name) => run(host, "install", name, order, holder.wait))
+        await pause(300)
+        const fifth = run(host, "build", "I5", order)
+        await pause(300)
+        assert.deepEqual(order, ["I1", "I2", "I3", "I4"])
+        holder.open()
+        await Promise.all([...held, fifth])
+    })
+    assert.deepEqual(order, ["I1", "I2", "I3", "I4", "I5"])
+    assert.equal(heavySlots().length, 0, "every row is released")
+})
+
+void test("a heavy command that does not fit heads the queue, and a light one behind it never jumps it, so the heavy one is never starved", async () => {
     const order: string[] = []
     const holder = gate()
     const text = await stderrOf(async () => {
         const first = run(host, "tsc", "A", order, holder.wait)
-        const second = run(host, "build", "B", order, holder.wait)
         await pause(300)
-        const third = run(host, "eslint", "C", order)
+        const heavy = run(host, "appBuild", "next build", order)
         await pause(300)
-        const fourth = run(host, "install", "D", order)
+        const light = run(host, "install", "npm ci", order)
         await pause(400)
-        assert.deepEqual(order, ["A", "B"], "two slots on a 32 GB host: C and D wait")
+        assert.deepEqual(order, ["A"], "2 of 4 units in use: next build needs 3 and waits; npm ci would fit but waits behind it")
+        assert.equal(must(heavySlots().find((slot) => slot.label === "next build")).weight, 3)
         holder.open()
-        await Promise.all([first, second, third, fourth])
+        await Promise.all([first, heavy, light])
     })
-    assert.deepEqual(order, ["A", "B", "C", "D"], "served in the order they came")
-    assert.match(text, /C waits for a heavy-command slot \(2 on this host\): first in the queue; 2 heavy command\(s\) run, at the cap of 2/u)
-    assert.match(text, /D waits for a heavy-command slot \(2 on this host\): 1 ahead of it/u)
+    assert.deepEqual(order, ["A", "next build", "npm ci"], "served in the order they came")
+    assert.match(text, /next build waits for a heavy-command slot \(3 of the 4 slot units on this host\): first in the queue; 2 of 4 slot units in use; next build needs 3/u)
+    assert.match(text, /npm ci waits for a heavy-command slot \(1 of the 4 slot units on this host\): 1 ahead of it/u)
+    assert.match(text, /running: A \(2 units, pid/u)
     assert.equal(heavySlots().length, 0, "every row is released")
 })
 
@@ -169,17 +214,26 @@ void test("the disk floor is the host's config.yaml host.diskFloorMb when set, e
 void test("a row of a process that is gone is dropped at admission, so nothing waits for a dead holder", async () => {
     heavySlots()
     const dead = spawnSync(process.execPath, ["-e", ""]).pid
-    const one: Governed = { ...host, totalMb: 16 * GB }
     withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('ghost', ?, 'tsc', 'ghost', ?, 'running', ?)").run(dead, state, new Date().toISOString()), governorStorePath())
     const order: string[] = []
-    const text = await stderrOf(() => run(one, "tsc", "after-ghost", order))
+    const text = await stderrOf(() => run(small, "tsc", "after-ghost", order))
     assert.deepEqual(order, ["after-ghost"])
     assert.equal(text, "")
     assert.equal(heavySlots().length, 0)
 })
 
+void test("a row written without a weight (by a CLI copy that has none) holds its kind's weight", () => {
+    heavySlots()
+    withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('unweighted', ?, 'eslint', 'unweighted', ?, 'running', ?)").run(process.pid, state, new Date().toISOString()), governorStorePath())
+    try {
+        assert.equal(must(heavySlots().find((slot) => slot.id === "unweighted")).weight, 2)
+    } finally {
+        withMachine((db) => db.prepare("DELETE FROM heavy_slots WHERE id = 'unweighted'").run(), governorStorePath())
+    }
+})
+
 void test("a heavy command a held command starts is admitted on its own, and its ancestors never count against it", async () => {
-    const one: Governed = { ...host, totalMb: 16 * GB }
+    const one = small
     const order: string[] = []
     const holder = gate()
     const parents: Held[] = []
@@ -193,8 +247,8 @@ void test("a heavy command a held command starts is admitted on its own, and its
             seen.push(held)
             assert.equal(heavySlots().length, 2, "the child holds a row of its own")
         })
-        assert.deepEqual(order, ["parent", "child"], "the child started on a one-slot host while the parent runs: the parent's row does not count")
-        assert.equal(heavyRoomMb(one), rules.caps.eslint.capMb, "the room this process reads leaves its ancestors out: one free slot")
+        assert.deepEqual(order, ["parent", "child"], "the child started on a two-unit host the parent's tsc fills: the parent's row does not count")
+        assert.equal(heavyRoomMb(one), rules.caps.eslint.capMb, "the room this process reads leaves its ancestors out: two free units, one eslint child")
         assert.match(must(seen[0]).options.env?.[HEAVY_PARENTS_ENV] ?? "", new RegExp(`^${inherited},[0-9]+-[0-9a-f]+$`, "u"), "its own children inherit both ids")
     } finally {
         Reflect.deleteProperty(process.env, HEAVY_PARENTS_ENV)
@@ -216,7 +270,7 @@ void test("a test run never plans more workers than its caller can use", async (
 })
 
 void test("a CI runner keeps no queue: its command runs at once and takes no row", async () => {
-    const one: Governed = { ...host, totalMb: 16 * GB }
+    const one = small
     const order: string[] = []
     const holder = gate()
     const parent = run(one, "tsc", "busy", order, holder.wait)
@@ -243,6 +297,6 @@ void test("a command that runs out of memory names the heap cap it hit and the R
 })
 
 void test("a waiting command prints its place, why it waits and who runs", () => {
-    const line = waitLine("tsc -p be", 2, { cap: 4, reason: "4 heavy command(s) run, at the cap of 4" }, ["jest (pid 7, since 2026-11-23T01:00:00Z)"])
-    assert.match(line, /tsc -p be waits for a heavy-command slot \(4 on this host\): 2 ahead of it; 4 heavy command\(s\) run, at the cap of 4; running: jest \(pid 7/u)
+    const line = waitLine("next build", 2, { cap: 16, need: 3, reason: "14 of 16 slot units in use; next build needs 3" }, ["jest (3 units, pid 7, since 2026-11-23T01:00:00Z)"])
+    assert.match(line, /next build waits for a heavy-command slot \(3 of the 16 slot units on this host\): 2 ahead of it; 14 of 16 slot units in use; next build needs 3; running: jest \(3 units, pid 7/u)
 })

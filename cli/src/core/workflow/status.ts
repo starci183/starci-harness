@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { workflowBudgets } from "../../harness/budget.js"
 import { currentGoal } from "../../harness/goal.js"
 import type { NodeView } from "../../harness/graph.js"
-import { clockOf, heavyFloors, heavySlots, heldWhy, loadHeavyRules, runningHeavyCount, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
+import { clockOf, heavyFloors, heavySlots, heavyUnitsInUse, heldWhy, loadHeavyRules, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
 import { openExistingLedger } from "../../harness/ledger.js"
 import { lastEvent } from "../../harness/tasks.js"
 import { parallelSlots, snapshotOf } from "../../harness/workflow.js"
@@ -22,8 +22,8 @@ const heldViews = (db: DatabaseSync, views: readonly NodeView[]): NodeView[] => 
     if (live.length === 0) return [...views]
     const rules = loadHeavyRules()
     const holds = seatRoom(rules).ok ? new Map<string, string>() : new Map(seatHolds().map((hold) => [hold.task, seatHoldWhy(hold)]))
-    const waiting = heavySlots().filter((slot) => slot.state === "waiting")
-    const running = runningHeavyCount()
+    const waiting = heavySlots(rules).filter((slot) => slot.state === "waiting")
+    const used = heavyUnitsInUse(rules)
     return views.map((view) => {
         const task = view.task
         if (task === null || !live.includes(view)) return view
@@ -35,7 +35,7 @@ const heldViews = (db: DatabaseSync, views: readonly NodeView[]): NodeView[] => 
         if (seat !== undefined) return { ...view, why: `held: ${seat}` }
         const slot = waiting.find((each) => each.label.includes(task.id) || each.cwd.includes(task.id))
         if (slot === undefined) return view
-        const why = heldWhy(rules, running, heavyFloors(rules, slot.cwd)) ?? "admitted at its next poll"
+        const why = heldWhy(rules, used, heavyFloors(rules, slot.cwd), slot.weight, slot.label) ?? "admitted at its next poll"
         return { ...view, why: `held: heavy-command slot for ${slot.kind}, ${why} (since ${clockOf(slot.at)})` }
     })
 }

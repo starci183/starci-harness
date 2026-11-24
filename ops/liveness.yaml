@@ -32,11 +32,14 @@ verifyDeadlineMinutes: 45
 # included. At most this many of one node's tasks come back so; the next stays ended and its node is red for the Kernel.
 reviveMax: 3
 
-# Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build, npm ci or install, a uat
-# container. The owner's rule, the whole of admission: the host has one heavy slot per gbPerSlot GB of its physical RAM, at least one (64 GB at
-# 16 GB a slot: 4), and each heavy command holds one slot for as long as it runs. A gate or `app check` that runs several in turn takes a slot
-# for each as it starts and lets it go when that step ends; a running web or api server (the dev stack, a look) takes none. No free-RAM room,
-# reserve, per-kind need or CPU rule decides a start. The one floor: while the drive a command works on has under diskFloorMb free, nothing
+# Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build (build), an app's own build
+# @starci/hfs asks for (appBuild: the api and web builds of `app stack`, a compose build, the CI-parity build, the Sonar scan), npm ci or install,
+# a uat container. The owner's rule, the whole of admission: the host has one slot unit per gbPerSlot GB of its physical RAM, at least one (64 GB
+# at 4 GB a unit: 16), and each heavy command holds its WEIGHT in units for as long as it runs: ceil(planned MB / (gbPerSlot x 1024)), from 1 to
+# 3, where the planned MB is its kind's caps.capMb below and a test run's parent plus its workers (testRun). It starts when it heads the queue
+# and used + weight <= the units; a light command behind a heavy one waits with it, so the heavy one is never starved. A gate or `app check`
+# that runs several in turn takes each one's units as it starts and lets them go when that step ends; a running web or api server (the dev
+# stack, a look) takes none. No free-RAM room, reserve or CPU rule decides a start. The one floor: while the drive a command works on has under diskFloorMb free, nothing
 # starts (npm installs onto a full drive died with ENOSPC and "disk I/O error"), and the queue line names it.
 # The slots are rows of one queue per host (`heavy_slots` in the governor's store, cli/src/harness/heavy.ts, ledger.ts governorStorePath), shared by
 # every checkout and installed CLI, its admissions serialised by the store's lock. A command past the cap waits first come, first served, holding
@@ -58,16 +61,19 @@ reviveMax: 3
 # environment the CLI sets (heavy.ts hfsLimitsEnv). On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng, percent of
 # one core): at scannerCpuPercent or more it prints the owner's exclusion command and never runs it (security settings are the owner's).
 heavy:
-  gbPerSlot: 16
+  gbPerSlot: 4
   diskFloorMb: 15360
   pollSeconds: 2
-  # The heap cap of one process of each kind is its measured peak (uat: its `--memory`): a typecheck of a large app's back end outgrows node's
-  # default heap (4 GB), and one ESLint child of an app check (a chunk of plan.lintChunk files) peaks near 8 GB on a typed back end of about
-  # 9,500 files; a lower heap turns a green run into an out-of-memory one.
+  # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), and sets its weight: a typecheck of a large app's back
+  # end outgrows node's default heap (4 GB), and one ESLint child of an app check (a chunk of plan.lintChunk files) peaks near 8 GB on a typed
+  # back end of about 9,500 files; a lower heap turns a green run into an out-of-memory one. appBuild is an estimate, not a measurement: a
+  # Next.js production build of an app the size of NIVO with its build workers, about 12 GB over the whole tree; the CI-parity build of
+  # `app check` prints the measured peak of the run (its PEAK column), the number to set here once read.
   caps:
     tsc: { capMb: 8192 }
     eslint: { capMb: 8192 }
     build: { capMb: 4096 }
+    appBuild: { capMb: 12288 }
     install: { capMb: 2048 }
     uat: { capMb: 4096 }
   timeoutMinutes:
