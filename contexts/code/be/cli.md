@@ -103,12 +103,13 @@ closure needs, and its publication, are held by review: the harness publishes no
 ## BE-CLI-6 A client cli installs with one global command and runs by its own name
 
 The owner's words (2026-11-24): "cài một lần bằng npm i -g nivoos-relay, sau đó gõ nivoos-relay pair <MÃ>, áp dụng cả nivoos cli, áp
-dụng cả StarCi Next relay". Every client cli (BE-CLI-5) of every app is installed and run the same way:
+dụng cả StarCi Next relay"; "ý là như NestJS ấy"; "và tất cả cli sau này". Every client cli (BE-CLI-5) of every app, present and future, is
+installed and run the same way:
 
 | Rule | Shape |
 | --- | --- |
-| one install command | `npm i -g <package>`; the docs and the app's console show this, never `npx` (at most one footnote) |
-| the command is the package name | `bin` names `<package>` itself (e.g. `nivoos-relay`, `nivoos`); a short alias may stay beside it |
+| one install command, NestJS style | `npm i -g @<org>/<name>` (like `npm i -g @nestjs/cli`); the docs and the app's console show this, never `npx` (at most one footnote) |
+| scoped package, short command | the package is scoped to the app's npm org (`@nivoos/cli`, `@nivoos/relay`, `@starci/next-relay`) and `bin` is a short, unscoped command (`nivoos`, `nivoos-relay`, `starci-relay`), like `@nestjs/cli` installs `nest`; the org and names are the owner's |
 | self-contained | the published package carries no workspace-only dependency: a workspace package it imports is bundled into `dist` or published on its own; every runtime dependency is pinned exactly |
 | runtime | `engines.node` `>=22`; `<bin> --version` prints the package version |
 | status | `<bin> status` says whether it is set up and connected, in the user's language |
