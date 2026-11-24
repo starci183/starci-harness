@@ -28,7 +28,7 @@ export type TableOfContentsProps = NoChildren & {
     readonly activeId?: string
     readonly onActiveChange?: (id: string) => void
     /**
-     * `rail` (default): the outline on a quiet rail beside the page. `bar` (0.57.1, a phone): one sticky selector at the top of the page
+     * `rail` (default): the outline on a quiet rail beside the page. `bar` (0.58.0, a phone): one sticky selector at the top of the page
      * that names the section in view and opens the whole list; a pick jumps to it and closes the list.
      */
     readonly kind?: "rail" | "bar"
@@ -55,7 +55,7 @@ const reachedSection = (items: readonly TableOfContentsItem[], offset: number): 
  * COMPOSITE - `TableOfContents`: the sticky outline of a long page (owner 2026-11-23, a lesson's "why" part). Its sections are links on a
  * quiet rail; the one in view (scroll spy, whatever element scrolls) is marked on the rail in the foreground and `aria-current`. A press
  * jumps to the section (smoothly unless the reader asks for reduced motion), moves focus to it and updates the address hash. A section
- * may carry a short `meta` lead (a time). `kind="bar"` (0.57.1) is the same outline on a phone: one sticky selector naming the section in
+ * may carry a short `meta` lead (a time). `kind="bar"` (0.58.0) is the same outline on a phone: one sticky selector naming the section in
  * view, which opens the list.
  * Contract: A11Y-2 (a named navigation landmark), FOCUS-1, STATE-7 (controlled active section).
  */

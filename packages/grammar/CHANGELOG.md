@@ -1,27 +1,16 @@
 # Changelog
 
-## 0.57.3 - 2026-11-24 - Sidenotes: one calm column; Markdown tables stack on a phone
+## 0.58.0 - 2026-11-24 - The neutral Sparkline; AiChatThread slots; lesson outline, inline notes and glossary terms; phone tables stack
 
-A patch: two fixes in the lesson reading.
+A minor: it deletes two `Sparkline` props (`tone`, `emptyLabel`), with new optional props, components and fixes.
+
+codemod: v0580 (`starci app codemod v0580`, or `--from 0.57.0 --to 0.58.0`).
 
 - Fixed (`Sidenotes`, a lesson's margin): notes were set level with each term's first use, which left tall voids and a heading standing alone above the first note. The column now reads from the heading down: the first note sits right under it and each later note waits for its term by at most two gaps, so the column is one stack and the hover mark still pairs a term with its note. A frame with no notes draws no heading and no landmark (the column's room is kept so the prose keeps its measure).
-- Fixed (`Markdown` table, under 40rem): a wide table was cut at the edge behind a faint fade. Its rows now stack: each cell names its column (`data-label`), the head row stays for assistive technology, and nothing scrolls sideways. Wider frames keep the scrolling `MarkdownTableFrame`.
-
-## 0.57.2 - 2026-11-23 - PaneHeader: a long title ends in an ellipsis
-
-A patch: a fix.
-
+- Fixed (`Markdown` table, under 40rem): a wide table was cut at the edge behind a faint fade. Its rows now stack: each cell names its column (`data-label`; the first cell and the column name set `--grammar-icon-stroke` from their weight, as every weighted rule does), the head row stays for assistive technology, and nothing scrolls sideways. Wider frames keep the scrolling `MarkdownTableFrame`.
 - Fixed (`PaneHeader title`): the wrapper of the title clipped with `text-overflow`, but the Heading inside it is a block, so a long title was cut hard beside the status tag ("Chăm" with no ellipsis). The Heading itself now takes `min-width: 0`, `overflow: hidden`, `text-overflow: ellipsis` and `white-space: nowrap`. Story `Navigation & Data/Pane header` `LongTitlePhone` (390).
-
-## 0.57.1 - 2026-11-23 - AiChatThread: the assistant's mark, a node after the messages, a hint in the composer's foot row
-
-A patch: three new optional props and a type, and the figure trend line made neutral (it deletes two Sparkline props, so it ships a codemod).
-
-codemod: v0571 (`starci app codemod v0571`, or `--from 0.57.0 --to 0.57.1`).
-
-- Changed (`Sparkline`, owner 2026-11-23, NIVO Contacts figures: a flat red line on an all-zero series read as "dropping"): the line is always the neutral muted ink, never a status colour; no data, or a series of zeros only, draws nothing at all, not even its box (the figure is words only, "Same as yesterday": `.starci-core-description-trend-line:empty` takes no space). `Sparkline tone` and `Sparkline emptyLabel` are deleted (codemod v0571 drops them); loading is still a Skeleton of the box.
+- Changed (`Sparkline`, owner 2026-11-23, NIVO Contacts figures: a flat red line on an all-zero series read as "dropping"): the line is always the neutral muted ink, never a status colour; no data, or a series of zeros only, draws nothing at all, not even its box (the figure is words only, "Same as yesterday": `.starci-core-description-trend-line:empty` takes no space). `Sparkline tone` and `Sparkline emptyLabel` are deleted (codemod v0580 drops them); loading is still a Skeleton of the box.
 - Changed (`Figure.trend`, same rule): the status colour stands on the meta WORDS (the `--*-soft-foreground` ink of success, danger or info; neutral stays muted) together with the direction mark, so the words carry the direction and the line under them never does.
-
 - Added (`AiChatThread assistantAvatar`, NIVO Studio): an Avatar item (`name`, `src`, `seed`, `kind` such as `logo`, `mark`, `fallback`, `tone`; `AiChatAssistantAvatar`, an `AvatarGroupItem` without its id) drawn as the `sm` (24px) decorative Avatar before each assistant turn, the answer and its actions beside it at the row gap. The reader's turns carry none.
 - Added (`AiChatThread afterMessages`): a node after the last message and the proposed result, inside the scrolling thread and its reading column (a Divider such as "you approved version 2", an inline Alert for an error); the viewport follows it like a message.
 - Added (`AiChatThread composerHint`): one short caption string in the composer's foot row, inside the same bordered box, at the start with the send button at the end ("Claude · the shop's key"). The chat owns its composer layout now: one bordered box (a 1px edge, the focus ring on the box) holding the core Textarea without its own frame and a foot row with the hint and the round `sm` send, which turns into stop while an answer runs; `Textarea send` is no longer used by the chat.

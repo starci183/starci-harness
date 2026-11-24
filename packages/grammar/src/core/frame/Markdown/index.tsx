@@ -56,7 +56,7 @@ export type MarkdownCode = {
     readonly value: string
 }
 
-/** A glossary term the body marks (0.57.1): the id of its note in the `Sidenotes` around the body, and the words as the prose writes them. */
+/** A glossary term the body marks (0.58.0): the id of its note in the `Sidenotes` around the body, and the words as the prose writes them. */
 export type MarkdownTerm = {
     readonly id: string
     /** Matched case-sensitively, as a whole word. */
@@ -86,7 +86,7 @@ export type MarkdownProps = NoChildren & {
      */
     readonly renderDiagram?: (diagram: MarkdownDiagram) => ReactNode
     /**
-     * Glossary terms (0.57.1): the first place each term stands in the body's prose (never in a heading, a link or code) is drawn as a
+     * Glossary terms (0.58.0): the first place each term stands in the body's prose (never in a heading, a link or code) is drawn as a
      * `SidenoteTerm` naming its note, so the body inside a `Sidenotes` explains its own words. Outside one the words stay plain.
      */
     readonly terms?: readonly MarkdownTerm[]
