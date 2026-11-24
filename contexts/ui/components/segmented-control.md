@@ -13,6 +13,8 @@ So a peer choice has one component per meaning, and none of them is a row of chi
 - choosing one value in a form or a toolbar is a `Select`, whatever the number of options; `RadioGroup` only when each option needs a sentence of explanation;
 - several values of a filter are a multi-selection list (`select.choose.role:multi`), never chips.
 
+`@starci/eslint-grammar-core` refuses an import of `ChoiceChips` (`starci-grammar/no-choice-chips`, R380) and its message names this replacement.
+
 ## Job
 Choose **one value** of a form or a toolbar from a closed set. It is a form control; it submits a value inside a form.
 
@@ -30,7 +32,7 @@ applies wins.
 | radio | each option needs a sentence of explanation | `RadioGroup` | judgement |
 | buttons | the value of a form field, options with the weight of a button (a plan level, an amount) that all stay visible; never a period or mode switch of shown data, which is `Tabs appearance="primary"` at the trailing edge of its head (`tabs.choose.role:switch`) | `ChoiceButtons`, separate toggles as tall as a Button of their size | `DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT` |
 | several | several values | `select.choose.role:multi-visible` or `select.choose.role:multi`; never chips | judgement |
-| select | any other one value of a form or toolbar (a time, a size, a day, an answer, a tool), however few the options; a taken option is a disabled option of the list | `Select`: `appearance="field"` in a form, `"compact"` in a toolbar, a pane head or a `Section` filter row (`select.choose.role:select`) | judgement |
+| select | any other one value of a form or toolbar (a time, a size, a day, an answer, a tool), however few the options; a taken option is a disabled option of the list | `Select`: `appearance="field"` in a form, `"compact"` in a toolbar, a pane head or a `Section` filter row (`select.choose.role:select`) | lint `starci-grammar/no-choice-chips` (R380) refuses the chips it replaces |
 
 ## Variants
 None for the app. The selected segment carries the selection treatment (CTA-1): never a commit among the options. A selected `ChoiceButtons` option is the accent soft pair (fill and text) with no edge of its own, whatever the app's plate hooks; the focus ring shows for keyboard focus only, never after a pointer press (owner 2026-11-23).
@@ -49,4 +51,4 @@ segments' footprint.
 - **App author decides:** options, labels (an icon-only option has an accessible label), the value.
 
 ## Rules
-STATE-6, CTA-1, FEEDBACK-1. Proof: A11Y-4, FOCUS-2.
+STATE-6, CTA-1, FEEDBACK-1. Lint: `starci-grammar/no-choice-chips`, `starci-grammar/no-grouped-choice-controls`. Proof: A11Y-4, FOCUS-2.
