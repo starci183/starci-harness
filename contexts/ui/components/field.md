@@ -5,7 +5,7 @@ Contract: [Input](../../grammars/contract.md#input). Vendor: [TextField](../../v
 ## Job
 Space the parts of every control the same way: the label, the control, its help, error or counter, and the fields of one
 form. The field rule is the one spacing contract of Input, Select, NumberField, Textarea, ComboBox, the date and time
-fields, Search, CopyField, Checkbox and Radio groups, ChoiceButtons, Switch and Slider, so a form built of any mix of them
+fields, Search, CopyField, Checkbox and Radio groups, Switch and Slider, so a form built of any mix of them
 comes out with one rhythm. What each control *is* is [text-field](text-field.md) and [select](select.md).
 
 ## Choose

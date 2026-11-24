@@ -46,7 +46,7 @@ button. A component draws the box it has when ready, inert (not focusable) and u
 - a create form is never loading, an edit form is while it waits for the existing data.
 
 `aria-busy` has one owner: the region. `Section`, `PaneSection`, `SurfaceCard`, `Form` and a `Dialog` or `Drawer` body carry it, and nothing inside them adds
-another (the components read `useRegionOwnsBusy`). A component that loads on its own, outside any region (an explicit `isLoading`: a field, `ChoiceButtons`,
+another (the components read `useRegionOwnsBusy`). A component that loads on its own, outside any region (an explicit `isLoading`: a field,
 `DescriptionList`, `Alert`, `Calendar`, a chart of the ext, `Meter`, `Board`, `ScheduleGrid`, a table or list that publishes its own scope), is its own region and carries it.
 A `Dialog`, `Drawer`, `Popover`, `DropdownMenu`, `Select` and `ComboBox` popover starts a fresh region, so their content never inherits the page's loading.
 
