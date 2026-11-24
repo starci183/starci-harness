@@ -648,10 +648,10 @@ test('a second watcher tree of one checkout never survives a start: the earlier 
     { pid: 6040, ppid: 43796, command: '"node"   "D:\\starci-lanes\\_next\\devstack\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" start' },
   ];
   const landing = { argv: ['npx', 'next', 'dev'], cwd: 'fe/apps/landing' };
-  assert.deepEqual(earlierTrees(served, devstack, landing, new Set()), [62468], 'the command line alone cannot tell the app from the landing');
-  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([62468])), [], 'the tree the record holds for another process (the app) is never ended');
-  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([6040])), [], 'nor a tree above the recorded pid of another process');
-  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([99999])), [62468], 'a recorded pid that runs nothing protects nothing');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set()), [6040], 'the command line alone cannot tell the app from the landing (`dev` is inside `devstack`)');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([62468])), [], 'the tree under the pid the record holds for another process (the app, its npx shim) is never ended');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([6040])), [], 'nor the recorded pid itself');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([99999])), [6040], 'a recorded pid that runs nothing protects nothing');
 });
 
 test('the edge forwards to a web only once its page and Grammar CSS answer, and says the app is updating until then', async (t) => {
