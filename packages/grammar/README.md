@@ -432,7 +432,7 @@ DescriptionList, Disclosure, ListBox, MermaidDiagram, MessageStatus, Pagination,
 
 **The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
-`ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
+`TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
 
 A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
 the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
@@ -881,7 +881,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   would shadow the app's value); every rule reads it with its fallback, which `npm run check:hooks` holds. They cover a card's edge
   on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
   cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
-  the toggle plates (ChoiceChips, RadioGroup rows, the Select pill), the destructive entry button's outline, the
+  the toggle plates (ChoiceButtons, RadioGroup rows, the Select pill), the destructive entry button's outline, the
   chat faces, the Quote, and the Quote.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.

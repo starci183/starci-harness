@@ -21,7 +21,7 @@ import type { Context, Node } from "./lib/types.ts"
  * - A `SurfaceCard`, `Drawer`, `Dialog`, `AlertDialog` or `Popover` is a reset: a surface is its own edge, so what
  *   stands inside it is not compared with anything outside it.
  * - A field stack: a `Stack gap="section"` whose children are all form controls (Input, Select, Textarea, NumberField,
- *   ComboBox, Autocomplete, CheckboxGroup, RadioGroup, ChoiceChips, ChoiceButtons, Switch, DatePicker, DateField, TimeField,
+ *   ComboBox, Autocomplete, CheckboxGroup, RadioGroup, ChoiceButtons, Switch, DatePicker, DateField, TimeField,
  *   SearchField, Slider, CopyField, Fieldset, Field), directly inside a `Form` or a `Fieldset` (a Drawer body is
  *   a reset already). Fields stand 24 apart; that is the Field rule's own rhythm.
  * - `Grid kind="main-rail"`: nothing in it is compared with it, and it is not compared with a region parent. It fixes

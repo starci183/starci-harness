@@ -2210,10 +2210,11 @@ FE_CHIP_LABEL_CASE:
 FE_GROUPED_CHOICE_CONTROL:
   title: "A group of attached buttons is drawn"
   title_vi: "Vẽ một nhóm nút dính liền nhau"
-  meaning_vi: "Mã tại <file> dùng ButtonGroup, FilterButtonGroup hoặc SegmentedControl, trong khi Grammar chỉ có một cách chọn trong vài lựa chọn theo ý nghĩa."
+  meaning_vi: "Mã tại <file> dùng ButtonGroup, FilterButtonGroup, SegmentedControl hoặc ChoiceChips, trong khi Grammar chỉ có một cách chọn trong vài lựa chọn theo ý nghĩa."
   causes_vi:
     - "Dùng ButtonGroup để gom nhiều thao tác, hoặc FilterButtonGroup và SegmentedControl để lọc hay chọn một giá trị."
-  nextStep_vi: "Đổi sang thành phần đúng ý nghĩa: Tabs (kind filter) để chuyển màn hoặc lọc danh sách, ChoiceChips hoặc RadioGroup để chọn giá trị trong biểu mẫu, Button riêng hoặc DropdownMenu cho thao tác (quy định one-way-to-choose)."
+    - "Còn import ChoiceChips, thành phần Grammar đã bỏ (chủ dự án 2026-11-24: trong form thì chọn dropdown)."
+  nextStep_vi: "Đổi sang thành phần đúng ý nghĩa: Tabs (kind filter) để chuyển màn hoặc lọc danh sách, Tabs primary để đổi kỳ hoặc chế độ, Select (dropdown) để chọn giá trị trong biểu mẫu hay thanh công cụ, Button riêng hoặc DropdownMenu cho thao tác (quy định one-way-to-choose)."
   owner: op-retry
   kind: check-finding
 

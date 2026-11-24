@@ -280,7 +280,7 @@ export type FieldSkeletonControl =
     | { readonly kind: "check" }
     /** A list of choices (radio, checkbox group): `count` rows of a mark and a line. */
     | { readonly kind: "choices"; readonly count: number }
-    /** A row of chips or buttons (ChoiceChips, ChoiceButtons, TagGroup): `count` pills. */
+    /** A row of chips or buttons (ChoiceButtons, TagGroup): `count` pills. */
     | { readonly kind: "pills"; readonly count: number }
     /** A row of small boxes (Rating stars, OTP cells): `count` of them. */
     | { readonly kind: "marks"; readonly count: number }

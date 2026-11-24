@@ -122,7 +122,7 @@ rules:
         when: A suggestion, quick reply or empty-state shortcut is drawn
         assert: |-
           It is a `Cluster gap="inline"` (with `label`) of neutral `Button size="sm"`, which every Button size draws as a
-          pill; a Link row, ChoiceChips, TagGroup, Badge or Chip is never a suggestion.
+          pill; a Link row, TagGroup, Badge or Chip is never a suggestion.
   - id: TABLE-CELL-TYPE
     title: Table and row cells take the row type sizes
     governs: Text inside a DataTable cell or a ListRow.

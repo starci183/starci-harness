@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Removed, BREAKING (`ChoiceChips`, owner 2026-11-24: "xóa choicechips ra không xài, đủ hết cả rồi mà, trong form thì chọn dropdown"): the component, its exports (`ChoiceChips`, `ChoiceChip`, `ChoiceChipsProps`), its registry entry, its chip look (`data-grammar-choice-look="chip"` and its CSS) and its stories are deleted. An app replaces each use by meaning: switching views or a list's status filter is `Tabs` secondary (`kind="views"` or `kind="filter"`, the count in the tab's `count` slot); switching a period or mode of the same data is `Tabs appearance="primary"`; choosing one value in a form or a toolbar is a dropdown `Select` (`appearance="field"` in a form, `"compact"` in a toolbar), a taken option a disabled option; several values are a `CheckboxGroup` or a multi-selection list, never chips. `@starci/eslint-grammar-core` refuses the import (`starci-grammar/no-choice-chips`). No codemod: the replacement depends on what the choice means.
+- Changed (`ChoiceButtons`): it is the one component left on the choice group (`core/choiceToggles`); its option type is `ChoiceButton` (the internal `ChoiceChip` type is now `ChoiceOption`). Its markup and classes (`starci-core-choice-chips`, `starci-core-choice-chip`) are unchanged. DNA `DNA-COMMON-CHOICE-CHIPS-WRAP` and `-FILL` are renamed `DNA-COMMON-CHOICE-BUTTONS-WRAP` and `-FILL` and measure `ChoiceButtons`; `DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT` is deleted. Stories `Mockup parts/ChoiceButtonsSizes` and `ChoiceButtonsFill` replace the ChoiceChips ones; `Booking date and time` picks the time with a `Select` and the weekdays with a `CheckboxGroup`.
+- Changed (theme hooks): the plate hooks (`--starci-core-plate*`) name `ChoiceButtons` and `RadioGroup appearance="rows"` as the parts they paint.
+
 ## 0.58.0 - 2026-11-24 - Every icon strokes 1.5; the neutral Sparkline; AiChatThread slots; lesson outline, inline notes and glossary terms; phone tables stack
 
 A minor: it deletes API (the `--grammar-icon-stroke` custom properties, `Sparkline tone` and `emptyLabel`), with new optional props, components and fixes.

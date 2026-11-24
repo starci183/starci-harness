@@ -9,8 +9,8 @@ import { ErrorView, LOADING_ROWS, type ErrorData } from "./loadingState.js"
 import { useIsLoading } from "./regionScope.js"
 import type { NoChildren } from "./tier.js"
 
-/** One option of a choice group (ChoiceChips, ChoiceButtons). */
-export type ChoiceChip = {
+/** One option of a ChoiceButtons group. */
+export type ChoiceOption = {
     readonly value: string
     readonly label: string
     /** A taken or unavailable choice stays in place so the others keep their positions. */
@@ -19,7 +19,7 @@ export type ChoiceChip = {
     readonly disabledReason?: string
 }
 
-/** The words a disabled chip gives for being unavailable. The platform skips a disabled control, so the vendor trigger around it carries the events. */
+/** The words a disabled option gives for being unavailable. The platform skips a disabled control, so the vendor trigger around it carries the events. */
 const DisabledReason = ({ reason, children }: { readonly reason: string; readonly children: ReactNode }) => {
     const reasonId = useId()
     const { anchor, container } = useOverlayContainer("Tooltip")
@@ -39,28 +39,28 @@ const DisabledReason = ({ reason, children }: { readonly reason: string; readonl
     )
 }
 
-/** The props both choice groups share. */
+/** The props of the choice group. */
 export type ChoiceGroupProps = NoChildren & {
     /** Names the group, e.g. "Time". Drawn as the field label unless `isLabelHidden`. */
     readonly label: string
     readonly isLabelHidden?: boolean
-    readonly options: ReadonlyArray<ChoiceChip>
+    readonly options: ReadonlyArray<ChoiceOption>
     readonly value?: string
     readonly defaultValue?: string
     readonly onValueChange?: (value: string) => void
     /**
      * `single` (default): one choice, always one once chosen (`value`, `defaultValue`, `onValueChange`). `multiple`: any number of
-     * chips, none allowed (a set of weekdays); read and write it with `values`, `defaultValues` and `onValuesChange`, a chip toggles
+     * options, none allowed (a set of weekdays); read and write it with `values`, `defaultValues` and `onValuesChange`, an option toggles
      * on press and the group is announced as a set of toggle buttons.
      */
     readonly selectionMode?: "single" | "multiple"
     readonly values?: ReadonlyArray<string>
     readonly defaultValues?: ReadonlyArray<string>
     readonly onValuesChange?: (values: ReadonlyArray<string>) => void
-    /** What shows in place of the chips when there are none (no free time). Required: a group answers for its empty state. */
+    /** What shows in place of the options when there are none (no free time). Required: a group answers for its empty state. */
     readonly empty: ReactNode
     /**
-     * `content` (default): each chip is as wide as its words. `fill`: the chips share the row, growing evenly from their own width, and
+     * `content` (default): each option is as wide as its words. `fill`: the options share the row, growing evenly from their own width, and
      * wrap onto a further row only when they cannot fit (days of a week, two or three modes).
      */
     readonly width?: "content" | "fill"
@@ -75,23 +75,23 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 }
 
 /**
- * The one choice group both public components draw: a set of toggles that wrap onto as many rows as the width needs, a radio
- * group by behaviour (one is always selected once chosen, arrow keys move, a disabled option keeps its place). `look` sets the
- * option's height and paint: `chip` is as tall as a Chip, `button` as tall as a Button of `size`. Not exported from the package.
+ * The choice group `ChoiceButtons` draws: a set of toggles that wrap onto as many rows as the width needs, a radio group by
+ * behaviour (one is always selected once chosen, arrow keys move, a disabled option keeps its place), each option as tall as a
+ * Button of `size`. Not exported from the package. (`ChoiceChips`, the chip look, is removed: owner 2026-11-24.)
  */
-export const ChoiceGroup = ({ look, size = "md", label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, width = "content", isLoading: ownLoading, error }: ChoiceGroupProps & { readonly look: "chip" | "button"; readonly size?: "sm" | "md" }) => {
+export const ChoiceGroup = ({ size = "md", label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, width = "content", isLoading: ownLoading, error }: ChoiceGroupProps & { readonly size?: "sm" | "md" }) => {
     const labelId = useId()
     const isLoading = useIsLoading(ownLoading)
     const isMultiple = selectionMode === "multiple"
     const labelClass = isLabelHidden ? "starci-core-field-label starci-core-form-label--screen-reader" : "starci-core-field-label"
     // loading: HeroUI Skeleton shapes only, the label line and one pill per option (owner, 2026-11-21: no real text, no painted real control)
-    if (isLoading) return <FieldSkeletonScope component={look === "chip" ? "ChoiceChips" : "ChoiceButtons"} field={{ label, isLabelHidden }} control={{ kind: "pills", count: options.length === 0 ? LOADING_ROWS : options.length }} />
+    if (isLoading) return <FieldSkeletonScope component="ChoiceButtons" field={{ label, isLabelHidden }} control={{ kind: "pills", count: options.length === 0 ? LOADING_ROWS : options.length }} />
     return (
         <div
             className="starci-core-choice-chips"
-            data-component={look === "chip" ? "ChoiceChips" : "ChoiceButtons"}
-            data-grammar-choice-look={look}
-            {...(look === "button" ? { "data-size": size } : {})}
+            data-component="ChoiceButtons"
+            data-grammar-choice-look="button"
+            data-size={size}
             data-tier="composite"
             data-grammar-width={width}
             data-contract="A11Y-1 STATE-6 FOCUS-2"
@@ -106,7 +106,7 @@ export const ChoiceGroup = ({ look, size = "md", label, isLabelHidden = false, o
                     selectionMode={selectionMode}
                     data-grammar-selection-mode={selectionMode}
                     {...(isMultiple ? {} : { disallowEmptySelection: true })}
-                    size={look === "chip" ? "sm" : size}
+                    size={size}
                     {...(isMultiple
                         ? values === undefined ? {} : { selectedKeys: [...values] }
                         : value === undefined ? {} : { selectedKeys: [value] })}
@@ -123,14 +123,14 @@ export const ChoiceGroup = ({ look, size = "md", label, isLabelHidden = false, o
                     }}
                 >
                     {options.map((option) => {
-                        const chip = (
+                        const toggle = (
                             <HeroToggleButton key={option.value} id={option.value} isDisabled={option.isDisabled === true} className="starci-core-choice-chip" data-grammar-option="true">
                                 {option.label}
                             </HeroToggleButton>
                         )
                         return option.isDisabled === true && option.disabledReason !== undefined && option.disabledReason !== ""
-                            ? <DisabledReason key={option.value} reason={option.disabledReason}>{chip}</DisabledReason>
-                            : chip
+                            ? <DisabledReason key={option.value} reason={option.disabledReason}>{toggle}</DisabledReason>
+                            : toggle
                     })}
                 </HeroToggleButtonGroup>
             )}

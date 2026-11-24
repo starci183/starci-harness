@@ -23,7 +23,7 @@
      */
     /*
      * THE FIELD RULE (owner, 2026-11-09). One spacing contract for every control (Input, Select, NumberField, Textarea,
-     * ComboBox, DatePicker, DateField, TimeField, SearchField, CopyField, CheckboxGroup, RadioGroup, ChoiceChips, Switch,
+     * ComboBox, DatePicker, DateField, TimeField, SearchField, CopyField, CheckboxGroup, RadioGroup, ChoiceButtons, Switch,
      * Checkbox, Slider):
      *   label -> control            = inline 8   (the label: md 14 / medium 500)
      *   control -> help/error/count = identity 4 (a group's guidance stands between its label and options: 8 on each side)
@@ -644,7 +644,7 @@
     }
 
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
-    /* 0.40.0: the plate hooks of ChoiceChips (styles.css "THE PLATE HOOKS") paint these rows too. */
+    /* 0.40.0: the plate hooks (styles.css "THE PLATE HOOKS") paint these rows too. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;
         inline-size: 100%;

@@ -675,10 +675,10 @@ export const Form: Story = {
   ),
 };
 
-const rhythmChips: ReadonlyArray<{ readonly value: string; readonly label: string }> = [
-  { value: 'friend', label: 'Friend' },
-  { value: 'expert', label: 'Expert' },
-  { value: 'critic', label: 'Critic' },
+const rhythmAskAs: ReadonlyArray<G.ListOption> = [
+  { id: 'friend', label: 'Friend' },
+  { id: 'expert', label: 'Expert' },
+  { id: 'critic', label: 'Critic' },
 ];
 
 /**
@@ -701,7 +701,7 @@ export const FieldRhythm: Story = {
           <G.DateField label="Start date" defaultValue={parseDate('2026-09-23')} />
           <G.TimeField label="Start time" defaultValue={parseTime('09:30')} />
           <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Copy failed" description="Paste it into the sender." />
-          <G.ChoiceChips label="Ask as" options={rhythmChips} defaultValue="friend" empty={null} />
+          <G.Select label="Ask as" name="rhythm-ask-as" options={rhythmAskAs} defaultValue="friend" />
           <G.CheckboxGroup label="Notify by" options={choiceOptions} description="Pick at least one." />
           <G.RadioGroup label="Delivery" options={choiceOptions} defaultValue="email" description="You can change it later." />
           <G.Switch description="Short description." label="Dark mode" />

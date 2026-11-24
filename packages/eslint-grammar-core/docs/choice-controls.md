@@ -2,14 +2,14 @@
 
 Law module: `choice-controls.ts`. Catalogue: R380 FE_GROUPED_CHOICE_CONTROL.
 
-The Grammar draws no group of attached buttons. A choice among a few has one component by meaning: `Tabs` switches a view or filters a list that stays in place (`kind="filter"`: compact underline tabs with a `count` each, in the list pane under its search field), `ChoiceButtons`, `ChoiceChips` or `RadioGroup` chooses a value of a form (a tablist is not a form field), separate `Button`s or a `DropdownMenu` carry actions, and a date is the `Calendar` with a time as `ChoiceChips`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release so existing screens build; the rule stops new uses.
+The Grammar draws no group of attached buttons and no choice chips. A choice among a few has one component by meaning: `Tabs` switches a view or filters a list that stays in place (`kind="filter"`: underline tabs with a `count` each, in the list pane under its search field), `Tabs appearance="primary"` switches a mode or period of the same data, a dropdown `Select` chooses a value of a form or a toolbar (`RadioGroup` when each option needs a sentence, `ChoiceButtons` for options with a button's weight), separate `Button`s or a `DropdownMenu` carry actions, and a date is the `Calendar` with a time as a `Select` of the free times. `SegmentedControl` and `ChoiceChips` are removed (owner 2026-11-24: "xóa choicechips ra không xài, đủ hết cả rồi mà, trong form thì chọn dropdown"); the rules stop new uses.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
 ## Which component switches what
 
 - `Tabs` switches the views or periods of one block, or filters its list: the primary underline, `kind="filter"` in the `filter` row of the block's `Section`, one line under the strip.
-- `ChoiceButtons` (options with the weight of a button, as tall as a Button), `ChoiceChips` (short options, as tall as a Chip) or `RadioGroup` chooses a value of a form.
+- A dropdown `Select` chooses a value of a form or a toolbar, however few the options; `RadioGroup` when each option needs a sentence, `ChoiceButtons` for options with the weight of a button (as tall as a Button). Several values are a `CheckboxGroup` or a multi-selection list, never chips.
 - A `Button` holds a command, never a selection state; a `ButtonGroup` holds commands only.
 - A switch between modes or periods of one block ("This month / Last month", "Day / Week / Month", "List / Board") is `Tabs appearance="primary"` in the `action` of the block's `Section`.
 - Two joined buttons or pills acting as tabs are banned. `SegmentedControl` is removed.
@@ -40,3 +40,21 @@ Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). `Tabs appearance="primary"` (H
 ## `starci-grammar/no-grouped-choice-controls`
 
 A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` (bare or as a member) in product source is a finding; the message names the replacement for that component.
+
+## `starci-grammar/no-choice-chips`
+
+Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). `ChoiceChips` is removed from the Grammar. An import that names `ChoiceChips`, `ChoiceChip` or `ChoiceChipsProps` (from any module, under any alias) and a `G.ChoiceChips` written through a namespace import are findings, in every file. The message names the replacement by meaning: secondary `Tabs` (`kind="views"` or `kind="filter"`, the count in the tab's `count`) to switch views or filter a list, `Tabs appearance="primary"` to switch a period or mode of the same data, a dropdown `Select` to choose one value in a form or a toolbar.
+
+**Invalid**
+
+```tsx
+import { ChoiceChips } from "@starci/grammar/common"
+export const A = () => <ChoiceChips label="Time" options={slots} empty={null} />
+```
+
+**Valid**
+
+```tsx
+import { Select } from "@starci/grammar/common"
+export const A = () => <Select label="Time" options={slots} value={time} onValueChange={setTime} />
+```

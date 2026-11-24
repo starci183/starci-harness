@@ -29,7 +29,6 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "branch/DropdownMenu": "its entries are an overlay, a fresh region",
     "branch/Tooltip": "an overlay, a fresh region",
     "composite/ChoiceButtons": "draws through ChoiceGroup (core/choiceToggles), which reads the region",
-    "composite/ChoiceChips": "draws through ChoiceGroup (core/choiceToggles), which reads the region",
     "composite/DisclosureList": "draws nothing itself: every Disclosure it holds reads the region",
     "composite/EmptyNotice": "an answer that is never drawn while a region loads",
     "composite/MessageCard": "draws through MessageBubble, which reads the region",

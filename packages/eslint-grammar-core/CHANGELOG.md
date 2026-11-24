@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added, BREAKING for an app that still uses it: `starci-grammar/no-choice-chips` (R380 `FE_GROUPED_CHOICE_CONTROL`, error, every file): an import naming `ChoiceChips`, `ChoiceChip` or `ChoiceChipsProps`, or a `G.ChoiceChips` written through a namespace, is refused, and the message names the replacement by meaning (secondary `Tabs` for views and list filters, `Tabs appearance="primary"` for a mode or period, a dropdown `Select` for one value of a form or a toolbar). Owner 2026-11-24: "xóa choicechips ra không xài, đủ hết cả rồi mà, trong form thì chọn dropdown". The R380 messages (`SegmentedControl`, `no-button-view-switch`) name a `Select` where they named ChoiceChips; `field-label`, `gap-proximity` and the form-control list no longer list ChoiceChips. Doc `docs/choice-controls.md`.
+
 ## 0.58.0 - 2026-11-24
 
 - No rule of its own changed: versioned with @starci/grammar 0.58.0.
