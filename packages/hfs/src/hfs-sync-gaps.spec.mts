@@ -128,11 +128,25 @@ test('stack up: a gallery that does not answer is reported by name and listed, w
   }) as StackIo['fetch'];
   const ctx = (down: readonly string[]) => stubCtx(t, { fetch: answers(down), now: () => (clock += 400) });
   const advisory: string[] = [];
-  const lines = await waitReady(ctx(['gallery-live']), local, clock + 2000, advisory);
+  const lines = await waitReady(ctx(['gallery-live']), local, 2, advisory);
   assert.deepEqual(advisory, ['gallery-live']);
   assert.equal(lines.filter((line) => line.startsWith('FAIL  ready gallery-live')).length, 1, lines.join('\n'));
   assert.ok(lines.filter((line) => line.startsWith('ok    ready')).length >= 1, 'the rows that answer are reported ok');
   const other = local.ready.find((row) => !isAdvisoryRow(row.name));
   assert.ok(other, 'the starter declares a non-gallery readiness row');
-  await assert.rejects(waitReady(ctx([other.name]), local, clock + 2000, []), (error: { code?: string; message?: string }) => error.code === 'STACK_LOCAL_READY' && (error.message ?? '').includes(other.name));
+  await assert.rejects(waitReady(ctx([other.name]), local, 2, []), (error: { code?: string; message?: string }) => error.code === 'STACK_LOCAL_READY' && (error.message ?? '').includes(other.name));
+});
+
+test('stack up: the readiness window opens when the wait starts, so time up spent before it (a heavy-slot queue, the migrate) never shortens it', async (t) => {
+  const local = loadLocalConfig({ repoRoot: starter(t), env: 'dev' });
+  // A dev sync on a busy host: compose up queued for a heavy slot and the migrate ran past the 180 s timeout before the api was spawned;
+  // the api then needed about 40 s to boot and up refused STACK_LOCAL_READY on its first probe though the api was healthy.
+  const upStarted = 0;
+  let clock = upStarted + 200_000;
+  const bootedAt = clock + 40_000;
+  const answered = { status: 200, text: () => Promise.resolve('') } as Response;
+  const fetch = (() => (clock >= bootedAt ? Promise.resolve(answered) : Promise.reject(new Error('fetch failed')))) as unknown as StackIo['fetch'];
+  const ctx = stubCtx(t, { fetch, now: () => (clock += 1000) });
+  const lines = await waitReady(ctx, local, 180, []);
+  assert.ok(lines.length > 0 && lines.every((line) => line.startsWith('ok    ready')), lines.join(' | '));
 });
