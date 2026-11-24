@@ -82,11 +82,6 @@ export const why: Record<string, WhyEntry> = {
     en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
     fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, a Select to choose a form value, separate Buttons or a DropdownMenu for actions.",
   },
-  "no-choice-chips": {
-    code: "FE_GROUPED_CHOICE_CONTROL",
-    en: "`<file>` imports `ChoiceChips` or `ChoiceButtons`, which the Grammar removed (owner 2026-11-24: in a form, choose with a dropdown).",
-    fix: "Replace it by meaning: secondary `Tabs` (`kind=\"views\"` or `kind=\"filter\"`, the count in the tab's `count`) to switch views or filter a list, `Tabs appearance=\"primary\"` to switch a period or mode of the same data, a dropdown `Select` to choose one value in a form or a toolbar, a `CheckboxGroup` or a multi-selection list for several values.",
-  },
   "field-label": {
     code: "FE_FIELD_LABEL",
     en: "A Text, Label, label or span in `<file>` stands right before a Grammar form control that has no `label` prop: a hand-made field label.",

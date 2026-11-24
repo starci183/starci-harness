@@ -5064,7 +5064,6 @@ rules:
     failureCodes: ["FE_GROUPED_CHOICE_CONTROL"]
     enforcers:
       - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
-      - {kind: eslint-grammar-core, id: no-choice-chips}
     docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     templateNa: "A template draws no choice control."
     proves:

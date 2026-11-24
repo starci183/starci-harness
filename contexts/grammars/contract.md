@@ -173,7 +173,7 @@ owns the visible panel, including when every item is temporarily disabled.
 
 The value role is one value inside a form or a toolbar (audience, density, a tool), not navigation, and its renderer is a
 dropdown `Select`, whatever the weight of the options (a plan level, an amount); a `RadioGroup` when each option needs a sentence.
-`ChoiceChips` and `ChoiceButtons` are removed (owner 2026-11-24). The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch.
+The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch; a one-value choice in a form or toolbar is a `Select`.
 
 ### Removable filter chips
 

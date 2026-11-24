@@ -40,21 +40,3 @@ Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). `Tabs appearance="primary"` (H
 ## `starci-grammar/no-grouped-choice-controls`
 
 A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` (bare or as a member) in product source is a finding; the message names the replacement for that component.
-
-## `starci-grammar/no-choice-chips`
-
-Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). `ChoiceChips` and `ChoiceButtons` are removed from the Grammar. An import that names `ChoiceChips`, `ChoiceChip`, `ChoiceChipsProps`, `ChoiceButtons`, `ChoiceButton` or `ChoiceButtonsProps` (from any module, under any alias) and a `G.ChoiceChips` or `G.ChoiceButtons` written through a namespace import are findings, in every file. The message names the replacement by meaning: secondary `Tabs` (`kind="views"` or `kind="filter"`, the count in the tab's `count`) to switch views or filter a list, `Tabs appearance="primary"` to switch a period or mode of the same data, a dropdown `Select` to choose one value in a form or a toolbar.
-
-**Invalid**
-
-```tsx
-import { ChoiceChips } from "@starci/grammar/common"
-export const A = () => <ChoiceChips label="Time" options={slots} empty={null} />
-```
-
-**Valid**
-
-```tsx
-import { Select } from "@starci/grammar/common"
-export const A = () => <Select label="Time" options={slots} value={time} onValueChange={setTime} />
-```

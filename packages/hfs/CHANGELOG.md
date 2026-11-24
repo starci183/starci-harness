@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Changed (R380 `FE_GROUPED_CHOICE_CONTROL`, owner 2026-11-24): the law names a dropdown `Select` for a value of a form or a toolbar and `Tabs appearance="primary"` for a mode or period, records that `ChoiceChips` is removed, and lists the new enforcer `starci-grammar/no-choice-chips`; the failure code's Vietnamese next step follows.
+- Changed (R380 `FE_GROUPED_CHOICE_CONTROL`): the law names a dropdown `Select` for a value of a form or a toolbar and `Tabs appearance="primary"` for a mode or period; the failure code's Vietnamese next step follows.
 
 ## 6.17.10 - 2026-11-24
 
