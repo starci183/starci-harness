@@ -175,7 +175,8 @@ hotfixes: a copy or i18n string, a CSS value, a one-line logic bug, a seed typo,
 
 `--only` names the hotfix's paths (a folder ends with a slash). Without it every tracked change is the hotfix and no untracked file is: a stray file of the checkout is
 never swept in, so a NEW file lands only when `--only` names it. With it, a tracked change outside the list refuses `HOTFIX_FOREIGN` (nothing is committed) and a named
-path with no change refuses `HOTFIX_ONLY_UNCHANGED`. The harness checkout holds other work, so `--only` is required there (`HOTFIX_ONLY_REQUIRED`).
+path with no change refuses `HOTFIX_ONLY_UNCHANGED`. The harness checkout holds other work, so `--only` is required there (`HOTFIX_ONLY_REQUIRED`). The files dev sync's local overlay rewrote (the manifests
+its `install-local.json` record names and their lockfiles) are sync-owned: a hotfix neither takes them nor refuses them as foreign, and never commits them.
 
 `hotfix land` judges only the size. Under the dev lock (the one the lander and `lane gate --land` take) it refuses `HOTFIX_SYNC_BUSY` while a dev sync of the
 checkout runs, makes ONE commit with a `Hotfix:` trailer, rebases it onto the newest `origin/dev` (a conflict puts the edit back and lands nothing) and pushes

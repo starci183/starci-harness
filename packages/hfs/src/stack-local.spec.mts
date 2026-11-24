@@ -552,6 +552,26 @@ test('a restarted process is waited for over each tunnel hostname that routes it
   assert.deepEqual(restartProbes(local, { ...process, health: null }), []);
 });
 
+test('a restart whose tunnel hostname does not answer (a route with no DNS record yet) stays green and says WARN; a failed loopback probe still fails it', async (t) => {
+  const root = app(t, { block: SERVED });
+  const up = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], up), 0, up.err.join(''));
+  const stacks = path.join(root, '.starcistacks', 'application-stacks.yaml');
+  fs.writeFileSync(stacks, fs.readFileSync(stacks, 'utf8').replace(SERVED, SERVED.replace('      ready:', '      tunnel: {name: t, routes: [{name: api, host: api.dev.example.com, port: api}]}\n      ready:')));
+  const started = up.calls.find((call) => call.background);
+  const recorded = started ? [started.command, ...started.args].join(' ') : '';
+  const routeless = host(root);
+  routeless.io.fetch = (async (url: string) => ({ status: String(url).startsWith('https://') ? 404 : 200, text: async () => '' })) as unknown as typeof fetch;
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute', '--timeout', '2'], routeless, { alive: () => true, commandLine: () => recorded, kill: () => undefined }), 0, routeless.err.join(''));
+  assert.match(routeless.out.join(''), /ok {4}ready api: http:\/\/localhost:3001\/health\/live answered 200/u);
+  assert.match(routeless.out.join(''), /WARN {2}ready api-tunnel: https:\/\/api\.dev\.example\.com\/health\/live answered 404, 200 expected/u);
+  assert.doesNotMatch(routeless.out.join(''), /is not healthy/u);
+  const sick = host(root);
+  sick.io.fetch = (async () => ({ status: 503, text: async () => '' })) as unknown as typeof fetch;
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute', '--timeout', '2'], sick, { alive: () => true, commandLine: () => recorded, kill: () => undefined }), 1);
+  assert.match(sick.out.join(''), /FAIL {2}ready api: [\s\S]*api is not healthy/u);
+});
+
 const EDGED = BLOCK.replace('ports: {db: 54322, api: 3001}', 'ports: {db: 54322, api: 3001, web: 3000}').replace(
   '        - {name: api, argv: [node, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}}',
   '        - {name: api, argv: [node, api.mjs], port: api, files: [JWT_KEY], env: {PORT: "${port.api}"}}\n        - {name: web, argv: [npx, next, dev, --port, "${port.web}"], cwd: fe/apps/web, port: web, health: {url: "http://localhost:${port.web}/"}}',

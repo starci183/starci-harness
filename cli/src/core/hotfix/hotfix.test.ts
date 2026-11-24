@@ -17,7 +17,8 @@ import type { HotfixDeps } from "./land.js"
 import { passFile, passFor } from "./pass.js"
 import { loadHotfixRules } from "./rules.js"
 import type { HotfixRules } from "./rules.js"
-import { escalationOf, readChanges, scopeOf, tooBigMessage } from "./scope.js"
+import { escalationOf, overlayFiles, readChanges, scopeOf, tooBigMessage } from "./scope.js"
+import { writeInstallRecord } from "../deps/install-local.js"
 import { cliCopyNeeded, cliCurrent, linkTarget, rebuildCliCopy, repoint } from "./cli-copy.js"
 import type { CliCopyPorts } from "./cli-copy.js"
 
@@ -286,6 +287,46 @@ void test("a harness hotfix rebuilds the CLI copy, publishes the dev line and sy
     assert.ok(lines.some((line) => line.includes("syncing every app dev checkout of devSync.repos now, no debounce")))
     assert.equal(gitIn(world.checkout, "ls-files", "stray.txt"), "", "an untracked file that is not named is never swept in")
     assert.equal(existsSync(landPaths(world.dir, "harness").devLock), false, "the harness lock scope is released")
+})
+
+void test("dev sync's local overlay (the manifests and lockfiles install-local.json records) is neither the hotfix nor foreign: it is left as it is and never committed", async (t) => {
+    const world = scratch(t)
+    const cache = mkdtempSync(join(tmpdir(), "starci-hotfix-cache-"))
+    const before = process.env.STARCI_CACHE_HOME
+    process.env.STARCI_CACHE_HOME = cache
+    t.after(() => {
+        if (before === undefined) Reflect.deleteProperty(process.env, "STARCI_CACHE_HOME")
+        else process.env.STARCI_CACHE_HOME = before
+        rmSync(cache, { recursive: true, force: true })
+    })
+    const manifest = (pin: string): string => `${JSON.stringify({ name: "x", dependencies: { "@starci/hfs": pin } }, null, 2)}\n`
+    for (const folder of ["", "gallery", join("fe", "apps", "web")]) {
+        mkdirSync(join(world.checkout, folder), { recursive: true })
+        writeFileSync(join(world.checkout, folder, "package.json"), manifest("6.17.9"))
+    }
+    for (const folder of ["", "gallery"]) writeFileSync(join(world.checkout, folder, "package-lock.json"), "{ \"lockfileVersion\": 3 }\n")
+    gitIn(world.checkout, "add", ".")
+    gitIn(world.checkout, "commit", "-q", "-m", "manifests")
+    gitIn(world.checkout, "push", "-q", "origin", "dev")
+    // What `dev sync --local` leaves: dev pins in three manifests and their two lockfiles, and the record of the pins it replaced.
+    const overlaid = ["fe/apps/web/package.json", "gallery/package-lock.json", "gallery/package.json", "package-lock.json", "package.json"]
+    for (const file of overlaid) writeFileSync(join(world.checkout, file), file.endsWith("lock.json") ? "{ \"lockfileVersion\": 3, \"dev\": true }\n" : manifest("6.17.10-dev.13"))
+    writeInstallRecord(world.checkout, { schema: "starci/deps-install-local@1", registry: "http://127.0.0.1:4873/", packages: [{ name: "@starci/hfs", version: "6.17.10-dev.13", pins: ["package.json", "gallery/package.json", "fe/apps/web/package.json"].map((file) => ({ file, field: "dependencies", spec: "6.17.9" })) }] })
+    assert.deepEqual(overlayFiles(world.checkout), overlaid)
+    writeFileSync(join(world.checkout, "fe", "copy.ts"), "export const hello = 'hello'\n")
+    const status = await hotfixStatus({ root: world.checkout, dir: world.dir, profile: "app", rules: RULES, only: ["fe/copy.ts"] }, fakeDeps(seenOf()))
+    assert.deepEqual(status.foreign, [], "the overlay is not foreign")
+    assert.deepEqual(status.overlay, overlaid)
+    const named = await land(world, fakeDeps(seenOf()), { only: ["fe/copy.ts"] })
+    assert.deepEqual(named.files, ["fe/copy.ts"], "no HOTFIX_FOREIGN for the overlay")
+    assert.equal(gitIn(world.checkout, "show", "--name-only", "--format=", "HEAD"), "fe/copy.ts", "the overlay is never committed")
+    for (const file of overlaid) assert.notEqual(gitIn(world.checkout, "status", "--porcelain", "--", file), "", `${file} keeps its overlay edit`)
+    writeFileSync(join(world.checkout, "fe", "copy.ts"), "export const hello = 'hello!'\n")
+    const unnamed = await land(world, fakeDeps(seenOf()), {})
+    assert.deepEqual(unnamed.files, ["fe/copy.ts"], "without --only the overlay is not swept into the hotfix either")
+    writeFileSync(join(world.checkout, "a.txt"), "someone's work\n")
+    writeFileSync(join(world.checkout, "fe", "copy.ts"), "export const hello = 'hello?'\n")
+    await assert.rejects(land(world, fakeDeps(seenOf()), { only: ["fe/copy.ts"] }), refusedWith("HOTFIX_FOREIGN", "a.txt"), "a real change outside --only still stops it")
 })
 
 /** The harness checkout this spec was built from (cli/dist/core/hotfix is four folders below it). */

@@ -3,7 +3,7 @@
 // the storage), their volumes, the custody files and the dev tunnel stay up untouched. Each named process is ended (only when it is the one
 // this environment started), built from the code of the checkout (serve mode: its `serve.build`), started on the built artifact (its
 // `serve.argv`; its own watcher argv only with --watch) and waited for: its health probe on the loopback, and, when the dev tunnel routes its
-// port, the same path over the tunnel's public hostname. `starci dev sync` and the batch lander run it after a dev checkout moved.
+// port, the same path over the tunnel's public hostname, which is advisory (a WARN, never a failure). `starci dev sync` and the batch lander run it after a dev checkout moved.
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
@@ -16,6 +16,19 @@ import { launchProcess, processPlan } from './local-up.mjs';
 import { endEarlierTrees } from './local-edge.mjs';
 import type { HttpProbe, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
+/** The suffix of a restart probe over a tunnel hostname (restartProbes). */
+const TUNNEL_SUFFIX = '-tunnel';
+
+/** How long a restart waits for a tunnel hostname at most. */
+const TUNNEL_WAIT_MS = 30_000;
+
+/**
+ * Whether a restart probe goes over a tunnel hostname. Such a probe is advisory: its failure is reported as WARN and the restart stays green, since the
+ * loopback probe before it proved the process, and a route whose DNS record does not exist yet (a new tunnel route) answers 404 however often the stack
+ * is brought up again; the dev sync runner retried `stack up` on it in a loop and stayed in "syncing". Pure.
+ */
+export const isTunnelProbe = (name: string): boolean => name.endsWith(TUNNEL_SUFFIX);
+
 /** The probes a restarted process must pass: its loopback health, then the same path over each tunnel hostname that routes its port. Pure. */
 export function restartProbes(local: LocalConfig, run: LocalProcess): HttpProbe[] {
   if (run.health === null) return [];
@@ -24,7 +37,7 @@ export function restartProbes(local: LocalConfig, run: LocalProcess): HttpProbe[
   const pathOf = (url: string): string => /^https?:\/\/[^/]+(\/.*)?$/u.exec(url)?.[1] ?? '/';
   for (const route of local.tunnel?.routes ?? []) {
     if (route.port !== run.port) continue;
-    probes.push({ ...run.health, name: `${run.name}-tunnel`, url: `https://${route.host}${pathOf(run.health.url)}` });
+    probes.push({ ...run.health, name: `${run.name}${TUNNEL_SUFFIX}`, url: `https://${route.host}${pathOf(run.health.url)}` });
   }
   return probes;
 }
@@ -68,13 +81,21 @@ export async function restartLocal(ctx: StackContext, local: LocalConfig, { exec
     writeRecord(dir, record);
   }
   const deadline = ctx.now() + timeoutSeconds * 1000;
+  const advisory: string[] = [];
   for (const run of runs) {
     for (const row of restartProbes(local, run)) {
-      const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
+      const tunneled = isTunnelProbe(row.name);
+      // A tunnel hostname is waited for a short while only: it fails for reasons outside the process (a DNS route not made yet), and the loopback probe already proved the process.
+      const result = await waitFor(ctx, tunneled ? Math.min(deadline, ctx.now() + TUNNEL_WAIT_MS) : deadline, () => probe(ctx, local, row));
+      if (!result.ok && tunneled) {
+        advisory.push(row.name);
+        lines.push(`WARN  ready ${result.detail} (the process answers on the loopback; its public route is not reachable yet: check the tunnel route and its DNS record, nothing is retried)`);
+        continue;
+      }
       lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);
       if (!result.ok) return { ok: false, lines: [...lines, `${run.name} is not healthy; read its log with: starci app stack logs --env ${local.env} --service ${run.name}`], data: { processes: runs.map((item) => item.name), mode, failed: row.name } };
     }
   }
   lines.push(keep);
-  return { ok: true, lines, data: { processes: runs.map((run) => run.name), mode } };
+  return { ok: true, lines, data: { processes: runs.map((run) => run.name), mode, ...(advisory.length > 0 ? { advisory } : {}) } };
 }

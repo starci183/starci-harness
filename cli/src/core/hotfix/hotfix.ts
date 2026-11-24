@@ -75,6 +75,7 @@ export const hotfixStatusVerb = defineVerb({
             ...status.files.map((file) => `  ${file}`),
             status.files.length === 0 ? "" : profile === "harness" ? "restart: none in the harness; the apps sync only for a package they consume (hotfix land --dry-run says which)" : status.escalation.length === 0 ? "restart: light (the changed api/web only)" : `restart: the full sync steps (${status.escalation.join("; ")})`,
             ...(status.foreign.length === 0 ? [] : [`tracked changes OUTSIDE the hotfix (they stop it): ${status.foreign.join(", ")}`]),
+            ...(status.overlay.length === 0 ? [] : [`the local overlay of dev sync, left alone (never committed, never foreign): ${status.overlay.join(", ")}`]),
             ...(status.untracked.length === 0 ? [] : [`untracked, left alone unless --only names them: ${status.untracked.slice(0, 8).join(", ")}${status.untracked.length > 8 ? ", ..." : ""}`]),
             `dev lock: ${status.devLock ?? "free"}`,
             `dev sync: ${status.syncBusy ?? "not running"}`,

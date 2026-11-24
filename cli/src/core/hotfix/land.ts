@@ -18,7 +18,7 @@ import { rebuildCliCopy } from "./cli-copy.js"
 import type { CliCopy } from "./cli-copy.js"
 import { grantPass } from "./pass.js"
 import type { HotfixRules } from "./rules.js"
-import { escalationOf, isNamed, readChanges, scopeOf, tooBigMessage } from "./scope.js"
+import { escalationOf, isNamed, overlayFiles, readChanges, scopeOf, tooBigMessage } from "./scope.js"
 import type { Change, Changes, Scope } from "./scope.js"
 
 /**
@@ -172,7 +172,7 @@ export const assertDevCheckout = async (root: string): Promise<void> => {
  */
 export const judgeScope = async (root: string, rules: Pick<HotfixRules, "maxFiles" | "maxLines">, only: readonly string[] = [], profile: LandProfileName = "app"): Promise<{ readonly changes: readonly Change[]; readonly scope: Scope; readonly found: Changes }> => {
     if (profile === "harness" && only.length === 0) throw new Refusal("HOTFIX_ONLY_REQUIRED", `${root} is the harness checkout, which holds other work: name the hotfix's files with --only <path> (repeat it; a new file must be named too)`)
-    const found = await readChanges(root, only)
+    const found = await readChanges(root, only, overlayFiles(root))
     if (found.foreign.length > 0) throw new Refusal("HOTFIX_FOREIGN", `${root} has tracked uncommitted changes outside the hotfix (${found.foreign.slice(0, 5).join(", ")}${found.foreign.length > 5 ? ", ..." : ""}): commit or stash them, or name them in --only; nothing was committed`)
     const missing = only.filter((entry) => !entry.endsWith("/") && !found.changes.some((change) => isNamed(change.path, [entry])))
     if (missing.length > 0) throw new Refusal("HOTFIX_ONLY_UNCHANGED", `--only names ${missing.join(", ")}, which has no change in ${root} (a typo, or already committed)`)
@@ -317,20 +317,22 @@ export interface HotfixStatus {
     readonly foreign: readonly string[]
     /** Untracked files a hotfix leaves alone unless `only` names them. */
     readonly untracked: readonly string[]
+    /** The files dev sync's local overlay rewrote: sync-owned, left alone (scope.ts overlayFiles). */
+    readonly overlay: readonly string[]
 }
 
 /** `hotfix status`: reads only. */
 export const hotfixStatus = async (given: { readonly root: string; readonly dir: string; readonly profile: LandProfileName; readonly rules: HotfixRules; readonly only?: readonly string[] }, deps: Pick<HotfixDeps, "busy"> = realHotfixDeps): Promise<HotfixStatus> => {
     const { root } = given
-    const { changes, foreign, untracked } = await readChanges(root, given.only ?? [])
+    const { changes, foreign, untracked, overlay } = await readChanges(root, given.only ?? [], overlayFiles(root))
     const lock = landPaths(given.dir, lockScope(given.profile)).devLock
     const behind = Number((await git(root, ["rev-list", "--count", "HEAD..origin/dev"])).out) || 0
-    return { root, branch: (await currentBranch(root)) ?? null, files: changes.map((change) => change.path), scope: scopeOf(changes, given.rules), escalation: given.profile === "harness" ? [] : escalationOf(changes.map((change) => change.path)), behind, devLock: existsSync(lock) ? readFileSync(lock, "utf8").trim() : null, syncBusy: (await deps.busy(root)) ?? null, foreign, untracked }
+    return { root, branch: (await currentBranch(root)) ?? null, files: changes.map((change) => change.path), scope: scopeOf(changes, given.rules), escalation: given.profile === "harness" ? [] : escalationOf(changes.map((change) => change.path)), behind, devLock: existsSync(lock) ? readFileSync(lock, "utf8").trim() : null, syncBusy: (await deps.busy(root)) ?? null, foreign, untracked, overlay }
 }
 
 /** `hotfix abort`: the paths it restores from HEAD (tracked) and deletes (new files); `execute` does it. */
 export const hotfixAbort = async (given: { readonly root: string; readonly execute: boolean; readonly only?: readonly string[] }): Promise<{ readonly restore: readonly string[]; readonly remove: readonly string[] }> => {
-    const { changes } = await readChanges(given.root, given.only ?? [])
+    const { changes } = await readChanges(given.root, given.only ?? [], overlayFiles(given.root))
     const restore: string[] = []
     const remove: string[] = []
     for (const change of changes) {
