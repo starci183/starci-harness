@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.197 - 2026-11-25
 
+- Changed: the CLI requires @starci/hfs@6.17.11, @starci/seed@0.3.1, @starci/common@1.0.2, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; the heavy-command governor weighs each command by its planned memory, and the harness keeps no legacy alias.
 
 ## 1.1.0-alpha.196 - 2026-11-24
