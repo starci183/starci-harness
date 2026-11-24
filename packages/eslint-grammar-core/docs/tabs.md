@@ -6,7 +6,7 @@ Underline tabs switch panels: the page tabs (`Page header.tabs`) and, inside a t
 
 ## `starci-grammar/tabs-switch-zone`
 
-Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill stands as the `action` of the block's `Section` (`action={<Tabs appearance="primary" ... />}`) and, since 0.37.16, as the value of a row `control` (an object property named `control` in a list row literal, or a JSX attribute `control={...}`, directly or through a fragment, conditional or `&&`): a row-level mode choice such as "Auto | Ask" lives in the row. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
+Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill stands as the `action` of the block's `Section` (`action={<Tabs appearance="primary" ... />}`) and as the value of a row `control` (an object property named `control` in a list row literal, or a JSX attribute `control={...}`, directly or through a fragment, conditional or `&&`): a row-level mode choice such as "Auto | Ask" lives in the row. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
 
 **Invalid**
 

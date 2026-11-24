@@ -1,4 +1,4 @@
-import { parse, type ParseOptions } from "../parse.js"
+import { parse } from "../parse.js"
 import { profileOf } from "../profiles.js"
 import type { Issue, MarkdownTree, ProfileName } from "../types.js"
 import { validateTree } from "../validate.js"
@@ -17,8 +17,8 @@ export interface PreparedMarkdown {
  * Parses, validates against `profile` and highlights one text on the server, for `<Markdown tree={prepared.tree} profile=...>`:
  * a server component awaits it and hands the plain JSON to the client.
  */
-export const prepare = async (source: string, profile: ProfileName = "prose", options: ParseOptions = {}): Promise<PreparedMarkdown> => {
-    const parsed = parse(source, options)
+export const prepare = async (source: string, profile: ProfileName = "prose"): Promise<PreparedMarkdown> => {
+    const parsed = parse(source)
     const issues = [...parsed.issues, ...validateTree(parsed, profileOf(profile))]
     return { profile, tree: await highlight(parsed), issues }
 }

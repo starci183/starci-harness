@@ -39,7 +39,7 @@ export const OFFSET_POP_FAMILY_EVIDENCE = {
     "MOTION-1": ["The family's only movement is press travel: a translate plus shadow collapse keyed on `:active` or the vendor's `data-pressed` / `data-dragging`, repeating a press Common already handles; no state or meaning rides on it."],
     "MOTION-2": ["`prefers-reduced-motion: reduce` zeroes `--offset-pop-motion-duration` and `--offset-pop-transition`, and every sheet that moves something sets its `transform` or `translate` to none (navigation zeroes its disclosure transitions); the press itself still reaches Common."],
     "MOTION-3": ["Every family transition reads `--offset-pop-transition`, built from the DNA's `--offset-pop-motion-duration` (140ms) and `--offset-pop-motion-easing`."],
-    "OVERFLOW-2": ["The family clips (`overflow: clip`) only non-scrolling shells to their radius: a list that is not the scroll region, the DataTable sheet (its rows scroll in the inner table scroll container) and the SegmentedControl unit; a list that is the scroll region keeps Common's OVERFLOW-3 `overflow-y: auto`."],
+    "OVERFLOW-2": ["The family clips (`overflow: clip`) only non-scrolling shells to their radius: a list that is not the scroll region, the DataTable sheet (its rows scroll in the inner table scroll container); a list that is the scroll region keeps Common's OVERFLOW-3 `overflow-y: auto`."],
     "PADDING-2": ["The current Breadcrumb becomes an outlined pill with a .5rem inline inset."],
     "PADDING-3": ["The Calendar becomes an outlined sheet with a .75rem inset."],
     "PADDING-4": ["Disclosure and Accordion triggers take a 1rem inline inset inside their outlined box."],

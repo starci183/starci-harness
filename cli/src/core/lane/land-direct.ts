@@ -3,9 +3,7 @@ import type { ToolRun } from "../../shared/exec.js"
 import { captureGit, mainCheckout } from "../../shared/git.js"
 import { Refusal } from "../../shared/errors.js"
 import { withHeavySlot } from "../../harness/heavy.js"
-import { squashMessage, takeDevLock } from "../../harness/land-batch.js"
-import { dropReady, landPaths, releaseLockFile, writeStatus } from "../../harness/land-queue.js"
-import type { ReadyEntry } from "../../harness/land-queue.js"
+import { landPaths, releaseLockFile, squashMessage, takeDevLock, writeStatus } from "../../harness/lane-state.js"
 import { MIGRATIONS_FOLDER, appCli, lockScope } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
 import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
@@ -16,10 +14,10 @@ import { requestDevSync } from "../dev/sync-runner.js"
 import { startDevCiWatch } from "../../harness/dev-ci-watch.js"
 
 /**
- * `lane gate --push --land`: the lane lands on dev itself, right after its own green gate (contexts/authority/lanes.md "Gate and land"; the owner: "cứ xong
- * là merge vô dev là được"). Under the repository's dev lock (the one the batch lander takes, so the two never push at once) it fetches and merges the newest
+ * `lane gate --push --land`: the lane lands on dev itself, right after its own green gate (contexts/authority/lanes.md "Gate and land"). Under the repository's dev lock (the one a
+ * hotfix and `release back-merge` take too, so no two push dev at once) it fetches and merges the newest
  * origin/dev into the lane; when dev moved since the gate's merge, it runs the fast re-check (the app's codegen and typecheck, the harness CLI's typecheck)
- * under the heavy governor, never the whole gate again; it squashes the lane into ONE commit on dev (the batch squash's message: the lane, its branch and
+ * under the heavy governor, never the whole gate again; it squashes the lane into ONE commit on dev (its message: the lane, its branch and
  * sha, its Landed-lane trailer) and pushes dev, never forced. A conflict stops with the files for the lane's agent to resolve. After the push: on the harness
  * the dev line is published (`deps publish-dev`) when the landing changed a published package, and the dev checkouts are marked for their debounced sync
  * (core/dev/sync-runner.ts), the app's own, or after a harness publish every app's.
@@ -65,12 +63,12 @@ const tail = (run: ToolRun): string => `${run.stdout}\n${run.stderr}`.trim().spl
 /** The fast re-check after dev moved: the app's codegen and its typecheck script, or the harness CLI's typecheck, each under the heavy governor. */
 export const realRecheck = async (root: string, profile: LandProfileName, lane: string): Promise<string | undefined> => {
     if (profile === "harness") {
-        const run = await withHeavySlot("tsc", `lane land ${lane}: cli typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--prefix", "cli"], root, held.options))
+        const run = await withHeavySlot("tsc", `lane gate --land ${lane}: cli typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--prefix", "cli"], root, held.options))
         return run.exitCode === 0 ? undefined : `npm run typecheck (cli) exited ${String(run.exitCode)}: ${tail(run)}`
     }
-    const codegen = await prepareTree(root, `lane land ${lane}`, ["codegen"])
+    const codegen = await prepareTree(root, `lane gate --land ${lane}`, ["codegen"])
     if (codegen.failure !== undefined) return `${codegen.failure.command} exited ${String(codegen.failure.exitCode)}: ${codegen.failure.output.split("\n").slice(-3).join(" ")}`
-    const run = await withHeavySlot("tsc", `lane land ${lane}: typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--silent", "--if-present"], root, held.options))
+    const run = await withHeavySlot("tsc", `lane gate --land ${lane}: typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--silent", "--if-present"], root, held.options))
     return run.exitCode === 0 ? undefined : `npm run typecheck exited ${String(run.exitCode)}: ${tail(run)}`
 }
 
@@ -113,8 +111,7 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
         const baseTree = (await gitOut(root, ["rev-parse", `${base}^{tree}`])).out
         if (tree === baseTree) throw new Refusal("LANE_LAND_EMPTY", `${lane} adds nothing to origin/dev ${base.slice(0, 10)}: it is already on dev`)
         const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "")
-        const entry: ReadyEntry = { lane, branch, sha: laneSha, at: new Date().toISOString() }
-        const committed = await captureGit(["-c", "commit.gpgsign=false", "commit-tree", tree, "-p", base, "-m", squashMessage(stamp, [entry])], root)
+        const committed = await captureGit(["-c", "commit.gpgsign=false", "commit-tree", tree, "-p", base, "-m", squashMessage(stamp, { lane, branch, sha: laneSha })], root)
         if (committed.exitCode !== 0) throw new Refusal("LANE_LAND_SQUASH", `git commit-tree: ${committed.stderr.trim()}`)
         const sha = committed.stdout.trim()
         say(`squashed ${lane} into ${sha.slice(0, 10)} on origin/dev ${base.slice(0, 10)}; pushing dev`)
@@ -127,7 +124,6 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
     }
     // The landing stands from here: what follows is said, never thrown.
     writeStatus(dir, { lane, state: "landed", sha: landed.sha, laneSha: landed.laneSha, branch, migrations: landed.migrations, reason: "landed by lane gate --land" })
-    dropReady(dir, lane)
     let published: readonly string[] = []
     let publishNote: string | undefined
     if (profile === "harness") {

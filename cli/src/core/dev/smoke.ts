@@ -2,8 +2,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs"
 import { dirname, join, parse } from "node:path"
 
 /**
- * The smoke check of a swapped install (2026-11-24 01:40: after the staged swap of "30 path(s) moved, 16 workspace link(s) re-pointed" the web failed with
- * `Cannot find module 'picocolors'` from `node_modules/next/node_modules/postcss/lib/css-syntax-error.js`, and the sync still reported the swap as done).
+ * The smoke check of a swapped install: a package that does not resolve after the swap fails here, not in the web's first request.
  * It resolves packages the way Node does, by file: from the root and from each workspace folder, the packages that folder declares (a few, sorted) and the
  * probes `next`, `postcss` and `picocolors` when the lockfile holds them, then, from where each of those really lives (junctions followed), the packages
  * IT declares, so a nested package whose own dependency is not hoisted where Node looks fails here, not in the web's first request. Reads files only.

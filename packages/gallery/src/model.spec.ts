@@ -11,8 +11,8 @@ import { loadGallery } from "./load.ts"
 import { effectiveView } from "./views.ts"
 import { buildModel, devPath, splitState, statusOf } from "./model.ts"
 
-const EXPLAIN = (title: string, route: string, area: string): string =>
-    `---\ntitle: ${title}\nroute: ${route}\narea: ${area}\n---\nMục tiêu: xem khách. Thao tác: \`contacts\`.\n\n## Đầu trang\nVì sao: tên trang.\nLuật: HIERARCHY-1\nGrammar: \`Page\`\n`
+const SCREEN = (id: string, route: string, area: string): string =>
+    `schema: 1\nscreen: ${id}\ntitle: ${id}\nroute: ${route}\narea: ${area}\nsummary: Xem khách.\ncode:\n  - features/pages/Page\nsections:\n  - id: header\n    title: Đầu trang\n    shows: Tên trang\n    why: Tên trang\nconsidered:\n  - option: Gộp vào dải đầu\n    chosen: false\n    why: Quá dày\naudit: null\n`
 
 const FRAGMENT = `<section class="page" id="customers-list" data-pid="customers/list" data-route="/customers" data-title="Khách hàng">
   <div class="row"><div class="frame"><div class="lbl">x · 1440</div><div class="scr w1440 zoom" style="height:900px"><div>shell</div></div></div>
@@ -35,12 +35,12 @@ function fixture(): { root: string; sha: (file: string) => string } {
     const png = (name: string): Buffer => Buffer.from(`png ${name}`)
     for (const [id, route] of [["customers/list", "/customers"], ["customers/list-empty", "/customers"], ["customers/detail", "/customers/[id]"], ["inbox/today", "/inbox"], ["billing/invoices", "/billing"]] as const) {
         const [area = ""] = id.split("/")
-        write(`gallery/pages/${id}/explain.md`, EXPLAIN(id, route, area))
+        write(`gallery/pages/${id}/screen.yaml`, SCREEN(id, route, area))
         write(`gallery/pages/${id}/1440.png`, png(id))
         write(`gallery/pages/${id}/390.png`, png(id))
     }
     write("gallery/pages/orphan/shot/1440.png", png("orphan"))
-    write("gallery/pages/inbox/notes/explain.md", EXPLAIN("inbox/notes", "/inbox/notes", "inbox"))
+    write("gallery/pages/inbox/notes/screen.yaml", SCREEN("inbox/notes", "/inbox/notes", "inbox"))
     write("gallery/flows.json", JSON.stringify({ onboarding: ["customers/list", "customers/list-empty"] }))
     const sha = (id: string): string => createHash("sha256").update(png(id)).digest("hex")
     write(
@@ -96,7 +96,7 @@ test("the model joins pages, design.json and canvas frames: the tree, the dots, 
     assert.equal(model.screens["inbox/notes"]?.status, "none")
     assert.equal(model.screens["billing/invoices"]?.status, "unrecorded")
     assert.equal(model.screens["billing/plans"]?.status, "drawn")
-    assert.equal(model.screens["orphan/shot"], undefined, "a folder with no explain.md and no design is hidden")
+    assert.equal(model.screens["orphan/shot"], undefined, "a folder with no screen.yaml and no design is hidden")
     assert.deepEqual(model.counts, { total: 8, matches: 1, differs: 0, stale: 2, unrecorded: 2, notCoded: 3, hidden: 1 })
     const { total, matches, differs, stale, unrecorded, notCoded } = model.counts
     assert.equal(matches + differs + stale + unrecorded + notCoded, total, "every screen is counted once")
@@ -106,7 +106,7 @@ test("the model joins pages, design.json and canvas frames: the tree, the dots, 
     assert.equal(model.screens["customers/list-loading"].explain, null)
 })
 
-test("the canvas frames are served per width, and the note of a fragment is the explain.md it copies", () => {
+test("the canvas frames are served per width, and the note of a fragment parses as a screen note", () => {
     const { root } = fixture()
     const loaded = loadGallery({ root, pages: "pages", canvas: "../.starcistacks/canvas" })
     assert.deepEqual(loaded.frames.map((frame) => frame.file), ["customers__list__1440.html", "customers__list__390.html", "billing__invoices__1440.html", "billing__plans__1440.html"])
@@ -154,21 +154,19 @@ const round = (n: number, verdict: string): string => `    - n: ${String(n)}\n  
 const SCREEN_YAML = (audit: string): string =>
     `schema: 1\nscreen: agents/agent\ntitle: Một agent\nroute: /agents/[key]\narea: agents\nsummary: Trang của một agent.\ncode:\n  - features/pages/AgentProfilePage\nsections:\n  - id: header\n    title: Dải đầu trang\n    shows: Tên agent\n    why: Cần biết agent đang làm gì\n    actions: [Tạm dừng]\n    states:\n      loading: Skeleton\n      empty: null\n    needsApi: [Số liệu hôm nay]\n  - id: body\n    title: Thân\n    why: CHƯA RÕ\nconsidered:\n  - option: Gộp vào dải đầu\n    chosen: false\n    why: Quá dày\n${audit}`
 
-test("screen.yaml is the description of a screen: sections, options and audit are read, and a legacy explain.md is read only when there is no screen.yaml", () => {
+test("screen.yaml is the description of a screen: sections, options and audit are read", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "starci-gallery-yaml-"))
     const write = (file: string, text: string): void => {
         fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
         fs.writeFileSync(path.join(root, file), text)
     }
     write("gallery/pages/agents/agent/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "fixed")}${round(2, "pass")}  escalate: null\n`))
-    write("gallery/pages/agents/agent/explain.md", EXPLAIN("ignored", "/x", "agents"))
     write("gallery/pages/agents/old/screen.yaml", SCREEN_YAML("audit: null\n").replace("agents/agent", "agents/old"))
     write("gallery/pages/agents/open/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "pass")}${round(2, "open")}  escalate: null\n`))
     write("gallery/pages/agents/few/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "pass")}  escalate: null\n`))
-    write("gallery/pages/agents/legacy/explain.md", EXPLAIN("Cũ", "/legacy", "agents"))
     const model = buildModel(loadGallery({ root: path.join(root, "gallery"), pages: "pages", canvas: "../.starcistacks/canvas" }).raw)
     const agent = model.screens["agents/agent"]
-    assert.equal(agent?.title, "Một agent", "the yaml wins over the explain.md beside it")
+    assert.equal(agent?.title, "Một agent", "the title is the yaml's")
     assert.equal(agent.route, "/agents/[key]")
     assert.equal(agent.doc?.sections[0]?.needsApi[0], "Số liệu hôm nay")
     assert.deepEqual(agent.doc.sections[0].states, [["loading", "Skeleton"], ["empty", null]])
@@ -177,12 +175,9 @@ test("screen.yaml is the description of a screen: sections, options and audit ar
     assert.equal(agent.auditFlag, null, "two rounds and none open: the audit stands")
     assert.equal(agent.problems, 1, "the section saying CHƯA RÕ is still flagged")
     assert.equal(agent.flagged, true)
-    assert.deepEqual(model.screens["agents/old"]?.auditFlag, { kind: "none", open: [] }, "audit: null is grandfathered and flagged")
+    assert.deepEqual(model.screens["agents/old"]?.auditFlag, { kind: "none", open: [] }, "audit: null is flagged")
     assert.equal(model.screens["agents/open"]?.auditFlag?.kind, "open")
     assert.equal(model.screens["agents/few"]?.auditFlag?.kind, "few")
-    assert.equal(model.screens["agents/legacy"]?.doc, null, "a screen with only an explain.md is read by the older reader")
-    assert.equal(model.screens["agents/legacy"].title, "Cũ")
-    assert.equal(model.screens["agents/legacy"].auditFlag, null)
 })
 
 test("a screen design.json marks pending shows with its reason instead of being hidden, and its label says so", () => {

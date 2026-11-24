@@ -5,8 +5,8 @@
 Goal
 :::
 
-A sample document in the legacy directive format: muted section lines, an accordion of steps, a code and preview tab, a figure
-with a caption line, a command block. A long path like `examples/service/src/modules/orders/pending-events.relay.ts` is only a warning.
+A sample document in the directive format: muted section lines, an accordion of steps, a code and preview tab, a figure
+with a caption, a command block. A long path like `examples/service/src/modules/orders/pending-events.relay.ts` is only a warning.
 
 :::muted
 Steps
@@ -53,13 +53,11 @@ curl -s -X POST localhost:3000/orders
 :::::
 ::::::
 
-```mermaid
+```mermaid caption="Figure 1: the API writes the row and the event together; the relay reads and forwards them."
 flowchart LR
     Api["API"] --> Db[("Database")]
     Db --> Relay["Relay"] --> Broker(("Broker"))
 ```
-
-Figure 1: the API writes the row and the event together; the relay reads and forwards them.
 
 :::muted
 Result

@@ -27,14 +27,12 @@ import { copyPins, dataPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManif
 export { PIN_FIELDS } from "./publish-pins.js"
 
 /**
- * The dev line of the harness on the local registry (owner 2026-11-22: "bản thân .claude cũng tách thành dev main được không? dev code xong merge
- * nhanh để xài local"; "merge hết vô local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa thời gian code local").
- * Once a harness batch lands on `dev`, every package it changed and every package that pins one of them (its `dependencies`, `peerDependencies` or
+ * The dev line of the harness on the local registry. Once a harness lane lands on `dev`, every package it changed and every package that pins one of them (its `dependencies`, `peerDependencies` or
  * `optionalDependencies`, the real graph of the package.json files) is published to the local registry as a prerelease `X.Y.Z-dev.N`: X.Y.Z the next
  * release of the package, N one more than any dev build of it the registry lists or this machine counted. The publish copy (the tarball's manifest,
  * never a committed file) carries that version and pins each sibling of the dev line exactly, so `dev` stays free of dev pins and npm installs the
  * set as published. `devSync.local` of this machine's local settings then names exactly those versions (the `local` dist-tag moves with every publish),
- * and the lander's after-land dev sync installs them into the app's dev checkout. Nothing reaches npm; main and every release stay plain versions.
+ * and the dev sync after a landing installs them into the app's dev checkout. Nothing reaches npm; main and every release stay plain versions.
  */
 
 /** The trees the CLI's tarball carries beside cli/ (its prepack copies them), so a change there is the CLI's. */
@@ -511,8 +509,8 @@ export const devPublishMessage = (data: DevPublishData): string => {
 }
 
 /**
- * `starci deps publish-dev`: the dev line of the harness on this machine's registry. It is what the harness's batch lander runs after a batch lands
- * on dev (local setting `devSync.publishLocal`), and a hand run does the same: dry until --execute, idempotent.
+ * `starci deps publish-dev`: the dev line of the harness on this machine's registry. A harness landing runs it, and a hand run does the same: dry
+ * until --execute, idempotent.
  */
 export const depsPublishDevVerb = defineVerb({
     path: ["deps", "publish-dev"],

@@ -24,15 +24,15 @@ Choice `dialog-drawer.choose.role`: what holds the task above the page. The firs
 The backdrop and the size are the contract's; the app picks a size only by content measure. Nested fields and tabs
 take their nested treatment from the overlay's surface.
 
-## Popover width (0.45.1)
+## Popover width
 A `Popover` is 26rem wide, or the viewport less 2rem: a panel of rows (a leading mark, copy, an action, a time: a notification list) lays out at a readable measure, and a short
 note stands in the same panel. The width is definite because a row list is a size container, which has no intrinsic width. There is no `width` or `size` prop: one look for every panel, so an app sets no width and
 never wraps a popover's content in a fixed-width box. A panel that needs more than 26rem is a `Drawer` or a `Dialog`. Story `Overlays/Popover width (0.45.1)`.
 
-## Popover size (0.46.2)
+## Popover size
 `Popover size` is `sm` (18rem: a short note, a small action menu), `md` (26rem, the default) or `lg` (36rem: a list of wide rows or a small form), each capped at the viewport less 2rem, so on a phone all three are the same full-width panel. The panel never takes its trigger's width, and an app sets no width of its own. Story `Overlays/Popover width (0.45.1)` (Sizes).
 
-## Popover edge and the phone sheet (0.48.0)
+## Popover edge and the phone sheet
 The panel has a 1px `--border` and a soft shadow, so it reads as a layer over a white surface (`DNA-COMMON-POPOVER-EDGE`; Offset Pop keeps its ink outline). At 480px and narrower the popover is a sheet: fixed to the bottom edge at the full width, its top corners rounded, at most 85% of the screen tall, over a scrim that dims the page; a press on the scrim is outside and closes it, and the arrow is not drawn (`DNA-COMMON-POPOVER-PHONE-SHEET` at 320, 360 and 390). The app passes nothing: the width decides. Story `Overlays/Popover sheet and the palette on a phone (0.48.0)`.
 
 ## Scrolling

@@ -2,7 +2,7 @@
 
 Law module: `site-type-role.ts`. Finding code: `FE_SITE_TYPE_ROLE`. Knowledge: `runtime/knowledge/ui/presentation/grammar-laws.yaml#SITE-TYPE-ROLES`.
 
-Grammar 0.55.0 adds the site group, five type roles for the public marketing site: `display.hero`, `display.section`, `display.figure`, `lead` and `title.card` ([presentation](../../../contexts/ui/presentation.md) "The site group"). The owner approved the group for the public site only, never the console: "3. THÊM NHÓM".
+The Grammar has a site group of five type roles for the public marketing site: `display.hero`, `display.section`, `display.figure`, `lead` and `title.card` ([presentation](../../../contexts/ui/presentation.md) "The site group"). The group is for the public site only, never the console.
 
 ## `starci-grammar/site-type-role`
 

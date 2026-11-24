@@ -150,11 +150,10 @@ describe("render: profiles and loading", () => {
         assert.doesNotMatch(out, /Real words/)
     })
 
-    it("draws a document in the legacy directive format whole", async () => {
-        const body = fixture("legacy-format.md")
-        const legacyCaption = /^Figure \d+:/
-        const { diagrams } = await prerender(parse(body, { legacyCaption }))
-        const out = html({ source: body, parseOptions: { legacyCaption }, diagrams })
+    it("draws a document in the directive format whole", async () => {
+        const body = fixture("directive-format.md")
+        const { diagrams } = await prerender(parse(body))
+        const out = html({ source: body, diagrams })
         assert.match(out, /Figure 1:/)
         assert.match(out, /Step 4/)
         assert.match(out, /data-component="Tabs"|role="tablist"/)

@@ -1,6 +1,6 @@
 # Lesson parts: CodeBlock, GradedChoice, Sidenotes, TableOfContents
 
-No contract role yet: these are the parts of a lesson page (owner 2026-11-23), each a Grammar component an app places; their look is the
+No contract role yet: these are the parts of a lesson page, each a Grammar component an app places; their look is the
 Grammar's (`src/common/components-lesson.css`), their words the app's. Diagrams are [diagram](diagram.md) (`MermaidDiagram` of the graph ext, on the graph canvas); the prose roles are
 [text](text.md) (`reading.title`, `reading.body`).
 
@@ -44,7 +44,7 @@ takes none. Measure: judgement.
 - `GradedChoice`: `keys` (default A, B, C ...); `picks` with `onPicksChange` (controlled, e.g. a learner's saved answers) or `defaultPicks`.
 - `Sidenotes`: the margin column from a 52rem frame; under it the fold `foldLabel(n)` ("Terms (3)") under the prose.
 
-## Code palette (0.55.1, owner 2026-11-23)
+## Code palette
 Code has its own colours, the `--grammar-code-*` tokens of `common/tones-code.css`, light and dark. They never borrow a status tone or the
 brand (`--accent`): a red brand never turns keywords red, and red is only `deleted`, the removed side of a diff. Every surface that shows
 code reads them: the lesson `CodeBlock` (its `scheme="dark" | "light"` sets the block's `data-theme`, so the dark or light set applies inside

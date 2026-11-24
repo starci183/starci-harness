@@ -1,4 +1,4 @@
-// The words the gallery shows, by locale (PROJECT-GALLERY-1 item 7): `vi` and `en` have a table, any other locale reads `en`. The field names of explain.md
+// The words the gallery shows, by locale (PROJECT-GALLERY-1 item 7): `vi` and `en` have a table, any other locale reads `en`. The field names of a screen's note
 // (`Vì sao`, `Luật`, `Grammar`) are the owner's and stay as written in both.
 export interface Labels {
     readonly title: string
@@ -138,7 +138,7 @@ export const LABELS = Object.freeze({
         countsUnrecorded: "{n} not recorded",
         countsDiffers: "{n} differ",
         countsStale: "{n} stale",
-        hidden: "{n} screens hidden (no explain.md)",
+        hidden: "{n} screens hidden (no screen.yaml)",
         width: "Width",
         view: "View",
         viewSide: "Side by side",
@@ -157,7 +157,7 @@ export const LABELS = Object.freeze({
         flows: "Flow map",
         search: "Search screens",
         noScreens: "No screens match.",
-        empty: "No screens yet. Put the shots and explain.md in gallery/pages/<area>/<screen>/",
+        empty: "No screens yet. Put the shots and screen.yaml in gallery/pages/<area>/<screen>/",
         statusMatches: "Matches the design",
         statusDiffers: "Built, differs",
         statusStale: "Stale shot",
@@ -265,7 +265,7 @@ export const LABELS = Object.freeze({
         countsUnrecorded: "{n} chưa ghi duyệt",
         countsDiffers: "{n} lệch",
         countsStale: "{n} ảnh cũ",
-        hidden: "{n} màn bị ẩn (thiếu explain.md)",
+        hidden: "{n} màn bị ẩn (thiếu screen.yaml)",
         width: "Độ rộng",
         view: "Xem",
         viewSide: "Cạnh nhau",
@@ -284,7 +284,7 @@ export const LABELS = Object.freeze({
         flows: "Bản đồ luồng",
         search: "Tìm màn hình",
         noScreens: "Không có màn hình nào khớp.",
-        empty: "Chưa có màn hình nào. Đặt ảnh và explain.md vào gallery/pages/<area>/<screen>/",
+        empty: "Chưa có màn hình nào. Đặt ảnh và screen.yaml vào gallery/pages/<area>/<screen>/",
         statusMatches: "Khớp bản vẽ",
         statusDiffers: "Đã code, còn lệch",
         statusStale: "Ảnh đã cũ",

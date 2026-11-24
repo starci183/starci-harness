@@ -5,7 +5,7 @@ import { elementNameOf, grammarName, hasSpread, renderedChildren, stringProp } f
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context } from "./lib/types.ts"
 /**
- * The two-axis layout law (owner, 2026-11-09, LAYOUT-5): a REPORT page (`Page` standard: the pink well) stacks its card surfaces in ONE
+ * The two-axis layout law (LAYOUT-5): a REPORT page (`Page` standard: the pink well) stacks its card surfaces in ONE
  * direction, a vertical column 24 apart. Cards stand side by side only as siblings of the same role and height (figure cells, short
  * equal cards). A card beside a column of other cards makes two axes in one well, and two cards of different roles side by side
  * are unequal in height. A page that needs a persistent selection column or a full-height chat or editor is a WORKSPACE page

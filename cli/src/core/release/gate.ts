@@ -14,8 +14,7 @@ import type { Affected } from "./affected.js"
 import { isHarnessCheckout } from "./harness-checkout.js"
 
 /**
- * The harness's own two-level gate, the harness counterpart of `app check --level dev|full` (owner: "rules là k check nhánh khi dev, khi nào
- * push mới check tổng 1 lần sửa 1 lần vẫn hơn"). The FAST level (`dev`) is what landing on the harness's `dev` runs once per batch, before the
+ * The harness's own two-level gate, the harness counterpart of `app check --level dev|full`. The FAST level (`dev`) is what landing on the harness's `dev` runs once per lane, before the
  * landed packages go to the local registry: the install, build and typecheck of the packages the diff since `--base` changed and of every package
  * that needs one of them (`release affected`, CI's plan), the CLI when it is affected, the desktop app when it is, and the cheap checks a publish
  * needs (built declarations name `.js` only; a package's bundled copies match the build they copy, `bundles:check`). It runs NO test suite: tests
@@ -32,7 +31,7 @@ export interface GateStep {
     readonly args?: readonly string[]
 }
 
-/** One blocking finding of the gate, in the shape the batch lander reads (`level: error`, a path under the folder that failed). */
+/** One blocking finding of the gate, in the shape `lane gate` reads (`level: error`, a path under the folder that failed). */
 export interface GateFinding {
     readonly level: "error"
     readonly code: string
@@ -230,8 +229,8 @@ const defaultBase = async (root: string): Promise<string | undefined> => {
 }
 
 /**
- * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level the
- * batch lander and `lane gate` run when the harness lands on dev (no test suite); `--level full` is the gate of the train's dev -> main merge, tests included.
+ * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level
+ * `lane gate` runs when the harness lands on dev (no test suite); `--level full` is the gate of the train's dev -> main merge, tests included.
  */
 export const releaseGateVerb = defineVerb({
     path: ["release", "gate"],

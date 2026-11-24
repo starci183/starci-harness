@@ -67,8 +67,8 @@ describe("validate", () => {
         assert.deepEqual(errors(validate(':::::panel{title="A"}\n:::info\n```mermaid\nA\n```\n:::\n:::::')), ["MD_MERMAID_CAPTION_MISSING"])
     })
 
-    it("a document in the legacy directive format is valid prose (a long inline path is only a warning)", () => {
-        const issues = validate(fs.readFileSync(new URL("./fixtures/ext-markdown/legacy-format.md", import.meta.url), "utf8"), "prose", { legacyCaption: /^Figure \d+:/ })
+    it("a document in the directive format is valid prose (a long inline path is only a warning)", () => {
+        const issues = validate(fs.readFileSync(new URL("./fixtures/ext-markdown/directive-format.md", import.meta.url), "utf8"), "prose")
         assert.deepEqual(errors(issues), [])
         assert.deepEqual(codes(issues), ["MD_INLINE_CODE_TOO_LONG"])
     })

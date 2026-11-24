@@ -2064,13 +2064,6 @@ rules:
     failureCodes:
       - FE_CHIP_LABEL_CASE
     enforcers: []
-  - id: R323
-    code: FE_PAGE_HEADER_HAND_ROLLED
-    law: A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator.
-    failureCodes:
-      - FE_PAGE_HEADER_HAND_ROLLED
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-hand-rolled-page-header}
   - id: R324
     code: FE_PAGE_TABS_OUTSIDE_HEADER
     law: Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band.
@@ -2080,7 +2073,7 @@ rules:
       - {kind: eslint-grammar-core, id: page-tabs-in-header}
   - id: R325
     code: FE_ROUTE_PAGE_OUTSIDE_PAGE
-    law: A route draws exactly one Grammar Page, drawn by its page owner, the owner's pure half or the one connected block the owner renders as its root, or by the route segment layout whose owner draws a Page with header.tabs, the one Page of every route under it; that Page has nothing beside it and no second Page inside it, so a page owner under such a layout draws its body only; a page owner that draws no UI, sits under such a layout, or is mounted only under the (auth) route group whose layout frames it, needs none; PageHeader and PageContainer are Page's parts and are not exported, so importing either from the Grammar re-decides the inset and rhythm Page owns.
+    law: A route draws exactly one Grammar Page, drawn by its page owner, the owner's pure half or the one connected block the owner renders as its root, or by the route segment layout whose owner draws a Page with header.tabs, the one Page of every route under it; that Page has nothing beside it and no second Page inside it, so a page owner under such a layout draws its body only; a page owner that draws no UI, sits under such a layout, or is mounted only under the (auth) route group whose layout frames it, needs none.
     failureCodes:
       - FE_ROUTE_PAGE_OUTSIDE_PAGE
     enforcers:
@@ -2101,7 +2094,7 @@ rules:
       - {kind: eslint-be, id: ai-client-through-gateway}
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), @starci/auth/contracts and @starci/auth/testing only by those two glues, and the retired @starci/auth-oidc by no app file. bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), @starci/auth/contracts and @starci/auth/testing only by those two glues. bcrypt and every Supabase client are owned nowhere."
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
     enforcers:
@@ -2429,11 +2422,12 @@ rules:
       - {kind: hfs, id: lint-ratchet}
   - id: R380
     code: FE_GROUPED_CHOICE_CONTROL
-    law: "The Grammar draws no group of attached buttons: a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source is refused and the message names the replacement by meaning, `Tabs` to switch a view or filter a list (`kind=\"filter\"`), `ChoiceChips` or `RadioGroup` to choose a value of a form, separate `Button`s or a `DropdownMenu` for actions. The components are deleted (ButtonGroup and FilterButtonGroup in Grammar 0.55.0); the rule still names the replacement for a source that keeps one."
+    law: "A view switch is never a row of `Button`s carrying `aria-pressed`, `isSelected` or `isActive`: a switch between views or periods of one block is `Tabs`, and `Tabs appearance=\"primary\"` holds two to four short, fixed options with no `count`, no `href` and no `isAttention`."
     failureCodes:
       - FE_GROUPED_CHOICE_CONTROL
     enforcers:
-      - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
+      - {kind: eslint-grammar-core, id: no-button-view-switch}
+      - {kind: eslint-grammar-core, id: no-primary-tabs-misuse}
   - id: R381
     code: HFS_EXT_INVALID
     law: "A project adds its own laws only in its ext/ folder at the app root, declared in `ext/manifest.json` (`starci/project-ext@1`, with the extension API version it targets): every rule carries an id, a finding code, a severity, its doc, the app-relative globs it applies to and exactly one engine (a machine rule of ext/hfs/ the app check runs, or an ESLint rule of ext/lint/ the canon factories load), and every project check of ext/checks/ is declared there too (R402); the app check loads and runs them on every run; an extension only adds, so a rule or manifest with any other key, a code the harness reports, an id or code declared twice, a declared file that is not there, a rule file no rule declares, a rule that throws, a finding without a path or a manifest of another API version refuses the extension, which then lends nothing while the check is red; its findings go through the harness's policy (a machine rule and a project check block like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."

@@ -18,15 +18,15 @@ Choice `sidebar.choose.count-tone`: what a count on an item says. The first row 
 One tone means one rule of the app: the same fact takes the same tone on every item and in every bar. A page does not paint counts red for emphasis; a red count is work for the person (ACCENT-5, HIERARCHY-6).
 
 ## The tone of a count
-`SidebarItem.badgeTone` (0.46.0; `neutral` default, `accent`, `success`, `warning`, `danger`) paints the count on its tint: `x-soft` ground with `x-soft-foreground` ink, neutral is `default` with `default-foreground`, the pairs a `Badge` of the same tone and a `Tabs` count use.
+`SidebarItem.badgeTone` (`neutral` default, `accent`, `success`, `warning`, `danger`) paints the count on its tint: `x-soft` ground with `x-soft-foreground` ink, neutral is `default` with `default-foreground`, the pairs a `Badge` of the same tone and a `Tabs` count use.
 The count is always printed and `badgeLabel` carries its words ("4 waiting for you"), so the tone is never the only signal. In the icon rail (`isCollapsed`) the count overlaps its glyph and keeps its tone over the surface; the capped count (`badgeMax`) shows "9+".
-Before 0.46.0 every count was one solid accent; the default is now the neutral tint, so a count that is work for the person sets its tone.
+The default is the neutral tint, so a count that is work for the person sets its tone.
 
 Evidence (Rule 1). NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/`: `GRAMMAR-GAPS.md:10` (G2: red when the count is work waiting for the person, grey when it is information; ask `isAttention` or `badgeTone`);
 `pages/01-shell-app.html:236-238` (the drawn rail: Office 4 and Duties 3 in red, the rest grey chips; "như `isAttention` của `Tabs`"); `pages/01-shell-app.html:248-251` (the same counts on the bottom bar).
 
 ## Destination
-`SidebarItem.href` (0.46.0) makes an item a real anchor through the app root's router (a new tab on a modifier press, copy link); `onAction(id)` runs alongside. Without `href` the item is a command and `onAction` is its only effect.
+`SidebarItem.href` makes an item a real anchor through the app root's router (a new tab on a modifier press, copy link); `onAction(id)` runs alongside. Without `href` the item is a command and `onAction` is its only effect.
 
 ## Collapse control
 The collapse control is Grammar's icon button at the top of the rail, in both states (`collapseLabel`, `expandLabel`, `toggleSource`, `onCollapsedChange`); an app never draws its own collapse row. Grammar alone decides where it stands, so every app's rail looks the same; persist the state in the app.
@@ -48,5 +48,5 @@ Expanded, collapsed (icon rail with tooltip names), drawer; an item is current (
 ## Rules
 FE-APP-SHELL-1, FE-APP-SHELL-4, FE-APP-SHELL-6, ACCENT-5, HIERARCHY-6, A11Y-2. Stories: `Navigation/Sidebar count tone (0.46.0)`, `Compositions/App shell`.
 
-## TopBar start inset and the search slot (0.48.0)
+## TopBar start inset and the search slot
 `TopBar startInset="sidebar"` starts the brand on the column of the sidebar's item icons from 48rem (`--grammar-sidebar-icon-inset`: the list's 12 plus the item's 8), so the brand mark and the icons under it stand on one line; below 48rem the sidebar leaves and the bar keeps the page inset (`DNA-COMMON-TOPBAR-START-SIDEBAR`, contextual at 1280). `TopBar search={{ wide, compact }}` is the bar's search: `wide` (a `SearchField`, or a `Button` with a `Kbd` that opens the `CommandPalette`) shows from 48rem, `compact` (an `IconButton`) below it; both render and the stylesheet picks, so the server and the client agree and an app writes no media class (`DNA-COMMON-TOPBAR-SEARCH-BY-WIDTH` at 320, 360 and 390). Story `Navigation & Data/Phone fixes (0.48.0)` (TopBarStartInsetAndSearch).

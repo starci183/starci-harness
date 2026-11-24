@@ -5,6 +5,7 @@ import { byCodeUnit } from '../report/order.mjs';
 import { ENTITY_LIST } from '../db/entity-list.mjs';
 import { idleJobs, isBranchPattern, readBranchProfiles, readGateDeclarations, type BranchProfiles, type ProfileGate } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { sideDeclared } from '../runtime/scripts/hfs/project-sides.mjs';
+import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
 type Declaration = any;
@@ -277,18 +278,18 @@ export function verifyShards(scopes: readonly string[], off: Partial<Record<Prof
   return [...gates.map((gate) => `--gate ${gate}`), ...(off.lint === undefined ? scopes.map((side) => `--gate lint --side ${side}`) : [])].map((args) => `          - ${JSON.stringify(args)}`).join(String.fromCharCode(10));
 }
 
-/** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit (`starci app audit`). */
-export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app, packages = false, rootPackages = false }: { nodeMajor?: string; packages?: boolean; rootPackages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
+/** An omitted quality declaration is the shared defaults (qualityServices of an empty declaration): required OIDC Codecov and the high production dependency audit (`starci app audit`). */
+export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = qualityServices({}), { nodeMajor = '22', app, packages = false, rootPackages = false }: { nodeMajor?: string; packages?: boolean; rootPackages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
   // The gates the app declares off (`gates` of the declaration, read once by readGateDeclarations: a refused block switches nothing off).
   const declaration = buildDeclaration(source);
   const off = readGateDeclarations(declaration).off;
   // The jobs the declaration idles (IDLE_JOBS, the one table the bypass check reads too).
   const idle = idleJobs(off);
   const run = (gate: ProfileGate, command: string): string => (off[gate] === undefined ? command : offStep(gate, off[gate] as string));
-  const configuredSonar = quality === undefined ? { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } : quality.sonar;
+  const configuredSonar = quality.sonar;
   const sonar = configuredSonar?.wiring === 'not-used' || configuredSonar?.mode === 'disabled' || off.sonar !== undefined ? null : configuredSonar;
-  const codecov = off.codecov !== undefined ? { enabled: false } : quality?.codecov ?? { enabled: true, auth: 'oidc' };
-  const audit = quality?.audit ?? { level: 'high', omitDev: true };
+  const codecov = off.codecov !== undefined ? { enabled: false } : quality.codecov;
+  const audit = quality.audit;
   const lcovArtifact = 'coverage-lcov';
   // The root packages are built before every step that reads their types or compiles app code (BUILD_MODULES): an app without one renders as before.
   const modulesFirst = rootPackages ? `${BUILD_MODULES} && ` : '';

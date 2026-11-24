@@ -27,7 +27,7 @@ const shFix = (platform: NodeJS.Platform): string =>
         : "install a POSIX sh (/bin/sh) and put its folder on PATH, then run it again"
 
 /**
- * Refuses HOST_POSIX_SH_MISSING before a gate or a lander starts when no `sh` resolves on PATH: the gate's specs spawn `sh`, and a gate
+ * Refuses HOST_POSIX_SH_MISSING before a gate starts when no `sh` resolves on PATH: the gate's specs spawn `sh`, and a gate
  * that finds none fails half way and is read as a red gate of the lane instead of a host to fix.
  */
 export const assertPosixSh = (what: string, env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform, isFile?: (path: string) => boolean): string => {

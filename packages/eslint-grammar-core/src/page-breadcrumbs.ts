@@ -6,7 +6,7 @@ import { mountedOnlyUnderAuthGroup } from "./lib/page-frame.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context } from "./lib/types.ts"
 /**
- * The breadcrumbs law (owner, 2026-11-09, PAGE-BREADCRUMBS): every console page states its trail. A `Page` whose
+ * The breadcrumbs law (PAGE-BREADCRUMBS): every console page states its trail. A `Page` whose
  * `header` has no `breadcrumbs` leaves the reader without a way up; the root page of a console says so with
  * `breadcrumbs: "root"` (the Grammar's `PageHeaderBreadcrumbs | "root"`; "root" draws no trail).
  *

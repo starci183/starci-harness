@@ -4,7 +4,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureGit } from "../../shared/git.js"
 
 /**
- * The build-first half of `dev sync` (#7 of the lander train): the new tree is installed and built in a staging worktree of the dev checkout while the running
+ * The build-first half of `dev sync` the new tree is installed and built in a staging worktree of the dev checkout while the running
  * api and web keep serving the old one, and only then swapped in, so the downtime of a sync is the swap and the restart. The staging worktree is
  * `<parent>/.<checkout>.starci-next`, a detached worktree of the checkout's own repository at the commit the sync moves to; the swap moves every path the
  * staging install and build produced (git's ignored entries of the staging tree: each `node_modules`, each `dist`, generated files) into the checkout by
@@ -47,7 +47,7 @@ export const stagedOutputs = async (staging: string): Promise<string[]> =>
 /**
  * Drops every entry that lies inside another one of the list. Git lists a folder whose own .gitignore ignores its contents (husky's generated
  * `.husky/_` holds a `.gitignore` with `*`) both whole and file by file; the files go with the folder when it moves, so moving them on their own
- * fails with ENOENT (the DEV_SYNC_SWAP of 2026-11-24). Pure.
+ * fails with ENOENT. Pure.
  */
 export const outermost = (entries: readonly string[]): string[] => {
     const all = new Set(entries)

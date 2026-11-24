@@ -93,7 +93,6 @@ test("Timeline: every marker is the 40px status tile, its glyph the status; the 
     ] }))
     assert.equal(count(markup, /data-grammar-mark="status"/g), 4)
     assert.match(markup, /data-grammar-mark-state="error"/, "a negative state is the error mark")
-    assert.doesNotMatch(read("core/composite/Timeline/index.tsx"), /readonly marker\?/u, "marker is deleted (v0550 codemod)")
     assert.equal(timelineMarkState({ state: "neutral" }), "done")
     assert.equal(timelineMarkState({ state: "neutral", isCurrent: true }), "running")
     assert.equal(timelineMarkState({ state: "pending" }), "running")

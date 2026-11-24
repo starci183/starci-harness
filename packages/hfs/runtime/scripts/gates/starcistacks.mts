@@ -60,7 +60,7 @@ export const CODES = [
   'STACKS_SERVICE_UNDECLARED', 'STACKS_CI_CONTRADICTION', 'STACKS_CI_UNUSED', 'STACKS_CI_NAME_UNREFERENCED',
   'STACKS_PLAINTEXT_TRACKED', 'STACKS_ENC_TWIN_MISSING', 'STACKS_GITIGNORE_OPEN', 'STACKS_DECLARATION_IGNORED',
   'STACKS_GITIGNORE_VALUE_OPEN', 'STACKS_RUNBOOK_IGNORED', 'STACKS_QUALITY_GATE_DRIFT',
-  'CI_DECLARATION_INVALID', 'STACKS_CI_LEGACY_FORM',
+  'CI_DECLARATION_INVALID',
   'STACKS_EXAMPLE_FORM', 'STACKS_PRODUCT_FORM', 'HFS_STACKS_SHAPE',
 ];
 /** Paths (under <root>/<environment>/) the ignore rules must deny; they need not exist. */
@@ -201,7 +201,6 @@ export function normalizeService(id: string, entry: ParsedDocument, { declaringR
     ci: { token: text(ci.token), hostVar: text(ci.hostVar),
       organizationVar: text(ci.organizationVar) || (s.provider === 'sonarcloud' && list(s.runtimeSecrets).length && !credentials.length ? 'SONAR_ORGANIZATION' : null), wiring: text(ci.wiring), workflow: text(ci.workflow), permissions: list(ci.permissions).map(String),
       secrets: list(ci.secrets).filter(plain).map((item: ParsedDocument) => ({ name: text(item.name), credential: text(item.credential) })),
-      vars: list(ci.vars).filter(plain).map((item: ParsedDocument) => ({ name: text(item.name), value: text(item.value) })),
       provisioning: text(ci.provisioning) },
     ownerAction: ownerActionOf(s),
   };
@@ -228,7 +227,7 @@ export function resolveStackService(repoRoot: unknown, serviceId: string): Resol
     if (declaration.sourceHost && !listed) continue;
     // A source host lends public server settings only; analysis credentials stay in the selected product's custody.
     if (declaration.sourceHost) service = { ...service, credentials: [],
-      ci: { wiring: null, workflow: null, permissions: [], secrets: [], vars: [], provisioning: null } };
+      ci: { wiring: null, workflow: null, permissions: [], secrets: [], provisioning: null } };
     return { declaration: declaration.file, declaringRepo: declaration.repo, sourceHost: Boolean(declaration.sourceHost),
       repository: name, projectKey: service.projects.find((project) => project.repository === name)?.key ?? null, ...service };
   }
@@ -275,7 +274,7 @@ const checkServiceCredentials = (service: StackServiceEntry, at: string, add: Ad
   }
   return ids;
 };
-const checkCiNames = (service: StackServiceEntry, id: string, at: string, ciUses: CiUses, ciText: string, add: AddFinding): void => { if (['required', 'optional-follow-up'].includes(service.ci.wiring ?? '') && usedBy(ciUses, id).length) for (const item of [...service.ci.secrets, ...service.ci.vars]) if (item.name && !new RegExp(String.raw`\b${escapeRegExp(item.name)}\b`).test(ciText)) add('suspect', 'STACKS_CI_NAME_UNREFERENCED', `${at}.ci`, `${item.name} is declared for CI but no workflow reads it`); };
+const checkCiNames = (service: StackServiceEntry, id: string, at: string, ciUses: CiUses, ciText: string, add: AddFinding): void => { if (['required', 'optional-follow-up'].includes(service.ci.wiring ?? '') && usedBy(ciUses, id).length) for (const item of service.ci.secrets) if (item.name && !new RegExp(String.raw`\b${escapeRegExp(item.name)}\b`).test(ciText)) add('suspect', 'STACKS_CI_NAME_UNREFERENCED', `${at}.ci`, `${item.name} is declared for CI but no workflow reads it`); };
 const checkServiceCi = (service: StackServiceEntry, id: string, at: string, { governing, name, ciUses, ciText, add, ambiguous }: QualityServiceContext): void => {
   const ids = checkServiceCredentials(service, at, add, ambiguous);
   for (const secret of service.ci.secrets)
@@ -317,7 +316,7 @@ const checkService = (id: string, entry: ParsedDocument, { schema, declFile, dec
   normalized[id] = service;
   const at = `${declFile}#services.${id}`;
   const ambiguous: Ambiguous = (message) => add('refuse', 'STACKS_SERVICE_AMBIGUOUS', at, message);
-  checkServiceForm(service, id, entry, at, kind, add, ambiguous);
+  checkServiceForm(service, id, at, kind, add, ambiguous);
   if (checkDisabledService(service, id, at, ciUses, ambiguous, add)) return;
   let product = false;
   try { product = JSON.parse(fs.readFileSync(path.join(declaration?.repo ?? '', 'hfs.json'), 'utf8')).kind === 'app'; } catch { /* other checks own a missing app declaration */ }
@@ -499,7 +498,7 @@ export function ownerAskConflict({ repo, question }: { repo?: string; question?:
   for (const id of Object.keys(SERVICE_CATALOG)) {
     const service = resolveStackService(repo, id);
     if (!service || service.mode === 'disabled' || service.ownerAction !== 'none' || !custodyHeld(service)) continue;
-    const names = [...service.credentials.map((credential) => credential.env), ...service.ci.secrets.map((item) => item.name), ...service.ci.vars.map((item) => item.name)].filter(Boolean);
+    const names = [...service.credentials.map((credential) => credential.env), ...service.ci.secrets.map((item) => item.name)].filter(Boolean);
     const byName = names.find((item) => new RegExp(String.raw`\b${escapeRegExp(item)}\b`).test(body));
     const words = [...new Set([id, service.provider, ...catalogOf(id).words].filter(Boolean))];
     const byWord = words.find((word) => new RegExp(String.raw`\b${escapeRegExp(word)}\b`, 'i').test(body));

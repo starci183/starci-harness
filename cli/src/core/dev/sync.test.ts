@@ -1,14 +1,12 @@
-// `starci dev sync` and the lander's auto-sync: the side a change restarts, the overlay line, a real fast-forward of a dev checkout from
-// its origin (a bare repository in a scratch folder), the refusals, and the debounce of consecutive landed batches. Built with the CLI, run by `npm test`.
+// `starci dev sync`: the side a change restarts, the overlay line, a real fast-forward of a dev checkout from
+// its origin (a bare repository in a scratch folder), the refusals. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { Refusal } from "../../shared/errors.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { LandDebounce, landAutoSync } from "../../harness/land-dev-sync.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
-import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { captureGitSync } from "../../shared/git.js"
 import { writeInstallRecord } from "../deps/install-local.js"
 import type { InstallRecord } from "../deps/install-local.js"
@@ -127,7 +125,7 @@ void test("a tracked change that is no overlay's, and a checkout off dev, are re
     await assert.rejects(devSync(request(checkout)), (error: unknown) => error instanceof Error && "code" in error && error.code === "DEV_SYNC_NOT_DEV")
 })
 
-void test("a checkout detached at origin/dev, where the lander leaves it, syncs and ends on dev tracking origin/dev", async (t) => {
+void test("a checkout detached at origin/dev, where a landing leaves it, syncs and ends on dev tracking origin/dev", async (t) => {
     const { checkout } = scratch(t)
     const at = gitIn(checkout, "rev-parse", "HEAD")
     gitIn(checkout, "checkout", "-q", "--detach", "origin/dev")
@@ -167,42 +165,10 @@ void test("a checkout detached on a commit origin/dev does not hold is refused, 
     assert.equal(gitIn(checkout, "branch", "--show-current"), "")
 })
 
-void test("consecutive landed batches give one sync, once the debounce window passed since the last of them", () => {
-    const debounce = new LandDebounce(60_000)
-    assert.equal(debounce.due(0), false)
-    assert.equal(debounce.waitMs(0), undefined)
-    debounce.landed(1_000)
-    debounce.landed(30_000)
-    assert.equal(debounce.due(80_000), false, "the window restarts at the last landed batch")
-    assert.equal(debounce.waitMs(80_000), 10_000)
-    assert.equal(debounce.due(90_000), true)
-    debounce.settle()
-    assert.equal(debounce.pending, false)
-})
-
-const settings = (extra: Partial<DevSyncSettings> = {}): DevSyncSettings => ({ ...loadLocalSettings(join(tmpdir(), "no-such-starci-settings.json")).devSync, ...extra })
-
-void test("the lander's auto-sync is off by default and in a dry run; on, it syncs the configured checkout and a failure never throws", async () => {
-    assert.equal(settings().afterLand, false)
-    assert.equal(settings().debounceSeconds, 120)
-    assert.equal(landAutoSync(settings(), "D:/app", false, () => undefined), undefined)
-    assert.equal(landAutoSync(settings({ afterLand: true }), "D:/app", true, () => undefined), undefined)
-    const asked: DevSyncRequest[] = []
-    const said: string[] = []
-    const auto = landAutoSync(settings({ afterLand: true, checkout: "D:/dev-checkout", local: ["grammar"] }), "D:/app", false, (line) => said.push(line), (one) => {
-        asked.push(one)
-        return Promise.reject(new Error("DEV_SYNC_DIRTY"))
-    })
-    assert.ok(auto)
-    auto.debounce.landed(0)
-    await auto.run()
-    assert.equal(auto.debounce.pending, false)
-    const [first] = asked
-    assert.ok(first)
-    assert.equal(first.checkout, "D:/dev-checkout")
-    assert.equal(first.execute, true)
-    assert.deepEqual(first.local, ["grammar"])
-    assert.ok(said.some((line) => line.includes("not run (DEV_SYNC_DIRTY)")))
+void test("the dev sync after a landing is off by default and debounced over 120 s", () => {
+    const settings = loadLocalSettings(join(tmpdir(), "no-such-starci-settings.json")).devSync
+    assert.equal(settings.afterLand, false)
+    assert.equal(settings.debounceSeconds, 120)
 })
 
 void test("a damaged local settings file is refused naming it", () => {

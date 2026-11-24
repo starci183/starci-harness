@@ -94,7 +94,7 @@ export interface DevSyncData {
     readonly restart: "done" | "skipped" | "failed" | "planned" | "none"
 }
 
-/** How one sync is asked for: by the verb, or by the batch lander from this machine's local settings. */
+/** How one sync is asked for: by the verb, or by a landing from this machine's local settings. */
 export interface DevSyncRequest {
     readonly checkout: string
     readonly local: readonly string[]
@@ -209,7 +209,7 @@ export const overlayLine = (overlay: readonly string[]): string =>
  */
 export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     const root = await repositoryRoot(request.checkout)
-    // One sync of a checkout at a time, whoever asks (two landers, a hand run): a second one waits for the first. A dry run writes nothing and takes no lock.
+    // One sync of a checkout at a time, whoever asks (two landings, a hand run): a second one waits for the first. A dry run writes nothing and takes no lock.
     if (!request.execute) return devSyncLocked(request, deps, root)
     return withSyncLock(syncLockFile(root), request.say, () => devSyncLocked(request, deps, root), deps.pause)
 }
@@ -227,7 +227,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const dirty = (await trackedChanges(root)).filter((file) => !ownFiles.includes(file))
     if (dirty.length > 0) throw new Refusal("DEV_SYNC_DIRTY", `${root} has tracked changes that are not a local overlay's: ${dirty.slice(0, 5).join(", ")}; the dev checkout only follows origin/dev, commit them on a lane instead`)
     const branch = await currentBranch(root)
-    // A detached HEAD is where the lander leaves the main checkout (at origin/dev): it is accepted once it is origin/dev or behind it.
+    // A detached HEAD at origin/dev is a valid main checkout: it is accepted once it is origin/dev or behind it.
     const detached = branch === undefined
     if (!detached && branch !== "dev") throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on ${branch}, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
     const fetched = await gitOk(root, ["fetch", "--quiet", "origin", "dev"])
@@ -259,7 +259,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const lockChanged = files.includes(LOCKFILE)
     const needInstall = lockChanged || (overlayBefore.length > 0 && !keepsOverlay) || aside.length > 0 || unswapped || !existsSync(join(root, "node_modules"))
     const writesModules = needInstall || requested.length > 0
-    // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
+    // The tree a restart builds from is prepared first, as the lane gate prepares its own: a workspace package that moved or
     // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
     const prepares = writesModules || unprepared || (processes.length > 0 && request.light !== true)
     // New migration files are applied before the api restarts on code that needs them, by the stack's own migrate step and its receipt
@@ -347,7 +347,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
             say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.leftover.length > 0 ? `; left for the next sync (held): ${swapped.leftover.join(", ")}` : ""}`)
         }
         if (stage !== undefined && staged !== undefined) {
-            // The swapped install must load: a package that does not resolve (2026-11-24: `picocolors` from next/node_modules/postcss) is not left for the web's first
+            // The swapped install must load: a package that does not resolve (a nested `picocolors` of `postcss`, say) is not left for the web's first
             // request. A clean `npm ci` in place, with the overlay and the prepare scripts, replaces it, and the restart below runs on that.
             const broken = deps.smoke?.(root) ?? []
             if (broken.length > 0) {
@@ -383,7 +383,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
             const failed = await deps.prepare(root)
             if (failed !== undefined) {
                 writeFileSync(join(root, UNPREPARED), `${to}\n`)
-                throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the workspace packages are not built, so the changed side was not rebuilt (only the processes stopped for the install come back); fix it on a lane (the lander's gate runs the same script) and sync again:\n${failed.output}`)
+                throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the sync to ${to.slice(0, 9)}: the workspace packages are not built, so the changed side was not rebuilt (only the processes stopped for the install come back); fix it on a lane (lane gate runs the same script) and sync again:\n${failed.output}`)
             }
             rmSync(join(root, UNPREPARED), { force: true })
             say(`prepared the tree: ${PREPARE_SCRIPTS.join(", ")} (each the app declares)`)
@@ -454,7 +454,7 @@ export const summaryLine = (data: DevSyncData): string => {
 
 /**
  * `starci dev sync`: brings an app's main dev checkout to the current origin/dev and its running dev stack onto that code, so the owner tests
- * dev the moment a batch lands (contexts/project/cicd.md "Dev and prod"). It never moves prod and never waits for it.
+ * dev the moment a lane lands (contexts/project/cicd.md "Dev and prod"). It never moves prod and never waits for it.
  */
 export const devSyncVerb = defineVerb({
     path: ["dev", "sync"],
@@ -473,7 +473,7 @@ export const devSyncVerb = defineVerb({
         const settings = loadLocalSettings().devSync
         const named = flags.local.flatMap((one) => one.split(",")).map((one) => one.trim()).filter((one) => one !== "")
         const result = await devSync({
-            // With no --local, the sync keeps this machine's standing overlay (devSync.local), as the lander's auto-sync does: dev keeps running the
+            // With no --local, the sync keeps this machine's standing overlay (devSync.local), as the dev sync after a landing does: dev keeps running the
             // local harness builds until the setting is cleared, instead of losing them on every plain sync.
             checkout: flags.dir ?? context.cwd, local: syncLocal(named, settings),
             env: flags.env ?? settings.env, execute: flags.execute, restart: !flags["no-restart"], processes: settings.processes, say: context.progress,

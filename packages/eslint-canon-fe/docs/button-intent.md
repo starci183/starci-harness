@@ -2,7 +2,7 @@
 
 Owner: contexts/ui/composition/cta.yaml
 
-A Grammar `Button` and `IconButton` have three looks, one prop: `variant` is `primary` (solid, the one main action of a card or region), `border` (the default: an outline, every secondary action) or `danger` (a destructive action). There is no intent, step, ghost, tertiary, secondary or soft-danger look (Grammar 0.55.0). These laws apply to every Grammar family in both app editions; aliases and namespace imports retain the same obligations.
+A Grammar `Button` and `IconButton` have three looks, one prop: `variant` is `primary` (solid, the one main action of a card or region), `border` (the default: an outline, every secondary action) or `danger` (a destructive action). There is no intent, step, ghost, tertiary, secondary or soft-danger look. These laws apply to every Grammar family in both app editions; aliases and namespace imports retain the same obligations.
 
 | Rule | Finding code | Required behavior |
 | --- | --- | --- |
@@ -16,4 +16,3 @@ A Grammar `Button` and `IconButton` have three looks, one prop: `variant` is `pr
 </AlertDialog>
 ```
 
-`starci app codemod v0550` moves an app onto the three looks: commit is `primary`; neutral, alternative, dismiss, retry, ghost, tertiary, secondary and outline are `border`; destructive, danger and danger-soft are `danger`. A dynamic value is left marked `TODO(button)`.

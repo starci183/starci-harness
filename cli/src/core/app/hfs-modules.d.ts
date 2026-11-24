@@ -40,7 +40,7 @@ declare module "@starci/hfs/form-bounds" {
 
 // The custody readers `starci app secret materialize` uses, with which a live suite's verify reads its declared keys (harness/custody.ts).
 declare module "@starci/hfs/runtime/scripts/hfs/secret-store.mjs" {
-    /** The sealed member files (`<slug>.enc`) of an environment's secrets folder, sorted; none when the folder is absent. */
+    /** The sealed member files (`<slug>.enc.yaml`) of an environment's secrets folder, sorted; none when the folder is absent. */
     export function sealedFiles(directory: string): string[]
     /** The decrypted KEY map of one sealed member, through the sops seam. */
     export function readMap(file: string, sops: unknown): Readonly<Record<string, string>>

@@ -77,7 +77,7 @@ dna:
 
 buttonVariant:
   owner: common
-  # owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa". One prop, three looks; no intent, step or placement.
+  # One prop, three looks (danger, border, primary); no intent, step or placement.
   variants: [primary, border, danger]
   default: border
   vendor: { primary: primary, border: outline, danger: danger }   # ../vendor/parity.yaml roles.button
@@ -169,24 +169,12 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, count, href, isDisabled", panels]
     variants:
-      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count chip per tab and a +n fold; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
+      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count chip per tab; a value of a form is a `Select` or `RadioGroup`, never a tab bar", chosenBy: app by tabs.choose.role }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
     dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-INDICATOR-BELOW-LABEL, DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED, DNA-COMMON-TABS-SELECTED-IN-VIEW-START, DNA-COMMON-TABS-SELECTED-IN-VIEW-END, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION, DNA-COMMON-TABS-FILTER-NO-FOLD, DNA-COMMON-TABS-FILTER-IN-ROW]
-
-  - id: segmented-control
-    ui: ui/components/segmented-control.md
-    renderers: [ChoiceChips, ChoiceButtons]
-    vendorParity: [toggle-button-group, toggle-button]
-    slots: ["ChoiceChips, ChoiceButtons: label, options (value, label, isDisabled), empty, error"]
-    variants:
-      width: { values: [content, fill], chosenBy: app }
-    sizes: { choiceChips: { steps: none, equals: the vendor Chip of size sm }, choiceButtons: { steps: [sm, md], default: md, equals: the Button of the same size } }
-    states: [selected, focus-visible, disabled, skeleton]
-    grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL, DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT]
 
   - id: chip
     ui: ui/components/chip.md
@@ -300,7 +288,7 @@ roles:
       leadingSize: { values: [sm, md, lg], chosenBy: app from the leading content }
       selectionIndicator: { values: [check, none], chosenBy: app }
       inset: { values: [default, panel], chosenBy: context }
-      emphasis: { values: [unread], chosenBy: app from the fact (a ListBox item, and since 0.46.0 a ListRowData: strong title weight and an accent dot) }
+      emphasis: { values: [unread], chosenBy: app from the fact (a ListBox item, and a ListRowData: strong title weight and an accent dot) }
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
@@ -552,7 +540,7 @@ roles:
     ui: ui/composition.md
     renderers: [WorkspaceShell, TopBar, Sidebar, BottomNav, Page, Grid]
     vendorParity: [drawer, list-box]
-    slots: ["header: identity, navigation, actions", navigation, compactHeader, "compactNavigation: a BottomNav of two to five places, its \"more\" place a bottom Drawer of a Sidebar, flat `more.items` or grouped `more.groups` (0.46.0; ui/components/bottom-nav.md)", primary, floatingLayer, "Sidebar item: label, source, description, trailing, href, badge with badgeLabel, badgeMax and badgeTone (neutral default, accent, success, warning, danger; 0.46.0)"]
+    slots: ["header: identity, navigation, actions", navigation, compactHeader, "compactNavigation: a BottomNav of two to five places, its \"more\" place a bottom Drawer of a Sidebar, flat `more.items` or grouped `more.groups` (ui/components/bottom-nav.md)", primary, floatingLayer, "Sidebar item: label, source, description, trailing, href, badge with badgeLabel, badgeMax and badgeTone (neutral default, accent, success, warning, danger)"]
     variants:
       viewport: { values: [fixed, flow], chosenBy: app kind (workspace or public site) }
       sidebarPresentation: { values: [rail, drawer], chosenBy: viewport width }
@@ -751,10 +739,10 @@ mustKeep:
       law: "Every single-line field box (input, select trigger, combo box, search, number, date and time field, copy field) is as tall as an md control, 40px; a compact field (size sm, and a Select appearance=\"compact\": the pill at the dense 32px step for a toolbar, a pane head or a Section filter row, ui/components/select.md) is the sm step instead (DNA-COMMON-FIELD-SM)."
       measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *, [data-grammar-select-appearance="compact"] *)', metric: height, op: "=", value: 40px }
       owner: ui/scale.md scale.choose.step
-      followUp: "owner-triage 2026-11-18: Offset Pop select, combo box at 390 and pill select still above the 40px step"
+      followUp: "Offset Pop select, combo box at 390 and pill select still above the 40px step"
     - id: DNA-COMMON-COMPOSER-ONE-LINE
       role: input
-      law: "A chat composer (Textarea with onSubmitShortcut) starts at one line, the 40px control height, grows with its text up to 6 lines and then scrolls; its send action is its own 40px commit Button 12px (the row gap) after the box, level with the box's bottom (0.52.0, owner-approved chat canvas of 2026-11-20)."
+      law: "A chat composer (Textarea with onSubmitShortcut) starts at one line, the 40px control height, grows with its text up to 6 lines and then scrolls; its send action is its own 40px commit Button 12px (the row gap) after the box, level with the box's bottom."
       measure: { kind: box, select: 'textarea[data-grammar-composer="true"]', metric: height, op: ">=", value: 40px }
       owner: ui/components/text-field.md
     - id: DNA-COMMON-TABS-BAR-MD
@@ -780,7 +768,7 @@ mustKeep:
       law: Every control in a bar has one height, the md height.
       measure: { kind: uniform, scope: '[data-component="TopBar"]', select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="Avatar"],[data-component="Switch"],.starci-core-search-field-group)', metric: height, op: "=", value: 40px }
       owner: ui/scale.md scale.choose.step; contract sizes.control
-      followUp: "owner-triage 2026-11-18: the workspace TopBar in compositions/pages draws at 32, not 40"
+      followUp: "the workspace TopBar in compositions/pages draws at 32, not 40"
     - id: DNA-COMMON-BADGE-BELOW-RAMP
       role: chip
       law: A Badge and a StatusDot are labels below the control ramp, shorter than an sm control.
@@ -874,7 +862,7 @@ mustKeep:
       owner: grammars/common.md#one-root
     - id: DNA-COMMON-NO-BOTTOM-TABS
       role: shell
-      law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet; 0.46.0, owner 2026-11-18) and nowhere else; otherwise the navigation on a phone is the drawer."
+      law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet) and nowhere else; otherwise the navigation on a phone is the drawer."
       measure: { kind: count, context: { viewport: 375x812 }, select: 'document [data-component="BottomNav"]:not([data-grammar-workspace-compact-navigation] [data-component="BottomNav"])', op: "=", value: 0 }
       owner: contract roles.shell; ui/components/bottom-nav.md
     - id: DNA-COMMON-ONE-SHELL
@@ -921,14 +909,14 @@ mustKeep:
       law: A horizontal divider runs the full inner width of its surface, inline inset 0px on both sides.
       measure: { kind: relation, select: '[data-component="Divider"][data-grammar-divider="bare"][data-grammar-divider-orientation="horizontal"]', metric: [left, right], op: "=", ref: { within: '[data-grammar-frame="bounded"]', select: self, metric: [inner-left, inner-right] } }
       owner: ui/presentation.md R3
-      followUp: "owner-triage 2026-11-18: no story draws a bare Divider in a bounded frame"
+      followUp: "no story draws a bare Divider in a bounded frame"
     - id: DNA-COMMON-ACCENT-CORNER
       role: mascot
       law: The corner a MediaFrame names in accentCorner is drawn at the Common accent radius.
       measure: { kind: style, select: '[data-grammar-accent-corner="end-end"]', metric: border-end-end-radius, op: "=", value: { token: --grammar-accent-corner } }
       owner: grammars/contract.md (Corners are roles)
     # --- lists
-      followUp: "owner-triage 2026-11-18: no story draws a MediaFrame with accentCorner"
+      followUp: "no story draws a MediaFrame with accentCorner"
     - id: DNA-COMMON-LIST-SEAMS
       role: list
       law: n rows of a list are divided by exactly n-1 seams, or by gap and no seam.
@@ -975,7 +963,7 @@ mustKeep:
       law: "Inside a loading region nothing can be focused or pressed: every control draws inert, static chrome keeps its words, data is geometry, and the region carries the one aria-busy."
       measure: { kind: count, scope: '[data-grammar-loading-region="true"]', select: ':is(button, a[href], input, select, textarea, [tabindex="0"]):not([inert], [inert] *, :disabled)', op: "=", value: 0 }
       owner: ui/loading.md
-      followUp: "owner-triage 2026-11-18: a loading region of the section-filter-table stories keeps one focusable control (the table scroller?)"
+      followUp: "a loading region of the section-filter-table stories keeps one focusable control (the table scroller?)"
     - id: DNA-COMMON-LOADING-SAME-BOX
       role: button
       law: "A component in a loading region has the width and height it has when ready, so nothing moves when the data lands."
@@ -991,22 +979,22 @@ mustKeep:
       law: "A view shows at most budgets.commitPerView buttons in the accent fill, the commit; the page behind an open modal does not count. A catalog story that draws variants side by side is not one view: each labelled state of a Matrix is a view of its own (DNA-COMMON-ONE-ACCENT-FILL-PER-STATE) and a story marked parameters.grammar.catalog (every size, every placement) is outside the count."
       measure: { kind: count, select: 'document [data-component="Button"]:not([inert] *, [data-story-state] *, [data-story-catalog] *)', where: { metric: background-color, op: "=", value: { token: --accent } }, op: "<=", value: { threshold: budgets.commitPerView.max } }
       owner: CTA-1; lint single-commit-per-render
-      followUp: "owner-triage 2026-11-18: Offset Pop skeleton-parity content story: Alert action and commit are both pink"
+      followUp: "Offset Pop skeleton-parity content story: Alert action and commit are both pink"
     - id: DNA-COMMON-ONE-ACCENT-FILL-PER-STATE
       role: button
       law: "Each labelled state of a story Matrix is one view: it shows at most budgets.commitPerView buttons in the accent fill."
       measure: { kind: count, scope: '[data-story-state]', select: '[data-component="Button"]:not([inert] *)', where: { metric: background-color, op: "=", value: { token: --accent } }, op: "<=", value: { threshold: budgets.commitPerView.max } }
       owner: CTA-1; lint single-commit-per-render
-    # --- tabs, segmented control, fields
-      followUp: "owner-triage 2026-11-18: Offset Pop: an Alert action and a commit Button are both pink in one view"
+    # --- tabs, fields
+      followUp: "Offset Pop: an Alert action and a commit Button are both pink in one view"
     - id: DNA-COMMON-ONE-PRIMARY-PER-REGION
       role: button
-      law: "A region (a card: SurfaceCard or EntitySummaryCard; a Section or PaneSection; a Dialog, AlertDialog or Drawer; the page head, PageHeader) holds at most one filled primary Button (variant primary) of its own; a Button inside a region nested in it counts for that inner region, border and danger never count, and neither does a region behind an open modal (inert) or in a catalog story. The finding names the region; the fix is the owner's: \"giữ 1 nút chính, nút còn lại đổi sang border\"."
+      law: "A region (a card: SurfaceCard or EntitySummaryCard; a Section or PaneSection; a Dialog, AlertDialog or Drawer; the page head, PageHeader) holds at most one filled primary Button (variant primary) of its own; a Button inside a region nested in it counts for that inner region, border and danger never count, and neither does a region behind an open modal (inert) or in a catalog story. The finding names the region; the fix keeps one primary Button and sets the others to border."
       measure: { kind: count, scope: ':is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]):not([inert] *, [data-story-catalog] *)', select: ':scope [data-component="Button"][data-grammar-variant="primary"]:not(:scope :is([data-component="SurfaceCard"], [data-component="EntitySummaryCard"], [data-component="Section"], [data-component="PaneSection"], [data-component="Dialog"], [data-component="AlertDialog"], [data-component="Drawer"], [data-component="PageHeader"]) *, [inert] *)', op: "<=", value: 1 }
       owner: CTA-1; ui/components/button.md (the CTA rule); lint single-commit-per-render
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
-      law: "Every tab bar draws the underline, on the page and inside a surface alike, views and filter tabs alike; the one exception is a filter strip the app asks to wear the pill (shape=\"pill\", 0.46.2, ui/components/tabs.md), which draws the primary pill on its track."
+      law: "Every tab bar draws the underline, on the page and inside a surface alike, views and filter tabs alike; the one exception is a filter strip the app asks to wear the pill (shape=\"pill\", ui/components/tabs.md), which draws the primary pill on its track."
       measure:
         kind: style
         metric: tabs-look
@@ -1014,7 +1002,7 @@ mustKeep:
         cases:
           - { select: '[data-component="Tabs"]:not([data-grammar-tabs-shape="pill"])', value: underline }
           - { select: '[data-component="Tabs"][data-grammar-tabs-shape="pill"]', value: pill }
-      owner: "contract roles.tabs; ui/presentation.md (Space); ui/components/tabs.md (filter shape=pill, owner 0.46.2)"
+      owner: "contract roles.tabs; ui/presentation.md (Space); ui/components/tabs.md (filter shape=pill)"
       followUp: C-1
     - id: DNA-COMMON-TABS-FILTER-COMPACT
       role: tabs
@@ -1023,7 +1011,7 @@ mustKeep:
         kind: style
         select: '[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) [role="tab"]'
         checks: [{ metric: height, op: "=", value: 40px }, { metric: font-size, op: "=", value: 14px }]
-      owner: "ui/components/tabs.md tabs.choose.role (filter 14, 40 high); CHANGELOG 0.36.0"
+      owner: "ui/components/tabs.md tabs.choose.role (filter 14, 40 high)"
     - id: DNA-COMMON-TABS-INDICATOR
       role: tabs
       law: A tab bar draws exactly one indicator.
@@ -1033,28 +1021,28 @@ mustKeep:
       role: tabs
       law: "The selected underline stands under its label, never above it: its top is at or below the label's bottom, in every strip that draws an underline, the folding one included (a strip that folds renders its list without the vendor list container, whose rule is what pins the indicator to the bottom)."
       measure: { kind: relation, select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="primary"]) [role="tab"] .tabs__indicator', metric: top, op: ">=", ref: { within: '[role="tab"]', select: '.starci-core-tab-label', metric: bottom } }
-      owner: vendor/parity.yaml tabs; nivoos-lite agent page 2026-11-19
+      owner: vendor/parity.yaml tabs
     - id: DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED
       role: tabs
       law: "The underline spans its own selected tab, start edge to end edge, once the page has settled: it is positioned from the selected key (after a programmatic change, a route change, a resize), never left under the first tab. Page (views) strips; a filter strip refits on a viewport change and the run measures before that frame."
       measure: { kind: relation, select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="primary"], [data-grammar-tabs-kind="filter"]) [role="tab"][aria-selected="true"] .tabs__indicator', metric: [left, right], op: "=", ref: { within: '[role="tab"]', select: self, metric: [left, right] } }
-      owner: nivoos-lite agent page 2026-11-19
+      owner: contract roles.tabs
     - id: DNA-COMMON-TABS-SELECTED-IN-VIEW-START
       role: tabs
       law: "In a strip that scrolls (a phone strip wider than its box) the selected tab starts inside the scroller's box: the strip scrolls the active tab into view."
       measure: { kind: relation, select: '.tabs__list-container__scroller [role="tab"][aria-selected="true"]', metric: left, op: ">=", ref: { within: '.tabs__list-container__scroller', select: self, metric: left, offset: -1px } }
-      owner: nivoos-lite agent page 2026-11-19
+      owner: contract roles.tabs
     - id: DNA-COMMON-TABS-SELECTED-IN-VIEW-END
       role: tabs
       law: "In a strip that scrolls the selected tab ends inside the scroller's box."
       measure: { kind: relation, select: '.tabs__list-container__scroller [role="tab"][aria-selected="true"]', metric: right, op: "<=", ref: { within: '.tabs__list-container__scroller', select: self, metric: right, offset: 1px } }
-      owner: nivoos-lite agent page 2026-11-19
+      owner: contract roles.tabs
     - id: DNA-COMMON-TABS-OWN-PANEL
       role: tabs
       law: "Each tab of a panel set controls its own panel. A filter strip has no tabpanels: it narrows a collection that stays in place, so its tabs control nothing (ui/components/tabs.md tabs.choose.role filter; the panels row is the choice of tabs that swap whole panels). The mode or period switch (appearance=\"primary\") narrows one block of the same data and has no panel either."
       measure: { kind: a11y, select: '[data-component="Tabs"]:not([data-grammar-tabs-kind="filter"], [data-grammar-tabs-variant="primary"]) [role="tab"]', metric: controls, op: "=", value: tabpanel }
       owner: vendor/parity.yaml tabs
-      followUp: "owner-triage 2026-11-18: page-tab fixtures (stories) pass no panelId, so no tab controls a panel: make panelId required or exempt panel-less demos"
+      followUp: "page-tab fixtures (stories) pass no panelId, so no tab controls a panel: make panelId required or exempt panel-less demos"
     - id: DNA-COMMON-TABS-ROVING
       role: tabs
       law: Arrow keys move focus between tabs.
@@ -1070,13 +1058,13 @@ mustKeep:
       law: A field's accessible name is its visible label, never its placeholder.
       measure: { kind: a11y, select: ':is(input,textarea,[role="combobox"]):is([data-component="Input"] *,[data-component="Textarea"] *,[data-component="Select"] *,[data-component="ComboBox"] *,[data-component="SearchField"] *,[data-component="NumberField"] *)', metric: name, op: "=", value: { fixture: label } }
       owner: contract roles.input; A11Y-1
-      followUp: "owner-triage 2026-11-18: no story declares the label fixture"
+      followUp: "no story declares the label fixture"
     - id: DNA-COMMON-FIELD-ERROR-DESCRIBES
       role: [input, select]
       law: An invalid field's error renders in its own slot and is part of its accessible description.
       measure: { kind: a11y, select: '[aria-invalid="true"]', metric: description, op: matches, value: { fixture: errorMessage } }
       owner: FEEDBACK-1
-      followUp: "owner-triage 2026-11-18: no story declares the errorMessage fixture"
+      followUp: "no story declares the errorMessage fixture"
     - id: DNA-COMMON-FIELD-ONE-RING
       role: input
       law: A focused single-line field shows exactly one focus ring, on the field frame.
@@ -1098,7 +1086,7 @@ mustKeep:
       measure: { kind: uniform, scope: '[data-component="FormGrid"] [data-grammar-form-grid-row]', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"]):not(:is([data-grammar-field-control="true"],[data-grammar-input-control="true"]) *)', metric: top }
       owner: contract roles.input
     # --- copy field
-      followUp: "owner-triage 2026-11-18: FormGrid rows at 390 put two controls on different lines (tops 37.5 and 147.8): phone layout"
+      followUp: "FormGrid rows at 390 put two controls on different lines (tops 37.5 and 147.8): phone layout"
     - id: DNA-COMMON-COPYFIELD-MASKED
       role: copy-field
       law: A masked CopyField never renders its clear value; it shows bullets and at most the last four characters, and opens no full-value tooltip.
@@ -1120,13 +1108,13 @@ mustKeep:
       law: A chip label's first letter renders uppercase.
       measure: { kind: text, select: ':is([data-component="Badge"],[data-grammar-tag])', metric: first-letter, op: "=", value: uppercase }
       owner: lint R322; contract roles.chip
-      followUp: "owner-triage 2026-11-18: stories pass lowercase badge labels: sentence-case the fixtures"
+      followUp: "stories pass lowercase badge labels: sentence-case the fixtures"
     - id: DNA-COMMON-BADGE-DOT-CHIP-PARITY
       role: chip
       law: A Badge with its dot has the height of the HeroUI soft Chip of the same size.
       measure: { kind: style, select: '[data-component="Badge"][data-grammar-badge-dot="true"]', metric: [height], op: "=", value: { vendor: { component: Chip, props: { variant: soft, size: sm }, metric: [height] } } }
       owner: contract roles.chip
-      followUp: "owner-triage 2026-11-18: Offset Pop badge draws 24px (the 2px ink outline) against the 20px chip step"
+      followUp: "Offset Pop badge draws 24px (the 2px ink outline) against the 20px chip step"
     - id: DNA-COMMON-BADGE-DOT-GAP
       role: chip
       law: A Badge's dot sits 4px before its text.
@@ -1157,7 +1145,7 @@ mustKeep:
       law: The echo ring is painted in the tone's light stop.
       measure: { kind: style, select: '[data-slot="status-dot-mark"][data-echo="true"]', pseudo: "::after", metric: background-color, op: "=", value: { token: --starci-core-status-dot-light } }
       owner: contract roles.chip
-      followUp: "owner-triage 2026-11-18: a sidebar status-dot mark paints no fill in the story (echo stop): fixture or CSS"
+      followUp: "a sidebar status-dot mark paints no fill in the story (echo stop): fixture or CSS"
     - id: DNA-COMMON-ECHO-REDUCED-MOTION
       role: chip
       law: Under reduced motion the echo ring is not drawn.
@@ -1199,7 +1187,7 @@ mustKeep:
       law: Menu sections are separated by the vendor separator, one fewer than the sections.
       measure: { kind: count, scope: 'document [role="menu"]', select: '[role="separator"]', op: "=", value: { count: '[data-grammar-menu-section]', offset: -1 } }
       owner: vendor/parity.yaml dropdown
-      followUp: "owner-triage 2026-11-18: dropdown-menu stories draw 4 sections where the law counts 3 (and none in the marks story)"
+      followUp: "dropdown-menu stories draw 4 sections where the law counts 3 (and none in the marks story)"
     - id: DNA-COMMON-MENU-DANGER
       role: menu
       law: A destructive menu item carries the danger tone.
@@ -1208,7 +1196,7 @@ mustKeep:
     # --- alerts, empty states, avatars
     - id: DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE
       role: alert
-      law: "An informative Alert is the built-in info tone (0.55.0, blue), flat: the row is --info-soft, its bare 24px glyph and the text --info-soft-foreground (no tile), no shadow and no border; an app that writes --informative-soft* keeps its own. It never wears the accent pair."
+      law: "An informative Alert is the built-in info tone (blue), flat: the row is --info-soft, its bare 24px glyph and the text --info-soft-foreground (no tile), no shadow and no border; an app that writes --informative-soft* keeps its own. It never wears the accent pair."
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
@@ -1216,17 +1204,17 @@ mustKeep:
       owner: contract roles.alert
     - id: DNA-COMMON-ALERT-ACTION-IN-TONE
       role: alert
-      law: "A Button inside an Alert takes the banner's tone (0.55.1, owner 2026-11-23, \"Chốt, làm luôn\"): its fill one step stronger than the banner's soft background (the banner's ink, --<tone>-soft-foreground, at 10% over the soft box), its label that ink at the button label weight 500, Grammar's pill. Never a white or neutral outline on a tinted banner, never a solid primary: action, secondaryAction and each of several equal actions are the border rank, none primary; a destructive action stays danger."
+      law: "A Button inside an Alert takes the banner's tone: its fill one step stronger than the banner's soft background (the banner's ink, --<tone>-soft-foreground, at 10% over the soft box), its label that ink at the button label weight 500, Grammar's pill. Never a white or neutral outline on a tinted banner, never a solid primary: action, secondaryAction and each of several equal actions are the border rank, none primary; a destructive action stays danger."
       measure: { kind: style, select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"]) [data-grammar-alert-actions] [data-component="Button"][data-grammar-variant="border"]', checks: [{ metric: color, op: "=", value: { token: --warning-soft-foreground } }, { metric: font-weight, op: "=", value: "500" }] }
       owner: ui/components/toast-alert.md
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
-      law: "A Badge of the built-in info tone (0.55.0) is filled with the info soft tint (the text colour is the family's: the soft foreground in Core, ink in Offset Pop)."
+      law: "A Badge of the built-in info tone is filled with the info soft tint (the text colour is the family's: the soft foreground in Core, ink in Offset Pop)."
       measure: { kind: style, select: '[data-component="Badge"][data-tone="info"]:not([data-loading="true"])', metric: background-color, op: "=", value: { token: --info-soft } }
       owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-SUCCESS
       role: alert
-      law: A affirmative Alert is its tone's soft pair, flat - the row is --success-soft, the text and the bare 24px glyph --success-soft-foreground (owner 2026-11-22, "icon 24 soft-foreground trên nền soft"; no tile), no shadow and no border.
+      law: A affirmative Alert is its tone's soft pair, flat - the row is --success-soft, the text and the bare 24px glyph --success-soft-foreground (no tile), no shadow and no border.
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="affirmative"]:not([data-loading="true"])'
@@ -1234,7 +1222,7 @@ mustKeep:
       owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-WARNING
       role: alert
-      law: A cautionary Alert is its tone's soft pair, flat - the row is --warning-soft, the text and the bare 24px glyph --warning-soft-foreground (owner 2026-11-22, "icon 24 soft-foreground trên nền soft"; no tile), no shadow and no border.
+      law: A cautionary Alert is its tone's soft pair, flat - the row is --warning-soft, the text and the bare 24px glyph --warning-soft-foreground (no tile), no shadow and no border.
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"])'
@@ -1242,7 +1230,7 @@ mustKeep:
       owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-DANGER
       role: alert
-      law: A negative Alert is its tone's soft pair, flat - the row is --danger-soft, the text and the bare 24px glyph --danger-soft-foreground (owner 2026-11-22, "icon 24 soft-foreground trên nền soft"; no tile), no shadow and no border.
+      law: A negative Alert is its tone's soft pair, flat - the row is --danger-soft, the text and the bare 24px glyph --danger-soft-foreground (no tile), no shadow and no border.
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="negative"]:not([data-loading="true"])'
@@ -1250,7 +1238,7 @@ mustKeep:
       owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-DEFAULT
       role: alert
-      law: A neutral Alert is its tone's soft pair, flat - the row is --default-soft, the text and the bare 24px glyph --default-soft-foreground (owner 2026-11-22, "icon 24 soft-foreground trên nền soft"; no tile), no shadow and no border.
+      law: A neutral Alert is its tone's soft pair, flat - the row is --default-soft, the text and the bare 24px glyph --default-soft-foreground (no tile), no shadow and no border.
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="neutral"]:not([data-loading="true"])'
@@ -1261,7 +1249,7 @@ mustKeep:
       law: "An informative Toast is neutral, as an informative Alert is: its mark is --muted (unless the app writes --informative), never the accent."
       measure: { kind: style, select: '[data-component="Toast"][data-grammar-tone="informative"] .starci-core-toast-indicator:not([data-grammar-toast-indicator])', metric: color, op: "=", value: { token: --muted } }
       owner: contract roles.alert
-      followUp: "owner-triage 2026-11-18: no story draws an informative Toast indicator"
+      followUp: "no story draws an informative Toast indicator"
     - id: DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE
       role: dialog
       law: "An informative alert dialog is neutral: its icon tile is --default-soft with --default-soft-foreground (unless the app writes --informative-soft), never the accent pair."
@@ -1303,10 +1291,10 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
-      followUp: "owner-triage 2026-11-18: Offset Pop radio control draws no ring (box-shadow none) at rest"
+      followUp: "Offset Pop radio control draws no ring (box-shadow none) at rest"
     - id: DNA-COMMON-RADIO-ROW-SELECTED-QUIET
       role: input
-      law: "A chosen RadioGroup row is quiet (0.55.0, owner: the dark selected edge was \"màu lạ\"): the radio dot says which; the row keeps its unselected edge's width, coloured at most --accent-border, never a dark or thicker outline; focus keeps the standard ring."
+      law: "A chosen RadioGroup row is quiet: the radio dot says which; the row keeps its unselected edge's width, coloured at most --accent-border, never a dark or thicker outline; focus keeps the standard ring."
       measure: { kind: style, select: '[data-grammar-radio-appearance="rows"] .starci-core-radio[data-selected="true"]', metric: border-color, op: "=", value: { token: --accent-border } }
       owner: ui/components/field.md
     - id: DNA-COMMON-NAV-BADGE-TONE
@@ -1341,7 +1329,7 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-SECTION-TITLE-SIZE
       role: list
-      law: "A section title is the title.section role, 16 / 24 / 500 (0.54.0, owner 2026-11-21), above the 14 / 500 row titles (label.item) under it; the page title above it is 18 / 500."
+      law: "A section title is the title.section role, 16 / 24 / 500, above the 14 / 500 row titles (label.item) under it; the page title above it is 18 / 500."
       measure: { kind: style, select: ':is(h2, h3, h4, h5, h6).starci-core-section-title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-title-section-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-title-section-line } }, { metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/text.md
     - id: DNA-COMMON-PAGE-TITLE-18
@@ -1364,10 +1352,10 @@ mustKeep:
       law: "No ALL CAPS in the console: sublabels and badges are drawn in sentence case, never text-transform uppercase."
       measure: { kind: style, select: ':is(.starci-core-sublabel, .starci-core-badge)', checks: [{ metric: text-transform, op: "=", value: none }] }
       owner: ui/presentation.md
-    # --- batch 174 (0.48.0): phone fixes from the screen-clean and site lanes
+    # --- phone fixes
     - id: DNA-COMMON-EMPTY-LINE-PLAIN
       role: empty-state
-      law: "The plain line (`EmptyNotice mark=\"none\"`: a no-match, a panel, a palette with no result, an empty sub-section) is one muted 14 / 400 line at the region's start edge, on no card (the illustration rule, owner 2026-11-19)."
+      law: "The plain line (`EmptyNotice mark=\"none\"`: a no-match, a panel, a palette with no result, an empty sub-section) is one muted 14 / 400 line at the region's start edge, on no card."
       measure: { kind: style, select: '.starci-core-empty-notice[data-grammar-empty-mark="none"] .starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-md } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --muted } }] }
       owner: ui/components/empty-state.md empty-state.choose.scope
     - id: DNA-COMMON-EMPTY-LINE-NO-MARK
@@ -1479,27 +1467,27 @@ mustKeep:
       owner: ui/presentation.md
     - id: DNA-COMMON-TIMELINE-STATUS-TILE
       role: list
-      law: "Every timeline entry's marker is the round 40px status tile: the bare status glyph (check, x, the small ring, spinning while running; the inline status takes circle-check, circle-x and the plain circle) on the state's soft plate, the title naming the step (0.55.0, the status-mark rule, owner \"chốt\"; it replaces the 0.48.0 dot rule)."
+      law: "Every timeline entry's marker is the round 40px status tile: the bare status glyph (check, x, the small ring, spinning while running; the inline status takes circle-check, circle-x and the plain circle) on the state's soft plate, the title naming the step."
       measure: { kind: box, select: '.starci-core-timeline-item:not([data-grammar-skeleton="true"]) .starci-core-timeline-marker > .starci-core-icon-tile', checks: [{ metric: width, op: "=", value: 40px }, { metric: height, op: "=", value: 40px }] }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-LABEL-16
       role: list
-      law: "A description list term is 16 / 400 in the primary colour (a row title is the label.item role since 0.54.0: DNA-COMMON-TYPE-ROW-TITLE)."
+      law: "A description list term is 16 / 400 in the primary colour (a row title is the label.item role: DNA-COMMON-TYPE-ROW-TITLE)."
       measure: { kind: style, select: '.starci-core-description-list:not([data-grammar-description-layout="stat-strip"]):not([data-grammar-description-density="compact"]) .starci-core-description-term', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --foreground } }] }
       owner: ui/components/text.md
     - id: DNA-COMMON-TYPE-ROW-TITLE
       role: list
-      law: "A list, settings or keyValue row title is the label.item role, 14 / 20 / 500 in the primary colour, and its meta the caption role, 12 / 16 / 400 muted (0.54.0, owner 2026-11-21)."
+      law: "A list, settings or keyValue row title is the label.item role, 14 / 20 / 500 in the primary colour, and its meta the caption role, 12 / 16 / 400 muted."
       measure: { kind: style, select: ':is([data-grammar-list-layout="keyValue"] .starci-core-list-row-name, .starci-core-section-list:not([data-grammar-list-layout="suggestions"]) .starci-core-list-row:not([data-grammar-state]) .starci-core-list-row-name)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-label-item-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-label-item-line } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --foreground } }] }
       owner: ui/presentation.md
     - id: DNA-COMMON-TYPE-FIELD-LABEL
       role: list
-      law: "A field label and a table column header are the label.field role, 13 / 18 / 500 muted; a field's description is the caption role, 12 / 16 / 400 muted (0.54.0, owner 2026-11-21)."
+      law: "A field label and a table column header are the label.field role, 13 / 18 / 500 muted; a field's description is the caption role, 12 / 16 / 400 muted."
       measure: { kind: style, select: ':is(.starci-core-field-label, .starci-core-data-table .starci-core-data-table-column)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-label-field-size } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --muted } }] }
       owner: ui/presentation.md
     - id: DNA-COMMON-TYPE-STAT
       role: list
-      law: "A stat cell's label is the label.group role (12 / 16 / 500 muted) and its value the figure role (24 / 32 / 500, tabular) (0.54.0, owner 2026-11-21)."
+      law: "A stat cell's label is the label.group role (12 / 16 / 500 muted) and its value the figure role (24 / 32 / 500, tabular)."
       measure: { kind: style, select: '.starci-core-description-figure', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-figure-size } }, { metric: line-height, op: "=", value: { token: --grammar-type-figure-line } }, { metric: font-weight, op: "=", value: 500 }] }
       owner: ui/presentation.md
     - id: DNA-COMMON-CONTENT-14-SECONDARY
@@ -1509,7 +1497,7 @@ mustKeep:
       owner: ui/components/text.md
     - id: DNA-COMMON-LIST-ROW-UNREAD
       role: list
-      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the 500 weight and an accent dot after it on the title line; since 0.54.0 every row title is 500 (the label.item role), so the dot alone marks it unread."
+      law: "An unread row (ListRowData.emphasis unread) has an accent dot after its title on the title line; every row title is 500 (the label.item role), so the dot alone marks it unread."
       measure: { kind: style, select: '[data-component="ListRow"][data-grammar-emphasis="unread"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-COMMAND-PALETTE-ONE-FIELD
@@ -1519,13 +1507,13 @@ mustKeep:
       owner: ui/components/command-palette.md
     - id: DNA-COMMON-LIST-ROW-DIFF
       role: list
-      law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản'; a block since 0.55.0, owner 'đã hình vuông rồi dấu + còn sát cạnh') is a rounded block at the control / nested-region corner (RADIUS-5) in its tone's soft pair (added success, removed danger, changed warning), 12 padding on every side, a small gap (8) and no hairline between two diff blocks; its monospace gutter mark (+ added, − removed, ~ changed, in the tone's ink) stands in a column of its own a row gap (12) from the copy, on the title's line; its label (diffLabel) is visible 12 text in the tone's ink over the title, read once, never colour alone; a removed title is struck through and its label is not; a changed row's from, the arrow icon, to is the 12 muted line; the loading block is the same box."
+      law: "A diff row (ListRowData.diff) is a rounded block at the control / nested-region corner (RADIUS-5) in its tone's soft pair (added success, removed danger, changed warning), 12 padding on every side, a small gap (8) and no hairline between two diff blocks; its monospace gutter mark (+ added, − removed, ~ changed, in the tone's ink) stands in a column of its own a row gap (12) from the copy, on the title's line; its label (diffLabel) is visible 12 text in the tone's ink over the title, read once, never colour alone; a removed title is struck through and its label is not; a changed row's from, the arrow icon, to is the 12 muted line; the loading block is the same box."
       measure: { kind: style, select: '[data-component="ListRow"][data-grammar-diff="added"]', metric: background-color, op: "=", value: { token: --success-soft } }
       owner: ui/components/list-table.md
-      followUp: "owner-triage 2026-11-18: Offset Pop diff row paints no tint (transparent) where Core paints success at 15%"
+      followUp: "Offset Pop diff row paints no tint (transparent) where Core paints success at 15%"
     - id: DNA-COMMON-CARD-SUGGESTIONS
       role: list
-      law: "The replies a message card offers are ONE flat list (Section kind list, layout suggestions; one look, DNA-COMMON-LIST-ONE-LOOK): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31; the chevron at every width 0.37.35)."
+      law: "The replies a message card offers are ONE flat list (Section kind list, layout suggestions; one look, DNA-COMMON-LIST-ONE-LOOK): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm."
       measure: { kind: style, select: '[data-grammar-list-layout="suggestions"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 400 }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-ROW-ACTION-END
@@ -1533,7 +1521,7 @@ mustKeep:
       law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
       measure: { kind: relation, select: '[data-grammar-action-placement="end"] > .starci-core-list-row-actions', metric: top, op: "<=", ref: { within: '[data-component="ListRow"]', select: '.starci-core-list-row-copy', metric: bottom } }
       owner: contract roles.list
-      followUp: "owner-triage 2026-11-18: row-text-first stories put the end action 8px below the title line"
+      followUp: "row-text-first stories put the end action 8px below the title line"
     - id: DNA-COMMON-DISCLOSURE-CHEVRON-START
       role: list
       law: "A disclosure with chevron start draws its chevron before its title (G7-8)."
@@ -1544,7 +1532,7 @@ mustKeep:
       law: "A description list in the columns layout draws each term beside its value once the list is 16rem wide, a phone-wide drawer included: it answers its own width, not the viewport."
       measure: { kind: relation, select: '[data-grammar-description-layout="columns"] .starci-core-description-value', metric: left, op: ">=", ref: { within: '.starci-core-description-pair', select: '.starci-core-description-term', metric: right } }
       owner: contract roles.list
-      followUp: "owner-triage 2026-11-18: a MessageCard description list keeps two columns at 390 (value at 68, not stacked): phone layout"
+      followUp: "a MessageCard description list keeps two columns at 390 (value at 68, not stacked): phone layout"
     - id: DNA-COMMON-STEPPER-BAR
       role: list
       law: "The current segment of a bar stepper is filled with the accent and every segment is a thin bar (four pixels)."
@@ -1573,11 +1561,6 @@ mustKeep:
       law: "In a loading region the filter tabs keep their labels as real text and every count is the geometry of its ready box (an unseen placeholder), never a live number."
       measure: { kind: count, select: 'document [data-grammar-region-inert] [data-grammar-tabs-kind="filter"] [data-grammar-tab-count]:not(:has(.starci-core-skeleton-placeholder))', op: "=", value: 0 }
       owner: contract roles.tabs
-    - id: DNA-COMMON-CHOICE-CHIPS-FILL
-      role: segmented-control
-      law: "ChoiceChips with width fill share the row: the last chip of every row ends where the row ends."
-      measure: { kind: relation, select: '[data-grammar-width="fill"] .starci-core-choice-chip:last-child', metric: right, op: ">=", tolerance: 1, ref: { within: '.starci-core-choice-chips-row', select: self, metric: right } }
-      owner: contract roles.segmented-control
     - id: DNA-COMMON-CLUSTER-GROUP-NAMED
       role: cluster
       law: "A Cluster given a label is a group with an accessible name: separate controls stay separate and the set is named."
@@ -1598,7 +1581,7 @@ mustKeep:
       law: "A table of four columns or fewer fits its pane: its content never reaches past the box that holds it, so no column is clipped."
       measure: { kind: relation, select: '[data-component="DataTable"][data-grammar-table-fit="true"] .starci-core-data-table-content', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-data-table-scroll', select: self, metric: right } }
       owner: contract roles.list
-      followUp: "owner-triage 2026-11-18: Offset Pop table at 390 reaches 397px of a 390px frame"
+      followUp: "Offset Pop table at 390 reaches 397px of a 390px frame"
     - id: DNA-COMMON-FIELD-SM
       role: [input, select]
       law: "A single-line field with size sm, and a Select with appearance=\"compact\", is 32px tall, whatever its label or state: a picker in a list head, a toolbar or a Section filter row."
@@ -1611,7 +1594,7 @@ mustKeep:
       owner: contract roles.list
     - id: DNA-COMMON-SELECT-ICON-START
       role: select
-      law: "A Select's icon (0.47.1) is a decorative glyph at the start of the trigger: it ends before the value begins, and it is hidden from assistive technology (the label names the control)."
+      law: "A Select's icon is a decorative glyph at the start of the trigger: it ends before the value begins, and it is hidden from assistive technology (the label names the control)."
       measure: { kind: relation, select: '[data-grammar-select-icon]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-select-trigger', select: '.select__value', metric: left } }
       owner: ui/components/select.md
     - id: DNA-COMMON-SELECT-NO-VENDOR-ENGLISH
@@ -1691,17 +1674,17 @@ mustKeep:
       owner: contract roles.card
     - id: DNA-COMMON-TILE-BLEED-TOP
       role: card
-      law: "A tile poster with bleed (0.47.2) starts at the card's top edge: within the card's border width, no padding above the picture."
+      law: "A tile poster with bleed starts at the card's top edge: within the card's border width, no padding above the picture."
       measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: top, op: "<=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: top } }
       owner: contract roles.card
     - id: DNA-COMMON-TILE-BLEED-START
       role: card
-      law: "A tile poster with bleed (0.47.2) starts at the card's start edge: within the card's border width, no gap between the edge and the picture."
+      law: "A tile poster with bleed starts at the card's start edge: within the card's border width, no gap between the edge and the picture."
       measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: left, op: "<=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: left } }
       owner: contract roles.card
     - id: DNA-COMMON-TILE-BLEED-END
       role: card
-      law: "A tile poster with bleed (0.47.2) ends at the card's end edge: within the card's border width, no gap between the picture and the edge."
+      law: "A tile poster with bleed ends at the card's end edge: within the card's border width, no gap between the picture and the edge."
       measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: right, op: ">=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: right } }
       owner: contract roles.card
     - id: DNA-COMMON-MOTION-TOKENS-BOUND
@@ -1772,12 +1755,12 @@ mustKeep:
       owner: contract roles.motion
     - id: DNA-COMMON-CHAT-SURFACES
       role: pane-grid
-      law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge (owner 'nền chat luôn là background', drawing chat-surfaces, 0.37.31)."
+      law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge."
       measure: { kind: style, select: '[data-grammar-pane-section-thread="true"]', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-INCOMING-OUTLINE
       role: pane-grid
-      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it (owner-approved chat canvas of 2026-11-20, 0.52.0; replaces DNA-COMMON-CHAT-INCOMING-FLAT). An app never restyles it; a theme may retune it with the bubble tokens."
+      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in a thread, a chat frame, a drawer or a white pane: the 1px --border edge, no fill, --foreground words, no shadow (a message is never a card). No surface changes it. An app never restyles it; a theme may retune it with the bubble tokens."
       measure:
         kind: style
         select: '.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
@@ -1791,7 +1774,7 @@ mustKeep:
         select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body'
         checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
       owner: ui/components/message-bubble.md
-      followUp: "owner-triage 2026-11-18: the theme-hooks story repaints the outgoing bubble on purpose: exempt a hooked app or keep"
+      followUp: "the theme-hooks story repaints the outgoing bubble on purpose: exempt a hooked app or keep"
     - id: DNA-COMMON-CHAT-SKELETON-SOFT
       role: pane-grid
       law: "A loading outgoing bubble (MessageBubble isLoading side outgoing, and the outgoing bubbles of a loading thread) is the brand's soft pair, --accent-soft with its lines in --accent-soft-foreground at a tint (the tone-pair rule: lines on a ground take the ground's soft pair), never the solid --accent fill a real message wears."
@@ -1802,7 +1785,7 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME
       role: pane-grid
-      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it. The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."
+      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it. The 1px lines between the zones stay; the composer field is the white primary field."
       measure:
         kind: style
         select: '.starci-core-pane[data-grammar-pane-content="chat"], .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-footer'
@@ -1810,12 +1793,12 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME-SCROLL
       role: pane-grid
-      law: "In a chat frame the thread is the only scroller between the fixed head and the fixed composer footer: the pane body above a footer is bounded and never scrolls, so a thread's scroll.scrollRef is the element that scrolls; a log thread opens at its newest message and follows new ones while the reader is at the foot (0.37.33)."
+      law: "In a chat frame the thread is the only scroller between the fixed head and the fixed composer footer: the pane body above a footer is bounded and never scrolls, so a thread's scroll.scrollRef is the element that scrolls; a log thread opens at its newest message and follows new ones while the reader is at the foot."
       measure: { kind: style, select: '.starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-body', checks: [{ metric: overflow-y, op: "=", value: hidden }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-PANE-FOOTER-NO-BAND
       role: pane-grid
-      law: "A pane footer (a chat composer) starts at its own hairline: its stack is never a head-row spacer (no empty band between the thread and the suggestions) and a PaneSection rule start in it draws no second line under the footer's (0.37.31)."
+      law: "A pane footer (a chat composer) starts at its own hairline: its stack is never a head-row spacer (no empty band between the thread and the suggestions) and a PaneSection rule start in it draws no second line under the footer's."
       measure: { kind: style, select: '.starci-core-pane-footer > .starci-core-pane-stack', checks: [{ metric: padding-block-start, op: "=", value: 0px }] }
       owner: contract roles.pane-grid
     - id: DNA-COMMON-PANE-SECTION-RULE
@@ -1823,27 +1806,7 @@ mustKeep:
       law: "A pane section with rule start draws a 1px separator on its block-start edge and none elsewhere (R4-27)."
       measure: { kind: style, select: '[data-grammar-pane-section-rule="start"]', checks: [{ metric: border-top-width, op: "=", value: 1px }, { metric: border-bottom-width, op: "=", value: 0px }, { metric: border-top-color, op: "=", value: { token: --separator } }] }
       owner: contract roles.pane-grid
-      followUp: "owner-triage 2026-11-18: a PaneSection footer in the chat-frame story draws no top rule"
-    - id: DNA-COMMON-CHOICE-CHIPS-WRAP
-      role: segmented-control
-      law: The chips of one group have one height, so a wrapped row and a short row read as one set.
-      measure: { kind: uniform, scope: ':is([data-component="ChoiceChips"],[data-component="ChoiceButtons"])', select: '.starci-core-choice-chip', metric: [height], op: "=" }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT
-      role: segmented-control
-      law: A choice chip is as tall as a Chip of size sm, never the height of a toggle button.
-      measure: { kind: style, select: '[data-component="ChoiceChips"] .starci-core-choice-chip', metric: [height], op: "=", value: { vendor: { component: Chip, props: { variant: soft, size: sm }, metric: [height] } } }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT
-      role: segmented-control
-      law: A ChoiceButtons option at md is as tall as a md Button, 40.
-      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="md"] .starci-core-choice-chip', metric: height, op: "=", value: 40px }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT
-      role: segmented-control
-      law: A ChoiceButtons option at sm is as tall as a sm Button, 32.
-      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="sm"] .starci-core-choice-chip', metric: height, op: "=", value: 32px }
-      owner: contract roles.segmented-control
+      followUp: "a PaneSection footer in the chat-frame story draws no top rule"
     - id: DNA-COMMON-BOARD-ONE-WIDTH
       role: data-views
       law: The columns of one board share one width.
@@ -1904,16 +1867,16 @@ mustKeep:
       law: Every member of an avatar group has one size.
       measure: { kind: uniform, scope: '[data-component="AvatarGroup"]', select: '[data-component="Avatar"]', metric: [width, height], op: "=" }
       owner: FE-CSS-1
-      followUp: "owner-triage 2026-11-18: overlapped members of an AvatarGroup measure a clipped width (15.5 of 32); the measure or the overlap needs a ruling"
+      followUp: "overlapped members of an AvatarGroup measure a clipped width (15.5 of 32); the measure or the overlap needs a ruling"
     - id: DNA-COMMON-AVATAR-INITIALS
       role: avatar
       law: An avatar without an image draws the initials of the first and last words of its name.
       measure: { kind: text, select: '[data-component="Avatar"]:not(:has(img[src]))', metric: text, op: "=", value: { fixture: initials } }
       owner: ui/components/identity-mark.md
-      followUp: "owner-triage 2026-11-18: no story declares the initials fixture"
+      followUp: "no story declares the initials fixture"
     - id: DNA-COMMON-AGENT-NAMED
       role: avatar
-      law: "An agent avatar draws no badge and has an accessible name that says it is an agent (owner 2026-11-22, \"AI nhìn phèn quá, Sales AI với Chip AI ở cuối\": the AI pill is off the avatar, the Chip follows the name)."
+      law: "An agent avatar draws no badge and has an accessible name that says it is an agent (the AI pill is off the avatar, the Chip follows the name)."
       measure: { kind: a11y, select: '[data-component="Avatar"][data-grammar-avatar-kind="agent"]', metric: name, op: "=", value: { fixture: agentAccessibleName } }
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-AGENT-NAME-CHIP
@@ -1923,17 +1886,17 @@ mustKeep:
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-AVATAR-ROW-GROUP
       role: avatar
-      law: "Avatars that stand in a row or come from a list are one AvatarGroup: two Avatar elements as siblings, or an Avatar returned from a .map(), outside an AvatarGroup is refused (owner 2026-11-22: \"với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép tụi này render sáng tạo nhỉ\"); the group shows max - 1 items and a +N tile."
+      law: "Avatars that stand in a row or come from a list are one AvatarGroup: two Avatar elements as siblings, or an Avatar returned from a .map(), outside an AvatarGroup is refused; the group shows max - 1 items and a +N tile."
       measure: { kind: source, check: "lint:starci-grammar/avatar-row-uses-group" }
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-ICON-TILE-ROUND
       role: avatar
-      law: "Every IconTile is round, identity tiles and status marks alike (0.55.0, owner: \"alert và icon và icontile … đồng bộ là tròn size40\")."
+      law: "Every IconTile is round, identity tiles and status marks alike."
       measure: { kind: style, select: '.starci-core-icon-tile', metric: border-radius, op: "=", value: { token: --grammar-radius-pill } }
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-AGENT-NAME-CHIP-CAPTION
       role: avatar
-      law: "The \"AI\" Chip after an agent's name is SMALL (0.55.0, owner): the caption size, 12/16 in a 16px box, never the 24px Badge pill, standing on the name's baseline."
+      law: "The \"AI\" Chip after an agent's name is SMALL: the caption size, 12/16 in a 16px box, never the 24px Badge pill, standing on the name's baseline."
       measure: { kind: box, select: '[data-component="AgentName"] > [data-component="Badge"]:not([data-loading="true"])', checks: [{ metric: height, op: "=", value: 16px }] }
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-STATUS-MARK-40
@@ -1943,7 +1906,7 @@ mustKeep:
       owner: ui/components/identity-mark.md
 
     # --- page header
-      followUp: "owner-triage 2026-11-18: no story declares the agentAccessibleName fixture"
+      followUp: "no story declares the agentAccessibleName fixture"
     - id: DNA-COMMON-PAGE-HEADER-BAND
       role: page
       law: The page header is a band painted with the surface over the page background.
@@ -1957,7 +1920,7 @@ mustKeep:
         select: '[data-component="PageHeader"] > [data-component="PageContainer"]'
         checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-block-start, op: "=", value: { token: --grammar-region-gap } }]
       owner: ui/components/page-header.md
-      followUp: "owner-triage 2026-11-18: the sub-tabs story draws no 32px top padding on the measure wrapper"
+      followUp: "the sub-tabs story draws no 32px top padding on the measure wrapper"
     - id: DNA-COMMON-PAGE-HEADER-ONE-H1
       role: page
       law: The page header holds exactly one heading, the page's h1.
@@ -1975,7 +1938,7 @@ mustKeep:
       owner: ui/components/page-header.md; tabs.choose.level:page
 
     # --- page
-      followUp: "owner-triage 2026-11-18: the sub-tabs story: the indicator bottom is not on the separator row"
+      followUp: "the sub-tabs story: the indicator bottom is not on the separator row"
     - id: DNA-COMMON-PAGE-HEADER-FIRST
       role: page
       law: A page's header band is its first child, full width, with no gap above it.
@@ -1999,7 +1962,7 @@ mustKeep:
         op: "="
         value: { token: --grammar-region-gap }
       owner: ui/components/page-header.md
-      followUp: "owner-triage 2026-11-18: Page row-gap is 0 in the chat-frame and pane stories (the page holds one full-height child)"
+      followUp: "Page row-gap is 0 in the chat-frame and pane stories (the page holds one full-height child)"
     - id: DNA-COMMON-PAGE-BODY-CLIP
       role: page
       law: Nothing in a standard page body reaches across the gutter; the body clips past its content box.
@@ -2016,7 +1979,7 @@ mustKeep:
         select: '[data-component="Page"][data-grammar-page-chrome="bleed"] > [data-grammar-page-body]'
         checks: [{ metric: padding-inline-start, op: "=", value: 0px }, { metric: padding-inline-end, op: "=", value: 0px }, { metric: overflow-x, op: "=", value: visible }]
       owner: ui/components/page-header.md
-      followUp: "owner-triage 2026-11-18: a Page body clips overflow-x (clip, not visible) in the breadcrumbs and bleed-band stories"
+      followUp: "a Page body clips overflow-x (clip, not visible) in the breadcrumbs and bleed-band stories"
     - id: DNA-COMMON-PAGE-PANES-FLUSH
       role: page
       law: A panes page attaches its pane grid flush under the header band; the page keeps no row gap and no block padding, and its body no gap.
@@ -2026,7 +1989,7 @@ mustKeep:
         checks: [{ metric: row-gap, op: "=", value: 0px }, { metric: padding-block-start, op: "=", value: 0px }, { metric: padding-block-end, op: "=", value: 0px }]
       owner: ui/components/page-header.md
 
-    # --- fragment (0.49.0): the escape hatch, and the libraries the Grammar never imports
+    # --- fragment: the escape hatch, and the libraries the Grammar never imports
     - id: DNA-COMMON-FRAGMENT-REASON
       role: fragment
       law: "A Fragment region names its reason, a non-empty string literal saying why no Grammar component fits; the reason serves the lint and is listed by the Fragment inventory."
@@ -2082,7 +2045,7 @@ mustKeep:
       owner: ui/content.md
     - id: DNA-COMMON-SCREEN-OWNER-REVIEWED
       role: card
-      law: "A screen's screen.yaml is written only after the owner approves its look: land, dev test, a QA polish pass, the owner's OK, then screen.yaml (owner: \"screen phải duyệt kĩ\"; the content layer was ordered with \"ok h update .claude lại\")."
+      law: "A screen's screen.yaml is written only after the owner approves its look: land, dev test, a QA polish pass, the owner's OK, then screen.yaml."
       measure: { kind: source, check: "review:project/gallery.md PROJECT-GALLERY-10" }
       owner: ui/content.md
   core:
@@ -2103,7 +2066,7 @@ mustKeep:
         target: painted-box
         checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --border } }]
       owner: ui/components/card.md
-      followUp: "owner-triage 2026-11-18: the surface-radius-token story sets its own shadow and border on a card on purpose"
+      followUp: "the surface-radius-token story sets its own shadow and border on a card on purpose"
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card
       law: A card that heads a section carries its label as an unpainted row above the card, outside the material; a tile carries its name inside, beside its mark. Measured on labelled cards; the tile case is measured once the grammar exposes the kind.
@@ -2127,17 +2090,17 @@ mustKeep:
       owner: contract roles.button
     - id: DNA-CORE-STEPPER-MARKER-CURRENT
       role: list
-      law: "In Core the current step of the markers form is its number on the round 40px running tile (the success soft pair; the status-mark rule, owner 2026-11-24: in progress is success, never info nor the brand accent). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
+      law: "In Core the current step of the markers form is its number on the round 40px running tile (the success soft pair; the status-mark rule: in progress is success, never info nor the brand accent). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-grammar-stepper-size="dense"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="current"] [data-grammar-step-marker] > .starci-core-icon-tile', checks: [{ metric: background-color, op: "=", value: { token: --success-soft } }, { metric: color, op: "=", value: { token: --success-soft-foreground } }] }
-      owner: grammars/core.md; CHANGELOG 0.55.0 (the status-mark rule)
+      owner: grammars/core.md (the status-mark rule)
     - id: DNA-CORE-STEPPER-MARKER-UPCOMING
       role: list
-      law: "In Core an upcoming step of the markers form is the not-run status tile: the small plain ring, muted, on the neutral round 40px plate (0.55.0, the status-mark rule)."
+      law: "In Core an upcoming step of the markers form is the not-run status tile: the small plain ring, muted, on the neutral round 40px plate (the status-mark rule)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-grammar-stepper-size="dense"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="upcoming"] [data-grammar-step-marker] > .starci-core-icon-tile', checks: [{ metric: background-color, op: "=", value: { token: --default } }, { metric: color, op: "=", value: { token: --muted } }] }
-      owner: grammars/core.md; CHANGELOG 0.55.0 (the status-mark rule)
+      owner: grammars/core.md (the status-mark rule)
     - id: DNA-CORE-LINK-ACCENT-TEXT
       role: link
-      law: "A text link is HeroUI v3's own link (owner 2026-11-23): --link, which the theme sets to the foreground, never the accent, weight 500, no underline at rest (a 1.5px muted underline 4px below the text on hover). The plain variant (0.37.14: a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
+      law: "A text link is HeroUI v3's own link: --link, which the theme sets to the foreground, never the accent, weight 500, no underline at rest (a 1.5px muted underline 4px below the text on hover). The plain variant (a destination with no accent, no underline and no icon, the host is the affordance: a navigation row, a shell brand) inherits its host's colour and is not an accent link."
       measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"], [data-grammar-link-variant="plain"], [aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --foreground } }, { metric: text-decoration-line, op: "=", value: none }] }
       owner: contract roles.link; grammars/core.md
     - id: DNA-CORE-ACCENT-TEXT
@@ -2145,7 +2108,7 @@ mustKeep:
       law: "Where the accent is text other than a link (the current tab label, the section eyebrow, the soft accent pairing) it reads the text-safe accent --accent-soft-foreground, never the fill accent. A text Link is no accent at all: it is the foreground (DNA-CORE-LINK-ACCENT-TEXT)."
       measure: { kind: count, select: '*:not(:empty):not(a, a *)', where: { metric: color, op: "=", value: { token: --accent } }, op: "=", value: 0 }
       owner: grammars/core.md; owner overrule of P2 (links)
-      followUp: "owner-triage 2026-11-18: other components paint accent as text (a ring number, today in the Calendar, a step, a message status): rule on accent-as-text beyond links is stale (the current tab is the foreground)"
+      followUp: "other components paint accent as text (a ring number, today in the Calendar, a step, a message status): rule on accent-as-text beyond links is stale (the current tab is the foreground)"
     - id: DNA-CORE-PARITY-STRICT
       role: root
       law: core changes HeroUI through tokens only; every other deviation is a declared override in vendor/wrappers.yaml.
@@ -2170,7 +2133,7 @@ mustKeep:
         target: painted-box
         checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: shadow-blur, op: "=", value: 0px }, { metric: shadow-offset, op: ">", value: 0px }]
       owner: O-1
-      followUp: "owner-triage 2026-11-18: a card of the white-theme story draws no offset shadow"
+      followUp: "a card of the white-theme story draws no offset shadow"
     - id: DNA-OFFSET-POP-CARD-LABEL-OUTSIDE
       role: card
       law: A card that heads a section carries its label on the page above the sticker, outside the painted box; a tile carries its name inside.
@@ -2190,13 +2153,13 @@ mustKeep:
       law: No shadow inside the grammar is blurred.
       measure: { kind: count, select: '*', where: { metric: shadow-blur, op: ">", value: 0px }, op: "=", value: 0 }
       owner: grammars/offset-pop.md (What an app must not add)
-      followUp: "owner-triage 2026-11-18: a root of the pane-inset, copy-field and floating icon-button stories carries a blurred shadow"
+      followUp: "a root of the pane-inset, copy-field and floating icon-button stories carries a blurred shadow"
     - id: DNA-OFFSET-POP-PINK-NEVER-TEXT
       role: root
       law: Pink is a fill and a ring, never a text colour.
       measure: { kind: count, select: '*:not(:empty)', where: { metric: color, op: "=", value: { token: --accent } }, op: "=", value: 0 }
       owner: O-2
-      followUp: "owner-triage 2026-11-18: ProgressCircle, calendar date states and the run flow draw pink as text"
+      followUp: "ProgressCircle, calendar date states and the run flow draw pink as text"
     - id: DNA-OFFSET-POP-STEPPER-MARKER-CURRENT
       role: list
       law: "In Offset Pop the current step of the markers form is a pink disc with an ink outline and an ink number (the decision is pink, the label on pink is ink: O-2, grammars/offset-pop.md); a stepper inside a loading region draws geometry and is not measured."
@@ -2204,7 +2167,7 @@ mustKeep:
       owner: grammars/offset-pop.md O-2
     - id: DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING
       role: list
-      law: "In Offset Pop an upcoming step of the markers form is an ink-outlined disc on the surface with an ink number: every control wears the ink outline (O-1, grammars/offset-pop.md); the filled secondary-surface disc of U0-G9 is retired."
+      law: "In Offset Pop an upcoming step of the markers form is an ink-outlined disc on the surface with an ink number: every control wears the ink outline (O-1, grammars/offset-pop.md)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="upcoming"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-color, op: "=", value: { token: --border } }] }
       owner: grammars/offset-pop.md O-1
     - id: DNA-OFFSET-POP-LINK-INK

@@ -5,25 +5,24 @@ Contract: [MessageBubble](../../grammars/contract.md#messagebubble).
 ## Job
 Show one message of a conversation. Every conversation is `MessageBubble` messages in a thread the app keeps; no screen draws its own bubble.
 
-## The chat surfaces (0.37.31)
+## The chat surfaces
 
 Every chat (team chat, an agent's chat, an inbox customer thread, the assistant) draws the same three faces, owner-approved drawing
 `chat-surfaces` (`DNA-COMMON-CHAT-SURFACES`, `DNA-COMMON-CHAT-INCOMING-OUTLINE`, `DNA-COMMON-CHAT-OUTGOING-ACCENT`):
 
 - **the thread** is the page tone `--background`, never white: a `PaneSection scroll={{ role: "log" }}` paints it whatever `tone` the app
   passes, and meets the head line above and the composer's line below edge to edge;
-- **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) has ONE look on every host (0.52.0, the owner-approved
-  chat canvas of 2026-11-20): the 1px `--border` edge, no fill, `--foreground` words, no shadow, in every content kind (text, card); a message is
+- **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) has ONE look on every host: the 1px `--border` edge, no fill, `--foreground` words, no shadow, in every content kind (text, card); a message is
   never a card, and no surface (a thread, a drawer of pinned messages, a white pane) changes it;
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it. A
   `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message
-  replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill (0.52.0).
-- **the message an answer replies to** (0.55.1, owner 2026-11-23, Zalo/Messenger) is `ReplyStrip` as the first line of the answer's body: ONE
+  replied to) is the foreground at a 16% tint with its words inheriting, so both read on the solid fill.
+- **the message an answer replies to** is `ReplyStrip` as the first line of the answer's body: ONE
   compact line on the secondary surface, a 3px bar on its start edge in the replied author's tone (an agent's colour from the app's palette by `tone={{ soft, ink }}`, its ink on the bar; a person's muted ink),
   the reply glyph at 1em, the author in the medium weight, then the words muted and ellipsized; no "Reply to X:" label, no quotation marks, no box in a
   box. With `onPress` it is a button that scrolls the thread to the original and rings it (`isHighlight`). The thread draws NO strip when the answer
   follows the message it replies to with nothing between them: the reader sees that message right above. Story `Navigation & Data/Chat parts` `ReplyStrips`.
-- **a question with answers** (owner 2026-11-23, Telegram / iOS alert) is ONE `ChoiceCard` as the body of `MessageBubble content="card"`: the short question
+- **a question with answers** is ONE `ChoiceCard` as the body of `MessageBubble content="card"`: the short question
   on top (it never lists the answers again nor asks for a number), the answers as cells separated by hairlines, a long one on its own row and two short
   ones to a row, each naming the thing with a muted hint, and `other` as the last cell, which focuses the composer. A chosen answer fills its cell (accent
   soft, check) and closes the card, and the app posts the choice as the reader's own message. A destructive answer is the danger ink only (a cell is not
@@ -35,7 +34,7 @@ Theme tokens only: the dark theme resolves from the same tokens. An app never re
 A pane footer that holds the composer starts at its own hairline: no empty
 band above the suggestion row (`DNA-COMMON-PANE-FOOTER-NO-BAND`). Story `Navigation & Data/Chat surfaces (0.37.31)`.
 
-## The chat frame (0.37.33)
+## The chat frame
 
 On ANY page that renders a chat, the chat is one frame, owner-approved drawing `chat-frame-anywhere` (`DNA-COMMON-CHAT-FRAME`): its head,
 its thread and its composer footer are `--background` as one, whatever surface it stands on (a white pane, the aside, a `Drawer`, a
@@ -63,7 +62,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
 | the reader in an assistant chat | the reader's own words where an accent fill would shout (`AiChatThread`) | `side="outgoing" tone="neutral"`: the default soft surface (`--default-soft`) with its foreground, at the end side; `tone` never changes an incoming bubble | judgement |
 
-Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent` (and `agentLabel`, the Chip's word in the app's language, `AI` by default): the bubble draws the small neutral "AI" Chip right after the name (`AgentName`; owner 2026-11-22: the AI is a Chip at the end of the name, never a pill on the avatar). The app never places a `Badge` for it by hand.
+Choice `message-bubble.choose.sender`: the sender line above the body of the first message of a run. `author` names the sender; for an AI agent add `isAgent`: the bubble draws the AI Chip right after the name, which [identity-mark](identity-mark.md) "The AI Chip" owns.
 
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
@@ -93,12 +92,12 @@ Choice `message-bubble.choose.content`: what the bubble body is. The first row t
 | text | the message is words | `MessageBubble content="text"` (the default) | judgement |
 | card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`; its `tone` draws the card face's 1px edge in `--<tone>-border`, the fill unchanged, by the `SurfaceCard tone` rule: an approval card that waits is `tone="warning"`, "card chờ duyệt có viền vàng"): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width; its content column fills the card, so a flat list (`Section kind="list"`) or a composer in `body` spans the card's inner width while the head, actions and meta start at the reading edge | story `Navigation & Data/Chat parts/MessageCards`, `Navigation & Data/Message card fill (0.37.30)`; `check:type` |
 
-Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
+Chat surroundings: an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
 `MessageBubble`s) draws no card surface (no fill, border, radius or shadow; detected by context, no prop), and the head band of a
 chat or list pane (a `PaneSection as="header"` above a `scroll` band) ends in one full-width separator, its block-end padding
 equal to its block-start inset. Stories `EmptyNoticeInThread`, `ChatPaneHeadLine`.
 
-Grouping and reactions (Grammar 0.32.0). `groupPosition` (`single` default, `first`, `middle`, `last`; the app computes it from the sender
+Grouping and reactions: `groupPosition` (`single` default, `first`, `middle`, `last`; the app computes it from the sender
 and the time gap) shapes the bubble like Messenger: a lone bubble is rounded 18, only the corners where two bubbles of one sender touch are 4
 (first: bottom on the sender's side; middle: both; last: top), logical corners so RTL mirrors; the avatar sits beside the last bubble and the
 earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are the flat surface on the
@@ -112,7 +111,7 @@ corner shows up to three emoji and the total and adds the viewer's top reaction 
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
 `BubbleGrouping`, `Reactions`.
 
-## The hover rail: MessageActions (owner, 2026-11-21)
+## The hover rail: MessageActions
 
 Modelled on Messenger. The owner asked for "hover ra icon… như facebook, 3 cái icon bên phải/trái từng đoạn chat", then corrected it to "icon thôi size 16 đi, không có border", and then to "kiểu nút ghost size sm á … nút ghost của heroui á trò". The owner's words win:
 

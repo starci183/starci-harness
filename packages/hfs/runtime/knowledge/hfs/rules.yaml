@@ -4253,23 +4253,6 @@ rules:
     witness:
       - {path: packages/eslint/grammar-core/chip-label.spec.mjs, codes: [FE_CHIP_LABEL_CASE]}
 
-  - id: R323
-    code: "FE_PAGE_HEADER_HAND_ROLLED"
-    law: "A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_PAGE_HEADER_HAND_ROLLED"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-hand-rolled-page-header}
-    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
-    templateNa: "A template states no page head; the pages are the app's."
-    proves:
-      - packages/eslint-grammar-core/src/page-header.spec.ts
-    exemplifiedBy:
-      - {path: packages/eslint-grammar-core/src/page-header.spec.ts, codes: [FE_PAGE_HEADER_HAND_ROLLED]}
-    witness:
-      - {path: packages/eslint-grammar-core/src/page-header.spec.ts, codes: [FE_PAGE_HEADER_HAND_ROLLED]}
-
   - id: R324
     code: "FE_PAGE_TABS_OUTSIDE_HEADER"
     law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band."
@@ -4289,7 +4272,7 @@ rules:
 
   - id: R325
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE"
-    law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page re-decides the inset and rhythm Page owns, and PageHeader and PageContainer are Page's parts, not exports to import from the Grammar."
+    law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page re-decides the inset and rhythm Page owns."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_ROUTE_PAGE_OUTSIDE_PAGE"]
@@ -4340,7 +4323,7 @@ rules:
 
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), @starci/auth/contracts and @starci/auth/testing only by those two glues, and the retired @starci/auth-oidc by no app file. bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), and @starci/auth/contracts and @starci/auth/testing only by those two glues. bcrypt and every Supabase client are owned nowhere."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_PASSPORT_OWNER"]
@@ -4576,7 +4559,7 @@ rules:
   - id: R343
     code: "HFS_CHECK_CACHE_FORGED"
     docs: [contexts/hfs/README.md#rule-notes]
-    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes; a run that wrote records its commit does not hold reports HFS_CHECK_CACHE_UNWARMED as info (never red), and only the pre-push hook's run (STARCI_PUSH_GATE=1) refuses the push for it, which `starci app push` and the lander avoid by committing the records first, and a host whose fingerprint is not portable is refused as HFS_CHECK_CACHE_UNPORTABLE, and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read. The pristine first commit (a root commit whose tree holds no cache file, what `starci app scaffold` records) pushes no record, so the push gate refuses nothing for it: it is the bootstrap push of PROJECT-BRANCH-1 and CI runs it in full; the cache the hook's run writes is the next commit, on dev."
+    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (an error finding), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes; a run that wrote records its commit does not hold reports HFS_CHECK_CACHE_UNWARMED as info (never red), and only the pre-push hook's run (STARCI_PUSH_GATE=1) refuses the push for it, which `starci app push` and the lane gate avoid by committing the records first, and a host whose fingerprint is not portable is refused as HFS_CHECK_CACHE_UNPORTABLE, and a cache file over the limit a push may carry (STARCI_CACHE_FILE_MAX_MB, 90 MB) is HFS_CHECK_CACHE_FILE_TOO_LARGE, an error finding, while a run splits its records into files under 32 MB; and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read. The pristine first commit (a root commit whose tree holds no cache file, what `starci app scaffold` records) pushes no record, so the push gate refuses nothing for it: it is the bootstrap push of PROJECT-BRANCH-1 and CI runs it in full; the cache the hook's run writes is the next commit, on dev."
     kinds: [codemod]
     gates: [ci]
     failureCodes: ["HFS_CHECK_CACHE_FORGED", "HFS_CHECK_CACHE_STALE", "HFS_CHECK_CACHE_MISSING", "HFS_CHECK_CACHE_UNWARMED", "HFS_CHECK_CACHE_UNPORTABLE", "HFS_CHECK_CACHE_FILE_TOO_LARGE", "HFS_CHECK_CACHE_VERIFY_LOCKED"]
@@ -4750,7 +4733,7 @@ rules:
 
   - id: R353
     code: "FE_TAG_GROUP_SELECTION"
-    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
+    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are Tabs (kind filter)."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_TAG_GROUP_SELECTION"]
@@ -5058,12 +5041,13 @@ rules:
       - {path: packages/hfs/src/branch-profile.spec.mjs}
   - id: R380
     code: "FE_GROUPED_CHOICE_CONTROL"
-    law: "The Grammar draws no group of attached buttons: a ButtonGroup, FilterButtonGroup or SegmentedControl in product source is refused and the message names the replacement by meaning, Tabs to switch a view or filter a list (kind filter), ChoiceChips or RadioGroup to choose a value of a form, separate Buttons or a DropdownMenu for actions. The components are deleted (ButtonGroup and FilterButtonGroup in Grammar 0.55.0); the rule still names the replacement for a source that keeps one."
+    law: "A view switch is never a row of Buttons carrying aria-pressed, isSelected or isActive: a switch between views or periods of one block is Tabs, and Tabs appearance=\"primary\" holds two to four short, fixed options with no count, no href and no isAttention."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GROUPED_CHOICE_CONTROL"]
     enforcers:
-      - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
+      - {kind: eslint-grammar-core, id: no-button-view-switch}
+      - {kind: eslint-grammar-core, id: no-primary-tabs-misuse}
     docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     templateNa: "A template draws no choice control."
     proves:

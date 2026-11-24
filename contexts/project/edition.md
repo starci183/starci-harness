@@ -26,7 +26,7 @@ slot or rule is the authority, not this page.
   integration, and storage an S3-compatible store that is the project's OWN MinIO, in development and in production, whenever the project has `statics/` or its back end needs storage: the
   `storage` service built from the managed `.starcistacks/images/storage/Dockerfile` (the StarCi MinIO, plus the repo-owned `statics/`), reached through the
   package `@starci/object-storage` composed in the object-storage integration, whose bucket the api's readiness creates when it is missing. A project that meets neither condition runs no MinIO;
-  production storage is no longer an external S3 endpoint ([statics.md](statics.md) PROJECT-STATICS-2 and -5, R440).
+  production storage is never an external S3 endpoint ([statics.md](statics.md) PROJECT-STATICS-2 and -5, R440).
   Owners: slots `app.db*` and `ruleParams.db.extensions` in [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` and `minio` image pins in
   [stack/pins.yaml](../stack/pins.yaml), `app.storage.image` and `app.statics`; the dev services and their ports in [stacks.md](stacks.md) PROJECT-STACKS-10.
 - Redis and Qdrant are the declarable backing services (`sides.be.backing`), each run durably as one minimal instance; vectors may
@@ -98,22 +98,7 @@ slot or rule is the authority, not this page.
   per-feature documents ([work.md](work.md) PROJECT-WORK-7). Owners: R212; slot `app.starciwork`.
 - No secret material outside the sealed members. Owner: R220; custody itself is [stacks.md](stacks.md).
 
-## Moving an app off Supabase
-
-An app scaffolded on Supabase moves in one commit on hfs 4.10: `git mv supabase/migrations db/migrations`
-(an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql` and then `starci app codemod seeds-layout --execute` (PROJECT-STACKS-12 of [stacks.md](stacks.md)), then delete
-`supabase/config.toml`, `supabase/types/` and the rest of `supabase/`; in hfs.json replace the `supabase` block with an
-optional `db` block (`forceRls`, `appRole`), set every connection's `provider` to `postgres`, drop `supabase/types/` from
-`sides.<side>.reads`, and list the app's database functions, schema-qualified (`public.job_claim`), in `sides.be.dbFunctions`; run `npx --no-install starci app sync --execute`
-(it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
-data with `starci app db migrate --db-url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
-dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service
-moves to the official image: `npx --no-install starci app sync --execute` writes `.starcistacks/images/db/Dockerfile` (it removes a `db/Dockerfile` an earlier sync wrote) and the db scripts, the stack's db
-component and service take the app's own `db` image (`deploy.images.db: {app: db}`, pushed with the release), and a
-migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
-outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of
-`platform/queue` (an event-bus topic stays on pgmq, above), a `pg_cron` job becomes a `platform/jobs` tick (BE-JOBS-6),
-and the `supabase_realtime` publication is dropped; the `extensions` schema stays. Owner: R332.
+## Squashing a chain on an empty production database
 
 An app whose production starts on an EMPTY database (no hosted data to restore) need not rewrite its chain: it squashes it.
 Apply the whole active chain to a rehearsal database with `starci app db migrate`, so its history records it, then run

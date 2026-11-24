@@ -9,7 +9,7 @@ import { planRemoval, removeWorktree } from "./worktree-remove.js"
 import type { RemovePlan, Removed } from "./worktree-remove.js"
 
 /**
- * The cleanup after a landing (`lane gate --push --land`, contexts/authority/lanes.md "Gate and land" step 5; owner 2026-11-24): once the push of dev
+ * The cleanup after a landing (`lane gate --push --land`, contexts/authority/lanes.md "Gate and land" step 5): once the push of dev
  * succeeded, the lane's worktree is removed to save disk, the branch kept, local and remote. It is the same removal as `starci lane remove`
  * (harness/worktree-remove.ts: the removal lock, every link unlinked as a link, a lstat-checked delete) behind the install janitor's in-use guard
  * (harness/install-janitor.ts `liveReasons`, told the lane just landed): a removal lock, a slot of the lane, a git operation, a process working

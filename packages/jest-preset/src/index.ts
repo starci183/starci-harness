@@ -146,11 +146,10 @@ function transform(tsconfig: string | Record<string, unknown>): Record<string, [
  * files are compiled to CommonJS like the repository's own (ts-jest with `allowJs`) instead of being skipped as node_modules.
  * `jose` is the Supabase access-token verifier of every lite back end (be.integrations.supabase); a lite app keeps full's unit
  * run (R212), so a spec that imports its guard must load it. `@starci/ai-router`
- * is the AI pool module, `@starci/auth` the sign-in a lite back end composes in its passport integration, `@starci/auth-oidc` the sign-in a full back end composes
- * in its keycloak integration, `@starci/object-storage` the storage module it registers in its AppModule, `@starci/mail` the mailer of its mail integration, `@starci/nest-kit` the module
+ * is the AI pool module, `@starci/auth` the sign-in a back end composes in its passport or keycloak integration, `@starci/object-storage` the storage module it registers in its AppModule, `@starci/mail` the mailer of its mail integration, `@starci/nest-kit` the module
  * definition of every module, `@starci/common` the coded error base every package error and every capability error derives from and `@starci/seed` the data standard's ports and git driver, so a spec that builds the AppModule or throws an error must load them.
  */
-const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose", String.raw`@starci[\\/]ai-router`, String.raw`@starci[\\/]auth`, String.raw`@starci[\\/]auth-oidc`, String.raw`@starci[\\/]object-storage`, String.raw`@starci[\\/]mail`, String.raw`@starci[\\/]nest-kit`, String.raw`@starci[\\/]common`, String.raw`@starci[\\/]seed`])
+const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose", String.raw`@starci[\\/]ai-router`, String.raw`@starci[\\/]auth`, String.raw`@starci[\\/]object-storage`, String.raw`@starci[\\/]mail`, String.raw`@starci[\\/]nest-kit`, String.raw`@starci[\\/]common`, String.raw`@starci[\\/]seed`])
 const ESM_DEPENDENCY_TRANSFORM = String.raw`^.+[\\/]node_modules[\\/](?:${ESM_ONLY_DEPENDENCIES.join("|")})[\\/].+\.js$`
 
 function esmDependencyTransform(): Record<string, [string, Record<string, unknown>]> {

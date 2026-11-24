@@ -9,7 +9,7 @@ may import a model library is the infrastructure table (`ruleParams.be.infraOwne
 [hfs/slots.yaml](../../hfs/slots.yaml), BE-INFRA-1); the provider key list is the canon's
 (`@starci/eslint-canon-be src/ai-gateway.ts` `PROVIDER_KEY_VARIABLES`).
 
-Library APIs were read from the LangChain JS documentation on 2026-10-29 (`@langchain/openai` 1.8.0,
+Library APIs follow the LangChain JS documentation (`@langchain/openai` 1.8.0,
 `@langchain/core` 1.3.1): ChatOpenAI at docs.langchain.com/oss/javascript/integrations/chat/openai, OpenAIEmbeddings at
 docs.langchain.com/oss/javascript/integrations/text_embedding/openai, structured output at
 docs.langchain.com/oss/javascript/langchain/models, retrievers at reference.langchain.com/javascript/langchain-core/retrievers/BaseRetriever.

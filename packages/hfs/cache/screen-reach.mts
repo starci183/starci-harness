@@ -1,4 +1,4 @@
-// screen-reach.mts - the files a gallery screen renders (contexts/project/gallery.md PROJECT-GALLERY-8 item 3): every local file its route's `page.tsx` reaches through
+// screen-reach.mts - the files a gallery screen renders (contexts/project/gallery.md PROJECT-GALLERY-8 item 2): every local file its route's `page.tsx` reaches through
 // imports (an import of a pure re-export barrel reaches only the modules that export the names it takes; the barrel itself is never a reached file), resolved by the app's own TypeScript under the front-end app's tsconfig (its `@/` paths), so a change to a shared composite, a hook, a module, a workspace
 // package or an imported i18n catalog marks every screen that renders it as touched. Only value edges count (static and dynamic imports, re-exports, require): a type-only
 // import or re-export renders nothing, and following it would tie every screen that shares a types module to every component it names. The walk is bounded (MAX_REACH files per app) and the edges of a file are memoised by path and mtime for the process, so the

@@ -5,16 +5,16 @@ import { setTimeout as sleep } from "node:timers/promises"
 import { captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { startRelayed } from "../shared/relay.js"
-import { landPaths, writeJsonWhole, writeStatus } from "./land-queue.js"
-import type { LaneStatus } from "./land-queue.js"
+import { landPaths, writeJsonWhole, writeStatus } from "./lane-state.js"
+import type { LaneStatus } from "./lane-state.js"
 import { loadLocalSettings } from "./local-settings.js"
 
 /**
- * The CI verdict of a commit a landing pushed to dev. After a landing (`lane gate --push --land`, or a batch of the lander) one detached watcher
+ * The CI verdict of a commit a landing pushed to dev. After a landing (`lane gate --push --land`) one detached watcher
  * (`starci lane ci-watch`, started through the relay so the landing never waits for it) follows the GitHub runs of that sha: every run of a push
  * of the sha, read with `gh run list --commit`. The verdict is written into each landed lane's status file (`ci`) and into
  * `<lanes>/_land-status/_dev-ci/<sha>.json`; a red one is said loudly in the watcher's log and sent to the coordinator session the local settings
- * name (`lander.notifySession`). The watcher never blocks, reverts or pushes dev: a red dev is fixed by a lane.
+ * name (`ciWatch.notifySession`). The watcher never blocks, reverts or pushes dev: a red dev is fixed by a lane.
  */
 export type DevCiState = "green" | "red" | "superseded" | "pending" | "none" | "unreadable"
 
@@ -85,7 +85,7 @@ export interface CiWatchGiven {
     readonly dir: string
     readonly sha: string
     readonly lanes: readonly string[]
-    /** Give up after this long and write `pending` (default `lander.ciWatchMinutes`, 45). */
+    /** Give up after this long and write `pending` (default `ciWatch.minutes`, 45). */
     readonly limitMs: number
     readonly pollMs?: number
     readonly notifySession?: string
@@ -148,7 +148,7 @@ export const watchDevCi = async (given: CiWatchGiven, deps: CiWatchDeps = realCi
     say(`dev CI of ${sha.slice(0, 10)}: ${verdict.state} (${verdict.reason})`)
     if (verdict.state === "red") {
         for (const line of redBanner(verdict, lanes)) say(line)
-        if (given.notifySession === undefined) say("no lander.notifySession in the local settings: the red verdict is in this log and the lanes' status files only")
+        if (given.notifySession === undefined) say("no ciWatch.notifySession in the local settings: the red verdict is in this log and the lanes' status files only")
         else {
             const message = `[lane ci-watch] dev CI is RED at ${sha} after landing ${lanes.join(", ")}: ${verdict.reason}. Dev was not reverted; fix it in a lane.`
             try {
@@ -172,7 +172,7 @@ export const startDevCiWatch = async (root: string, dir: string, sha: string, la
     const log = join(landPaths(dir).status, "_dev-ci", `${sha}.log`)
     try {
         const pid = await start([process.execPath, mainScript(), "lane", "ci-watch", sha, "--dir", dir, "--lanes", lanes.join(",")], root, log)
-        say(`dev CI of ${sha.slice(0, 10)}: watched in the background (pid ${String(pid)}, ${String(loadLocalSettings().lander.ciWatchMinutes)} min limit); verdict in ${devCiFile(dir, sha)} and the lanes' status, log ${log}`)
+        say(`dev CI of ${sha.slice(0, 10)}: watched in the background (pid ${String(pid)}, ${String(loadLocalSettings().ciWatch.minutes)} min limit); verdict in ${devCiFile(dir, sha)} and the lanes' status, log ${log}`)
     } catch (error) {
         say(`dev CI of ${sha.slice(0, 10)}: the watcher did not start (${error instanceof Error ? error.message : String(error)}); check it with gh run list --commit ${sha}`)
     }

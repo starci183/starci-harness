@@ -87,7 +87,7 @@ const addFlag = (command: Command, flag: string, spec: FlagSpec): void => {
     else command.option(spelling, spec.summary)
 }
 
-/** Adds one verb to the program, creating its group command on first use; its help is generated from its definition and the retired map. */
+/** Adds one verb to the program, creating its group command on first use; its help is generated from its definition. */
 const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): void => {
     const [first, second] = verb.path
     let parent = program

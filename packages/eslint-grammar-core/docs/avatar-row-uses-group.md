@@ -2,7 +2,7 @@
 
 Law module: `avatar-row-uses-group.ts`. Finding code: `FE_AVATAR_ROW_USES_GROUP`. Law: `contexts/grammars/contract.yaml#DNA-COMMON-AVATAR-ROW-GROUP`.
 
-Owner, 2026-11-22: "với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép tụi này render sáng tạo nhỉ". Avatars that stand side by side, or come out of a list, are one `AvatarGroup`: it overlaps them, shows `max - 1` items and a "+N" tile, rings a broken account (`tone: "danger"`), names every member on hover (`memberNames`), and takes people (`name`, `seed`) and provider or channel marks (`mark`) alike. A hand-made row of `Avatar` has none of that and every app draws its own overflow.
+Avatars that stand side by side, or come out of a list, are one `AvatarGroup`: it overlaps them, shows `max - 1` items and a "+N" tile, rings a broken account (`tone: "danger"`), names every member on hover (`memberNames`), and takes people (`name`, `seed`) and provider or channel marks (`mark`) alike. A hand-made row of `Avatar` has none of that and every app draws its own overflow.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

@@ -220,7 +220,7 @@ export const cleanCheckoutsPath = (): string => join(stateBase(), "checkouts")
 export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string => join(projectDir(root), "briefs", `${role}-${launchId}.md`)
 
 /**
- * The host store keeps only host-wide state: the registry of project ledgers (the legacy `ledgers` columns plus
+ * The host store keeps only host-wide state: the registry of project ledgers (the `ledgers` columns plus
  * repo_common_dir, the lookup key), provider health, since a provider's rate limit or circuit is the same for every project, and
  * the Supervisors, one live row per project (`project` is the ledger id of the repository owning its Work, `ended_by` who
  * retired a row: owner, gone, stalled). A host store from version 2 keeps its `supervisors` table of one host Supervisor,

@@ -5,7 +5,6 @@ import {isPlainObject as plain} from './plain-object.mjs';
 import {invalid} from './invalid-config.mjs';
 import type {Bad} from './invalid-config.mjs';
 import {byCodeUnit} from './by-code-unit.mjs';
-import {removedOfKind} from './removed-vocabulary.mjs';
 import type {ResourcesBlock} from './resources-config.mjs';
 
 /** The effort vocabulary, ordered weakest to strongest — the only list of it. */
@@ -60,15 +59,6 @@ export interface ModelsBlock {
 /** The tier document with config.yaml `models` laid over it. */
 export type EffectiveTiers=Omit<TiersDoc,'tiers'|'seats'|'balance'|'usage'>&{tiers: Record<string, TierMember[]>; seats: Record<string, string>; balance: TierBalance; usage: TierUsage};
 
-const hasPath=(root: unknown,dotted: string): boolean=>dotted.split('.').reduce<unknown>((node,key)=>(plain(node)&&Object.hasOwn(node,key)?node[key]:undefined),root)!==undefined;
-
-/** Refuse an old-shape config (the removed keys of modules/kernel/removed-vocabulary.yaml), naming every removed key and where its meaning lives now. */
-export function refuseRemovedKeys(config: unknown): void{
-  const found=removedOfKind('config-key').filter(({name})=>hasPath(config,name));
-  if(!found.length)return;
-  const removed=found.map(({name,use})=>`${name} is removed (${use})`).join('; ');
-  throw new Error(`Invalid config.yaml: ${removed}.`);
-}
 
 let shippedCache: {version: string; doc: TiersDoc} | null=null;
 /** modules/models/tiers.yaml as shipped, parsed once per file version. */
@@ -131,7 +121,6 @@ export function effectiveTiers(config: {models?: ModelsBlock | null} | null | un
 
 /** config.yaml `models` — {tiers?, seats?, balance?, usage?}; the shipped defaults make every key optional. */
 export function validateModelsBlock(config: {models?: unknown} | null | undefined,profile: RuntimeProfile): void{
-  refuseRemovedKeys(config);
   const models=config?.models;
   if(models===undefined||models===null)return;
   const bad=invalid('models');

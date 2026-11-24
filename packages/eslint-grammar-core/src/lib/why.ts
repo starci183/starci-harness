@@ -75,12 +75,7 @@ export const why: Record<string, WhyEntry> = {
   "no-button-view-switch": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "Buttons carrying `aria-pressed`, `isSelected` or `isActive` stand side by side in `<file>`: joined buttons or pills acting as tabs.",
-    fix: "Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
-  },
-  "no-grouped-choice-controls": {
-    code: "FE_GROUPED_CHOICE_CONTROL",
-    en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
-    fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, ChoiceButtons, ChoiceChips or RadioGroup to choose a form value, separate Buttons or a DropdownMenu for actions.",
+    fix: "Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is a `Select` or a `RadioGroup`; a `Button` holds a command, never a selection state.",
   },
   "field-label": {
     code: "FE_FIELD_LABEL",
@@ -111,11 +106,6 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_NATIVE_FORM_CONTROL",
     en: "Raw `<tag>` in `<file>`. Page structure and text are composed from grammar components, not hand-written HTML.",
     fix: "Replace it with the matching grammar component (`Heading`, `Text`, `SurfaceCard`, ...); if grammar lacks it, add it to grammar or the ui package instead of drawing it in place.",
-  },
-  "no-hand-rolled-page-header": {
-    code: "FE_PAGE_HEADER_HAND_ROLLED",
-    en: "A page head in `<file>` imports PageHeader or Breadcrumbs from the Grammar, so the head is composed by hand.",
-    fix: "Pass the head to Page `header` (title, breadcrumbs and the slots it needs: description, meta, status, mark, actions, tabs).",
   },
   "page-breadcrumbs": {
     code: "FE_PAGE_BREADCRUMBS",
@@ -179,7 +169,7 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
-    en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard: a card never stands inside a card (a Pane surface, Dialog, Drawer or Popover hosts cards, bordered, since 0.37.5).",
+    en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard: a card never stands inside a card (a Pane surface, Dialog, Drawer or Popover hosts cards, bordered).",
     fix: "Give the content to the outer card's own body; a list, a table or figures inside it stand flat in a `Section` (`Section kind=\"list\"`, `Section kind=\"figures\"`).",
   },
   "surface-in-surface": {
@@ -220,12 +210,12 @@ export const why: Record<string, WhyEntry> = {
   "no-raw-type-size": {
     code: "FE_RAW_TYPE_SIZE",
     en: "`<file>` sets a type size of its own: a Tailwind text-size utility (`text-sm`, `text-[13px]`), a `fontSize` or a CSS `font-size`.",
-    fix: "Type is a Grammar role (owner 2026-11-21): use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code; on the public site also display.hero, display.section, display.figure, lead and title.card.",
+    fix: "Type is a Grammar role: use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code; on the public site also display.hero, display.section, display.figure, lead and title.card.",
   },
   "site-type-role": {
     code: "FE_SITE_TYPE_ROLE",
     en: "`<file>` is not the public site, and it draws a role of the site group: `display.hero`, `display.section`, `display.figure`, `lead` or `title.card` (`<Text role>` or `starci-type-<role>`).",
-    fix: "The site group (Grammar 0.55.0, owner 2026-11-21) is the public marketing site's alone. A console draws with the ten roles: title.page for a page heading, title.section for a section or card title, figure for a value, body for copy. A file of the site is a `Site…` or `Marketing…` owner, a route under `(site)`, or `modules/site…`.",
+    fix: "The site group is the public marketing site's alone. A console draws with the ten roles: title.page for a page heading, title.section for a section or card title, figure for a value, body for copy. A file of the site is a `Site…` or `Marketing…` owner, a route under `(site)`, or `modules/site…`.",
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",

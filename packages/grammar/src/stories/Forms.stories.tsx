@@ -675,14 +675,8 @@ export const Form: Story = {
   ),
 };
 
-const rhythmChips: ReadonlyArray<{ readonly value: string; readonly label: string }> = [
-  { value: 'friend', label: 'Friend' },
-  { value: 'expert', label: 'Expert' },
-  { value: 'critic', label: 'Critic' },
-];
-
 /**
- * THE FIELD RULE (owner, 2026-11-09), every control kind in one Form so the rhythm reads top to bottom: label -> control 8,
+ * THE FIELD RULE: every control kind in one Form so the rhythm reads top to bottom: label -> control 8,
  * control -> help, error or counter 4, field -> field 24 (set by the Form, never by a field). A Fieldset: legend -> fields 8,
  * fields 24 apart, the actions 24 below the last field.
  */
@@ -701,7 +695,6 @@ export const FieldRhythm: Story = {
           <G.DateField label="Start date" defaultValue={parseDate('2026-09-23')} />
           <G.TimeField label="Start time" defaultValue={parseTime('09:30')} />
           <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Copy failed" description="Paste it into the sender." />
-          <G.ChoiceChips label="Ask as" options={rhythmChips} defaultValue="friend" empty={null} />
           <G.CheckboxGroup label="Notify by" options={choiceOptions} description="Pick at least one." />
           <G.RadioGroup label="Delivery" options={choiceOptions} defaultValue="email" description="You can change it later." />
           <G.Switch description="Short description." label="Dark mode" />

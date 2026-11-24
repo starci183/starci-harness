@@ -1,5 +1,5 @@
 // `lane gate --push --land`: a gated lane lands on dev itself under the dev lock: the newest origin/dev merged in, a fast re-check only when dev moved past
-// the gate's merge, ONE squashed commit on dev (the batch squash's message and trailer) pushed without force, the lane's status landed and its dev checkout
+// the gate's merge, ONE squashed commit on dev (its message and Landed-lane trailer) pushed without force, the lane's status landed and its dev checkout
 // marked for the debounced sync; a conflict stops with its files and lands nothing. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
@@ -8,7 +8,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { captureTool } from "../../shared/exec.js"
 import { captureGitSync } from "../../shared/git.js"
-import { landPaths } from "../../harness/land-queue.js"
+import { landPaths } from "../../harness/lane-state.js"
 import { landLane } from "./land-direct.js"
 import type { LandDeps } from "./land-direct.js"
 
@@ -86,7 +86,7 @@ void test("a lane whose gate merged the dev that still stands lands as ONE squas
     assert.equal(gitIn(origin, "rev-parse", "dev^"), gated, "one commit on top of the dev it landed on")
     assert.equal(gitIn(origin, "rev-list", "--count", `${gated}..dev`), "1")
     const message = gitIn(origin, "log", "-1", "--format=%B", "dev")
-    assert.match(message, /onto dev \(feature\)/u)
+    assert.match(message, /land lane feature onto dev/u)
     assert.match(message, /Landed-lane: feature [0-9a-f]{40}/u)
     assert.deepEqual(done.migrations, ["db/migrations/001.sql"])
     const status = JSON.parse(readFileSync(join(landPaths(dir).status, "feature.json"), "utf8")) as { state: string; sha: string }

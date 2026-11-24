@@ -5,7 +5,7 @@ import { elementNameOf, grammarName, nameOf, renderedChildren, stringProp } from
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context } from "./lib/types.ts"
 /**
- * The row list law (owner, 2026-11-09, SURFACE-IN-SURFACE; one look 0.43.0, LIST-ONE-LOOK): rows divided by lines that stand
+ * The row list law (SURFACE-IN-SURFACE; LIST-ONE-LOOK): rows divided by lines that stand
  * inside a surface are the Grammar list, `Section kind="list"`, the same flat rows divided by hairlines wherever it stands (a card
  * body, a drawer, a dialog, a pane band or a rail). The bare form an app can still reach is a hand-made row list.
  *

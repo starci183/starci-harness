@@ -97,7 +97,7 @@ void test("a move that fails puts every earlier move back and refuses DEV_SYNC_S
     assert.equal(existsSync(join(checkout, `node_modules${OLD}`)), false)
 })
 
-void test("husky's generated .husky/_ (a .gitignore of `*` inside) is staged as ONE folder, and the swap moves it whole instead of failing on the files inside (DEV_SYNC_SWAP of 2026-11-24)", async (t) => {
+void test("husky's generated .husky/_ (a .gitignore of `*` inside) is staged as ONE folder, and the swap moves it whole instead of failing on the files inside", async (t) => {
     const { checkout } = scratch(t)
     mkdirSync(join(checkout, ".husky"), { recursive: true })
     writeFileSync(join(checkout, ".husky", "pre-push"), "npx starci\n")

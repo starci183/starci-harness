@@ -8,7 +8,7 @@ import { declaredProcesses } from "./declared.js"
 import { startRelayed } from "../../shared/relay.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
-import { writeJsonWhole } from "../../harness/land-queue.js"
+import { writeJsonWhole } from "../../harness/lane-state.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { listProcesses } from "../../harness/process-table.js"
@@ -135,7 +135,7 @@ const EDGE = /edge-server\.m?js/iu
 /**
  * The stray dev servers of a checkout: processes run from inside the checkout (its path on their command line) that are a dev server, or that listen
  * on a port the environment declares (`listeners`), and that its dev stack does not record: neither a recorded pid nor one of their descendants, nor
- * a web's edge (an earlier hand run, a copy a moved checkout or an older lander left, which blocks `stack up` with STACK_LOCAL_SECOND_COPY). Only
+ * a web's edge (an earlier hand run, a copy a moved checkout left, which blocks `stack up` with STACK_LOCAL_SECOND_COPY). Only
  * these are ever stopped by the runner. Pure.
  */
 export const strayDevServers = (table: readonly HostProcess[], checkout: string, recorded: ReadonlySet<number>, self: number = process.pid, listeners: ReadonlySet<number> = new Set()): HostProcess[] => {
@@ -169,7 +169,7 @@ export interface RunnerDeps {
     readonly strays: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
     readonly sync: (checkout: string, settings: DevSyncSettings) => Promise<{ readonly exitCode?: number; readonly data: { readonly to: string; readonly restart: string } }>
     readonly settings: () => DevSyncSettings
-    /** After a sync, green or failed: the declared processes nothing listens for (a stack an older lander or a moved checkout left down) are brought up; the lines saying what. */
+    /** After a sync, green or failed: the declared processes nothing listens for (a stack a moved checkout left down) are brought up; the lines saying what. */
     readonly ensureUp?: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
 }
 
@@ -255,8 +255,7 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
                 const code = typeof error === "object" && error !== null && "code" in error ? `${String(error.code)}: ` : ""
                 write({ state: "failed", reason: `${wanted.reason}; dev sync refused: ${code}${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}` })
             }
-            // After ANY failed sync every declared process must listen again: a swap put back, a stop that never came back (public dev answered 502 on
-            // 2026-11-24 with the apps down) is not left for the next landing. `stack up` starts only what does not run.
+            // After ANY failed sync every declared process must listen again: a swap put back, a stop that never came back is not left for the next landing. `stack up` starts only what does not run.
             if (failed) {
                 try {
                     for (const line of (await deps.ensureUp?.(checkout, settings)) ?? []) say(line)

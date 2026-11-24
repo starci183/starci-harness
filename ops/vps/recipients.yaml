@@ -1,4 +1,4 @@
-# The public age recipients of the owner's apps and fleet (owner, 2026-11-21, model B). PUBLIC HALVES ONLY: an `age1...` recipient is the public
+# The public age recipients of the owner's apps and fleet. PUBLIC HALVES ONLY: an `age1...` recipient is the public
 # half of an age key, safe in this public repository; a private key (AGE-SECRET-KEY-1...) never enters any tracked file.
 #
 # This file is the owner of the recipients; @starci/hfs ships an equal copy (packages/hfs/runtime/knowledge/hfs/sops-recipients.yaml, kept equal by

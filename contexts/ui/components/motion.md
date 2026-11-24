@@ -1,6 +1,6 @@
 # Marketing motion
 
-Contract: [motion](../../grammars/contract.md#marketing-motion). Vendor: none (four pieces over the Grammar's own ramps). Added in 0.47.3 (owner request 2026-11-19, evidence NIVO landing canvas round 2, repository `nivoos-lite`, `.starcistacks/canvas/pages/90-site-home.html` to `94-site-download.html` and `gen/90-site-landing.mjs`: the motion table and the "cần Grammar" lines for `Reveal`, `Marquee`, `CountUp`, `StickyStory` and the motion tokens).
+Contract: [motion](../../grammars/contract.md#marketing-motion). Vendor: none (four pieces over the Grammar's own ramps).
 
 ## Job
 Give a public marketing page its four movements (a section rising into view, a loop of names, a figure counting up, a picture that follows the text) without the page holding a keyframe, a timing or an observer of its own.

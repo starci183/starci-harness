@@ -62,7 +62,7 @@ src/
 - **One parser behaviour.** Every verb of both layers reads `--x v` and `--x=v`, a boolean also as `--x=true|false`; a value
   never starts with `--`; a repeated single-value flag is refused, and so is a flag the action does not take, never ignored
   (a read-only action refuses `--execute`); an unknown verb or flag fails with one message and code. A spelling outside the
-  dictionary is unknown (CONTRIB-15), and help is generated from the parser tables, so it cannot drift.
+  dictionary is unknown, and help is generated from the parser tables, so it cannot drift.
 - **One name, one object.** A verb name appears twice only where the object differs, which its help says once: `release push`
   (the harness repository) and `app release push` (an app); `check lint` and `app check --gate lint` (`check *` judges the
   harness repository and its packages, `app check` a product app); `stack backup` (volumes) and `db dump` (the database);
@@ -362,9 +362,9 @@ commands run through starci verbs: a raw `npx eslint`, `tsc` or `jest` takes no 
 
 A run the harness starts for a caller (`slot run`, `lane gate`, `gallery shoot`, `app look`, each under its slot, and `app check`) records itself in
 `<slot root>/_runs/<pid>.json` with its launchers, the two processes above it, each with its start (`harness/runs.ts` `registerRun`). A run whose
-launcher is gone has nobody to report to: `starci ops reap --execute` and the batch lander's loop stamp when they first saw that, and once the stamp
-is `reap.graceMinutes` (ops/slots.yaml) old they stop the run's whole process tree (the server and browser of a shoot, the app check of a gate) and
-log it in `<slot root>/_reap.log`. A process the harness did not record is never touched, nor the reaper and its ancestors.
+launcher is gone has nobody to report to: `starci ops reap --execute` stamps when it first saw that, and once the stamp
+is `reap.graceMinutes` (ops/slots.yaml) old it stops the run's whole process tree (the server and browser of a shoot, the app check of a gate) and
+logs it in `<slot root>/_reap.log`. A process the harness did not record is never touched, nor the reaper and its ancestors.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.
 `workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM
@@ -386,8 +386,7 @@ harness never runs.
 
 The heavy-command governor counts every heavy command of the host in one per-user store (`governorStorePath`); the slots of
 `harness/slots.ts` coordinate the lanes themselves (one gate of a lane at a time, the shared stack, shots) across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
-floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate` (a fresh worktree's install is hard-linked from the per-repository install cache, `harness/shared-install.ts`, and the gate prints its phase timings), `gallery shoot`, `app look` and the batch lander's own npm and gate
-slots all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
+floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate` (a fresh worktree's install is hard-linked from the per-repository install cache, `harness/shared-install.ts`, and the gate prints its phase timings), `gallery shoot`, `app look` all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
 time, the pid and that process's start, the host's boot time and the host, and it is released only once read and found to name its
 holder, through a rename aside so a slot taken again in between stays. A holder is reclaimed only on evidence (`judgeHolder`): a pid
 not alive, a pid whose process started at another time, or a slot taken before this boot (or recording another boot) with no live

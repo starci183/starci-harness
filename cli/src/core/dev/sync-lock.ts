@@ -9,7 +9,7 @@ import { takeLockFile } from "../../harness/slots.js"
 /** How long a sync waits for another sync of the same checkout before it gives up (the other one is an npm ci and a rebuild: minutes). */
 export const SYNC_LOCK_WAIT_MS = 30 * 60_000
 
-/** The lock file of one checkout: one per normalised path under the machine's temp folder, so every lander and every hand run of this machine meets at it. Pure. */
+/** The lock file of one checkout: one per normalised path under the machine's temp folder, so every landing and every hand run of this machine meets at it. Pure. */
 export const syncLockFile = (checkout: string, base: string = tmpdir()): string => {
     const key = resolve(checkout).replaceAll("\\", "/").toLowerCase().replace(/\/+$/, "")
     return join(base, "starci-dev-sync-locks", `${createHash("sha1").update(key).digest("hex").slice(0, 16)}.lock`)

@@ -2,7 +2,7 @@
 
 Contract: [data-views](../../grammars/contract.md#data-views).
 
-## Meter reading voice (0.46.0)
+## Meter reading voice
 `Meter labelTone="muted"` is the quiet reading of a secondary gauge (a usage line at the foot of a rail, under a footer): the label and the value muted, 12 regular; the default stays the foreground label at 14 medium. It colours words only (`tone` colours the fill). Not made the default: a headline gauge keeps its
 label. Evidence (Rule 1): NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html``:208` ("Credit tháng này 7.200 / 10.000": a muted 12 label and value over a 4px bar). Story `Navigation/Shell gaps (0.46.0)` `QuietMeter`.
 
@@ -37,7 +37,7 @@ Choice `data-views.choose.view`: which view a set of items takes. The first row 
 | list | the items have no stage, place or comparison | `Section kind="list"` ([list-table](list-table.md)) | judgement |
 | figures | one to five numbers each stand alone | `Section kind="figures"`, the ribbon ([composition](../composition.md) COLLECTION-4); a figure may carry `trend` (`up`, `down`, `flat`, with `trendSense`, `trendLabel`) and `trendChart` (the ext `Sparkline`, passed drawn: a neutral grey line, none for no data or a flat-zero series; the meta words carry the direction in the status ink); the value is the display size 20, its label and meta 14 | judgement |
 
-**Status inside a view (0.55.0, the status-mark rule; [identity-mark](identity-mark.md) "Status marks").** A status word inside a view (a legend entry, a graph edge label, a cell, a board card's state) is the inline status (A), `InlineStatus`: the bare glyph (24px beside 14px words, 20px in a 12px line) and its words in the state's ink, no plate. A node or a row that leads with a mark takes the round 40px tile (B), the subject icon on the state's plate (a graph node's kind, a workflow), and its status trails as (A); a run's steps read as a `Timeline` with the status glyph. Never two large circles side by side.
+**Status inside a view (the status-mark rule; [identity-mark](identity-mark.md) "Status marks").** A status word inside a view (a legend entry, a graph edge label, a cell, a board card's state) is the inline status (A), `InlineStatus`: the bare glyph (24px beside 14px words, 20px in a 12px line) and its words in the state's ink, no plate. A node or a row that leads with a mark takes the round 40px tile (B), the subject icon on the state's plate (a graph node's kind, a workflow), and its status trails as (A); a run's steps read as a `Timeline` with the status glyph. Never two large circles side by side.
 
 Choice `data-views.choose.state`: how a view answers while it is not ready. The first row that applies wins.
 

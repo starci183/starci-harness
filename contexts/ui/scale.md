@@ -26,7 +26,7 @@ first row that applies wins.
 | field-row | the row holds a field (fields have one step) | `md` | `DNA-COMMON-FIELD-MD` |
 | hero | the one conversion call to action of a landing hero | `lg`, once per view | `DNA-COMMON-CONTROL-LG`; candidate: at most one `lg` control per view |
 | nested | the control is nested in a collection item, or sits in a dense toolbar whose every control is `sm` | `sm` | `DNA-COMMON-CONTROL-SM`; candidate: every `sm` control sits in an item or an all-`sm` toolbar |
-| standalone | every other control: buttons, icon buttons, selects, segmented controls, tab bars, switches, composer send | `md`: omit `size` | `DNA-COMMON-CONTROL-MD`; a full-width button `DNA-COMMON-CONTROL-FILL` |
+| standalone | every other control: buttons, icon buttons, selects, tab bars, switches, composer send | `md`: omit `size` | `DNA-COMMON-CONTROL-MD`; a full-width button `DNA-COMMON-CONTROL-FILL` |
 
 Rules, each with one place to harden:
 
@@ -58,7 +58,7 @@ calendar days and the stepper and clear glyphs of fields. Proof: A11Y-4, TASTE-1
 | Tabs | none: the bar is `md` | `md` | a tab bar aligns with the controls beside it; region tabs' pill track and page tabs' bar both land on `md`; every label is one size, 14, in every layer |
 | Switch, Checkbox, Radio | the row (label included) is the target | `md` row | the glyph is small, the labelled row is what is pressed |
 | ListBox and Menu rows | `sm`, `md`, `lg` leading slot | `md` | the step sizes the row's leading identity (glyph, avatar); the row height is that slot plus the vendor row inset, so the leading mark and the row stay aligned |
-| Avatar, AvatarButton, AvatarGroup | `sm` 24, `md` 40 | `md` | two round-mark sizes, no 32 (owner 2026-11-22): `md` 40 is the common size and the bar's control height, so an avatar in a bar matches the controls beside it; `sm` 24 is the icon size, inline beside text, in a cell or a chip |
+| Avatar, AvatarButton, AvatarGroup | `sm` 24, `md` 40 | `md` | two round-mark sizes, no 32: `md` 40 is the common size and the bar's control height, so an avatar in a bar matches the controls beside it; `sm` 24 is the icon size, inline beside text, in a cell or a chip |
 | IconTile | `row` 40, `head` 48 | `row` | the row tile (40, radius 10, glyph 20) leads a list row; the head tile (48, radius 12, glyph 24) stands beside a page title or in an empty state; a status mark is the round 40 |
 | Badge, display Chip, StatusDot | below the ramp; a Badge takes the Chip's `sm`, a StatusDot's hit area follows `sm`, `md`, `lg` | StatusDot `md` | labels, not targets: sized to the text line they annotate, never pressed |
 | Spinner, glyphs | the glyph scale | by host | a glyph follows its host control's step |
@@ -99,7 +99,7 @@ Three icon sizes, 16, 20 and 24, each drawn at its native size (no scaling, no o
   ("16 hours ago", never a clock before it). The 1em family is exactly three: the leading disclosure caret, the leading status glyph and the trailing go caret or arrow. Position
   carries meaning: a caret before words expands in place, one after words goes elsewhere. Every other icon beside 14px words is 16.
 - **Text that carries an icon is regular** (400): the owner's rule. Any rule styling text with a leading or trailing icon or status glyph sets no weight above 400; a status word is regular too. Exception: a **control** (a button, a text action, a tab, a chip) keeps its 500 label. Bold words inside a sentence stay allowed. Grammar's spec `icon-sizes` enforces it.
-- **Every icon strokes 1.5, buttons included; the stroke never follows the text weight** (owner 2026-11-24: icons are bigger now). It is written once, on the glyph; there is no stroke variable and no per-control stroke.
+- **Every icon strokes 1.5, buttons included; the stroke never follows the text weight**. It is written once, on the glyph; there is no stroke variable and no per-control stroke.
 - **Never filled**, not for a current, selected or active state: the state is shown by colour and background.
 - **One set: Tabler outline.** Grammar draws its own glyphs from it (`src/core/leaf/Icon/tabler.tsx`); an app takes the rest from
   `@tabler/icons-react`.
@@ -117,8 +117,7 @@ selected state.
 Owner: `@starci/grammar src/common/spacing.ts` (`COMMON_GAP_ROLES`, `COMMON_SPACING_TOKENS`) and the root of `src/common/styles.css`. The
 scale is HeroUI's 4px spacing (`--spacing`) at the steps 0 4 8 12 16 24 32; an app names the ROLE (`Stack gap`, `Cluster gap`, `Grid`,
 `PaneSection`, `Page`, the inset of a Grammar box), never a raw gap, margin or padding: R350 `FE_SPACING_UTILITY` (lint
-`starci-fe/no-spacing-utility` for class strings), `starci-grammar/no-raw-spacing-style` for `style` objects; `starci app codemod
-spacing-roles` moves raw utilities onto roles.
+`starci-fe/no-spacing-utility` for class strings), `starci-grammar/no-raw-spacing-style` for `style` objects.
 
 | Role | px | Between |
 | --- | --- | --- |

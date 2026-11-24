@@ -85,7 +85,7 @@ function step(root: string, db: ReturnType<typeof database>, secrets: Map<string
   const ctx = {
     env: {}, cwd: root,
     spawn: (command: string, args: readonly string[]) => { assert.equal(command, 'psql'); return db.psql(args); },
-    sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? assert.fail(`no fixture for ${file}`), decryptBinary: () => '' },
+    sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? assert.fail(`no fixture for ${file}`) },
   } as unknown as StackContext;
   const target: DbTarget = { how: 'url', url: 'postgresql://owner@127.0.0.1:5432/app', env: {}, secrets: [] };
   const input: SeedStepInput = { ctx, repoRoot: root, env: 'production', target, execute, command: (argv, text) => { inputs.push({ argv, input: text }); return run?.(argv) ?? { status: exit, stdout: '', stderr: exit ? 'leaked?' : '' }; } };
@@ -204,7 +204,7 @@ test('a deploy seeds after convergence in the database container, each app comma
       execs.push({ args, input: options.input });
       return { status: 0, stdout: '', stderr: '' };
     },
-    sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? {}, decryptBinary: () => '' },
+    sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? {} },
   } as unknown as StackContext;
   const target: DbTarget = { how: 'double', url: 'postgresql://app@127.0.0.1:5432/app', env: {}, secrets: [] };
   const floor = { dbContainer: async () => 'db1', containerTarget: () => target };

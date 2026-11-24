@@ -6,7 +6,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 
 /**
- * NO NESTED LABEL (owner, 2026-11-09, LABEL-SUBLABEL-HIERARCHY). A section has exactly ONE Label (its head, 14/500, 12px above its content). The groups nested inside it
+ * NO NESTED LABEL (LABEL-SUBLABEL-HIERARCHY). A section has exactly ONE Label (its head, 14/500, 12px above its content). The groups nested inside it
  * are named by a Sublabel (12/500 muted, 8px above the card), never by a second Label: a `Section` or `SurfaceCard` inside a labelled one takes `sublabel`, not `title`/`label`.
  *
  * WHAT IT READS. In product source, a Grammar `Section` with a `title` or a `SurfaceCard` with a `label` whose JSX ancestor in the same file is a Grammar `Section` with a

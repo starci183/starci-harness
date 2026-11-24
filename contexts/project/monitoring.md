@@ -131,7 +131,7 @@ run in Git for Windows' bash. Differences from a server:
 
 ## PROJECT-MONITORING-5 Each app's own alert bot
 
-The owner's words (2026-11-21): "bot giám sát server là bot khác nhé, setup trong từng dự án ở starcistacks". The harness bot
+A server's monitor bot is not the harness bot: it is set up per project in `.starcistacks`. The harness bot
 (ops/telegram.yaml) carries the owner's questions; it never carries a server's alerts.
 
 ```yaml
@@ -164,8 +164,7 @@ environments:
 
 ## PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons
 
-The owner's words (2026-11-21): "ghi rõ các câu lệnh ví dụ: /ram /cpu, trò nghiên cứu để có bộ lệnh monitor chuẩn chỉ cả 2 chiều check lẫn
-báo và render đẹp dễ track". The `monitor-bot` component is one Node process for every app bot of the server. It runs on the pinned node
+The `monitor-bot` component is one Node process for every app bot of the server. It runs on the pinned node
 image (`monitor-bot-node` in [stack/pins.yaml](../stack/pins.yaml)). Its code is the CLI's own `cli/src/harness/vps/monitor-bot`, compiled
 by the CLI build and shipped as swarm configs mounted under `/app`. It uses Node's built-ins only, so no image is built and no package
 is installed. It runs read-only as uid 1000 and stops first on an update, because two pollers of one token conflict.

@@ -15,8 +15,8 @@
 #
 # The two share one dedicated named network, `edge` (${STARCI_HOST_PROJECT:-starci}-edge), with a fixed subnet: the gate has the alias
 # `embeddings-gate` and the address 10.77.84.2, the tunnel 10.77.84.3, and the tunnel's ingress calls the gate by that address, so no
-# lookup stands between embed.starci.org and the gate. (2026-11-21: Docker's embedded DNS stopped answering `embeddings-gate` on the
-# project's default network twice in one night, and the tunnel answered 502 until a manual restart.) The alias stays for every other
+# lookup stands between embed.starci.org and the gate. (Docker's embedded DNS can stop answering `embeddings-gate` on the
+# project's default network, and the tunnel then answers 502 until a manual restart.) The alias stays for every other
 # caller and for `starci host doctor`, which resolves it from a throwaway container on the network, calls the gate by name and by
 # address, and with `--fix` repairs a network that stopped answering (reconnect, restart, recreate) and alerts the owner. ops/host.yaml
 # declares the same network, alias and addresses under each service's `network`; a spec keeps the two in step.

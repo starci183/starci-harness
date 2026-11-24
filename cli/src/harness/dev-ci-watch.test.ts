@@ -7,8 +7,8 @@ import { join } from "node:path"
 import test from "node:test"
 import { devCiFile, devCiVerdict, startDevCiWatch, watchDevCi } from "./dev-ci-watch.js"
 import type { CiWatchDeps, DevCiRun } from "./dev-ci-watch.js"
-import { landPaths, writeStatus } from "./land-queue.js"
-import type { LaneStatus } from "./land-queue.js"
+import { landPaths, writeStatus } from "./lane-state.js"
+import type { LaneStatus } from "./lane-state.js"
 
 const SHA = "0115d663e9a1b2c3d4e5f60718293a4b5c6d7e8f"
 const run = (id: number, status: string, conclusion: string, event = "push", workflowName = "ci"): DevCiRun => ({ databaseId: id, workflowName, event, status, conclusion, url: `https://github.example/runs/${String(id)}` })
@@ -55,17 +55,17 @@ const fake = (answers: readonly (readonly DevCiRun[] | Error)[], notified: strin
 
 const status = (dir: string, lane: string): LaneStatus => JSON.parse(readFileSync(join(landPaths(dir).status, `${lane}.json`), "utf8")) as LaneStatus
 
-void test("a red dev is written into the landed lanes' status and the sha's file, said loudly and sent to the coordinator session; a lane landed since keeps its own", async (t) => {
+void test("a red dev is written into the landed lanes' status and the sha's file, said loudly and sent to the coordinator session; a lane landed as another sha keeps its own", async (t) => {
     const dir = scratch(t)
     writeStatus(dir, { lane: "fix", state: "landed", sha: SHA, laneSha: "a".repeat(40), branch: "lane/fix" })
-    writeStatus(dir, { lane: "moved", state: "queued", sha: "b".repeat(40), laneSha: "b".repeat(40), branch: "lane/moved" })
+    writeStatus(dir, { lane: "moved", state: "landed", sha: "b".repeat(40), laneSha: "b".repeat(40), branch: "lane/moved" })
     const notified: string[] = []
     const said: string[] = []
     const verdict = await watchDevCi({ root: dir, dir, sha: SHA, lanes: ["fix", "moved"], limitMs: 600_000, pollMs: 30_000, notifySession: "coordinator", say: (line) => said.push(line) }, fake([[], [run(7, "in_progress", "")], [run(7, "completed", "failure")]], notified))
     assert.equal(verdict.state, "red")
     assert.equal(status(dir, "fix").ci?.state, "red")
     assert.equal(status(dir, "fix").state, "landed", "the landing stands: nothing is reverted")
-    assert.equal(status(dir, "moved").ci, undefined, "a lane whose status no longer says it landed as this sha is left alone")
+    assert.equal(status(dir, "moved").ci, undefined, "a lane that landed as another sha is left alone")
     assert.equal((JSON.parse(readFileSync(devCiFile(dir, SHA), "utf8")) as { state: string; lanes: string[] }).lanes.join(), "fix,moved")
     assert.ok(said.some((line) => line.includes("DEV CI IS RED")), "said loudly")
     assert.equal(notified.length, 1)
@@ -78,7 +78,7 @@ void test("without a notify session a red verdict is only logged; a run that out
     const said: string[] = []
     const red = await watchDevCi({ root: dir, dir, sha: SHA, lanes: [], limitMs: 60_000, say: (line) => said.push(line) }, fake([[run(1, "completed", "failure")]], notified))
     assert.equal(red.state, "red")
-    assert.ok(said.some((line) => line.includes("no lander.notifySession")))
+    assert.ok(said.some((line) => line.includes("no ciWatch.notifySession")))
     const pending = await watchDevCi({ root: dir, dir, sha: SHA, lanes: [], limitMs: 90_000, pollMs: 30_000, notifySession: "coordinator", say: () => undefined }, fake([[run(1, "in_progress", "")]], notified))
     assert.equal(pending.state, "pending")
     assert.match(pending.reason, /still running after 2 min/u)

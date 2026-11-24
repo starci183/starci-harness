@@ -6,7 +6,7 @@
 # a patch of one of them then moves no other pin. @starci/hfs stays exact: an app takes it through starci-harness, and the check and the canon
 # lint read one hfs. `side` is the side whose code uses it; `install: registry` marks a published @starci package that
 # apps pin and CI installs from npm, never by path: an unreleased edit is installed only on one machine from the local registry
-# (`starci deps install-local`), outside every committed file. `why` is one line; history lives in the package CHANGELOG.
+# (`starci deps install-local`), outside every committed file. `why` is one line; history lives in git.
 schema: starci/stack-pins@1
 pins:
   '@starci/common': {version: 1.0.1, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}

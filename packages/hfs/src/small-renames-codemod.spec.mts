@@ -82,12 +82,6 @@ test('7. DragItem leadingColor is reported and kept', () => {
   assert.match(result.text, /leadingColor="#f00"/);
 });
 
-test('8. SegmentedControl drops size lg and control, and every one outside a form is reported', () => {
-  const result = run('SegmentedControl', 'const A = () => <><SegmentedControl size="lg" /><SegmentedControl size="control" /><Form><SegmentedControl size="md" /></Form></>;');
-  assert.match(result.text, /<SegmentedControl \/><SegmentedControl \/><Form><SegmentedControl size="md" \/><\/Form>/);
-  assert.deepEqual(codes(result), ['SEGMENTED_FILTER_OR_VALUE', 'SEGMENTED_FILTER_OR_VALUE']);
-});
-
 test('9. ButtonGroup with JSX children is reported with the actions shape', () => {
   const result = run('ButtonGroup', 'const A = () => <><ButtonGroup><Button>a</Button></ButtonGroup><ButtonGroup actions={a} /></>;');
   assert.deepEqual(codes(result), ['BUTTON_GROUP_CHILDREN']);

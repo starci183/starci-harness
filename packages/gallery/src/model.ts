@@ -27,8 +27,6 @@ export interface RawFrame {
 }
 
 export interface RawScreen {
-    /** The explain.md text, absent when the folder has none (a screen not migrated to screen.yaml yet). */
-    readonly explain?: string
     /** The parsed screen.yaml (any value: the reader keeps what is well formed), absent when the folder has none. */
     readonly screen?: unknown
     /** The parsed links.json. */
@@ -61,7 +59,7 @@ export interface Screen {
     readonly shots: readonly Width[]
     readonly frame: RawFrame | null
     readonly explain: Explain | null
-    /** The screen.yaml of the folder: its sections, options considered and audit; null while the screen has only an explain.md. */
+    /** The screen.yaml of the folder: its sections, options considered and audit; null while the folder has none. */
     readonly doc: ScreenDoc | null
     /** The audit needs attention (none, fewer than two rounds, an open lens, needs owner); null when it stands or the screen has no screen.yaml. */
     readonly auditFlag: AuditFlag | null
@@ -142,7 +140,7 @@ export function buildModel(raw: RawGallery): Model {
         const rawScreen = raw.screens[id]
         const frame = raw.frames[id] ?? null
         const doc = rawScreen?.screen === undefined ? null : readScreen(rawScreen.screen)
-        const text = rawScreen?.explain ?? frame?.noteMarkdown ?? null
+        const text = frame?.noteMarkdown ?? null
         const entry = designPages[id]
         if (doc === null && text === null && !plain(entry)) {
             hidden++

@@ -639,15 +639,6 @@ $defs:
           properties:
             name: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
             credential: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
-      vars:
-        type: array
-        items:
-          type: object
-          additionalProperties: false
-          required: [name, value]
-          properties:
-            name: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
-            value: {type: string, minLength: 1}
       provisioning: {type: string, minLength: 1}
   environment:
     type: object

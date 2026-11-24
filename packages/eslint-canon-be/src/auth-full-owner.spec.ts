@@ -2,7 +2,7 @@
  * Twin tests for the sign-in owner law of both editions (R328 `BE_AUTH_PASSPORT_OWNER`, judged by `infra-import-owner`) over the one
  * package `@starci/auth`: `integrations/keycloak` (full) may import `@starci/auth/oidc`, its issuer presets and the shared contracts and
  * doubles; `integrations/passport` (lite) may import `@starci/auth` and `@starci/auth/server`; any other file is refused; `jose` is refused
- * everywhere; and the retired `@starci/auth-oidc` is refused in every file, its old glue included.
+ * everywhere.
  *
  *   node --test src/auth-full-owner.spec.ts
  */
@@ -31,15 +31,13 @@ const SERVER = `import { AuthModule } from "@starci/auth/server"; export const m
 const CONTRACTS = `import type { OidcPrincipal } from "@starci/auth/contracts"; export type P = OidcPrincipal`
 const TESTING = `import { FakeOidcIssuer } from "@starci/auth/testing"; export const i = FakeOidcIssuer`
 
-test("the slot manifest gives each entry of @starci/auth to its edition's glue, and jose and the retired @starci/auth-oidc to nobody", () => {
+test("the slot manifest gives each entry of @starci/auth to its edition's glue, and jose to nobody", () => {
     const table = fixtureHfs().ruleParams.infraOwners
     assert.deepEqual(table["@starci/auth"], ["integrations/passport"])
     assert.deepEqual(table["@starci/auth/server"], ["integrations/passport"])
     assert.deepEqual(table["@starci/auth/oidc"], ["integrations/keycloak"])
     assert.deepEqual(table["@starci/auth/contracts"], ["integrations/passport", "integrations/keycloak"])
     assert.deepEqual(table["@starci/auth/testing"], ["integrations/passport", "integrations/keycloak"])
-    assert.deepEqual(table["@starci/auth-oidc"], [])
-    assert.equal(table["@starci/auth-oidc/testing"], undefined, "the retired key covers its subpaths")
     assert.deepEqual(table.jose, [])
     assert.deepEqual(table["passport-oauth2"], [])
 })
@@ -93,19 +91,6 @@ test("infra-import-owner: jose and passport-oauth2 are refused everywhere, the g
             { filename: DOMAIN, code: `import { decodeJwt } from "jose"; export const d = decodeJwt`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import OAuth2Strategy from "passport-oauth2"; export const s = OAuth2Strategy`, errors: [{ messageId: "nowhere" }] },
             { filename: DOMAIN, code: `import jwt from "jsonwebtoken"; export const j = jwt`, errors: [{ messageId: "nowhere" }] },
-        ],
-    })
-})
-
-test("infra-import-owner: the retired @starci/auth-oidc is refused in every file, its old glue included", () => {
-    tester.run("infra-import-owner", infraImportOwner, {
-        valid: [],
-        invalid: [
-            { filename: KEYCLOAK, code: `import { OidcModule } from "@starci/auth-oidc/server"; export const m = OidcModule`, errors: [{ messageId: "nowhere" }] },
-            { filename: KEYCLOAK, code: `import type { OidcOptions } from "@starci/auth-oidc"; export type O = OidcOptions`, errors: [{ messageId: "nowhere" }] },
-            { filename: KEYCLOAK_SPEC, code: `import { FakeOidcIssuer } from "@starci/auth-oidc/testing"; export const i = FakeOidcIssuer`, errors: [{ messageId: "nowhere" }] },
-            { filename: DOMAIN, code: `import type { OidcPrincipal } from "@starci/auth-oidc/contracts"; export type P = OidcPrincipal`, errors: [{ messageId: "nowhere" }] },
-            { filename: PASSPORT, code: `import { OidcModule } from "@starci/auth-oidc/server"; export const m = OidcModule`, errors: [{ messageId: "nowhere" }] },
         ],
     })
 })

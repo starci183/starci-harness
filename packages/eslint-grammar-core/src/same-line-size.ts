@@ -17,7 +17,7 @@ import { attributeOf, elementOf, grammarBindings, literalAttribute } from "./lib
 const LINES: ReadonlySet<string> = new Set(["Cluster", "Text"])
 
 /** The size step a Text states: its literal `size` (`sm` folds into `md`, both 14), `md` when it has none, null when it cannot be read. */
-/** The size step of each type role (0.54.0), in the names of the `size` steps where one is the same size. */
+/** The size step of each type role, in the names of the `size` steps where one is the same size. */
 const ROLE_STEP: Readonly<Record<string, string>> = {
   figure: "figure", "title.page": "title.page", "title.section": "title.section", "label.item": "md", body: "md",
   "label.field": "label.field", "label.group": "xs", caption: "xs", badge: "xs", code: "xs",

@@ -23,7 +23,7 @@
      */
     /*
      * THE FIELD RULE (owner, 2026-11-09). One spacing contract for every control (Input, Select, NumberField, Textarea,
-     * ComboBox, DatePicker, DateField, TimeField, SearchField, CopyField, CheckboxGroup, RadioGroup, ChoiceChips, Switch,
+     * ComboBox, DatePicker, DateField, TimeField, SearchField, CopyField, CheckboxGroup, RadioGroup, Switch,
      * Checkbox, Slider):
      *   label -> control            = inline 8   (the label: md 14 / medium 500)
      *   control -> help/error/count = identity 4 (a group's guidance stands between its label and options: 8 on each side)
@@ -47,17 +47,17 @@
     }
 
     /* The roots of a labelled control: no flex gap (HeroUI sets 4 on `.select`, `.textfield`, `.checkbox`); the parts below place the steps. */
-    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) {
+    :is(.starci-core-field, .starci-core-input, .starci-core-select) {
         gap: 0 !important;
     }
 
     /* label -> control: inline 8. A screen-reader-only label is out of flow and adds nothing. */
-    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) > :is([data-grammar-field-label], .starci-core-slider-header):not(.starci-core-form-label--screen-reader) {
+    :is(.starci-core-field, .starci-core-input, .starci-core-select) > :is([data-grammar-field-label], .starci-core-slider-header):not(.starci-core-form-label--screen-reader) {
         margin-block-end: var(--grammar-inline-gap);
     }
 
     /* control -> help, error, counter: identity 4. */
-    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"], .starci-core-textarea-anchor) ~ :is([data-grammar-field-description], [data-grammar-field-error], .starci-core-field-error, [data-slot="field-error"], [data-slot="error-message"], .starci-core-field-meta) {
+    :is(.starci-core-field, .starci-core-input, .starci-core-select) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"], .starci-core-textarea-anchor) ~ :is([data-grammar-field-description], [data-grammar-field-error], .starci-core-field-error, [data-slot="field-error"], [data-slot="error-message"], .starci-core-field-meta) {
         margin-block-start: var(--grammar-identity-gap);
     }
 
@@ -644,7 +644,7 @@
     }
 
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
-    /* 0.40.0: the plate hooks of ChoiceChips (styles.css "THE PLATE HOOKS") paint these rows too. */
+    /* The plate hooks (styles.css "THE PLATE HOOKS") paint these rows. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;
         inline-size: 100%;
@@ -656,8 +656,8 @@
     }
 
     /*
-     * The chosen row is QUIET (0.55.0, owner: the dark selected edge was "màu lạ"): the radio dot says which; the row keeps the unselected edge's width
-     * and style, coloured at most the 1px accent border token, never a dark or thicker outline (the plate-selected-border hook does not reach a row).
+     * The chosen row is QUIET: the radio dot says which; the row keeps the unselected edge's width
+     * and style, coloured at most the 1px accent border token, never a dark or thicker outline.
      * Keyboard focus keeps the standard focus ring, apart from selection.
      */
     [data-grammar-radio-appearance="rows"] .starci-core-radio[data-selected="true"] {

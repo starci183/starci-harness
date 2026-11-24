@@ -18,8 +18,8 @@ Choice `chip.choose.role`: what carries the label or the pick. The first row tha
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| value | one value is chosen in a form or a toolbar | never a chip: a dropdown `Select` (`segmented-control.choose.role:select`), `RadioGroup` only when each option needs a sentence | judgement |
-| filter | peer values filter a collection that stays in place | `Tabs kind="filter"`: compact underline tabs under the list pane's search field, one selected, a `count` per tab when the app has it (R353 refuses a selection on `TagGroup`; `FilterButtonGroup` was deleted in 0.55.0, R380) | judgement |
+| value | one value is chosen in a form or a toolbar | never a chip: a dropdown `Select` (`select.choose.role:select`), `RadioGroup` only when each option needs a sentence | judgement |
+| filter | peer values filter a collection that stays in place | `Tabs kind="filter"`: compact underline tabs under the list pane's search field, one selected, a `count` per tab when the app has it (R353 refuses a selection on `TagGroup`) | judgement |
 | suggest | the user is offered a few things to say or ask next (quick replies in a chat, suggested questions in the assistant drawer, shortcuts in an empty state) | never a chip: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` ([button](button.md) `button.choose.role:suggest`); `TagGroup`, `Badge`, a HeroUI `Chip` and a row of `Link`s are never suggestions |
 | entered | values the user entered, to remove or order, or the active values of a filter toolbar | `TagGroup` tags with their remove action, `onClearAll` and `clearAllLabel` for a "Clear all" at the row's end, and `onReorder` when order matters | `DNA-COMMON-TAG-REMOVE`, `DNA-COMMON-TAG-REORDER-KEYS` |
 | dot | a status with no room or need for words beside it (a row marker, presence, a live process) | `StatusDot`, named by `aria-label`; never a `Badge` without text | `DNA-COMMON-DOT-NAMED` |
@@ -49,12 +49,12 @@ by default, a status tone only for a real state, never accent for identity. A ta
 no selection. A selected filter spends accent, a view switch does not ([tabs](tabs.md)).
 
 ## Size
-A badge is below the ramp, sized to the text line it annotates; a `Badge isDot` takes the Chip `sm` step. A tag is a control: `sm` in dense rows,
+A chip keeps the vendor's padding ([vendor](../../vendor/heroui.md) Chip). A badge is below the ramp, sized to the text line it annotates; a `Badge isDot` takes the Chip `sm` step. A tag is a control: `sm` in dense rows,
 `md` beside `md` controls, and its target meets the floor ([../scale.md](../scale.md)).
 
 ## States
-A badge has no hover or press. A badge, which carries its tone tint, takes the tone's soft foreground on it, and a status glyph with no tint behind it takes the tone itself (presentation "Tone"). A dot
-alone shows its name in a tooltip on hover and focus; its echo stops under reduced motion.
+A badge has no hover or press. A badge, which carries its tone tint, takes the tone's soft foreground on it, and a status glyph with no tint behind it takes the tone itself (presentation "Tone"). A status with no text is a dot (the `dot` row above), which
+shows its name in a tooltip on hover and focus; its echo stops under reduced motion.
 
 ## Owner split
 - **Grammar owns:** tone x emphasis paint, the dot and its echo, sizes, selection treatment, remove action, reorder

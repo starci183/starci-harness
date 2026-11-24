@@ -19,7 +19,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - ACTION-1 One activation, one effect · `ACTION-1` · 1 KB — One node owns each effect: a `Button`, or a `TextAction` where the command reads as text.
     - CTA-2 Command or destination · `CTA-2` · 1 KB — Consequence picks the element: going to an address is an anchor (`href`), changing state is a button with a real handler.
     - CTA-3 Disabled, pending and skeleton are three conditions · `CTA-3` · 1 KB — This is the one statement of this distinction; other rules cite it.
-    - CTA-6 Three looks · `CTA-6` · 1 KB — A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary` (solid, the one main action of the card ...
+    - CTA-6 Three looks · `CTA-6` · 1 KB — A Button has three looks, one prop: `variant` is `primary` (solid, the one main action of the card or region), `border` (an outline, every other action; the default) or `danger` ...
     - CTA-1 One primary per view · `CTA-1` · 1 KB — A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `variant="primary"` (the commit).
     - CTA-4 Destructive needs its own authority · `CTA-4` · 1 KB — Destructive is `variant="danger"`, at the entry and at the confirm, which stands inside an `AlertDialog` that holds no primary and puts initial focus on its `border` cancel.
     - CTA-5 Group order · `CTA-5` · 1 KB — A decision group runs **way out, alternative, primary**: the `border` way out first, the primary last, as separate buttons at the inline gap (GAP-2).

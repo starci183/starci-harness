@@ -28,7 +28,7 @@ Choice `card.choose.label`: where the card's name sits. The kind decides, in bot
 | tile | the card is one peer in a grid | `name` and `mark` inside, no label, fact, labelEnd or ariaLabel title | type; R366 |
 | docked | the region is docked in a layout | not a card: a `Pane` | R345 to R349 |
 
-An agent's card (a `label` that names an AI agent) takes `isAgent` on the head (`agentLabel` for the Chip's word, `AI` by default): the head draws the small neutral "AI" Chip right after the label (`AgentName`, owner 2026-11-22). The app never places the Chip by hand.
+An agent's card (a `label` that names an AI agent) takes `isAgent` on the head: the head draws the AI Chip right after the label, which [identity-mark](identity-mark.md) "The AI Chip" owns.
 
 Choice `card.choose.emphasis`: whether a card stands out from its peers.
 
@@ -52,7 +52,7 @@ collection's `Section` (COLLECTION-4).
 Every card, on every ground, is white at the card radius with a 1px `--border` edge and no shadow (BOUNDARY-6,
 `DNA-CORE-EDGE-TOP`); a whole-action card fills `--surface-secondary` on hover and `--default` on press, with the 2px `--focus`
 ring inside its edge. The card radius is HeroUI's Card radius (24 at `--radius` 0.5rem); a theme tightens it to its own scale with the
-hook `--starci-core-card-radius`, which every card follows (owner: @starci/grammar `src/common/theme-hooks.json`). Captions and
+hook `--starci-core-card-radius`, which every card follows (`@starci/grammar` `src/common/theme-hooks.json`). Captions and
 titles stay outside the card. A card never stands inside another card: a development throw (`src/core/surfaceContext.tsx`) and
 R340 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`) refuse it, and across files the render graph refuses it too (R356). A `Drawer`,
 `Dialog` or `Popover` may host an object card with the same look, its own content flat in sections; a `Pane surface` is itself
@@ -113,7 +113,7 @@ A list row that opens something (a detail, a page, a drawer) is clickable as a W
 ### One Label per section, Sublabels for the groups inside (LABEL-SUBLABEL-HIERARCHY)
 A section has exactly ONE Label (its head, 14 / 500) and Grammar sets it 12px (`--grammar-row-gap`, gap-3) above its content, in `Section` and in `SurfaceCard label`. The groups nested inside a labelled section are named by a Sublabel (12 / 500 muted), set 8px (`--grammar-inline-gap`, gap-2) above the group: `Section sublabel="..."` or `SurfaceCard sublabel="..."`, which draw the Sublabel and the 8px gap themselves, so an app never composes a `Sublabel` and a group by hand. Sibling groups inside the same Label are ALSO 8px apart (gap-2), so they visibly belong to it; the larger step (24px) applies only BETWEEN top-level Label sections. Never a Label inside a labelled Section: `sublabel` and `title` / `label` are never given together (the types refuse it) and the lint rule `starci-grammar/no-nested-label` flags a labelled Section or SurfaceCard nested in a labelled one of the same file. Example: the Label "Agent hiểu gì về việc của bạn" holds two groups, the Sublabels "Được tự làm" and "Phải hỏi bạn", each over its `Section` of a `CheckboxGroup`. Story: `Surfaces/Label hierarchy`.
 
-## A card that waits on the reader, and an agent's tile (0.55.0)
+## A card that waits on the reader, and an agent's tile
 
 - `SurfaceCard tone` (`neutral`, `accent`, `info`, `success`, `warning`, `danger`): only the 1px edge takes the tone's standard border token
   `--<tone>-border` ("card chờ duyệt có viền vàng" is `tone="warning"`); the fill stays the surface, and the reason is said in words (a status,

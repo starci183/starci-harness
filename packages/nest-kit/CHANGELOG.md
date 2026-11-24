@@ -1,21 +1,7 @@
 # Changelog
 
+Versioned history starts at beta; earlier history is in git.
+
 ## 0.2.2 - 2026-11-08
 
-- Changed: the documentation names `DomainError` of `@starci/common` as the base `classifyFailure` takes; the signature and behaviour are unchanged.
-
-## 0.2.1 - 2026-11-07
-
-- A patch: the README states its rules without ruling history; no behaviour changed.
-
-## 0.2.0 - 2026-11-04
-
-- Added: `classifyFailure(cause, DomainError)` and `FailureClass`, the class of a flow failure (`transient`, `input`, `config`, `code`; a `failureClass` the error carries wins), moved here from the `platform/queue` template so the job runner and both event consumers share one rule. Spec: `src/failure.spec.ts` at 100%.
-
-## 0.1.0 - 2026-11-03
-
-The module definition of a StarCi back end as one call, lifted from the 47 templates that each wrote the same typed builder, `Host` type and re-exports.
-
-- Added: `defineConfigurableModule<Options>()`, the definition of a sub-module, feature, transport or cli group: `register` and `registerAsync`, never global. It returns `ModuleDefinition<Options>`, so `export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYNC_OPTIONS_TYPE } = defineConfigurableModule<XOptions>()` is the whole `<x>.module-definition.ts`, and the lint that asks for stated export types (R368) accepts it because the helper states them.
-- Added: `defineCapabilityModule<Options>(settings?)`, the definition of a capability's representative module: the same, with the `isGlobal` extra defaulting to `false` (globality stays the app root's decision) and an optional `optionsInjectionToken`.
-- Added: the types `ModuleDefinition`, `CapabilityModuleDefinition`, `CapabilityExtras` and `CapabilitySettings`.
+- The shared building blocks of a StarCi back end: defineConfigurableModule and defineCapabilityModule.

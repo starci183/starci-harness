@@ -4,7 +4,7 @@ import { CHECK_CACHE_DIR, captureGitSync } from "../shared/git.js"
 import { freeDiskMb } from "./host-floors.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
-import { readStatuses } from "./land-queue.js"
+import { readStatuses } from "./lane-state.js"
 import { releaseRemoveLock, removeLockOf, takeRemoveLock } from "./remove-lock.js"
 import { RECLAIMABLE, judgeHolder, liveProbe, slotKind, slotsOfLane, readHolder, worktreesUnder } from "./slots.js"
 import type { SlotRules } from "./slots.js"
@@ -17,7 +17,7 @@ import type { FoundLink } from "./worktree-remove.js"
  * GB, and some sixty of them filled the lanes drive twice (ENOSPC in the next gate's npm ci). The janitor deletes the reinstallable folders of
  * such a worktree, the ignored folders named in `janitor.dirs` of ops/slots.yaml and the leftovers of a failed safe install (`.starci-trash-`),
  * and keeps everything git tracks, the branch and the worktree itself; the next `lane gate` installs again (it installs whenever node_modules is
- * missing). It runs on the batch lander's land step for each landed lane and as `starci lane prune-installs` for idle worktrees.
+ * missing). It runs on the land step of `lane gate --land` for each landed lane and as `starci lane prune-installs` for idle worktrees.
  *
  * Every deletion is link-safe, as `lane remove` is (harness/worktree-remove.ts): under the worktree's removal lock (so no install links
  * meanwhile), a folder that is itself a link is unlinked, never entered; a real folder has every link in it unlinked first, a second walk must
@@ -52,7 +52,7 @@ const inside = (outer: string, inner: string): boolean => {
 
 /**
  * The lane worktrees under the lanes folder `root`: registered worktrees of the repositories there, inside `root`, on a `lane/<lane>` branch,
- * whose folder does not start with `_` (the lander's worktree, the CLI builds and other harness-owned checkouts keep their installs).
+ * whose folder does not start with `_` (the CLI builds and other harness-owned checkouts keep their installs).
  */
 export const laneTrees = (root: string): LaneTree[] =>
     (worktreesUnder(root)?.worktrees ?? []).flatMap((entry) => {
@@ -176,7 +176,7 @@ export const commitsAfter = (worktree: string, landed: string): number => {
 }
 
 /** The sha a lane landed with (the lane's own sha its status file records), or undefined. */
-export const landedShaOf = (root: string, lane: string): string | undefined => readStatuses(root).find((status) => status.lane === lane && status.state === "landed")?.laneSha
+export const landedShaOf = (root: string, lane: string): string | undefined => readStatuses(root).find((status) => status.lane === lane)?.laneSha
 
 /**
  * Why a worktree is live and must keep its install, each reason one clause; empty when nothing holds it: a removal lock on it, a slot of its lane
@@ -190,7 +190,7 @@ export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: st
     const reasons: string[] = []
     const lock = removeLockOf(tree.path, context.root)
     if (lock !== undefined) reasons.push(`being removed by ${lock.lane} (pid ${String(lock.pid)})`)
-    const probe = liveProbe(context.root)
+    const probe = liveProbe()
     for (const slot of slotsOfLane(context.root, context.rules, tree.lane)) {
         const read = readHolder(slot.file)
         if (read !== undefined && !RECLAIMABLE.has(judgeHolder(slotKind(context.rules, slot.kind), read, probe).state)) reasons.push(`lane ${tree.lane} holds ${slot.kind} slot ${String(slot.n)}`)
@@ -318,7 +318,7 @@ export const laneTreeOf = (root: string, lane: string): LaneTree | undefined => 
 
 /**
  * The land step of the janitor: prunes the install of a landed lane's worktree unless it is live (`liveReasons`), saying what it did or why
- * not. It never fails the lander.
+ * not. It never fails the landing.
  */
 export const pruneLanded = async (root: string, rules: SlotRules, lane: string, say: (line: string) => void): Promise<PrunedTree | undefined> => {
     try {

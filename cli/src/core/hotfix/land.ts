@@ -3,8 +3,7 @@ import { Refusal } from "../../shared/errors.js"
 import { pidAlive } from "../../shared/exec.js"
 import { captureGit, currentBranch, mainCheckout, samePath } from "../../shared/git.js"
 import { listPackages } from "../../shared/workspace.js"
-import { takeDevLock } from "../../harness/land-batch.js"
-import { landPaths, releaseLockFile } from "../../harness/land-queue.js"
+import { landPaths, releaseLockFile, takeDevLock } from "../../harness/lane-state.js"
 import { lockScope } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
@@ -22,12 +21,12 @@ import { escalationOf, isNamed, overlayFiles, readChanges, scopeOf, tooBigMessag
 import type { Change, Changes, Scope } from "./scope.js"
 
 /**
- * `starci hotfix land` (contexts/authority/lanes.md "Hotfix"; owner: "hotfix là sửa xong chạy lại luôn, không gate gì hết"): the coordinator edited the dev checkout in place, and
+ * `starci hotfix land` (contexts/authority/lanes.md "Hotfix"): the coordinator edited the dev checkout in place, and
  * this lands that edit on dev and restarts dev at once. It judges NOTHING but the size: at most `maxFiles` files and `maxLines` changed lines (ops/hotfix.yaml), else it
  * refuses "quá lớn cho hotfix (N file / M dòng), mở lane". No typecheck, no hfs rule sweep, no secret scan, no spec; the push passes the pre-push gate by the pass
  * of core/hotfix/pass.ts, the one sanctioned way past it, and the CI watch (the same one every landing starts) judges the commit after the fact.
  *
- * Under the repository's dev lock (the one the batch lander and `lane gate --land` take, so nothing else pushes dev or moves the checkout meanwhile) it refuses while a dev
+ * Under the repository's dev lock (the one `lane gate --land` takes, so nothing else pushes dev or moves the checkout meanwhile) it refuses while a dev
  * sync of the checkout runs, makes ONE commit of the working tree (git plumbing, no commit hook) with a `Hotfix:` trailer, rebases it onto the newest origin/dev, and pushes
  * dev, never forced. Then the dev stack restarts through `dev sync` (core/dev/sync.ts) told where the checkout was before the hotfix: a light restart of the changed
  * api/web only, or the full sync steps (npm ci, build, migrate) when a lockfile, a migration, a schema or a workspace package changed, and it says which. On the harness the
@@ -216,7 +215,7 @@ export const hotfixLand = async (given: { readonly root: string; readonly dir: s
         const added = await git(root, ["add", "-A", "--", ...files])
         if (!added.ok) throw new Refusal("HOTFIX_COMMIT", `git add: ${added.err}`)
         const tree = (await git(root, ["write-tree"])).out
-        // Plumbing, as the lander squashes: the commit hooks are a gate too, and a hotfix runs none.
+        // Plumbing, as a landing squashes: the commit hooks are a gate too, and a hotfix runs none.
         const made = await git(root, ["-c", "commit.gpgsign=false", "commit-tree", tree, "-p", before, "-m", hotfixMessage(given.message, scope)])
         if (!made.ok || made.out === "") throw new Refusal("HOTFIX_COMMIT", `git commit-tree: ${made.err}`)
         const moved = await git(root, ["update-ref", "-m", "starci hotfix", "HEAD", made.out, before])

@@ -402,51 +402,6 @@ export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws 
   ].join('\n');
 }
 
-// ---- the converter from explain.md
-
-/** The lines under `## Phương án đã cân nhắc`, one bullet or paragraph each. */
-function optionLines(markdown: string): string[] {
-  const lines = markdown.normalize('NFC').replace(/\r\n/gu, '\n').split('\n');
-  const at = lines.findIndex((line) => { const heading = /^##\s+(.+?)\s*$/u.exec(line); return heading !== null && /^Phương án đã cân nhắc$/iu.test(heading[1] as string); });
-  if (at < 0) return [];
-  const out: string[] = [];
-  for (const line of lines.slice(at + 1)) {
-    if (/^##\s/u.test(line)) break;
-    const bullet = /^\s*(?:[-*]|\d+[.)])\s+(.*)$/u.exec(line);
-    if (bullet !== null) out.push((bullet[1] as string).trim());
-    else if (line.trim() !== '' && out.length > 0) out[out.length - 1] = `${out.at(-1) as string} ${line.trim()}`;
-    else if (line.trim() !== '') out.push(line.trim());
-  }
-  return out;
-}
-
-const slug = (name: string, used: Set<string>): string => {
-  const base = name.normalize('NFD').replace(/[̀-ͯ]/gu, '').replaceAll('đ', 'd').replaceAll('Đ', 'D').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '') || 'section';
-  let id = base;
-  for (let n = 2; used.has(id); n += 1) id = `${base}-${n}`;
-  used.add(id);
-  return id;
-};
-
-/** The screen.yaml value of an explain.md: its regions become sections, its options section `considered`, the shot hashes are those on disk (null where no PNG), `audit: null` (grandfathered). */
-export function screenOfExplain({ id, markdown, disk }: { id: string; markdown: string; disk: Readonly<Record<string, string>> }): Record<string, unknown> {
-  const explanation = parseExplain(markdown);
-  const [area = ''] = id.split('/');
-  const used = new Set<string>();
-  const sections = explanation.regions.map((region) => {
-    const section: Record<string, unknown> = { id: slug(region.name, used), title: region.name, why: region.fields['Vì sao'] ?? '' };
-    if (region.fields['Luật'] !== undefined) section['law'] = region.fields['Luật'];
-    if (region.fields['Grammar'] !== undefined) section['grammar'] = region.fields['Grammar'];
-    return section;
-  });
-  const shots = Object.fromEntries(SHOT_WIDTHS.map((width) => [width, { file: `${width}.png`, sha256: disk[width] ?? null }]));
-  return {
-    schema: SCREEN_SCHEMA, screen: id, title: explanation.meta['title'] || id, route: explanation.meta['route'] || '', ...(explanation.meta['app'] ? { app: explanation.meta['app'] } : {}), area: explanation.meta['area'] || area,
-    summary: explanation.intro.replace(/\s+/gu, ' ').trim() || explanation.meta['title'] || id, code: [], shots, sections,
-    considered: optionLines(markdown).map((line) => ({ option: line, chosen: false, why: 'chuyển từ explain.md, chưa tách phương án và lý do' })), audit: null,
-  };
-}
-
 export { EXPLAIN_FIELDS, SHOT_WIDTHS, stringifyYaml };
 
 /** The screen folders' shot hashes under `repoRoot` for a screen folder (app-root relative), by width key. */

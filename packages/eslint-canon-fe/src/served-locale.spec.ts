@@ -212,17 +212,17 @@ for (const edition of ['lite'] as const) {
       },
       {
         filename: HOOK,
-        code: `const entries = new Map([["x-locale", locale], ["Accept-Language", locale]])`,
+        code: `const entries = new Map([["x-trace", locale], ["Accept-Language", locale]])`,
       },
       {
         filename: HOOK,
         code: `class Headers { constructor(entries) {} }
-const headers = new Headers([["x-locale", locale], ["Accept-Language", locale]])`,
+const headers = new Headers([["x-trace", locale], ["Accept-Language", locale]])`,
       },
       {
         filename: HOOK,
         code: `const globalThis = { Headers: class { constructor(entries) {} } }
-const headers = new globalThis.Headers([["x-locale", locale]])`,
+const headers = new globalThis.Headers([["x-trace", locale]])`,
       },
       {
         filename: HOOK,
@@ -240,13 +240,13 @@ headers.append(\`accept-language\`, locale)`,
         filename: HOOK,
         code: `const headers = new Headers()
 const locale = headers["Accept-Language"]
-const oldLocale = headers.get("x-locale")`,
+const traceId = headers.get("x-trace")`,
       },
       {
         // A map's setters are not header writers, even if their keys name headers.
         filename: HOOK,
         code: `const entries = new Map()
-entries.set("x-locale", locale)
+entries.set("x-trace", locale)
 const list = { append: (key, value) => value }
 list.append("Accept-Language", locale)`,
       },
@@ -260,43 +260,18 @@ headers.set("Accept-Language", locale)`,
       {
         filename: HOOK,
         code: `const request = { headers: new Map() }
-request.headers.set("x-locale", locale)`,
+request.headers.set("x-trace", locale)`,
       },
       {
         // The initializer cannot establish a receiver after its binding has been reassigned.
         filename: HOOK,
         code: `let headers: any = new Headers()
 headers = new Map()
-headers.set("x-locale", locale)
+headers.set("x-trace", locale)
 headers.append("Accept-Language", locale)`,
       },
     ].map(inEdition),
     invalid: [
-      {
-        filename: LOCALE_LINK,
-        code: `const headers = { "x-locale": locale }`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `const headers = { ["X-Locale"]: locale, "Accept-Language": locale }`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: HOOK,
-        code: `const headers = { "X-LOCALE": locale }`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `const headers = new Headers([["x-locale", locale], ["Accept-Language", locale]])`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: HOOK,
-        code: `const headers = new globalThis.Headers([["X-LOCALE", locale]])`,
-        errors: [{ messageId: "retired" }],
-      },
       {
         filename: HOOK,
         code: `const headers = new window.Headers([[\`accept-language\`, locale]])`,
@@ -304,8 +279,8 @@ headers.append("Accept-Language", locale)`,
       },
       {
         filename: HOOK,
-        code: `const headers = new Headers([["Accept-Language", locale], ["x-locale", locale]])`,
-        errors: [{ messageId: "elsewhere" }, { messageId: "retired" }],
+        code: `const headers = new Headers([["Accept-Language", locale]])`,
+        errors: [{ messageId: "elsewhere" }],
       },
       {
         filename: HOOK,
@@ -318,31 +293,9 @@ headers.append("Accept-Language", locale)`,
         errors: [{ messageId: "elsewhere" }],
       },
       {
-        filename: LOCALE_LINK,
-        code: `headers[\`X-Locale\`] = locale`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `const headers = { [\`x-locale\`]: locale }`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `const headers = new Headers()
-const alias = headers
-alias.set("x-locale", locale)`,
-        errors: [{ messageId: "retired" }],
-      },
-      {
         filename: HOOK,
         code: `new Headers().append(\`Accept-Language\`, locale)`,
         errors: [{ messageId: "elsewhere" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `new globalThis.Headers().append("X-LOCALE", locale)`,
-        errors: [{ messageId: "retired" }],
       },
       {
         filename: HOOK,
@@ -354,13 +307,6 @@ alias.set("x-locale", locale)`,
         code: `const request = new Request(url)
 request.headers.set("Accept-Language", locale)`,
         errors: [{ messageId: "elsewhere" }],
-      },
-      {
-        filename: LOCALE_LINK,
-        code: `const response = new Response()
-const headers = response.headers
-headers.set("x-locale", locale)`,
-        errors: [{ messageId: "retired" }],
       },
     ].map(inEdition),
   })

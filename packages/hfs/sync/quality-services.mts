@@ -10,16 +10,6 @@ import { DECLARATION } from './sonar-key.mjs';
 // reason: the stack declaration is YAML parsed from disk; its shape is checked by the readers that consume it
 type ParseYaml = (text: string) => any;
 
-/** Apps without any service block retain the legacy CI defaults until they declare their services. */
-export function hasDeclaredServices(root: string, { parseYaml = bundledParseYaml as ParseYaml }: { parseYaml?: ParseYaml | undefined } = {}): boolean {
-  try {
-    const doc = parseYaml(fs.readFileSync(path.join(root, DECLARATION), 'utf8'));
-    return Object.keys(doc?.services ?? {}).length > 0;
-  } catch {
-    return false;
-  }
-}
-
 /** Missing or unreadable manifests preserve the shared quality defaults; example apps use the runtime example policy. */
 export function readDeclaredQuality(root: string, { parseYaml = bundledParseYaml as ParseYaml }: { parseYaml?: ParseYaml | undefined } = {}) {
   try {

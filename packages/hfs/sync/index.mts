@@ -48,7 +48,7 @@ import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { BUILD_MODULES, ciWorkflowCommands } from './ci-commands.mjs';
 import { canonImport, canonList } from './canon-layout.mjs';
-import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
+import { dependabotUpdates, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { LIST } from '../runtime/scripts/lib/loosening-config.mjs';
@@ -56,8 +56,6 @@ import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { defaultBootModule } from '../runtime/scripts/hfs/app-boot.mjs';
 import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
-import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
-import { inlinePrefix } from '../stack/ssh-gate.mjs';
 import { DB_BASE_IMAGE } from '../db/image.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
@@ -120,7 +118,7 @@ export interface AppSourceFacts {
   packageScopes?: Readonly<Record<string, readonly string[]>>;
   /** The default locale the app declares in its i18n routing source (the gallery's UI language, ruleParams.gallery); absent when none is declared. */
   defaultLocale?: string | null;
-  stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
+  stack: any; quality: any; badges: string; // reason: stack and quality come from the YAML-parsed declaration
 }
 
 /** The condition a slot's `managedWhen` names. Without source facts (a render of the declaration alone, a scaffold) the starter's storage holds. */
@@ -435,7 +433,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
     badges: readDeclaredBadges(root, { parseYaml, notices }),
     defaultLocale: appDefaultLocale(root),
     storageNeeded: storageNeed({ staticsFiles: staticsFilesOnDisk(root), packageJson: readJson(path.join(root, 'package.json')), stack: readStackDoc(root, parseYaml) }).needed,
-    qualityDeclared: hasDeclaredServices(root, { parseYaml }) };
+  };
 }
 
 /**
@@ -683,10 +681,6 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // The unit run, the back-end build and every CI job that imports a root package find it built (build:modules precedes them); its specs run in the unit run and its shards.
     modulesFirst,
     nodeMajor: String(NODE_MAJOR),
-    // The deploy server's age identity the restore workflow writes (stack/server-key.mts owns the path).
-    serverAgeIdentity: SERVER_AGE_IDENTITY,
-    // The operation `identity-restore` of the ssh gate, as one command for a CI key without the gate (stack/ssh-gate.mts owns the body), a JSON string so the workflow carries it as one YAML scalar.
-    identityRestoreInline: JSON.stringify(inlinePrefix('identity-restore')),
     sonarKey: sonarKey ?? app.project,
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),
@@ -697,7 +691,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
-    ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
+    ...ciWorkflowCommands(source, LCOV_REPORT, quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
     // The coverage scope is the same in both editions: measures exactly what full measures (R212).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
     jestPackages: scope === 'be' ? jestPackagesSource(rootPackages, specOnlyFolders) : '',

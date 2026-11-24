@@ -63,11 +63,10 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | hold one entry task beside contextual identity | [entry-frame](entry-frame.md) |
 | name the date of a calendar region without selecting it | [calendar-day](calendar-day.md) |
 | switch which panel or area shows | [tabs](tabs.md) |
-| choose one value inside a form or toolbar | [segmented-control](segmented-control.md) |
+| choose one value inside a form or toolbar | [select](select.md) |
 | filter or tag by peer categories; label an outcome; mark a status with a dot | [chip](chip.md) |
 | type a value, or copy one the product holds | [text-field](text-field.md) |
 | space the label, control, help and fields of any form control | [field](field.md) |
-| pick from a list too long for segments | [select](select.md) |
 | present one object | [card](card.md) |
 | a task that interrupts, or a secondary task beside the page | [dialog-drawer](dialog-drawer.md) |
 | the places of the app: the sidebar and the tone of its counts | [sidebar](sidebar.md) |

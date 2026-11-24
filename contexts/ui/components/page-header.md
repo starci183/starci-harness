@@ -70,6 +70,5 @@ ground of the well still fills the whole well. The second tab layer (`subTabs`) 
 measure: the pane grid spans the region and each pane caps its own content (MEASURE-9).
 
 ## Rules
-HIERARCHY-3, FONT-4, CTA-1, CTA-6, STATE-6, STATE-8, BOUNDARY-1. Lint: `starci-grammar/no-hand-rolled-page-header`
-(R323), `starci-grammar/page-tabs-in-header` (R324), `starci-grammar/route-page-is-one-page` (R325),
+HIERARCHY-3, FONT-4, CTA-1, CTA-6, STATE-6, STATE-8, BOUNDARY-1. Lint: `starci-grammar/page-tabs-in-header` (R324), `starci-grammar/route-page-is-one-page` (R325),
 `starci-grammar/page-breadcrumbs`, `starci-grammar/tabs-depth`.

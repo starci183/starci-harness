@@ -82,7 +82,7 @@ Padding (inline and block chosen apart):
   inline padding follows the step, one step less on the side a leading or trailing glyph stands on.
 - **P6 Optical anatomy stays inside components.** A large figure or heading keeps its own leading; a one-line row is
   8 + 24 + 8 = 40 at `md`, and a two-line row keeps 8 and grows by its content.
-- **P7 (removed 2026-11-21).** No invisible hit area: a control is the size it is drawn, Button md 40 and sm 32 (owner: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy").
+- **P7 No invisible hit area.** A control is the size it is drawn, Button md 40 and sm 32.
 - **P8 Responsive only at the gutter and the header's top.** Surfaces, panes and divider-facing sides keep one value
   at every breakpoint. The page container owns the page's inline inset; routed content owns only its block inset.
 
@@ -166,7 +166,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | `EmptyNotice`, `FileDropzone` | line to action row | 24 on every side | none | `title`, `action` |
 | `MessageBubble` | avatar to bubble inline; one sender identity, a sender change row, a day divider section (G5) | 12 inline, 8 block | none | the thread's order |
 | `Meter` | label to value inline; header to bar identity | 0 | none | `value` |
-| `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24; with a glyph 12 / 16 / 16 on both sides, the vendor's measure ([button](components/button.md#icon-measures-0375)) (h 32 / 40 / 48) | none | `size` at most |
+| `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24; with a glyph 12 / 16 / 16 on both sides, the vendor's measure ([button](components/button.md#icon-measures)) (h 32 / 40 / 48) | none | `size` at most |
 | Field (every control) | label to control inline (8); control to help, error or counter identity (4); field to field section (24), set by the `Form` or field stack, never by a field; `Fieldset` legend to fields 8, fields to actions 24 | 12 (h 40) | none | `label`, `description` ([field](components/field.md)) |
 | `Chip`, `Tag` | inline in a set; inline when it wraps | vendor 8, derived block | none | the set |
 | `Badge` | dot to text identity | vendor 8, block 0 | none | `children` |
@@ -193,9 +193,6 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
 | lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
 
-An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
-and of every utility left for a person).
-
 ## Type
 
 The app chooses an **information rank**; the grammar realises it. Ranks (contract: text sizes, heading levels,
@@ -207,12 +204,11 @@ weights):
 | FONT-2 | supporting reading: a full supporting line | `Text size="sm"` 14 muted (`sm` is kept as a name and equals `md`; there is no 13) |
 | FONT-3 | ordinary reading | `Text` default `md` 14 |
 | FONT-4 | page heading: one per document | `Heading` level 1, xl 18 (a display size) |
-| FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, `Text size="figure"` 20 (a display size; was 30) |
-| FONT-6 | display: a landing introduction | `Heading scale="display"`, outline unchanged (an opt-in display size, as before) |
+| FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, `Text size="figure"` 20 (a display size) |
+| FONT-6 | display: a landing introduction | `Heading scale="display"`, (an opt-in display size) |
 
-- **FONT-7 The final type scale (owner, 2026-11-09).** One role, one size, one weight everywhere it appears. It overrides every
-  earlier size for these roles. Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).
-  - **14px for ALL UI text**: body, labels, section and card titles (were 16), row titles, tabs (were 13), buttons, links
+- **FONT-7 The type scale.** One role, one size, one weight everywhere it appears. Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).
+  - **14px for ALL UI text**: body, labels, section and card titles, row titles, tabs, buttons, links
     (including `Section.action`), inputs, descriptions, captions, hints, filter-row text, and the figure labels and meta of
     `figures` cells.
   - **12px only for small names**: meta lines, badges, chips, counts, timestamps, breadcrumb separators.
@@ -238,8 +234,8 @@ weights):
   | the one caption under a lone table, list or chart | md 14 muted | `Section caption` ([composition](composition.md) COLLECTION-4) |
   | table header | md 14 / 500 muted | the table's own header |
 
-- **FONT-7a Label over content (owner, 2026-11-19, 0.48.0).** In a list body, a settings row and a description list the LABEL (a row title, a key, a settings title) is 16 / 400 in the primary colour and the CONTENT under it (a description, a value, a hint) is 14 in the secondary colour. The full scale: page title 18 / 500; section title and empty-state title 16 / 500; label 16 / 400; content 14 / 400 secondary (values, descriptions, hints, the page subtitle, nav items, buttons); meta 12 / 400 secondary (breadcrumbs, timestamps, chip counts, sidebar group labels, captions, badges). Laws `DNA-COMMON-LABEL-16`, `DNA-COMMON-CONTENT-14-SECONDARY`, `DNA-COMMON-SECTION-TITLE-SIZE`. This amends FONT-7 (14 for all UI text) and FONT-9 (a list row is 14 only) for these three places.
-- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site has its own roles, the site group (0.55.0, see "The site group"). Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm". The app-side ban on raw font utilities is `starci-grammar/no-raw-type-size` (0.54.0, see "The type roles").
+- **FONT-7a Label over content.** In a list body, a settings row and a description list the LABEL (a row title, a key, a settings title) is 16 / 400 in the primary colour and the CONTENT under it (a description, a value, a hint) is 14 in the secondary colour. The full scale: page title 18 / 500; section title and empty-state title 16 / 500; label 16 / 400; content 14 / 400 secondary (values, descriptions, hints, the page subtitle, nav items, buttons); meta 12 / 400 secondary (breadcrumbs, timestamps, chip counts, sidebar group labels, captions, badges). Laws `DNA-COMMON-LABEL-16`, `DNA-COMMON-CONTENT-14-SECONDARY`, `DNA-COMMON-SECTION-TITLE-SIZE`. This amends FONT-7 (14 for all UI text) and FONT-9 (a list row is 14 only) for these three places.
+- **FONT-7b The console scale.** Five roles in Inter, size / line height / weight: title 18 / 26 / 500; heading 16 / 24 / 500; label 16 / 24 / 400 primary; body 14 / 20 / 400 (primary alone, secondary under a label); meta 12 / 16 / 400 secondary (table column headers included). Only 400 and 500: 500 is for title, heading, the primary button, big KPI figures and a person's name inside a sentence. Tertiary colour is for placeholders, disabled text and empty words; labels and titles are never muted. No italic in the UI, tone colours only for status words and inline field errors, mono only for code, tabular numerals in tables, KPIs and Credit, sentence case with no ALL CAPS, a label is one line with an ellipsis. The marketing site has its own roles, the site group (see "The site group"). Open (not yet enforced in Grammar or lint): the rest of the 600 / 700 weights in components, the body clamp to two lines with "Xem thêm". The app-side ban on raw font utilities is `starci-grammar/no-raw-type-size` (see "The type roles").
 - **FONT-8 One line, one size.** Words that stand side by side on one line share one size step: 14 (`md`, and `sm`, which is
   the same step), 12 (`xs`) or a display size (`figure`). A chip or `Badge` beside the words is below the ramp and exempt.
   Lint: `starci-grammar/same-line-size` (no mixed `Text` steps among the direct children of one `Cluster`; `sm` next to `md`
@@ -254,14 +250,14 @@ weights):
 - **Weight refines a rank, never creates one**; structure must hold with weight and colour removed.
 - Body copy is never shrunk to fit a container; the layout is repaired instead.
 
-### The type roles (0.54.0)
+### The type roles
 
-On 2026-11-21 the owner approved the type scale below as final: "ok chốt vậy đi". There are ten roles, and each one has a size,
+The type scale below is final. There are ten roles, and each one has a size,
 a line height and a weight. Weights are 400 and 500 only. The Grammar keeps each role in `ramps.css` as
 `--grammar-type-<role>-size|line|weight`, with dots as dashes. `<Text role="…">` draws a role (the role names are a typed
 union, `TextRole`), and an element of the app's own wears the public class `starci-type-<role>`, for example
 `starci-type-label-item` or `starci-type-title-page`. An app therefore migrates by swapping a raw size utility for the class,
-with no change to its JSX structure. `Text size` keeps working, but it is deprecated in favour of `role`.
+with no change to its JSX structure. Size text with `role`, not `Text size`.
 
 | Role | Size | Line height | Weight | Colour | Grammar parts that draw it |
 | --- | --- | --- | --- | --- | --- |
@@ -287,14 +283,13 @@ as `text-[13px]`), a `fontSize` and a CSS `font-size` in a string. It is a warni
 (a Grammar family minor). App stylesheets already refuse a `font-size` that is not a token (`starci/token-only`), and they
 refuse the Grammar's private type tokens (`starci/no-grammar-private-token`). Measure: `check:type`, and the laws
 `DNA-COMMON-SECTION-TITLE-SIZE`, `DNA-COMMON-TYPE-ROW-TITLE`, `DNA-COMMON-TYPE-FIELD-LABEL` and `DNA-COMMON-TYPE-STAT`.
-Where the older rows above disagree with this table (FONT-7, FONT-7a, FONT-7b and FONT-9 on row titles, section titles, table
+Where the rows above disagree with this table (FONT-7, FONT-7a, FONT-7b and FONT-9 on row titles, section titles, table
 headers and figures), this table wins.
 
-### The site group (0.55.0)
+### The site group
 
-On 2026-11-21 the owner decided to add a display group to the type roles: "3. THÊM NHÓM". It is for the public marketing site
-only, never the console. The coordinator's recommendations for its numbers then stood on the owner's word "cook". The values
-were measured on the NIVO site (`D:/starci-lanes/_display-roles/measure.md`) and held to the owner's ranges: a hero of about 40
+The display group is for the public marketing site
+only, never the console. Its values are held to these ranges: a hero of about 40
 to 48, a section heading of about 28 to 32, and a lead of about 18. Weights stay 400 and 500, and every line height is at least
 1.33 times its size for Vietnamese diacritics.
 
@@ -311,9 +306,7 @@ from 48rem and 64rem. The app writes `<Text role="display.hero">` or the class `
 `starci-grammar/site-type-role` (`FE_SITE_TYPE_ROLE`) refuses the group outside the site. No hfs slot marks the public site yet:
 the proposed slot is `fe.site`, and until it exists a file is the site when it is a `Site…` or `Marketing…` owner of
 `fe.components` or `fe.feature`, a route under the `(site)` or `(marketing)` group, or a `site…` capability of `fe.modules`.
-The codemod `v0550` (`starci app codemod --from 0.54.0 --to 0.55.0`) moves the site's raw sizes onto the group, and the other raw
-sizes of the site onto the ten roles by pixel size. It leaves a product drawing raw (a component folder that uses a size under
-12px), and it marks a real ambiguity with `TODO(type-role)`. Measure: `check:type`.
+Measure: `check:type`.
 
 Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](proof/thresholds.yaml)):
 
@@ -382,7 +375,7 @@ the background alike; the app never passes a field variant (the prop types have 
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
 | BOUNDARY-6 | a card | every card, on every ground (the page, a canvas pane, an overlay), is white at the card radius with a 1px `border` edge and no shadow; a whole-action card fills `surface-secondary` on hover and `default` on press. One depth: a surface never stands in a surface, so no edge is doubled. The overlay (a `Dialog`, `Drawer`, `Popover`) is the one layer with a shadow (`--overlay-shadow`). `DNA-CORE-EDGE-TOP` |
-| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look: plain rows on the surface, divided by hairlines (n-1), the rows indented under the section title (list body only, 0.48.0), each a band with px-4 and p-4 where it touches the list's edge (the first row's top, the last row's bottom) or p-3 where it touches a divider, the divider and the hover fill running from the title's edge to the list's end (so longer than the text), no border around the list, no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself (`layout="settings"` keeps the rows flush with the title, with a control at the end). A row of a list or a table hovers `surface-secondary` (the original hover, never a scale or a transform); a selected row is `default` grey with a 2px accent bar on its start edge, as the sidebar's current item. A list is never a card, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface`; `DNA-COMMON-LIST-ONE-LOOK` |
+| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look: plain rows on the surface, divided by hairlines (n-1), the rows indented under the section title (list body only), each a band with px-4 and p-4 where it touches the list's edge (the first row's top, the last row's bottom) or p-3 where it touches a divider, the divider and the hover fill running from the title's edge to the list's end (so longer than the text), no border around the list, no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself (`layout="settings"` keeps the rows flush with the title, with a control at the end). A row of a list or a table hovers `surface-secondary` (the original hover, never a scale or a transform); a selected row is `default` grey with a 2px accent bar on its start edge, as the sidebar's current item. A list is never a card, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface`; `DNA-COMMON-LIST-ONE-LOOK` |
 
 Elevation is the family's (contract: the card's edge).
 

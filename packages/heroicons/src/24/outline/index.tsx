@@ -160,33 +160,3 @@ export const BrainIcon = outlineIcon("BrainIcon", (
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.685 8.5A2.625 2.625 0 0 0 8.25 10.5m11.065-2A2.625 2.625 0 0 1 15.75 10.5M4.5 13.4c.6.55 1.4.85 2.25.85m12.75-.85c-.6.55-1.4.85-2.25.85M9 15.75a2.25 2.25 0 0 0-2.25 2.25m8.25-2.25A2.25 2.25 0 0 1 17.25 18" />
     </>
 ))
-
-/** @deprecated use InsetHomeIcon; removed in the next minor. */
-export const CourseOverviewIcon = InsetHomeIcon
-
-/** @deprecated use OpenBookLinesIcon; removed in the next minor. */
-export const CourseContentIcon = OpenBookLinesIcon
-
-/** @deprecated use PodiumIcon; removed in the next minor. */
-export const CourseLeaderboardIcon = PodiumIcon
-
-/** @deprecated use QuestionAnswerIcon; removed in the next minor. */
-export const CourseQaIcon = QuestionAnswerIcon
-
-/** @deprecated use SplitPaneIcon; removed in the next minor. */
-export const CourseRailIcon = SplitPaneIcon
-
-/** @deprecated use CodeWindowIcon; removed in the next minor. */
-export const PersonalProjectIcon = CodeWindowIcon
-
-/** @deprecated use CardStackIcon; removed in the next minor. */
-export const FlashcardsIcon = CardStackIcon
-
-/** @deprecated use MicNotesIcon; removed in the next minor. */
-export const MockInterviewIcon = MicNotesIcon
-
-/** @deprecated use FoundationBlocksIcon; removed in the next minor. */
-export const FoundationsIcon = FoundationBlocksIcon
-
-/** @deprecated use SandboxIcon; removed in the next minor. */
-export const PlaygroundIcon = SandboxIcon

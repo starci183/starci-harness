@@ -18,6 +18,7 @@ import { judge, parseExceptions, rootsReaching } from '../audit/judge.mjs';
 import type { AuditReport, Lockfile } from '../audit/judge.mjs';
 import { parityStepsOf, familyOfStep } from '../cache/parity-family.mjs';
 import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
+import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { renderTargets } from '../sync/index.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
@@ -251,7 +252,7 @@ for (const edition of ['lite'] as const) {
     const at = ci.indexOf('production dependency audit');
     assert.ok(!/continue-on-error|\|\| true/u.test(ci.slice(at, at + 200)));
     // The level and omitDev of the quality declaration are honoured.
-    assert.equal(ciWorkflowCommands(undefined, undefined, { audit: { level: 'moderate', omitDev: true } } as never)['auditCommand'], 'npx --no-install starci app audit --omit-dev --level=moderate');
+    assert.equal(ciWorkflowCommands(undefined, undefined, { ...qualityServices({}), audit: { level: 'moderate', omitDev: true } })['auditCommand'], 'npx --no-install starci app audit --omit-dev --level=moderate');
     assert.deepEqual(audit(`      - run: ${steps[0]?.run}`, edition), []);
   });
 }

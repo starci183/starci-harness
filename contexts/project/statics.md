@@ -95,8 +95,7 @@ swarm stack runs it as the `storage` service: one replica, `stop-first` updates 
 backup entry, the sealed `storage-access-key-id` and `storage-secret-access-key` as root credentials, `STATICS_BUCKET: <project>-production`. The ingress
 routes `storage.<project>` to port 9000, never the console. The api writes through `http://storage:9000` and builds links on
 `https://storage.<project>`. A deploy with changed statics ships a new image digest; the task is recreated and the entrypoint adds and overwrites,
-never deleting. This replaces an external S3 endpoint for production storage ([edition.md](edition.md) "Backing services") for a project that meets
-the condition.
+never deleting. A project that meets the condition has no external S3 endpoint for production storage ([edition.md](edition.md) "Backing services").
 
 Enforced by: R440 (`STACK_STORAGE_MISSING`, `STACK_STORAGE_IMAGE_SHAPE` over `deploy.images.storage`).
 

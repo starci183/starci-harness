@@ -2,7 +2,7 @@
 
 Law module: `section-head-action.ts`. Finding code: `FE_SECTION_HEAD_ACTION`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#SECTION-HEAD-ACTION`.
 
-A `Section` head is ONE row: the label (14, weight 500) and an optional count chip at the start, and at the end at most ONE thing: a navigation `Link variant="head"` (the label then an arrow that slides about 3px on hover), an info `IconButton`, or a neutral small text `Button` (0.37.25). A `description` is not under the label: it is a caption below the body.
+A `Section` head is ONE row: the label (14, weight 500) and an optional count chip at the start, and at the end at most ONE thing: a navigation `Link variant="head"` (the label then an arrow that slides about 3px on hover), an info `IconButton`, or a neutral small text `Button`. A `description` is not under the label: it is a caption below the body.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

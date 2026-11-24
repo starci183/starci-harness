@@ -38,16 +38,10 @@ function runtimeFindings(doc: Parsed, ci: Parsed, sealed: Parsed) {
     .map((entry: Parsed) => found('APP_SECRET_IN_CI', entry.file, `${entry.key} is selected by an app runtime declaration or deploy grant in ${entry.env}; keep it sealed and drop it from ci`));
 }
 
-/** Workflow reads are class-sensitive; legacy lists remain readable, but an absent ci block always signals migration once per name. */
+/** Workflow reads are class-sensitive; an absent ci block signals the missing declaration once per name. */
 function workflowFindings(doc: Parsed, declared: Parsed, references: Parsed) {
   const hasCi = doc.ci !== undefined;
   const allowed = new Set([...declared.map(({ kind, name }: { kind: string; name: string }) => identity(kind, name)), ...MANAGED_VARIABLES.map((name) => identity('vars', name))]);
-  if (hasCi) {
-    for (const entry of ciNamesOfServices(doc).filter(named)) {
-      const legacy = list(doc.services?.[entry.service]?.ci?.[`${entry.kind}s`]);
-      if (legacy.some((item: Parsed) => (typeof item === 'string' ? item : !item?.credential ? item?.name : null) === entry.name)) allowed.add(identity(`${entry.kind}s`, entry.name));
-    }
-  }
   const findings = [], seen = new Set();
   for (const { file, kind, name } of references) {
     if (allowed.has(identity(kind, name))) continue;

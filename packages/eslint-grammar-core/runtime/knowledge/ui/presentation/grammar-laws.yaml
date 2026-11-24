@@ -1,10 +1,10 @@
 schema: starci/knowledge-source@1
 id: ui.presentation.grammar-laws
-title: Grammar presentation laws (owner, 2026-11-09)
+title: Grammar presentation laws
 appliesTo: [ui, frontend]
 family: presentation
 purpose: |-
-  The spacing, surface, field, typography, link and button laws the owner approved on 2026-11-09. The core Grammar
+  The spacing, surface, field, typography, link and button laws. The core Grammar
   owns the values; these rules say what an app composition may not do against them.
 provenance:
   reviewedAt: 2026-11-09
@@ -24,14 +24,14 @@ rules:
           region 32). A field stack (fields 24 apart) inside a Form or a Drawer body is the Field rule's own rhythm.
   - id: LIST-ONE-LOOK
     title: A list is one thing, flat rows on the surface, never a card
-    governs: Every list of rows, on the page canvas, in a card body, a drawer, a dialog, a pane band or a rail (owner, 2026-11-17).
+    governs: Every list of rows, on the page canvas, in a card body, a drawer, a dialog, a pane band or a rail.
     cases:
       - id: case-1
         when: Rows of peers are listed (a worklist, a collection, the facts of a record as key-value rows, the replies a message card offers)
         assert: |-
           They are `Section kind="list"` of `ListRow`s: plain rows on the surface, divided by hairlines, the rows aligned with the section
           title, with no frame, fill, radius or shadow, by default and with no theme hook. A list is never a card: `SurfaceCard` has no
-          `list` kind (removed in the Grammar family 0.43.0) and `SurfaceCard kind="list"` is refused. Cards stay for real objects.
+          `list` kind and `SurfaceCard kind="list"` is refused. Cards stay for real objects.
   - id: SURFACE-IN-SURFACE
     title: A list of rows inside a surface is the Grammar list
     governs: Row lists placed inside a card body, a drawer, a dialog or a pane band.
@@ -76,8 +76,7 @@ rules:
       - id: case-3
         when: Any rendered text (JSX text, a literal child, a text attribute) would show a direction
         assert: |-
-          No typed arrow character (U+2190-U+21FF, U+2794-U+27BF, U+27F0-U+27FF, `->`) appears in it (owner 2026-11-22: "Không dùng ký tự
-          mũi tên gõ tay; hướng đi là icon của Grammar"). Direction is `Button endArrow`, `Link`'s own arrow or the Grammar arrow or chevron
+          No typed arrow character (U+2190-U+21FF, U+2794-U+27BF, U+27F0-U+27FF, `->`) appears in it. Direction is `Button endArrow`, `Link`'s own arrow or the Grammar arrow or chevron
           icon (lint `no-typed-arrow`).
   - id: LAYOUT-TWO-AXIS
     title: A report page stacks its cards in one direction
@@ -122,7 +121,7 @@ rules:
         when: A suggestion, quick reply or empty-state shortcut is drawn
         assert: |-
           It is a `Cluster gap="inline"` (with `label`) of neutral `Button size="sm"`, which every Button size draws as a
-          pill; a Link row, ChoiceChips, TagGroup, Badge or Chip is never a suggestion.
+          pill; a Link row, TagGroup, Badge or Chip is never a suggestion.
   - id: TABLE-CELL-TYPE
     title: Table and row cells take the row type sizes
     governs: Text inside a DataTable cell or a ListRow.
@@ -215,12 +214,12 @@ rules:
           never a second `title` / `label`; groups stand 24px apart. A Section or SurfaceCard with `sublabel` and a Label together is refused by the types.
   - id: AVATAR-ROW-GROUP
     title: Avatars in a row or from a list are one AvatarGroup
-    governs: Grammar `Avatar` elements that stand side by side or are returned from a `.map()` (contract DNA-COMMON-AVATAR-ROW-GROUP; owner, 2026-11-22).
+    governs: Grammar `Avatar` elements that stand side by side or are returned from a `.map()` (contract DNA-COMMON-AVATAR-ROW-GROUP).
     cases:
       - id: case-1
         when: Two or more `Avatar` elements are siblings, or an `Avatar` is returned from a `.map()`, with no `AvatarGroup` around them
         assert: |-
-          They are refused. The owner (2026-11-22): "với providers phải render AvatarGroup với nhiều hơn 5 thì +2 đồ chứ?? .claude sao k ép tụi này render sáng tạo nhỉ".
+          They are refused.
           A row of people, providers or channels is `<AvatarGroup items max>`: it overlaps the items, shows `max - 1` and a "+N" tile, rings a broken account
           (`tone: "danger"`) and lists every name on hover (`memberNames`); a person is `name` and `seed`, a provider or channel is a `mark`.
   - id: SECTION-HEAD-ACTION
@@ -231,7 +230,7 @@ rules:
         when: A Section head carries an action
         assert: |-
           The head is ONE row: the label (14, 500) and an optional count chip (12) at the start, at most ONE thing at the end, a navigation
-          Link variant="head" (the label then an arrow that slides about 3px on hover), an info IconButton, or (0.37.25) a neutral small text Button
+          Link variant="head" (the label then an arrow that slides about 3px on hover), an info IconButton, or a neutral small text Button
           (border, size sm, no icon: "Add provider"). A primary or commit Button, another size or an icon Button is refused, and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
   - id: TAB-COUNT-CHIP
     title: A tab count is a 12px chip, grey unless it is work waiting for the owner
@@ -283,7 +282,7 @@ rules:
           (the sign-in form with no page around it) and a `kind="tile"` card are not judged.
   - id: DATA-TABLE-SURFACE
     title: A table has one flat look
-    governs: The `surface` prop of a DataTable (removed in the Grammar family 0.45.0).
+    governs: The `surface` prop of a DataTable.
     cases:
       - id: case-1
         when: A DataTable is written with a `surface` attribute
@@ -296,7 +295,7 @@ rules:
       - id: case-1
         when: An app sets the size of text it draws
         assert: |-
-          The size is a type role (owner 2026-11-21): `<Text role>` or the public class `starci-type-<role>` (figure, title.page,
+          The size is a type role: `<Text role>` or the public class `starci-type-<role>` (figure, title.page,
           title.section, label.item, body, label.field, label.group, caption, badge, code; dots as dashes in the class). A Tailwind
           text-size utility, a `fontSize` or a CSS `font-size` in app source is reported (`starci-grammar/no-raw-type-size`, a
           counting rule at warn until both apps migrate, then blocking).
@@ -307,7 +306,7 @@ rules:
       - id: case-1
         when: A file draws display.hero, display.section, display.figure, lead or title.card
         assert: |-
-          The file is the public marketing site (owner 2026-11-21, "3. THÊM NHÓM"): a `Site…` or `Marketing…` owner of fe.components or
+          The file is the public marketing site: a `Site…` or `Marketing…` owner of fe.components or
           fe.feature, a route under the `(site)` or `(marketing)` group, a `site…` capability of fe.modules, or the proposed fe.site slot.
           In any other file `<Text role>` or the class `starci-type-<role>` of the group is refused (`starci-grammar/site-type-role`).
   - id: NO-RAW-SCROLL
@@ -327,7 +326,7 @@ rules:
       - id: case-1
         when: An app separates two things it places, or pads content inside a box
         assert: |-
-          The distance is a role the Grammar resolves (owner 2026-11-23; contexts/ui/scale.md "The spacing roles"): identity 4, inline 8,
+          The distance is a role the Grammar resolves (contexts/ui/scale.md "The spacing roles"): identity 4, inline 8,
           row 12, section 24 and region 32 on a Stack, Cluster or Grid `gap`, and the inset of the Grammar box that holds the content.
           A spacing utility in a class string is `starci-fe/no-spacing-utility` (R350); a gap, padding or margin key in a JSX `style`
           is reported (`starci-grammar/no-raw-spacing-style`, a counting rule at warn until both apps migrate, then blocking).

@@ -154,9 +154,9 @@ describe("parse: no raw HTML, safe links, GFM", () => {
     })
 })
 
-describe("parse: a document in the legacy directive format", () => {
-    it("reads the muted lines, the accordion of four steps with its code/preview tab, the figure and its caption line", () => {
-        const tree = parse(fixture("legacy-format.md"), { legacyCaption: /^Figure \d+:/ })
+describe("parse: a document in the directive format", () => {
+    it("reads the muted lines, the accordion of four steps with its code/preview tab, the figure and its caption", () => {
+        const tree = parse(fixture("directive-format.md"))
         assert.deepEqual(tree.issues, [])
         const accordion = tree.children.find((block) => block.type === "accordion")
         assert.ok(accordion?.type === "accordion")
@@ -175,18 +175,5 @@ describe("compare segments", () => {
             received: [{ text: '{"status":', changed: false }, { text: "409", changed: true }, { text: "}", changed: false }],
         })
         assert.deepEqual(compareSegments("same", "same"), { expected: [{ text: "same", changed: false }], received: [{ text: "same", changed: false }] })
-    })
-})
-
-describe("parse: legacy figure captions", () => {
-    it("a mermaid fence with no caption takes the legacy caption paragraph under it", () => {
-        const legacyCaption = /^Figure \d+:/
-        assert.deepEqual(types(parse("```mermaid\nA\n```\n\nFigure 1: x").children), ["mermaid", "paragraph"], "no option, no caption taken")
-        const tree = parse("```mermaid\nflowchart LR\nA-->B\n```\n\nFigure 1: Client sends a `raw` body.\n\nNext.", { legacyCaption })
-        assert.deepEqual(types(tree.children), ["mermaid", "paragraph"])
-        const [figure] = tree.children
-        assert.ok(figure?.type === "mermaid" && figure.caption === "Figure 1: Client sends a raw body.")
-        const plain = parse("```mermaid\nA\n```\n\nNot a caption.", { legacyCaption })
-        assert.deepEqual(types(plain.children), ["mermaid", "paragraph"])
     })
 })

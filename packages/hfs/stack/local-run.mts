@@ -259,7 +259,7 @@ export function portHolder(ctx: Pick<StackContext, 'spawn' | 'platform'>, port: 
 /**
  * What the Windows relay runs: it starts the real command detached with the log as its output, writes the child's pid into the file named by
  * `pidFile` of its spec (the STARCI_RELAY_SPEC environment variable, JSON) and exits. The child's parent is then a process that is gone, so a tree kill of the caller (closing a terminal tab, `taskkill /T` of a
- * lander) never reaches it; `detached: true` alone does not break that chain on Windows.
+ * lane gate) never reaches it; `detached: true` alone does not break that chain on Windows.
  */
 const RELAY = "const {spawn}=require('node:child_process'),fs=require('node:fs');const o=JSON.parse(process.env.STARCI_RELAY_SPEC);delete process.env.STARCI_RELAY_SPEC;" +
   "const c=spawn(o.command,o.args,{cwd:o.cwd,env:process.env,detached:true,stdio:['ignore','inherit','inherit'],windowsHide:true});" +
@@ -279,7 +279,7 @@ function relayedPid(pidFile: string, timeoutMs: number): number | string | undef
 
 /**
  * Starts a native process detached from this command, its output in the environment's log. Returns the pid. On Windows it goes through a relay
- * (see RELAY) so the process outlives the caller's whole process tree: restarting a lander or closing its terminal never takes the dev stack down.
+ * (see RELAY) so the process outlives the caller's whole process tree: restarting a lane gate or closing its terminal never takes the dev stack down.
  */
 export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): number {
   const dir = stateOf(ctx, local);

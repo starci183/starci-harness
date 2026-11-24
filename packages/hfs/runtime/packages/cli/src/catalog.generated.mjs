@@ -303,7 +303,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "back-merge": {
-          "summary": "bring main back into dev after a release train (the cli-follow commit and anything else dev lacks): a fast-forward when dev is behind, else a merge commit made in a temporary worktree, pushed to dev under the lander's dev lock; dry until --execute",
+          "summary": "bring main back into dev after a release train (the cli-follow commit and anything else dev lacks): a fast-forward when dev is behind, else a merge commit made in a temporary worktree, pushed to dev under the dev lock; dry until --execute",
           "flags": [
             {
               "name": "remote",
@@ -614,7 +614,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate (owner: \"rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn\"): dev is the FAST level of a landing on dev (a lane push, a push of dev, the batch lander and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs), db and the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED); it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate: dev is the FAST level of a landing on dev (a lane push, a push of dev and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs), db and the design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED); it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -946,65 +946,6 @@ export const CATALOG = {
             {
               "name": "args",
               "required": false,
-              "variadic": true
-            }
-          ],
-          "json": "flag"
-        }
-      }
-    },
-    "gallery": {
-      "verbs": {
-        "migrate-explain": {
-          "summary": "turn every gallery explain.md into screen.yaml (regions become sections, the options section becomes considered, shot hashes are taken from the PNGs on disk, audit: null grandfathers the screen) and delete the explain.md; a dry run unless --execute",
-          "flags": [],
-          "positional": [
-            {
-              "name": "args",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "json": "flag"
-        },
-        "shoot": {
-          "summary": "shoot the gallery under a machine-wide shoot slot (one of the host's maxHeavy heavy jobs) against the app's one running web server, the shared dev stack's: wait for --ready-url and the slot, refuse when nothing listens on --port (a lane never starts its own web or api server), run the app's capture command ({port}, {url} filled in), release the slot; a shoot whose caller died is stopped by the reaper",
-          "flags": [
-            {
-              "name": "port",
-              "type": "string",
-              "summary": "the port the shared dev stack's web server listens on ({port}; {url} is http://localhost:<port>)"
-            },
-            {
-              "name": "ready-url",
-              "type": "string",
-              "summary": "a URL that must answer 200 before the slot is taken (the api the screens read)"
-            },
-            {
-              "name": "timeout",
-              "type": "string",
-              "summary": "seconds --ready-url has to answer (default 180)"
-            },
-            {
-              "name": "lane",
-              "type": "string",
-              "summary": "the lane that holds the slot (default: STARCI_LANE, else the branch lane/<lane>)"
-            },
-            {
-              "name": "wait",
-              "type": "string",
-              "summary": "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)"
-            },
-            {
-              "name": "dir",
-              "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
-            }
-          ],
-          "positional": [
-            {
-              "name": "command",
-              "required": true,
               "variadic": true
             }
           ],
@@ -3030,7 +2971,7 @@ export const CATALOG = {
             {
               "name": "file",
               "type": "string",
-              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram, vps, slots"
+              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram, vps, slots, hotfix"
             }
           ],
           "positional": [],
@@ -3522,49 +3463,8 @@ export const CATALOG = {
     },
     "lane": {
       "verbs": {
-        "ready": {
-          "summary": "register this lane's pushed, locally gated sha with the batch lander of dev; then monitor <lanes>/_land-status/<lane>.json",
-          "flags": [
-            {
-              "name": "branch",
-              "type": "string",
-              "summary": "the pushed branch (default: the current branch)"
-            },
-            {
-              "name": "dir",
-              "type": "string",
-              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
-            }
-          ],
-          "positional": [
-            {
-              "name": "lane",
-              "required": false,
-              "variadic": false
-            }
-          ],
-          "json": "flag"
-        },
-        "withdraw": {
-          "summary": "take a lane out of the batch lander's ready set and out of a batch under way (that batch aborts and the others are gated again; a withdrawn lane never lands)",
-          "flags": [
-            {
-              "name": "dir",
-              "type": "string",
-              "summary": "the lanes folder (default: STARCI_LANES_DIR)"
-            }
-          ],
-          "positional": [
-            {
-              "name": "lane",
-              "required": true,
-              "variadic": false
-            }
-          ],
-          "json": "flag"
-        },
         "status": {
-          "summary": "print the batch lander's ready set, who holds the lander and the dev lock, and each lane's state (queued, landed, conflict, rejected)",
+          "summary": "print who holds the dev lock and each lane's landing status (the dev commit that carries it and its dev CI verdict)",
           "flags": [
             {
               "name": "dir",
@@ -3581,8 +3481,8 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
-        "land": {
-          "summary": "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod --level dev (the fast level; a lane registered again with a new sha cancels the running gate and re-forms the batch, its status says superseded by <sha>), squash the batch into ONE commit (its message lists the lanes and their shas), push dev; red drops the lanes its findings name and re-gates once, never bisects",
+        "ci-watch": {
+          "summary": "follow the GitHub CI runs of a dev commit a landing pushed (gh run list --commit) until they settle or ciWatch.minutes (45) passes, then write the verdict (green, red, superseded, pending, none, unreadable) into <lanes>/_land-status/_dev-ci/<sha>.json and the ci of each landed lane's status; a red one is printed loudly and sent to ciWatch.notifySession of the local settings (claude -p --resume) when set. Never reverts, blocks or pushes dev. lane gate --land starts it detached after each landing",
           "flags": [
             {
               "name": "dir",
@@ -3590,36 +3490,27 @@ export const CATALOG = {
               "summary": "the lanes folder (default: STARCI_LANES_DIR)"
             },
             {
-              "name": "worktree",
+              "name": "lanes",
               "type": "string",
-              "summary": "the lander's own worktree (default: <lanes>/_batch-lander)"
+              "summary": "the lanes the commit landed, comma-separated (their status files get the verdict)"
             },
             {
-              "name": "migrations",
+              "name": "minutes",
               "type": "string",
-              "summary": "the folder whose added files a landed lane is told to apply (default: db/migrations/)"
-            },
-            {
-              "name": "once",
-              "type": "boolean",
-              "summary": "run one batch and stop"
-            },
-            {
-              "name": "dry-run",
-              "type": "boolean",
-              "summary": "merge the ready lanes and report conflicts; no gate, no push, no status written"
-            },
-            {
-              "name": "profile",
-              "type": "string",
-              "summary": "app or harness (default: harness when the repository is the harness checkout, else app): the harness gates with release gate --level dev, pushes with git push origin HEAD:dev and, with devSync.publishLocal, publishes its dev line after each landed batch"
+              "summary": "the time limit in minutes (default ciWatch.minutes)"
             }
           ],
-          "positional": [],
+          "positional": [
+            {
+              "name": "sha",
+              "required": false,
+              "variadic": false
+            }
+          ],
           "json": "flag"
         },
         "gate": {
-          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --ready register with the batch lander; a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot, writes superseded by <sha> into its status)",
+          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
           "flags": [
             {
               "name": "ref",
@@ -3642,9 +3533,14 @@ export const CATALOG = {
               "summary": "instead of the check, app push origin HEAD:<branch> under the gate slot: it runs the check, commits the cache records and pushes once"
             },
             {
-              "name": "ready",
+              "name": "land",
               "type": "boolean",
-              "summary": "after a push, register the pushed sha with the batch lander (lane ready)"
+              "summary": "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (codegen and typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync"
+            },
+            {
+              "name": "keep",
+              "type": "boolean",
+              "summary": "with --land: keep the lane's worktree after the landing (default: once dev is pushed it is removed to save disk, the branch kept, local and remote; a worktree in use, with uncommitted non-cache work, or still busy after retries is kept and the one line says why)"
             },
             {
               "name": "wait",
@@ -3762,6 +3658,109 @@ export const CATALOG = {
               "name": "execute",
               "type": "boolean",
               "summary": "move, install and restart for real (default: a dry run that fetches and prints the plan)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
+        "sync-runner": {
+          "summary": "the debounced dev sync of an app's dev checkout: --request marks the checkout as wanting a sync and starts its one runner detached (lane gate --land does this after a landing); the runner waits devSync.debounceSeconds (120 s) with no newer landing, stops the checkout's stray dev servers, syncs once to the newest origin/dev (dev sync --execute: the new tree built first, the api and web swapped last) and writes its status, a failure with its reason; --status prints it",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the app's dev checkout (default: the current one)"
+            },
+            {
+              "name": "request",
+              "type": "boolean",
+              "summary": "mark the checkout as wanting a sync and start its runner detached when none runs"
+            },
+            {
+              "name": "status",
+              "type": "boolean",
+              "summary": "print the runner's last status and the pending mark; changes nothing"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        }
+      }
+    },
+    "hotfix": {
+      "verbs": {
+        "land": {
+          "summary": "the coordinator's hotfix (contexts/authority/lanes.md \"Hotfix\"): land the uncommitted edit of the app's dev checkout (edited in place, from the coordinator chat) on dev and restart dev at once; it judges only the size (at most ops/hotfix.yaml maxFiles files and maxLines changed lines, else \"quá lớn cho hotfix (N file / M dòng), mở lane\") and runs NO check (no typecheck, hfs, secrets or spec). Under the dev lock it refuses while a dev sync of the checkout runs, makes ONE commit with a Hotfix: trailer, rebases it onto origin/dev and pushes dev (never forced; the pre-push gate is skipped for this one push by the pass hotfix writes, the only path that skips it), then restarts the stack through dev sync (light: the changed api/web only; the full steps when a lockfile, migration, schema or workspace package changed, said in the output), waits for --health-url to answer 200, and starts the CI watch, which judges the commit after the fact. --only names the hotfix's paths (a new file lands only when named; tracked changes outside the list refuse HOTFIX_FOREIGN). In the harness (--profile harness, --only required) nothing is a dev server: after the push it rebuilds the CLI copy (_cli-<sha9>, then _cli-current repointed), runs deps publish-dev and syncs every app of devSync.repos at once. A coordinator verb; a subagent opens a lane. --dry-run prints the size and the restart plan",
+          "flags": [
+            {
+              "name": "message",
+              "type": "string",
+              "summary": "what the hotfix fixes: the subject of its commit",
+              "required": true
+            },
+            {
+              "name": "health-url",
+              "type": "string",
+              "summary": "after the restart, wait until this url answers 200 (ops/hotfix.yaml healthWaitSeconds); without it the restart's own health wait stands"
+            },
+            {
+              "name": "dry-run",
+              "type": "boolean",
+              "summary": "print the size, the limits and the restart plan; take no lock, commit nothing"
+            },
+            {
+              "name": "only",
+              "type": "list",
+              "summary": "a path of the hotfix (repeat it; a folder ends with a slash). A new file is landed only when named here, tracked changes outside the list stop the hotfix (HOTFIX_FOREIGN), and the harness checkout, which holds other work, requires it"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder holding the dev lock (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "summary": "app or harness (default: harness in the harness checkout, else app)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
+        "status": {
+          "summary": "where a hotfix stands in the dev checkout: the files and changed lines of its uncommitted edit against the limits of ops/hotfix.yaml, whether its restart would be light or the full sync steps, how far the checkout is behind origin/dev, who holds the dev lock and whether a dev sync of the checkout is running; changes nothing",
+          "flags": [
+            {
+              "name": "only",
+              "type": "list",
+              "summary": "a path of the hotfix (repeat it; a folder ends with a slash). A new file is landed only when named here, tracked changes outside the list stop the hotfix (HOTFIX_FOREIGN), and the harness checkout, which holds other work, requires it"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder holding the dev lock (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)"
+            },
+            {
+              "name": "profile",
+              "type": "string",
+              "summary": "app or harness (default: harness in the harness checkout, else app)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
+        "abort": {
+          "summary": "abandon the uncommitted hotfix of the dev checkout: restore every touched tracked file from HEAD and delete the files the edit added (the check-cache records are left); dry until --execute, and it touches nothing committed",
+          "flags": [
+            {
+              "name": "only",
+              "type": "list",
+              "summary": "a path of the hotfix (repeat it; a folder ends with a slash). A new file is landed only when named here, tracked changes outside the list stop the hotfix (HOTFIX_FOREIGN), and the harness checkout, which holds other work, requires it"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "restore and delete (default: a dry run that lists them)"
             }
           ],
           "positional": [],
@@ -3885,6 +3884,53 @@ export const CATALOG = {
               "required": true,
               "variadic": false
             },
+            {
+              "name": "command",
+              "required": true,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        }
+      }
+    },
+    "gallery": {
+      "verbs": {
+        "shoot": {
+          "summary": "shoot the gallery under a machine-wide shoot slot (one of the host's maxHeavy heavy jobs) against the app's one running web server, the shared dev stack's: wait for --ready-url and the slot, refuse when nothing listens on --port (a lane never starts its own web or api server), run the app's capture command ({port}, {url} filled in), release the slot; a shoot whose caller died is stopped by the reaper",
+          "flags": [
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "the port the shared dev stack's web server listens on ({port}; {url} is http://localhost:<port>)"
+            },
+            {
+              "name": "ready-url",
+              "type": "string",
+              "summary": "a URL that must answer 200 before the slot is taken (the api the screens read)"
+            },
+            {
+              "name": "timeout",
+              "type": "string",
+              "summary": "seconds --ready-url has to answer (default 180)"
+            },
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds the slot (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
             {
               "name": "command",
               "required": true,

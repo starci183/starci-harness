@@ -16,7 +16,7 @@ verify their identity provider's tokens (`./oidc`). Every provider and issuer li
 
 An app reaches the package only through its glue: `integrations/passport` (lite) and `integrations/keycloak` (full) in the back end,
 `modules/auth/client.ts` in the front end (R328, `BE_AUTH_PASSPORT_OWNER`). The lint refuses `passport*`, `jose`, `bcryptjs`, `@nestjs/jwt`
-and every other JWT library in an app, and the retired `@starci/auth-oidc` everywhere.
+and every other JWT library in an app.
 
 The lite server throws one error class, `AuthError`; the OIDC side throws `OidcError`. Both are `DomainError`s of `@starci/common` whose
 `code` is a wire code, with the `kind` they travel as.
@@ -120,7 +120,7 @@ Every provider request goes through the `OidcHttp` port, so the app's bounded HT
 
 `verify` answers `{ kind: "ok", value: OidcPrincipal }` or `{ kind: "refused", code: "PASSPORT_ACCESS_TOKEN_INVALID", detail: { reason } }` (the code the lite verifier refuses with; the reason is for the log). A provider that cannot be asked and has nothing cached throws an `OidcError` of kind `unavailable`, which the app maps to a 503, never a 401. Endpoints a discovery document advertises are trusted only on the issuer's origin, over https, without credentials; `http:` is admitted only with `allowInsecureHttp` (a developer machine or a test double).
 
-`OidcBroker` (token `OIDC_BROKER`) is the one facade an app that keeps Keycloak behind its back end binds its identity port to: `passwordGrant`, `refresh`, `revoke`, `socialAuthorizationUrl` (`kc_idp_hint`), `exchangeSocialCode`, `createUser`, `findUserByEmail`, `resetPassword`, `logoutAll` (the realm admin API as the client's service account). The injection tokens keep their 0.2.0 names (`Symbol.for("@starci/auth-oidc/...")`), so an app's providers resolve them unchanged.
+`OidcBroker` (token `OIDC_BROKER`) is the one facade an app that keeps Keycloak behind its back end binds its identity port to: `passwordGrant`, `refresh`, `revoke`, `socialAuthorizationUrl` (`kc_idp_hint`), `exchangeSocialCode`, `createUser`, `findUserByEmail`, `resetPassword`, `logoutAll` (the realm admin API as the client's service account).
 
 ### Issuer presets
 
@@ -146,12 +146,6 @@ export const auth = createOidcClient({ issuer: () => issuer(), clientId: "web", 
 ```
 
 The OIDC client's `signIn()` redirects to the provider; the callback page calls `completeSignIn(window.location.href)`; `restore()` signs in again without a page after a reload; `accessToken()`, `renew()`, `headers()`, `subscribe`, `getSnapshot`, `watch` and `signOut()` have the shape of the lite session surface.
-
-## Migrating from `@starci/auth-oidc`
-
-`@starci/auth-oidc` 0.3.0 is a deprecated re-export of this package. `starci app codemod auth-merge` (a dry run; `--execute` writes) rewrites
-`@starci/auth-oidc` and `@starci/auth-oidc/server` to `@starci/auth/oidc`, `/client` to `@starci/auth/client/oidc`, `/contracts` to
-`@starci/auth/oidc`, `/testing` to `@starci/auth/testing`, and the dependency in every package.json to `@starci/auth`.
 
 ## Tests
 
