@@ -188,14 +188,17 @@ export const noPrimaryTabsMisuse: Rule.RuleModule = defineRule({
 export const CHOICE_CHIPS_REPLACEMENT =
   "`Tabs` (secondary, `kind=\"views\"` or `kind=\"filter\"`, the count in the tab's `count`) to switch views or filter a list, `Tabs appearance=\"primary\"` to switch a period or mode of the same data, a dropdown `Select` to choose one value in a form or a toolbar, a `CheckboxGroup` or a multi-selection list for several values"
 
-/** The names the removed component went by. */
-const CHOICE_CHIPS_NAMES = new Set(["ChoiceChips", "ChoiceChipsProps", "ChoiceChip"])
+/** The names the removed components went by (ChoiceChips, then ChoiceButtons: owner 2026-11-24, "xóa lun"). */
+const CHOICE_CHIPS_NAMES = new Set(["ChoiceChips", "ChoiceChipsProps", "ChoiceChip", "ChoiceButtons", "ChoiceButtonsProps", "ChoiceButton"])
 
-/** No ChoiceChips: an import that names it, or a namespace member written in JSX. */
+/** The removed components, as written through a namespace (`G.ChoiceChips`). */
+const CHOICE_COMPONENTS = new Set(["ChoiceChips", "ChoiceButtons"])
+
+/** No ChoiceChips and no ChoiceButtons: an import that names one, or a namespace member written in JSX. */
 export const noChoiceChips: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R380: ChoiceChips is removed; use Tabs to switch a view, filter or mode, and a Select to choose a value." },
+    docs: { description: "R380: ChoiceChips and ChoiceButtons are removed; use Tabs to switch a view, filter or mode, and a Select to choose a value." },
     schema: [],
     messages: {
       removed: "`{{name}}` is removed from the Grammar (owner 2026-11-24: in a form, choose with a dropdown). Use {{replacement}}.",
@@ -209,8 +212,8 @@ export const noChoiceChips: Rule.RuleModule = defineRule({
         context.report({ node: specifier, messageId: "removed", data: { name: imported, replacement: CHOICE_CHIPS_REPLACEMENT } })
       },
       JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
-        if (opening.name.type !== "JSXMemberExpression" || opening.name.property.name !== "ChoiceChips") return
-        context.report({ node: opening, messageId: "removed", data: { name: "ChoiceChips", replacement: CHOICE_CHIPS_REPLACEMENT } })
+        if (opening.name.type !== "JSXMemberExpression" || !CHOICE_COMPONENTS.has(opening.name.property.name)) return
+        context.report({ node: opening, messageId: "removed", data: { name: opening.name.property.name, replacement: CHOICE_CHIPS_REPLACEMENT } })
       },
     }
   },

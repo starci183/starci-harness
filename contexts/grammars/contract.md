@@ -172,8 +172,8 @@ owns the visible panel, including when every item is temporarily disabled.
 ### SegmentedControl
 
 The value role is one value inside a form or a toolbar (audience, density, a tool), not navigation, and its renderer is a
-dropdown `Select` (a `RadioGroup` when each option needs a sentence; `ChoiceButtons` for options with a button's weight).
-`ChoiceChips` is removed (owner 2026-11-24). The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch.
+dropdown `Select`, whatever the weight of the options (a plan level, an amount); a `RadioGroup` when each option needs a sentence.
+`ChoiceChips` and `ChoiceButtons` are removed (owner 2026-11-24). The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch.
 
 ### Removable filter chips
 
@@ -207,7 +207,7 @@ vanishes into its surface; the app omits `variant`. A field has one step, `md`, 
 mobile text stays at the size that prevents focus zoom.
 
 The field rule spaces every control alike, whatever it is (Input, Select, NumberField, Textarea, ComboBox, the date and time
-fields, Search, CopyField, Checkbox and Radio groups, ChoiceButtons, Switch, Slider): the label (md 14 / 500) stands 8 above the
+fields, Search, CopyField, Checkbox and Radio groups, Switch, Slider): the label (md 14 / 500) stands 8 above the
 control, the help, error or counter 4 below it, and fields stand 24 apart, set by the `Form`, the form `Grid` and the
 `Fieldset`, never by a field; a `Fieldset` legend stands 8 above its fields and its actions 24 below them
 ([ui/components/field](../ui/components/field.md) FIELD-1..4). A hand-made label beside a control is refused by lint

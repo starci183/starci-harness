@@ -11,7 +11,7 @@ import type { Node } from "./lib/types.ts"
  *
  * WHAT IT READS. In one element's rendered children (looked through fragments, `cond && <x/>`, `cond ? <x/> : null` and
  * `.map`), a hand-made label standing as the sibling IMMEDIATELY BEFORE a Grammar form control (Input, Select, Textarea,
- * NumberField, ComboBox, Autocomplete, CheckboxGroup, RadioGroup, ChoiceButtons, Switch, DatePicker, DateField,
+ * NumberField, ComboBox, Autocomplete, CheckboxGroup, RadioGroup, Switch, DatePicker, DateField,
  * TimeField, SearchField, Slider, CopyField) that carries no `label` prop (a control that has only an `aria-label`
  * included). A hand-made label is a Grammar `Text` or a `Label`, or a plain `<label>` or `<span>` whose children are
  * literal text.

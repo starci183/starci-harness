@@ -881,7 +881,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   would shadow the app's value); every rule reads it with its fallback, which `npm run check:hooks` holds. They cover a card's edge
   on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
   cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
-  the toggle plates (ChoiceButtons, RadioGroup rows, the Select pill), the destructive entry button's outline, the
+  the toggle plates (RadioGroup rows, the Select pill), the destructive entry button's outline, the
   chat faces, the Quote, and the Quote.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.

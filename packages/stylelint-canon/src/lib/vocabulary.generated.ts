@@ -187,7 +187,6 @@ export const THEME_HOOKS: readonly string[] = [
   "--starci-core-plate",
   "--starci-core-plate-border",
   "--starci-core-plate-selected",
-  "--starci-core-plate-selected-border",
   "--starci-core-plate-selected-foreground",
   "--starci-core-quote",
   "--starci-core-quote-edge",

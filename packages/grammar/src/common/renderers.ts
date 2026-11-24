@@ -57,7 +57,6 @@ export { ProportionBar, type ProportionBarPart, type ProportionBarProps, type Pr
 export { Legend, type LegendItem, type LegendProps, type LegendTone } from "../core/composite/Legend/index.js"
 export { IntervalChart, type IntervalChartProps, type IntervalChartRow, type IntervalChartTone } from "../core/composite/IntervalChart/index.js"
 export { FunnelChart, type FunnelChartProps, type FunnelChartStage, type FunnelChartTone } from "../core/composite/FunnelChart/index.js"
-export { ChoiceButtons, type ChoiceButton, type ChoiceButtonsProps } from "../core/composite/ChoiceButtons/index.js"
 export { Board, type BoardColumn, type BoardMove, type BoardMoveLabels, type BoardProps } from "../core/frame/Board/index.js"
 export { PageIntro, type PageIntroLine, type PageIntroProps } from "../core/composite/PageIntro/index.js"
 export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"

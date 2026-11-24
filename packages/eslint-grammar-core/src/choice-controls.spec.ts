@@ -71,14 +71,17 @@ test("R380: a grouped choice control is red and names its replacement", () => {
   })
 })
 
-test("R380: ChoiceChips is removed and its import is red wherever it is written", () => {
+test("R380: ChoiceChips and ChoiceButtons are removed and their import is red wherever it is written", () => {
   const removed = (name: string) => [{ messageId: "removed" as const, data: { name, replacement: CHOICE_CHIPS_REPLACEMENT } }]
   slotTester().run("no-choice-chips", noChoiceChips, {
     valid: [
       { filename: BLOCK, code: "import { Select, Tabs } from \"@starci/grammar/common\"\nexport const A = () => <Select label=\"Time\" options={slots} />" },
-      { filename: BLOCK, code: "import { ChoiceButtons } from \"@starci/grammar/common\"\nexport const A = () => <ChoiceButtons label=\"Level\" options={o} empty={null} />" },
+      { filename: BLOCK, code: "import * as G from \"@starci/grammar/common\"\nexport const A = () => <G.Select label=\"Level\" options={o} />" },
     ],
     invalid: [
+      { filename: BLOCK, code: "import { ChoiceButtons } from \"@starci/grammar/common\"\nexport const A = () => <ChoiceButtons label=\"Level\" options={o} empty={null} />", errors: removed("ChoiceButtons") },
+      { filename: SCRIPT, code: "import { ChoiceButtons as Levels, type ChoiceButton } from \"@starci/grammar/core\"\nexport const x: ChoiceButton[] = [Levels]", errors: [...removed("ChoiceButtons"), ...removed("ChoiceButton")] },
+      { filename: BLOCK, code: "import * as G from \"@starci/grammar/common\"\nexport const A = () => <G.ChoiceButtons label=\"Level\" options={o} empty={null} />", errors: removed("ChoiceButtons") },
       { filename: BLOCK, code: "import { ChoiceChips } from \"@starci/grammar/common\"\nexport const A = () => <ChoiceChips label=\"Time\" options={slots} empty={null} />", errors: removed("ChoiceChips") },
       { filename: SCRIPT, code: "import { ChoiceChips as Chips, type ChoiceChip } from \"@starci/grammar/core\"\nexport const x: ChoiceChip[] = [Chips]", errors: [...removed("ChoiceChips"), ...removed("ChoiceChip")] },
       { filename: BLOCK, code: "import * as G from \"@starci/grammar/common\"\nexport const A = () => <G.ChoiceChips label=\"Time\" options={slots} empty={null} />", errors: removed("ChoiceChips") },

@@ -135,6 +135,6 @@ export const elementNameOf = (node: Node): string | null => (node.type === "JSXE
 
 /** The Grammar form controls a field label belongs to. */
 export const FORM_CONTROLS: ReadonlySet<string> = new Set([
-  "Input", "Select", "Textarea", "NumberField", "ComboBox", "Autocomplete", "CheckboxGroup", "RadioGroup", "ChoiceButtons",
+  "Input", "Select", "Textarea", "NumberField", "ComboBox", "Autocomplete", "CheckboxGroup", "RadioGroup",
   "Switch", "DatePicker", "DateField", "TimeField", "SearchField", "Slider", "CopyField",
 ])

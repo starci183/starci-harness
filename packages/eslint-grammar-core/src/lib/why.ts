@@ -84,7 +84,7 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-choice-chips": {
     code: "FE_GROUPED_CHOICE_CONTROL",
-    en: "`<file>` imports `ChoiceChips`, which the Grammar removed (owner 2026-11-24: in a form, choose with a dropdown).",
+    en: "`<file>` imports `ChoiceChips` or `ChoiceButtons`, which the Grammar removed (owner 2026-11-24: in a form, choose with a dropdown).",
     fix: "Replace it by meaning: secondary `Tabs` (`kind=\"views\"` or `kind=\"filter\"`, the count in the tab's `count`) to switch views or filter a list, `Tabs appearance=\"primary\"` to switch a period or mode of the same data, a dropdown `Select` to choose one value in a form or a toolbar, a `CheckboxGroup` or a multi-selection list for several values.",
   },
   "field-label": {
