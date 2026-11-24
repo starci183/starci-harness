@@ -117,3 +117,58 @@ void test("only a dev server of the checkout that its stack does not record is s
     assert.equal(settingsForCheckout(settings, String.raw`D:\starci-lanes\_next\devstack`).debounceSeconds, 60)
     assert.equal(settingsForCheckout(settings, "D:/Repositories/app").debounceSeconds, 120)
 })
+
+void test("a refused swap is retried once after a pause, with the same mark; a second refusal is written and the mark cleared", async (t) => {
+    const checkout = repo(t)
+    const paths = await runnerPaths(checkout)
+    const marked = Date.parse("2026-11-24T00:00:00.000Z")
+    await requestDevSync(checkout, "lane-a landed", () => undefined, () => Promise.resolve(1))
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(marked).toISOString(), reason: "lane-a landed" }))
+    const log: string[] = []
+    let calls = 0
+    const base = fakeDeps(log, { start: marked + 300_000 })
+    const deps: RunnerDeps = { ...base, sync: (...args) => {
+        calls += 1
+        if (calls === 1) {
+            log.push("sync")
+            return Promise.reject(Object.assign(new Error("rename ENOENT"), { code: "DEV_SYNC_SWAP" }))
+        }
+        return base.sync(...args)
+    } }
+    const written = await runDevSyncRunner(checkout, paths, deps)
+    assert.deepEqual(log, ["sync", "sleep 20s", "sync"], "one refusal, a pause, one more sync")
+    assert.deepEqual(written.map((status) => status.state), ["failed", "synced"])
+    assert.equal(readWanted(paths), undefined)
+    // A swap refused twice is not retried a third time.
+    await requestDevSync(checkout, "lane-b landed", () => undefined, () => Promise.resolve(1))
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(marked).toISOString(), reason: "lane-b landed" }))
+    const twice: string[] = []
+    const always: RunnerDeps = { ...fakeDeps(twice, { start: marked + 300_000 }), sync: () => {
+        twice.push("sync")
+        return Promise.reject(Object.assign(new Error("rename ENOENT"), { code: "DEV_SYNC_SWAP" }))
+    } }
+    await runDevSyncRunner(checkout, paths, always)
+    assert.deepEqual(twice, ["sync", "sleep 20s", "sync"])
+    assert.equal(readWanted(paths), undefined)
+})
+
+void test("after a failed sync every declared process is checked and brought up; a sync that fails to check says so and the runner goes on", async (t) => {
+    const checkout = repo(t)
+    const paths = await runnerPaths(checkout)
+    const marked = Date.parse("2026-11-24T00:00:00.000Z")
+    await requestDevSync(checkout, "lane-a landed", () => undefined, () => Promise.resolve(1))
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(marked).toISOString(), reason: "lane-a landed" }))
+    const log: string[] = []
+    const deps: RunnerDeps = { ...fakeDeps(log, { start: marked + 300_000, fail: true }), ensureUp: () => {
+        log.push("ensureUp")
+        return Promise.resolve(["nothing listened for app, landing: app stack up exited 0"])
+    } }
+    const written = await runDevSyncRunner(checkout, paths, deps)
+    assert.deepEqual(log, ["sync", "ensureUp"], "the stack is checked after the failure")
+    assert.deepEqual(written.map((status) => status.state), ["failed"])
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(marked).toISOString(), reason: "lane-b landed" }))
+    const broken: string[] = []
+    await runDevSyncRunner(checkout, paths, { ...fakeDeps(broken, { start: marked + 300_000, fail: true }), ensureUp: () => Promise.reject(new Error("powershell gone")) })
+    assert.deepEqual(broken, ["sync"])
+    assert.equal(readWanted(paths), undefined)
+})

@@ -42,7 +42,8 @@ makes directory junctions (`node_modules/@scope/pkg` to a workspace folder, a no
 refuses the main checkout, an unregistered folder and tracked changes (`--discard` throws them away, named), takes a removal lock that
 `slot run npm`, every heavy install or build command and the install cache respect (`WORKTREE_REMOVING`), lists every junction and symlink at
 any depth with lstat without entering one, unlinks each as a link and verifies its target survived, refuses if one remains, then runs
-`git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left. The branch is kept. The rules below are the
+`git worktree remove --force`, `git worktree prune` and a lstat-checked delete of what is left. The branch is kept. A lane that lands with
+`lane gate --push --land` is removed this way by the verb itself once dev is pushed (`--keep` skips it; [lanes.md](lanes.md) "Gate and land" step 5). The rules below are the
 harness's own collector's, which unlinks through `unlinkInstallLinks` the same way.
 
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role

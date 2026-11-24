@@ -2,6 +2,7 @@ import { Refusal } from "../../shared/errors.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { emptyTrash, installTargets, lastActivityMs, laneTrees, liveContext, liveReasons, pruneLine, pruneTree, sizeMb } from "../../harness/install-janitor.js"
 import type { PrunedTree } from "../../harness/install-janitor.js"
+import { readMarkers, sweepCleanupMarkers } from "../../harness/land-cleanup.js"
 import { loadSlotRules, slotRoot } from "../../harness/slots.js"
 
 /** One worktree as prune-installs judged it. */
@@ -42,7 +43,14 @@ export const lanePruneInstallsVerb = defineVerb({
         const root = slotRoot(flags.dir, rules)
         const live = await liveContext(root, rules)
         const rows: PruneRow[] = []
+        const markers = readMarkers(root)
         const lines: string[] = [`lanes folder ${root}; idle at least ${String(idleHours)} h; folders ${janitor.dirs.join(", ")}`]
+        // A worktree a landing could not remove (busy) left a marker: the janitor takes it now, with the guard of the landing; a dry run only lists them.
+        const swept = flags.execute && markers.length > 0 ? await sweepCleanupMarkers(root, context.cwd, rules) : []
+        for (const marker of markers) {
+            const result = swept.find((one) => one.lane === marker.lane)
+            lines.push(flags.execute ? `land cleanup ${marker.lane} (${marker.worktree}): ${result?.state === "kept" ? `kept: ${String(result.reason)}` : (result?.state ?? "not swept")}` : `land cleanup pending: ${marker.lane} (${marker.worktree}), marked ${marker.at}: ${marker.reason}`)
+        }
         for (const tree of laneTrees(root)) {
             const idle = Math.round(((Date.now() - lastActivityMs(tree.path)) / 3_600_000) * 10) / 10
             const skipped = [...liveReasons(tree, live), ...(idle < idleHours ? [`moved ${String(idle)} h ago, under ${String(idleHours)} h`] : [])]
@@ -67,6 +75,6 @@ export const lanePruneInstallsVerb = defineVerb({
         const taken = rows.filter((row) => row.skipped.length === 0)
         const total = flags.execute ? taken.reduce((sum, row) => sum + Math.max(0, row.freedMb ?? 0), 0) : taken.reduce((sum, row) => sum + row.targets.reduce((part, target) => part + (target.mb ?? 0), 0), 0)
         lines.push(`${String(taken.length)} worktree(s) ${flags.execute ? `pruned, ${String(total)} MB freed${trash > 0 ? `; ${String(trash)} leftover trash entries deleted` : ""}` : `to prune, ${String(total)} MB; dry run: pass --execute`}; ${String(rows.length - taken.length)} skipped`)
-        return { data: { root, idleHours, execute: flags.execute, rows, totalMb: total }, message: lines.join("\n") }
+        return { data: { root, idleHours, execute: flags.execute, rows, totalMb: total, landCleanup: { pending: markers.length, swept } }, message: lines.join("\n") }
     },
 })

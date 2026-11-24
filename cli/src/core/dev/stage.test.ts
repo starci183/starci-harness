@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../../shared/git.js"
-import { OLD, realSwapFs, stageTree, stagedOutputs, stagedTrackedChanges, stagingPath, swapStaged } from "./stage.js"
+import { OLD, outermost, realSwapFs, stageTree, stagedOutputs, stagedTrackedChanges, stagingPath, swapStaged } from "./stage.js"
 
 const gitIn = (cwd: string, ...args: string[]): string => {
     const run = captureGitSync(["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", ...args], cwd)
@@ -95,4 +95,30 @@ void test("a move that fails puts every earlier move back and refuses DEV_SYNC_S
     assert.equal(readFileSync(join(checkout, "node_modules", "dep.js"), "utf8"), "old\n")
     assert.equal(readFileSync(join(staging, "node_modules", "dep.js"), "utf8"), "new\n")
     assert.equal(existsSync(join(checkout, `node_modules${OLD}`)), false)
+})
+
+void test("husky's generated .husky/_ (a .gitignore of `*` inside) is staged as ONE folder, and the swap moves it whole instead of failing on the files inside (DEV_SYNC_SWAP of 2026-11-24)", async (t) => {
+    const { checkout } = scratch(t)
+    mkdirSync(join(checkout, ".husky"), { recursive: true })
+    writeFileSync(join(checkout, ".husky", "pre-push"), "npx starci\n")
+    gitIn(checkout, "add", ".")
+    gitIn(checkout, "commit", "-q", "-m", "husky")
+    const staging = await stageTree(checkout, gitIn(checkout, "rev-parse", "HEAD"))
+    mkdirSync(join(staging, ".husky", "_"), { recursive: true })
+    writeFileSync(join(staging, ".husky", "_", ".gitignore"), "*")
+    writeFileSync(join(staging, ".husky", "_", "h"), "new\n")
+    mkdirSync(join(staging, "node_modules"))
+    const outputs = await stagedOutputs(staging)
+    assert.deepEqual(outputs.filter((entry) => entry.startsWith(".husky")), [".husky/_"], "git lists the folder and each file in it; only the folder is an output")
+    mkdirSync(join(checkout, ".husky", "_"), { recursive: true })
+    writeFileSync(join(checkout, ".husky", "_", "h"), "old\n")
+    const swapped = await swapStaged(staging, checkout, [...outputs, ".husky/_/.gitignore", ".husky/_/h"], [], realSwapFs, () => Promise.resolve())
+    assert.deepEqual(swapped.moved.filter((entry) => entry.startsWith(".husky")), [".husky/_"])
+    assert.equal(readFileSync(join(checkout, ".husky", "_", "h"), "utf8"), "new\n")
+    assert.equal(readFileSync(join(checkout, ".husky", "_", ".gitignore"), "utf8"), "*")
+    assert.equal(existsSync(join(checkout, ".husky", `_${OLD}`)), false)
+})
+
+void test("outermost keeps an entry only when no other listed entry contains it", () => {
+    assert.deepEqual(outermost(["node_modules", "a/b/dist", "a/b/dist/x.js", ".husky/_", ".husky/_/h", "ab", "a/bc"]), ["node_modules", "a/b/dist", ".husky/_", "ab", "a/bc"])
 })

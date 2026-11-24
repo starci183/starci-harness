@@ -169,7 +169,7 @@ export interface RunnerDeps {
     readonly strays: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
     readonly sync: (checkout: string, settings: DevSyncSettings) => Promise<{ readonly exitCode?: number; readonly data: { readonly to: string; readonly restart: string } }>
     readonly settings: () => DevSyncSettings
-    /** After a green sync: the declared processes nothing listens for (a stack an older lander or a moved checkout left down) are brought up; the lines saying what. */
+    /** After a sync, green or failed: the declared processes nothing listens for (a stack an older lander or a moved checkout left down) are brought up; the lines saying what. */
     readonly ensureUp?: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
 }
 
@@ -203,6 +203,8 @@ export const realRunnerDeps: RunnerDeps = {
     ensureUp: realEnsureUp,
 }
 
+/** How long the runner waits before its one retry of a refused swap. */
+const SWAP_RETRY_MS = 20_000
 /** How long a waiting runner sleeps before it reads the mark again, at most. */
 const WAIT_STEP_MS = 15_000
 
@@ -225,6 +227,7 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
     }
     try {
         let waitingFor = ""
+        let retriedSwap = false
         for (;;) {
             const wanted = readWanted(paths)
             if (wanted === undefined) return written
@@ -238,6 +241,7 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
             }
             write({ state: "syncing", reason: wanted.reason })
             let failed = false
+            let swapRefused = false
             try {
                 const strays = await deps.strays(checkout, settings)
                 for (const line of strays) say(line)
@@ -247,8 +251,26 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
                 write(failed ? { state: "failed", reason: `${wanted.reason}; dev sync moved to ${done.data.to.slice(0, 10)} but the restart failed (read the stack log)`, to: done.data.to } : { state: "synced", reason: `${wanted.reason}; restart ${done.data.restart}`, to: done.data.to })
             } catch (error) {
                 failed = true
+                swapRefused = typeof error === "object" && error !== null && "code" in error && error.code === "DEV_SYNC_SWAP"
                 const code = typeof error === "object" && error !== null && "code" in error ? `${String(error.code)}: ` : ""
                 write({ state: "failed", reason: `${wanted.reason}; dev sync refused: ${code}${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}` })
+            }
+            // After ANY failed sync every declared process must listen again: a swap put back, a stop that never came back (public dev answered 502 on
+            // 2026-11-24 with the apps down) is not left for the next landing. `stack up` starts only what does not run.
+            if (failed) {
+                try {
+                    for (const line of (await deps.ensureUp?.(checkout, settings)) ?? []) say(line)
+                } catch (error) {
+                    say(`after the failed sync the stack could not be checked: ${error instanceof Error ? error.message : String(error)}`)
+                }
+            }
+            // A refused swap (a file held while the staged build moved in) leaves the checkout on the new commit with the old install; the sync marks that
+            // itself (core/dev/sync.ts UNSWAPPED), so one more sync, after the holder had a moment to let go, redoes the install whole. Once per mark.
+            if (swapRefused && !retriedSwap) {
+                retriedSwap = true
+                say(`the swap was refused: syncing once more in ${String(SWAP_RETRY_MS / 1000)} s to install the new tree whole`)
+                await deps.sleep(SWAP_RETRY_MS)
+                continue
             }
             const after = readWanted(paths)
             if (after?.at === wanted.at) {

@@ -95,6 +95,21 @@ void test("a lane whose gate merged the dev that still stands lands as ONE squas
     assert.equal(existsSync(landPaths(dir).devLock), false, "the dev lock is released")
 })
 
+void test("the CI watcher of a landing starts in the main checkout, never in the lane's worktree, which the cleanup removes right after; the lane's sha is reported", async (t) => {
+    const { lane, dir } = scratch(t)
+    const tree = join(dir, "lane-worktree")
+    gitIn(lane, "worktree", "add", "-q", "-b", "lane/wt", tree)
+    const gated = gitIn(tree, "rev-parse", "origin/dev")
+    const seen: string[] = []
+    const done = await landLane({ root: tree, lane: "wt", branch: "lane/wt", profile: "app", dir, gatedBase: gated, say: () => undefined }, { ...fakeDeps([]), watchCi: (root) => {
+        seen.push(root)
+        return Promise.resolve()
+    } })
+    assert.equal(seen.length, 1)
+    assert.equal(realpathSync(String(seen[0])), realpathSync(lane))
+    assert.equal(done.laneSha, gitIn(tree, "rev-parse", "HEAD"))
+})
+
 void test("dev that moved since the gate is merged in and re-checked; a red re-check lands nothing and releases the lock", async (t) => {
     const { lane, pusher, dir, origin } = scratch(t)
     const gated = gitIn(lane, "rev-parse", "origin/dev")

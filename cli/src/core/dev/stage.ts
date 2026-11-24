@@ -42,7 +42,20 @@ export const stageTree = async (root: string, to: string): Promise<string> => {
 
 /** The entries a staged build produced: git's ignored entries of the staging tree (folders whole), relative, with forward slashes. */
 export const stagedOutputs = async (staging: string): Promise<string[]> =>
-    (await git(staging, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"])).split("\0").map((entry) => entry.replace(/\/$/u, "")).filter((entry) => entry !== "")
+    outermost((await git(staging, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"])).split("\0").map((entry) => entry.replace(/\/$/u, "")).filter((entry) => entry !== ""))
+
+/**
+ * Drops every entry that lies inside another one of the list. Git lists a folder whose own .gitignore ignores its contents (husky's generated
+ * `.husky/_` holds a `.gitignore` with `*`) both whole and file by file; the files go with the folder when it moves, so moving them on their own
+ * fails with ENOENT (the DEV_SYNC_SWAP of 2026-11-24). Pure.
+ */
+export const outermost = (entries: readonly string[]): string[] => {
+    const all = new Set(entries)
+    return entries.filter((entry) => {
+        for (let at = entry.lastIndexOf("/"); at > 0; at = entry.lastIndexOf("/", at - 1)) if (all.has(entry.slice(0, at))) return false
+        return true
+    })
+}
 
 /** The tracked files the staged install changed (a local overlay's pins and lockfiles). */
 export const stagedTrackedChanges = async (staging: string): Promise<string[]> => (await git(staging, ["diff", "--name-only", "HEAD"])).split("\n").filter((file) => file !== "")
@@ -139,7 +152,9 @@ export interface Swapped {
  * Moves the staged outputs into the checkout and copies the tracked files the staged install changed. Each replaced entry is renamed aside first and
  * removed once every move succeeded; a move that fails moves back everything moved before it, puts the replaced entries back and refuses DEV_SYNC_SWAP.
  */
-export const swapStaged = async (staging: string, root: string, outputs: readonly string[], tracked: readonly string[], fs: SwapFs = realSwapFs, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms))): Promise<Swapped> => {
+export const swapStaged = async (staging: string, root: string, listed: readonly string[], tracked: readonly string[], fs: SwapFs = realSwapFs, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms))): Promise<Swapped> => {
+    // A path inside another listed path moves with it.
+    const outputs = outermost(listed)
     // An earlier swap's leftovers go first, so a name is free for this one.
     for (const entry of outputs) if (fs.exists(join(root, `${entry}${OLD}`))) fs.remove(join(root, `${entry}${OLD}`))
     const done: { readonly entry: string; readonly replaced: boolean }[] = []

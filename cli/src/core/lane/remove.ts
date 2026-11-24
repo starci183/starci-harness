@@ -1,5 +1,6 @@
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
+import { clearMarkersOf } from "../../harness/land-cleanup.js"
 import { removeLockOf } from "../../harness/remove-lock.js"
 import { loadSlotRules, releaseLaneSlots, slotRoot, slotsOfLane } from "../../harness/slots.js"
 import { planRemoval, removalLane, removeWorktree } from "../../harness/worktree-remove.js"
@@ -52,6 +53,8 @@ export const laneRemoveVerb = defineVerb({
         }
         const done = await removeWorktree(plan, lane, context.progress)
         // After the worktree is gone: a failed removal throws before this, so a lane that still has its worktree keeps its slots.
+        // A land cleanup that found the worktree busy left a marker for this removal to clear.
+        clearMarkersOf(slotsDir, plan.worktree)
         const freed = releaseLaneSlots(slotsDir, rules, lane, `lane remove (pid ${String(process.pid)})`)
         const summary = [...head, `unlinked ${String(done.unlinked.length)} link(s); every target survived`, `removed ${plan.worktree} (${String(done.leftover)} leftover entr${done.leftover === 1 ? "y" : "ies"} deleted by hand)`, `branch ${plan.branch ?? "(detached)"} ${done.branchKept ? "kept" : "NOT FOUND after the removal"}`, "removal lock released", `released ${String(freed.released.length)} slot(s) of lane ${lane}${freed.released.length === 0 ? "" : `: ${freed.released.join(", ")}`}`]
         return { data: { dryRun: false, worktree: plan.worktree, branch: plan.branch, dirty: plan.dirty, links: [], lockHeld: null, branchKept: done.branchKept, unlinked: done.unlinked.map((entry) => ({ path: entry.link.relative, target: entry.link.target, targetSurvived: entry.targetSurvived })), leftover: done.leftover, slots: freed.released }, message: summary.join("\n"), exitCode: done.branchKept ? 0 : 1 }

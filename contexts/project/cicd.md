@@ -62,10 +62,11 @@ to `origin/dev` and its running dev stack onto that code:
    worktree of the checkout's repository at the new commit, `<parent>/.<checkout>.starci-next`, gets the `npm ci`, the `--local` packages and the
    app's `codegen` and `build:modules`, each under the heavy governor, while the running api and web keep serving the old tree. A failure there is
    `DEV_SYNC_BUILD` with nothing stopped or moved. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
-   entries of the staging tree: every `node_modules`, every `dist`, generated files) are moved in by rename on the same volume, the workspace
+   entries of the staging tree, each folder whole and nothing inside a listed folder: every `node_modules`, every `dist`, generated files such as husky's `.husky/_`) are moved in by rename on the same volume, the workspace
    links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the tracked files the staged install changed
    (an overlay's pins and lockfiles) are copied, and what they replaced is removed, retrying a file an antivirus holds for a moment. A move that
-   fails puts every move back (`DEV_SYNC_SWAP`). So the downtime of a sync is the swap and the restart. The in-place install below is the fallback
+   fails puts every move back (`DEV_SYNC_SWAP`) and marks the checkout (`<git dir>/starci-dev-sync-unswapped`): it is already on the new commit with the old
+   install, so the next sync, though dev has nothing new, installs, builds, migrates and restarts whole, and the runner retries a refused swap once after 20 s. After any failed sync the runner checks every declared process and runs `app stack up` for those nothing listens for. So the downtime of a sync is the swap and the restart. The in-place install below is the fallback
    for a copy an interrupted in-place sync left aside.
    Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
    local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
