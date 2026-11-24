@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGit, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
+import { captureGit, captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
@@ -14,6 +14,8 @@ import { lanesDir } from "../../harness/land-queue.js"
 import { landProfile, profileNameFor } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
 import { runningCliRoot } from "../../harness/lander-install.js"
+import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
+import { cacheLaneInstall, followsBase, sharedInstall } from "../../harness/shared-install.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { registerReady } from "./ready.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
@@ -40,6 +42,10 @@ export interface LaneGate {
     readonly branch: string
     readonly merged: { readonly ref: string; readonly before: string; readonly after: string } | null
     readonly installed: boolean
+    /** Where node_modules came from when it was installed: the shared install (hard links from the repository's install cache) or a full npm ci. */
+    readonly installSource: "shared" | "npm ci" | "none"
+    /** Seconds each phase took, in order. */
+    readonly timings: readonly { readonly phase: string; readonly seconds: number }[]
     readonly prepared: readonly string[]
     readonly mode: "check" | "push"
     /** The repository's profile (harness/land-profile.ts): an app's pinned CLI and hook, or the harness FAST gate and a plain git push. */
@@ -58,6 +64,16 @@ export interface LaneGate {
 const gitOut = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
     const run = await captureGit(args, cwd)
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
+}
+
+/** The dev checkout this machine's local settings name for the repository of `root` (the dev sync's), when they name one. */
+const devSyncCheckoutOf = (root: string): string | undefined => {
+    try {
+        const main = captureGitSync(["worktree", "list", "--porcelain"], root).stdout.split(/\r?\n/).find((line) => line.startsWith("worktree "))?.slice("worktree ".length).trim()
+        return devSyncForRepo(loadLocalSettings().devSync, main ?? root).checkout
+    } catch {
+        return undefined
+    }
 }
 
 /** The app's own pinned CLI: a lane is judged with the harness its app pins (contexts/authority/lanes.md), never a global one. */
@@ -98,6 +114,7 @@ const gateLines = (data: LaneGate): string[] => [
     ...(data.ready === null ? [] : [`ready (deprecated, the batch lander): monitor ${data.ready.status}`]),
     ...(data.landed === null ? [] : [`landed on dev as ${data.landed.sha.slice(0, 10)}${data.landed.rechecked ? " (re-checked: dev had moved)" : ""}${data.landed.publishNote === undefined ? "" : `; ${data.landed.publishNote}`}; dev sync ${data.landed.syncs.length === 0 ? "not requested" : `marked for ${data.landed.syncs.join(", ")}`}`]),
     ...(data.cleanup === null ? [] : [data.cleanup.line]),
+    ...(data.timings.length === 0 ? [] : [`timings: ${data.timings.map((each) => `${each.phase} ${String(each.seconds)}s`).join(", ")}${data.installSource === "none" ? "" : ` (node_modules: ${data.installSource})`}`]),
 ]
 
 /** What the harness profile of `lane gate` hands back. */
@@ -219,30 +236,54 @@ export const laneGateVerb = defineVerb({
             const ready = flags.ready && harness.pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
             const landed = await land(harness.pushed)
             const cleanup = await tidy(landed)
-            const data: LaneGate = { lane, branch, merged, installed: false, prepared: [], mode: flags.push ? "push" : "check", profile: profileName, exitCode: harness.exitCode, verdict: harness.verdict, findings: harness.findings, pushed: harness.pushed, ready, landed, cleanup }
+            const data: LaneGate = { lane, branch, merged, installed: false, installSource: "none", timings: [], prepared: [], mode: flags.push ? "push" : "check", profile: profileName, exitCode: harness.exitCode, verdict: harness.verdict, findings: harness.findings, pushed: harness.pushed, ready, landed, cleanup }
             return { data, message: gateLines(data).join("\n"), exitCode: harness.verdict === "green" ? 0 : 1 }
         }
+        const timings: { phase: string; seconds: number }[] = []
+        const timed = async <T>(phase: string, work: () => Promise<T>): Promise<T> => {
+            const started = Date.now()
+            try {
+                return await work()
+            } finally {
+                timings.push({ phase, seconds: Math.round((Date.now() - started) / 100) / 10 })
+            }
+        }
         const installed = await needsInstall(root, merged, flags.install)
+        let installSource: LaneGate["installSource"] = "none"
         if (installed) {
-            await withSlot(slots, rules, "npm", lane, { waitSeconds: wait, say }, async (taken) => {
+            await timed("install", () => withSlot(slots, rules, "npm", lane, { waitSeconds: wait, say }, async (taken) => {
+                const runScript = async (script: string): Promise<boolean> => (await withHeavySlot("install", `lane gate ${lane}: npm run ${script}`, root, {}, (held) => captureNpm(["run", script, "--ignore-scripts", "--silent"], root, held.options))).exitCode === 0
+                if (flags.install) say("--install: npm ci, no shared install")
+                else {
+                    const shared = await sharedInstall(root, { lanes: slots, say, runScript, devSyncCheckout: devSyncCheckoutOf(root) })
+                    if (shared.status === "linked") {
+                        installSource = "shared"
+                        say(`node_modules from the shared install ${shared.key} (${String(shared.files)} files, ${String(shared.copied)} copied, ${String(Math.round(shared.ms / 100) / 10)}s), no npm ci; lifecycle: ${shared.scripts.join(", ") || "none"} (npm slot ${String(taken.n)})`)
+                        return
+                    }
+                    say(`shared install not used (${shared.reason}); npm ci`)
+                }
                 say(`npm ci (npm slot ${String(taken.n)})`)
+                installSource = "npm ci"
                 const run = await withHeavySlot("install", `lane gate ${lane}: npm ci`, root, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], root, held.options))
                 if (run.exitCode !== 0) throw new Refusal("LANE_GATE_INSTALL", `npm ci exited ${String(run.exitCode)}${isOutOfMemory(run.exitCode, run.stderr) ? " (out of memory: run it again once the host has RAM)" : ""}: ${run.stderr.split("\n").slice(-3).join(" ")}`)
-            })
+                // A lane whose lockfiles equal the dev line's holds the install every next lane wants: cache it once.
+                if (!flags.install && followsBase(root, ref)) say(await cacheLaneInstall(root, slots))
+            }))
             writeFileSync(join(root, INSTALL_MARK), (await gitOut(root, ["hash-object", "package-lock.json"])).out)
         }
         // The workspace packages are built after an install only: a tree whose install did not move keeps the builds it already has.
-        const preparing = await prepareTree(root, `lane gate ${lane}`, installed ? PREPARE_SCRIPTS : PREPARE_SCRIPTS.filter((script) => script === "codegen"))
+        const preparing = await timed("prepare", () => prepareTree(root, `lane gate ${lane}`, installed ? PREPARE_SCRIPTS : PREPARE_SCRIPTS.filter((script) => script === "codegen")))
         if (preparing.failure !== undefined) throw new Refusal("LANE_GATE_PREPARE", `${preparing.failure.command} exited ${String(preparing.failure.exitCode)}: ${preparing.failure.output.split("\n").slice(-3).join(" ")}`)
         const prepared = [...preparing.ran]
         if (!existsSync(appCli(root))) throw new Refusal("LANE_GATE_NO_APP_CLI", `${appCli(root)} is missing: the app pins starci-harness; run lane gate --install`)
         const mode = flags.push ? "push" : "check"
         // A lane lands on dev: the check is the FAST level (app check --level dev), and a push of the lane branch runs it once, in its pre-push hook.
         const args = flags.push ? ["app", "push", "--json", "origin", `HEAD:${branch}`] : [...LANE_CHECK_ARGS]
-        const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
+        const run = await timed(mode === "push" ? "app push" : "app check", () => withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
             say(`${mode === "push" ? `app push origin HEAD:${branch}` : "app check --env prod --level dev"} (gate slot ${String(taken.n)})`)
             return captureTool(process.execPath, [appCli(root), ...args], root)
-        })
+        }))
         const oom = isOutOfMemory(run.exitCode, run.stderr)
         let verdict: GateVerdict
         let findings: LaneFinding[] = []
@@ -259,7 +300,7 @@ export const laneGateVerb = defineVerb({
         const ready = flags.ready && pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
         const landed = await land(pushed)
         const cleanup = await tidy(landed)
-        const data: LaneGate = { lane, branch, merged, installed, prepared, mode, profile: profileName, exitCode: run.exitCode, verdict, findings, pushed, ready, landed, cleanup }
+        const data: LaneGate = { lane, branch, merged, installed, installSource, timings, prepared, mode, profile: profileName, exitCode: run.exitCode, verdict, findings, pushed, ready, landed, cleanup }
         return { data, message: gateLines(data).join("\n"), exitCode: verdict === "green" ? 0 : 1 }
     },
 })

@@ -184,22 +184,39 @@ export const runHarnessGate = async (root: string, plan: Affected, level: Harnes
     const steps = harnessGateSteps(plan, level, scriptsOf)
     const broken = new Set<string>()
     const needs = new Map(plan.packages.map((pkg) => [pkg.dir, pkg.build]))
-    const done: (GateStep & { ok: boolean | "skipped" })[] = []
-    const findings: GateFinding[] = []
-    await inOrder(steps, async (step) => {
-        const blocked = broken.has(step.dir) || (needs.get(step.dir) ?? []).some((dir) => dir !== step.dir && broken.has(dir)) || (step.kind === "check" && broken.has(CLI_DIR))
-        if (blocked) {
-            done.push({ ...step, ok: "skipped" })
-            return
-        }
+    const outcomes: (GateStep & { ok: boolean | "skipped" })[] = []
+    const failures: (GateFinding | undefined)[] = []
+    // A typecheck reads what its folder and the packages of its build order built before it, and writes nothing, so it starts at its place in the order and the next
+    // steps go on while it runs: the typechecks of the folders run together, each tsc taking its own heavy slot (cli/src/harness/heavy.ts), so the host's slots bound them.
+    const pending: Promise<void>[] = []
+    const record = (index: number, step: GateStep, result: StepRun): void => {
+        outcomes[index] = { ...step, ok: result.ok }
+        if (!result.ok) failures[index] = { level: "error", code: codeOf(step), path: step.dir, message: `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed: ${result.output}`.slice(0, 600) }
+    }
+    const execute = async (index: number, step: GateStep): Promise<void> => {
         say(`${step.kind} ${step.dir}${step.args === undefined ? "" : ` (${step.args.join(" ")})`}`)
-        const result = await run(root, step)
-        done.push({ ...step, ok: result.ok })
-        if (result.ok) return
-        if (step.kind === "install" || step.kind === "build") broken.add(step.dir)
-        findings.push({ level: "error", code: codeOf(step), path: step.dir, message: `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed: ${result.output}`.slice(0, 600) })
-    })
-    return { level, base: plan.base, head: plan.head, summary: plan.summary, steps: done, findings, verdict: findings.length === 0 ? "green" : "red" }
+        record(index, step, await run(root, step))
+    }
+    try {
+        await inOrder(steps.map((step, index) => ({ step, index })), async ({ step, index }) => {
+            const blocked = broken.has(step.dir) || (needs.get(step.dir) ?? []).some((dir) => dir !== step.dir && broken.has(dir)) || (step.kind === "check" && broken.has(CLI_DIR))
+            if (blocked) {
+                outcomes[index] = { ...step, ok: "skipped" }
+                return
+            }
+            if (step.kind === "typecheck") {
+                pending.push(execute(index, step))
+                return
+            }
+            await execute(index, step)
+            if (outcomes[index]?.ok === false && (step.kind === "install" || step.kind === "build")) broken.add(step.dir)
+        })
+    } finally {
+        await Promise.allSettled(pending)
+    }
+    await Promise.all(pending)
+    const findings = failures.filter((each): each is GateFinding => each !== undefined)
+    return { level, base: plan.base, head: plan.head, summary: plan.summary, steps: outcomes, findings, verdict: findings.length === 0 ? "green" : "red" }
 }
 
 /** The base of a FAST gate when none is given: where HEAD forks from origin/dev (the branch it lands on), else from origin/main. */
