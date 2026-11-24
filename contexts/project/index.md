@@ -299,9 +299,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Where it lives · API · Look
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 3 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, tabs ...
+- [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 4 KB — The Grammar has no segmented control and no choice chips: `SegmentedControl` and `ChoiceChips` are removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a ...
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/select.md](../ui/components/select.md) · 2 KB — Contract: Select.
+- [ui/components/select.md](../ui/components/select.md) · 3 KB — Contract: Select.
   - sections: Job · Choose · Variants · Size · States · Owner split · Leading icon · Compact · Rules
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules · TopBar start inset and the search slot (0.48.0)
