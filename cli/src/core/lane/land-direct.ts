@@ -28,6 +28,8 @@ import { startDevCiWatch } from "../../harness/dev-ci-watch.js"
 export interface LaneLanded {
     /** The dev commit the lane landed as. */
     readonly sha: string
+    /** The lane's own sha at the landing (its tree is what dev holds); the worktree cleanup keeps a branch that moved past it. */
+    readonly laneSha: string
     /** The dev commit it landed on. */
     readonly base: string
     /** Dev had moved since the gate's merge, so the fast re-check ran. */
@@ -151,6 +153,7 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
             say(`dev sync of ${checkout}: NOT requested (${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}); run starci dev sync-runner --request --dir ${checkout}`)
         }
     }
-    await deps.watchCi(root, dir, landed.sha, [lane], say)
-    return { sha: landed.sha, base: landed.base, rechecked: landed.rechecked, migrations: landed.migrations, published, ...(publishNote === undefined ? {} : { publishNote }), syncs }
+    // The watcher lives up to 45 minutes: it stands in the main checkout, never in the lane's worktree, which the cleanup removes right after.
+    await deps.watchCi(repo, dir, landed.sha, [lane], say)
+    return { sha: landed.sha, laneSha: landed.laneSha, base: landed.base, rechecked: landed.rechecked, migrations: landed.migrations, published, ...(publishNote === undefined ? {} : { publishNote }), syncs }
 }

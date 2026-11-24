@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync } from "node:fs"
 import { basename, isAbsolute, join, relative, resolve } from "node:path"
-import { captureGitSync } from "../shared/git.js"
+import { CHECK_CACHE_DIR, captureGitSync } from "../shared/git.js"
 import { freeDiskMb } from "./host-floors.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
@@ -160,12 +160,12 @@ export const liveContext = async (root: string, rules: SlotRules): Promise<LiveC
 export const TOUCHED_MINUTES = 60
 
 /** The uncommitted work of a worktree: what `git status` lists outside the janitor's own folders (a safe install's trash is not work). Empty when clean or unreadable. */
-export const uncommittedWork = (worktree: string, dirs: readonly string[]): string[] => {
+export const uncommittedWork = (worktree: string, dirs: readonly string[], cacheIsNotWork = false): string[] => {
     const run = captureGitSync(["status", "--porcelain", "--untracked-files=normal"], worktree)
     if (run.exitCode !== 0) return []
     return run.stdout.split(/\r?\n/).flatMap((line) => {
         const path = line.trim().replace(/^[^ ]+ +/u, "").replace(/^"|"$/gu, "")
-        return path === "" || isInstallEntry(path, dirs) ? [] : [path]
+        return path === "" || isInstallEntry(path, dirs) || (cacheIsNotWork && path.startsWith(CHECK_CACHE_DIR)) ? [] : [path]
     })
 }
 
@@ -182,9 +182,11 @@ export const landedShaOf = (root: string, lane: string): string | undefined => r
  * Why a worktree is live and must keep its install, each reason one clause; empty when nothing holds it: a removal lock on it, a slot of its lane
  * not proven gone, a git operation under way (index.lock), a process (not this one or its ancestors) whose working folder or command line lies
  * inside it, a process table that could not be read, uncommitted work, commits after `landedSha` (the lane's branch moved on), or a touch within
- * `janitor.touchedMinutes` of ops/slots.yaml (default 60). `now` is the clock (epoch ms).
+ * `janitor.touchedMinutes` of ops/slots.yaml (default 60). `now` is the clock (epoch ms). `afterLanding` is the land cleanup's question
+ * (harness/land-cleanup.ts): the lane has just landed, so its own touch says nothing (that rule is skipped) and the check-cache records under
+ * `.starcistacks/cache/` are no work (they may be discarded); every other reason stands.
  */
-export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: string, now: number = Date.now()): string[] => {
+export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: string, now: number = Date.now(), afterLanding = false): string[] => {
     const reasons: string[] = []
     const lock = removeLockOf(tree.path, context.root)
     if (lock !== undefined) reasons.push(`being removed by ${lock.lane} (pid ${String(lock.pid)})`)
@@ -209,13 +211,13 @@ export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: st
         }
     }
     const dirs = context.rules.janitor?.dirs ?? []
-    const work = uncommittedWork(tree.path, dirs)
+    const work = uncommittedWork(tree.path, dirs, afterLanding)
     if (work.length > 0) reasons.push(`uncommitted work (${work.slice(0, 3).join(", ")}${work.length > 3 ? ", ..." : ""})`)
     const ahead = landedSha === undefined ? 0 : commitsAfter(tree.path, landedSha)
     if (ahead > 0) reasons.push(`its branch has ${String(ahead)} commit(s) after the landed sha ${String(landedSha).slice(0, 10)}`)
     const touched = context.rules.janitor?.touchedMinutes ?? TOUCHED_MINUTES
     const sinceMinutes = Math.round((now - lastActivityMs(tree.path)) / 60_000)
-    if (sinceMinutes < touched) reasons.push(`touched ${String(Math.max(0, sinceMinutes))} min ago, under ${String(touched)} min`)
+    if (!afterLanding && sinceMinutes < touched) reasons.push(`touched ${String(Math.max(0, sinceMinutes))} min ago, under ${String(touched)} min`)
     return reasons
 }
 
