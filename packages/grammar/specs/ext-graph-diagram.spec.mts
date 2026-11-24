@@ -12,7 +12,7 @@ import { JSDOM } from "jsdom"
 import { parseDiagram } from "../src/core/ext/graph/diagram/mermaid.ts"
 import { branchesWithoutDecision, describeDiagram, loopBackEdges, plainLabel, type DiagramGraph, type ParsedDiagram, type SequenceModel } from "../src/core/ext/graph/diagram/model.ts"
 import { layoutSequence } from "../src/core/ext/graph/diagram/sequence.ts"
-import { layoutDiagram } from "../src/core/ext/graph/diagram/graph.ts"
+import { END_SPREAD, ICON_GAP, ICON_SIZE, layoutDiagram, nodeSize } from "../src/core/ext/graph/diagram/graph.ts"
 import { STRAIGHT_SNAP, estimateLabel } from "../src/core/ext/graph/layout.ts"
 import { openView } from "../src/core/ext/graph/shared/view.ts"
 import { dedupeRuns, overlaps } from "../src/core/ext/graph/shared/overlap.ts"
@@ -125,6 +125,42 @@ describe("flowchart to graph", () => {
         assert.equal(node(drawn, "B").tone, "success")
         assert.equal(node(drawn, "C").tone, "danger")
         assert.equal(node(drawn, "D").tone, undefined)
+    })
+
+    it("tones an edge by Mermaid's own edge id and class (`A e1@--> B`, `class e1 info`) and by its place in edgeTones, the map first", async () => {
+        const source = `flowchart LR
+  A r1@--> B
+  A r2@--> C
+  B --> D
+  C w1@-.-> D
+  class r1,r2 info
+  class w1 accent`
+        const drawn = graph(await parseDiagram(source))
+        assert.deepEqual(drawn.edges.map((edge) => [edge.source, edge.target, edge.tone ?? null, edge.dashed]), [["A", "B", "info", false], ["A", "C", "info", false], ["B", "D", null, false], ["C", "D", "accent", true]])
+        // A class on an edge names no node: none is invented.
+        assert.deepEqual(drawn.nodes.map((node) => node.id), ["A", "B", "C", "D"])
+        const mapped = graph(await parseDiagram(source, undefined, undefined, { 1: "danger", 3: "success" }))
+        assert.deepEqual(mapped.edges.map((edge) => edge.tone ?? null), ["danger", "info", "success", "accent"])
+        // A class outside the tones paints nothing, and a source with no edge ids keeps untoned edges.
+        assert.equal(graph(await parseDiagram("flowchart LR\n  A e1@--> B\n  class e1 hot")).edges[0]?.tone, undefined)
+        assert.equal(graph(await parseDiagram("flowchart LR\n  A --> B")).edges[0]?.tone, undefined)
+    })
+
+    it("keeps the icon a node names with `X@{ icon: name }` and the shape and words its own syntax gave, before or after", async () => {
+        const drawn = graph(await parseDiagram(`flowchart LR
+  P@{ icon: "postgresql" }
+  A[Web] --> R[(Redis cache)]
+  A --> P[(Postgres)]
+  R@{ icon: "redis" }
+  A@{ icon: "server", label: "Web servers" }`))
+        assert.deepEqual(drawn.nodes.map((each) => [each.id, each.label, each.shape, each.icon ?? null]), [["P", "Postgres", "cylinder", "postgresql"], ["A", "Web servers", "box", "server"], ["R", "Redis cache", "cylinder", "redis"]])
+        // A node with an icon is wider by the icon and its gap, and as tall as its words need.
+        const plain = { id: "R", label: "Redis cache", shape: "cylinder" as const }
+        const width = (text: string): number => text.length * 7
+        const bare = nodeSize(plain, "LR", width)
+        const iconed = nodeSize({ ...plain, icon: "redis" }, "LR", width)
+        assert.equal(iconed.width - bare.width, ICON_SIZE + ICON_GAP)
+        assert.equal(iconed.height, bare.height)
     })
 
     it("reads a label's words as plain text: a <br> breaks the line, markdown quotes and tags drop", () => {
@@ -291,6 +327,78 @@ describe("the text version and the other kinds", () => {
     })
 })
 
+/**
+ * Every edge of a diagram is its own line (owner 2026-11-24: separate, coloured edges, no merge points): as the canvas draws them (dedupeRuns with no
+ * joins), no route is cut back to another's line, no two share a stretch, and the edges into one node each end at their own point, at least END_SPREAD
+ * apart where they share a side, each with its arrowhead.
+ */
+const ownLines = (routes: Readonly<Record<string, { readonly points: readonly (readonly [number, number])[] }>>, edges: readonly { readonly id: string; readonly source: string; readonly target: string }[]): void => {
+    const drawn = dedupeRuns(edges.flatMap((edge) => (routes[edge.id] === undefined ? [] : [{ id: edge.id, points: routes[edge.id]?.points ?? [], rank: 3 }])), { join: false })
+    for (const [id, route] of drawn) assert.ok(!route.joinStart && !route.joinEnd, `${id} draws no junction`)
+    const ids = [...drawn.keys()]
+    for (const [index, id] of ids.entries()) for (const other of ids.slice(index + 1)) assert.ok(!overlaps(drawn.get(id)?.points ?? [], drawn.get(other)?.points ?? []), `${id} and ${other} share a stretch`)
+    for (const end of ["source", "target"] as const) {
+        const byNode = new Map<string, (readonly [number, number])[]>()
+        for (const edge of edges) {
+            const points = drawn.get(edge.id)?.points ?? []
+            const at = end === "source" ? points[0] : points[points.length - 1]
+            if (at !== undefined) byNode.set(edge[end], [...(byNode.get(edge[end]) ?? []), at])
+        }
+        for (const [node, points] of byNode)
+            for (const [index, a] of points.entries())
+                for (const b of points.slice(index + 1)) {
+                    const apart = a[0] === b[0] || a[1] === b[1] ? Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) : Infinity
+                    assert.ok(apart >= END_SPREAD - 1, `two ${end === "source" ? "exits from" : "entries into"} ${node} stand ${String(apart)} apart at ${JSON.stringify(a)}`)
+                }
+    }
+}
+
+describe("every edge is its own line (owner 2026-11-24: separate, coloured edges, no merge points)", () => {
+    // The owner's flow: a read path out of the web servers and a write path out of Marketing, both into Redis and Postgres.
+    const CACHE = `flowchart LR
+  K[Khách xem trang] --> A[3 máy chủ web]
+  A --> R[(Redis: hỏi giá trước)]
+  A --> P[(Postgres: giá gốc)]
+  M[Marketing đổi giá] --> P
+  M --> R`
+    const TONED = `flowchart LR
+  K[Khách xem trang] --> A[3 máy chủ web]
+  A r1@--> R[(Redis: hỏi giá trước)]
+  A r2@--> P[(Postgres: giá gốc)]
+  M[Marketing đổi giá] w1@--> P
+  M w2@--> R
+  R@{ icon: "redis" }
+  P@{ icon: "postgresql" }
+  class r1,r2 info
+  class w1,w2 accent`
+
+    for (const direction of ["LR", "TB"] as const) {
+        it(`${direction}: two edges out of one node leave from two points and two into one node enter at two, none cut short at a junction`, async () => {
+            for (const source of [CACHE, TONED]) {
+                const parsed = graph(await parseDiagram(source.replace("flowchart LR", `flowchart ${direction}`)))
+                const out = await layoutDiagram(parsed, (text) => text.length * 7, estimateLabel)
+                ownLines(out.layout.routes, parsed.edges)
+            }
+        })
+    }
+
+    it("a fan-out of plain arrows keeps every line straight or one bend, and its ends on the borders of their nodes", async () => {
+        const parsed = graph(await parseDiagram(CACHE))
+        const out = await layoutDiagram(parsed, (text) => text.length * 7, estimateLabel)
+        for (const edge of parsed.edges) {
+            const points = out.layout.routes[edge.id]?.points ?? []
+            assert.ok(points.length >= 2 && points.length - 2 <= 2, `${edge.id} keeps its shape`)
+            for (const [at, id] of [[points[0], edge.source], [points[points.length - 1], edge.target]] as const) {
+                const where = out.layout.positions[id]
+                const box = out.layout.boxes[id]
+                assert.ok(at !== undefined && where !== undefined && box !== undefined)
+                const onBorder = (Math.abs(at[0] - where.x) <= 1 || Math.abs(at[0] - where.x - box.width) <= 1) ? at[1] > where.y && at[1] < where.y + box.height : (Math.abs(at[1] - where.y) <= 1 || Math.abs(at[1] - where.y - box.height) <= 1) && at[0] > where.x && at[0] < where.x + box.width
+                assert.ok(onBorder, `${edge.id} meets ${id} on its border inside its side, not at ${JSON.stringify(at)}`)
+            }
+        }
+    })
+})
+
 describe("the routing law (owner: Chốt, every graph)", () => {
     const DECISION = `flowchart LR
   A[Read the price book] --> B{Newer version?}
@@ -440,7 +548,7 @@ describe("a branch is an if/else (owner 2026-11-23: a decision splits, its branc
     })
 
     for (const direction of ["TB", "LR"] as const) {
-        it(`${direction}: each branch leaves by its own vertex with its words on its own edge, and the branches rejoin at one junction with one arrowhead`, async () => {
+        it(`${direction}: each branch leaves by its own vertex with its words on its own edge, and the branches enter the step they rejoin at, each by its own point`, async () => {
             const parsed = graph(await parseDiagram(direction === "TB" ? DECIDED : DECIDED.replace("flowchart TB", "flowchart LR")))
             const out = await layoutDiagram(parsed, (text) => text.length * 7, estimateLabel)
             const at = out.layout.positions["D"]
@@ -473,10 +581,8 @@ describe("a branch is an if/else (owner 2026-11-23: a decision splits, its branc
             const last = yes.points[yes.points.length - 1]
             assert.ok(target !== undefined && targetBox !== undefined && last !== undefined)
             assert.ok(last[0] >= target.x - 1 && last[0] <= target.x + targetBox.width + 1 && last[1] >= target.y - 1 && last[1] <= target.y + targetBox.height + 1, `the Có branch ends on "Trả giá", not at ${JSON.stringify(last)}`)
-            // Drawn once: the two edges into "Trả giá" meet at one junction and carry one arrowhead between them.
-            const once = dedupeRuns(parsed.edges.map((edge) => ({ id: edge.id, points: out.layout.routes[edge.id]?.points ?? [], rank: 3 })))
-            const heads = ["e5", "e6"].filter((id) => once.get(id)?.joinEnd !== true)
-            assert.equal(heads.length, 1, `one arrowhead into "Trả giá", not ${heads.join(", ")}`)
+            // Every edge its own line: the two edges into "Trả giá" end at two points, each with its arrowhead, and meet nowhere.
+            ownLines(out.layout.routes, parsed.edges)
         })
     }
 })
@@ -559,7 +665,7 @@ describe("switch, parallel, loop and foreach (owner 2026-11-23: the shapes of a 
         assert.equal(loopBackEdges([], []).size, 0)
     })
 
-    it("a switch: every exit leaves the outline of the diamond with its words at its port and bends at most once, and the branches rejoin at one junction under the decision", async () => {
+    it("a switch: every exit leaves the outline of the diamond with its words at its port and bends at most once, and the branches rejoin at the step under the decision, each by its own point", async () => {
         const { parsed, out } = await lay(SWITCH)
         const d = rect(out, parsed, "S")
         const w = d.r - d.l
@@ -584,19 +690,18 @@ describe("switch, parallel, loop and foreach (owner 2026-11-23: the shapes of a 
         assert.deepEqual(xs, [...xs].sort((a, b) => a - b))
         const targets = exits.map((edge) => rect(out, parsed, edge.target).cx)
         assert.deepEqual(targets, [...targets].sort((a, b) => a - b), "the cases stand left to right in the order written")
-        // The join stands under the decision, every branch enters its top at one point, and between them they carry one arrowhead.
+        // The join stands under the decision, every branch enters its top by its own point, in the order the cases stand, each with its arrowhead.
         const z = rect(out, parsed, "Z")
         assert.ok(Math.abs(z.cx - d.cx) <= 1.5, "the join is centred under the decision")
         const rejoin = parsed.edges.filter((edge) => edge.target === "Z")
-        const once = dedupeRuns(rejoin.map((edge) => ({ id: edge.id, points: route(out, edge.id).points, rank: 3 })))
-        assert.equal(rejoin.filter((edge) => once.get(edge.id)?.joinEnd !== true).length, 1, "one arrowhead into the join")
-        for (const edge of rejoin) {
-            const last = route(out, edge.id).points.at(-1)
-            assert.ok(last !== undefined && Math.abs(last[0] - z.cx) <= 1.5 && Math.abs(last[1] - z.t) <= 1.5, `${edge.id} enters the top of the join`)
-        }
+        const entries = rejoin.map((edge) => route(out, edge.id).points.at(-1))
+        for (const [index, last] of entries.entries()) assert.ok(last !== undefined && last[0] > z.l && last[0] < z.r && Math.abs(last[1] - z.t) <= 1.5, `${rejoin[index]?.id ?? ""} enters the top of the join`)
+        const xsIn = entries.map((last) => last?.[0] ?? 0)
+        assert.deepEqual(xsIn, [...xsIn].sort((a, b) => a - b), "the entries stand in the order of the cases")
+        ownLines(out.layout.routes, parsed.edges)
     })
 
-    it("a switch across: the exits leave the right half of the diamond and rejoin on one line", async () => {
+    it("a switch across: the exits leave the right half of the diamond and rejoin at the step across from it, each by its own point", async () => {
         const { parsed, out } = await lay(SWITCH.replace("flowchart TB", "flowchart LR"))
         const d = rect(out, parsed, "S")
         for (const edge of parsed.edges.filter((each) => each.source === "S")) {
@@ -606,9 +711,7 @@ describe("switch, parallel, loop and foreach (owner 2026-11-23: the shapes of a 
         }
         const z = rect(out, parsed, "Z")
         assert.ok(Math.abs(z.cy - d.cy) <= 1.5, "the join is centred across from the decision")
-        const rejoin = parsed.edges.filter((edge) => edge.target === "Z")
-        const once = dedupeRuns(rejoin.map((edge) => ({ id: edge.id, points: route(out, edge.id).points, rank: 3 })))
-        assert.equal(rejoin.filter((edge) => once.get(edge.id)?.joinEnd !== true).length, 1)
+        ownLines(out.layout.routes, parsed.edges)
     })
 
     for (const direction of ["TB", "LR"] as const) {

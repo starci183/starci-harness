@@ -110,6 +110,12 @@
     --starci-graph-diagram-ink: var(--accent-soft-foreground);
 }
 
+:is(.starci-graph-diagram-node, .starci-graph-diagram-group)[data-tone="info"] {
+    --starci-graph-diagram-fill: var(--info-soft);
+    --starci-graph-diagram-edge: var(--info);
+    --starci-graph-diagram-ink: var(--info-soft-foreground);
+}
+
 .starci-graph-diagram-node {
     position: relative;
     box-sizing: border-box;
@@ -170,8 +176,33 @@
     fill: none;
 }
 
-.starci-graph-diagram-node[data-shape="cylinder"] .starci-graph-diagram-words {
+.starci-graph-diagram-node[data-shape="cylinder"] > :is(.starci-graph-diagram-words, .starci-graph-diagram-labelled) {
     margin-block-start: var(--grammar-identity-gap);
+}
+
+/* A node's icon (the app's logo for the name the source gave, `R@{ icon: "redis" }`): one line high, before the words, the gap the layout counts. */
+.starci-graph-diagram-labelled {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--grammar-identity-gap);
+    min-inline-size: 0;
+}
+
+.starci-graph-diagram-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--grammar-type-label-field-line);
+    block-size: var(--grammar-type-label-field-line);
+}
+
+.starci-graph-diagram-icon > :is(img, svg, picture) {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: contain;
 }
 
 /* A state diagram's marks: the start a foreground dot, the end a dot in a ring, a fork or join a bar. */
@@ -249,6 +280,59 @@
     stroke-width: 2.5;
 }
 
+/*
+ * A toned edge (`edgeTones`, or `class <edge id> <tone>`): its line and arrowhead in the tone, a touch heavier so two flows read apart; its words are the
+ * pill in the same tone (StepEdge's Badge). Each edge is its own line, so no tone is ever drawn over another's.
+ */
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--danger {
+    color: var(--danger);
+}
+
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--success {
+    color: var(--success);
+}
+
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--accent {
+    color: var(--accent);
+}
+
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--info {
+    color: var(--info);
+}
+
+.starci-graph :is(.starci-graph-diagram-edge--danger, .starci-graph-diagram-edge--success, .starci-graph-diagram-edge--accent, .starci-graph-diagram-edge--info) .react-flow__edge-path {
+    stroke: currentcolor;
+    stroke-width: 2;
+}
+
+/* The legend under a diagram: the graph's legend row, flush with the caption, each swatch a short line in its tone. */
+.starci-graph-diagram .starci-graph-diagram-legend {
+    padding: 0;
+}
+
+.starci-graph-diagram-legend-line path {
+    fill: none;
+    stroke: var(--starci-graph-diagram-legend-tone, var(--foreground));
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.starci-graph-diagram-legend-line[data-tone="danger"] {
+    --starci-graph-diagram-legend-tone: var(--danger);
+}
+
+.starci-graph-diagram-legend-line[data-tone="success"] {
+    --starci-graph-diagram-legend-tone: var(--success);
+}
+
+.starci-graph-diagram-legend-line[data-tone="accent"] {
+    --starci-graph-diagram-legend-tone: var(--accent);
+}
+
+.starci-graph-diagram-legend-line[data-tone="info"] {
+    --starci-graph-diagram-legend-tone: var(--info);
+}
+
 /* ---------------------------------------------------------------- a sequence */
 
 .starci-graph-diagram-participant[data-actor="true"] {
@@ -294,6 +378,10 @@
 
 .starci-graph-diagram-message[data-tone="accent"] {
     --starci-graph-diagram-line: var(--accent);
+}
+
+.starci-graph-diagram-message[data-tone="info"] {
+    --starci-graph-diagram-line: var(--info);
 }
 
 .starci-graph-diagram-message-line {
@@ -353,6 +441,10 @@
 
 .starci-graph-diagram-message-text[data-tone="accent"] {
     color: var(--accent-soft-foreground);
+}
+
+.starci-graph-diagram-message-text[data-tone="info"] {
+    color: var(--info-soft-foreground);
 }
 
 .starci-graph-diagram-message-number {

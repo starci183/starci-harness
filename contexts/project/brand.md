@@ -20,8 +20,9 @@ folder is the sheet an agent prompts from, and it points at that record instead 
 
 The default concept a new app starts with, which the app edits to its own brand (owner 2026-11-24, replacing 3D clay): a calm, flat editorial
 illustration with soft shading and thin clean outlines on a plain off-white ground; off-white and light grey with the brand colour as the single
-accent; one helper character of the brand (NIVO: a crimson star; StarCi Next: a violet chip) appears in every scene and is the only face, people
-are faceless flat figures; no text, letters, logos or UI screenshots; the whole subject inside the frame with a margin; square, 1024 px. An illustration stands on a page-level state only (a first visit, a whole-page empty state, a
+accent; the brand's helper character (NIVO: a crimson star; StarCi Next: a violet chip) is OPTIONAL — it appears only where it adds meaning (an
+empty state, a 404, a first visit), never by default in a content or explainer picture, which shows the plain scene (owner 2026-11-24: "nhiều hình không
+cần linh vật"); when it appears it is the only face, and people are always faceless flat figures; no text, letters, logos or UI screenshots; the whole subject inside the frame with a margin; square, 1024 px. An illustration stands on a page-level state only (a first visit, a whole-page empty state, a
 paywall, the 404 and the 500 page), rendered at 160 px at 1440 and 120 px at 390; it never stands on a working screen.
 
 **Why `illustration.yaml` and not a fenced block of `illustration.md`.** A check reads the version on every run, and a prompt file records it; a YAML

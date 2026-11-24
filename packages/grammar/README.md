@@ -192,8 +192,22 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 
 The first view is the whole drawing when it stays readable; it is never opened under zoom 0.85 (caption-role words at 11px or more), so a sequence or a flowchart too wide for a phone opens at 0.85 from its first participant or entry node and is panned by touch and pinched, with the zoom controls kept.
 
+Every edge of a flowchart is its own line: two edges never leave or enter a node at one point and never share a stretch, so no junction dot is drawn. Tones (`danger`, `success`, `accent`, `info`) paint a node (`tones`, or `class B danger` in the source), a sequence message (`messageTones`, by its place from 1) or a flowchart edge (`edgeTones`, by its place among the links from 1, or Mermaid's own edge id and class: `A r1@--> R`, then `class r1 info`). `legend` draws a row under the canvas saying what each edge tone means. A node names an icon with Mermaid's own `R@{ icon: "redis" }` (its `[(…)]` shape stays) and `icons` maps the name to what the app draws, one line high before the words.
+
 ```tsx
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
+
+<MermaidDiagram
+    label="Read and write paths"
+    source={`flowchart LR
+  A[Web] r1@--> R[(Redis)]
+  M[Admin] w1@--> R
+  R@{ icon: "redis" }
+  class r1 info
+  class w1 accent`}
+    icons={{ redis: <img src="/logos/redis.svg" alt="" /> }}
+    legend={[{ tone: "info", label: "Read path" }, { tone: "accent", label: "Write path" }]}
+/>
 ```
 
 ### Fragment (0.49.0)
