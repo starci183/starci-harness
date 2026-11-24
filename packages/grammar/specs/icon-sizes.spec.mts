@@ -100,7 +100,7 @@ test("a leading icon is the 14/16 pair, one inline step apart, at regular weight
 /** The selectors that identify text carrying an icon or a status glyph: the owner's "text that carries an icon is regular" (contexts/ui/scale.md). */
 const ICON_TEXT = /:has\([^)]*(?:\.starci-core-icon|\.starci-core-inline-status-glyph)|\.starci-core-inline-status(?![-\w])/
 /** A control keeps its 500 label and sets its own stroke; it is not text. */
-const CONTROL = /\.starci-core-(?:button|text-action|tab|tabs-more|choice-chip|pane-trigger|icon-button)(?![-\w])/
+const CONTROL = /\.starci-core-(?:button|text-action|tab|tabs-more|pane-trigger|icon-button)(?![-\w])/
 
 test("text that carries an icon is regular: no rule on it sets a weight above 400, a control excepted", () => {
     const off: string[] = []

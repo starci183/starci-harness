@@ -8,7 +8,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 ## `starci-grammar/field-label`
 
-A Grammar `Text` or `Label`, or a plain `label` or `span` with literal text, standing immediately before a Grammar form control (Input, Select, Textarea, NumberField, ComboBox, Autocomplete, CheckboxGroup, RadioGroup, ChoiceChips, Switch, DatePicker, DateField, TimeField, SearchField, Slider, CopyField) among the same parent's children (looked through fragments, conditions and `.map`), when the control has no `label` prop (an `aria-label` alone does not count), is refused. A control with a spread is not judged.
+A Grammar `Text` or `Label`, or a plain `label` or `span` with literal text, standing immediately before a Grammar form control (Input, Select, Textarea, NumberField, ComboBox, Autocomplete, CheckboxGroup, RadioGroup, Switch, DatePicker, DateField, TimeField, SearchField, Slider, CopyField) among the same parent's children (looked through fragments, conditions and `.map`), when the control has no `label` prop (an `aria-label` alone does not count), is refused. A control with a spread is not judged.
 
 **Invalid**
 

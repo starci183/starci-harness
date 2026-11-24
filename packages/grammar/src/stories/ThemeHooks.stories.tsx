@@ -51,7 +51,7 @@ const Parts = () => (
     </G.SurfaceCard>
     <G.Input id="hook-page" name="page" label="On the page" />
     <G.SearchField label="Search" />
-    <G.ChoiceChips label="Repeat on" selectionMode="multiple" options={['Mon', 'Tue', 'Wed'].map((day) => ({ value: day, label: day }))} defaultValues={['Mon']} empty={null} />
+    <G.RadioGroup label="Repeat" appearance="rows" options={['daily', 'weekly'].map((each) => ({ value: each, label: each }))} defaultValue="daily" />
     <div style={{ width: 280 }}>
       <G.Sidebar label="Workspace" selectedKey="inbox" groups={[{ id: 'main', items: [{ id: 'home', label: 'Home' }, { id: 'inbox', label: 'Inbox' }] }]} />
     </div>
@@ -99,7 +99,6 @@ const NEUTRAL_HOOKS = {
   '--starci-core-plate-border': '1px solid var(--border)',
   '--starci-core-plate-selected': 'var(--default)',
   '--starci-core-plate-selected-foreground': 'var(--foreground)',
-  '--starci-core-plate-selected-border': '1px solid var(--foreground)',
   '--starci-core-bubble-incoming': 'var(--default)',
   '--starci-core-bubble-outgoing': 'var(--surface)',
   '--starci-core-bubble-outgoing-foreground': 'var(--foreground)',
@@ -114,9 +113,9 @@ export const Hooked: Story = {
       const item = canvasElement.querySelector<HTMLElement>('.starci-core-sidebar-item[data-grammar-current="true"], .starci-core-sidebar-item[data-selected="true"]');
       if (item === null) throw new Error('the selected item renders');
       expect(getComputedStyle(item, '::before').width).toBe('2px');
-      const chip = canvasElement.querySelector<HTMLElement>('.starci-core-choice-chip:not([data-selected="true"])');
-      if (chip === null) throw new Error('an unselected chip renders');
-      expect(getComputedStyle(chip).borderTopWidth).toBe('1px');
+      const row = canvasElement.querySelector<HTMLElement>('[data-grammar-radio-appearance="rows"] .starci-core-radio:not([data-selected="true"])');
+      if (row === null) throw new Error('an unselected radio row renders');
+      expect(getComputedStyle(row).borderTopWidth).toBe('1px');
       const outgoing = canvasElement.querySelector<HTMLElement>('[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body');
       if (outgoing === null) throw new Error('the outgoing bubble renders');
       expect(getComputedStyle(outgoing).borderTopWidth).toBe('1px');

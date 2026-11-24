@@ -45,4 +45,4 @@ A pill (`pill` and `compact`) sizes to its value (0.42.0), in a `Cluster`, a `St
 appearance fills its column.
 
 ## Rules
-FEEDBACK-1, STATE-6. Lint: `starci-fe/no-native-form-control`. Proof: A11Y-1, FOCUS-2, UX-8.
+FEEDBACK-1, STATE-6. A group of chips or attached buttons never picks a value: one value is a `Select`, several are a multi-selection list. Lint: `starci-fe/no-native-form-control`. Proof: A11Y-1, FOCUS-2, UX-8.

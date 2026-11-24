@@ -169,24 +169,12 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, count, href, isDisabled", panels]
     variants:
-      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count chip per tab and a +n fold; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
+      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count chip per tab and a +n fold; a value of a form or a toolbar is a Select, never a tab bar", chosenBy: app by tabs.choose.role }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
     dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-INDICATOR-BELOW-LABEL, DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED, DNA-COMMON-TABS-SELECTED-IN-VIEW-START, DNA-COMMON-TABS-SELECTED-IN-VIEW-END, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION, DNA-COMMON-TABS-FILTER-NO-FOLD, DNA-COMMON-TABS-FILTER-IN-ROW]
-
-  - id: segmented-control
-    ui: ui/components/segmented-control.md
-    renderers: [ChoiceChips, ChoiceButtons]
-    vendorParity: [toggle-button-group, toggle-button]
-    slots: ["ChoiceChips, ChoiceButtons: label, options (value, label, isDisabled), empty, error"]
-    variants:
-      width: { values: [content, fill], chosenBy: app }
-    sizes: { choiceChips: { steps: none, equals: the vendor Chip of size sm }, choiceButtons: { steps: [sm, md], default: md, equals: the Button of the same size } }
-    states: [selected, focus-visible, disabled, skeleton]
-    grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL, DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT]
 
   - id: chip
     ui: ui/components/chip.md
@@ -1573,11 +1561,6 @@ mustKeep:
       law: "In a loading region the filter tabs keep their labels as real text and every count is the geometry of its ready box (an unseen placeholder), never a live number."
       measure: { kind: count, select: 'document [data-grammar-region-inert] [data-grammar-tabs-kind="filter"] [data-grammar-tab-count]:not(:has(.starci-core-skeleton-placeholder))', op: "=", value: 0 }
       owner: contract roles.tabs
-    - id: DNA-COMMON-CHOICE-CHIPS-FILL
-      role: segmented-control
-      law: "ChoiceChips with width fill share the row: the last chip of every row ends where the row ends."
-      measure: { kind: relation, select: '[data-grammar-width="fill"] .starci-core-choice-chip:last-child', metric: right, op: ">=", tolerance: 1, ref: { within: '.starci-core-choice-chips-row', select: self, metric: right } }
-      owner: contract roles.segmented-control
     - id: DNA-COMMON-CLUSTER-GROUP-NAMED
       role: cluster
       law: "A Cluster given a label is a group with an accessible name: separate controls stay separate and the set is named."
@@ -1824,26 +1807,6 @@ mustKeep:
       measure: { kind: style, select: '[data-grammar-pane-section-rule="start"]', checks: [{ metric: border-top-width, op: "=", value: 1px }, { metric: border-bottom-width, op: "=", value: 0px }, { metric: border-top-color, op: "=", value: { token: --separator } }] }
       owner: contract roles.pane-grid
       followUp: "owner-triage 2026-11-18: a PaneSection footer in the chat-frame story draws no top rule"
-    - id: DNA-COMMON-CHOICE-CHIPS-WRAP
-      role: segmented-control
-      law: The chips of one group have one height, so a wrapped row and a short row read as one set.
-      measure: { kind: uniform, scope: ':is([data-component="ChoiceChips"],[data-component="ChoiceButtons"])', select: '.starci-core-choice-chip', metric: [height], op: "=" }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT
-      role: segmented-control
-      law: A choice chip is as tall as a Chip of size sm, never the height of a toggle button.
-      measure: { kind: style, select: '[data-component="ChoiceChips"] .starci-core-choice-chip', metric: [height], op: "=", value: { vendor: { component: Chip, props: { variant: soft, size: sm }, metric: [height] } } }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT
-      role: segmented-control
-      law: A ChoiceButtons option at md is as tall as a md Button, 40.
-      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="md"] .starci-core-choice-chip', metric: height, op: "=", value: 40px }
-      owner: contract roles.segmented-control
-    - id: DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT
-      role: segmented-control
-      law: A ChoiceButtons option at sm is as tall as a sm Button, 32.
-      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="sm"] .starci-core-choice-chip', metric: height, op: "=", value: 32px }
-      owner: contract roles.segmented-control
     - id: DNA-COMMON-BOARD-ONE-WIDTH
       role: data-views
       law: The columns of one board share one width.

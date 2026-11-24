@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: the replacement messages of R380 name a dropdown `Select` for a value of a form or a toolbar (no chips); `ChoiceChips` and `ChoiceButtons` left the form-control lists of `field-label` and `gap-proximity`.
+
 ## 0.58.0 - 2026-11-24
 
 - No rule of its own changed: versioned with @starci/grammar 0.58.0.

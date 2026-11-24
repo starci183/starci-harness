@@ -5058,7 +5058,7 @@ rules:
       - {path: packages/hfs/src/branch-profile.spec.mjs}
   - id: R380
     code: "FE_GROUPED_CHOICE_CONTROL"
-    law: "The Grammar draws no group of attached buttons: a ButtonGroup, FilterButtonGroup or SegmentedControl in product source is refused and the message names the replacement by meaning, Tabs to switch a view or filter a list (kind filter), ChoiceChips or RadioGroup to choose a value of a form, separate Buttons or a DropdownMenu for actions. The components are deleted (ButtonGroup and FilterButtonGroup in Grammar 0.55.0); the rule still names the replacement for a source that keeps one."
+    law: "The Grammar draws no group of attached buttons: a ButtonGroup, FilterButtonGroup or SegmentedControl in product source is refused and the message names the replacement by meaning, Tabs to switch a view or filter a list (kind filter) and Tabs appearance primary to switch a mode or period, a dropdown Select to choose a value of a form or a toolbar, separate Buttons or a DropdownMenu for actions. The components are deleted (ButtonGroup and FilterButtonGroup in Grammar 0.55.0); the rule still names the replacement for a source that keeps one. ChoiceChips is removed too (owner 2026-11-24: trong form thì chọn dropdown), and an import of it is refused with the same replacement by meaning."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_GROUPED_CHOICE_CONTROL"]
