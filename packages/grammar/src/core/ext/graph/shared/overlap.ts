@@ -83,16 +83,20 @@ const trimEnd = (points: [number, number][], drawn: readonly Segment[]): boolean
     return joined
 }
 
-/** The routes with every shared stretch drawn once: the higher rank keeps it, the other ends (or starts) where it meets it; a middle run in a corridor moves aside. */
-export const dedupeRuns = (routes: readonly RankedRoute[]): ReadonlyMap<string, DedupedRoute> => {
+/**
+ * The routes with every shared stretch drawn once: the higher rank keeps it, the other ends (or starts) where it meets it; a middle run in a corridor moves
+ * aside. With `join: false` no route is cut back to another's line (a drawing whose every edge is its own line, MermaidDiagram's): only the middle runs
+ * move aside, and no route reports a junction.
+ */
+export const dedupeRuns = (routes: readonly RankedRoute[], { join = true }: { readonly join?: boolean } = {}): ReadonlyMap<string, DedupedRoute> => {
     const order = [...routes].sort((p, q) => q.rank - p.rank || q.points.length - p.points.length || p.id.localeCompare(q.id))
     const drawn: Segment[] = []
     const out = new Map<string, DedupedRoute>()
     for (const route of order) {
         const points = route.points.map((point) => [point[0], point[1]] as [number, number])
-        const joinEnd = trimEnd(points, drawn)
+        const joinEnd = join && trimEnd(points, drawn)
         points.reverse()
-        const joinStart = trimEnd(points, drawn)
+        const joinStart = join && trimEnd(points, drawn)
         points.reverse()
         // A middle run in another edge's corridor moves aside, its neighbours following (they stay orthogonal).
         for (let pass = 0; pass < 3; pass += 1) {

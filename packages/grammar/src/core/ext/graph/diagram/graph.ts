@@ -4,6 +4,7 @@
  */
 import { STRAIGHT_SNAP, layoutFlow, type Box, type FlowLayout, type LayoutPort, type LinkEnds, type Measure, type PortSide, type Route, type SizedNode } from "../layout.js"
 import { entrySide, portAt, portSide } from "../model.js"
+import { OVERLAP_TOLERANCE, dedupeRuns, overlaps } from "../shared/overlap.js"
 import type { DiagramGraph, DiagramNode } from "./model.js"
 import type { TextWidth } from "./sequence.js"
 
@@ -28,11 +29,15 @@ const wrap = (text: string, max: number, textWidth: TextWidth): readonly string[
 
 const LINE = 18
 const BOX_MAX = 240
+/** A node's icon: a square the height of one line of its words, and the gap before the words (`--grammar-identity-gap`). */
+export const ICON_SIZE = LINE
+export const ICON_GAP = 4
 
-/** The box a node needs for its words in its shape. */
+/** The box a node needs for its words in its shape, and for its icon before them when it has one. */
 export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: TextWidth, exits = 0): { readonly width: number; readonly height: number } => {
-    const words = wrap(node.label, BOX_MAX - 32, textWidth)
-    const wide = Math.max(0, ...words.map(textWidth))
+    const icon = node.icon === undefined || node.shape === "container" || node.shape === "bar" || node.shape === "start" || node.shape === "end" ? 0 : ICON_SIZE + (node.label === "" ? 0 : ICON_GAP)
+    const words = wrap(node.label, BOX_MAX - 32 - icon, textWidth)
+    const wide = Math.max(0, ...words.map(textWidth)) + icon
     const tall = words.length * LINE
     switch (node.shape) {
         case "start":
@@ -180,6 +185,215 @@ const meets = (a: Rect, b: Rect): boolean => a.l < b.r && b.l < a.r && a.t < b.b
 /** Whether an orthogonal run passes through a box. */
 const runMeets = (a: Pt, b: Pt, rect: Rect): boolean => meets({ l: Math.min(a[0], b[0]), t: Math.min(a[1], b[1]), r: Math.max(a[0], b[0]), b: Math.max(a[1], b[1]) }, rect)
 
+/** How far apart the ends of two edges stand on one side of a node: more than the overlap tolerance, and wider than an arrowhead. */
+export const END_SPREAD = 16
+/** How close two ends stand on one side of a node to count as one point. */
+const END_SAME = 4
+
+/**
+ * Every edge of a diagram is its own line (owner 2026-11-24: separate, coloured edges, no merge points): two edges never leave or enter a node at one
+ * point. `spread`: the ends that share a point on a side of a node (or stand closer than END_SPREAD) are spread along that side, END_SPREAD apart, in the
+ * order of where their other ends lie, so no two cross there. `clear`: an end whose first run lies along another edge's run (two lines a few pixels apart)
+ * slides clear of it, when its side has room. Each end's first run (square to the side) moves with it, and so do its words when they stand on that run;
+ * a straight edge moves whole, by the mean of what its two ends ask, inside both its sides.
+ */
+const separateOnce = (graph: DiagramGraph, routes: Record<string, Route>, rectOf: (id: string) => Rect, mode: "spread" | "clear"): boolean => {
+    interface End {
+        readonly edge: string
+        readonly node: string
+        readonly start: boolean
+        /** The axis the end slides along: 0 (x) on a top or bottom side, 1 (y) on a left or right one. */
+        readonly axis: 0 | 1
+        readonly side: string
+        readonly at: Pt
+        /** The next point of the route: the end's first run is `at` to `next`. */
+        readonly next: Pt
+        /** Where the edge's other end lies along the axis: the order of the spread. */
+        readonly far: number
+        /** Where along the axis the end may stand: inside its side, 8 from each corner, and for a straight edge inside the other end's side too. */
+        readonly lo: number
+        readonly hi: number
+    }
+    const inside = (id: string, axis: 0 | 1): readonly [number, number] => {
+        const rect = rectOf(id)
+        return axis === 0 ? [rect.l + 8, rect.r - 8] : [rect.t + 8, rect.b - 8]
+    }
+    const ends: End[] = []
+    for (const edge of graph.edges) {
+        const route = routes[edge.id]
+        if (route === undefined || route.points.length < 2) continue
+        for (const start of [true, false]) {
+            const node = start ? edge.source : edge.target
+            const points = start ? route.points : [...route.points].reverse()
+            const [at, next] = points
+            const far = points[points.length - 1]
+            if (at === undefined || next === undefined || far === undefined) continue
+            const rect = rectOf(node)
+            const side = Math.abs(at[1] - rect.t) <= 1 ? "top" : Math.abs(at[1] - rect.b) <= 1 ? "bottom" : Math.abs(at[0] - rect.l) <= 1 ? "left" : Math.abs(at[0] - rect.r) <= 1 ? "right" : undefined
+            if (side === undefined) continue
+            const axis = side === "top" || side === "bottom" ? 0 : 1
+            // Only an end whose first run is square to its side slides along it cleanly.
+            if (Math.abs(at[axis] - next[axis]) > 0.5) continue
+            const own = inside(node, axis)
+            const other = route.points.length === 2 ? inside(start ? edge.target : edge.source, axis) : own
+            ends.push({ edge: edge.id, node, start, axis, side, at, next, far: far[axis], lo: Math.max(own[0], other[0]), hi: Math.min(own[1], other[1]) })
+        }
+    }
+    const shifts = new Map<string, number>()
+    /** How far each end may move, either way, and stay inside its range. */
+    const ranges = new Map<string, readonly [number, number]>()
+    const key = (end: End): string => `${end.edge}\u0000${end.start ? "s" : "t"}`
+    const grouped = new Set<End>()
+    if (mode === "clear") {
+        // The first end whose first run lies along another edge's run, and that can slide clear of it: one per pass, the next pass sees the result.
+        const segments = graph.edges.flatMap((edge) => {
+            const points = routes[edge.id]?.points ?? []
+            return points.slice(1).map((point, index) => ({ edge: edge.id, a: points[index] ?? point, b: point }))
+        })
+        for (const end of ends) {
+            const hit = segments.find((segment) => segment.edge !== end.edge && overlaps([end.at, end.next], [segment.a, segment.b]))
+            if (hit === undefined) continue
+            const line = hit.a[end.axis]
+            const want = line + (end.at[end.axis] <= line ? -1 : 1) * (OVERLAP_TOLERANCE + 2)
+            const crowded = ends.some((other) => other !== end && other.node === end.node && other.side === end.side && Math.abs(other.at[end.axis] - want) < END_SPREAD)
+            if (want < end.lo || want > end.hi || crowded) continue
+            shifts.set(key(end), Math.round(want - end.at[end.axis]))
+            ranges.set(key(end), [end.lo - end.at[end.axis], end.hi - end.at[end.axis]])
+            break
+        }
+    }
+    for (const end of mode === "spread" ? ends : []) {
+        if (grouped.has(end)) continue
+        // The ends on this side closer than END_SPREAD to one of the group, one after another: they share a point, or their arrowheads would touch.
+        const group = [end]
+        grouped.add(end)
+        for (let grew = true; grew; ) {
+            grew = false
+            for (const other of ends) {
+                if (grouped.has(other) || other.node !== end.node || other.side !== end.side) continue
+                if (!group.some((member) => Math.abs(member.at[end.axis] - other.at[end.axis]) < END_SPREAD && Math.abs(member.at[end.axis === 0 ? 1 : 0] - other.at[end.axis === 0 ? 1 : 0]) <= END_SAME)) continue
+                group.push(other)
+                grouped.add(other)
+                grew = true
+            }
+        }
+        if (group.length < 2) continue
+        const rect = rectOf(end.node)
+        const length = end.axis === 0 ? rect.r - rect.l : rect.b - rect.t
+        const spread = Math.min(END_SPREAD, Math.max(END_SAME * 2, (length - 16) / (group.length - 1)))
+        const centre = group.reduce((sum, member) => sum + member.at[end.axis], 0) / group.length
+        const low = (end.axis === 0 ? rect.l : rect.t) + 8
+        const high = (end.axis === 0 ? rect.r : rect.b) - 8
+        const ordered = [...group].sort((a, b) => a.far - b.far || a.edge.localeCompare(b.edge))
+        const half = ((ordered.length - 1) * spread) / 2
+        // The fan stays on the side: it is moved inward when the shared point stands near a corner.
+        const from = Math.min(Math.max(centre - half, low), Math.max(low, high - 2 * half))
+        // Each end as near its place in the fan as its own range lets it (a straight edge is held by both its sides), then pushed apart both ways.
+        const clamp = (value: number, member: End): number => Math.min(Math.max(value, member.lo), Math.max(member.lo, member.hi))
+        const place = (order: readonly End[]): number[] => {
+            const at = order.map((member, index) => clamp(from + index * spread, member))
+            for (let index = 1; index < at.length; index += 1) at[index] = clamp(Math.max(at[index] ?? 0, (at[index - 1] ?? 0) + spread), order[index] as End)
+            for (let index = at.length - 2; index >= 0; index -= 1) at[index] = clamp(Math.min(at[index] ?? 0, (at[index + 1] ?? 0) - spread), order[index] as End)
+            return at
+        }
+        const apart = (at: readonly number[]): boolean => at.every((value, index) => index === 0 || value - (at[index - 1] ?? 0) >= spread - 0.5)
+        // When the ranges cannot hold that order (a straight edge pinned near a corner), the reverse order is tried: two lines may cross, never meet.
+        let places = place(ordered)
+        if (!apart(places)) {
+            const reversed = [...ordered].reverse()
+            const other = place(reversed)
+            if (apart(other)) {
+                ordered.splice(0, ordered.length, ...reversed)
+                places = other
+            }
+        }
+        ordered.forEach((member, index) => {
+            shifts.set(key(member), Math.round((places[index] ?? member.at[member.axis]) - member.at[member.axis]))
+            ranges.set(key(member), [member.lo - member.at[member.axis], member.hi - member.at[member.axis]])
+        })
+    }
+    let moved = false
+    for (const edge of graph.edges) {
+        const route = routes[edge.id]
+        if (route === undefined) continue
+        const startShift = shifts.get(`${edge.id}\u0000s`)
+        const endShift = shifts.get(`${edge.id}\u0000t`)
+        if (startShift === undefined && endShift === undefined) continue
+        const points: [number, number][] = route.points.map(([x, y]) => [x, y])
+        let label = route.label
+        const slide = (index: number, neighbour: number, by: number, axis: 0 | 1): void => {
+            const a = points[index]
+            const b = points[neighbour]
+            if (a === undefined || b === undefined || by === 0) return
+            moved = true
+            if (label !== undefined) {
+                const cx = label.x + label.width / 2
+                const cy = label.y + label.height / 2
+                const onRun = axis === 0 ? Math.abs(cx - a[0]) <= 2 && cy >= Math.min(a[1], b[1]) - label.height && cy <= Math.max(a[1], b[1]) + label.height : Math.abs(cy - a[1]) <= 2 && cx >= Math.min(a[0], b[0]) - label.width && cx <= Math.max(a[0], b[0]) + label.width
+                if (onRun) label = axis === 0 ? { ...label, x: label.x + by } : { ...label, y: label.y + by }
+            }
+            a[axis] += by
+            b[axis] += by
+        }
+        const endOf = (start: boolean): End | undefined => ends.find((end) => end.edge === edge.id && end.start === start)
+        if (points.length === 2) {
+            // One straight run: both ends move together, by the mean of what each side asks.
+            const asks = [startShift, endShift].filter((each): each is number => each !== undefined)
+            const limits = [ranges.get(`${edge.id}\u0000s`), ranges.get(`${edge.id}\u0000t`)].filter((each): each is readonly [number, number] => each !== undefined)
+            const least = Math.max(...limits.map((each) => each[0]))
+            const most = Math.min(...limits.map((each) => each[1]))
+            const mean = Math.round(asks.reduce((sum, each) => sum + each, 0) / asks.length)
+            slide(0, 1, Math.min(Math.max(mean, least), Math.max(least, most)), endOf(startShift !== undefined)?.axis ?? 0)
+        } else {
+            if (startShift !== undefined) slide(0, 1, startShift, endOf(true)?.axis ?? 0)
+            if (endShift !== undefined) slide(points.length - 1, points.length - 2, endShift, endOf(false)?.axis ?? 0)
+        }
+        // A decision or a circle touches its box only at the middle of each side: an end slid off it runs on, square to the side, to the outline.
+        for (const start of [true, false]) {
+            const end = endOf(start)
+            const point = points[start ? 0 : points.length - 1]
+            const shape = graph.nodes.find((node) => node.id === (start ? edge.source : edge.target))?.shape
+            if (end === undefined || point === undefined || (shape !== "diamond" && shape !== "circle")) continue
+            const rect = rectOf(end.node)
+            const across = end.axis === 0 ? 1 : 0
+            const halfAlong = (end.axis === 0 ? rect.r - rect.l : rect.b - rect.t) / 2
+            const halfAcross = (across === 0 ? rect.r - rect.l : rect.b - rect.t) / 2
+            const off = Math.min(Math.abs(point[end.axis] - (end.axis === 0 ? rect.l : rect.t) - halfAlong), halfAlong)
+            const inset = shape === "diamond" ? (off / halfAlong) * halfAcross : halfAcross - Math.sqrt(Math.max(0, halfAcross * halfAcross - off * off))
+            const inward = end.side === "top" || end.side === "left" ? 1 : -1
+            point[across] = Math.round(point[across] + inward * inset)
+        }
+        routes[edge.id] = { points, ...(label === undefined ? {} : { label }) }
+    }
+    return moved
+}
+
+/** Spreads the ends, then clears the first runs, again until nothing moves: a straight edge that took the mean of its two ends may still crowd a neighbour. */
+const separateEnds = (graph: DiagramGraph, routes: Record<string, Route>, rectOf: (id: string) => Rect): void => {
+    for (let pass = 0; pass < 6; pass += 1) {
+        const spread = separateOnce(graph, routes, rectOf, "spread")
+        const nudged = nudgeCorridors(graph, routes)
+        const cleared = separateOnce(graph, routes, rectOf, "clear")
+        if (!spread && !nudged && !cleared) return
+    }
+}
+
+/** The middle runs that lie in another edge's corridor moved aside, as the canvas draws them (dedupeRuns with no joins), so the ends are cleared against the drawn lines. */
+const nudgeCorridors = (graph: DiagramGraph, routes: Record<string, Route>): boolean => {
+    const drawn = dedupeRuns(graph.edges.flatMap((edge) => {
+        const route = routes[edge.id]
+        return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: edge.back === true || edge.dashed ? 2 : 3 }]
+    }), { join: false })
+    let moved = false
+    for (const [id, found] of drawn) {
+        const route = routes[id]
+        if (route === undefined || found.points.every((point, index) => point[0] === route.points[index]?.[0] && point[1] === route.points[index]?.[1])) continue
+        routes[id] = { ...route, points: found.points }
+        moved = true
+    }
+    return moved
+}
+
 /** Lays a flowchart or a state diagram out with the graph ext's ELK layout, in the graph's direction. */
 export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, measure: Measure): Promise<DiagramLayout> => {
     const branches = decisionBranches(graph)
@@ -190,6 +404,16 @@ export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, m
     for (const [id, room] of loopRoom(graph, natural)) {
         const size = natural.get(id)
         if (size !== undefined) natural.set(id, graph.direction === "TB" ? { ...size, width: Math.max(size.width, room) } : { ...size, height: Math.max(size.height, room) })
+    }
+    // A step three or more edges enter (or leave) is wide enough across the flow for each its own point, END_SPREAD apart (separateEnds).
+    for (const node of graph.nodes) {
+        if (node.shape !== "box" && node.shape !== "round" && node.shape !== "stadium" && node.shape !== "cylinder") continue
+        const ins = graph.edges.filter((edge) => edge.target === node.id && edge.source !== node.id && edge.back !== true).length
+        const outs = graph.edges.filter((edge) => edge.source === node.id && edge.target !== node.id && edge.back !== true).length
+        const size = natural.get(node.id)
+        const room = (Math.max(ins, outs) - 1) * END_SPREAD + 16
+        if (size === undefined || Math.max(ins, outs) < 3) continue
+        natural.set(node.id, graph.direction === "TB" ? { ...size, width: Math.max(size.width, room) } : { ...size, height: Math.max(size.height, room) })
     }
     const sizes: SizedNode[] = graph.nodes.map((node) => {
         const size = natural.get(node.id) ?? { width: 80, height: 40 }
@@ -373,6 +597,8 @@ export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, m
         const points: Pt[] = across === 0 ? [[s.l, mid(s, 1)], [t.l, mid(s, 1)], [t.l, mid(t, 1)]] : [[mid(s, 0), s.t], [mid(s, 0), t.t], [mid(t, 0), t.t]]
         if (!blocked(points, [edge.source, edge.target], BACK_CLEAR)) routes[edge.id] = { points }
     }
+
+    separateEnds(graph, routes, rectOf)
 
     const layout: FlowLayout = { ...laid, positions, boxes, routes }
     const placed = sizes.map((size) => {

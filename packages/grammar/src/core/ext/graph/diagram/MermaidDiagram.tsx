@@ -1,8 +1,8 @@
 "use client"
 
 import { Background, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type RefObject } from "react"
-import { Alert, FencedCodeBlock, Skeleton } from "../../../index.js"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react"
+import { Alert, FencedCodeBlock, Skeleton, Text } from "../../../index.js"
 import type { NoChildren } from "../../../tier.js"
 import type { FlowLayout, SizedNode } from "../layout.js"
 import { measureLabel } from "../shared/canvas.js"
@@ -37,6 +37,12 @@ export interface MermaidDiagramLabels {
 
 export type { MermaidTone } from "./model.js"
 
+/** One row of a diagram's legend: a short line in the tone and the words saying what that line is ("Read path"). */
+export interface MermaidLegendItem {
+    readonly tone: MermaidTone
+    readonly label: string
+}
+
 export type MermaidDiagramProps = NoChildren & {
     /** The Mermaid text, as written in the article's fence (without the fence itself). */
     readonly source: string
@@ -60,6 +66,18 @@ export type MermaidDiagramProps = NoChildren & {
     readonly tones?: Readonly<Record<string, MermaidTone>>
     /** The tone of a sequence diagram's message, by its place among the messages counted from 1 (`{ 5: "danger" }`): its line, head and words. */
     readonly messageTones?: Readonly<Record<number, MermaidTone>>
+    /**
+     * The tone of a flowchart's edge, by its place among the links counted from 1 (`{ 2: "info", 4: "accent" }`): its line, arrowhead and words. The
+     * source may say the same with Mermaid's own edge ids: `A e1@--> B`, then `class e1 info`. The map wins.
+     */
+    readonly edgeTones?: Readonly<Record<number, MermaidTone>>
+    /** What each edge tone means, drawn as a row under the drawing (above the caption): a short line in the tone and its words. */
+    readonly legend?: ReadonlyArray<MermaidLegendItem>
+    /**
+     * What to draw for each icon name a node of the source names with Mermaid's own `R@{ icon: "redis" }` (the app passes small logo images): drawn
+     * before the node's words at the height of one line, the node widened for it. A name the map lacks draws nothing and takes no room.
+     */
+    readonly icons?: Readonly<Record<string, ReactNode>>
     /** One line under the drawing, in the caption role, saying what to look at. */
     readonly caption?: string
     /** The canvas's words (zoom controls, the text version's start and end), English defaults. */
@@ -86,6 +104,8 @@ const textWidth = (text: string): number => Math.ceil((measureLabel(text).width 
 
 interface ShapeData extends Record<string, unknown> {
     node: DiagramNode
+    /** What the app draws for the node's icon, before its words. */
+    icon?: ReactNode
     width: number
     height: number
     direction: "LR" | "TB"
@@ -107,9 +127,21 @@ const toneProps = (tone: MermaidTone | undefined): Record<string, string> => (to
 
 /** A node of a flowchart or a state diagram in its shape: the words centred, the shape drawn from the tokens. */
 const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
-    const { node, width, height, direction } = data
+    const { node, icon, width, height, direction } = data
     // A bar is the mark of a parallel: its words (a fork's "Song song") stand beside it, never in it.
-    const words = node.label === "" ? null : <span className={node.shape === "bar" ? "starci-graph-diagram-bar-words" : "starci-graph-diagram-words"}>{node.label}</span>
+    const text = node.label === "" ? null : <span className={node.shape === "bar" ? "starci-graph-diagram-bar-words" : "starci-graph-diagram-words"}>{node.label}</span>
+    // An icon stands before the words, one line high; the text version names the node by its words alone.
+    const words =
+        icon === undefined || icon === null ? (
+            text
+        ) : (
+            <span className="starci-graph-diagram-labelled">
+                <span className="starci-graph-diagram-icon" aria-hidden="true">
+                    {icon}
+                </span>
+                {text}
+            </span>
+        )
     const outline =
         node.shape === "diamond" ? (
             <svg className="starci-graph-diagram-outline" viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden="true">
@@ -278,8 +310,12 @@ const parentsFirst = (nodes: readonly DiagramNode[]): readonly DiagramNode[] => 
 /** A loop's back edge and an author's dotted link are dashed (dashes mean something); every other edge is plain. */
 const edgeStyle = (edge: DiagramEdge): "back" | "fallback" | "plain" => (edge.back === true ? "back" : edge.dashed ? "fallback" : "plain")
 
-/** The xyflow nodes and edges of a laid-out graph: shapes and containers where ELK put them, edges on ELK's routes with their words as pills. */
-const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { readonly nodes: Node[]; readonly edges: Edge[] } => {
+/**
+ * The xyflow nodes and edges of a laid-out graph: shapes and containers where ELK put them, edges on ELK's routes with their words as pills. Every edge is
+ * its own line (owner 2026-11-24: separate, coloured edges, no merge points): the layout gives each its own exit and entry, no route is cut back to
+ * another's line, so no edge draws a junction dot and each keeps its arrowhead; a middle run in another's corridor still moves aside.
+ */
+const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>, icons: Readonly<Record<string, ReactNode>> | undefined): { readonly nodes: Node[]; readonly edges: Edge[] } => {
     const { graph, layout, sizes } = drawn
     const size = new Map(sizes.map((each) => [each.id, each] as const))
     const nodes = parentsFirst(graph.nodes).map((node): Node => {
@@ -288,7 +324,8 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { rea
         const isGroup = node.shape === "container"
         const width = isGroup ? (box?.width ?? own?.width ?? 120) : (own?.width ?? 80)
         const height = isGroup ? (box?.height ?? own?.height ?? 40) : (own?.height ?? 40)
-        const data: ShapeData = { node, width, height, direction: graph.direction }
+        const icon = node.icon === undefined ? undefined : icons?.[node.icon]
+        const data: ShapeData = { node, ...(icon === undefined ? {} : { icon }), width, height, direction: graph.direction }
         return {
             id: node.id,
             type: isGroup ? "mermaid-group" : "mermaid-shape",
@@ -301,17 +338,21 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>): { rea
             ...still,
         }
     })
-    // Every shared stretch drawn once (the routing law, rule 6): a solid edge keeps it over a dashed one.
-    const once = dedupeRuns(graph.edges.flatMap((edge) => {
-        const route = layout.routes[edge.id]
-        return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edgeStyle(edge)] ?? 3 }]
-    }))
+    // No two edges in one corridor (the routing law, rule 6), and none cut back to another's line: a middle run in a corridor moves aside.
+    const once = dedupeRuns(
+        graph.edges.flatMap((edge) => {
+            const route = layout.routes[edge.id]
+            return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edgeStyle(edge)] ?? 3 }]
+        }),
+        { join: false },
+    )
     const edges = graph.edges.map((edge): Edge => {
         const style = edgeStyle(edge)
         const route = layout.routes[edge.id]
         const drawn = once.get(edge.id)
-        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: drawn?.joinStart === true, joinEnd: drawn?.joinEnd === true }
-        return { id: edge.id, source: edge.source, target: edge.target, type: "step", sourceHandle: "out", targetHandle: "in", className: `${edgeClassName(style)}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}`, zIndex: 2, data, ...still }
+        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: false, joinEnd: false, ...(edge.tone === undefined ? {} : { pillTone: edge.tone }) }
+        const className = `${edgeClassName(style)}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}${edge.tone === undefined ? "" : ` starci-graph-diagram-edge--${edge.tone}`}`
+        return { id: edge.id, source: edge.source, target: edge.target, type: "step", sourceHandle: "out", targetHandle: "in", className, zIndex: 2, data, ...still }
     })
     return { nodes, edges }
 }
@@ -396,6 +437,7 @@ const OpenOnce = ({ drawing }: { readonly drawing: Drawn }): null => {
 
 interface CanvasProps {
     readonly drawn: Drawn
+    readonly icons: Readonly<Record<string, ReactNode>> | undefined
     readonly label: string
     readonly words: MermaidDiagramLabels
     readonly height: number
@@ -404,15 +446,15 @@ interface CanvasProps {
 }
 
 /** The canvas of a drawn diagram: xyflow with the graph's dot grid, panned by drag or touch and the arrow keys, zoomed by pinch, the controls or + and -. */
-const Canvas = ({ drawn, label, words, height, scheme }: CanvasProps): ReactElement => {
+const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): ReactElement => {
     const flow = useReactFlow()
     const open = useOpenView(drawn)
     const elements = useMemo(() => {
-        if (drawn.kind === "graph") return graphElements(drawn)
+        if (drawn.kind === "graph") return graphElements(drawn, icons)
         if (drawn.kind === "sequence") return sequenceElements(drawn)
         const data = { label: "", width: drawn.width, height: drawn.height, svg: drawn.svg }
         return { nodes: [{ id: "drawing", type: "mermaid-svg", position: { x: 0, y: 0 }, data, width: drawn.width, height: drawn.height, ...still }], edges: [] }
-    }, [drawn])
+    }, [drawn, icons])
     const reset = (): void => open()?.set()
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
         if (event.target !== event.currentTarget) return
@@ -519,10 +561,34 @@ const useThemeRevision = (anchor: RefObject<HTMLElement | null>): number => {
     return revision
 }
 
+/** The legend under the drawing: one row of tones, each a short line in its tone (the graph ext's legend look) and the app's words. */
+const DiagramLegend = ({ items }: { readonly items: ReadonlyArray<MermaidLegendItem> }): ReactElement => (
+    <ul className="starci-graph-legend starci-graph-diagram-legend starci-type-caption" data-grammar-mermaid-legend="true">
+        {items.map((item) => (
+            <li key={`${item.tone}-${item.label}`} className="starci-graph-legend-item">
+                <span className="starci-graph-legend-edge starci-graph-diagram-legend-line" data-tone={item.tone} aria-hidden="true">
+                    <svg width={28} height={8} viewBox="0 0 28 8">
+                        <path d="M1 4H27" />
+                    </svg>
+                </span>
+                <Text role="caption">{item.label}</Text>
+            </li>
+        ))}
+    </ul>
+)
+
+/** The icon names a node may keep: the ones the app draws something for. */
+const keepIcons = (given: ParsedDiagram, iconNames: ReadonlySet<string>): ParsedDiagram => {
+    if (given.kind !== "flowchart" && given.kind !== "state") return given
+    // An icon the app draws nothing for takes no room: the node is sized for its words alone.
+    return { ...given, nodes: given.nodes.map((node) => (node.icon === undefined || iconNames.has(node.icon) ? node : (({ icon: _dropped, ...rest }) => rest)(node))) }
+}
+
 /** Lays a parsed diagram out: ELK for a graph, the sequence layout for a sequence, Mermaid's SVG for any other kind. */
-const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HTMLElement, isPhone: boolean): Promise<Drawn> => {
+const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HTMLElement, isPhone: boolean, iconNames: ReadonlySet<string>): Promise<Drawn> => {
+    const known = keepIcons(given, iconNames)
     // On a phone a flowchart or a state diagram is laid out top-down, so it fits the width (the routing law, rule 4).
-    const parsed: ParsedDiagram = isPhone && (given.kind === "flowchart" || given.kind === "state") ? { ...given, direction: "TB" } : given
+    const parsed: ParsedDiagram = isPhone && (known.kind === "flowchart" || known.kind === "state") ? { ...known, direction: "TB" } : known
     if (parsed.kind === "flowchart" || parsed.kind === "state") return { kind: "graph", ...(await layoutDiagram(parsed, textWidth, measureLabel)) }
     if (parsed.kind === "sequence") {
         const layout = layoutSequence(parsed, textWidth)
@@ -539,12 +605,15 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
  * xyflow with the graph's dot grid, pan and zoom, fit and reset, its nodes, edges, arrowheads and fonts. A flowchart and a state diagram are laid out by
  * ELK (layered, few crossings; `[(db)]` a cylinder, a subgraph or a composite state a container); a sequence is laid out row by row (headers, dashed
  * lifelines, a message an edge between two anchors on their lifelines, notes as soft pills, alt/loop/opt as tinted fields); any other kind (gantt, pie,
- * journey, ...) is Mermaid's own SVG in the Grammar's diagram theme, as one node of the same canvas. Loading keeps the canvas box with a Skeleton; a
+ * journey, ...) is Mermaid's own SVG in the Grammar's diagram theme, as one node of the same canvas. Every edge of a flowchart is its own line: two edges
+ * never leave or enter a node at one point and never share a stretch, so no junction dot is drawn and each keeps its arrowhead. Tones paint a node
+ * (`tones`, `class B danger`), a message (`messageTones`) or an edge (`edgeTones`, or `A r1@--> B` then `class r1 info`); `legend` says under the canvas
+ * what each edge tone means; a node's `R@{ icon: "name" }` draws `icons[name]` before its words. Loading keeps the canvas box with a Skeleton; a
  * source Mermaid refuses is an error inside the same region, the title then the source as code. A visually hidden text version (the nodes and links, or
  * the messages in order) follows the canvas. Import `@starci/grammar/core/ext/graph.css` once.
  * Contract: overflow OVERFLOW-4; loading and failure keep the anatomy STATE-8.
  */
-export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "This diagram could not be drawn.", sourceLabel, isLoading = false, tones, messageTones, caption, labels }: MermaidDiagramProps): ReactElement => {
+export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "This diagram could not be drawn.", sourceLabel, isLoading = false, tones, messageTones, edgeTones, legend, icons, caption, labels }: MermaidDiagramProps): ReactElement => {
     const frame = useRef<HTMLElement | null>(null)
     const [drawing, setDrawing] = useState<Drawing>({ status: "loading" })
     const [needsTheme, setNeedsTheme] = useState(false)
@@ -560,23 +629,24 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const isPhone = width === null ? null : width < PHONE_LAYOUT_WIDTH
     const words = { ...LABELS, ...labels }
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
-    // The tones are read by value: an inline object passed each render redraws nothing unless what it says changed.
-    const toneKey = JSON.stringify([tones ?? null, messageTones ?? null])
-    const toned = useRef({ tones, messageTones, label })
-    toned.current = { tones, messageTones, label }
+    // The tones and the icon names are read by value: an inline object passed each render redraws nothing unless what it says changed.
+    const iconNames = Object.keys(icons ?? {}).sort()
+    const toneKey = JSON.stringify([tones ?? null, messageTones ?? null, edgeTones ?? null, iconNames])
+    const toned = useRef({ tones, messageTones, edgeTones, iconNames, label })
+    toned.current = { tones, messageTones, edgeTones, iconNames, label }
 
     useEffect(() => {
         if (isLoading || frame.current === null || isPhone === null) return
         let isCurrent = true
         const anchor = frame.current
         setDrawing({ status: "loading" })
-        parseDiagram(source, toned.current.tones, toned.current.messageTones)
+        parseDiagram(source, toned.current.tones, toned.current.messageTones, toned.current.edgeTones)
             .then((parsed) => {
                 if (isCurrent) setNeedsTheme(parsed.kind === "other")
                 if (parsed.kind === "flowchart" && !isProduction())
                     for (const node of branchesWithoutDecision(parsed))
                         globalThis.console.warn(`@starci/grammar/core/ext/graph: MermaidDiagram "${toned.current.label}": node "${node}" branches without a decision; a branch is an if/else, so write the condition as a decision node {…?} with one labelled edge per answer (yes / no), or drop the words of edges that are all taken.`)
-                return draw(parsed, source, `${id}-${String(revision)}`, anchor, isPhone)
+                return draw(parsed, source, `${id}-${String(revision)}`, anchor, isPhone, new Set(toned.current.iconNames))
             })
             .then(
                 (drawn) => {
@@ -618,10 +688,11 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
                 </div>
             ) : (
                 <ReactFlowProvider>
-                    <Canvas drawn={ready} label={label} words={words} height={canvas} scheme={scheme} />
+                    <Canvas drawn={ready} icons={icons} label={label} words={words} height={canvas} scheme={scheme} />
                 </ReactFlowProvider>
             )}
             {ready === undefined ? null : <TextVersion drawn={ready} words={words} />}
+            {legend === undefined || legend.length === 0 ? null : <DiagramLegend items={legend} />}
             {caption === undefined ? null : <figcaption className="starci-graph-diagram-caption">{caption}</figcaption>}
         </figure>
     )

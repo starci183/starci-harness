@@ -28,7 +28,10 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
   nodes stand in; `[*]` is a start dot or an end ring; an edge's words are a pill on its line, a dotted link (`-.->`) dashed. RL draws across,
   BT down. A decision with two or more edges out is entered by its entry vertex and its branches leave by its other vertices, in the order the source
   writes them (an if/else: the first straight on, the second to the side), each with its words at its own vertex; branches that lead on to one node
-  rejoin its line at a junction, and one arrowhead enters it. Three or more edges out make a switch (below).
+  each enter it by their own point. Three or more edges out make a switch (below).
+- **Every edge is its own line.** Two edges never leave or enter a node at one point and never share a stretch: the ends on one side of a node stand 16 apart,
+  ordered by where their other ends lie, and the canvas draws no junction dot, so each edge keeps its own arrowhead and its own tone (the routing law, rule 6,
+  [graph](graph.md)). Lines may cross; they never merge.
 - **A branch is an if/else.** A flowchart splits only at a decision: a `{…?}` node whose words ask the condition, one labelled edge per answer
   (yes / no), the branches rejoining with plain arrows where the flow goes on. An ordinary box with two or more labelled edges out is not a branch:
   when the edges are all taken their words go in the nodes, and when they are an if/else the author writes the decision. The renderer never invents
@@ -37,8 +40,8 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
 - **Four shapes beyond an if/else**, all plain Mermaid (no new diagram type; each draws by the routing law, [graph](graph.md) "The routing law"):
   - **Switch**: a `{…}` decision with three or more labelled edges out, one per case, the default ("Khác", "Else") written last. The exits stand left to right in
     the order written: the first out of the side vertex, the last out of the other, the ones between along the slanted sides (the decision is as tall as the
-    exits need), a middle exit of an odd count out of the bottom vertex; each case's words are a pill on its own edge at its port. The branches rejoin on one
-    line just above the step they meet, which stands under the decision, with one arrowhead.
+    exits need), a middle exit of an odd count out of the bottom vertex; each case's words are a pill on its own edge at its port. The branches rejoin at
+    the step they meet, which stands under the decision, each entering it by its own point in the order of the cases.
   - **Parallel**: `F@{ shape: fork, label: "Song song" }` splits and `J@{ shape: join }` merges (Mermaid's own `fork` and `join` shapes; the label is
     optional and short, since it stands above the bar's left end). A bar is a thin solid bar as wide as the branches it spans plus 24 past the outermost; every
     line meets it straight, at its branch's centre, so the branches run side by side. A join's lines each end at the bar with an arrowhead; a state diagram's
@@ -70,11 +73,16 @@ labelled at the split, fitted, dashed only when the source means it and one open
 top-down so it fits the width. Paint is the grammar's, read from the root's tokens; an app passes no
 colours.
 
-Tones and caption: a flowchart node or a state takes a tone, `danger` for the faulty step, `success` for the fix, `accent` for a part the change
-touches, either by `tones={{ B: "danger" }}` or by Mermaid's own `class B danger` in the source; the node is painted in the tone's soft pair and
-edge, and a colour the source writes (a `classDef`, a `style` line) never paints. A sequence's message takes one by its place among the messages,
-counted from 1: `messageTones={{ 5: "danger" }}` paints the fifth message's line, head and words. `caption` is one line under the canvas in the
-caption role, saying what to look at. `labels` gives the canvas's words (the zoom, fit and reset buttons; the text version's start and end).
+Tones, legend, icons and caption: a flowchart node or a state takes a tone, `danger` for the faulty step, `success` for the fix, `accent` for a part the
+change touches, `info` for a second, neutral flow beside the accent one, either by `tones={{ B: "danger" }}` or by Mermaid's own `class B danger` in the
+source; the node is painted in the tone's soft pair and edge, and a colour the source writes (a `classDef`, a `style` line) never paints. A flowchart's
+edge takes a tone to tell two flows apart (a read path and a write path): by Mermaid's own edge id and class (`A r1@--> R`, then `class r1,r2 info`), or
+by its place among the links counted from 1, `edgeTones={{ 2: "info" }}` (the map wins); its line, arrowhead and words take the tone. `legend` names
+what each edge tone means, one short line in the tone and its words per item, as a row under the canvas above the caption. A node may name an icon with
+Mermaid's own `R@{ icon: "redis" }` (the shape `R[(…)]` gave it stays); the app maps the name to what to draw with `icons={{ redis: <img … /> }}`, drawn
+before the node's words one line high, the node widened for it; a name the map lacks draws nothing. A sequence's message takes a tone by its place
+among the messages, counted from 1: `messageTones={{ 5: "danger" }}` paints the fifth message's line, head and words. `caption` is one line under the
+canvas in the caption role, saying what to look at. `labels` gives the canvas's words (the zoom, fit and reset buttons; the text version's start and end).
 
 ## Size
 No control size. The canvas is the frame's full width; a phone keeps the same canvas inline, panned and pinched by touch.
@@ -92,10 +100,10 @@ whom, with their words); a sequence's messages in order (who to whom: what) with
 - **Grammar owns:** the frame and canvas, the reserved box, the parser-to-graph mapping, the layouts, the node and edge paint, the theme over
   Mermaid's own SVG, the tones, the text version, the error carrier, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; the height step.
-- **App author decides:** the source, the label, the caption, the tones, the words (`labels`, the error title).
+- **App author decides:** the source, the label, the caption, the tones, the legend, the icons it draws, the words (`labels`, the error title).
 
 ## Rules
 STATE-8, OVERFLOW-4. Stack: [diagrams](../../stack/fe.yaml) (Mermaid is the Grammar's dependency, xyflow and ELK the graph ext's optional
 peers; an app imports `MermaidDiagram` from `@starci/grammar/core/ext/graph` and its stylesheet once, never `mermaid`). Story
 `Content/Lesson diagrams (0.55.1)`: a sequence and one with blocks, a flowchart across and down, a state diagram, other kinds, loading and
-error, each light and dark, with tones.
+error, each light and dark, with tones; `TonedPaths` two toned flows through the same stores with a legend and icons.

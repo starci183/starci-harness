@@ -106,7 +106,7 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
                   EdgeLabelRenderer,
                   null,
                   // The words of an edge are the core's Badge, in the tone of the way the run went, on the surface so no line runs through them.
-                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
+                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: data?.pillTone ?? PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
               ),
     )
 }
