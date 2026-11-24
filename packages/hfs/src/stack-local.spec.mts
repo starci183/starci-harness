@@ -639,6 +639,19 @@ test('a second watcher tree of one checkout never survives a start: the earlier 
     { pid: 55920, ppid: 1, command: '"node" "D:\\Repositories\\nivoos-lite\\gallery\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" dev --port 3550' },
   ];
   assert.deepEqual(earlierTrees(webs, root, web, new Set()), [27568], 'a web on another port is the same web: the port is no literal argument');
+  // StarCi Next dev, 2026-11-24: the app and the landing both serve `next start` from the checkout's node_modules, and the checkout is named
+  // `devstack`, so the landing's guard (literal arguments `next dev`) found the app started a moment before and ended it: app-live never answered.
+  const devstack = 'D:\\starci-lanes\\_next\\devstack';
+  const served = [
+    { pid: 62468, ppid: 65912, command: '"C:\\Program Files\\nodejs\\node.exe" "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js" next start' },
+    { pid: 43796, ppid: 62468, command: 'C:\\WINDOWS\\system32\\cmd.exe /d /s /c next start' },
+    { pid: 6040, ppid: 43796, command: '"node"   "D:\\starci-lanes\\_next\\devstack\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" start' },
+  ];
+  const landing = { argv: ['npx', 'next', 'dev'], cwd: 'fe/apps/landing' };
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set()), [62468], 'the command line alone cannot tell the app from the landing');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([62468])), [], 'the tree the record holds for another process (the app) is never ended');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([6040])), [], 'nor a tree above the recorded pid of another process');
+  assert.deepEqual(earlierTrees(served, devstack, landing, new Set(), new Set([99999])), [62468], 'a recorded pid that runs nothing protects nothing');
 });
 
 test('the edge forwards to a web only once its page and Grammar CSS answer, and says the app is updating until then', async (t) => {

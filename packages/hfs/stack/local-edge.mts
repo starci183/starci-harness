@@ -46,9 +46,12 @@ export const literalArguments = (argv: readonly string[]): string[] => argv.slic
 
 /**
  * The root pids of the earlier trees of a process in the table: each process that runs from the checkout with every literal argument, climbed
- * to its topmost ancestor that still carries them all; never `keep` (this command and what it must not end) nor an ancestor of it. Pure.
+ * to its topmost ancestor that still carries them all; never `keep` (this command and what it must not end) nor an ancestor of it, and never
+ * the tree of `others` (the pids the record holds for the environment's other processes): two webs of one checkout both run
+ * `<root>/node_modules/.bin/../next/dist/bin/next start`, so the command line alone cannot tell the app's tree from the landing's, and a
+ * literal argument such as `dev` is found inside a checkout path such as `.../devstack/...`. Pure.
  */
-export function earlierTrees(table: readonly TableRow[], repoRoot: string, run: Pick<LocalProcess, 'argv' | 'cwd'>, keep: ReadonlySet<number>): number[] {
+export function earlierTrees(table: readonly TableRow[], repoRoot: string, run: Pick<LocalProcess, 'argv' | 'cwd'>, keep: ReadonlySet<number>, others: ReadonlySet<number> = new Set()): number[] {
   const words = literalArguments(run.argv).map(normal);
   if (words.length === 0) return [];
   const root = normal(repoRoot).replace(/\/$/u, '');
@@ -65,7 +68,18 @@ export function earlierTrees(table: readonly TableRow[], repoRoot: string, run: 
   }
   const guarded = new Set<number>();
   for (const pid of keep) for (let row = byPid.get(pid); row !== undefined && !guarded.has(row.pid); row = byPid.get(row.ppid)) guarded.add(row.pid);
-  return [...roots].filter((pid) => !guarded.has(pid));
+  // A tree another recorded process owns: its root is that process, an ancestor of it or one of its descendants.
+  const lineage = (pid: number): Set<number> => {
+    const seen = new Set<number>();
+    for (let row = byPid.get(pid); row !== undefined && !seen.has(row.pid); row = byPid.get(row.ppid)) seen.add(row.pid);
+    return seen.size === 0 ? new Set([pid]) : seen;
+  };
+  const owned = (root: number): boolean => {
+    const up = lineage(root);
+    for (const pid of others) if (up.has(pid) || lineage(pid).has(root)) return true;
+    return false;
+  };
+  return [...roots].filter((pid) => !guarded.has(pid) && !owned(pid));
 }
 
 /** The host's process table: PowerShell CIM on Windows, ps elsewhere; null when it cannot be read. */
@@ -89,7 +103,8 @@ export function endEarlierTrees(ctx: StackContext, local: LocalConfig, run: Loca
   const table = (deps.processTable ?? (() => readProcessTable(ctx)))();
   if (table === null) return [`process ${run.name}: the process table could not be read, so no earlier tree of this checkout was looked for`];
   const keep = new Set<number>([process.pid, ...Object.values(record.edges ?? {}).map((edge) => edge.pid)]);
-  const roots = earlierTrees(table, local.repoRoot, run, keep);
+  const others = new Set<number>(Object.entries(record.processes).filter(([name]) => name !== run.name).map(([, known]) => known.pid));
+  const roots = earlierTrees(table, local.repoRoot, run, keep, others);
   for (const pid of roots) stopProcess(ctx, pid, deps);
   return roots.length === 0 ? [] : [`process ${run.name}: ended ${roots.length === 1 ? 'an earlier tree' : `${roots.length} earlier trees`} of this checkout still running (root pid ${roots.join(', ')})`];
 }
