@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.197 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; the heavy-command governor weighs each command by its planned memory, and the harness keeps no legacy alias.
+
 ## 1.1.0-alpha.196 - 2026-11-24
 
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev.

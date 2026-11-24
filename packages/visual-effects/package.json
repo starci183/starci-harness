@@ -1,6 +1,6 @@
 {
   "name": "@starci/visual-effects",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The visual effects of a StarCi front end, played on an overlay canvas of their own over the page, in the colours of the app's Grammar theme, and skipped for a reader who asked for reduced motion: confetti first (presets celebrate and burst), each effect one system on the shared overlay, plus a React mount-time trigger a server page can place.",
   "keywords": [
     "confetti",
