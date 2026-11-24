@@ -2,7 +2,7 @@
 
 ## 0.1.23 - 2026-11-24
 
-- Changed: requires @starci/grammar 0.58.0 (every icon strokes 1.5, the neutral Sparkline).
+- Changed: requires @starci/grammar 0.58.0 (the neutral Sparkline).
 
 ## 0.1.22 - 2026-11-23
 
