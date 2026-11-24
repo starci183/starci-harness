@@ -314,7 +314,8 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
             }
             return <FenceOf node={node} context={context} />
         }
-        case "table":
+        case "table": {
+            const names = (node.children[0]?.children ?? []).map((cell) => wordsOf(cell.children))
             return (
                 <MarkdownTableFrame label={context.labels.table}>
                     <table>
@@ -331,7 +332,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
                             {node.children.slice(1).map((row, rowIndex) => (
                                 <tr key={rowIndex}>
                                     {row.children.map((cell, cellIndex) => (
-                                        <td key={cellIndex} style={alignStyle(node.align?.[cellIndex])}><Inline nodes={cell.children} context={context} /></td>
+                                        <td key={cellIndex} data-label={names[cellIndex] ?? ""} style={alignStyle(node.align?.[cellIndex])}><Inline nodes={cell.children} context={context} /></td>
                                     ))}
                                 </tr>
                             ))}
@@ -339,6 +340,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
                     </table>
                 </MarkdownTableFrame>
             )
+        }
         case "footnoteDefinition":
             return (
                 <Text as="div" role="caption">

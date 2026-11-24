@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.57.3 - 2026-11-24 - Sidenotes: one calm column; Markdown tables stack on a phone
+
+A patch: two fixes in the lesson reading.
+
+- Fixed (`Sidenotes`, a lesson's margin): notes were set level with each term's first use, which left tall voids and a heading standing alone above the first note. The column now reads from the heading down: the first note sits right under it and each later note waits for its term by at most two gaps, so the column is one stack and the hover mark still pairs a term with its note. A frame with no notes draws no heading and no landmark (the column's room is kept so the prose keeps its measure).
+- Fixed (`Markdown` table, under 40rem): a wide table was cut at the edge behind a faint fade. Its rows now stack: each cell names its column (`data-label`), the head row stays for assistive technology, and nothing scrolls sideways. Wider frames keep the scrolling `MarkdownTableFrame`.
+
 ## 0.57.2 - 2026-11-23 - PaneHeader: a long title ends in an ellipsis
 
 A patch: a fix.
