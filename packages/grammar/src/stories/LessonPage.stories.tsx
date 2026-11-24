@@ -270,7 +270,7 @@ const TIMED = [
     { id: 'toc-expiry', label: 'Một key hết hạn, một lần nạp', meta: '00:00' },
 ];
 
-/** 0.57.1: sections with a time lead, and the quiet note under the list. */
+/** 0.58.0: sections with a time lead, and the quiet note under the list. */
 export const OutlineTimed: Story = {
   render: () => (
     <div style={{ maxInlineSize: 240 }}>
@@ -279,7 +279,7 @@ export const OutlineTimed: Story = {
   ),
 };
 
-/** 0.57.1: the phone bar names the section in view; a press opens the list, a pick jumps and closes it. */
+/** 0.58.0: the phone bar names the section in view; a press opens the list, a pick jumps and closes it. */
 export const OutlineBar: Story = {
   render: () => (
     <div style={{ inlineSize: 360 }}>
@@ -299,7 +299,7 @@ export const OutlineBar: Story = {
   },
 };
 
-/** 0.57.1: on a phone, `narrow="inline"` opens a term's note in the paragraph, under the term; the body marks its own terms (`terms`). */
+/** 0.58.0: on a phone, `narrow="inline"` opens a term's note in the paragraph, under the term; the body marks its own terms (`terms`). */
 export const MarginNotesInline: Story = {
   render: () => (
     <div style={{ inlineSize: 360 }}>

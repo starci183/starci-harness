@@ -20,7 +20,7 @@ export type SidenotesProps = {
     /** The fold's words on a narrow frame, given the count ("Terms (4)"). */
     readonly foldLabel: (count: number) => string
     /**
-     * A narrow frame (under 52rem): `fold` (default) gathers the notes in one quiet fold under the prose; `inline` (0.57.1, a phone
+     * A narrow frame (under 52rem): `fold` (default) gathers the notes in one quiet fold under the prose; `inline` (0.58.0, a phone
      * reading) has no fold: pressing a term opens its note right under it, in the paragraph, and pressing it again closes it.
      */
     readonly narrow?: "fold" | "inline"
@@ -50,7 +50,7 @@ const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLay
  * FRAME - `Sidenotes`: prose with its terms explained in the margin (owner 2026-11-23, a lesson's vocabulary). On a wide frame the notes
  * stand in a column beside the prose, in reading order from the heading down, each level with the dotted term it explains only where that costs at most two gaps of room (no void in the column); a frame with no notes draws no heading;
  * hovering or focusing a term marks its note, and its note is the term's description. On a narrow frame (under 52rem) the column folds
- * into one quiet line under the prose, "Terms (n)", and pressing a term opens it at that note; with `narrow="inline"` (0.57.1) there is no
+ * into one quiet line under the prose, "Terms (n)", and pressing a term opens it at that note; with `narrow="inline"` (0.58.0) there is no
  * fold and a pressed term opens its own note in place, under it in the paragraph.
  * Contract: A11Y-2 (the column is a named complementary landmark, a term is described by its note), FOCUS-1.
  */
