@@ -14,6 +14,7 @@ export type DrawerPlacement = "left" | "right" | "top" | "bottom"
 export type DrawerProps = OverlayOpenState & {
     /** Visible heading; the drawer dialog's accessible name. */
     readonly title: string
+    /** Under the title, the dialog's description: words or a block (a status line, a row); drawn in a `div`, so block content is valid HTML. */
     readonly description?: ReactNode
     /** A mark before the title (the avatar or logo of what the drawer is about), aligned with the title block. */
     readonly leading?: ReactNode
@@ -104,7 +105,7 @@ export const Drawer = ({
                                 <div className="starci-core-overlay-heading-group">
                                     <HeroDrawer.Heading className="starci-core-overlay-title">{title}</HeroDrawer.Heading>
                                     {description === undefined ? null : (
-                                        <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
+                                        <div id={descriptionId} className="starci-core-overlay-description">{description}</div>
                                     )}
                                 </div>
                                 {closeLabel === undefined ? null : <IconButton variant="border" label={closeLabel} onPress={close} />}

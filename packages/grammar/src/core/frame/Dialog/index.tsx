@@ -16,6 +16,7 @@ export type DialogProps = OverlayOpenState & {
     /** Visible heading; it is the dialog's accessible name (`aria-labelledby`). */
     readonly title: string
     /** Supporting sentence under the heading, wired as `aria-describedby`. */
+    /** Under the title, the dialog's description: words or a block (a status line, a row); drawn in a `div`, so block content is valid HTML. */
     readonly description?: ReactNode
     readonly children?: ReactNode
     /** The body is still loading: every component in it draws as the geometry of its ready box, inert, with real labels. */
@@ -87,7 +88,7 @@ export const Dialog = ({
                                 <div className="starci-core-overlay-heading-group">
                                     <HeroModal.Heading className="starci-core-overlay-title">{title}</HeroModal.Heading>
                                     {description === undefined ? null : (
-                                        <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
+                                        <div id={descriptionId} className="starci-core-overlay-description">{description}</div>
                                     )}
                                 </div>
                                 {closeLabel === undefined ? null : <IconButton variant="border" label={closeLabel} onPress={close} />}
