@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { Refusal } from "../../shared/errors.js"
 import { pidAlive } from "../../shared/exec.js"
 import { captureGit, currentBranch, mainCheckout, samePath } from "../../shared/git.js"
+import { listPackages } from "../../shared/workspace.js"
 import { takeDevLock } from "../../harness/land-batch.js"
 import { landPaths, releaseLockFile } from "../../harness/land-queue.js"
 import { lockScope } from "../../harness/land-profile.js"
@@ -10,13 +11,14 @@ import { loadLocalSettings } from "../../harness/local-settings.js"
 import { devSync, summaryLine, syncLocal } from "../dev/sync.js"
 import { readRunnerStatus, runnerPaths, settingsForCheckout } from "../dev/sync-runner.js"
 import { syncLockFile } from "../dev/sync-lock.js"
+import { consumedPackages, devNodes } from "../deps/publish-dev.js"
 import { realLandDeps } from "../lane/land-direct.js"
 import type { LandDeps } from "../lane/land-direct.js"
 import { rebuildCliCopy } from "./cli-copy.js"
 import type { CliCopy } from "./cli-copy.js"
 import { grantPass } from "./pass.js"
 import type { HotfixRules } from "./rules.js"
-import { escalationOf, isNamed, readChanges, scopeOf, tooBigMessage } from "./scope.js"
+import { escalationOf, isNamed, overlayFiles, readChanges, scopeOf, tooBigMessage } from "./scope.js"
 import type { Change, Changes, Scope } from "./scope.js"
 
 /**
@@ -48,6 +50,8 @@ export interface HotfixDeps {
     readonly restart: (checkout: string, request: { readonly since?: string; readonly light: boolean }, say: (line: string) => void) => Promise<Restart>
     /** Why a dev sync of the checkout is running now (the sync lock or the runner mid-sync), or undefined. */
     readonly busy: (checkout: string) => Promise<string | undefined>
+    /** The dev-line packages the apps consume that a harness hotfix's own files change (core/deps/publish-dev.ts consumedPackages): docs and contexts name none. */
+    readonly consumed: (root: string, files: readonly string[]) => Promise<readonly string[]>
     /** The dev checkouts to sync after a harness hotfix published `published` packages: every app of devSync.repos. */
     readonly syncTargets: (root: string, published: readonly string[]) => Promise<readonly string[]>
     /** A harness hotfix: builds the CLI copy of the pushed commit and repoints `_cli-current` to it (core/hotfix/cli-copy.ts). Never throws. */
@@ -67,6 +71,10 @@ export interface HotfixLanded {
     /** Why the restart ran the full sync steps; empty for the light restart. */
     readonly escalation: readonly string[]
     readonly published: readonly string[]
+    /** A harness hotfix: the packages the apps consume that it changes; none for docs and contexts, which restart and sync nothing. */
+    readonly consumed: readonly string[]
+    /** A harness hotfix: the dev builds of those packages that were not published, each with why. */
+    readonly publishFailed: readonly string[]
     readonly restarts: readonly Restart[]
     /** A harness hotfix: the rebuilt CLI copy and the junction repointed to it. */
     readonly cliCopy?: CliCopy
@@ -135,9 +143,16 @@ export const realHotfixDeps: HotfixDeps = {
         const settings = loadLocalSettings().devSync
         return Promise.resolve(Object.entries(settings.repos).map(([key, entry]) => entry.checkout ?? key))
     },
+    consumed: (root, files) => Promise.resolve(consumedPackages(devNodes(listPackages(root)), files)),
     cliCopy: (root, dir, sha, files, say) => rebuildCliCopy({ root, dir, sha, files, say }),
     health: realHealth,
 }
+
+/** What a harness hotfix does for the apps, from the packages they consume that it changes. Pure. */
+export const harnessPlan = (consumed: readonly string[]): string =>
+    consumed.length === 0
+        ? "apps: no restart and no sync: the hotfix changes no package the apps consume (docs, contexts or a tree no app runs), so no dev publish runs"
+        : `apps: the hotfix changes ${consumed.join(", ")}, which the apps consume: deps publish-dev, then every app of devSync.repos syncs at once`
 
 /** The commit message of a hotfix: its subject, and the `Hotfix:` trailer naming its size. Pure. */
 export const hotfixMessage = (message: string, scope: Scope): string => `hotfix: ${message.trim()}\n\nHotfix: ${String(scope.files)} file(s) / ${String(scope.lines)} line(s)\n`
@@ -157,7 +172,7 @@ export const assertDevCheckout = async (root: string): Promise<void> => {
  */
 export const judgeScope = async (root: string, rules: Pick<HotfixRules, "maxFiles" | "maxLines">, only: readonly string[] = [], profile: LandProfileName = "app"): Promise<{ readonly changes: readonly Change[]; readonly scope: Scope; readonly found: Changes }> => {
     if (profile === "harness" && only.length === 0) throw new Refusal("HOTFIX_ONLY_REQUIRED", `${root} is the harness checkout, which holds other work: name the hotfix's files with --only <path> (repeat it; a new file must be named too)`)
-    const found = await readChanges(root, only)
+    const found = await readChanges(root, only, overlayFiles(root))
     if (found.foreign.length > 0) throw new Refusal("HOTFIX_FOREIGN", `${root} has tracked uncommitted changes outside the hotfix (${found.foreign.slice(0, 5).join(", ")}${found.foreign.length > 5 ? ", ..." : ""}): commit or stash them, or name them in --only; nothing was committed`)
     const missing = only.filter((entry) => !entry.endsWith("/") && !found.changes.some((change) => isNamed(change.path, [entry])))
     if (missing.length > 0) throw new Refusal("HOTFIX_ONLY_UNCHANGED", `--only names ${missing.join(", ")}, which has no change in ${root} (a typo, or already committed)`)
@@ -177,15 +192,19 @@ export const hotfixLand = async (given: { readonly root: string; readonly dir: s
     await assertDevCheckout(root)
     const { changes, scope } = await judgeScope(root, rules, given.only ?? [], profile)
     const files = changes.map((change) => change.path)
-    const escalation = escalationOf(files)
+    // The harness runs no dev server: its restart is the sync of the apps, and only for a package they consume (harnessPlan).
+    const escalation = profile === "harness" ? [] : escalationOf(files)
     if (given.dryRun === true) {
         say(`hotfix dry run: ${String(scope.files)} file(s) / ${String(scope.lines)} line(s) within ${String(rules.maxFiles)} / ${String(rules.maxLines)}: ${files.join(", ")}`)
-        say(escalation.length === 0 ? "restart: light (the changed api/web only)" : `restart: the full sync steps (${escalation.join("; ")})`)
-        return { dryRun: true, sha: "", base: "", files, scope, escalation, published: [], restarts: [], health: "not run" }
+        const consumed = profile === "harness" ? await deps.consumed(root, files) : []
+        say(profile === "harness" ? harnessPlan(consumed) : escalation.length === 0 ? "restart: light (the changed api/web only)" : `restart: the full sync steps (${escalation.join("; ")})`)
+        return { dryRun: true, sha: "", base: "", files, scope, escalation, published: [], consumed, publishFailed: [], restarts: [], health: "not run" }
     }
     const lockScopeName = lockScope(profile)
     await takeDevLock(dir, say, lockScopeName)
     let published: readonly string[] = []
+    let consumed: readonly string[] = []
+    let publishFailed: readonly string[] = []
     const restarts: Restart[] = []
     try {
         const busy = await deps.busy(root)
@@ -231,26 +250,37 @@ export const hotfixLand = async (given: { readonly root: string; readonly dir: s
             throw new Refusal("HOTFIX_PUSH", `the push of ${sha.slice(0, 10)} to dev failed (nothing forced; the commit is undone and your edit is back in the working tree): ${`${pushed.stdout}\n${pushed.stderr}`.trim().split("\n").slice(-5).join(" ").slice(0, 600)}`)
         }
         const touched = (await git(root, ["diff", "--name-only", before, sha])).out.split("\n").filter((file) => file !== "")
-        const reasons = escalationOf(touched)
+        // The app checkout moved from `before` over every commit the rebase brought in, so all of them decide its restart; the harness restarts no checkout.
+        const reasons = profile === "harness" ? [] : escalationOf(touched)
         let cliCopy: CliCopy | undefined
         if (profile === "harness") {
             // Nothing of the harness is a dev server: the machine runs a built copy of the CLI, so it is rebuilt and `_cli-current` repointed first.
             cliCopy = await deps.cliCopy(root, dir, sha, touched, say)
             say(`CLI copy: ${cliCopy.state}: ${cliCopy.note}`)
-            try {
-                published = await deps.publish(root, sha, say)
-            } catch (error) {
-                say(`deps publish-dev failed (${firstLine(error instanceof Error ? error.message : String(error))}): run starci deps publish-dev --execute in the harness checkout`)
+            // Decided by the hotfix's own files (the rebase may bring others' commits, which their own landing publishes), never by whether a publish ran.
+            consumed = await deps.consumed(root, files)
+            say(harnessPlan(consumed))
+            if (consumed.length > 0) {
+                try {
+                    const done = await deps.publish(root, sha, say)
+                    published = done.published
+                    publishFailed = done.failed.map((failure) => `${failure.package}@${failure.version}: ${failure.reason}`)
+                } catch (error) {
+                    publishFailed = [`deps publish-dev: ${firstLine(error instanceof Error ? error.message : String(error))}`]
+                    say(`deps publish-dev failed: ${error instanceof Error ? error.message : String(error)}`)
+                }
+                for (const failure of publishFailed) say(`dev publish FAILED ${failure}`)
+                if (publishFailed.length > 0) say("run starci deps publish-dev --execute in the harness checkout once the failure is fixed: it publishes what this run did not")
+                say(published.length === 0 ? "dev publish: nothing published, so no app syncs" : `dev publish: ${published.join(", ")} to the local registry; syncing every app dev checkout of devSync.repos now, no debounce (each one's devSync.local installs the new dev build; no committed pin changes)`)
+                for (const checkout of await deps.syncTargets(root, published)) restarts.push(await deps.restart(checkout, { light: false }, say))
+                if (published.length > 0 && restarts.length === 0) say("no app dev checkout to sync: devSync.repos of the local settings names none")
             }
-            say(published.length === 0 ? "dev publish: the hotfix changed no published package" : `dev publish: ${published.join(", ")} to the local registry; syncing every app dev checkout of devSync.repos now, no debounce (each one's devSync.local installs the new dev build; no committed pin changes)`)
-            for (const checkout of await deps.syncTargets(root, published)) restarts.push(await deps.restart(checkout, { light: false }, say))
-            if (published.length > 0 && restarts.length === 0) say("no app dev checkout to sync: devSync.repos of the local settings names none")
         } else {
             say(reasons.length === 0 ? "restart: light, the changed api/web only (no lockfile, migration, schema or workspace package changed)" : `restart: the FULL sync steps, not the light restart (${reasons.join("; ")})`)
             restarts.push(await deps.restart(root, { since: before, light: reasons.length === 0 }, say))
         }
         for (const restart of restarts) say(`${restart.state === "done" ? "restarted" : "RESTART FAILED"} ${restart.checkout}: ${restart.note}`)
-        return await afterLock({ ...given, sha, base, files, scope, escalation: reasons, published, restarts, ...(cliCopy === undefined ? {} : { cliCopy }), release: () => {
+        return await afterLock({ ...given, sha, base, files, scope, escalation: reasons, published, consumed, publishFailed, restarts, ...(cliCopy === undefined ? {} : { cliCopy }), release: () => {
             releaseLockFile(landPaths(dir, lockScopeName).devLock, process.pid)
         } }, deps)
     } finally {
@@ -259,7 +289,7 @@ export const hotfixLand = async (given: { readonly root: string; readonly dir: s
 }
 
 /** What follows the restart: the lock is released first (the health wait and the CI watch hold nothing), then the health wait, then the CI watch. */
-const afterLock = async (given: { readonly root: string; readonly dir: string; readonly rules: HotfixRules; readonly healthUrl?: string | undefined; readonly say: (line: string) => void; readonly sha: string; readonly base: string; readonly files: readonly string[]; readonly scope: Scope; readonly escalation: readonly string[]; readonly published: readonly string[]; readonly restarts: readonly Restart[]; readonly cliCopy?: CliCopy; readonly release: () => void }, deps: HotfixDeps): Promise<HotfixLanded> => {
+const afterLock = async (given: { readonly root: string; readonly dir: string; readonly rules: HotfixRules; readonly healthUrl?: string | undefined; readonly say: (line: string) => void; readonly sha: string; readonly base: string; readonly files: readonly string[]; readonly scope: Scope; readonly escalation: readonly string[]; readonly published: readonly string[]; readonly consumed: readonly string[]; readonly publishFailed: readonly string[]; readonly restarts: readonly Restart[]; readonly cliCopy?: CliCopy; readonly release: () => void }, deps: HotfixDeps): Promise<HotfixLanded> => {
     const { say } = given
     given.release()
     let health = "not asked: no --health-url; the restart (app stack restart) waited for the stack's own health"
@@ -270,7 +300,7 @@ const afterLock = async (given: { readonly root: string; readonly dir: string; r
     say(`health: ${health}`)
     // The watcher lives in the checkout, up to 45 minutes; a red CI is printed loudly and sent to the notify session, never reverted.
     await deps.watchCi(given.root, given.dir, given.sha, ["hotfix"], say)
-    return { dryRun: false, sha: given.sha, base: given.base, files: given.files, scope: given.scope, escalation: given.escalation, published: given.published, restarts: given.restarts, ...(given.cliCopy === undefined ? {} : { cliCopy: given.cliCopy }), health }
+    return { dryRun: false, sha: given.sha, base: given.base, files: given.files, scope: given.scope, escalation: given.escalation, published: given.published, consumed: given.consumed, publishFailed: given.publishFailed, restarts: given.restarts, ...(given.cliCopy === undefined ? {} : { cliCopy: given.cliCopy }), health }
 }
 
 /** Where a hotfix stands in the dev checkout: its size against the limits, whether it would restart light, and what would stop it. */
@@ -287,20 +317,22 @@ export interface HotfixStatus {
     readonly foreign: readonly string[]
     /** Untracked files a hotfix leaves alone unless `only` names them. */
     readonly untracked: readonly string[]
+    /** The files dev sync's local overlay rewrote: sync-owned, left alone (scope.ts overlayFiles). */
+    readonly overlay: readonly string[]
 }
 
 /** `hotfix status`: reads only. */
 export const hotfixStatus = async (given: { readonly root: string; readonly dir: string; readonly profile: LandProfileName; readonly rules: HotfixRules; readonly only?: readonly string[] }, deps: Pick<HotfixDeps, "busy"> = realHotfixDeps): Promise<HotfixStatus> => {
     const { root } = given
-    const { changes, foreign, untracked } = await readChanges(root, given.only ?? [])
+    const { changes, foreign, untracked, overlay } = await readChanges(root, given.only ?? [], overlayFiles(root))
     const lock = landPaths(given.dir, lockScope(given.profile)).devLock
     const behind = Number((await git(root, ["rev-list", "--count", "HEAD..origin/dev"])).out) || 0
-    return { root, branch: (await currentBranch(root)) ?? null, files: changes.map((change) => change.path), scope: scopeOf(changes, given.rules), escalation: escalationOf(changes.map((change) => change.path)), behind, devLock: existsSync(lock) ? readFileSync(lock, "utf8").trim() : null, syncBusy: (await deps.busy(root)) ?? null, foreign, untracked }
+    return { root, branch: (await currentBranch(root)) ?? null, files: changes.map((change) => change.path), scope: scopeOf(changes, given.rules), escalation: given.profile === "harness" ? [] : escalationOf(changes.map((change) => change.path)), behind, devLock: existsSync(lock) ? readFileSync(lock, "utf8").trim() : null, syncBusy: (await deps.busy(root)) ?? null, foreign, untracked, overlay }
 }
 
 /** `hotfix abort`: the paths it restores from HEAD (tracked) and deletes (new files); `execute` does it. */
 export const hotfixAbort = async (given: { readonly root: string; readonly execute: boolean; readonly only?: readonly string[] }): Promise<{ readonly restore: readonly string[]; readonly remove: readonly string[] }> => {
-    const { changes } = await readChanges(given.root, given.only ?? [])
+    const { changes } = await readChanges(given.root, given.only ?? [], overlayFiles(given.root))
     const restore: string[] = []
     const remove: string[] = []
     for (const change of changes) {

@@ -1,13 +1,11 @@
-import { createHash } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { z } from "zod"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
-import { git, nulPaths } from "../../shared/git.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
-import { tail } from "./packages.js"
+import { sourceDigest, tail } from "./packages.js"
 import { withManifest } from "./tarball.js"
 
 /**
@@ -17,31 +15,8 @@ import { withManifest } from "./tarball.js"
  */
 export const SOURCE_FIELD = "starciSource"
 
-const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex")
-
-/**
- * The digest of a package's source: every tracked file of its folder by path and content. A file the work tree holds as git does is named by its blob, so a clean
- * tree digests to the same value on every host for one commit; a file the work tree changed (or removed) is named by its bytes, so a dirty build never claims
- * the digest of the commit it started from.
- */
-export const sourceDigest = async (root: string, relativeDir: string): Promise<string> => {
-    const staged = nulPaths(await git(root, ["ls-files", "-s", "-z", "--", relativeDir]))
-    const modified = new Set(nulPaths(await git(root, ["ls-files", "-m", "-z", "--", relativeDir])))
-    const lines = staged
-        .map((entry) => {
-            const tab = entry.indexOf("\t")
-            const blob = entry.slice(0, tab).split(" ")[1] ?? ""
-            const file = entry.slice(tab + 1)
-            if (!modified.has(file)) return `${file}\0${blob}`
-            try {
-                return `${file}\0work:${sha256(readFileSync(join(root, file)))}`
-            } catch {
-                return `${file}\0removed`
-            }
-        })
-        .toSorted((left, right) => left.localeCompare(right))
-    return sha256(lines.join("\n"))
-}
+/** The digest of a package's source (owned by packages.ts, where the install freshness of a `file:` copy reads it too). */
+export { sourceDigest }
 
 /** A package manifest's text with the source digest stamped (and `gitHead` when given), in its own indent and line ending. */
 export const withSource = (text: string, digest: string, gitHead?: string): string => {

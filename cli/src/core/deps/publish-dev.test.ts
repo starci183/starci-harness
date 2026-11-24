@@ -2,13 +2,13 @@
 // changed packages and every package that pins one of them go to the local registry as X.Y.Z-dev.N; the publish copies pin each other exactly, the committed
 // files stay plain, and devSync.local names exactly those versions (core/deps/publish-dev.ts).
 import assert from "node:assert/strict"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { hostname, tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { loadLocalSettings, writeDevSyncLocal } from "../../harness/local-settings.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
-import { changedNodes, devClosure, devManifest, devVersion, executeDevPlan, nextDevNumber, nextRelease, planDevPublish, readCounter, readDevRecord } from "./publish-dev.js"
+import { causeLine, changedNodes, devClosure, devManifest, devPublishLock, devVersion, executeDevPlan, nextDevNumber, nextRelease, planDevPublish, readCounter, readDevRecord, withDevPublishLock } from "./publish-dev.js"
 import type { DevNode, DevQuestions } from "./publish-dev.js"
 
 const node = (name: string, dir: string, version: string, requires: readonly string[] = []): DevNode => ({ name: `@starci/${name}`, dir, version, requires: new Set(requires.map((one) => `@starci/${one}`)) })
@@ -109,7 +109,7 @@ void test("an executed plan builds the prerequisites, publishes edited copies (n
         const packages = ORDER.map((dir) => workspacePackage(dir, folder, byDir.get(dir) ?? NODES[0] ?? node("x", dir, "0.0.0")))
         const built: string[] = []
         const copies = new Map<string, string>()
-        const published = await executeDevPlan({
+        const { published } = await executeDevPlan({
             plan, packages, order: ORDER, head: "f".repeat(40),
             needs: (dir) => (dir === "packages/gallery" ? ["packages/grammar", "packages/gallery"] : [dir]),
             io: {
@@ -160,4 +160,75 @@ void test("devSync.local is written into an absent settings file, and a damaged 
     } finally {
         rmSync(folder, { recursive: true, force: true })
     }
+})
+
+void test("a failed package is reported and the rest of the line is published: only the packages that pin it are left out, the record stays and devSync.local keeps their old builds", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
+    try {
+        const settings = join(folder, "local-settings.json")
+        const overlay = ["@starci/eslint-canon-fe@9.22.1-dev.37", "@starci/eslint-grammar-core@0.55.1-dev.3", "@starci/hfs@6.17.9-dev.9"]
+        writeFileSync(settings, `${JSON.stringify({ devSync: { local: overlay } }, null, 2)}\n`)
+        const files = { record: join(folder, "dev-publish.json"), counter: join(folder, "dev-counter.json"), settings }
+        writeFileSync(files.record, `${JSON.stringify({ schema: "starci/dev-publish@1", sha: "e".repeat(40), at: "2026-11-24T00:00:00.000Z", versions: overlay })}\n`)
+        const plan = await planDevPublish({ nodes: NODES, changed: new Set(["@starci/hfs"]), order: ORDER, overlay, asked: asked(new Set(NODES.map((one) => `${one.name}@${one.version}`))) })
+        assert.deepEqual(plan.rows.map((row) => row.package), ["@starci/hfs", "@starci/eslint-canon-fe", "@starci/eslint-grammar-core", "@starci/eslint-grammar-offset-pop", "starci-harness"])
+        const byDir = new Map(NODES.map((one) => [one.dir, one]))
+        const packages = ORDER.map((dir) => workspacePackage(dir, folder, byDir.get(dir) ?? NODES[0] ?? node("x", dir, "0.0.0")))
+        const said: string[] = []
+        const done = await executeDevPlan({
+            plan, packages, order: ORDER, head: "f".repeat(40), overlay,
+            needs: (dir) => [dir],
+            requires: (name) => NODES.find((one) => one.name === name)?.requires ?? new Set<string>(),
+            io: {
+                build: () => Promise.resolve(),
+                publish: (_pkg, row) => (row.package === "@starci/eslint-canon-fe" ? Promise.reject(new Error("npm pack of @starci/eslint-canon-fe failed:\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'project-ext.mjs'\nnpm error code 1")) : Promise.resolve()),
+                files,
+                say: (line) => said.push(line),
+            },
+        })
+        assert.deepEqual(done.published, ["@starci/hfs@6.17.9-dev.1", "starci-harness@1.1.0-alpha.195.dev.1"], "hfs and the CLI are published although a sibling failed")
+        assert.deepEqual(done.failed.map((failure) => failure.package), ["@starci/eslint-canon-fe", "@starci/eslint-grammar-core", "@starci/eslint-grammar-offset-pop"])
+        assert.match(done.failed[0]?.reason ?? "", /ERR_MODULE_NOT_FOUND/u, "the cause is named, not only npm's closing line")
+        assert.match(done.failed[1]?.reason ?? "", /pins @starci\/eslint-canon-fe/u)
+        assert.equal(readDevRecord(files.record)?.sha, "e".repeat(40), "the record stays at the last complete publish, so the next run makes the failed builds again")
+        assert.deepEqual(loadLocalSettings(settings).devSync.local, ["@starci/eslint-canon-fe@9.22.1-dev.37", "@starci/eslint-grammar-core@0.55.1-dev.3", "@starci/hfs@6.17.9-dev.1", "starci-harness@1.1.0-alpha.195.dev.1"])
+        assert.ok(said.some((line) => line.startsWith("PUBLISH FAILED @starci/eslint-canon-fe")))
+    } finally {
+        rmSync(folder, { recursive: true, force: true })
+    }
+})
+
+void test("two dev publishes never run at once: the second waits for the lock, a dead holder's lock is taken over", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "starci-publish-dev-lock-"))
+    try {
+        const order: string[] = []
+        let release: () => void = () => undefined
+        const first = withDevPublishLock(folder, () => undefined, async () => {
+            order.push("first in")
+            await new Promise<void>((done) => {
+                release = done
+            })
+            order.push("first out")
+        }, 5)
+        const said: string[] = []
+        const second = withDevPublishLock(folder, (line) => said.push(line), () => {
+            order.push("second")
+            return Promise.resolve()
+        }, 5)
+        await new Promise((done) => setTimeout(done, 40))
+        assert.deepEqual(order, ["first in"])
+        assert.ok(said.some((line) => line.startsWith("waiting for")))
+        release()
+        await Promise.all([first, second])
+        assert.deepEqual(order, ["first in", "first out", "second"])
+        assert.equal(existsSync(devPublishLock(folder)), false, "released")
+        writeFileSync(devPublishLock(folder), "publish-dev 2026-11-24T00:00:00.000Z pid=999999 host=" + hostname())
+        assert.equal(await withDevPublishLock(folder, () => undefined, () => Promise.resolve("ran"), 5), "ran")
+    } finally {
+        rmSync(folder, { recursive: true, force: true })
+    }
+})
+
+void test("a failure's one-line cause names what failed, not npm's closing lines", () => {
+    assert.equal(causeLine("npm publish of @starci/grammar@0.58.0-dev.1 to http://127.0.0.1:4873/ failed:\nnpm error code E409\nnpm error 409 Conflict"), "npm publish of @starci/grammar@0.58.0-dev.1 to http://127.0.0.1:4873/ failed: npm error code E409")
 })

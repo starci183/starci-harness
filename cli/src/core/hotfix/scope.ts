@@ -1,7 +1,8 @@
 import { lstatSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, posix } from "node:path"
 import { captureGit, CHECK_CACHE_DIR } from "../../shared/git.js"
 import { MIGRATIONS_FOLDER } from "../../harness/land-profile.js"
+import { installUnitOf, readInstallRecord } from "../deps/install-local.js"
 import type { HotfixRules } from "./rules.js"
 
 /** One file a hotfix changes, as the working tree differs from HEAD. */
@@ -66,6 +67,8 @@ export interface Changes {
     readonly foreign: string[]
     /** Untracked files the hotfix does not take (a new file is named with `only`; a stray file is never swept in). */
     readonly untracked: string[]
+    /** The files dev sync's local overlay rewrote (overlayFiles), not named by `only`: sync-owned state, neither the hotfix nor foreign work, never committed. */
+    readonly overlay: string[]
 }
 
 /** Whether `path` is named by `only`: an entry ending in a slash names a folder, any other an exact path. Pure. */
@@ -78,9 +81,11 @@ export const isNamed = (path: string, only: readonly string[]): boolean =>
 /**
  * The changes of the working tree at `root` against HEAD, split into the hotfix, the foreign tracked changes and the untracked files left alone. Without `only` every
  * tracked change is the hotfix and no untracked file is; with `only` the hotfix is exactly the named paths (tracked or new), and a tracked change outside them is
- * foreign. The check-cache records a gate writes under `.starcistacks/cache/` are none of these. Reads git only.
+ * foreign. The check-cache records a gate writes under `.starcistacks/cache/` are none of these, nor are the `overlay` files dev sync's local overlay rewrote
+ * (the manifests and lockfiles of overlayFiles) unless `only` names one. Reads git only.
  */
-export const readChanges = async (root: string, only: readonly string[] = []): Promise<Changes> => {
+export const readChanges = async (root: string, only: readonly string[] = [], overlay: readonly string[] = []): Promise<Changes> => {
+    const managed = new Set(overlay.map((file) => file.replaceAll("\\", "/")))
     const tracked = new Map<string, Change>()
     const numstat = await captureGit(["diff", "HEAD", "--numstat", "--no-renames", "-z"], root)
     // With -z a numstat entry is `added TAB deleted TAB path`, entries NUL separated.
@@ -94,8 +99,11 @@ export const readChanges = async (root: string, only: readonly string[] = []): P
     const named = only.length > 0
     const changes: Change[] = []
     const foreign: string[] = []
+    const overlaid: string[] = []
     for (const change of tracked.values()) {
-        if (!named || isNamed(change.path, only)) changes.push(change)
+        if (named && isNamed(change.path, only)) changes.push(change)
+        else if (managed.has(change.path)) overlaid.push(change.path)
+        else if (!named) changes.push(change)
         else foreign.push(change.path)
     }
     const untracked: string[] = []
@@ -106,5 +114,25 @@ export const readChanges = async (root: string, only: readonly string[] = []): P
         else untracked.push(path)
     }
     const order = (left: string, right: string): number => (left < right ? -1 : 1)
-    return { changes: changes.toSorted((left, right) => order(left.path, right.path)), foreign: foreign.toSorted(order), untracked: untracked.toSorted(order) }
+    return { changes: changes.toSorted((left, right) => order(left.path, right.path)), foreign: foreign.toSorted(order), untracked: untracked.toSorted(order), overlay: overlaid.toSorted(order) }
+}
+
+/**
+ * The files dev sync's local overlay manages in a checkout: each manifest whose pins `deps install-local` replaced (its record, `install-local.json` in the
+ * checkout's tool cache) and the lockfile of each one's install unit. `dev sync --local` rewrites them to local-registry dev pins and puts them back itself,
+ * so a hotfix neither commits them nor refuses them as foreign (it once refused HOTFIX_FOREIGN on fe/apps/web/package.json and package-lock.json). Reads files only.
+ */
+export const overlayFiles = (root: string): string[] => {
+    let record: ReturnType<typeof readInstallRecord>
+    try {
+        record = readInstallRecord(root)
+    } catch {
+        return []
+    }
+    const manifests = [...new Set((record?.packages ?? []).flatMap((entry) => entry.pins.map((pin) => pin.file.replaceAll("\\", "/"))))]
+    const locks = manifests.map((file) => {
+        const unit = installUnitOf(root, file)
+        return unit === "" ? "package-lock.json" : posix.join(unit, "package-lock.json")
+    })
+    return [...new Set([...manifests, ...locks])].toSorted((left, right) => left.localeCompare(right))
 }

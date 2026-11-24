@@ -74,12 +74,13 @@ export const landAutoSync = (settings: DevSyncSettings, repo: string, dryRun: bo
  * on the landed dev commit before the debounced sync, so the sync installs the versions it wrote into `devSync.local`; a failure is said, never thrown,
  * and the next landed batch measures from the last publish that completed, so nothing it missed is lost.
  */
-export const landPublishDev = (settings: DevSyncSettings, dryRun: boolean, say: (line: string) => void, publish: (landed: string) => Promise<{ readonly published: readonly string[]; readonly local: readonly string[] }>): ((landed: string) => Promise<void>) | undefined => {
+export const landPublishDev = (settings: DevSyncSettings, dryRun: boolean, say: (line: string) => void, publish: (landed: string) => Promise<{ readonly published: readonly string[]; readonly local: readonly string[]; readonly failed?: readonly { readonly package: string; readonly version: string; readonly reason: string }[] }>): ((landed: string) => Promise<void>) | undefined => {
     if (!settings.publishLocal || dryRun) return undefined
     return async (landed) => {
         try {
             const done = await publish(landed)
-            say(`dev publish of ${landed.slice(0, 10)}: ${String(done.published.length)} dev build(s); devSync.local = ${done.local.join(", ") || "(empty)"}`)
+            const failed = (done.failed ?? []).map((failure) => `${failure.package}@${failure.version} (${failure.reason})`)
+            say(`dev publish of ${landed.slice(0, 10)}: ${String(done.published.length)} dev build(s); devSync.local = ${done.local.join(", ") || "(empty)"}${failed.length === 0 ? "" : `; FAILED ${failed.join("; ")}: the next batch makes them again from the last complete publish`}`)
         } catch (error) {
             say(`dev publish of ${landed.slice(0, 10)}: not done (${error instanceof Error ? error.message.split("\n")[0] ?? "" : String(error)}); the lander keeps landing, the next batch publishes from the last completed publish (or run starci deps publish-dev --execute)`)
         }

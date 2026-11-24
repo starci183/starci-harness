@@ -63,7 +63,7 @@ const fakeDeps = (log: string[], red?: string): LandDeps => ({
         log.push("push")
         return captureTool("git", ["push", "origin", `${sha}:refs/heads/dev`], root)
     },
-    publish: () => Promise.resolve([]),
+    publish: () => Promise.resolve({ published: [], failed: [] }),
     requestSync: (checkout, reason) => {
         log.push(`sync ${checkout.endsWith("devcheckout") ? "devcheckout" : checkout}: ${reason.split(" ")[0] ?? ""}`)
         return Promise.resolve()

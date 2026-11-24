@@ -11,6 +11,7 @@ import type { LandProfileName } from "../../harness/land-profile.js"
 import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
 import { prepareTree } from "../../harness/prepare-tree.js"
 import { publishDev } from "../deps/publish-dev.js"
+import type { DevPublishData } from "../deps/publish-dev.js"
 import { requestDevSync } from "../dev/sync-runner.js"
 import { startDevCiWatch } from "../../harness/dev-ci-watch.js"
 
@@ -47,7 +48,8 @@ export interface LandDeps {
     readonly recheck: (root: string, profile: LandProfileName, lane: string) => Promise<string | undefined>
     /** The push of `sha` to dev. */
     readonly push: (root: string, profile: LandProfileName, sha: string) => Promise<ToolRun>
-    readonly publish: (root: string, sha: string, say: (line: string) => void) => Promise<readonly string[]>
+    /** The dev publish of the landed commit: the dev builds published, and those that failed (the rest are published anyway). */
+    readonly publish: (root: string, sha: string, say: (line: string) => void) => Promise<Pick<DevPublishData, "published" | "failed">>
     readonly requestSync: (checkout: string, reason: string, say: (line: string) => void) => Promise<unknown>
     /** Starts the detached watch of the pushed sha's GitHub CI (harness/dev-ci-watch.ts); it never throws and never waits for the verdict. */
     readonly watchCi: (root: string, dir: string, sha: string, lanes: readonly string[], say: (line: string) => void) => Promise<void>
@@ -76,7 +78,7 @@ export const realLandDeps: LandDeps = {
     recheck: realRecheck,
     push: (root, profile, sha) =>
         profile === "harness" ? captureTool("git", ["push", "origin", `${sha}:refs/heads/dev`], root) : captureTool(process.execPath, [appCli(root), "app", "push", "origin", `${sha}:refs/heads/dev`], root),
-    publish: async (root, sha, say) => (await publishDev({ root, head: sha, execute: true, say })).published,
+    publish: (root, sha, say) => publishDev({ root, head: sha, execute: true, say }),
     requestSync: requestDevSync,
     watchCi: (root, dir, sha, lanes, say) => startDevCiWatch(root, dir, sha, lanes, say),
 }
@@ -130,8 +132,13 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
     let publishNote: string | undefined
     if (profile === "harness") {
         try {
-            published = await deps.publish(root, landed.sha, say)
-            publishNote = published.length === 0 ? "the landing changed no published package" : `published ${published.join(", ")} to the local registry`
+            const done = await deps.publish(root, landed.sha, say)
+            published = done.published
+            const failed = done.failed.map((failure) => `${failure.package}@${failure.version} (${failure.reason})`)
+            publishNote = [
+                published.length === 0 && failed.length === 0 ? "the landing changed no published package" : published.length === 0 ? "" : `published ${published.join(", ")} to the local registry`,
+                failed.length === 0 ? "" : `FAILED ${failed.join("; ")}: run starci deps publish-dev --execute in the harness checkout once fixed`,
+            ].filter((part) => part !== "").join("; ")
         } catch (error) {
             publishNote = `deps publish-dev failed (${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}): run starci deps publish-dev --execute in the harness checkout`
         }
