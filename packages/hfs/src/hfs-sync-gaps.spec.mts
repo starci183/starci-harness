@@ -144,9 +144,9 @@ test('stack up: the readiness window opens when the wait starts, so time up spen
   const upStarted = 0;
   let clock = upStarted + 200_000;
   const bootedAt = clock + 40_000;
-  const fetch = (() => Promise.resolve(clock >= bootedAt ? { status: 200, text: () => Promise.resolve('') } as Response : Promise.reject(new Error('fetch failed')))) as unknown as StackIo['fetch'];
+  const answered = { status: 200, text: () => Promise.resolve('') } as Response;
+  const fetch = (() => (clock >= bootedAt ? Promise.resolve(answered) : Promise.reject(new Error('fetch failed')))) as unknown as StackIo['fetch'];
   const ctx = stubCtx(t, { fetch, now: () => (clock += 1000) });
   const lines = await waitReady(ctx, local, 180, []);
-  assert.ok(lines.length > 0 && lines.every((line) => line.startsWith('ok    ready')), lines.join('
-'));
+  assert.ok(lines.length > 0 && lines.every((line) => line.startsWith('ok    ready')), lines.join(' | '));
 });
