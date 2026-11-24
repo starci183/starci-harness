@@ -49,8 +49,8 @@ test("the status map holds only these three (owner 2026-11-22): circle-check don
     assert.match(render(createElement(InlineStatus, { state: "error", label: "Lỗi" })), /data-grammar-status-glyph="error"/)
 })
 
-test("the plate tone of a state is fixed: done success, running info, waiting warning, error danger, skipped and notRun neutral", () => {
-    assert.deepEqual({ ...MARK_STATE_TONE }, { done: "success", running: "info", waiting: "warning", error: "danger", skipped: "neutral", notRun: "neutral" })
+test("the plate tone of a state is fixed: done success, running success, waiting warning, error danger, skipped and notRun neutral", () => {
+    assert.deepEqual({ ...MARK_STATE_TONE }, { done: "success", running: "success", waiting: "warning", error: "danger", skipped: "neutral", notRun: "neutral" })
 })
 
 test("case 1: IconTile state with no subject is the 40px tile carrying the STATUS glyph in the state's tone", () => {
@@ -104,13 +104,13 @@ test("Timeline: every marker is the 40px status tile, its glyph the status; the 
     assert.doesNotMatch(css, /data-grammar-current="true"\] \.starci-core-timeline-marker \{\s*color: var\(--accent\)/u, "no current-only dot colour")
 })
 
-test("Stepper: complete the check, error the x, paused and upcoming the plain ring (waiting and not run), the current step its number on the info tile", () => {
+test("Stepper: complete the check, error the x, paused and upcoming the plain ring (waiting and not run), the current step its number on the running (success) tile", () => {
     assert.deepEqual((["complete", "current", "upcoming", "error", "paused"] as const).map(stepperMarkState), ["done", "current", "notRun", "error", "waiting"])
     const markup = render(createElement(Stepper, { label: "Thiết lập", currentStepId: "b", steps: [
         { id: "a", label: "Một" }, { id: "b", label: "Hai" }, { id: "c", label: "Ba", state: "error" }, { id: "d", label: "Bốn", state: "paused" }, { id: "e", label: "Năm" },
     ] }))
     for (const glyph of ["done", "error", "waiting", "notRun"]) assert.match(markup, new RegExp(`data-grammar-status-glyph="${glyph}"`))
-    assert.match(markup, /data-tone="info"[^>]*>2</u, "the current step is its number on the info tile")
+    assert.match(markup, /data-tone="success"[^>]*>2</u, "the current step is its number on the running (success) tile")
     assert.equal(count(markup, /data-grammar-mark="status"/g), 5, "every marker is a 40px status tile")
     assert.equal(count(markup, /class="starci-core-icon-tile"/g), 5)
     // dense is inline: bare glyphs, no tile
@@ -162,7 +162,7 @@ const card = (over: Partial<EntitySummaryCardProps> = {}): string => render(crea
 test("EntitySummaryCard: name with the AI Chip and the status (A) in the head, the role, Tuần này with exactly three figures, one needs-you line, one whole-card link", () => {
     const markup = card()
     assert.match(markup, /data-component="AgentName"/)
-    assert.match(markup, /data-component="InlineStatus"[^>]*data-tone="info"/u)
+    assert.match(markup, /data-component="InlineStatus"[^>]*data-tone="success"/u)
     assert.match(markup, /Tuần này/)
     assert.equal(count(markup, /class="starci-core-entity-summary-figure"/g), 3)
     assert.match(markup, /data-tone="success"[^>]*>\+12%/u, "up is good for orders")

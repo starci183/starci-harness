@@ -89,7 +89,7 @@ export const stepperMarkState = (state: StepperStepState): MarkState | "current"
 
 /**
  * The marker of one step (0.55.0): the round 40px status tile with the STATUS glyph in the state's tone (check, x, the small ring for paused and upcoming); the current
- * step, the reader's own, is its number (or `renderMarker`) on the accent plate. A dense stepper (a list row) is inline: the bare 20px glyph (its 12px labels), no plate.
+ * step, the reader's own, is its number (or `renderMarker`) on the running plate (success, owner 2026-11-24). A dense stepper (a list row) is inline: the bare 20px glyph (its 12px labels), no plate.
  */
 const markerOf = (
     step: StepperStep,
@@ -101,7 +101,7 @@ const markerOf = (
     const mark = stepperMarkState(state)
     if (mark === "current") {
         const content = renderMarker === undefined ? index + 1 : renderMarker(step, index, state)
-        return size === "dense" ? content : <StatusTile tone="info">{content}</StatusTile>
+        return size === "dense" ? content : <StatusTile tone={MARK_STATE_TONE.running}>{content}</StatusTile>
     }
     if (size === "dense") return <InlineStatusGlyph state={mark} />
     return <StatusTile tone={MARK_STATE_TONE[mark]} state={mark}><StatusGlyph kind={mark} /></StatusTile>

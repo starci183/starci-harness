@@ -9,7 +9,7 @@ describe("status to tone and class", () => {
             FLOW_STATUSES.map((status) => [status, statusTone(status)]),
             [
                 ["done", "success"],
-                ["running", "info"],
+                ["running", "success"],
                 ["wait", "warning"],
                 ["error", "danger"],
                 ["skipped", "muted"],
@@ -47,7 +47,7 @@ describe("kinds and the tone of a tile", () => {
     it("plates the tile in the tone of the state unless the node has its own tone; a kind only names its legend swatch", () => {
         assert.equal(tileTone("danger", "done"), "danger")
         assert.equal(tileTone(undefined, "done"), "success")
-        assert.equal(tileTone(undefined, "running"), "info")
+        assert.equal(tileTone(undefined, "running"), "success")
         assert.equal(kindTone("event", { event: "info" }), "info")
         assert.equal(kindTone("trigger"), KIND_TONES.event)
     })

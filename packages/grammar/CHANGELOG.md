@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+
+- Changed, visual only (RUNNING IS GREEN, owner 2026-11-24: "Xanh lá toàn app"; replaces the 2026-11-22 rule "INFO running (blue)"): the running state and in progress take the `success` tone everywhere. `MARK_STATE_TONE.running` is `success` (the `IconTile state` plate, `InlineStatus`, the Timeline markers), the running ring of a status tile is `--success`, a Stepper's and a setup checklist's current step (`StepMark`, `EmptyNotice steps`) is its number on the success tile, a Dropzone upload's Progress is `success`; in the graph ext the running node (`STATUS_TONE.running`), its edge (the moving dashes) and its edge pill (`StepEdge`) are success, and a KnowledgeMap pending item is success. Done stays success: the two are told apart by the glyph (the spinning ring against the check). `info` stays a built-in tone for other uses; no API changes. Law `DNA-CORE-STEPPER-MARKER-CURRENT` measures `--success-soft`. Specs: `status-marks`, `info-tone`, `ext-graph-shared-status`, `dropzone-ext`.
 ## Unreleased - MermaidDiagram: toned edges, a legend, node icons; every edge its own line
 
 - Added (`MermaidDiagram edgeTones`, owner 2026-11-24: coloured edges to tell flows apart): a flowchart edge takes a tone by its place among the links counted from 1 (`edgeTones={{ 2: "info" }}`), or in the source by Mermaid's own edge id and class (`A r1@--> R`, then `class r1,r2 info`; Mermaid 11 keeps the class on the edge); the map wins. Its line, arrowhead and words (the pill's Badge) take the tone's token. `DiagramEdge.tone`; `parseDiagram` and `diagramOf` take `edgeTones` after `messageTones`.

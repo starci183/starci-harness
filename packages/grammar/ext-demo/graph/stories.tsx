@@ -189,7 +189,7 @@ export const STORIES: readonly Story[] = [
     {
         id: "states",
         title: "Sáu trạng thái",
-        note: "Xong, Đang chạy (xanh dương, vòng quay, cạnh ra chạy), Chờ (hổ phách, dừng, cạnh tĩnh), Lỗi, Bỏ qua, Chưa chạy.",
+        note: "Xong, Đang chạy (xanh lá, vòng quay, cạnh ra chạy), Chờ (hổ phách, dừng, cạnh tĩnh), Lỗi, Bỏ qua, Chưa chạy.",
         render: () => <FlowGraph label="Sáu trạng thái" nodes={statesNodes} edges={statesEdges} legend={STATUS_LEGEND} {...common} />,
     },
     {

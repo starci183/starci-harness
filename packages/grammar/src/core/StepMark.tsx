@@ -12,11 +12,11 @@ const STEP_MARK: Readonly<Record<Exclude<StepState, "current">, MarkState>> = { 
 
 /**
  * The step mark of a setup checklist or a step disclosure (0.55.0, the status-mark rule, case 1 "how far along is it?"): the round 40px status
- * tile with the STATUS glyph in the state's tone (check, x, the small ring); the current step, the reader's own, is its number on the accent plate.
+ * tile with the STATUS glyph in the state's tone (check, x, the small ring); the current step, the reader's own, is its number on the running plate (success, owner 2026-11-24).
  */
 export const StepMark = ({ state, position, isLoading = false }: { readonly state: StepState; readonly position?: number | undefined; readonly isLoading?: boolean }): ReactNode => (
     <span className="starci-core-accordion-step" data-grammar-step-state={isLoading ? "todo" : state} aria-hidden="true">
-        {isLoading ? null : state === "current" ? <StatusTile tone="info">{position}</StatusTile> : (
+        {isLoading ? null : state === "current" ? <StatusTile tone={MARK_STATE_TONE.running}>{position}</StatusTile> : (
             <StatusTile tone={MARK_STATE_TONE[STEP_MARK[state]]} state={STEP_MARK[state]}><StatusGlyph kind={STEP_MARK[state]} /></StatusTile>
         )}
     </span>
