@@ -9,11 +9,12 @@ export const MARK_STATES = ["done", "running", "waiting", "error", "skipped", "n
 export type MarkState = (typeof MARK_STATES)[number]
 
 /**
- * The plate tone of each state: success = done, INFO = running (owner 2026-11-22: in progress is info, the blue tone; accent stays the brand for
- * selection, links and the primary action), warning = waiting, danger = error, neutral = skipped or not run.
+ * The plate tone of each state: success = done AND running (owner 2026-11-24, "Xanh lá toàn app": in progress is the green success tone everywhere,
+ * superseding the 2026-11-22 "running is info, blue"; the glyph tells them apart, the spinning ring against the check; accent stays the brand for
+ * selection, links and the primary action, and info stays for other uses), warning = waiting, danger = error, neutral = skipped or not run.
  */
 export const MARK_STATE_TONE: Readonly<Record<MarkState, "success" | "info" | "warning" | "danger" | "neutral">> = {
-    done: "success", running: "info", waiting: "warning", error: "danger", skipped: "neutral", notRun: "neutral",
+    done: "success", running: "success", waiting: "warning", error: "danger", skipped: "neutral", notRun: "neutral",
 }
 
 export const isMarkState = (value: unknown): value is MarkState => typeof value === "string" && (MARK_STATES as readonly string[]).includes(value)

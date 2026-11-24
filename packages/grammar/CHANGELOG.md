@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed, visual only (RUNNING IS GREEN, owner 2026-11-24: "Xanh lá toàn app"; replaces the 2026-11-22 rule "INFO running (blue)"): the running state and in progress take the `success` tone everywhere. `MARK_STATE_TONE.running` is `success` (the `IconTile state` plate, `InlineStatus`, the Timeline markers), the running ring of a status tile is `--success`, a Stepper's and a setup checklist's current step (`StepMark`, `EmptyNotice steps`) is its number on the success tile, a Dropzone upload's Progress is `success`; in the graph ext the running node (`STATUS_TONE.running`), its edge (the moving dashes) and its edge pill (`StepEdge`) are success, and a KnowledgeMap pending item is success. Done stays success: the two are told apart by the glyph (the spinning ring against the check). `info` stays a built-in tone for other uses; no API changes. Law `DNA-CORE-STEPPER-MARKER-CURRENT` measures `--success-soft`. Specs: `status-marks`, `info-tone`, `ext-graph-shared-status`, `dropzone-ext`.
+
 ## 0.58.0 - 2026-11-24 - Every icon strokes 1.5; the neutral Sparkline; AiChatThread slots; lesson outline, inline notes and glossary terms; phone tables stack
 
 A minor: it deletes API (the `--grammar-icon-stroke` custom properties, `Sparkline tone` and `emptyLabel`), with new optional props, components and fixes.

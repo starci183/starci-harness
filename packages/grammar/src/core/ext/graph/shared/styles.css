@@ -3,7 +3,7 @@
  * The ext's styles.css imports it after xyflow's base sheet.
  */
 .starci-graph {
-    /* Until the theme has the info tokens (Grammar 0.55.0) a running node is this blue, never the brand accent. */
+    /* The info tone of a graph (an `info` node, container or tile). A running node and edge are success (owner 2026-11-24), never this blue nor the brand accent. */
     --starci-graph-info: var(--info);
     --starci-graph-info-soft: var(--info-soft);
     --starci-graph-info-ink: var(--info-soft-foreground);
@@ -111,7 +111,7 @@
 }
 
 .starci-graph .starci-graph-edge--running {
-    color: var(--starci-graph-info);
+    color: var(--success);
 }
 
 .starci-graph .starci-graph-edge--wait {
@@ -131,12 +131,12 @@
 }
 
 /*
- * Flowing into the running step (the routing law, rule 6a: one edge is one drawn line): the edge's own line in the info tone, its dashes moving towards the
+ * Flowing into the running step (the routing law, rule 6a: one edge is one drawn line): the edge's own line in the success tone (owner 2026-11-24, "Xanh lá toàn app"), its dashes moving towards the
  * step. No second path is drawn over or beside it.
  */
 .starci-graph .starci-graph-edge--running .react-flow__edge-path,
 .starci-graph .react-flow__edge.animated.starci-graph-edge--running .react-flow__edge-path {
-    stroke: var(--starci-graph-info);
+    stroke: var(--success);
     stroke-width: 2;
     stroke-dasharray: 8 6;
     animation: starci-graph-dash var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;

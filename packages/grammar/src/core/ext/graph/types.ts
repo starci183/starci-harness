@@ -2,7 +2,7 @@ import type { AriaLabelConfig } from "@xyflow/react"
 import type { ComponentType, ReactNode } from "react"
 
 /**
- * Where a node of a workflow run stands, exactly six states: `done`, `running` (the only active one on a path: blue, a spinner, its outgoing edge flows),
+ * Where a node of a workflow run stands, exactly six states: `done`, `running` (the only active one on a path: green (success), a spinner, its outgoing edge flows),
  * `wait` (paused: amber, no animation), `error`, `skipped` and `todo` (not reached yet, the default). The app supplies valid states; see `findConcurrentRunning`.
  */
 export const FLOW_STATUSES = ["done", "running", "wait", "error", "skipped", "todo"] as const

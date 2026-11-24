@@ -86,7 +86,7 @@ A node is in exactly one of six states (`status`, `todo` when left out). Every n
 | state | example word | look |
 |---|---|---|
 | `done` | Done | success border |
-| `running` | Running | info (blue) border, a turning ring on the tile; **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
+| `running` | Running | success (green) border, a turning ring on the tile (owner 2026-11-24, "Xanh lá toàn app"; done is green too, the glyph tells them apart); **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
 | `wait` | Waiting | warning (amber) border; the edge into it is solid amber and **still** (paused, no animation) |
 | `error` | Failed | danger border |
 | `skipped` | Skipped | muted solid border, faded |
@@ -178,7 +178,7 @@ The first view and the phone are the routing law's rule 4 (below): every graph o
 | line | meaning |
 |---|---|
 | solid, in the state tone | a path the run took (`taken`) |
-| solid info blue with moving dots | flowing into the running step (not for a reader who asked for reduced motion) |
+| solid success green with moving dots | flowing into the running step (not for a reader who asked for reduced motion) |
 | solid amber, still | the edge into a waiting step |
 | dashed grey | not reached yet |
 | dotted, faint | a branch not taken (`skipped`) |
@@ -281,7 +281,7 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    `MermaidDiagram` keeps a readable floor: never opened under zoom 0.85 (caption words at 11px or more), from its start when it does not fit whole (`diagram/open.ts`).
 5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
    edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight.
-6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the info tone, its dashes moving), never a second path over or
+6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the success tone, its dashes moving), never a second path over or
    beside it. Where two edges would share a stretch (a corridor into one target, a run out of one source), the stronger state keeps it with the one arrowhead
    (running over waiting over taken over plain over pending and skipped) and the other ends or starts where it meets that line, at a small junction dot
    (`dedupeRuns` in `shared/overlap.ts`, run by the canvas once the states are known); a middle run that would lie in another edge's corridor moves

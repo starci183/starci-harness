@@ -115,13 +115,13 @@ const items: readonly DropzoneItem[] = [
     { id: "d", name: "big.zip", status: "error", progress: 70 },
 ]
 
-test("rows: a 20px file-type icon (beside text, the icon size table), the name, an info Progress, and an inline status of the three glyphs (the circle spins while uploading)", () => {
+test("rows: a 20px file-type icon (beside text, the icon size table), the name, a success Progress (running is success, owner 2026-11-24), and an inline status of the three glyphs (the circle spins while uploading)", () => {
     const html = view({ items, onRetry: () => undefined })
     const rows = html.split('<li class="starci-core-dropzone-row"').slice(1)
     assert.equal(rows.length, 4)
     for (const row of rows) {
         assert.match(row, /data-usage="control"/)
-        assert.match(row, /data-grammar-progress-tone="info"/)
+        assert.match(row, /data-grammar-progress-tone="success"/)
         assert.match(row, /<span class="starci-type-caption[^"]*"|data-role="caption"/, "the status sits in a 12px caption line, so its glyph is 12px (text-sized)")
     }
     assert.match(rows[0] ?? "", /data-grammar-status-glyph="done"[^]*Done/)

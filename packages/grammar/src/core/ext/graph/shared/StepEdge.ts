@@ -7,7 +7,7 @@ import type { StepEdgeData } from "../build.js"
 
 const CORNER = 12
 /** The Badge tone of an edge's words, by the way the run went. */
-const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "info", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
+const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "success", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
 /** The hollow circle at the source port (8px) and the open triangle at the target port (10px long, 10px across). */
 const DOT = 4
 const ARROW = 10

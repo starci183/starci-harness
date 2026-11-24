@@ -240,7 +240,7 @@ export const TileGlyphVariants: Story = {
       <State label="A card that waits on the reader: tone=warning draws the edge in --warning-border; a tile names an agent with isAgent">
         <G.SurfaceCard label="Báo giá chờ duyệt" tone="warning"><G.InlineStatus state="waiting" label="Chờ bạn duyệt" meta="5 phút" /></G.SurfaceCard>
         <G.SurfaceCard kind="tile" name="Sales AI" isAgent byline="Trả lời khách hỏi giá" />
-        <G.Progress label="Đang đồng bộ đơn hàng" value={40} tone="info" />
+        <G.Progress label="Đang đồng bộ đơn hàng" value={40} tone="success" />
       </State>
     </Matrix>
   ),
