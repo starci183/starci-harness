@@ -149,7 +149,6 @@
         max-width: none;
         color: var(--foreground);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     /* A crumb whose label is not known yet (knowledge STATE-8): a short Skeleton text line of the label's size. */
@@ -333,7 +332,6 @@
         border-radius: var(--grammar-radius-pill);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -366,7 +364,7 @@
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-bar { background: var(--danger); }
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-bar { background: var(--warning); }
     .starci-core-stepper-caption { display: flex; min-width: 0; min-block-size: var(--grammar-leading-md); flex-direction: column; gap: 0; }
-    .starci-core-stepper-caption .starci-core-step-label { color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); line-height: var(--grammar-leading-md); }
+    .starci-core-stepper-caption .starci-core-step-label { color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-md); }
     .starci-core-stepper-caption .starci-core-step-skeleton-label { display: block; inline-size: 8rem; }
 
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap); }
@@ -414,13 +412,11 @@
         overflow-wrap: anywhere;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-step[data-grammar-step-state="upcoming"] .starci-core-step-label {
         color: var(--muted);
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-step-description {
@@ -712,7 +708,6 @@
         margin: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-footer-links {
@@ -764,7 +759,6 @@
     .starci-core-avatar-letters {
         font-size: var(--starci-avatar-letters-size);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-none);
         white-space: nowrap;
         user-select: none;
@@ -838,7 +832,6 @@
         font-size: var(--grammar-type-caption-size);
         line-height: var(--grammar-type-caption-line);
         font-weight: var(--grammar-type-badge-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-badge-weight), 400), 600) - 400) * 0.0025);
     }
 
     /* A loading avatar (knowledge STATE-8): the Skeleton circle at the avatar's size. */
@@ -1025,7 +1018,6 @@
         color: var(--foreground);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1281,7 +1273,6 @@
         background-color: var(--background);
         background-image: linear-gradient(var(--surface-secondary), var(--surface-secondary));
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         font-variant-numeric: tabular-nums;
     }
 
@@ -1294,20 +1285,17 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-field-size);
         font-weight: var(--grammar-type-label-field-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-field-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-field-line);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
     .starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"] {
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /* Amounts and counts: one line, tabular numerals. */
@@ -1323,7 +1311,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-xs);
     }
 
@@ -1343,7 +1330,6 @@
         flex: none;
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
@@ -1612,7 +1598,6 @@
         min-inline-size: 0;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
@@ -1632,7 +1617,7 @@
 
     /* The totals item of the phone list: the last row, on the secondary surface, its figures labelled by their column. */
     .starci-core-data-table-list-row.starci-core-data-table-list-totals { background: var(--surface-secondary); border-block-start: 1px solid var(--border); border-block-end: 0; }
-    .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); }
+    .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); }
     .starci-core-data-table-list-totals .starci-core-data-table-list-value { color: var(--default-foreground); font-variant-numeric: tabular-nums; }
 
     /*
@@ -1706,7 +1691,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
@@ -1718,7 +1702,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-sm);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         white-space: normal;
     }
 
@@ -1796,7 +1779,6 @@
         color: var(--foreground);
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-lg);
     }
 
@@ -1806,7 +1788,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
@@ -1908,7 +1889,6 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-group-size);
         font-weight: var(--grammar-type-label-group-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-group-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-group-line);
         /* The label breaks between words and keeps one or two lines; a word breaks only when it alone is wider than the cell. */
         overflow-wrap: break-word;
@@ -1934,7 +1914,6 @@
         /* The stat value is the figure role (0.54.0): 24 / 32 / 500, tabular. */
         font-size: var(--grammar-type-figure-size);
         font-weight: var(--grammar-type-figure-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-figure-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-figure-line);
         font-variant-numeric: tabular-nums;
     }
@@ -1986,7 +1965,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 
@@ -2103,7 +2081,6 @@
 
     .starci-core-list-box-item[data-grammar-list-emphasis="unread"] :is([data-grammar-item-label], [data-grammar-item-description]) {
         font-weight: var(--grammar-weight-semibold) !important;
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-list-box-item[data-grammar-list-size="sm"] {
@@ -2199,7 +2176,6 @@
     /* The label of a disclosure carries the caret, so it is regular (text that carries an icon is regular, owner 2026-11-23). */
     .starci-core-disclosure-trigger {
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-disclosure-trigger[data-focus-visible="true"],
@@ -2222,7 +2198,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         text-align: end;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2253,7 +2228,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-sm);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-sm);
     }
 
@@ -2541,7 +2515,6 @@
         overflow-wrap: anywhere;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 

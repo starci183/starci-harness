@@ -349,9 +349,8 @@
          *   text     1em of its words, at any size, in their colour: a caret or "go" arrow AFTER them, a breadcrumb separator, a receipt,
          *            and a status glyph BEFORE them (circle-check done, circle-x failed, empty circle pending, triangle warning).
          *            A 12px caption or meta line carries no leading icon: words only.        --grammar-icon-text
-         * THE ICON STROKE: a glyph's stroke follows the weight of the text it stands with, as SF Symbols match weights: 400 draws 1.5, 500
-         * 1.75, 600 and heavier 2 (`--grammar-icon-stroke`; every rule that sets a font weight sets it, so a glyph inherits it from its
-         * text; a glyph with no words, an icon button's or a tile's, takes a control label's 500).
+         * THE ICON STROKE (owner 2026-11-24): every icon strokes 1.5, buttons included; the stroke never follows the text weight (icons are
+         * bigger now). It is written once, on the glyph (styles.css "THE ICON STROKE"); there is no stroke variable.
          */
         --grammar-icon-text: 1em;
         --grammar-icon-control: 1rem;
@@ -363,10 +362,6 @@
         --grammar-tile-row-radius: 0.625rem;
         --grammar-tile-head-size: 3rem;
         --grammar-tile-head-radius: 0.75rem;
-        --grammar-icon-stroke-regular: 1.5;
-        --grammar-icon-stroke-medium: 1.75;
-        --grammar-icon-stroke-semibold: 2;
-        --grammar-icon-stroke: var(--grammar-icon-stroke-regular);
         /* The gap a Stack or Cluster keeps between its children (its `gap` role sets it); 0 outside one. A rule that adds to that gap reads it. */
         --starci-core-flow-gap: 0px;
         /* The lesson parts (0.55.1): a CodeBlock's header row (48), a GradedChoice key (32) and the least height of its plate (68, one line of

@@ -97,7 +97,6 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Popover"] :is(h1, h2, h3) {
         color: var(--foreground);
         font-weight: var(--grammar-weight-black);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-tight);
     }
 
@@ -118,7 +117,6 @@
     /* ---------------------------------------------------------------- menu */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-menu-item] {
         font-weight: var(--grammar-weight-bold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-bold), 400), 600) - 400) * 0.0025);
     }
 
     /* The soft pink fill is theme-aware (blush-pink in light, plum in dark), so one rule reads in every theme. */
@@ -171,7 +169,6 @@
         background: var(--surface);
         box-shadow: 0 var(--offset-pop-outline-width) 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: var(--grammar-weight-extrabold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* ---------------------------------------------------------------- loading and measurement */
@@ -233,7 +230,6 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"] [data-slot="label"] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* ---------------------------------------------------------------- motion, theme, contrast */

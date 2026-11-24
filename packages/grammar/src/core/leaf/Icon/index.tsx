@@ -7,7 +7,7 @@ import type { NoChildren } from "../../tier.js"
  * pixels. `text`: 1em of the text beside it, in that text's colour, centred on its line (a caret, a status mark inside a line, a badge glyph, an
  * icon written into a `Text`). `control`: 20 in a 40 control (a button, a menu or select entry, a field, a navigation entry), 16 in a 32 one.
  * `row`: 20, the glyph of the 40 tile that leads a list row (`IconTile` size `row`). `head`: 24, the glyph of the 48 tile that leads a page or
- * an empty state (`IconTile` size `head`). Every glyph is outline (Tabler); its stroke follows the weight of the text it stands with.
+ * an empty state (`IconTile` size `head`). Every glyph is outline (Tabler); its stroke is 1.5, buttons included.
  */
 export type IconUsage = "text" | "control" | "row" | "head"
 /**

@@ -140,7 +140,7 @@ test("Alert: its mark is the bare 24px Heroicon in the soft foreground on the so
     assert.match(glyph, /<svg[^>]*width="24"[^>]*height="24"[^>]*class="starci-core-alert-glyph"/u)
     const css = read("common/components-overlays.css")
     const alert = css.slice(css.indexOf("alert banner"), css.indexOf("Below 30rem"))
-    assert.match(alert, /\.starci-core-alert \.starci-core-alert-title \{ font-weight: var\(--grammar-type-label-item-weight\); --grammar-icon-stroke: [^}]*\}/u)
+    assert.match(alert, /\.starci-core-alert \.starci-core-alert-title \{ font-weight: var\(--grammar-type-label-item-weight\); \}/u)
     assert.match(alert, /\.starci-core-alert \.starci-core-alert-indicator \{\s*inline-size: 1\.5rem;\s*block-size: 1\.5rem;/u)
     for (const [state, tone] of [["affirmative", "success"], ["cautionary", "warning"], ["negative", "danger"], ["accent", "accent"]] as const) {
         assert.match(alert, new RegExp(`\\[data-grammar-tone="${state}"\\] \\{ --starci-core-alert-soft: var\\(--${tone}-soft\\); --starci-core-alert-ink: var\\(--${tone}-soft-foreground\\); \\}`, "u"), state)
