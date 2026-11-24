@@ -3237,31 +3237,14 @@
     }
 
     /*
-     * THE SELECTED ITEM. Default: the accent soft pair, no bar. 0.40.0 hooks, each defaulting to that look: `--starci-core-sidebar-selected` (fill),
-     * `--starci-core-sidebar-selected-foreground` (words and glyph), `--starci-core-sidebar-selected-weight` (the label weight),
-     * `--starci-core-sidebar-bar-width` (default 0: no bar) and `--starci-core-sidebar-bar` (default `--accent`): a bar on the item's start edge,
-     * full height, drawn by `::before` so it never competes with the focus ring (a box-shadow). `--starci-core-sidebar-selected-start-radius`
-     * squares the start corners of a selected item so the bar stands straight (default: the item radius). The collapsed rail keeps its pills, no bar.
+     * THE SELECTED ITEM: the accent soft pair (the fill, the words and the glyph), rounded like the item, with NO bar on any edge. Hooks, each defaulting to that look:
+     * `--starci-core-sidebar-selected` (fill), `--starci-core-sidebar-selected-foreground` (words and glyph) and `--starci-core-sidebar-selected-weight` (the label weight).
+     * Hover is the neutral `--default` fill with the words unchanged; a selected item under the pointer keeps its own fill.
      */
     .starci-core-sidebar-item[data-selected="true"],
     .starci-core-sidebar-item[data-grammar-current="true"] {
         background: var(--starci-core-sidebar-selected, var(--accent-soft)) !important;
         color: var(--starci-core-sidebar-selected-foreground, var(--accent-soft-foreground));
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) {
-        border-start-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
-        border-end-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"])::before {
-        content: "";
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: 0;
-        inline-size: var(--starci-core-sidebar-bar-width, 0);
-        background: var(--starci-core-sidebar-bar, var(--accent));
-        pointer-events: none;
     }
 
     .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) .starci-core-sidebar-item-label {

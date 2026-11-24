@@ -1344,7 +1344,7 @@
         width: var(--starci-core-control-min-size);
     }
 
-    /* A row `edgeTone` (0.45.1) draws the same 2px bar on its start edge in its tone; a selected row, below, draws the accent bar over it. */
+    /* A row `edgeTone` (0.45.1) draws the same 2px bar on its start edge in its tone; a selected row, below, takes the accent soft fill and keeps this bar. */
     .starci-core-data-table-row[data-edge-tone] > :first-child {
         box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
     }
@@ -1378,21 +1378,23 @@
     }
 
     /*
-     * A selected row is grey with a 2px accent bar on its start edge, as the sidebar marks its selected item: the `--default` fill, the words
-     * unchanged, the bar an inset edge of the first cell (so nothing moves). A hovered pressable row takes `--surface-secondary`.
+     * A selected row is the accent soft pair: the `--accent-soft` fill and `--accent-soft-foreground` words in every cell, no bar on any edge. A pressable row under the pointer
+     * keeps the selected fill; an unselected one takes the neutral hover fill (`--surface-secondary`), the words unchanged.
      */
     .starci-core-data-table-row[data-grammar-selected="true"] {
-        background: var(--default);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
-    .starci-core-data-table-row[data-grammar-selected="true"] > :first-child {
-        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
+    .starci-core-data-table-row[data-grammar-selected="true"] .starci-core-data-table-cell {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
-    /* The phone list marks a selected row the same way. */
+    /* The phone list marks a selected row the same way, rounded like the row. */
     .starci-core-data-table-list-row[data-grammar-selected="true"] {
-        background: var(--default);
-        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-data-table-placeholder {
@@ -1436,7 +1438,7 @@
 
     /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint; */
     @media (hover: hover) {
-        .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:hover .table__cell {
+        .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:not([data-grammar-selected="true"]):hover .table__cell {
             background: var(--surface-secondary);
         }
     }
@@ -1623,7 +1625,7 @@
     /*
      * SELECTION ON THE PHONE LIST (0.46.2). A long press on a row selects it, then a press toggles; the platform's own text selection and callout stay out of the way. Every
      * row holds a real checkbox: it is invisible (still the keyboard's and assistive technology's control) until a row is selected or the checkbox has focus, when a 24px mark
-     * stands at the start of the title line and the selected row takes the same grey fill and accent bar as a selected table row.
+     * stands at the start of the title line and the selected row takes the same accent soft fill as a selected table row.
      */
     .starci-core-data-table-list-row[data-grammar-table-row-selectable="true"] {
         position: relative;
@@ -2056,11 +2058,14 @@
     }
 
     /*
-     * HeroUI's selected list-box item rule is empty: only the end checkmark marks the row. Selection reuses the vendor's own
-     * hover fill token (--default), so a selected row reads as a filled row and not as a lone "seen" tick.
+     * HeroUI's selected list-box item rule is empty: only the end checkmark marks the row. A selected row is the accent soft pair (fill, words and
+     * glyphs), rounded as the item, with no bar on any edge; hover is the neutral `--default` fill with the words unchanged, and a selected row under
+     * the pointer keeps its accent soft fill.
      */
-    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]) {
-        background: var(--default);
+    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]),
+    .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]):is(:hover, [data-hovered="true"]) {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     /* Selection is the fill alone: a press with the mouse leaves no ring (the vendor focus ring shows on keyboard focus only). */

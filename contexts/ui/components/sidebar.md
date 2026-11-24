@@ -31,6 +31,9 @@ Evidence (Rule 1). NIVO console shell canvas, repository `nivoos-lite` at `8759c
 ## Collapse control
 The collapse control is Grammar's icon button at the top of the rail, in both states (`collapseLabel`, `expandLabel`, `toggleSource`, `onCollapsedChange`); an app never draws its own collapse row. Grammar alone decides where it stands, so every app's rail looks the same; persist the state in the app.
 
+## Selected and hover
+The current item is the accent soft pair (`--accent-soft` fill, `--accent-soft-foreground` words and glyph, the label at medium weight), rounded like every item, with NO bar on its start edge or any other. Hover is the neutral `--default` fill, the words unchanged; the current item under the pointer keeps its accent soft fill; focus keeps its ring. Hooks: `--starci-core-sidebar-selected`, `--starci-core-sidebar-selected-foreground`, `--starci-core-sidebar-selected-weight`. A selectable `ListBox` row and a selected table row follow the same rule ([grammars/contract.md](../../grammars/contract.md#list)).
+
 ## Size
 An item is 40 high with a leading 20 glyph; the count is a pill of the badge step (12 text). The rail is 3.5rem wide, a drawer is the sheet's width.
 

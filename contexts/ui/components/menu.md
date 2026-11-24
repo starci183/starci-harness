@@ -27,7 +27,7 @@ A setting that is on or off and takes effect at once ("Show the assistant" in th
 Entries are list rows on the ramp; the trigger is an icon button at its row's step ([../scale.md](../scale.md)).
 
 ## States
-Selection inside a menu (current language, workspace) shows the selected indicator, distinct from focus.
+Selection inside a menu (current language, workspace) shows the selected indicator, distinct from focus; a selected menu row is the accent soft pair with no edge bar, hover the neutral soft fill ([grammars/contract.md](../../grammars/contract.md#list)).
 
 ## Owner split
 - **Grammar owns:** popover, sections, separators, item anatomy, indicator side, danger tone.

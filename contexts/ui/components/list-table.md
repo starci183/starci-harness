@@ -44,11 +44,10 @@ one row at 1440 and the narrow step at 390, compact and field selects).
 
 ## Row edge tone (0.45.1)
 A row that waits for the reader (a pending approval) or leads its list (the most recently opened) takes `edgeTone` (`RowEdgeTone`: `accent`, `success`, `warning`, `danger`): a
-2px bar on its start edge in the theme token of the tone (`--accent`, `--success`, `--warning`, `--danger`), the bar a selected table row draws, an inset shadow so the content never moves,
+2px bar on its start edge in the theme token of the tone (`--accent`, `--success`, `--warning`, `--danger`), an inset shadow so the content never moves,
 kept under hover. It is a field of the row, not a prop of the list: `ListRowData.edgeTone` (a `Section kind="list"` item, a `Board` item) and `DataTableRow.edgeTone` (a table
 row on its first cell, and its phone list row). The words stay in a badge or the meta (the bar is never the only signal); it is never a fill, and it is not a status: use `state` or a badge
-for that. `verdict` (success and danger, for a row that reports an outcome) draws the same bar; `edgeTone` wins when both are set. A selected table row draws the accent bar over its
-tone. No theme hook. Story `Surfaces/Row edge tone (0.45.1)`.
+for that. `verdict` (success and danger, for a row that reports an outcome) draws the same bar; `edgeTone` wins when both are set. A selected table row takes the accent soft fill and keeps the bar (a selected row never draws a bar of its own: the contract's "Selected and hover"). No theme hook. Story `Surfaces/Row edge tone (0.45.1)`.
 
 ## Unread row (0.46.0)
 A row the person has not read takes `emphasis: "unread"` (`ListRowData`: a `Section kind="list"` item, a `Board` item), the fact a `ListBox` item already states with the same name and value. Its title takes the strong weight (semibold) and an accent dot follows it on the title line, so the row's box does not change and
