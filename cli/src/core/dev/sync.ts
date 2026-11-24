@@ -103,6 +103,13 @@ export interface DevSyncRequest {
     readonly restart: boolean
     readonly processes: DevSyncSettings["processes"]
     readonly say: (line: string) => void
+    /**
+     * A coordinator hotfix (core/hotfix/land.ts) committed in the checkout and pushed dev from it, so HEAD already is origin/dev: the commit the checkout was at
+     * before the hotfix, which the changed files, the install, the migration and the restarted sides are read from.
+     */
+    readonly since?: string
+    /** With `since`, a hotfix that touched no lockfile, migration, schema or workspace package: the api and web restart on their own build, the prepare scripts do not run. */
+    readonly light?: boolean
 }
 
 /** How many times a sync runs `npm ci` when it dies on a file something holds. */
@@ -225,7 +232,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     if (!detached && branch !== "dev") throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on ${branch}, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
     const fetched = await gitOk(root, ["fetch", "--quiet", "origin", "dev"])
     if (!fetched.ok) throw new Refusal("DEV_SYNC_FETCH", `git fetch origin dev in ${root}: ${fetched.err}`)
-    const from = await resolveSha(root, "HEAD")
+    const from = request.since === undefined ? await resolveSha(root, "HEAD") : await resolveSha(root, request.since)
     const to = await resolveSha(root, "origin/dev")
     if (!(await gitOk(root, ["merge-base", "--is-ancestor", from, to])).ok) {
         if (detached) throw new Refusal("DEV_SYNC_NOT_DEV", `${root} is on a detached HEAD (${from.slice(0, 9)}) that is not origin/dev (${to.slice(0, 9)}) or behind it, not dev: dev sync moves the app's main dev checkout only (git switch dev there first)`)
@@ -254,7 +261,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const writesModules = needInstall || requested.length > 0
     // The tree a restart builds from is prepared first, as the lane gate and the lander prepare theirs: a workspace package that moved or
     // arrived (its main is its dist) resolves only once built, so a web restarted on an unbuilt one answers "Module not found".
-    const prepares = writesModules || processes.length > 0
+    const prepares = writesModules || unprepared || (processes.length > 0 && request.light !== true)
     // New migration files are applied before the api restarts on code that needs them, by the stack's own migrate step and its receipt
     // (`app stack up`, idempotent: what runs is kept). A migration that failed last time is tried again though nothing moved.
     const newMigrations = files.filter((file) => file.startsWith(MIGRATIONS_FOLDER))
