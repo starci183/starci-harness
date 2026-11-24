@@ -42,8 +42,11 @@ void test("a jest argv gets the same flags without --, and an unrelated argv is 
 
 void test("through the real governor, a test request runs under the parent's heap, the worker heap and the workers its room holds, and a build under its heap cap", async () => {
     const calls: { readonly argv: readonly string[]; readonly env: Readonly<Record<string, string>> | undefined }[] = []
-    const admit: typeof withHeavySlot = <T,>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>
-        governed({ rules: pace, freeMb: () => 22 * GB }, kind, label, cwd, options, work)
+    const kinds: HeavyKind[] = []
+    const admit: typeof withHeavySlot = <T,>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
+        kinds.push(kind)
+        return governed({ rules: pace, freeMb: () => 22 * GB }, kind, label, cwd, options, work)
+    }
     const capture: typeof captureCommand = (argv, _cwd, options) => {
         calls.push({ argv, env: options?.env })
         return Promise.resolve({ exitCode: 0, stdout: "", stderr: "", timedOut: false })
@@ -58,5 +61,6 @@ void test("through the real governor, a test request runs under the parent's hea
     assert.match(tested.env?.NODE_OPTIONS ?? "", new RegExp(`--max-old-space-size=${String(pace.testRun.parentMb)} --require=.*starci-jest-worker-heap`, "u"))
     assert.equal(tested.env?.STARCI_WORKER_HEAP_MB, String(pace.testRun.workerMb))
     assert.deepEqual(built.argv, ["npm", "run", "build:be"])
-    assert.match(built.env?.NODE_OPTIONS ?? "", /--max-old-space-size=\d+/u, "a build runs under a heap cap")
+    assert.deepEqual(kinds, ["test", "appBuild"], "a build @starci/hfs asks for is an app's own build")
+    assert.match(built.env?.NODE_OPTIONS ?? "", new RegExp(`--max-old-space-size=${String(pace.caps.appBuild.capMb)}`, "u"), "an app build runs under the appBuild heap cap")
 })
