@@ -37,7 +37,7 @@ check counts the monitoring stack as one of the shared stacks that run instead.
 
 ## PROJECT-SHARED-SERVICES-2 The embeddings server
 
-ONE per server, CPU only, shared by every opted-in environment (owner, 2026-11-21):
+ONE per server, CPU only, shared by every opted-in environment:
 
 - **model**: Ollama `ollama/ollama:0.30.11@sha256:c484b703...`, OLLAMA_NUM_PARALLEL 2, context 4096, keep-alive forever, 16 CPUs at most
   (4 reserved), memory limit 10G (4G reserved), stop-first rollout, restart on failure at most 5 times, the volume `starci-embeddings-models`.
@@ -48,7 +48,7 @@ ONE per server, CPU only, shared by every opted-in environment (owner, 2026-11-2
 
 **The model is pinned**: `qwen3-embedding:4b`, quantization Q4_K_M, its native 2560 dimensions with no truncation, manifest sha256
 `df5bd2e3c74cd8d069d21dc038f1b359fcdc9458fce1c99bd43c9eb1518ff907`, the model `starci.embed` pins in the harness ops/host-roles.yaml for every
-machine, the owner's PC included (owner, 2026-11-21: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc."); `starci host doctor`
+machine, the owner's PC included; `starci host doctor`
 compares the vectors of every machine serving it (`HOST_EMBED_MISMATCH`). A different
 quantization or size is a different vector space: dev and server vectors, and any index copied between them, would stop being comparable.
 The model service pulls the model once into its volume and, at every start, compares the sha256 of its manifest with the pin and refuses to
@@ -74,7 +74,7 @@ whose stack exists, and the monitoring stack with its components), and refuses `
 
 A dry run on `--local` measures and judges; a dry run on a server reaches nothing and the check runs before the first step of `--execute`.
 
-What the model needs, measured on the local swarm (Docker Desktop, 28 CPUs, 32 GB) with the shipped stack, 2026-11-21:
+What the model needs, measured on the local swarm (Docker Desktop, 28 CPUs, 32 GB) with the shipped stack:
 
 | figure | value | how |
 |---|---|---|

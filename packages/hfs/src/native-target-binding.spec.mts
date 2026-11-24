@@ -31,7 +31,7 @@ function files(t: TestContext) {
 test('a wrong sealed account stops before opening a key, writing session files or invoking a tool', () => {
   let keyReads = 0, tools = 0;
   const ctx = { env: {}, spawn: () => { tools += 1; }, sops: {
-    decrypt: () => ({ VPS_HOST: 'other.example', VPS_USER: 'ops' }), decryptBinary: () => { keyReads += 1; throw new Error('unexpected private key open'); },
+    decrypt: (file: string) => { if (!file.includes('ops.')) { keyReads += 1; throw new Error('unexpected private key open'); } return { VPS_HOST: 'other.example', VPS_USER: 'ops' }; },
   } };
   assert.throws(() => openSealedSession(asContext(ctx), asConfig({ remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, secretsDir: 'synthetic', nativeTarget: STACK })), /differs from the accepted native target/);
   assert.equal(keyReads, 0);
@@ -40,12 +40,11 @@ test('a wrong sealed account stops before opening a key, writing session files o
 
 test('a bound private Docker session pins the accepted SSH port and closes its owned temporary files', async t => {
   const f = files(t), secretsDir = path.join(f.root, 'secrets');
-  for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc`, 'synthetic envelope');
+  for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc.yaml`, 'synthetic envelope');
   const calls: SpawnCall[] = [], env = { HOME: f.root, PATH: '' };
   const ctx = { env, platform: 'linux', sshPath: 'ssh', stderr: () => {},
     spawn: (file: string, args: string[], options: SpawnCall['options']) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; },
-    sops: { decrypt: () => ({ VPS_HOST: STACK.host, VPS_USER: STACK.user }),
-      decryptBinary: (file: string) => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' },
+    sops: { decrypt: (file: string) => (file.includes('ops.') ? { VPS_HOST: STACK.host, VPS_USER: STACK.user } : file.includes('key.') ? { privateKey: 'synthetic PRIVATE KEY' } : { knownHosts: 'host.example ssh-ed25519 synthetic' }) },
   };
   const config = bindStackTarget(ctx, asConfig({ repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir,
     remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } }), STACK);
@@ -64,12 +63,11 @@ test('a bound private Docker session pins the accepted SSH port and closes its o
 
 test('a sealed member VPS_PORT reaches the docker transport with the key and known_hosts passed explicitly', async t => {
   const f = files(t), secretsDir = path.join(f.root, 'secrets');
-  for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc`, 'synthetic envelope');
+  for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc.yaml`, 'synthetic envelope');
   const calls: SpawnCall[] = [];
   const ctx = { env: { HOME: f.root, PATH: '' }, platform: 'linux', sshPath: 'ssh', stderr: () => {},
     spawn: (file: string, args: string[], options: SpawnCall['options']) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; },
-    sops: { decrypt: () => ({ VPS_HOST: STACK.host, VPS_USER: STACK.user, VPS_PORT: '9999' }),
-      decryptBinary: (file: string) => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' },
+    sops: { decrypt: (file: string) => (file.includes('ops.') ? { VPS_HOST: STACK.host, VPS_USER: STACK.user, VPS_PORT: '9999' } : file.includes('key.') ? { privateKey: 'synthetic PRIVATE KEY' } : { knownHosts: 'host.example ssh-ed25519 synthetic' }) },
   };
   const config = asConfig({ repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir, remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } });
   await withDockerTransport(asContext(ctx), config, {}, async bound => {

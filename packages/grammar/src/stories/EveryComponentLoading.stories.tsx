@@ -55,7 +55,6 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         </G.Cluster>
         <G.RadioGroup label="Delivery" options={choice} defaultValue="email" />
         <G.CheckboxGroup label="Channels" options={choice} />
-        <G.Select label="Time" options={[{ id: "9", label: "09:00" }, { id: "10", label: "10:00" }]} defaultValue="9" />
         <G.Cluster gap="inline">
             <G.Badge tone="success">Paid</G.Badge>
             <G.Avatar name="Alex Morgan" size="sm" />

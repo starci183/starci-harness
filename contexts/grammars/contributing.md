@@ -41,8 +41,8 @@ two components, or one frame with a typed `kind`. A `layout` whose item type cha
 ## Naming
 
 The name says what it does as a UI role, in English, never a product feature. `PaneGrid`, not a chat
-layout. A prop name states a fact (`isDisabled`, `tone`), never a look (`rounded`, `big`), except the Button's one `variant` (primary, border, danger: owner 2026-11-22). Vendor names stay when the vendor has
-one. No two names mean the same, and nothing is aliased: a renamed thing is removed and migrated, and the old spelling goes to the removed vocabulary (`@starci/hfs` `runtime/modules/kernel/removed-vocabulary.yaml`, kind `grammar`).
+layout. A prop name states a fact (`isDisabled`, `tone`), never a look (`rounded`, `big`), except the Button's one `variant` (primary, border, danger). Vendor names stay when the vendor has
+one. No two names mean the same, and nothing is aliased: a renamed thing is renamed in every app in the same change and the old spelling is gone.
 
 ## Which tier
 
@@ -154,7 +154,6 @@ No release check judges it; the author does. The three packages keep one version
 
 ## Codemods
 
-On 2026-11-21 the owner set how Grammar codemods are named: "starci app codemod v0540 đi pattern thế 1 codemod đi kèm 1 bản grammars".
 One codemod goes with one Grammar release that needs it, and it is named after that version: 0.54.0 is `v0540`
 (`v<major><minor><patch>`). It lives with the Grammar in `packages/grammar/codemods/<id>/`, beside its before/after fixtures and spec
 (`npm run test:codemods`), and it is registered in `packages/grammar/codemods/index.mts`. The package builds the codemods to
@@ -163,7 +162,7 @@ imports them from the Grammar the app has installed and passes in the app's own 
 runtime dependency on the other. An app installs the target Grammar first, and that Grammar carries every codemod up to its version.
 
 - `starci app codemod --list` prints each codemod with its Grammar version and summary.
-- `starci app codemod v0540` is dry by default and prints a per-file summary. `--execute` writes the changes. Cases it cannot decide are
+- `starci app codemod v<major><minor><patch>` is dry by default and prints a per-file summary. `--execute` writes the changes. Cases it cannot decide are
   marked in source with `TODO(type-role)` (each codemod names its marker) and listed; a run that leaves one exits 1.
 - `starci app codemod --from <installed> --to <target>` runs every codemod above `<installed>` up to `<target>`, in version order, so an
   app that skips versions upgrades in one go. `--to` defaults to the installed Grammar.

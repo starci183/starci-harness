@@ -4,7 +4,7 @@ import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 
 /**
- * THE SPACING ROLES (owner, 2026-11-23, SPACING-ROLES; contexts/ui/scale.md "The spacing roles"). A distance between two things an app
+ * THE SPACING ROLES (SPACING-ROLES; contexts/ui/scale.md "The spacing roles"). A distance between two things an app
  * places is a ROLE the Grammar resolves (`Stack gap`, `Cluster gap`, `Grid`, `PaneSection`, `Page`, the inset of a Grammar box), never
  * a raw value. The class-string half is the canon's `starci-fe/no-spacing-utility` (R350); this rule is the `style` half.
  *

@@ -65,7 +65,6 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `ci.yml` — **app.ci** required · R12 (machine `e2e-in-automatic-gate`), R13 (machine `hooks-path-not-redirected`; hfs `ci-missing-canon`), R05 (hfs `managed-file-drift`)
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
-    - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05 (hfs `managed-file-drift`)
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)

@@ -5,8 +5,7 @@
  * it with the selected Grammar-family factory instead of registering individual rules. Family
  * packages consume the public generic infrastructure exports; each rule implementation has one owner.
  *
- * Published IDs identify their owning law. Namespace migrations are explicit in the removed-vocabulary
- * catalog; compatibility aliases cannot create a second owner for a rule.
+ * Published IDs identify their owning law; a rule has one id and no alias.
  */
 import { extEslintConfigs } from "@starci/hfs/runtime/scripts/lib/project-ext.mjs"
 import { createRequire } from "node:module"

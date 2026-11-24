@@ -6,7 +6,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 
 /**
- * NO CARD LEAD DESCRIPTION (owner, 2026-11-09, CARD-NO-DESCRIPTION). A card head is its label, a count chip, one fact and one end action: it has NO description. The
+ * NO CARD LEAD DESCRIPTION (CARD-NO-DESCRIPTION). A card head is its label, a count chip, one fact and one end action: it has NO description. The
  * words that explain a card's data go in the card's `note` (a legend, a source, a period); the words that explain a row are that row's own subtitle (a `ListRow` subtitle of a
  * `Section kind="list"`, or an option `description` of a `RadioGroup`). A free-standing muted line placed directly above a card (the title + description + card pattern) is the same description drawn by hand.
  *

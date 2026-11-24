@@ -51,7 +51,7 @@ const Parts = () => (
     </G.SurfaceCard>
     <G.Input id="hook-page" name="page" label="On the page" />
     <G.SearchField label="Search" />
-    <G.RadioGroup label="Repeat" appearance="rows" options={['daily', 'weekly'].map((each) => ({ value: each, label: each }))} defaultValue="daily" />
+    <G.RadioGroup label="Repeat on" appearance="rows" options={['Mon', 'Tue', 'Wed'].map((day) => ({ value: day, label: day }))} defaultValue="Mon" />
     <div style={{ width: 280 }}>
       <G.Sidebar label="Workspace" selectedKey="inbox" groups={[{ id: 'main', items: [{ id: 'home', label: 'Home' }, { id: 'inbox', label: 'Inbox' }] }]} />
     </div>

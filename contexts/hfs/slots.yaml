@@ -318,7 +318,6 @@ ruleParams:
       "@starci/auth/testing":
         - integrations/passport
         - integrations/keycloak
-      "@starci/auth-oidc": []
       bcrypt: []
       cache-manager:
         - integrations/cache
@@ -1066,17 +1065,6 @@ slots:
     profiles:
       - app
     path: .github/workflows/stack-deploy.yml
-    presence: optional
-    tracked: tracked
-    tier: none
-    tests: none
-    managedBy: ci-workflows
-    rules:
-      - HFS_MANAGED_FILE_DRIFT
-  - id: app.ci-stack-key-restore
-    profiles:
-      - app
-    path: .github/workflows/stack-key-restore.yml
     presence: optional
     tracked: tracked
     tier: none

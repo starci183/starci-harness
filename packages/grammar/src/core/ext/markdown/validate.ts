@@ -1,4 +1,4 @@
-import { parse, type ParseOptions } from "./parse.js"
+import { parse } from "./parse.js"
 import { INLINE_CODE_MAX, profileOf, type Profile } from "./profiles.js"
 import { childInlines, walkBlocks, walkInlines } from "./tree.js"
 import type { Block, Issue, IssueCode, MarkdownTree, ProfileName, SourcePoint } from "./types.js"
@@ -54,8 +54,8 @@ export const validateTree = (tree: MarkdownTree, profile: Profile): Issue[] => {
  * and the profile's allow-list (a block or an inline it does not allow, more than its maximum), the mermaid caption, inline code that is
  * too long for a name. Sorted by line. An importer refuses a text with any `error`.
  */
-export const validate = (markdown: string, profile: ProfileName = "prose", options: ParseOptions = {}): Issue[] => {
-    const tree = parse(markdown, options)
+export const validate = (markdown: string, profile: ProfileName = "prose"): Issue[] => {
+    const tree = parse(markdown)
     return [...tree.issues, ...validateTree(tree, profileOf(profile))].sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || (a.column ?? 0) - (b.column ?? 0))
 }
 

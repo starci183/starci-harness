@@ -39,16 +39,15 @@ step, and a running web or api server takes none. Nothing starts while the drive
   or `slot release --stale`, reclaims a slot only when its holder is proven gone: its pid is not alive, its pid runs a process
   started at another time, or the host booted after it was taken. Each reclaim is logged with its evidence in `<root>/_slots.log`.
   Age is never evidence: a slot past its kind's `warnMinutes` is listed `old`, and the coordinator asks its holder.
-- **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds, whoever wrote its file (the old
-  `_gate-slot-N.lock` helper too), so a retried gate never takes a second one; a leaked duplicate of the lane written by the old helper is released
-  on the way. A slot held by `slot run` or `lane gate` is released in a `finally`, on SIGINT, SIGBREAK, SIGHUP and SIGTERM and on `process.exit`.
+- **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds, so a retried gate never takes a
+  second one. A slot held by `slot run` or `lane gate` is released in a `finally`, on SIGINT, SIGBREAK, SIGHUP and SIGTERM and on `process.exit`.
   On Windows a process killed outright (`taskkill /F`, `process.kill`, a dead parent) runs nothing: its slot records its pid, and the next take reclaims it as `dead`.
-- **Locks with no pid** (the old helper writes `<lane> <time>` alone) cannot be probed. They are reclaimable (`gone`) once their lane has no worktree: no
+- **Locks with no pid** (a lock line `<lane> <time>` alone) cannot be probed. They are reclaimable (`gone`) once their lane has no worktree: no
   worktree of the repositories under the slot root exists on disk whose folder ends in `/<lane>` or which has `lane/<lane>` checked out (where the slot root
   holds no repository, `_land-status/<lane>.json` saying `landed` or `rejected` stands in), or taken before this boot (`rebooted`). Otherwise they are
-  only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or its old-format lock can be reclaimed.
-- **A lane lets go of its slots.** The deprecated batch lander releases every slot a lane holds, of any kind, once it lands or is rejected, and `starci lane remove`
-  does so as part of the removal (its dry run lists them; `--dir` names the slot root). Each release is logged in `_slots.log`.
+  only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or such a lock can be reclaimed.
+- **A lane lets go of its slots.** `starci lane remove` releases every slot the lane holds, of any kind, as part of the removal (its dry run lists them;
+  `--dir` names the slot root). Each release is logged in `_slots.log`.
 - **Never hold a slot while you wait** for a review, an audit or another lane; take it for the run, then let it go.
 
 ## The shared stack
@@ -62,11 +61,7 @@ unpushed lane commit, and releases. A migration a lane adds is additive and appl
 
 ## Gate and land
 
-The owner's rules for the gate of a lane, in his words:
-
-> "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"
-
-> "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"
+The gate judges the tree once per push, never the branch while a lane works, and a newer push cancels the older run.
 
 A lane lands on dev, so every gate of this section is the FAST level, `app check --env prod --level dev`, once per push: the deps
 check (local-registry pins allowed where hfs.json declares `deps.devAllowsLocalRegistry`), types with its package builds and codegen,
@@ -75,17 +70,13 @@ approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED still blocks). The hfs rule s
 stale and missing blocks, the nivoos package checks, the whole test suite, sonar and coverage run once at the main cut
 (`--level full`); a red full run is fixed in a hardening lane before the cut. screen.yaml and audit records may be completed there.
 
-The owner's rule for landing, in his words:
-
-> "bỏ lander đi, cứ xong là merge vô dev là được, vì cũng bỏ hết gate nặng rồi"
-
 One verb gates and lands (PROJECT-BRANCH-2):
 
 1. `starci lane gate --push --land` in the worktree, tree committed: it merges `origin/dev`, installs under an `npm` slot when
    the merge changed a manifest or lockfile (`--install` forces a full `npm ci`; a fresh worktree is installed by the shared install below), runs `codegen` (and `build:modules` after an install), then
    under a `gate` slot the app's own `app push origin HEAD:lane/<lane>`, whose pre-push hook runs the fast level once. Without `--push`
    it runs `app check --env prod --level dev` only and reports the findings. A new `lane gate` of the same lane first cancels the lane's
-   running gate: its process tree is killed, its slot released and its status says `superseded by <sha>`. A merge conflict refuses
+   running gate: its process tree is killed, its slot released, and the new gate prints `superseded by <sha>`. A merge conflict refuses
    `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
 2. Green and pushed, `--land` lands the lane at once (core/lane/land-direct.ts): under the repository's dev lock (`<lanes>/_dev-push.lock`, the
    harness's `_dev-push-harness.lock`) it fetches and merges the newest `origin/dev` into the lane; when dev moved since the gate's merge it
@@ -100,14 +91,14 @@ One verb gates and lands (PROJECT-BRANCH-2):
    marked for its debounced sync (`starci dev sync-runner`, [project/cicd.md](../project/cicd.md) "The debounced dev sync"). A lane never runs
    the sync of the shared checkout itself.
 4. The landing starts the watch of the pushed sha's GitHub CI, detached so nothing waits for it (`starci lane ci-watch <sha>`,
-   cli/src/harness/dev-ci-watch.ts); the batch lander does the same after each landed batch. The watcher reads the push runs of the sha
-   (`gh run list --commit`) until they settle or `lander.ciWatchMinutes` (45) of the local settings passes, and writes the verdict (`green`, `red`,
+   cli/src/harness/dev-ci-watch.ts). The watcher reads the push runs of the sha
+   (`gh run list --commit`) until they settle or `ciWatch.minutes` (45) of the local settings passes, and writes the verdict (`green`, `red`,
    `superseded` when a newer push cancelled the run, `pending` past the limit, `none`, `unreadable`) into `<lanes>/_land-status/_dev-ci/<sha>.json`
    and the `ci` of each landed lane's status. A red verdict is printed loudly in its log (`_dev-ci/<sha>.log`) and sent to the coordinator
-   session `lander.notifySession` names (`claude -p --resume <session>`) when one is set. It never reverts, blocks or pushes dev: a red dev
+   session `ciWatch.notifySession` names (`claude -p --resume <session>`) when one is set. It never reverts, blocks or pushes dev: a red dev
    is fixed by a lane. The watcher stands in the repository's main checkout, never in the lane's worktree.
-5. Last, once dev is pushed, the lane's worktree is removed to save disk, the branch kept, local and remote (owner 2026-11-24;
-   `cli/src/harness/land-cleanup.ts`): the same removal as `starci lane remove` (its removal lock, links unlinked as links, a lstat-checked
+5. Last, once dev is pushed, the lane's worktree is removed to save disk, the branch kept, local and remote
+   (`cli/src/harness/land-cleanup.ts`): the same removal as `starci lane remove` (its removal lock, links unlinked as links, a lstat-checked
    delete) behind the install janitor's in-use guard, and only when the push succeeded. The command runs inside the worktree, and Windows cannot
    delete a folder a live process stands in, so it first leaves for the main checkout (`process.chdir`) and removes in-process. The guard keeps
    the worktree when a removal lock, a slot of the lane or a git operation holds it, a process works inside it, it holds uncommitted work or its
@@ -117,9 +108,7 @@ One verb gates and lands (PROJECT-BRANCH-2):
    stands, and the next `starci lane remove <worktree> --execute` (which clears it) or `starci lane prune-installs --execute` (the janitor sweeps
    the markers with the same guard) finishes it. The verb prints one line, `worktree removed` or `kept: <reason>`; it never changes the exit code.
 
-**Deprecated, kept running:** `lane gate --push --ready` (and `lane ready`) registers the pushed sha with the batch lander instead, `starci lane land`
-lands the registered lanes in batches, and `lane withdraw` takes a registered lane out; their statuses `queued`, `conflict`, `rejected`, `parked`
-and `withdrawn` are written only for lanes registered that way. A lane does not use them; they are removed once the running landers are retired.
+`starci lane status` prints the dev lock and each lane's landing status.
 
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
@@ -178,7 +167,7 @@ never swept in, so a NEW file lands only when `--only` names it. With it, a trac
 path with no change refuses `HOTFIX_ONLY_UNCHANGED`. The harness checkout holds other work, so `--only` is required there (`HOTFIX_ONLY_REQUIRED`). The files dev sync's local overlay rewrote (the manifests
 its `install-local.json` record names and their lockfiles) are sync-owned: a hotfix neither takes them nor refuses them as foreign, and never commits them.
 
-`hotfix land` judges only the size. Under the dev lock (the one the lander and `lane gate --land` take) it refuses `HOTFIX_SYNC_BUSY` while a dev sync of the
+`hotfix land` judges only the size. Under the dev lock (the one `lane gate --land` takes) it refuses `HOTFIX_SYNC_BUSY` while a dev sync of the
 checkout runs, makes ONE commit with a `Hotfix:` trailer, rebases it onto the newest `origin/dev` (a conflict puts the edit back and lands nothing) and pushes
 `dev`, never forced. Then the stack restarts through `dev sync` told where the checkout was before the hotfix: **light** (only the api and/or web the change
 reaches, no install and no prepare) or, when a lockfile or manifest, a migration, a schema or a workspace package changed, the **full sync steps** (npm ci,
@@ -210,7 +199,7 @@ publish, every app checkout of `devSync.repos` gets an IMMEDIATE sync with no de
 overlay (`devSync.local`) installs the new dev build, so the change shows on every app's dev within minutes without changing any app's committed pins. The output lists
 each app's sync and its restart result.
 
-**The dev checkout stays sync-owned** (only `dev sync` and the landers move it), **except during a coordinator hotfix**, which holds the dev lock from its first
+**The dev checkout stays sync-owned** (only `dev sync` and a landing move it), **except during a coordinator hotfix**, which holds the dev lock from its first
 step to the end of the restart and is the only thing that edits the checkout in place.
 
 **Hotfix is the only path that skips the pre-push gate.** The skip lives in the CLI: while `hotfix land` pushes its one commit it writes a pass beside the
@@ -239,9 +228,7 @@ A back-end change that truly cannot wait for a land to be seen runs its api only
 its own, recorded and reaped with its caller; a lane never runs a second web server. On the stack itself, `app stack up` keeps one copy of each
 process: a recorded process whose port went silent is stopped before a fresh start, a port some other process already listens on refuses
 `STACK_LOCAL_SECOND_COPY`, and the on-demand processes (the gallery, or any process declaring `onDemand: true`, a landing) start only with
-`--with <name>`. Known gap: `starci dev sync` still builds the changed side and restarts it (`next start`, `node dist/...`); serving the shared
-web from its watcher, so a land needs only F5, waits on the root cause of the Next HMR reload loop through the ingress that moved StarCi Next to
-`next build`/`next start`; until then each land restarts the changed side once.
+`--with <name>`. `starci dev sync` builds the changed side and restarts it (`next start`, `node dist/...`), so each land restarts the changed side once.
 
 `starci app look --env dev --paths <route,…> [--workspace <id>] [--widths 1440,390] [--out <dir>]` is the step 2b look of
 PROJECT-GALLERY-7: against the RUNNING dev stack (it starts no server and refuses LOOK_DEV_DOWN when the declared web or api does not answer),
@@ -256,9 +243,9 @@ answered 4xx/5xx is listed and the verb exits 1.
   which other lanes run too. The verbs above stop what they start.
 - **Orphans are reaped.** A run the harness starts for you (`slot run`, `lane gate`, `gallery shoot`, `app look`, `app check`) records its
   launchers in `<lanes>/_runs/`; once its launcher (your shell, or the agent above it) has been gone `reap.graceMinutes` of `ops/slots.yaml`,
-  `starci ops reap --execute` (and the deprecated batch lander on its loop) stops its process tree and logs it in `<lanes>/_reap.log`. Keep the launching shell alive
+  `starci ops reap --execute` stops its process tree and logs it in `<lanes>/_reap.log`. Keep the launching shell alive
   for the run's life; a run started detached on purpose is reaped too. A process the harness did not record is never touched.
-- **Installs go back to the drive.** `starci lane prune-installs` (and the deprecated batch lander, when it lands a lane) deletes the reinstallable folders of a landed lane's worktree
+- **Installs go back to the drive.** `starci lane prune-installs` deletes the reinstallable folders of a landed lane's worktree
   (`janitor.dirs` of `ops/slots.yaml`: node_modules, .next, dist, .turbo, and a failed safe install's `.starci-trash-` folders), links unlinked
   first and never deleted through, the worktree, its branch and its tracked files kept, unless the worktree is live (a slot of the lane, a
   removal lock, a git operation, a process working inside it, uncommitted work, commits on its branch after the landed sha because the lane moved on to a follow-up, or a touch within `janitor.touchedMinutes`, default 60). `starci lane prune-installs [--idle-hours N] [--execute]` does the same for every

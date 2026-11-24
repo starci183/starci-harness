@@ -26,7 +26,6 @@ import { rules as noRawTypeSizeRules } from "./no-raw-type-size.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
-import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
 import { rules as rowsInCardRules } from "./rows-in-card.ts"
@@ -96,7 +95,6 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
   { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
-  { law: "page-header", rules: pageHeaderRules },
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },

@@ -3,12 +3,12 @@ import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 /**
- * The Tabs laws (`contexts/ui/components/tabs.md`, owner-approved 2026-11-09): where the pill stands, and how many
+ * The Tabs laws (`contexts/ui/components/tabs.md`): where the pill stands, and how many
  * underline layers a page stacks.
  *
  * `tabs-switch-zone`. The pill (`Tabs appearance="primary"`) is a mode or period switch of one block. It stands as the `action` of the block's
  * `Section` (`<Section title action={<Tabs appearance="primary" label items selectedKey onSelect />} />`); a `<Tabs appearance="primary">` written in JSX
- * anywhere else (a page body, under the page tabs, a pane, a drawer) is a finding. One more place (0.37.16, owner 2026-11-10): a row-level mode choice
+ * anywhere else (a page body, under the page tabs, a pane, a drawer) is a finding. One more place: a row-level mode choice
  * ("Tu dong | Hoi" on an agent's ability row) lives in the row's `control` slot, so a pill that is the value of a `control` (an object property named
  * `control` in a list row literal, or a JSX attribute `control={...}`) is allowed. The item checks (two to four, no count, no href) stay in `no-primary-tabs-misuse`.
  *
@@ -168,15 +168,15 @@ export const tabsDepth: Rule.RuleModule = defineRule({
 /** The pink well and the panes: underline Tabs written in their children sit on the well, not in the white header band. */
 const WELL_HOSTS: ReadonlySet<string> = new Set(["Page", "Pane", "PaneSection"])
 
-/** Whether a JSX attribute is the `filter` row of a `Section` (a list's or a region's alike, 0.43.1). */
+/** Whether a JSX attribute is the `filter` row of a `Section` (a list's or a region's alike). */
 const isSectionFilter = (node: TSESTree.JSXAttribute): boolean =>
   node.name.type === "JSXIdentifier" && node.name.name === "filter" && node.parent.type === "JSXOpeningElement" && elementName(node.parent) === "Section"
 
 /**
- * The second tab layer stands in the white header band (owner, 2026-11-09, TABS-IN-WELL): `Page header={{ tabs, subTabs }}`, on its own
+ * The second tab layer stands in the white header band (TABS-IN-WELL): `Page header={{ tabs, subTabs }}`, on its own
  * full-width separator, flush with the band's left inset. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection`
  * stands on the pink well or in a pane body, so it is a finding, unless it narrows a list or a region from the header row of its own: a
- * `Tabs kind="filter"` in a `Section`'s `filter` row (0.43.1). A drawer, dialog, modal, popover or sheet starts its own surface.
+ * `Tabs kind="filter"` in a `Section`'s `filter` row. A drawer, dialog, modal, popover or sheet starts its own surface.
  */
 export const tabsInWell: Rule.RuleModule = defineRule({
   meta: {

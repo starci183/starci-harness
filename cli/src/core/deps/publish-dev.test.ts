@@ -1,5 +1,4 @@
-// Owner 2026-11-22: "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local". After a harness batch lands on dev, its
-// changed packages and every package that pins one of them go to the local registry as X.Y.Z-dev.N; the publish copies pin each other exactly, the committed
+// After a harness lane lands on dev, its changed packages and every package that pins one of them go to the local registry as X.Y.Z-dev.N; the publish copies pin each other exactly, the committed
 // files stay plain, and devSync.local names exactly those versions (core/deps/publish-dev.ts).
 import assert from "node:assert/strict"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -151,7 +150,6 @@ void test("devSync.local is written into an absent settings file, and a damaged 
         const file = join(folder, "local-settings.json")
         writeDevSyncLocal(file, ["@starci/grammar@0.55.1-dev.1"])
         assert.deepEqual(loadLocalSettings(file).devSync.local, ["@starci/grammar@0.55.1-dev.1"])
-        assert.equal(loadLocalSettings(file).devSync.publishLocal, false, "the dev publish is off unless the machine turns it on")
         writeFileSync(file, "{ not json")
         assert.throws(() => {
             writeDevSyncLocal(file, [])

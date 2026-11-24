@@ -6,7 +6,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 /**
  * The surface nesting law (HFS R340 `FE_RAISED_SURFACE_IN_SURFACE`): a surface never stands inside another surface. A
- * `SurfaceCard` inside another `SurfaceCard` is refused (0.37.5, owner: a card inside a card is the only nesting refused; a white `Pane surface`, `Drawer`,
+ * `SurfaceCard` inside another `SurfaceCard` is refused (a card inside a card is the only nesting refused; a white `Pane surface`, `Drawer`,
  * `Dialog` or `Popover` hosts cards, drawn bordered with no shadow). The Grammar throws the same refusal in development; this is its
  * same-file half, and R356 closes it across files.
  *

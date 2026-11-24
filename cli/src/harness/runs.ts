@@ -5,7 +5,7 @@ import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 
 /**
- * The harness's own runs and their reaper (`starci ops reap`, and the batch lander's loop). A command the harness starts for a caller (a
+ * The harness's own runs and their reaper (`starci ops reap`). A command the harness starts for a caller (a
  * `slot run`, a `lane gate`, a `gallery shoot` or `app look` under its slot, an `app check`) records itself as one file in `<slot root>/_runs/`:
  * its pid and start, the label and folder, and its launchers, the chain of up to LAUNCHER_DEPTH processes above it (the shell or gate that
  * started it, and the agent or terminal above that), each with its start, so a reused pid never reads as alive. A run whose launcher is gone

@@ -5,9 +5,9 @@ import * as G from "../common/index.js"
 import { Matrix, State } from "./fixtures.js"
 
 /*
- * Booking date and time: a date is the Calendar, a time is a Select of the free times (owner 2026-11-24: no ChoiceChips). The calendar is controlled,
+ * Booking date and time: a date is the Calendar, a time is a Select. The calendar is controlled,
  * starts the week on Monday through the en-GB locale, bounds the range, marks a closed day and a full day (with its reason)
- * as unavailable, and draws as geometry while the open days load. A taken time keeps its place, a disabled option of the list.
+ * as unavailable, and draws as geometry while the open days load. A taken time keeps its place, disabled with its reason.
  * Filter tabs (underline, count, +n fold) narrow a list under its search field. Shown at 390 and 1920 by the render proof.
  */
 
@@ -30,7 +30,7 @@ const slots: ReadonlyArray<G.ListOption> = ["09:00", "09:30", "10:30", "14:00", 
 
 const Picker = ({ isLoading = false, noSlots = false }: { readonly isLoading?: boolean; readonly noSlots?: boolean }) => {
     const [date, setDate] = useState<DateValue>(parseDate("2026-11-05"))
-    const [time, setTime] = useState<string | null>("14:00")
+    const [time, setTime] = useState("14:00")
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--grammar-section-gap, 1.5rem)", maxWidth: 360 }}>
             <G.Calendar
@@ -46,11 +46,14 @@ const Picker = ({ isLoading = false, noSlots = false }: { readonly isLoading?: b
                 unavailableReason={(day) => (isFull(day) ? "Fully booked" : undefined)}
                 isLoading={isLoading}
             />
-            {noSlots ? (
-                <G.EmptyNotice message="No free time that day" description="Pick another day." />
-            ) : (
-                <G.Select label="Time" placeholder="Choose a time" options={slots} value={time} onValueChange={setTime} isLoading={isLoading} />
-            )}
+            <G.Select
+                label="Time"
+                options={noSlots ? [] : slots}
+                {...(noSlots ? { placeholder: "No free time that day" } : {})}
+                value={noSlots ? null : time}
+                onValueChange={(next) => setTime(next ?? "")}
+                isLoading={isLoading}
+            />
         </div>
     )
 }
@@ -103,7 +106,7 @@ export const FilterTabsWithCounts: Story = {
     ),
 }
 
-const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ value: day, label: day }))
+const weekdays: ReadonlyArray<{ readonly value: string; readonly label: string }> = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ value: day, label: day }))
 
 /** A booking card: the calendar fills the card (`width="fill"`), the weekday checkboxes take any number of days, the submit fills a phone. */
 export const BookingCardFill: Story = {

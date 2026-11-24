@@ -45,7 +45,7 @@ export type TabItem = {
 
 /**
  * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (the `filter` row of its
- * `Section`); a `Select` chooses a value of a form or a toolbar; a `Button` holds a command, never a selection state.
+ * `Section`); `Select` or `RadioGroup` chooses a form value; a `Button` holds a command, never a selection state.
  * Two joined buttons or pills acting as tabs are banned (R380, `no-button-view-switch`).
  *
  * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
@@ -73,10 +73,10 @@ type TabsCommon = NoChildren & {
 /**
  * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
  * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: drawn exactly as the page tabs (the same text
- * role, height, underline and count chip; a second tab row is never a smaller variant), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
+ * role, height, underline and count chip; a second tab row is never a smaller variant), each with its `count`; a strip wider than its row scrolls sideways (it never folds into a "+n" menu),
  * its edges fade where more tabs wait and the selected one is scrolled into view.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
- * form or a toolbar is a `Select`.
+ * form is a `Select` or `RadioGroup`.
  */
 export type SecondaryTabsProps = TabsCommon & {
     readonly appearance?: "secondary"

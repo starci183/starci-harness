@@ -11,8 +11,7 @@ import { MindMapIcon as MindMapSolidIcon } from "@starci/heroicons/16/solid"
 Shape cuts include `InsetHomeIcon`, `OpenBookLinesIcon`, `SplitPaneIcon`,
 `CodeWindowIcon`, `CardStackIcon`, `MicNotesIcon`, `FoundationBlocksIcon`,
 `SandboxIcon`, `MindMapIcon`, `PodiumIcon`, and `QuestionAnswerIcon`, plus `BrainIcon`
-(a shared memory). The former names of the first ten (`CourseOverviewIcon` and the like) remain as deprecated
-aliases for one minor.
+(a shared memory).
 
 Both subpaths export custom StarCi cuts only. Consumers import upstream icons directly from
 `@heroicons/react`, which is used first; this package never re-exports them and never redraws one of them: its

@@ -24,6 +24,7 @@ fe/apps/*/AGENTS.md
 !.starcistacks/images/storage/Dockerfile.dockerignore
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
+!.starcistacks/seeds/**
 !.starcistacks/*/seeds/**
 !.starcistacks/*/infra/metadata.json
 !.starcistacks/*/infra/compose/**

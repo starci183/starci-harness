@@ -1,5 +1,5 @@
 // The smoke check of a swapped install: packages resolved by file the way Node does, from the root and each workspace, and from where each resolved package really
-// lives (junctions followed), so the `Cannot find module 'picocolors'` of 2026-11-24 is found by the sync and not by the web's first request.
+// lives (junctions followed), so a `Cannot find module` is found by the sync and not by the web's first request.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

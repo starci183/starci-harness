@@ -92,7 +92,7 @@ shapes:
         role: How far through the set the reader is, from a real count
       - renderer: Heading
         role: The prompt; `scale="display"` only for a single short prompt
-      - renderer: "RadioGroup / CheckboxGroup / SegmentedControl"
+      - renderer: "RadioGroup / CheckboxGroup"
         role: |
           The answer choices as the control itself (each choice is a full-width, 44px-plus target with
           its own label); `isInvalid`/`errorMessage` only for a validation problem, never for a wrong answer
@@ -166,7 +166,7 @@ shapes:
     composition:
       - renderer: Fieldset
         role: One per group of settings
-      - renderer: "Switch / Select / SegmentedControl"
+      - renderer: "Switch / Select"
         role: A Switch applies immediately; confirm the change with a polite Toast, not a dialog
       - renderer: AlertDialog
         role: |
@@ -255,7 +255,7 @@ guidance:
     requirement: |
       Keep the published sizes: Common's 40px control height for controls, the Subnav toggle and the TopBar
       trigger, and `size="control"` throughout the navbar. Do not shrink them with app classes,
-      and put answer choices in RadioGroup/CheckboxGroup/SegmentedControl rather than small
+      and put answer choices in RadioGroup/CheckboxGroup rather than small
       custom chips.
     rationale: |
       A playful, thumb-driven app is used one-handed; the family's targets are part of its idiom.

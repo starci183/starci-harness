@@ -1,13 +1,10 @@
-// Owner 2026-11-22: "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local". The lander and lane gate pick the harness
-// profile in the harness checkout (the FAST gate of release gate, a plain git push of dev), keep the app's otherwise, and a lanes folder shared by the
-// repositories of a machine gives each lander its own lanes and locks (harness/land-profile.ts).
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { APP_PROFILE, LANDER_GATE_ARGS, harnessProfile, landProfile, lockScope, normalRemote, profileNameFor, takesEntry } from "./land-profile.js"
-import { landPaths } from "./land-queue.js"
+import { appCli, harnessProfile, lockScope, profileNameFor } from "./land-profile.js"
+import { landPaths } from "./lane-state.js"
 
 void test("the harness checkout lands with the harness profile, any other repository with the app's, and --profile overrides", () => {
     const harness = mkdtempSync(join(tmpdir(), "starci-profile-"))
@@ -29,30 +26,16 @@ void test("the harness checkout lands with the harness profile, any other reposi
     }
 })
 
-void test("the harness gates with the lander's own CLI at the FAST level from the batch base and pushes dev with git; the app keeps its pinned CLI and app push", () => {
-    const profile = harnessProfile("/lander/dist/main.js")
-    assert.equal(profile.prepares, false, "no root npm ci, codegen or build:modules")
-    assert.deepEqual(profile.gate("/wt", "abc123"), { file: process.execPath, args: ["/lander/dist/main.js", "release", "gate", "--level", "dev", "--base", "abc123", "--json"] })
+void test("the harness gates with the lane's own CLI at the FAST level from the lane's base and pushes with git", () => {
+    const profile = harnessProfile("/cli/dist/main.js")
+    assert.deepEqual(profile.gate("/wt", "abc123"), { file: process.execPath, args: ["/cli/dist/main.js", "release", "gate", "--level", "dev", "--base", "abc123", "--json"] })
     assert.deepEqual(profile.push("/wt", "dev"), { file: "git", args: ["push", "origin", "HEAD:dev"] })
-    assert.equal(landProfile("app", "/x").name, "app")
-    assert.equal(APP_PROFILE.prepares, true)
-    assert.deepEqual(APP_PROFILE.gate("/wt", "abc").args.slice(1), [...LANDER_GATE_ARGS])
-    assert.deepEqual(APP_PROFILE.push("/wt", "dev").args.slice(1), ["app", "push", "origin", "HEAD:dev"])
+    assert.equal(appCli("/wt").replaceAll("\\", "/"), "/wt/node_modules/starci-harness/dist/main.js")
 })
 
-void test("each lander takes its own repository's lanes from a shared folder; an entry naming none is an app lander's", () => {
-    const harness = "git@github.com:starci183/starci-harness.git"
-    assert.equal(normalRemote(harness), normalRemote("https://github.com/starci183/starci-harness"))
-    assert.equal(takesEntry({ repo: "https://github.com/starci183/starci-harness.git" }, harness, "harness"), true)
-    assert.equal(takesEntry({ repo: "https://github.com/starci183/nivo.git" }, harness, "harness"), false)
-    assert.equal(takesEntry({}, harness, "harness"), false)
-    assert.equal(takesEntry({}, "https://github.com/starci183/nivo.git", "app"), true)
-})
-
-void test("the harness lander holds its own lander lock and dev lock in a shared lanes folder; the app lander keeps the plain names", () => {
+void test("the harness holds its own dev lock in a shared lanes folder; an app keeps the plain name", () => {
     assert.equal(lockScope("app"), "")
-    assert.match(landPaths("/lanes", lockScope("harness")).lander, /_batch-lander-harness\.lock$/)
     assert.match(landPaths("/lanes", lockScope("harness")).devLock, /_dev-push-harness\.lock$/)
     assert.match(landPaths("/lanes").devLock, /_dev-push\.lock$/)
-    assert.equal(landPaths("/lanes", "harness").ready, landPaths("/lanes").ready, "one ready folder and one status folder for every lander")
+    assert.equal(landPaths("/lanes", "harness").status, landPaths("/lanes").status, "one status folder for every repository")
 })

@@ -17,7 +17,7 @@ import { isTransportSlot, KIND_DOOR_SLOTS, servesRest } from "./lib/transport-sl
 import { isPackageType, typeOrigins, typed } from "./lib/types.ts"
 import { operationRouteEvidence, restExceptionEvidence } from "./operations.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
-import type { Context, Node, Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 
 /** The HTTP route decorators of `@nestjs/common` (`Sse` is a route too: a `text/event-stream` GET that needs its own evidence). */
@@ -205,9 +205,6 @@ export const transportIsThin: RuleModule = {
 
 // -- no-response-envelope ----------------------------------------------------------------------------------------
 
-/** The envelope classes and decorators BE-CONVENTION 1.6 names. */
-const ENVELOPE_NAMES = new Set(["GraphQLTransformInterceptor", "GraphQLSuccessMessage", "AbstractGraphQLResponse", "RestTransformInterceptor"])
-
 /** True when a class of this repository has an `intercept` that returns `map(...)` from rxjs over the handled response. */
 const interceptorMapsResponse = (context: Context, argument: TSESTree.CallExpressionArgument): boolean => {
     const { checker, toTs, program } = typed(context)
@@ -249,10 +246,9 @@ const returned = (expression: TSESTree.Expression | null | undefined): TSESTree.
 export const noResponseEnvelope: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "No `{ success, data }` response envelope: no envelope class or decorator, no mapping interceptor, no envelope literal." },
+        docs: { description: "No `{ success, data }` response envelope: no mapping interceptor, no envelope literal." },
         schema: [],
         messages: {
-            named: "`{{name}}` is part of the response envelope the convention removed. A door returns its typed payload; failures travel as `errors[].extensions.{code,kind}` and success copy is front-end i18n.",
             interceptor: "This interceptor maps the response (`map(...)` over the handled stream), which is an envelope by another name. Remove it: the transport returns the payload the handler produced.",
             literal: "This door returns an object with `success` and `data`. Return the typed payload itself; a refusal is an error, not a flag.",
         },
@@ -261,21 +257,8 @@ export const noResponseEnvelope: RuleModule = {
         const hfs = hfsOf(context)
         const slot = hfs.slotOf(context.filename)
         const transport = isTransportSlot(slot)
-        const declared = (id: Node | null | undefined): void => {
-            if (id?.type === "Identifier" && ENVELOPE_NAMES.has(id.name)) context.report({ node: id, messageId: "named", data: { name: id.name } })
-        }
-        const visitors: RuleListener = {
-            ClassDeclaration: (node) => declared(node.id),
-            FunctionDeclaration: (node) => declared(node.id),
-            VariableDeclarator: (node) => declared(node.id),
-            ImportSpecifier(node) {
-                const name = node.imported.type === "Identifier" ? node.imported.name : node.imported.value
-                if (ENVELOPE_NAMES.has(name)) context.report({ node, messageId: "named", data: { name } })
-            },
-        }
-        if (!transport) return visitors
+        if (!transport) return {}
         return {
-            ...visitors,
             Decorator(node) {
                 if (!isImportedFrom(context, decoratorCallee(node), "@nestjs/common", "UseInterceptors")) return
                 for (const argument of decoratorArguments(node)) if (interceptorMapsResponse(context, argument)) context.report({ node: argument, messageId: "interceptor" })

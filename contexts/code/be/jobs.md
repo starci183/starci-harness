@@ -155,11 +155,7 @@ A dead letter is handed back, each time as `<jobKey>:r<resume_count>` (the `:` i
   `ParkedJobResumeRequestsService`, registered alone by `JobsModule.register({ requestsOnly: true, connection })`) hands back one job
   and opens a new episode with its own item.
 
-A resumed job claims its own row again, so its recorded steps and its settled effects are kept and nothing repeats. An app rendered
-before this model moves onto it with `starci app codemod self-recovery`: against the template snapshot of that release
-(`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the current template, adds the new
-ones and the `jobs-failed-awaiting-fix` db migration, and leaves
-a file the app edited for a person, writing nothing while one is.
+A resumed job claims its own row again, so its recorded steps and its settled effects are kept and nothing repeats.
 
 Why: classifying in one place and bounding every wait by a declared ladder means no flow retries forever and none stops silently:
 each ends as a dead letter with one item, and a new build, a bounded sweep or a person brings it back as soon as its cause is

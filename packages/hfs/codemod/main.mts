@@ -1,29 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { accountDoorsMarkdown, migrateAccountDoors } from './account-doors.mjs';
 import { migratePageNavigation, pageNavigationMarkdown } from './page-navigation.mjs';
-import { loadingStatesMarkdown, migrateLoadingStates } from './loading-states.mjs';
-import { migrateSectionFrame, sectionFrameMarkdown } from './section-frame.mjs';
 import { migrateSmallRenames, smallRenamesMarkdown } from './small-renames.mjs';
 import { migrateSpacingRoles, spacingRolesMarkdown } from './spacing-roles.mjs';
-import { migrateSurfaceCardKinds, surfaceCardKindsMarkdown } from './surface-card-kinds.mjs';
 import { explicitSurfaceMarkdown, migrateExplicitSurface } from './explicit-surface.mjs';
-import { directiveFirstMarkdown, migrateDirectiveFirst } from './directive-first.mjs';
 import { commonBaseMarkdown, migrateCommonBase } from './common-base.mjs';
-import { authMergeMarkdown, migrateAuthMerge } from './auth-merge.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown } from './module-definition.mjs';
-import { migratePassportModule, passportModuleMarkdown } from './passport-module.mjs';
-import { migrateSelfRecovery, selfRecoveryMarkdown } from './self-recovery.mjs';
-import { migrateQualityBinding, qualityBindingMarkdown } from './quality-binding.mjs';
-import { migrateSopsRules, sopsRulesMarkdown } from './sops-rules.mjs';
-import { migrateSecretsCache, secretsCacheMarkdown } from './secrets-cache.mjs';
 import { migrateSeedsLayout, seedsLayoutMarkdown } from './seeds-layout.mjs';
-import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
-import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 import { GRAMMAR_CODEMOD_ID, installedGrammar, listMarkdown, loadGrammarCodemods, rangeArguments, runGrammarCodemods } from './grammar.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery', 'common-base', 'auth-merge']);
+export const CODEMODS = Object.freeze(['spacing-roles', 'small-renames', 'page-navigation', 'explicit-surface', 'module-definition', 'seeds-layout', 'common-base']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -48,11 +35,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'explicit-surface' | 'account-doors' | 'module-definition' | 'passport-module' | 'self-recovery'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
-  if (name === 'auth-merge') {
-    const report = migrateAuthMerge({ root, write });
-    return { report, markdown: authMergeMarkdown(report) };
-  }
+function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'explicit-surface' | 'module-definition'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'common-base') {
     const report = migrateCommonBase({ root, write });
     return { report, markdown: commonBaseMarkdown(report) };
@@ -61,45 +44,9 @@ function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'explicit-surface' 
     const report = migrateSeedsLayout({ root, write });
     return { report, markdown: seedsLayoutMarkdown(report) };
   }
-  if (name === 'quality-binding') {
-    const report = migrateQualityBinding({ root, write });
-    return { report, markdown: qualityBindingMarkdown(report) };
-  }
-  if (name === 'sops-rules') {
-    const report = migrateSopsRules({ root, write });
-    return { report, markdown: sopsRulesMarkdown(report) };
-  }
-  if (name === 'secrets-cache') {
-    const report = migrateSecretsCache({ root, write });
-    return { report, markdown: secretsCacheMarkdown(report) };
-  }
-  if (name === 'directive-first') {
-    const report = migrateDirectiveFirst({ root, write });
-    return { report, markdown: directiveFirstMarkdown(report) };
-  }
-  if (name === 'theme-tokens') {
-    const report = migrateThemeTokens({ root, write });
-    return { report, markdown: themeTokensMarkdown(report) };
-  }
-  if (name === 'surface-card-kinds') {
-    const report = migrateSurfaceCardKinds({ root, write });
-    return { report, markdown: surfaceCardKindsMarkdown(report) };
-  }
-  if (name === 'tier-binding') {
-    const report = migrateTierBinding({ root, write });
-    return { report, markdown: tierBindingMarkdown(report) };
-  }
   if (name === 'page-navigation') {
     const report = migratePageNavigation({ root, write });
     return { report, markdown: pageNavigationMarkdown(report) };
-  }
-  if (name === 'section-frame') {
-    const report = migrateSectionFrame({ root, write });
-    return { report, markdown: sectionFrameMarkdown(report) };
-  }
-  if (name === 'loading-states') {
-    const report = migrateLoadingStates({ root, write });
-    return { report, markdown: loadingStatesMarkdown(report) };
   }
   if (name === 'small-renames') {
     const report = migrateSmallRenames({ root, write });
@@ -145,28 +92,6 @@ async function moduleDefinitionMain(argv: readonly string[], io: Io): Promise<nu
   return emit(options, { report, markdown: moduleDefinitionMarkdown(report) }, io);
 }
 
-/** `starci app codemod passport-module`: it formats each written file with the app's Prettier, which is asynchronous. */
-async function passportModuleMain(argv: readonly string[], io: Io): Promise<number> {
-  const options = reportArguments(argv);
-  const report = await migratePassportModule({ root: path.resolve(io.cwd), write: options.write });
-  return emit(options, { report, markdown: passportModuleMarkdown(report) }, io);
-}
-
-/** `starci app codemod self-recovery`: it formats each written file with the app's Prettier, which is asynchronous. */
-async function selfRecoveryMain(argv: readonly string[], io: Io): Promise<number> {
-  const options = reportArguments(argv);
-  const report = await migrateSelfRecovery({ root: path.resolve(io.cwd), write: options.write });
-  return emit(options, { report, markdown: selfRecoveryMarkdown(report) }, io);
-}
-
-/** `starci app codemod account-doors [--contract]`: the expand migration of the account doors, or (a release later) the contract migration that revokes the old grants. */
-function accountDoorsMain(argv: readonly string[], io: Io): number {
-  const contract = argv.includes('--contract');
-  const options = reportArguments(argv.filter((arg) => arg !== '--contract'));
-  const report = migrateAccountDoors({ root: path.resolve(io.cwd), write: options.write, contract });
-  return emit(options, { report, markdown: accountDoorsMarkdown(report) }, io);
-}
-
 /**
  * CLI boundary of `starci app codemod <name>`. Dry run by default; --execute writes only the safe rewrites. A codemod
  * that leaves a case for a person exits 1 with the complete report.
@@ -176,10 +101,7 @@ export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   if (name === '--list') return grammarListMain(rest, io);
   if (name !== undefined && (GRAMMAR_CODEMOD_ID.test(name) || name === '--from' || name.startsWith('--from=') || name === '--to' || name.startsWith('--to='))) return grammarCodemodMain(argv, io);
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
-  if (name === 'account-doors') return accountDoorsMain(rest, io);
   if (name === 'module-definition') return moduleDefinitionMain(rest, io);
-  if (name === 'passport-module') return passportModuleMain(rest, io);
-  if (name === 'self-recovery') return selfRecoveryMain(rest, io);
   if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes a Grammar codemod (v<major><minor><patch>, starci app codemod --list), --from <installed> [--to <target>], or ${CODEMODS.join(' or ')}`);
   const options = reportArguments(rest);
   return emit(options, runCodemod(name as Parameters<typeof runCodemod>[0], path.resolve(io.cwd), options.write), io);

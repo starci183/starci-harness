@@ -87,7 +87,7 @@ Each leaves this list the day a machine checks it.
 ## PROJECT-LINT-1 A fact a machine can decide moves to the machine
 
 A fact of a broad recurring class that a machine can decide (CONTRIB-10) is checked by a machine and kept once: the rule moves into the package or gate that owns
-its kind (the placement test of [code/fe](../code/fe/README.md#the-placement-test-fe-rule-ownership) decides
+its kind (the placement test of [code/fe](../code/fe/README.md#fe-rule-ownership-the-placement-test-puts-each-requirement-and-its-check-with-one-owner) decides
 which), its law is added to [hfs/rules.yaml](../hfs/rules.yaml) with the enforcer, the pattern section cites the rule
 id in its "Enforced by" line, and the fact leaves the list above in the same change. Knowledge then states the reason
 only; it never keeps a second wording of what the rule flags, and a gate never carries a fact knowledge still argues.

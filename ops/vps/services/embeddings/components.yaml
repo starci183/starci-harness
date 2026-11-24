@@ -1,10 +1,10 @@
-# The shared embeddings server of a managed VPS: ONE per server, CPU only, shared by every app environment that opts in (owner, 2026-11-21).
+# The shared embeddings server of a managed VPS: ONE per server, CPU only, shared by every app environment that opts in.
 # Read by cli/src/harness/vps/services.ts (`starci vps service up|status|down|grant <id> --service embeddings`); contexts/project/shared-services.md.
 # It is the on.remote placement of `starci.embed` in ops/host-roles.yaml: `starci host up --host <name> --execute` deploys it on a machine whose
 # roles turn starci.embed on, through `vps service up`.
 #
 # The model is pinned: ollama `qwen3-embedding:4b` at its native 2560 dimensions, manifest digest df5bd2e3c74c..., the exact model every machine
-# serving starci.embed runs (ops/host-roles.yaml; the owner, 2026-11-21: "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc."). A different
+# serving starci.embed runs (ops/host-roles.yaml). A different
 # quantization or size is a different vector space, so vectors of two machines, and any index copied between them, would stop being comparable
 # (`starci host doctor` compares them: HOST_EMBED_MISMATCH). The model service pulls it once into its volume, compares the manifest's sha256 with the
 # pin when it starts, and refuses to serve on a mismatch. Another variant exists only as an explicit choice of one server's file
@@ -40,7 +40,7 @@ model:
     qwen3-embedding-4b:
       name: qwen3-embedding:4b
       # sha256 of the registry manifest (registry.ollama.ai/v2/library/qwen3-embedding/manifests/4b), the id `ollama list` prints first,
-      # read from the owner's Ollama /api/tags on 2026-11-21 (the same digest ops/host-roles.yaml pins for starci.embed).
+      # read from the owner's Ollama /api/tags (the same digest ops/host-roles.yaml pins for starci.embed).
       digest: df5bd2e3c74cd8d069d21dc038f1b359fcdc9458fce1c99bd43c9eb1518ff907
       # The one GGUF layer the manifest names (Ollama checks it on pull); the model is 2496704041 bytes.
       blob: 2b0cf8f17b4c723c27303015383c27ec4bf2d8314bb677d05e920dd70bb0f16b

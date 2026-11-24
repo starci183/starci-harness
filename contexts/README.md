@@ -208,8 +208,7 @@ specific to contexts:
 
 1. **Cite the code owner.** A value code owns (a token, a size, a lint rule, a component) is named by its owner
    (`owner: @starci/grammar src/common/spacing.ts`), never restated. A rule cites other rules by their rule ids and never
-   a decision of the owner by its id, a decision log or a date: the rule says what holds now, and its history lives in git and the
-   CHANGELOGs.
+   a decision of the owner by its id, a decision log or a date: the rule says what holds now, and its history lives in git.
 2. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
    product's `.starciwork`. The law for every source of the harness is [harness/rules.md](harness/rules.md) rule 9.
 3. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose
@@ -219,8 +218,7 @@ specific to contexts:
 5. **How an owner decision enters.** The owner decides; the decision is written once, as plain present-tense law in the
    file that owns the concept, and nowhere else: there is one rule book, these files and CONTRIBUTING.md. A choice that
    awaits the owner is a question of [harness/questions.md](harness/questions.md), with the alternatives; once the owner
-   answers, the answer is written into its owner and the question is deleted. A Grammar name that knowledge stops using
-   is listed, kind `grammar`, in `@starci/hfs` `runtime/modules/kernel/removed-vocabulary.yaml`.
+   answers, the answer is written into its owner and the question is deleted.
 6. **Open gaps are listed.** Grammars and knowledge are under test; an open gap is listed where its concept lives, never
    papered over. A gate that cannot enforce something an app relies on is such a gap: the rule that owns the gate says, in a
    sentence opening with "Known gap", what the gate reads and what it leaves unread, so `starci contexts search "known gap"`

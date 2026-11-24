@@ -32,13 +32,13 @@ its root from one place.
 
 ### Button variant
 
-`Button` and `IconButton` have three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"):
+`Button` and `IconButton` have three looks, one prop:
 `variant` is `primary` (solid, the ONE main action of a card or region), `border` (an outline, every secondary action; the default) or
 `danger` (a destructive action: delete, disconnect, stop for good). Grammar draws them with HeroUI's `primary`, `outline` and `danger`
 (`BUTTON_VENDOR_VARIANT`); there is no intent, step, placement, ghost, tertiary, secondary or soft-danger look, and a Button looks the
 same in a row, a bar or a dialog. `tone` (`accent`, `info`, `success`, `warning`) is only the colour of a `primary` (a toned notice's action);
 the types refuse it on `border` and `danger`. A text link is a `Link`, never a Button. The [button props catalog](docs/button-variant-props.md)
-lists the published values. Codemod `v0550` moves an app's intents and vendor variants onto `variant`.
+lists the published values.
 
 `AlertDialog` renders its border cancel first, focuses it on entry, then renders its danger confirm last. The `Leaves/Button variant`
 stories show the three looks in light and dark, including a toned primary, destination, pending and skeleton states.
@@ -48,7 +48,7 @@ stories show the three looks in light and dark, including a toned primary, desti
 The [app-shell canon](../../contexts/ui/composition.md) owns `FE-APP-SHELL-1` through `FE-APP-SHELL-7`.
 The `Compositions/App shell` stories show the fixed shell, grouped sidebar, icon rail and mobile drawer.
 
-- `size="control"` is available on `TextAction`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input`, `SearchField` and `SegmentedControl` take the one control height.
+- `size="control"` is available on `TextAction`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input` and `SearchField` take the one control height.
 - `SidebarItem.badge`, `badgeLabel` and `badgeMax` show and announce unread counts in both sidebar presentations. `SidebarGroup.placement="end"` places settings groups after the main groups and pushes them to the bottom.
 - The collapsed Sidebar uses Grammar's internal `AnchoredTooltip` on hover and focus. HeroUI Tooltip positions the annotation beside the selected collection item and portals it into the same family DOM scope, preserving HeroUI's collection anatomy. `onAction` runs for every activated destination, including the selected item, so a drawer can close consistently.
 - A fixed `WorkspaceShell` frames its `compactHeader` slot as the mobile opener band; pass a client `Drawer` with an ellipsis `IconButton` trigger. The `navigationDrawer` form owns the same band when it supplies the opener.
@@ -210,7 +210,7 @@ Every edge of a flowchart is its own line: two edges never leave or enter a node
 />
 ```
 
-### Fragment (0.49.0)
+### Fragment
 
 `<Fragment reason="...">` is the escape hatch: a region that renders no element, only its children, like React's Fragment, where any markup, any class name and any library is allowed, because no Grammar component fits. It takes `reason` (required, for the lint and the inventory) and children, and adds no DOM node, paint or inset of its own. A file that also needs React's Fragment imports this one as `import { Fragment as GrammarFragment } from "@starci/grammar"` (the lint follows the alias; React's Fragment and `<>` open no region). The Grammar lint reports nothing inside it; every rule outside it stays. The Grammar draws no graph and imports no graph or animation library (`npm run check:libraries`; motion is the CSS transitions its tokens drive), so an app that needs `@xyflow/react` or `motion` uses it inside a `Fragment` and declares it itself. the fragment inventory script (from `@starci/eslint-grammar-core`) lists every use.
 
@@ -314,9 +314,9 @@ paywall, a 404, a 500). Its `media` is `{ icon }` (a glyph on a soft brand-tone 
   media={{ illustration: { staticsKey: "illustrations/errors/not-found.webp" } }} actionLabel="Back to the home page" actionHref="/" />
 ```
 
-**Forms (25).** Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
+**Forms (23).** Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, Input, NumberField, OtpInput,
-PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,
+PressableField, RadioGroup, Rating, SearchField, Select, Slider, Switch,
 Textarea, TimeField. Every Field-contract control takes `label`, `description`, `errorMessage`,
 `isRequired`, `isDisabled`, `isReadOnly` and `isInvalid`, and draws HeroUI's field order: label, control,
 description, error. `Select`, `ComboBox`, `SearchField` and `Form` also take `isPending`. `OtpInput` names the
@@ -422,7 +422,7 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 **Data views.** `Board` (`label`, `columns` of `{ id, title, count, items, empty }`), `ScheduleGrid` (`label`, `columns`, `rows`,
 `items` placed by `row` and `column`, `cellLabels`, `empty`) each take `isLoading` and `error`. Charts are the ext's: `BarChart`,
 `LineChart`, `AreaChart` (activity over time, `series` and `stacked`), `DonutChart` (parts of a whole: `centerFigure`, `centerCaption`,
-a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts` (core's hand-drawn `BarChart` and `Sparkline` are deleted in 0.55.0).
+a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts`.
 A PDF document is shown ONLY with `PdfViewer` of `@starci/grammar/core/ext/pdf` (pdfjs-dist, an optional peer, loaded lazily; see `src/core/ext/pdf/README.md`).
 A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
 
@@ -432,7 +432,7 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 ```
 
 
-**A timeline, a key and a map (0.46.2).** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
+**A timeline, a key and a map.** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
 
 ```tsx
 <ScheduleGrid label="Launch plan" columns={days} rows={rows} onRowToggle={toggleGroup} empty={...}
@@ -448,7 +448,7 @@ DescriptionList, Disclosure, ListBox, MermaidDiagram, MessageStatus, Pagination,
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
 `TagGroup` or a row of `Link`s that runs an action or sends its own label is not a suggestion. `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
 
-A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
+A `DataTable` row with an `href` is a real link in both layouts. In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
 the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
 anchor, stretched over the whole row, the one tab stop; the focus ring is drawn on the row. A plain click navigates once through the router in both, and `onRowAction` still runs alongside.
 
@@ -457,7 +457,7 @@ Enter / Space on the focused row (React Aria's row action, so the row is a focus
 and the pressable list row's hover fill (`--surface-secondary`). Buttons, links and editors inside a row keep their own press; the row
 title stays plain text, never a Link. `<DataTable label="Invoices" onRowAction={(id) => open(id)} columns={columns} rows={rows} renderCell={renderCell} emptyContent={empty} />`
 
-Channel logos are Avatars (0.57.0): a row of them is an `AvatarGroup` of `kind: "logo"` items (`{ id, name, src, kind: "logo" }`, a
+Channel logos are Avatars: a row of them is an `AvatarGroup` of `kind: "logo"` items (`{ id, name, src, kind: "logo" }`, a
 brand logo on a white surface in both themes, fitted inside with a hairline edge), and a lone logo an `Avatar kind="logo"` of the same
 `size`. They are sized by `size` alone (`sm` 24 beside text, `md` 40), never by hand.
 
@@ -542,11 +542,11 @@ in light and the dark success, warning and danger, `--foreground`); a hash of `s
 one, and the style draws white or black letters, at least 4.5:1 on every entry. The same seed is always the same colour.
 An uploaded `src` overrides the initials, which stay under it while it loads. The round crop and the size ramp are the Avatar's. Images have `alt=""`; the avatar shell carries its name, or `isDecorative`
 hides it beside a visible name. `AvatarButton` names the button and keeps its inner avatar
-decorative. `fallbackMark` is deprecated and ignored.
+decorative.
 
 `kind="person" | "agent"` defaults to `person` on `Avatar`, `AvatarButton` and `AvatarGroup` items.
 Agent names are free text and use the same initials rule. An agent's avatar is initials only, like a person's
-(owner 2026-11-22: the AI pill on the avatar is gone); `kind="agent"` only names it `Name (AI)` for assistive technology.
+(no AI pill on the avatar); `kind="agent"` only names it `Name (AI)` for assistive technology.
 The visible "AI" is the small neutral Chip that follows the NAME: `AgentName` (`isAgent`, `agentLabel` default `AI`), placed
 by `ListRow` (`isAgent` on the row), the card head (`CardHead.isAgent`), `MessageBubble` (`isAgent` beside `author`) and the
 members list (`ListBox` item `isAgent`). An app never places the Chip by hand.
@@ -726,7 +726,7 @@ refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollReg
 edge to edge across the sheet (the default `content` keeps the inset).
 
 **Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: one line at 40px, growing to 6, with `send` drawing its own 40px Send
-Button 12px after the box and `startAction` one icon button inside the box at its start (0.52.0). The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws DiceBear's Initials style: two letters on a solid Grammar tone. `Sublabel` is the 12 / 500 / muted
+Button 12px after the box and `startAction` one icon button inside the box at its start. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws DiceBear's Initials style: two letters on a solid Grammar tone. `Sublabel` is the 12 / 500 / muted
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 
@@ -735,7 +735,7 @@ approval), with an optional `actions` band at its foot: white, a 1px `--border` 
 in a card: a table, list, set of facts, strip of figures or chart stands flat under a `Section` (its `title`, its `filter` row and one muted
 `caption`). Lint `card-is-object` refuses a card around a lone collection, form or placeholder; a `DataTable` has no `surface` prop.
 
-**One look for a list** (0.43.0, owner 2026-11-17). A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
+**One look for a list.** A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
 canvas, a card body, a drawer or dialog, a pane band, a rail): plain rows on the surface, divided by hairlines, the rows aligned
 with the section title, with no frame, fill, radius or shadow. A list is never a card: `SurfaceCard` has no `list` kind, and cards stay for real objects. A hand-made row list (blocks divided by `Divider`) is refused (lint
 `surface-in-surface`).
@@ -799,7 +799,7 @@ a surface: the top layer is raised and a nested layer is subordinate; never rais
 Each family's DNA owns the paint. SurfaceCard and bounded
 SurfaceAccordionCard derive their depth from the parent context. SurfaceAccordionCard defaults to
 `frame="bounded"`; `frame="unpainted"` and Rail pass the parent's context through.
-A field has ONE look wherever it stands (0.40.0): Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField,
+A field has ONE look wherever it stands: Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField,
 Select, ComboBox, DatePicker, DateRangePicker, Checkbox, CheckboxGroup, RadioGroup, PressableField and OtpInput draw HeroUI's
 `primary` field in these surfaces and outside them alike; the theme gives it its edge (`--field-border`, `--field-border-width`).
 There is no field `variant` to pass. Overlay triggers keep their surrounding context.
@@ -824,7 +824,7 @@ A `ListBoxItem` is `label` (a string: the title, accessible name and typeahead t
 selects the visible line limit. The same prop and default apply to `DropdownMenuItem`, `SidebarItem`
 and the `ListOption` descriptions used by Select and ComboBox. The packaged stylesheet clamps the
 vendor `Description` slot; its full text stays available to assistive technology.
-A `ListBoxItem` with `href` (0.39.4) is a navigation row: a real anchor (`<a role="option">`) that opens the destination through `GrammarRoot`'s router, in a new tab on a modifier or middle click, with copy-link, Enter on the
+A `ListBoxItem` with `href` is a navigation row: a real anchor (`<a role="option">`) that opens the destination through `GrammarRoot`'s router, in a new tab on a modifier or middle click, with copy-link, Enter on the
 focused row and the focus ring; `onAction` runs alongside. An item is either selectable or a link: `href` belongs to a list with `selectionMode="none"` (the default when any item has an `href`) and is ignored in a selecting
 list, which draws no link. A Data nav or a mail list is `<ListBox label="Mail" selectionMode="none" items={[{ id: "inbox", label: "Inbox", href: "/mail/inbox" }]} />`.
 
@@ -879,8 +879,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   family's default theme as HeroUI tokens (`:root, .light` and `.dark`), in the first layer
   (`starci-grammar-theme`). They are optional: import one after `@heroui/styles` and write your own tokens after it, or
   skip it. Offset Pop's signature is geometry (outline width, the hard offset, radii) and `--offset-pop-shadow-ink`, the
-  colour of the offset, which reads `--foreground` when unset. `*_TOKEN_NAMES` / `*_TOKEN_DEFAULTS` list the same tokens
-  and are deprecated. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
+  colour of the offset, which reads `--foreground` when unset. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
   part follows, by computed style in a headless Chromium (`npm run prove-theme` after `npm run build`).
 - **App-overridable Grammar tokens.** Two defaults live in Grammar's base layer (`src/common/ramps.css`), so an app's brand CSS can
   override them on its root and Grammar's CSS follows; Grammar reads only the token, never a literal value.
@@ -900,7 +899,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
 - **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no
-  `theme` (the prop is deprecated and sets nothing), because a mode switch inside a root would shadow the app's
+  `theme`, because a mode switch inside a root would shadow the app's
   tokens again.
 - **Forced colours.** Under `forced-colors: active` each family maps its surfaces, outlines,
   selection and focus onto system colours. Current and selected decisions remain visible through
@@ -976,7 +975,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
   HeroUI v3 / React Aria, and each ships Common anatomy CSS and a spec that renders it under bare
   Common, Core and Offset Pop.
   - Forms (19): Field, Fieldset, Form, Textarea, Select, ComboBox, SearchField, NumberField,
-    Checkbox, CheckboxGroup, RadioGroup, Switch, Slider, SegmentedControl, DateField, DatePicker,
+    Checkbox, CheckboxGroup, RadioGroup, Switch, Slider, DateField, DatePicker,
     DateRangePicker, TimeField, FileDropzone. They share one Field contract and one
     44px touch floor.
   - Overlays and feedback (14): Dialog, AlertDialog, Drawer (side, and bottom sheet with a handle),

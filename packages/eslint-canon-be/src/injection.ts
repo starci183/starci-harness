@@ -30,7 +30,7 @@ import { nameOrValue, paramParts, staticText } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
 import { isPackageExport, isTsNode, packageOfExport, typed, typeOrigins, type TypeOrigin } from "./lib/types.ts"
-import { isNode, type Context, type Node, type Recommended, type RuleModule, type Rules } from "./lib/rule.ts"
+import { type Context, type Node, type Recommended, type RuleModule, type Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 
 /** The raw decorators of Nest and TypeORM whose call is the injector's job. */
@@ -258,11 +258,8 @@ const returnedExpression = (fn: FunctionLike): TSESTree.Expression | null => {
     return fn.body.body.length === 1 && only?.type === "ReturnStatement" ? only.argument : null
 }
 
-/** The type arguments of a node, in either parser spelling. */
-const typeArgsOf = (node: TSESTree.TSTypeReference | TSESTree.CallExpression): TSESTree.TypeNode[] => {
-    const legacy: unknown = Reflect.get(node, "typeParameters")
-    return (node.typeArguments ?? (isNode(legacy) && legacy.type === "TSTypeParameterInstantiation" ? legacy : undefined))?.params ?? []
-}
+/** The type arguments of a node. */
+const typeArgsOf = (node: TSESTree.TSTypeReference | TSESTree.CallExpression): TSESTree.TypeNode[] => node.typeArguments?.params ?? []
 
 /** The exported function-like bindings of a statement: `[{ name, fn, id }]`. */
 const exportedFunctions = (statement: TSESTree.ExportNamedDeclaration): ExportedFunction[] => {

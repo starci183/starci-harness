@@ -105,7 +105,7 @@ shapes:
         role: |
           Each control carries its own `label`, `description`, `errorMessage`, `isRequired`, `name` —
           the shared Field contract; a placeholder is never the name
-      - renderer: "Checkbox / CheckboxGroup / RadioGroup / Switch / SegmentedControl / Slider"
+      - renderer: "Checkbox / CheckboxGroup / RadioGroup / Switch / Slider"
         role: |
           Choices; a Switch is an immediate setting, a Checkbox a value submitted with the form
       - renderer: Field
@@ -183,8 +183,7 @@ shapes:
           Every bar control uses `size="control"`, the 2.5rem (40px) shared height. Icon uses the family
           size-5 token (20px) throughout the region. SearchField or its trigger shows Ctrl K and opens
           on Ctrl/Cmd+K; inside a surface its variant resolves through the nesting context. A compact
-          language switch in a bar is SegmentedControl size="control" (the HeroUI lg group held to
-          2.75rem); md and lg keep HeroUI's own sizes.
+          language switch in a bar is a Select size="control"; md and lg keep HeroUI's own sizes.
       - id: site-chrome-bar
         implements: [FE-APP-SHELL-3]
         compose: |

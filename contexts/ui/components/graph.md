@@ -42,7 +42,7 @@ The package has no words, icons or routes of its own and no default language; th
 
 ## Use it
 
-A graph is a Grammar component, so it needs no `Fragment` (decision 2026-11-22: the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's; it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
+A graph is a Grammar component, so it needs no `Fragment` (the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's; it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
 
 ```tsx
 import "@starci/grammar/core/ext/graph.css"
@@ -77,7 +77,7 @@ The graph fills its parent, so the parent has a height (`height="frame"`, the de
 
 ## Built from core
 
-The ext draws nothing core already has (owner 2026-11-22, "ext is built from core"): a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s (at the label.field size, 13px: no word of a graph is under 13px), the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
+The ext draws nothing core already has: a node's mark is the core's `IconTile` (its state and the node's own icon), its status the core's `InlineStatus` on the card's top edge, its words core `Text` roles (the name `label.item` 14px, the line under it `label.field` 13px), its chips, tag, ports and the words of an edge core `Badge`s (at the label.field size, 13px: no word of a graph is under 13px), the zoom the core's 40px `IconButton`s (shared by every mode), loading the core's `Skeleton`, a legend's state rows `InlineStatus`, an ERD field's link the core's `Link` after the link icon. The status glyphs are the core's map, never the ext's own. A node's `icon` is an element of an icon component that forwards its props (`<TruckIcon />`, like Heroicons): the core draws that component on the state's plate; any other node is kept as artwork on a neutral plate. What remains the ext's: the canvas, the lines and their markers, the layout, the panel and the boxes that place the core's parts.
 
 ## The six states
 
@@ -86,7 +86,7 @@ A node is in exactly one of six states (`status`, `todo` when left out). Every n
 | state | example word | look |
 |---|---|---|
 | `done` | Done | success border |
-| `running` | Running | success (green) border, a turning ring on the tile (owner 2026-11-24, "Xanh lá toàn app"; done is green too, the glyph tells them apart); **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
+| `running` | Running | success (green) border, a turning ring on the tile (done is green too, the glyph tells them apart); **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
 | `wait` | Waiting | warning (amber) border; the edge into it is solid amber and **still** (paused, no animation) |
 | `error` | Failed | danger border |
 | `skipped` | Skipped | muted solid border, faded |
@@ -304,10 +304,6 @@ graphs with room for it.
 ## Look
 
 A card is 280 wide (a card with a column of ports down its end side, 376), radius `--grammar-radius-lg`, a 1.5px border in its state tone. The `icon` is the round 40px tile at its left, on a plate in the soft pair of the state's tone. The label is the Grammar item label role (14 / 500), the description the caption role (12, muted). A selected node has one 2px border in its tone and a soft tint, never a second ring. Every drawn pixel is a hit area: the edges have no wider invisible path, the handles are neither seen nor hit.
-
-## Migrating from an app's own graph
-
-The props of the nivo-lite app's own `FlowGraph` and where each went are in [graph-from-nivo](graph-from-nivo.md).
 
 ## Layout and helpers
 

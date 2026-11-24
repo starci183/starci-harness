@@ -102,14 +102,13 @@ closure needs, and its publication, are held by review: the harness publishes no
 
 ## BE-CLI-6 A client cli installs with one global command and runs by its own name
 
-The owner's words (2026-11-24): "cài một lần bằng npm i -g nivoos-relay, sau đó gõ nivoos-relay pair <MÃ>, áp dụng cả nivoos cli, áp
-dụng cả StarCi Next relay"; "ý là như NestJS ấy"; "và tất cả cli sau này". Every client cli (BE-CLI-5) of every app, present and future, is
+Every client cli (BE-CLI-5) of every app, present and future, is
 installed and run the same way:
 
 | Rule | Shape |
 | --- | --- |
 | one install command, NestJS style | `npm i -g @starci/<name>` (like `npm i -g @nestjs/cli`); the docs and the app's console show this, never `npx` (at most one footnote) |
-| scoped package, short command | the package is scoped to `@starci` for every app (owner 2026-11-24: "tất cả phải là @starci cả"): `@starci/nivoos-cli`, `@starci/nivoos-relay`, `@starci/next-relay` and `bin` is a short, unscoped command (`nivoos`, `nivoos-relay`, `starci-relay`), like `@nestjs/cli` installs `nest`; the names are the owner's |
+| scoped package, short command | the package is scoped to `@starci` for every app: `@starci/nivoos-cli`, `@starci/nivoos-relay`, `@starci/next-relay` and `bin` is a short, unscoped command (`nivoos`, `nivoos-relay`, `starci-relay`), like `@nestjs/cli` installs `nest`; the names are the owner's |
 | self-contained | the published package carries no workspace-only dependency: a workspace package it imports is bundled into `dist` or published on its own; every runtime dependency is pinned exactly |
 | runtime | `engines.node` `>=22`; `<bin> --version` prints the package version |
 | status | `<bin> status` says whether it is set up and connected, in the user's language |
@@ -120,4 +119,4 @@ installed and run the same way:
 Why: an SME installs once and then types one word; a package that needs the monorepo, or a doc that teaches three ways, breaks on the
 customer's machine.
 
-Enforced by: review (the owner's rule, 2026-11-24); R397 checks the manifest shape.
+Enforced by: review (the owner's rule); R397 checks the manifest shape.

@@ -644,7 +644,7 @@
     }
 
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
-    /* 0.40.0: the plate hooks (styles.css "THE PLATE HOOKS") paint these rows too. */
+    /* The plate hooks (styles.css "THE PLATE HOOKS") paint these rows. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;
         inline-size: 100%;
@@ -656,7 +656,7 @@
     }
 
     /*
-     * The chosen row is QUIET (0.55.0, owner: the dark selected edge was "màu lạ"): the radio dot says which; the row keeps the unselected edge's width
+     * The chosen row is QUIET: the radio dot says which; the row keeps the unselected edge's width
      * and style, coloured at most the 1px accent border token, never a dark or thicker outline.
      * Keyboard focus keeps the standard focus ring, apart from selection.
      */

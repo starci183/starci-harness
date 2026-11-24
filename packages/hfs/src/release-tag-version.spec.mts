@@ -68,14 +68,6 @@ test('HEAD tagged with another version than package.json refuses the gate instea
   assert.match((result.data!.red as string[]).join(' '), /HEAD already carries the release tag v0\.3\.4 but package\.json version 0\.3\.5 gives v0\.3\.5/u);
 });
 
-test('release.tagMatchesVersion is removed: the block refuses it and says to delete it', () => {
-  for (const value of [true, false]) {
-    const { problems, config } = normalizeRelease({ tagMatchesVersion: value });
-    assert.equal(config, undefined);
-    assert.match(problems.join('\n'), /release\.tagMatchesVersion: is removed .*delete the key/u);
-  }
-});
-
 test('a tag of another version on HEAD refuses the gate under any prefix, annotated or not', async (t) => {
   const prefixed = await dryRun(t, '0.3.5', { 'v0.3.4': HEAD }, { tagPrefix: 'r' });
   assert.equal(prefixed.ok, false);

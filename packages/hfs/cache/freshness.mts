@@ -4,7 +4,7 @@
 // have committed, the records a push would carry are not the ones a real run on its tree produces (HFS_CHECK_CACHE_UNWARMED).
 // That is a fact about the push, never a defect in the code: the run computed every family it had no valid record for and wrote the records. So the finding is
 // report-only (level info, exit code unaffected) in every run, and an error only in the run the managed pre-push hook makes (STARCI_PUSH_GATE=1, `pushGate` below),
-// the one moment a cold cache costs something. `starci app push` and the batch lander commit the records before that hook runs, so nobody commits a cache by hand.
+// the one moment a cold cache costs something. `starci app push` and the lane gate commit the records before that hook runs, so nobody commits a cache by hand.
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from './git.mjs';
@@ -111,7 +111,7 @@ export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   if (input.pushGate !== true) {
     return [{
       code: UNWARMED, level: 'info', path: CACHE_DIR,
-      message: `this run wrote cache records the commit does not hold yet (${listed}); report only, the run is judged on its other findings; \`starci app push\` or the lander commits the records before a push`,
+      message: `this run wrote cache records the commit does not hold yet (${listed}); report only, the run is judged on its other findings; \`starci app push\` or the lane gate commits the records before a push`,
     }];
   }
   return [{

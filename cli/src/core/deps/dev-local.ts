@@ -2,7 +2,7 @@ import { git } from "../../shared/git.js"
 import { LOOPBACK, PORT } from "./local-registry.js"
 
 /**
- * DEV-ONLY LOCAL-REGISTRY PINS (owner 2026-11-22: "test local là nhánh dev mà nó dùng local để test output chứ ci gì ở đâu ông").
+ * DEV-ONLY LOCAL-REGISTRY PINS.
  * An app may declare in its hfs.json `"deps": { "devAllowsLocalRegistry": true }`: its dev branch (and a lane branch, which lands on dev)
  * may then carry exact local-registry pins of the harness packages and the lockfile entries their install writes, so dev runs the
  * unreleased output at once. The push gate accepts DEPS_PIN_UNPUBLISHED for a version the local registry serves,

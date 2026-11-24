@@ -82,33 +82,3 @@ test('4. an ordinary member is still declared as a runtime secret', (t) => {
   assert.deepEqual([result.declared, result.tooling], [['STRIPE_KEY'], undefined]);
   assert.equal(read().environments.dev.secrets.length, 1);
 });
-
-const SEALED = 'SONAR_TOKEN: ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]\nsops:\n  mac: ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]\n  age:\n    - recipient: age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\n      enc: x\n';
-
-function sealedFixture(t: test.TestContext, service: string, runtimeEntry = false): ReturnType<typeof fixture> {
-  const made = fixture(t, service);
-  fs.mkdirSync(path.join(made.root, '.starcistacks', 'dev', 'secrets'), { recursive: true });
-  fs.writeFileSync(path.join(made.root, '.starcistacks', 'dev', 'secrets', 'sonar.enc.yaml'), SEALED);
-  if (runtimeEntry) {
-    const file = path.join(made.root, '.starcistacks', 'application-stacks.yaml');
-    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('secrets: []', 'secrets:\n      - {name: sonar-token, member: sonar, key: SONAR_TOKEN, where: secrets/sonar}'));
-  }
-  return made;
-}
-
-test('5. quality-binding previews, binds an app scaffolded before the binding with --execute, and names the runtime entry an earlier set declared', async (t) => {
-  const { migrateQualityBinding, qualityBindingMarkdown } = await import('../codemod/quality-binding.mjs');
-  const { CODEMODS, codemodMain } = await import('../codemod/main.mjs');
-  const { root, read } = sealedFixture(t, EMPTY, true);
-  const dry = migrateQualityBinding({ root });
-  assert.deepEqual(dry.changes.map((change) => [change.member, change.service]), [['sonar', 'sonar']]);
-  assert.deepEqual(dry.findings.map((finding) => finding.code), ['QUALITY_RUNTIME_ENTRY']);
-  assert.equal(read().services.sonar.credentials.length, 0, 'a dry run writes nothing');
-  assert.equal(codemodMain(['quality-binding', '--execute'], { cwd: root, stdout: () => undefined }), 1, 'the runtime entry is left for the owner');
-  assert.equal(read().services.sonar.credentials.length, 1);
-  assert.deepEqual(read().services.sonar.ci.secrets, [{ name: 'SONAR_TOKEN', credential: 'analysis' }]);
-  assert.match(qualityBindingMarkdown(migrateQualityBinding({ root })), /delete the entry/);
-  assert.ok(CODEMODS.includes('quality-binding'));
-  const clean = sealedFixture(t, BOUND);
-  assert.deepEqual([migrateQualityBinding({ root: clean.root }).changes, migrateQualityBinding({ root: clean.root }).findings], [[], []]);
-});

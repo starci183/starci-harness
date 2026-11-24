@@ -11,8 +11,7 @@ import path from 'node:path';
 import { createReleaseStore } from '../stack/release-store.mjs';
 import type { RemoteResult } from '../stack/remote.mjs';
 import { ciKey } from '../stack/ci-key.mjs';
-import { AUTHORIZED_OPTIONS, GATE_OPS, authorizedKeysLine, gateIsOn, gateOp, gateScript, gatedCommand, inlineCommand, inlinePrefix } from '../stack/ssh-gate.mjs';
-import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
+import { AUTHORIZED_OPTIONS, GATE_OPS, authorizedKeysLine, gateIsOn, gateOp, gateScript, gatedCommand, inlineCommand } from '../stack/ssh-gate.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
 import type { StackContext } from '../stack/context.mjs';
 
@@ -162,31 +161,4 @@ test('stack ci-key prints the gate or the authorized_keys line alone, and the in
   const steps = await ciKey(ctx, config, {});
   assert.ok(steps.lines.some((line) => line.includes('--print-gate')));
   assert.ok(steps.lines.some((line) => line.includes('--print-authorized-keys')));
-});
-
-test('the gate admits identity-restore for one public age recipient, writing only the fixed server identity, and refuses everything near it', (t) => {
-  const { dir, viaGate } = scene(t);
-  const recipient = `age1${'q'.repeat(58)}`;
-  // a stand-in id and sudo: the body reaches its first privileged step without touching the machine
-  fs.writeFileSync(path.join(dir, 'bin', 'id'), '#!/bin/sh\necho 1000\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(dir, 'bin', 'sudo'), '#!/bin/sh\necho "sudo $*"\n', { mode: 0o755 });
-  const admitted = viaGate(gatedCommand('identity-restore', [recipient]), 'AGE-SECRET-KEY-FIXTURE\n');
-  // the stand-in sudo says the identity exists, so the body stops at its refusal to overwrite, before it writes anything
-  assert.equal(admitted.status, 3, admitted.stderr);
-  assert.equal(admitted.stdout, `sudo -n test -e ${SERVER_AGE_IDENTITY}\n`);
-  assert.match(admitted.stderr, /already holds/u);
-  assert.deepEqual(gateOp('identity-restore').args, ['recipient']);
-  assert.ok(gateOp('identity-restore').stdin);
-  assert.ok(inlineCommand('identity-restore', [recipient]).startsWith(`${inlinePrefix('identity-restore')} `));
-  assert.ok(inlineCommand("identity-restore", [recipient]).includes(recipient));
-  const refused = [
-    'starci-op identity-restore', `starci-op identity-restore ${recipient} extra`, `starci-op identity-restore ${recipient};id`, 'starci-op identity-restore age1short',
-    `starci-op identity-restore ${recipient.toUpperCase()}`, `starci-op identity-restore ${recipient}q`, `starci-op identity-restore /etc/passwd`, `starci-op identity-restore ${SERVER_AGE_IDENTITY} ${recipient}`,
-  ];
-  for (const command of refused) {
-    const answer = viaGate(command);
-    assert.equal(answer.status, 126, command);
-    assert.equal(answer.stdout, '');
-  }
-  assert.throws(() => gatedCommand('identity-restore', ['/root/other.key']), (error: { code?: string }) => error.code === 'STACK_GATE_ARGUMENT');
 });

@@ -11,7 +11,6 @@
  */
 import { importsFrom } from "./lib/declared.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
-import { isNode } from "./lib/rule.ts"
 import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** True when the decorator expression names `UseGuards`, however it was imported. */
@@ -69,8 +68,7 @@ const namesGuardType = (type: TSESTree.TypeNode | null | undefined): boolean => 
     if (type.type === "TSTypeReference") {
         const name = nameOf(type.typeName)
         if (name === "CanActivate" || GUARD_NAME.test(name ?? "")) return true
-        const legacy: unknown = Reflect.get(type, "typeParameters")
-        return (type.typeArguments ?? (isNode(legacy) && legacy.type === "TSTypeParameterInstantiation" ? legacy : undefined))?.params?.some(namesGuardType) ?? false
+        return type.typeArguments?.params?.some(namesGuardType) ?? false
     }
     if (type.type === "TSUnionType" || type.type === "TSIntersectionType") return type.types.some(namesGuardType)
     return false

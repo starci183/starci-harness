@@ -56,13 +56,12 @@ const REMOVED: ReadonlyMap<string, { code: string; reason: string }> = new Map([
 const VARIANT_REMOVED = new Set(['Input', 'Textarea', 'SearchField', 'NumberField', 'DateField', 'TimeField', 'PressableField', 'Checkbox', 'CheckboxGroup', 'RadioGroup',
   'Select', 'ComboBox', 'DatePicker', 'DateRangePicker', 'CopyField', 'OtpInput', 'Tabs']);
 /** Components that lost `size="control"`: a bar sets it from context. */
-const CONTROL_SIZED = new Set(['Button', 'IconButton', 'Input', 'SearchField', 'SegmentedControl']);
+const CONTROL_SIZED = new Set(['Button', 'IconButton', 'Input', 'SearchField']);
 /** Components whose `control` step was their `lg`: the attribute becomes `size="lg"`, which draws the same, except in a navbar band, where `control` stays. */
 const CONTROL_IS_LG = new Set(['Switch', 'Avatar', 'AvatarButton']);
 const TONES: ReadonlyMap<string, string> = new Map([['live', 'success'], ['reconnecting', 'warning'], ['lost', 'danger']]);
 const OTP_RENAMES: ReadonlyMap<string, string> = new Map([['disabled', 'isDisabled'], ['invalid', 'isInvalid'], ['onChange', 'onValueChange']]);
 const TEXT_ACTION_BLOCKERS = ['appearance', 'size', 'startContent', 'endContent', 'isPending', 'isSkeleton', 'download', 'onPress'];
-const FORM_TAG = /^(?:[\w$]+\.)*(?:Form|Fieldset|form|fieldset)$/;
 const BUTTON_GROUP_SHAPE = 'actions: ReadonlyArray<{ id: string; label: string; source?: IconSource; onPress?: () => void; isDisabled?: boolean; intent?: "commit" | "alternative" | "neutral" }>';
 
 export function bindingNames(ts: Ts, binding: TsTypes.BindingName): string[] {
@@ -340,13 +339,6 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
       case 'DragItem': {
         const colour = props.get('leadingColor');
         if (colour) flag(colour, 'DRAG_ITEM_LEADING_COLOR', 'DragItem takes tone: "neutral" | "accent" | "success" | "warning" | "danger"; a colour cannot be mapped', component);
-        break;
-      }
-      case 'SegmentedControl': {
-        if (sizeValue === 'lg') drop('size', 'SEGMENTED_SIZE');
-        let inForm = false;
-        for (let at: Node | undefined = element.parent; at && !inForm; at = at.parent) inForm = ts.isJsxElement(at) && FORM_TAG.test(at.openingElement.tagName.getText(source));
-        if (!inForm) flag(opening, 'SEGMENTED_FILTER_OR_VALUE', 'a form value stays a SegmentedControl; a filter becomes FilterButtonGroup: decide which this is', component);
         break;
       }
       case 'ButtonGroup':

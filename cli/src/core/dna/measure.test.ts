@@ -120,5 +120,5 @@ void test("two filled primaries in one Section fail, naming the region and the f
     assert.ok(law)
     assert.equal(law.status, "red")
     assert.match(law.examples[0]?.path ?? "", /data-component="Section"/)
-    assert.match(law.law, /giữ 1 nút chính, nút còn lại đổi sang border/)
+    assert.match(law.law, /the fix keeps one primary Button and sets the others to border/)
 })

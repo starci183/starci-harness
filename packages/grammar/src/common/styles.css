@@ -4454,6 +4454,12 @@
     }
 
 
+    /*
+     * THE PLATE HOOKS: a RadioGroup row (components-forms.css) and a Select pill or compact trigger read their fill, their edge and their selected pair
+     * from optional tokens: `--starci-core-plate` (unselected fill, default `--surface-secondary`), `--starci-core-plate-border` (a `border` value, default `0`: no edge),
+     * `--starci-core-plate-selected` and `--starci-core-plate-selected-foreground` (default the accent soft pair).
+     */
+
     /* Static chrome inside a loading region keeps its words and only goes inert: the wrapper makes no box of its own. */
     .starci-core-region-inert { display: contents; }
 

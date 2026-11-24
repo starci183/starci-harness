@@ -36,15 +36,3 @@ export const auditStatusVerb = defineVerb({
     flags: FORWARDED,
     run: (context, flags) => runHfs(context, "uiaudit", ["status", ...flags.args], true),
 })
-
-/** `starci gallery migrate-explain`: turn every explain.md into a screen.yaml. */
-export const galleryMigrateVerb = defineVerb({
-    path: ["gallery", "migrate-explain"],
-    summary: "turn every gallery explain.md into screen.yaml (regions become sections, the options section becomes considered, shot hashes are taken from the PNGs on disk, audit: null grandfathers the screen) and delete the explain.md; a dry run unless --execute",
-    effect: "local-write",
-    roles: WRITERS,
-    schema: "starci/gallery-migrate-explain@1",
-    forward: true,
-    flags: FORWARDED,
-    run: (context, flags) => runHfs(context, "gallery", ["migrate-explain", ...flags.args], false),
-})

@@ -195,18 +195,6 @@ interface InstallLocalData {
 
 const RESTORE_STEP = "before a commit, put the npm pins back: starci deps install-local --restore"
 
-/**
- * The Grammar codemod line an install suggests when it moves @starci/grammar to another version: `starci app codemod --from <the pin
- * it replaced> --to <the version installed>`, which runs every codemod in between (owner 2026-11-21: one codemod per Grammar release).
- * Printed only, never run; null when the install moves no Grammar or the replaced pin is not an x.y.z version.
- */
-export const grammarCodemodHint = (packages: readonly { readonly name: string; readonly version: string; readonly pins: readonly { readonly spec: string | null }[] }[]): string | null => {
-    const grammar = packages.find((one) => one.name === "@starci/grammar")
-    const from = grammar?.pins.map((pin) => /^[~^=v]?(\d+\.\d+\.\d+)$/.exec(pin.spec ?? "")?.[1]).find((version) => version !== undefined)
-    if (grammar === undefined || from === undefined || from === grammar.version) return null
-    return `the Grammar moves ${from} -> ${grammar.version}: run its codemods with starci app codemod --from ${from} --to ${grammar.version} (dry; add --execute to write)`
-}
-
 /** Runs npm in one install unit's folder: the repository root or a subfolder package with its own lockfile. */
 export type UnitNpm = (folder: string, args: readonly string[], label: string) => Promise<void>
 
@@ -255,14 +243,14 @@ export const installLocal = async (root: string, requested: readonly Requested[]
     const absentLine = plan.absent.length === 0 ? [] : [`left out ${plan.absent.join(", ")}: this app neither pins it nor has it in package-lock.json, so there is nothing to install`]
     const lockfiles = plan.units.map((unit) => lockPath(unit.folder)).join(", ")
     if (!execute) {
-        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} into ${lockfiles} (plan only, add --execute)`, ...absentLine, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`)), ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null)].join("\n") }
+        return { data: { mode: "plan", registry: registryUrl(port), installed: versions, restored: [], record: undefined }, message: [`would install ${lines.join(", ")} from ${registryUrl(port)} into ${lockfiles} (plan only, add --execute)`, ...absentLine, ...plan.packages.flatMap((one) => one.pins.map((pin) => `  ${pin.file} ${pin.field} ${one.name}: ${pin.spec ?? "(none)"} -> ${one.version}`))].join("\n") }
     }
     await applyInstall(root, plan, port, npm)
     const kept = (before?.packages ?? []).filter((entry) => !plan.packages.some((one) => one.name === entry.name))
     writeInstallRecord(root, { schema: "starci/deps-install-local@1", registry: registryUrl(port), packages: [...kept, ...plan.packages].toSorted((left, right) => left.name.localeCompare(right.name)) })
     return {
         data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], record: installRecordFile(root) },
-        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and ${lockfiles} name them, and ${installRecordFile(root)} records what they replaced`, ...absentLine, ...[grammarCodemodHint(plan.packages)].filter((line) => line !== null), RESTORE_STEP].join("\n"),
+        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and ${lockfiles} name them, and ${installRecordFile(root)} records what they replaced`, ...absentLine, RESTORE_STEP].join("\n"),
     }
 }
 

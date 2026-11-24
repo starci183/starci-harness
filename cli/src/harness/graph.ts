@@ -38,8 +38,7 @@ const riskTagSchema = z.string().refine((tag) => loadRouting().qualification.ris
  * router reads of it (difficulty, risk); the router alone picks the agent and model.
  * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base; `cites` are the
  * anchor ids the task answers for (harness/cite.ts); `composedBy` is the key of the task that wires in the module this one
- * writes (core/check/composition.ts). `readPaths`
- * is the earlier spelling of `context`.
+ * writes (core/check/composition.ts).
  */
 const taskFieldsShape = {
     contract: z.string().min(1).optional(),
@@ -48,7 +47,6 @@ const taskFieldsShape = {
     details: z.string().optional(),
     allowPaths: z.array(z.string().min(1)).min(1).optional(),
     context: z.array(z.string().min(1)).optional(),
-    readPaths: z.array(z.string().min(1)).optional(),
     inputs: z.record(keyNameSchema, z.string().min(1)).optional(),
     output: z.record(keyNameSchema, outputSpecSchema).optional(),
     cwd: z.string().min(1).optional(),
@@ -205,7 +203,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "composedBy", "checks", "cites", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "inputs", "output", "cwd", "setup", "composedBy", "checks", "cites", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -239,8 +237,7 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
     if (label === undefined || summary === undefined || allowPaths === undefined) {
         throw new Refusal("WORKFLOW_INVALID", "a task needs a contract file, or label, summary and allowPaths written inline")
     }
-    if (fields.context !== undefined && fields.readPaths !== undefined) throw new Refusal("WORKFLOW_INVALID", "a task names context or readPaths (its earlier spelling), not both")
-    const read = fields.context ?? fields.readPaths ?? previous?.context.extend
+    const read = fields.context ?? previous?.context.extend
     // A named input the op declares is a base input; the rest extend.
     const declared = ops.labels[label]?.input.base ?? {}
     const named = fields.inputs === undefined ? undefined : Object.entries(fields.inputs)

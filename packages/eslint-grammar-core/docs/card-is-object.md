@@ -2,7 +2,7 @@
 
 Law module: `card-is-object.ts`. Finding code: `FE_CARD_IS_OBJECT`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#CARD-OBJECT`.
 
-A `SurfaceCard` is ONE object: a customer, an agent, a provider, a plan, a message, an approval, a dialog or an overlay. Its body holds the object's name, its facts and a control. A collection (a list, a table, facts, figures, disclosures, a choice), a form and a placeholder stand flat: in a `Section`, or on their own. The Grammar family 0.45.0 removed the card kinds `table`, `details`, `figures`, `accordion` and `select`; this rule refuses the same shapes written as the body of a card.
+A `SurfaceCard` is ONE object: a customer, an agent, a provider, a plan, a message, an approval, a dialog or an overlay. Its body holds the object's name, its facts and a control. A collection (a list, a table, facts, figures, disclosures, a choice), a form and a placeholder stand flat: in a `Section`, or on their own. This rule refuses those shapes written as the body of a card.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

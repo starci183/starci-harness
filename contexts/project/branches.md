@@ -35,8 +35,6 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
 
 ## PROJECT-BRANCH-2 A lane lands on `dev` itself: one squashed commit, right after its gate
 
-The owner's words (2026-11-23): "bỏ lander đi, cứ xong là merge vô dev là được, vì cũng bỏ hết gate nặng rồi".
-
 1. A lane merges `origin/dev` into its branch and runs its own gate until it is green: `starci lane gate --push --land` runs it under the
    machine-wide slots ([authority/lanes.md](../authority/lanes.md)) and pushes the lane's branch (the app's `app push`, whose pre-push hook runs
    the fast level once; the records the run wrote are committed by it).
@@ -53,28 +51,16 @@ The owner's words (2026-11-23): "bỏ lander đi, cứ xong là merge vô dev l�
    files under `db/migrations/` it added, applied by the dev sync. The landing then marks the app's dev checkout (`devSync.repos` of
    `.runtime/local-settings.json`) for its debounced sync ([cicd.md](cicd.md) "The debounced dev sync"); a repository with sync turned off
    says so in the verb's output.
-6. Local first (owner 2026-11-22: "merge hết vô local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa
-   thời gian code local"): a lane that needs a harness change installs its local-registry build (`starci deps install-local`) and
+6. Local first: a lane that needs a harness change installs its local-registry build (`starci deps install-local`) and
    commits those pins when the app declares `deps.devAllowsLocalRegistry`; it lands on `dev` without waiting for npm. Only main and a
    prod cut need npm pins (`deps install-local --restore`, then each pin bumped to its npm version, once per release).
 
-**Deprecated, kept running until the owner retires them:** the batch lander (`starci lane land`, one per repository and lanes folder) and the
-registration it lands (`starci lane ready`, `lane gate --push --ready`, `lane withdraw`): it merges every registered lane in its own worktree,
-gates the batch once, squashes it into one commit and pushes dev under the same dev lock, so a lane that lands itself and a batch never push at
-once. Its statuses `queued`, `conflict`, `rejected` (with `findings`) and `parked` (out of memory) belong to registered lanes only
-(`cli/src/harness/land-batch.ts`, `land-queue.ts`, proven by `land-oom.test.ts`, `land-squash.test.ts`, `land-withdraw.test.ts`).
-
 **Enforced by** `starci lane gate --land` (`cli/src/core/lane/land-direct.ts`, proven by `land-direct.test.ts`: the squash on the dev it landed on,
-the re-check only after dev moved, the conflict that lands nothing, the lock released) and the dev lock of `cli/src/harness/land-batch.ts`
-`takeDevLock`. That a lane ran its gate before `--land` is the verb's own order: `--land` runs only after a green `--push`.
+the re-check only after dev moved, the conflict that lands nothing, the lock released) and the dev lock (`takeDevLock`). That a lane ran its gate before `--land` is the verb's own order: `--land` runs only after a green `--push`.
 
 PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has no managed app hook, and its own `dev` and `main` follow PROJECT-BRANCH-3.
 
 ## PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
-
-The owner's words (2026-11-22): "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local", after "merge hết vô
-local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa thời gian code local" and "rules là k check nhánh khi dev, khi
-nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
 
 1. The harness repository has two long-lived branches: `dev`, where finished harness work lands at once and is used locally, and `main`, what is
    released to npm. `main` is always an ancestor of `dev`. Which branch the harness checkout (`D:/.claude`) has checked out is the owner's choice;
@@ -85,13 +71,11 @@ nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
    - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build and typecheck of the packages the
      batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected, and the
      cheap checks a publish needs (built declarations name `.js` only; `bundles:check` where a package has it). No test suite, no lint, no light
-     gates, no sonar: dev only reaches the local registry, and the tests are the release line's (item 4). Owner: "dev và prod phân biệt rõ…
-     grammar chưa lên prod chạy test chỉ bỏ vào verdaccio không được à?". A package's tests run on request (`npm test` in it) or at the train;
+     gates, no sonar: dev only reaches the local registry, and the tests are the release line's (item 4). A package's tests run on request (`npm test` in it) or at the train;
      a test suite in the landing gate takes gigabytes under the RAM governor and holds every app build behind it;
    - the push of the squashed commit is `git push origin <sha>:dev` (there is no app hook);
    - one lanes folder serves every repository of the machine (its slots bound the machine), and each repository has its own dev lock (the harness's
-     `_dev-push-harness.lock`); the deprecated harness batch lander holds `_batch-lander-harness.lock`, works in `<lanes>/_batch-lander-harness`
-     and runs in place from the CLI it was started with.
+     `_dev-push-harness.lock`).
 3. After each landing that changed a published package, `lane gate --land` publishes the **dev line** to the
    local registry (`starci deps publish-dev --execute`, also run by hand, dry until `--execute`, idempotent): every package changed since the last dev
    publish and every package that pins one of them in `dependencies`, `peerDependencies` or `optionalDependencies` (the Grammar family, gallery,
@@ -109,7 +93,7 @@ nào push mới check tổng 1 lần sửa 1 lần vẫn hơn".
    proof, no CLI lint), the FULL level on `main`; a newer push cancels the older run. publish.yml listens to the runs of `main` only, and a run
    that publishes is never cancelled.
 
-**Enforced by** the harness profile of `starci lane gate` (and of the deprecated `starci lane land`) (`cli/src/harness/land-profile.ts`, proven by
+**Enforced by** the harness profile of `starci lane gate` (`cli/src/harness/land-profile.ts`, proven by
 `land-profile.test.ts`), `starci release gate` (`cli/src/core/release/gate.ts`, `gate.test.ts`), `starci deps publish-dev`
 (`cli/src/core/deps/publish-dev.ts`, `publish-dev.test.ts`), `starci release back-merge` (`back-merge.test.ts`) and ci.yml. That `main` moves only by
 a train is held by review: the harness has no pre-push hook.

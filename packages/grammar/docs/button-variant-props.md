@@ -11,6 +11,4 @@ Source: `src/core/leaf/Button/index.tsx` (`ButtonVariant`, `ButtonLook`, `BUTTON
 | ItemAction (ListRow, SurfaceCard tiles) | `variant` | `primary`, `border`, `danger` | Optional; default `border` |
 | AlertAction | `isDestructive` | boolean | Optional: the action draws `danger` |
 
-The vendor mapping: `primary` is HeroUI `primary`, `border` is `outline`, `danger` is `danger`. Deleted in 0.55.0 (codemod `v0550`):
-`intent` (`commit`, `alternative`, `dismiss`, `neutral`, `destructive`), `step`, the vendor variants `secondary`, `tertiary`, `outline`,
-`ghost`, `danger-soft`, `Button tone="danger"`, `ItemAction.isPrimary` and `EmptyNotice actionIntent`.
+The vendor mapping: `primary` is HeroUI `primary`, `border` is `outline`, `danger` is `danger`.

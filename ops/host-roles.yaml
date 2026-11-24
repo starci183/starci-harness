@@ -1,10 +1,9 @@
 # The host roles: what a machine can host, read by cli/src/harness/host-roles.ts (`starci host up|status|doctor --host <name>`,
 # `starci vps add|set ... --roles`; contexts/harness/host.md "Roles").
 #
-# The owner's words (2026-11-21): "tùy vps có vps kiểu [k3s, starci{sonar,embed,buildkit,...}, monitor(prom, portainer, grafana,...},...)
-# chia thành các hạng mục 1 vps có thể có 1 hoặc N hạng mục để host, tối thiểu 1 cái ví dụ k3s để host services". A machine lists one or
-# more roles in its entry of the LOCAL config.yaml (never this repository: "phải lưu máy lại ở config.yaml kiểu starci vps add -- vì cái
-# này là push xài chung"), and `host up` brings up the union of the services of its roles.
+# A machine lists one or more roles (k3s, starci with sonar, embed, buildkit and so on, monitor with prom, portainer, grafana and so on)
+# in its entry of the LOCAL config.yaml (never this repository, which is shared), and `host up` brings up the union of the services of
+# its roles.
 #
 # This file is GENERIC and pushed: no address, user, port or account id is written here. A machine is a name in config.yaml.
 #
@@ -52,8 +51,7 @@ roles:
       embed:
         summary: the embedding model behind a bearer-key gate (Ollama), one served model on every machine
         default: true
-        # The owner's decision (2026-11-21): "vậy giữ 2560 chiều lun đi!!!! dc k? embed lại cũng dc." qwen3-embedding:4b at its native
-        # 2560 dimensions, no truncation, the same manifest on every machine, for NIVO and StarCi Next alike.
+        # qwen3-embedding:4b at its native 2560 dimensions, no truncation, the same manifest on every machine, for NIVO and StarCi Next alike.
         model:
           name: qwen3-embedding:4b
           # sha256 of the registry manifest (the id `ollama list` prints first: df5bd2e3c74c), read from this machine's Ollama /api/tags.

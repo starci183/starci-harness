@@ -65,7 +65,6 @@ export type HeavyRun = (request: HeavyRequest) => Promise<RunResult>;
 /** The secret seam: decrypts the app's sops files. */
 export interface Sops {
   decrypt(file: string, format?: string): Record<string, string>;
-  decryptBinary(file: string): string;
   /** Wraps one sealed member again to its rule (server-key); the owner identity opens the data key only. */
   updateKeys(file: string): void;
   /** Refuses up front when the owner identity is unreachable (optional: a spec double has none). */
@@ -171,7 +170,7 @@ export interface StackContext {
  *   stdout, stderr text writers
  *   fetch          the HTTP seam of verify (url, init) -> Response
  *   pipe           (source, sink) -> Promise<{ source, sink, stderr }>: one process's stdout streamed into another's stdin (realPipe)
- *   sops           the secret seam (decrypt(file, format) -> map; decryptBinary(file) -> text); `io.sops`, else on first use `io.openSops()` or the app's own sops/age tools with the age identity decryptionIdentity finds (`io.hostIdentity` the harness CLI's secret.env)
+ *   sops           the secret seam (decrypt(file, format) -> map); `io.sops`, else on first use `io.openSops()` or the app's own sops/age tools with the age identity decryptionIdentity finds (`io.hostIdentity` the harness CLI's secret.env)
  */
 export function stackContext(io: StackIo = {}): StackContext {
   const cwd = io.cwd ?? process.cwd();

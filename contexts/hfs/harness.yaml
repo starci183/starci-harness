@@ -30,7 +30,7 @@ slots:
     path: "**/examples/"
     presence: forbidden
     holds: example apps and example re-pins; a proof is a scratch repository, a package proves itself with its specs
-    rule: CONTRIB-15 removed vocabulary
+    rule: CONTRIB-2
   - id: never.plans
     path:
       - "**/{PLAN,Plan,plan,MASTER,ROADMAP,TODO}*.md"
@@ -38,7 +38,7 @@ slots:
       - "**/plans/"
     presence: forbidden
     holds: a plan, roadmap or master file; a decided plan is stated as rules, each fact in its owner
-    rule: CONTRIB-4 one owner per fact; CONTRIB-15 (STARCI.md, design documents of plans and phases)
+    rule: CONTRIB-4 one owner per fact; CONTRIB-5 present tense, no ghosts
   - id: never.grammar-tests
     path:
       - "packages/grammar/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs}"
@@ -444,7 +444,7 @@ slots:
         - contexts/hfs/rules.yaml
         - contexts/grammars/contract.yaml
         - contexts/stack/fe.yaml
-      how: copies of the owner files in contexts/ (and the legacy runtime engine) a package ships; one owner per fact means the package makes them at build, never by hand
+      how: copies of the owner files in contexts/ a package ships; one owner per fact means the package makes them at build, never by hand
     holds: generated runtime copies and generated modules a package ships
     rule: CONTRIB-4 one owner per fact (a copy is generated from its owner)
   - id: packages.data

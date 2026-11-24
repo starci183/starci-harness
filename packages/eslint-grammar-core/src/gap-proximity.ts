@@ -5,7 +5,7 @@ import { FORM_CONTROLS, attributeOf, elementNameOf, grammarName, isFragmentEleme
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 /**
- * The proximity law (owner, 2026-11-09, GAP-PROXIMITY): inside any container, its children stand at least ONE step
+ * The proximity law (GAP-PROXIMITY): inside any container, its children stand at least ONE step
  * closer than the container stands to its siblings. The gap roles rise strictly: identity 4 < inline 8 < row 12 <
  * section 24 < region 32. A layout element whose role is the same as, or wider than, its parent's makes the child's
  * parts read as far apart as the parent's siblings, so the grouping disappears.

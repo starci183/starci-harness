@@ -1,9 +1,9 @@
 /**
- * The type roles (0.54.0, owner 2026-11-21): ten roles, each one size, line height and weight from `ramps.css`
+ * The type roles: ten roles, each one size, line height and weight from `ramps.css`
  * (`--grammar-type-<role>-size|line|weight`, dots as dashes). `label.field`, `label.group` and `caption` are muted;
- * `badge` takes its tone from the badge around it; `code` is set in the mono stack. No import: the codemods mirror it.
+ * `badge` takes its tone from the badge around it; `code` is set in the mono stack. No import.
  *
- * THE SITE GROUP (0.55.0, owner 2026-11-21, "3. THÊM NHÓM", then "cook"): five roles for the public marketing site only, never the
+ * THE SITE GROUP: five roles for the public marketing site only, never the
  * console: `display.hero`, `display.section`, `display.figure`, `lead` and `title.card`. Their responsive steps (390, from 48rem, from
  * 64rem) live in the tokens, so an app writes one role and no breakpoint. `starci-grammar/site-type-role` refuses them outside the site.
  *

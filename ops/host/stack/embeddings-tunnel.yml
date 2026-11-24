@@ -6,8 +6,8 @@
 # reachable: every other host and path the tunnel receives answers 404.
 #
 # The service is the gate's fixed address on the `edge` network (embeddings.yaml: subnet 10.77.84.0/29, the gate 10.77.84.2), not its
-# alias `embeddings-gate`: Docker's embedded DNS stopped resolving the alias twice on 2026-11-21 and the tunnel answered 502 until a
-# restart, and an address needs no lookup. `starci host doctor` resolves the alias and calls this exact URL from a throwaway container
+# alias `embeddings-gate`: Docker's embedded DNS can stop resolving an alias and the tunnel then answers 502 until a restart, while an
+# address needs no lookup. `starci host doctor` resolves the alias and calls this exact URL from a throwaway container
 # on the network, so a mismatch between this line and embeddings.yaml reads down at once.
 tunnel: starci-host-services
 ingress:

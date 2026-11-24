@@ -178,7 +178,7 @@ test("infra-import-owner: the queue and Redis libraries keep their owners, Kafka
         ],
         invalid: [
             { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
-            // the legacy queue and the Redis cache stores keep to their owners like bullmq and ioredis
+            // the Bull queue and the Redis cache stores keep to their owners like bullmq and ioredis
             { filename: DOMAIN, code: `import Bull from "bull"\nexport { Bull }`, errors: [{ messageId: "foreign" }] },
             { filename: FEATURE, code: `import { BullModule } from "@nestjs/bull"\nexport { BullModule }`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import KeyvRedis from "@keyv/redis"\nexport { KeyvRedis }`, errors: [{ messageId: "foreign" }] },

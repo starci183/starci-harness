@@ -3,7 +3,7 @@ import type { TSESTree } from "@typescript-eslint/types"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 
 /**
- * ICONS ARE OUTLINE ONLY (owner, 2026-11-09, ICONS-OUTLINE). Never a filled or solid icon: no `@heroicons/react/16/solid`, `/20/solid` or `/24/solid`
+ * ICONS ARE OUTLINE ONLY (ICONS-OUTLINE). Never a filled or solid icon: no `@heroicons/react/16/solid`, `/20/solid` or `/24/solid`
  * (and the same for `@starci/heroicons`' solid sets), no filled glyph, no filled-circle status mark. An icon that STANDS ALONE as the mark of a row, a
  * card, an empty state or a graph step sits in an icon tile (a soft-tone square holding an outline icon); an icon INLINE with text (a status beside a
  * label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status is a tone-coloured outline

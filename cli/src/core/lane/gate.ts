@@ -1,29 +1,29 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
 import { captureGit, captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
-import { blockingFindings, isOutOfMemory } from "../../harness/land-queue.js"
-import type { LaneFinding } from "../../harness/land-queue.js"
+import { blockingFindings, isOutOfMemory, lanesDir } from "../../harness/lane-state.js"
+import type { LaneFinding } from "../../harness/lane-state.js"
 import { loadSlotRules, slotRoot, withSlot } from "../../harness/slots.js"
-import { cancelLaneGate, markSuperseded } from "../../harness/supersede.js"
-import { lanesDir } from "../../harness/land-queue.js"
-import { landProfile, profileNameFor } from "../../harness/land-profile.js"
+import { cancelLaneGate } from "../../harness/supersede.js"
+import { harnessProfile, profileNameFor } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
-import { runningCliRoot } from "../../harness/lander-install.js"
 import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
 import { cacheLaneInstall, followsBase, sharedInstall } from "../../harness/shared-install.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
-import { registerReady } from "./ready.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
-import type { Registered } from "./ready.js"
 import { landLane } from "./land-direct.js"
 import type { LaneLanded } from "./land-direct.js"
 import { cleanupLanded } from "../../harness/land-cleanup.js"
 import type { LandCleanup } from "../../harness/land-cleanup.js"
+
+/** The root of the starci-harness package this process runs (dist/core/lane/ is three levels below it). */
+const runningCliRoot = (): string => fileURLToPath(new URL("../../..", import.meta.url))
 
 /** The mark of the lockfile a lane's node_modules was installed from by this verb. */
 const INSTALL_MARK = join("node_modules", ".starci-lane-gate-lock")
@@ -54,7 +54,6 @@ export interface LaneGate {
     readonly verdict: GateVerdict
     readonly findings: readonly LaneFinding[]
     readonly pushed: boolean
-    readonly ready: Registered | null
     /** --land: the dev commit the lane landed as, the re-check, the dev publish and the dev checkouts marked for their sync. */
     readonly landed: LaneLanded | null
     /** --land: what became of the lane's worktree after the landing (harness/land-cleanup.ts); null when nothing landed. */
@@ -111,7 +110,6 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
 const gateLines = (data: LaneGate): string[] => [
     `${data.lane}: ${data.mode} ${data.verdict}${data.profile === "app" && data.mode === "check" && data.verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
     ...data.findings.slice(0, 20).map((finding) => `  ${finding.code} ${finding.path} ${finding.message.split("\n")[0] ?? ""}`.trimEnd()),
-    ...(data.ready === null ? [] : [`ready (deprecated, the batch lander): monitor ${data.ready.status}`]),
     ...(data.landed === null ? [] : [`landed on dev as ${data.landed.sha.slice(0, 10)}${data.landed.rechecked ? " (re-checked: dev had moved)" : ""}${data.landed.publishNote === undefined ? "" : `; ${data.landed.publishNote}`}; dev sync ${data.landed.syncs.length === 0 ? "not requested" : `marked for ${data.landed.syncs.join(", ")}`}`]),
     ...(data.cleanup === null ? [] : [data.cleanup.line]),
     ...(data.timings.length === 0 ? [] : [`timings: ${data.timings.map((each) => `${each.phase} ${String(each.seconds)}s`).join(", ")}${data.installSource === "none" ? "" : ` (node_modules: ${data.installSource})`}`]),
@@ -149,7 +147,7 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const { root, lane, branch, ref, push, slots, rules, wait, say } = given
     const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
     const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
-    const profile = landProfile("harness", join(runningCliRoot(), "dist", "main.js"))
+    const profile = harnessProfile(join(runningCliRoot(), "dist", "main.js"))
     const stale = await staleCli(root, runningCliRoot(), base)
     if (stale !== undefined) say(`WARNING: ${stale}`)
     const command = profile.gate(root, fork === "" ? base : fork)
@@ -172,11 +170,11 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
  * (origin/dev), installs under an npm slot when the merge changed a manifest or lockfile, runs codegen (and build:modules after an
  * install), then, under a gate slot, the app's own `app check --env prod --level dev` (the fast level of a landing on dev) or, with --push, `app push origin
  * HEAD:<branch>`, whose pre-push hook runs the fast level once. A new gate of the same lane cancels the lane's running one (harness/supersede.ts). --land then lands the
- * lane on dev itself (core/lane/land-direct.ts): the standard landing. --ready (deprecated) registers the pushed sha with the batch lander instead.
+ * lane on dev itself (core/lane/land-direct.ts).
  */
 export const laneGateVerb = defineVerb({
     path: ["lane", "gate"],
-    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); --ready (deprecated) registers with the batch lander instead; a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot, writes superseded by <sha> into its status)",
+    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/lane-gate@1",
@@ -188,16 +186,13 @@ export const laneGateVerb = defineVerb({
         push: { kind: "boolean", summary: "instead of the check, app push origin HEAD:<branch> under the gate slot: it runs the check, commits the cache records and pushes once" },
         land: { kind: "boolean", summary: "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (codegen and typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync" },
         keep: { kind: "boolean", summary: "with --land: keep the lane's worktree after the landing (default: once dev is pushed it is removed to save disk, the branch kept, local and remote; a worktree in use, with uncommitted non-cache work, or still busy after retries is kept and the one line says why)" },
-        ready: { kind: "boolean", summary: "deprecated (the batch lander): after a push, register the pushed sha with the batch lander (lane ready); use --land" },
         wait: { kind: "string", summary: "seconds to wait for each slot before SLOT_BUSY (default: until one frees)" },
         dir: { kind: "string", summary: "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)" },
         profile: { kind: "string", summary: "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push" },
     },
     run: async (context, flags) => {
-        if (flags.ready && !flags.push) throw new Refusal("CLI_USAGE", "--ready registers a pushed sha: give --push too")
         if (flags.land && !flags.push) throw new Refusal("CLI_USAGE", "--land lands a pushed, gated lane: give --push too")
         if (flags.keep && !flags.land) throw new Refusal("CLI_USAGE", "--keep keeps the worktree of a landed lane: give --land too")
-        if (flags.land && flags.ready) throw new Refusal("CLI_USAGE", "--land lands the lane itself; --ready hands it to the batch lander: give one")
         assertPosixSh("lane gate")
         const say = context.progress
         const root = await repositoryRoot(context.cwd)
@@ -212,16 +207,11 @@ export const laneGateVerb = defineVerb({
         const rules = loadSlotRules()
         const slots = slotRoot(flags.dir, rules)
         const wait = waitSeconds(flags.wait)
-        // A new gate of the lane supersedes its running one (owner: "nếu push commit mới thì cancel lun commit cũ"): its process tree is killed and its slot released.
+        // A new gate of the lane supersedes its running one: its process tree is killed and its slot released.
         const head = (await gitOut(root, ["rev-parse", "HEAD"])).out
         const cancelled = cancelLaneGate(slots, rules, lane)
         if (cancelled.length > 0) {
             say(`superseded by ${head.slice(0, 10)}: cancelled the running gate of ${lane} (${cancelled.map((run) => `pid ${String(run.pid)}`).join(", ")}) and released its slot`)
-            try {
-                markSuperseded(lanesDir(flags.dir), lane, head, `the running gate of ${lane} was cancelled by a newer push`)
-            } catch {
-                // the status file is the monitor's courtesy; the cancel itself happened
-            }
         }
         const ref = flags.ref ?? "origin/dev"
         const merged = merging ? await mergeRef(root, ref, say) : null
@@ -233,10 +223,9 @@ export const laneGateVerb = defineVerb({
         const profileName = profileNameFor(root, flags.profile)
         if (profileName === "harness") {
             const harness = await gateHarness({ root, lane, branch, ref, merging, push: flags.push, slots, rules, wait, say })
-            const ready = flags.ready && harness.pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
-            const landed = await land(harness.pushed)
+                const landed = await land(harness.pushed)
             const cleanup = await tidy(landed)
-            const data: LaneGate = { lane, branch, merged, installed: false, installSource: "none", timings: [], prepared: [], mode: flags.push ? "push" : "check", profile: profileName, exitCode: harness.exitCode, verdict: harness.verdict, findings: harness.findings, pushed: harness.pushed, ready, landed, cleanup }
+            const data: LaneGate = { lane, branch, merged, installed: false, installSource: "none", timings: [], prepared: [], mode: flags.push ? "push" : "check", profile: profileName, exitCode: harness.exitCode, verdict: harness.verdict, findings: harness.findings, pushed: harness.pushed, landed, cleanup }
             return { data, message: gateLines(data).join("\n"), exitCode: harness.verdict === "green" ? 0 : 1 }
         }
         const timings: { phase: string; seconds: number }[] = []
@@ -297,10 +286,9 @@ export const laneGateVerb = defineVerb({
             findings = all ?? []
             verdict = oom || findings.some((finding) => isOutOfMemory(undefined, finding.message)) ? "oom" : all === undefined || (run.exitCode !== 0 && all.length === 0) ? "no-verdict" : findings.length === 0 ? "green" : "red"
         }
-        const ready = flags.ready && pushed ? (await registerReady(root, { lane, branch, dir: flags.dir })).data : null
         const landed = await land(pushed)
         const cleanup = await tidy(landed)
-        const data: LaneGate = { lane, branch, merged, installed, installSource, timings, prepared, mode, profile: profileName, exitCode: run.exitCode, verdict, findings, pushed, ready, landed, cleanup }
+        const data: LaneGate = { lane, branch, merged, installed, installSource, timings, prepared, mode, profile: profileName, exitCode: run.exitCode, verdict, findings, pushed, landed, cleanup }
         return { data, message: gateLines(data).join("\n"), exitCode: verdict === "green" ? 0 : 1 }
     },
 })

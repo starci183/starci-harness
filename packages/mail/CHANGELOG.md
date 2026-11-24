@@ -1,27 +1,7 @@
 # Changelog
 
+Versioned history starts at beta; earlier history is in git.
+
 ## 0.3.0 - 2026-11-16
 
-- Added: `SendMailRequest.cc` and `bcc` (one mailbox or several, the plain mailbox form of `to`): Cc is written in the headers, Bcc only in the SMTP envelope and never in a header. To, Cc and Bcc together are counted against `maxRecipients`; an address already named in an earlier list (To, then Cc, then Bcc, ignoring case) is dropped from the later one. `accepted` lists every envelope recipient the server took.
-- Added: `SendMailRequest.inReplyTo`, `references` and `messageId`, each a Message-ID in its angle form (`<local@domain>`, dot-atoms, at most 255 characters, no whitespace, control characters or inner brackets; at most 50 references, repeats dropped): a reply threads, and a caller that must know the id before the send names it, so `SentMail.messageId` is that id (omitted, nodemailer generates one as before). A bad address stays `MAIL_ADDRESS_INVALID`; a bad id or reference list is `MAIL_MESSAGE_INVALID`; CRLF in any of them is refused before any connection.
-- Added: `isValidMessageId`; `MailEnvelope` gains `cc`, `bcc`, `inReplyTo`, `references` and `messageId` (a custom `MailTransport` reads them); the in-memory outbox keeps them, answers `to(address)` for a Cc or Bcc recipient and keeps a named `messageId`.
-- The package has no read side (no IMAP), so there is no Cc or References to read.
-
-## 0.2.0 - 2026-11-08
-
-- Changed: `MailError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `detail`, `context`, `cause` and message (the code) are unchanged. `MailErrorKind` is a subset of `ErrorKind`.
-- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
-
-## 0.1.0 - 2026-11-03
-
-Outgoing mail for a StarCi back end in one package, lifted from the mail integrations of the apps that each wrote one (Nivo's `integrations/mail`, the academy's mailer, the older Nest mailer modules) and generalised: no product names, every setting a typed option, no environment read, no template engine.
-
-- Added: `MailModule.register` / `registerAsync` (with `isGlobal`) providing the `Mailer` port under `MAILER`, and `createMailer` for plain Node.
-- Added: `Mailer.send({ to, message, from?, replyTo? })` over SMTP (nodemailer): STARTTLS required by default, implicit TLS or a plain local sink on request, certificates verified, connect, greeting and socket timeouts plus a total send timeout, a refused recipient rejecting the send.
-- Added: recipient, sender and message checks before any connection (plain mailboxes, one-line subject, text body, size and recipient limits, no header injection).
-- Added: coded errors (`MAIL_AUTH`, `_APP_PASSWORD`, `_CONNECT`, `_TIMEOUT`, `_DNS`, `_TLS`, `_SENDER`, `_RECIPIENT`, `_LIMIT`, `_UNKNOWN`, `_ADDRESS_INVALID`, `_MESSAGE_INVALID`) with the kind each travels as, classified from nodemailer and SMTP failures.
-- Added: attachments on a message (`attachments: [{ filename, content, contentType }]`) with count (default 3), total size (default 5 MiB), type-list (exact or `image/*`) and file-name checks.
-- Added: `assertSmtpTarget(host, port, policy?)` and `isPrivateAddress`: a mail server a user chose must be on a public mail port and resolve, after DNS, only to public addresses (private, loopback, link-local, shared, multicast and reserved ranges refused, IPv4-mapped IPv6 judged as IPv4); `publicTargetOnly` applies it before every connection.
-- Added: typed render helpers: the `html` tag (escapes every interpolation), `escapeHtml`, `raw`, `safeUrl`, `oneLine` and `renderTransactional` returning `{ subject, text, html }`.
-- Added: `@starci/mail/testing`: `createMemoryMailer` (the real checks over an in-memory outbox with `to`, `lastTo`, the first `link` of a message and `failNext`), `mailTestingModule`, `testMailOptions`.
-- The package is the only owner of `nodemailer`.
+- Outgoing mail for a StarCi back end: a NestJS module and a Mailer port over SMTP, with an in-memory outbox.

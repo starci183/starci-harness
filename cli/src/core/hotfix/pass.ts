@@ -5,7 +5,7 @@ import { captureGitSync } from "../../shared/git.js"
 import { prePushTarget } from "../deps/dev-local.js"
 
 /**
- * The one sanctioned way past the pre-push gate (contexts/authority/lanes.md "Hotfix"; owner: "hotfix là sửa xong chạy lại luôn, không gate gì hết"): while
+ * The one sanctioned way past the pre-push gate (contexts/authority/lanes.md "Hotfix"): while
  * `starci hotfix land` pushes its one commit it writes a PASS beside the repository's git objects, and the fast-level check the pre-push hook runs
  * (`app check --level dev`, core/app/fast-check.ts) reads it. A pass lets exactly one push through: the push of that commit to dev alone, while the process that
  * wrote it is alive and for at most `PASS_MINUTES`. There is no flag, environment variable or setting that opens the gate for anything else.

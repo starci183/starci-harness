@@ -6,7 +6,7 @@ import { loadSlotRules, slotRoot } from "../../harness/slots.js"
 /**
  * `starci ops reap [--execute]`: the orphan reaper (harness/runs.ts) over the runs the harness recorded in `<slot root>/_runs/`: a run whose
  * launcher is gone past `reap.graceMinutes` of ops/slots.yaml has its process tree stopped and logged in `<slot root>/_reap.log`. A process the
- * harness did not record is never touched. The batch lander runs the same reap every loop.
+ * harness did not record is never touched.
  */
 export const opsReapVerb = defineVerb({
     path: ["ops", "reap"],

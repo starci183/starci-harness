@@ -59,7 +59,7 @@ const barControlHeight = (context: ReaderContext, control: TSESTree.JSXOpeningEl
   const size = propOf(context, control, "size")
   if (!size.known) return "other"
   if ((name === "Button" || name === "IconButton" || name === "Switch" || name === "AvatarButton") && size.value === null) return "control"
-  // An AvatarButton's md is the 40px round mark, the control height (Grammar 0.55.0: round marks are sm 24 or md 40).
+  // An AvatarButton's md is the 40px round mark, the control height (round marks are sm 24 or md 40).
   if ((name === "Button" || name === "IconButton" || name === "AvatarButton") && everyLiteral(context, size.value, new Set(["md"]))) return "control"
   return textProp(context, control, "size") === "control" ? "control" : "other"
 }

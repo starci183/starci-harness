@@ -6,12 +6,12 @@ import { withHeavySlot } from "./heavy.js"
 /**
  * The scripts that prepare an installed app tree before anything checks or runs it, in order: its `codegen`, then `build:modules`, the
  * app's declared build of its workspace packages (a package whose `main` is `./dist/index.js` resolves only once it is built). Each is the
- * app's own root npm script, and one the app does not declare is skipped (`--if-present`). The lane gate (after an install), the batch
- * lander and `dev sync` all prepare a tree through `prepareTree`.
+ * app's own root npm script, and one the app does not declare is skipped (`--if-present`). The lane gate (after an install)
+ * and `dev sync` both prepare a tree through `prepareTree`.
  */
 export const PREPARE_SCRIPTS: readonly string[] = ["codegen", "build:modules"]
 
-/** A prepare step that failed: the command (`npm run build:modules`, the lander's `npm ci`), its exit code and the tail of what it printed (`tail`). */
+/** A prepare step that failed: the command (`npm run build:modules`, `npm ci`), its exit code and the tail of what it printed (`tail`). */
 export interface PrepareFailure {
     readonly command: string
     readonly exitCode: number

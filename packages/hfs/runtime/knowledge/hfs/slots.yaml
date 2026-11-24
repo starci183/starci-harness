@@ -234,7 +234,6 @@ ruleParams:
       "@starci/auth/oidc": [integrations/keycloak]       # the OIDC client and the issuer presets, the GitHub Actions CI attestation included, reached only through integrations/keycloak
       "@starci/auth/contracts": [integrations/passport, integrations/keycloak]   # the door and OIDC contracts, for each glue
       "@starci/auth/testing": [integrations/passport, integrations/keycloak]     # the test doubles and the fake issuer, for each glue's specs
-      "@starci/auth-oidc": []                            # retired into @starci/auth/oidc: no app file imports it (starci app codemod auth-merge)
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -659,17 +658,6 @@ slots:
     profiles: [app]
     # The Swarm stack deploy workflow: reusable (ci.yml calls it after the verdict for every environment with deploy.auto) and workflow_dispatch for the owner's manual operations; a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
-    presence: optional
-    tracked: tracked
-    tier: none
-    tests: none
-    managedBy: ci-workflows
-    rules: [HFS_MANAGED_FILE_DRIFT]
-  - id: app.ci-stack-key-restore
-    since: 3.14.0
-    profiles: [app]
-    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
-    path: ".github/workflows/stack-key-restore.yml"
     presence: optional
     tracked: tracked
     tier: none

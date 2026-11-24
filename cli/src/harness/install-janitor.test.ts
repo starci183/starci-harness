@@ -15,7 +15,7 @@ const git = (cwd: string, ...args: string[]): string => execFileSync("git", ["-c
 const rules: SlotRules = { schema: "starci/slots@1", root: null, kinds: { gate: { count: 2, file: "_gate-slot-{n}.lock", warnMinutes: 120, pollSeconds: 1 } }, janitor: { idleHours: 6, touchedMinutes: 0, dirs: ["node_modules", ".next", "dist"] } }
 const DIRS = ["node_modules", ".next", "dist"]
 
-/** A lanes folder holding a repository `app`, a lane worktree `app-x` on `lane/x` and a harness-owned `_lander` worktree. */
+/** A lanes folder holding a repository `app`, a lane worktree `app-x` on `lane/x` and a harness-owned `_cli` worktree. */
 const lanes = (): { readonly root: string; readonly tree: string; readonly outside: string } => {
     const root = mkdtempSync(join(tmpdir(), "starci-janitor-"))
     const main = join(root, "app")
@@ -28,7 +28,7 @@ const lanes = (): { readonly root: string; readonly tree: string; readonly outsi
     git(main, "commit", "-q", "-m", "init")
     const tree = join(root, "app-x")
     git(main, "worktree", "add", "-q", "-b", "lane/x", tree)
-    git(main, "worktree", "add", "-q", "--detach", join(root, "_lander"))
+    git(main, "worktree", "add", "-q", "--detach", join(root, "_cli"))
     const outside = join(root, "_cache", "pkg")
     mkdirSync(outside, { recursive: true })
     writeFileSync(join(outside, "index.js"), "module.exports = 1\n")

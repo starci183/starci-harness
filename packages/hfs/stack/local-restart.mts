@@ -3,7 +3,7 @@
 // the storage), their volumes, the custody files and the dev tunnel stay up untouched. Each named process is ended (only when it is the one
 // this environment started), built from the code of the checkout (serve mode: its `serve.build`), started on the built artifact (its
 // `serve.argv`; its own watcher argv only with --watch) and waited for: its health probe on the loopback, and, when the dev tunnel routes its
-// port, the same path over the tunnel's public hostname, which is advisory (a WARN, never a failure). `starci dev sync` and the batch lander run it after a dev checkout moved.
+// port, the same path over the tunnel's public hostname, which is advisory (a WARN, never a failure). `starci dev sync` runs it after a dev checkout moved.
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';

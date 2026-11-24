@@ -16,18 +16,12 @@ const fromReporters = createRequire(fromCore.resolve("@jest/reporters"))
 const libCoverage: typeof import("istanbul-lib-coverage") = fromReporters("istanbul-lib-coverage")
 const libReport: typeof import("istanbul-lib-report") = fromReporters("istanbul-lib-report")
 
-/** The folder of a directory entry: `parentPath`, which Node before 20.12 calls `path`. */
-function parentOf(entry: fs.Dirent): string {
-  const legacy: unknown = Reflect.get(entry, "path")
-  return entry.parentPath ?? (typeof legacy === "string" ? legacy : "")
-}
-
 /** Every coverage-final.json at or below `target` (a file or a directory), sorted. */
 function coverageFilesUnder(target: string): string[] {
   if (!fs.statSync(target).isDirectory()) return [target]
   return fs.readdirSync(target, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name === "coverage-final.json")
-    .map((entry) => path.join(parentOf(entry), entry.name))
+    .map((entry) => path.join(entry.parentPath, entry.name))
     .sort()
 }
 

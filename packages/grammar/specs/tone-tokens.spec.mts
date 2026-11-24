@@ -135,12 +135,12 @@ test("AgentName: the AI Chip is SMALL, the caption size in a 16px box on the nam
     assert.match(ramps, /--grammar-type-caption-line: 1rem;/u)
 })
 
-test("RadioGroup rows: the chosen row is quiet, its unselected edge coloured at most --accent-border; the plate-selected-border hook never reaches it", () => {
+test("RadioGroup rows: the chosen row is quiet, its unselected edge coloured at most --accent-border", () => {
     const css = read("common/components-forms.css")
     const rule = /\[data-grammar-radio-appearance="rows"\] \.starci-core-radio\[data-selected="true"\] \{([^}]*)\}/u.exec(css)?.[1] ?? ""
     assert.match(rule, /border: var\(--starci-core-plate-border, 0\);/u)
     assert.match(rule, /border-color: var\(--accent-border\);/u)
-    assert.doesNotMatch(rule, /plate-selected-border|--foreground|outline/u)
+    assert.doesNotMatch(rule, /--foreground|outline/u)
 })
 
 test("SurfaceCard kind=tile takes isAgent: the AgentName Chip follows the tile's name", () => {

@@ -1,6 +1,6 @@
 # Bottom nav
 
-Contract: [shell](../../grammars/contract.md#shell). Vendor: [Drawer, ListBox](../../vendor/heroui.md#modal). Added in 0.46.0 (owner approved 2026-11-18).
+Contract: [shell](../../grammars/contract.md#shell). Vendor: [Drawer, ListBox](../../vendor/heroui.md#modal).
 
 ## Job
 Put the few places a person uses every day under the thumb at the compact width, with the rest one press away in a bottom sheet.
@@ -30,7 +30,7 @@ returns to, never a command (a command lives in the page's actions).
 - The sheet is a bottom `Drawer` titled by `more.label` holding `Sidebar presentation="drawer"` of `more.items` (flat) or `more.groups` (the `Sidebar` group: `id`, `label`, `items`, the `label` drawn as the heading of its rows; give one of the two, a console with named areas gives groups): one look for a place in the sheet, the drawer and the rail; a place there takes a count, a trailing mark, `href` and `isDisabled` as a sidebar item does. Choosing a place closes the sheet and returns focus to the "more" place.
 
 ## Size
-The place is the bar-control height (the `md` 40, glyph 20 over a one-line 12 name), pressed where it is drawn (no invisible hit area; owner, 2026-11-21: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy"). The places share the width equally. The bar keeps `env(safe-area-inset-bottom)`: the page sets `viewport-fit=cover` for it to be non-zero. The bar draws below 48rem only; above it the slot is `display: none` and the navigation is the sidebar.
+The place is the bar-control height (the `md` 40, glyph 20 over a one-line 12 name), pressed where it is drawn (no invisible hit area). The places share the width equally. The bar keeps `env(safe-area-inset-bottom)`: the page sets `viewport-fit=cover` for it to be non-zero. The bar draws below 48rem only; above it the slot is `display: none` and the navigation is the sidebar.
 
 ## States
 Hover and focus-visible (the vendor ring), current, pressed. A disabled place is not drawn in the bar (a sheet row may be disabled). The "more" place is a button (`aria-haspopup`, `aria-expanded` from the Drawer trigger).
@@ -45,6 +45,6 @@ FE-APP-SHELL-4 (see below), A11Y-2, BOUNDARY-1, RESPONSIVE-1.
 
 The landmark is the shell's: `compactNavigation` renders `<nav aria-label={compactNavigationLabel}>` around the slot, so `BottomNav` draws a list and no second `<nav>`. It stands only in that slot (`DNA-COMMON-NO-BOTTOM-TABS`).
 
-**Owner decision (2026-11-18).** The bar is allowed only as the `compactNavigation` of a `WorkspaceShell`, with two to five places including "more", and refused everywhere else. FE-APP-SHELL-4 of [composition](../composition.md) says the same: a `BottomNav` in that slot passes; a hand-made bottom tab bar, any other `compactNavigation` and a `BottomNav` anywhere else are refused. `DNA-COMMON-NO-BOTTOM-TABS` measures it in the render.
+The bar stands only as the `compactNavigation` of a `WorkspaceShell`, with two to five places including "more": FE-APP-SHELL-4 of [composition](../composition.md) owns what is refused elsewhere, and `DNA-COMMON-NO-BOTTOM-TABS` measures it in the render.
 
 Stories: `Compositions/Bottom nav (0.46.0)` (`Phone`, `MoreSheet`, `Links`, `Wide`).

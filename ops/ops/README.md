@@ -55,8 +55,7 @@ A contract (`starci/contract@2`, written by `starci contract new` or inline in a
 An extend only adds. A contract may also pin a copy of the base (`context.base`, `output.base`, `checks.base`), and
 `starci contract check` refuses it when the copy drops a file, key or check of the op's base, when an output key the op
 owns is given a looser type, fewer items, a new `when` or another `cites`, or when an input the op requires has no value.
-The resolved contract always carries the op's whole base, pinned or not. A `starci/contract@1` (its `readPaths`,
-`expectedOutput.checks` and `context.base` revision) is read as the contract@2 it means.
+The resolved contract always carries the op's whole base, pinned or not.
 
 ## What the harness generates from the base
 

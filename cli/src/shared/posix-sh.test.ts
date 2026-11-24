@@ -1,4 +1,4 @@
-// The sh preflight of `lane land`, `lane gate` and `release gate`: a POSIX sh must resolve on PATH (Git's usr/bin on Windows), else the
+// The sh preflight of `lane gate` and `release gate`: a POSIX sh must resolve on PATH (Git's usr/bin on Windows), else the
 // verb refuses HOST_POSIX_SH_MISSING with the fix before any gate runs.
 import assert from "node:assert/strict"
 import { join } from "node:path"
@@ -32,5 +32,5 @@ void test("elsewhere sh resolves from a colon-separated PATH", () => {
     const sh = join("/usr/bin", "sh")
     assert.equal(posixShOnPath({ PATH: "/opt/none:/usr/bin" }, "linux", files(sh)), sh)
     assert.equal(assertPosixSh("release gate", { PATH: "/usr/bin" }, "linux", files(sh)), sh)
-    assert.throws(() => assertPosixSh("the batch lander", { PATH: "/opt/none" }, "linux", files(sh)), /HOST_POSIX_SH_MISSING|needs a POSIX sh/)
+    assert.throws(() => assertPosixSh("lane gate", { PATH: "/opt/none" }, "linux", files(sh)), /HOST_POSIX_SH_MISSING|needs a POSIX sh/)
 })

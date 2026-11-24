@@ -6,7 +6,7 @@
 //     app's own TypeScript resolving under the front-end app's tsconfig, bounded and memoised), or
 //   - its screen.yaml changed and already holds an audit (the audit is being edited, so it is judged).
 // The codes (all `local` findings: report-only in `--env local`, errors in `--env prod`): UI_AUDIT_MISSING, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER, _CONSIDERED_EMPTY.
-// They judge a screen only until its audit first passes (owner, 2026-11-21, train 188): the pass is its baseline, and after it drift and later cycles are evidence, never a finding
+// They judge a screen only until its audit first passes (PROJECT-GALLERY-8): the pass is its baseline, and after it drift and later cycles are evidence, never a finding
 // (screen-yaml.mts judgeAudit). A malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID, judged for every screen by rules/gallery.mts.
 import fs from 'node:fs';
 import path from 'node:path';

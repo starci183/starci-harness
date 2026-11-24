@@ -153,40 +153,35 @@ Host processes run without a shell through `cli/src/shared/exec.ts`; git goes th
 4-space indent, no semicolons, double quotes, a one-line JSDoc on every export, comments only where they carry a rule.
 No new dependency without a reason the owner accepts. Line endings are LF (`.gitattributes`).
 
-### CONTRIB-21 A Grammar component earns its place
+### CONTRIB-21 Add only what is missing; remove completely
 
-A component or prop enters `@starci/grammar` only through [contexts/grammars/contributing.md](contexts/grammars/contributing.md): the
-question first, then tier, budget, types, lint, knowledge, render proof in both families and modes at real widths, and the look reviewed by a
-person. Held by review until the tier checks land.
+The harness has two consumers before beta, NIVO and StarCi Next. Before adding anything (a Grammar component or prop, an hfs rule
+or enforcer, a lint rule, a CLI verb or flag, a contexts page or section), challenge it in this order, and add it only when every
+answer says add:
 
-## CONTRIB-15 Removed vocabulary
+1. **Does it exist?** Search Grammar, hfs, the lint packages and `contexts/` (`starci contexts search`). If it exists, use it or cite it.
+2. **Can an existing thing take it** as a parameter, variant or option instead?
+3. **Does the compiler, a type or an existing check already catch it?** Then no lint rule and no hfs rule (CONTRIB-10).
+4. **Do NIVO or Next need it now?** If not, it waits for beta.
 
-These legacy terms do not reappear in source, data or documents. The list is held by review.
+A Grammar component or prop then enters `@starci/grammar` only through
+[contexts/grammars/contributing.md](contexts/grammars/contributing.md): tier, budget, types, lint, knowledge, render proof in both
+families and modes at real widths, and the look reviewed by a person.
 
-| removed | instead |
-|---|---|
-| op manifests, op kinds (`request.analyze`, `interface.draw`, `review.verify`, `code.fix`, ...), `route op`, the ops registry | one op file per label, `ops/ops/<label>.md`, owning the base; the Kernel's contract extends it; a record's lane (`ops/lanes.yaml`) orders the labels |
-| the `ui` label | `draw` (a screen's direction) and `code` with `side: fe` (its implementation) |
-| `ops/labels.yaml`, `ops/worker.md`, a contract's `expectedOutput` and `readPaths` | the op files and their README; a contract@2's checks and context, base ∪ extend (the contract@1 reader in `cli/src/harness/contract.ts` still names them) |
-| ops as planners (an op that analyses, scopes or decides) | planning and decisions are the Kernel's own work |
-| the Critic role, a reviewer whose taste gates a task | the contract's machine checks (base ∪ extend); a `review` task's findings route back to the build (`ops/routes.yaml`); taste goes to the owner ("CI is the critic" names CI after a push) |
-| `observe`, `nudge`, `redesign`, Kernel verbs that watch an op's terminal | the task protocol: contract, result, `task verify`; liveness by ping and pong |
-| `starci kernel <command>`, `driver-loop`, `settle` as a verb | `task send/result/verify`, `workflow step` |
-| the reconciler and its controllers | one host daemon for seat liveness and sweeps (not built yet) |
-| the `starci` grammar family, `heritage` | grammars `core` and `offset-pop` |
-| `examples/`, example apps, example re-pins | scratch-repository proofs; packages keep their specs |
-| the ledger in the app at `<app>/.starciwork/runtime.sqlite` | `<runtime root>/.runtime/projects/<ledger_id>/runtime.sqlite` |
-| `.workspaces/projects/<project>/work.json` binding, `<Source>` host binding | the git common dir looked up in `machine.sqlite` `ledgers` |
-| `define-goal`, `start-kernel` skills | `workflow define` and `workflow start` |
-| `runtime verify`, `gate run`, `release clean-test`, `scaffold-e2e` | `check run` before a push; CI runs the suites |
-| the edition decides who codes (lite by chat, full by ops) | the runner (`orca` or `inline`) is chosen per workflow or task |
-| the qualification and probation store, admission reason codes | qualification the router derives from member outcomes (`qualification` of `ops/routing.yaml`) |
-| a workflow or task pin (`agent`, `model`, `effort`), a routing bias (`only`, `avoid`, `prefer`), `ROUTE_BIAS_EMPTY` | the router alone picks, from a task's label, `difficulty` and `risk` |
-| one Supervisor per host, a `[Supervisor]` title with no project | one `[Supervisor] <project>` per project (`project_supervisors`); a version-2 host store's `supervisors` table is read only to adopt its workflows |
-| `STARCI.md`, a design document of decisions, plans and phases; a decision log (`decisions.md`, `rulings.yaml`, `open-*.md`), a ruling id or date cited in a rule | each fact in its owner ("One owner per fact"), stated as the rule that holds now; open choices in contexts/harness/questions.md |
-| `starci.errorBase` in a root package's `package.json` (the package's own error base) | the package's errors extend `DomainError` of `@starci/common`; `readPackageContract` stops the lint on the key |
-| per-feature Work documents (`.starciwork/features/<feature>/{br,fr,nfr,sds,contract,data,decision,integration,journey,impl,ui,uat,gap}`), the feature catalog `.starciwork/index.yaml` (`work/catalog@1`), the `uat` label, `task send --uat`, a workflow task's `uat:` and the `uat-flow` check | the product's concepts ([contexts/project/work.md](contexts/project/work.md) PROJECT-WORK-7) and each task's contract; a screen walk is an `audit` task's `starci uat run` |
-| `starci app lint` (`--changed`, `--workspace`, `--sonar`), the `lint` script of an fe workspace (`starci app lint --workspace .`) | `starci app check --gate lint` with `--side` (be or fe), `--fix` and `--out <file>`: the root `lint` script, the CI lint step and the release gate's Sonar row call it; a workspace has no lint script, and the cache makes the whole-app check of an unchanged tree take seconds |
+When something is removed or replaced:
+
+1. **Migrate the consumers** to the replacement in the same change, through NIVO's and Next's own lanes, landed with or before
+   the harness lane.
+2. **Delete it completely:** code, types, exports, stories, fixtures, styles, baselines, lint rules, enforcer and catalog rows, docs
+   and every link to it. No tombstone page, no "removed / replaced by" note, no deprecated alias or re-export, no compat shim, no
+   old flag still accepted, no guard lint: the compiler and the missing export are the guard.
+3. **Rewrite the owning pages** to describe only what exists now (CONTRIB-5); a CHANGELOG records no pre-beta removal.
+4. **Prove it is gone:** a grep for the old name across `D:/.claude`, `D:/Repositories/nivoos-lite` and the Next repositories finds
+   nothing outside git history.
+5. **Stop and ask the owner** when a removal breaks a consumer flow that has no replacement yet; never keep a shim instead.
+
+A lane's report carries one line for each: for an addition, what it searched and why nothing existing fit; for a removal, the
+empty grep. Held by review. From beta on, a removal keeps a deprecation, a migration note and a CHANGELOG entry.
 
 ## Commit and push
 
@@ -251,8 +246,8 @@ lint `eslint-grammar-core` (`eslint-grammar-offset-pop` peers it exactly), so ev
 patch, in that commit: the range stays same-minor and is never widened, since a canon reads the hfs runtime it was tested against.
 A canon or Grammar release cut on an older hfs minor while a newer one is open serves that older line only, and the newer line
 takes its own cut. `packages/hfs/src/canon-pins.spec.mts` holds each canon's peer admitting the hfs folder's version, and
-`deps publish-local` holds the same line on the local registry ([contexts/authority/packages.md](contexts/authority/packages.md) "The local registry"). A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
-(the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
+`deps publish-local` holds the same line on the local registry ([contexts/authority/packages.md](contexts/authority/packages.md) "The local registry"). A change to a package therefore raises the version in its `package.json` and sets its CHANGELOG
+(the CLI's is [CHANGELOG.md](CHANGELOG.md)) to a `## <version>` section with a one-line summary in the commit that makes it (versioned history starts at beta); a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package
 (`cli/package.json` and each copy its lockfile resolves) at its pin in [contexts/stack/pins.yaml](contexts/stack/pins.yaml),

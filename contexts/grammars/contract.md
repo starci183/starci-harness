@@ -59,7 +59,7 @@ own smaller scales: they label, they are not pressed. Which step a control takes
 heights are Common tokens (`--grammar-control-height-*`).
 
 **Drawn height and target are two facts** ([ui/scale](../ui/scale.md#drawn-height-and-target-size-are-two-facts)):
-the box is the ramp, and a control is pressed where it is drawn: no invisible hit area extends it on a coarse pointer (owner, 2026-11-21: "không thêm vùng chạm vô hình gì giữ 40 đi đừng cãi thầy"; Button md 40, sm 32). On a fine pointer the hit area meets its floor (`DNA-COMMON-TARGET-FINE`). The floors are Common tokens (`--grammar-target-*`).
+the box is the ramp, and a control is pressed where it is drawn: no invisible hit area extends it on a coarse pointer (Button md 40, sm 32). On a fine pointer the hit area meets its floor (`DNA-COMMON-TARGET-FINE`). The floors are Common tokens (`--grammar-target-*`).
 
 **Corners are roles.** HeroUI derives every corner from `radius` and `field-radius`, and a Button's corner is
 three times `radius`, so whether a Button is a pill follows from the grammar's radius, never from a per-button
@@ -80,7 +80,7 @@ Common tokens (`--grammar-text-*`); a grammar may repaint a face but not move a 
 
 ## Button variant
 
-A Button has three looks, one prop (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có tertiary nữa"): `variant` is `primary`
+A Button has three looks, one prop: `variant` is `primary`
 (solid, the ONE main action of a card or region), `border` (an outline, every secondary action; the default) or `danger` (a destructive action:
 delete, disconnect, stop for good, at its entry and at its confirm). There is no intent, step, placement, ghost, tertiary, secondary, flat or
 soft-danger look, and the look never depends on where the Button sits. Common maps the looks onto the vendor: primary is HeroUI `primary`,
@@ -123,11 +123,11 @@ The poster reuses Image-owned data, aspect and fit. Supporting `facts` is plain 
 up to three operational badges accompanies it. The primary `ItemAction` remains a native destination or command;
 secondary commands use typed `menu` data. `wholeAction` excludes both inner action and menu, so nested interactive
 targets do not compile. Loading keeps the poster and action geometry inert. A tile takes no `label`, `fact` or
-`labelEnd`; its name and mark or poster carry its identity, and a tile with neither (a table of a floor plan) is named by its `name` alone (0.47.1).
-`groundTone` (`accent`, `success`, `warning`, `danger`; 0.47.1) paints the whole tile with the tone's soft pair, its words the pair's
+`labelEnd`; its name and mark or poster carry its identity, and a tile with neither (a table of a floor plan) is named by its `name` alone.
+`groundTone` (`accent`, `success`, `warning`, `danger`) paints the whole tile with the tone's soft pair, its words the pair's
 foreground, in both families (`DataTableRow.groundTone` is the row's twin); the badge still carries the status in words. A marked tile
 shorter than its row keeps its rows at the top (`align-content: start`) instead of stretching them to the row's height.
-`poster.bleed: true` (0.47.2) makes the poster a full-bleed cover: flush to the card's top and both side edges, clipped by the card's top corners
+`poster.bleed: true` makes the poster a full-bleed cover: flush to the card's top and both side edges, clipped by the card's top corners
 (the card clips; the picture has no radius of its own), while the name, badges, facts and figure keep the card's padding below it. It holds
 for every `aspect` and `fit`, the absence frame and the loading skeleton, and in both families (Offset Pop: the picture sits inside the outline,
 flush to it, with the outline's weight drawn under it).
@@ -169,15 +169,9 @@ Each item accepts `isDisabled`, forwarded to HeroUI's tab: unavailable tabs reta
 are skipped by keyboard traversal and cannot select or navigate their `href`. The controlled `selectedKey` still
 owns the visible panel, including when every item is temporarily disabled.
 
-### SegmentedControl
-
-The value role is one value inside a form or a toolbar (audience, density, a tool), not navigation, and its renderer is a
-dropdown `Select`, whatever the weight of the options (a plan level, an amount); a `RadioGroup` when each option needs a sentence.
-The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch; a one-value choice in a form or toolbar is a `Select`.
-
 ### Removable filter chips
 
-Peer values that filter a collection which stays in place are `Tabs kind="filter"` (`FilterButtonGroup` was deleted in 0.55.0). A removable group may end with `onClearAll` and `clearAllLabel` (0.47.1): a "Clear all" text action
+Peer values that filter a collection which stays in place are `Tabs kind="filter"`. A removable group may end with `onClearAll` and `clearAllLabel`: a "Clear all" text action
 after the last chip, for a row of active filter values under a toolbar; it wraps under the chips when the row is full and leaves with
 the last chip.
 
@@ -265,7 +259,7 @@ removes the title link.
 ### Link
 
 `Link` is a native destination carried by text or one image. An inline text link takes the size of the text around it
-(`size` defaults to `inherit`) and the exact primary colour; the external glyph `↗` ends an EXTERNAL destination (`kind="external"`) only (0.37.14): an internal text link has none and keeps the accent
+(`size` defaults to `inherit`) and the exact primary colour; the external glyph `↗` ends an EXTERNAL destination (`kind="external"`) only: an internal text link has none and keeps the accent
 colour, and `variant="plain"` (a navigation row's title, a shell brand) has no colour, underline or glyph because the component around it is the affordance. Its text form takes string `children`; its media form
 takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
 The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
@@ -283,7 +277,7 @@ portions are equal; a featured focus stays between symmetric support tracks. The
 keep one reading column when constrained (a `main-rail` takes the region gap); independent sections follow the wide workspace viewport, while a pair
 and featured layout answer their own container. Choose by the content relation, never the desired breakpoint.
 
-`Grid kind="cards"` takes `size` (0.47.1): `card` (the default) holds a track floor of 16rem, so a phone shows one card per row; `tile` lowers
+`Grid kind="cards"` takes `size`: `card` (the default) holds a track floor of 16rem, so a phone shows one card per row; `tile` lowers
 the floor to 9rem for small peers (a product, a table), so two stand side by side at 390 and a wide page fits as many as `columns` allows.
 The floor narrows the track, never the controls inside it (their touch floors stay).
 
@@ -296,7 +290,7 @@ content, empty states and actions remain inside their day regions. `Calendar` re
 
 ### Marketing motion
 
-Four pieces give a public page its movement, over one set of ramps (0.47.3): `Reveal`, `Marquee`, `CountUp` and `StickyStory`. The ramps are Common's
+Four pieces give a public page its movement, over one set of ramps: `Reveal`, `Marquee`, `CountUp` and `StickyStory`. The ramps are Common's
 (`--grammar-motion-ease-out`, `-ease-in-out`, `-duration-base`, `-duration-reveal`, `-duration-count`, `-stagger`, `-distance-reveal`, `-distance-step`,
 `--grammar-loop-marquee`, `-compact`, `--grammar-story-pin-top`, `-height`); a family overrides a step on its own root (Offset Pop settles a rise with a small overshoot and
 reaches further), and no piece, and no app, writes a duration or a distance of its own. Every piece draws its static, complete content first and adds movement only under
@@ -367,10 +361,10 @@ props. Its `kind="receipt"` has `sent`, `delivered` and `seen` facts, with typed
 marks; readers retain accessible names and localized overflow copy. Its announcement is polite and atomic.
 
 A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
-bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`, 0.37.31): the thread is the page tone (`--background`),
+bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`): the thread is the page tone (`--background`),
 the reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`), and the
 other party's (incoming, and every `MessageCard`) is one look on every host, the 1px `--border` edge with no fill and no shadow
-(`DNA-COMMON-CHAT-INCOMING-OUTLINE`, 0.52.0). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`, 0.37.33):
+(`DNA-COMMON-CHAT-INCOMING-OUTLINE`). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`):
 `Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
 is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
 bubble's foreground so it reads on either face. The replies a card offers are `Section kind="list" layout="suggestions"`. The
@@ -475,17 +469,16 @@ its title and count, answers for its own empty state, and a loading board keeps 
 `ScheduleGrid` places entries by row and column (a week by hour, people by day, a month by week) in a real table with a
 caption, column headings and a heading per row; below 48rem of its own width it reads as an agenda in which each entry names
 its column and empty cells are not drawn, and a loading grid keeps its headings and draws shimmering entries. Bars, lines and
-sparklines are the charts extension's (`@starci/grammar/core/ext/recharts`); core draws no chart of its own (0.55.0).
+sparklines are the charts extension's (`@starci/grammar/core/ext/recharts`); core draws no chart of its own.
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
-`kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a grey chip, an attention count (`isAttention`) on the accent soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `Tabs appearance="primary"` switches a mode or period; a `Select` chooses a value
-of a form or a toolbar, since a tablist is not a form field; a date is the `Calendar` and a time a `Select` of the free times; actions are separate `Button`s or a
-`DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` were deleted in 0.55.0, and R380 still names the replacement in product source.
+`kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a grey chip, an attention count (`isAttention`) on the accent soft pair, a strip wider than its row scrolls sideways with the selected tab always visible); a `Select` or `RadioGroup` chooses a value
+of a form, since a tablist is not a form field; a date is the `Calendar` and a time a `Select` of its free times; actions are separate `Button`s or a
+`DropdownMenu`.
 
 The `Calendar` takes a controlled `value`, `minValue` and `maxValue`, `isDateUnavailable` with an `unavailableReason` (a full day says so
 on hover and to a screen reader), a `locale` (and so the week's first day: Monday for Vietnamese) with `firstDayOfWeek` to override,
-and `isLoading` (header and cells kept, numbers as geometry, nothing focusable). A taken time is a disabled option of the time
-`Select`, its reason in the option's `description`.
+and `isLoading` (header and cells kept, numbers as geometry, nothing focusable). A taken time is a disabled option of the `Select` of times, with a `disabledReason`.
 
 ### Freestyle
 

@@ -38,7 +38,7 @@ verb standard") are how the CLI holds this table where it holds it.
 **A lane or agent worktree is removed only by `starci lane remove <worktree-path> [--discard] [--execute]`** (`cli/src/harness/worktree-remove.ts`;
 a dry run is the default). Never `git worktree remove --force`, `rmdir /S`, `robocopy` or a recursive delete on one by hand: on Windows npm
 makes directory junctions (`node_modules/@scope/pkg` to a workspace folder, a node_modules to another install) that git, robocopy and
-`rmdir /S` follow, and on 2026-11-20 one such removal emptied another lane's node_modules and deleted 2533 tracked files elsewhere. The verb
+`rmdir /S` follow, so one such removal can empty another lane's node_modules and delete tracked files elsewhere. The verb
 refuses the main checkout, an unregistered folder and tracked changes (`--discard` throws them away, named), takes a removal lock that
 `slot run npm`, every heavy install or build command and the install cache respect (`WORKTREE_REMOVING`), lists every junction and symlink at
 any depth with lstat without entering one, unlinks each as a link and verifies its target survived, refuses if one remains, then runs

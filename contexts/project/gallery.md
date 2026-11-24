@@ -30,7 +30,7 @@ gallery/
    `README.md`, `vite.config.js`): `starci app sync --execute`
    renders them (slot `app.gallery`, templates in `packages/hfs/templates/app/gallery`), `package.json` pins `@starci/gallery`
    at the version of the canon pins, `starci app scaffold` writes them with
-   the rest of a new app, and a hand edit is `HFS_MANAGED_FILE_DRIFT`. The lockfile `gallery/package-lock.json` is the app's. **One truth since hfs 6.13.33: the thin gallery has no `gallery/src`.** Sync never writes it, `app.gallery` and `HFS_APP_GALLERY_MISSING` never demand it, and `starci app sync --execute` deletes the three managed files (`main.js`, `explain.js`, `style.css`) an earlier render left there; a gallery that demands `gallery/src` or a sync that writes it is an older CLI than the app pins (`HFS_CLI_HFS_SKEW`, [cli/README.md](../../cli/README.md#the-starci-cli)).
+   the rest of a new app, and a hand edit is `HFS_MANAGED_FILE_DRIFT`. The lockfile `gallery/package-lock.json` is the app's. **The thin gallery has no `gallery/src`.** Sync never writes it and `app.gallery` and `HFS_APP_GALLERY_MISSING` never demand it.
 2. **What goes in it.** Every round that changes a screen (a UI fix, a redesign, a new screen) saves the shots of every screen it
    touches at widths 1440 (desktop) and 390 (phone), the whole screen, and updates that screen's `explain.md`. A round
    that touches no screen saves none. The gallery holds the current state only: a before and after comparison belongs in the
@@ -55,12 +55,10 @@ gallery/
    the tunnel serves are the one declaration. `STACK_LOCAL_TUNNEL_GALLERY` refuses the route of an app with no gallery.
 5. **The PNGs are never committed.** They are local evidence of a round, ignored by the managed `.gitignore` block
    (`gallery/pages/**/*.png`); the gallery app, every `explain.md`, every `links.json` and `flows.json` are source and are committed.
-6. **A new app and an existing one.** A new app has the gallery from its scaffold. An existing app gets it from the next
-   `starci app sync --execute` after the release that carries this rule, then installs once (`npm install` in `gallery/`, or
+6. **A new app and an existing one.** A new app has the gallery from its scaffold. An existing app gets it from `starci app sync --execute`,
+   then installs once (`npm install` in `gallery/`, or
    `starci app stack up`) and commits `gallery/` with its lockfile. An app that declares no `local.basePort` declares one first
-   (PROJECT-STACKS-10): the gallery port derives from it. An app whose shots still sit in the earlier `gallery/shots/<area>/`
-   layout moves each `<page>__<width>__after.png` to `pages/<area>/<page>/<width>.png`, drops every `__before` shot and every
-   width other than the two, and writes the screen's `explain.md`.
+   (PROJECT-STACKS-10): the gallery port derives from it.
 7. **Its language is the app's.** The managed files render their words (the title and the README, and the `locale` that `vite.config.js`
    hands to `@starci/gallery`, which draws the search box, the empty state, the bug labels, the tabs and the status names) in the app's default locale: the `DEFAULT_LOCALE` its i18n routing source declares
    (`fe/apps/<app>/src/modules/i18n/routing.ts`). `vi`
@@ -231,8 +229,8 @@ the gate judges.
    ```json
    "premium/qr-payment": { "status": "approved", "approvedAt": "2026-11-11T09:00:00+07:00", "board": "https://claude.ai/artifact/…", "pending": { "reason": "waits on the QR payment API" } }
    ```
-   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below) and by the UI Audit (PROJECT-GALLERY-8 item 4), the gallery shows it as
-   `Chờ: <reason>` (`pending: <reason>` in English) instead of hiding it, and its folder in `gallery/pages` is no longer needed to keep the note (the reason is the
+   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below) and by the UI Audit (PROJECT-GALLERY-8 item 3), the gallery shows it as
+   `Chờ: <reason>` (`pending: <reason>` in English) instead of hiding it, and it needs no folder in `gallery/pages` (the reason is the
    note). It is not a silent bypass: `reason` is required and non-empty, and only `drafted` or `approved` may carry it (a `built` page is judged like any
    other); every run lists each pending screen with its reason, and a pending screen whose shots exist in the work tree is nudged to drop `pending`
    (`HFS_APP_GALLERY_DESIGN_PENDING`, level info, never failing). A board section (PROJECT-GALLERY-9) carries the same `pending: { reason }`.
@@ -274,7 +272,7 @@ same order until it adopts a board.
 1. **Board first, approved once.** Draw or revise the app's board (`gallery/board`, the `design` op): one task per app or per board revision
    draws every screen it changes in every named state at 1440 and 390, from the Grammar's components and the app's tokens, raises `revision` and
    drops `approvedAt`. The owner reviews the revision on the board (the gallery's `#/board`) and approves it once, in the owner's own words; only
-   then does the lead set `approvedAt` (a full ISO timestamp with its zone). Screen by screen approval is gone: the revision is the unit. In an app
+   then does the lead set `approvedAt` (a full ISO timestamp with its zone). The revision is the unit of approval, never one screen. In an app
    with a canvas, the screen's page is drawn with `/claude-design`, set `drafted` and approved the same way into `approved` (PROJECT-GALLERY-6 item 5).
 2. **Then the code, copying the board.** The code lane builds the screens of the approved revision, each state with the components its section
    draws; a section's `planned` mark goes once its route is coded. Code written before the approval is a draft: it is redone from the approved
@@ -285,12 +283,12 @@ same order until it adopts a board.
    workspace Hiền Mai Spa; StarCi Next: real lesson content), at 1440 and 390, in every state the data can reach:
    `starci app look --env dev --paths <route,…>` (it signs in as the app's seed owner as `gallery/look.json` declares, shoots the running dev
    stack and never starts a server). Judge each shot with the existing lenses **tech-leak**, **truth** and **business** of PROJECT-GALLERY-8
-   item 3, plus three checks: the rows of a list or card share one left edge; buttons are 40 (md) or 32 (sm), as
+   item 2, plus three checks: the rows of a list or card share one left edge; buttons are 40 (md) or 32 (sm), as
    [../ui/presentation.md](../ui/presentation.md) P7 and PHONE-1 say; every truncation is deliberate (an ellipsis on a long name, never a cut
    label, a clipped chip or a raw `key: value; …` string). Fix, land, sync and look again until it is clean. The shots and their `index.json`
    go in the lane's evidence bundle (`.starciwork/evidence/look/`, or `--out`) and are what the owner sees first. It is a process step held by
    the lane's report ([../authority/lanes.md](../authority/lanes.md) "Processes and cleanup"), not a blocking check.
-3. **Then the gallery, shot from the code.** Every screen the change reaches (PROJECT-GALLERY-8 item 3) is shot at 1440 and 390 into
+3. **Then the gallery, shot from the code.** Every screen the change reaches (PROJECT-GALLERY-8 item 2) is shot at 1440 and 390 into
    `gallery/pages/<area>/<screen>/` with its `screen.yaml` (PROJECT-GALLERY-1 item 2, PROJECT-GALLERY-5); the shots are generated from the running
    code, never drawn.
 4. **Finally one review of the whole gallery.** The drawing is a decision of direction, and grammar compliance alone is not enough: the screens
@@ -301,7 +299,7 @@ same order until it adopts a board.
      Shopify or Linear; a form, a detail, a dashboard each with their own): what they put in one row, what they leave out, where the action sits.
    - **Round 2, the 390 frames and the states.** Check the phone frames and the empty, loading and error states (and no-match, first-visit,
      editing where a page has them).
-   Each round fills the ten lenses of every touched screen's `screen.yaml` audit (PROJECT-GALLERY-8 item 3); the fixes of a round land in the
+   Each round fills the ten lenses of every touched screen's `screen.yaml` audit (PROJECT-GALLERY-8 item 2); the fixes of a round land in the
    code and the shots are taken again before the next. When both rounds are done the board (or the canvas page) is synced to the code.
    **The record** is `considered` in each touched `screen.yaml` (`## Phương án đã cân nhắc` in an `explain.md` not migrated yet, and the canvas
    page's note): each option weighed, including the ones the builder and the drawing chose, with why it was chosen or rejected. An option that was
@@ -327,33 +325,25 @@ same order until it adopts a board.
 
 ## PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes
 
-The owner's decision of 2026-11-19: a screen is described by one structured file, and a changed screen is audited by an agent other than its builder.
-The owner's rulings of 2026-11-21 (train 188). First: "Screen.yaml mang tính tương đối dc k chỉ được dùng để check lại như thanh tra. Yêu cầu có screen.yaml chứ ko can thiệp vào ci,
-tức là phải audit mới hợp lý còn kết quả ntn kệ"; then: "Tức là chỉ còn hfs check và bỏ gate audit hiểu k, k cần cảnh báo. Sau này làm có bằng chứng sửa dễ hơn"; and the version that
-wins: "lần đầu ghi screen.yaml thì phải audit đến pass ghi bằng chứng. sau này sửa code trang nào hay k ưng trang nào chỉ đối chiếu với screen.yaml -> và có thể lan rộng ra để sửa hàng
-loạt nhưng lúc đó đủ luận điểm phản biện với thầy". So a screen's first audit cycle must reach a pass, and that pass is its baseline evidence. From then on nothing about its audit blocks or
-warns: drift since the pass and later cycles are the reference a later fix compares against, and a mass fix drawn from that comparison is argued with the owner first.
+A screen is described by one structured file, and a changed screen is audited by an agent other than its builder. A screen's first audit cycle must
+reach a pass, and that pass is its baseline evidence. From then on nothing about its audit blocks or warns: drift since the pass and later cycles are the reference a later fix compares against, and a mass fix drawn from that comparison is argued with the owner first.
 
-1. **`screen.yaml` replaces `explain.md` and `audit.json`.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`, `app` (optional: the front-end app, needed only when two apps serve the route),
+1. **`screen.yaml` is the screen's one file.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`, `app` (optional: the front-end app, needed only when two apps serve the route),
    `area`, `summary` (one to three sentences), `code` (the source paths the screen is built from, relative to the front-end app's `src/`), `shots` (`"1440"` and `"390"`, each `{ file, sha256 }`,
    `sha256` null before the first shot; a state shot `<state>-<width>`, such as `empty-1440`, is a further key and a further PNG), `sections` (top to bottom as the user reads:
-   `id` in kebab case, `title`, `why` required; `shows`, `actions`, `states` mapping a state to its text or null, `needsApi` listing the "cần API" items, and the optional `law` and `grammar` lines a
-   migrated explain.md carries), `considered` (`option`, `chosen`, `why` of each option weighed) and `audit` (item 3; `null` for a screen not audited yet). The values are Vietnamese prose, the keys English.
-   The folder holds `screen.yaml`, the shots and `links.json`. The earlier `explain.md` is still read while a screen is not migrated; a folder holding both is `HFS_APP_GALLERY_SCREEN_FILE`.
+   `id` in kebab case, `title`, `why` required; `shows`, `actions`, `states` mapping a state to its text or null, `needsApi` listing the "cần API" items, and the optional `law` and `grammar` lines), `considered` (`option`, `chosen`, `why` of each option weighed) and `audit` (item 2; `null` for a screen not audited yet). The values are Vietnamese prose, the keys English.
+   The folder holds `screen.yaml`, the shots and `links.json`.
    Approval is not here: it stays in `design.json` (PROJECT-GALLERY-6) and only the owner's words set it. A screen.yaml that is not this shape is `HFS_APP_GALLERY_SCREEN_INVALID`
    (R395: sections without a `why`, a screen or area that is not the folder's, a shot that is no width, a sha that is not a lowercase sha256). The gallery app renders the file: summary, code, sections,
    the options considered and the audit table (rounds by lenses).
-2. **`starci gallery migrate-explain [--execute]`** turns every `explain.md` into a `screen.yaml` (regions become sections with their `Vì sao`, `Luật` and `Grammar`, the options section becomes
-   `considered`, the `code` is read from the route's source, the shot sha256 from the PNGs on disk) with `audit: null`, and deletes the explain.md. A dry run lists what it would do; a screen it cannot convert (no route, no title) is
-   skipped and named.
-3. **The UI audit.** A touched screen is audited by an agent other than its builder until its first cycle passes (item 4). A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (`packages/hfs/cache/screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`: a shared composite, a hook, a module, a workspace package, the i18n keys its sources read; a barrel is transparent, a `renders: false` slot marks nothing), or when its audited screen.yaml changed. The audit holds
+2. **The UI audit.** A touched screen is audited by an agent other than its builder until its first cycle passes (item 3). A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (`packages/hfs/cache/screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`: a shared composite, a hook, a module, a workspace package, the i18n keys its sources read; a barrel is transparent, a `renders: false` slot marks nothing), or when its audited screen.yaml changed. The audit holds
    `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the ten `lenses`: the seven core `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth` and the three content lenses `business`, `hand-composed`, `tech-leak` (a round written before the content lenses holds the seven core ones and stays valid), each
    `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`, `at` an ISO timestamp with its zone), `escalate`, and `baseline` (`{ at, rounds }`: the first pass, written by `starci audit run`, kept by every later cycle). The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
    rules, with an explicit checklist read on the full-resolution crops of the first viewport and the header at 390 and 1440 (never on the shrunk full-page shot): control height 40 (an `sm` control only nested in an item or a dense toolbar, never in a header), no wrapped label, overflow goes to the menu (`TopBar fit`; ui/presentation.md PHONE-1..4; `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE`, `DNA-COMMON-HEADER-NO-OVERFLOW`); **actionable** every value shows how to change it; **live** running, done, waiting and failed are visible with an icon and motion; **words** no mixed English or raw ids, one term per concept; **states** empty,
    loading, error and no-permission at 1440 and 390; **truth** the data is real or marked "cần API"; **business** which of the 2-3 owner questions the screen's screen.yaml states each region answers, with no run counts, trigger kinds, provider keys, raw codes or step chains on a summary; **hand-composed** a known situation ([../ui/situations.md](../ui/situations.md)) built from primitives instead of its Grammar component (a summary card from Text and Stack, a hand-drawn status circle); **tech-leak** the audience rule of [../ui/content.md](../ui/content.md) (a business app renders no raw code, English engine text, internal id or jargon outside a collapsed "Chi tiết kỹ thuật"). The audit loops, each round running all ten lenses, until every lens of the last round is `pass` or `fixed`:
    at least 2 rounds, at most 4 a cycle. Still `open` after round 4 is written to `escalate` ("needs owner: <why>"). A screen looked at again after its round 4 (a fix, a reshoot)
-   opens a new cycle with `starci audit cycle` (item 5); `audit run` past a cycle's round 4 records nothing, so a reshot image never inherits round 4's verdicts.
-4. **The gate is "UI Audit" until the first pass** (`starci app check --gate uiaudit`, in every whole run and the pre-push hook; a mandatory gate no app switches off). It judges the touched
+   opens a new cycle with `starci audit cycle` (item 4); `audit run` past a cycle's round 4 records nothing, so a reshot image never inherits round 4's verdicts.
+3. **The gate is "UI Audit" until the first pass** (`starci app check --gate uiaudit`, in every whole run and the pre-push hook; a mandatory gate no app switches off). It judges the touched
    screens only; every other screen is grandfathered and never read, and a screen `design.json` marks `pending` (PROJECT-GALLERY-6 item 9) is skipped and named on the summary line. A screen
    whose audit has passed once (`baseline`, or current rounds that pass) is never judged again. Until then its findings are `localOnly` (a warning in `--env local`, an error in `--env prod`):
    - `UI_AUDIT_MISSING`: a touched screen has `audit: null` or no screen.yaml;
@@ -366,13 +356,13 @@ warns: drift since the pass and later cycles are the reference a later fix compa
 
    A malformed audit block (a lens missing from a round, a verdict outside the three, notes missing, rounds not numbered 1.., an `at` that is not ISO with its zone, a bad `baseline`) is
    `HFS_APP_GALLERY_SCREEN_INVALID`, judged for every screen in the hfs family.
-5. **`starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`** prepares a round: it takes the sha256 of `1440.png` and `390.png`, writes the next round into screen.yaml as seven
+4. **`starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`** prepares a round: it takes the sha256 of `1440.png` and `390.png`, writes the next round into screen.yaml as seven
    open lenses, writes full-resolution CROPS beside the shots (`1440-first.png`, `1440-header.png`, `390-first.png`, `390-header.png`: the first viewport and the header region, cut at the shot's own pixel density, never scaled; a screen folder may hold them) and prints the brief an auditor agent reads (the crops first, then the shots at full size, the seven lenses with the layout lens's checklist, the laws: PROJECT-GALLERY-7, the DNA laws of the Grammar contract, ui-on-grammar, the owner rules).
    **The harness never calls a model.** The auditor is a separate agent (a subagent or another lane) given the brief; it fills the round, the builder fixes and shoots again, and `run` opens the next round.
    `starci audit cycle <area>/<screen> --reason <why>` closes the current cycle into `considered` (one chosen entry: the reason, the rounds and their dates, the last verdict of each lens,
    builder and auditor; the rounds stay in git history) and starts an empty audit, so the next `starci audit run` prepares round 1 of the new cycle.
    `starci audit status [--json]` lists the screens with an audit missing, pending, open, stale or past its round 4.
-6. **A UI change ends** with the one review of PROJECT-GALLERY-7 item 4: shoot every touched screen (1440 and 390) → `starci audit run` on each → the reviewer fills the round of all of them → the builder fixes → shoot → the next round, until round 2 or later has no open lens on any → sync the board (or the canvas) →
+5. **A UI change ends** with the one review of PROJECT-GALLERY-7 item 4: shoot every touched screen (1440 and 390) → `starci audit run` on each → the reviewer fills the round of all of them → the builder fixes → shoot → the next round, until round 2 or later has no open lens on any → sync the board (or the canvas) →
    land. The touched set is what the review covers; its record of options is `considered`.
 
 **Enforced by** `packages/hfs/cache/uiaudit-family.mts` and `runtime/scripts/hfs/screen-yaml.mts` (the UI Audit gate until the first pass, the schema, the round skeleton, the baseline and the new cycle), `rules/gallery.mts` (`HFS_APP_GALLERY_SCREEN_INVALID`), `uiaudit/cli.mts` (`starci audit run|cycle|status`, `starci gallery`).
@@ -381,7 +371,7 @@ warns: drift since the pass and later cycles are the reference a later fix compa
 
 The board is the app's one drawing: every screen of the app, in every named state, at 1440 and 390, composed only of the app's Grammar and
 its tokens, so that what the owner approves is already what the code renders. The code copies it (PROJECT-GALLERY-7 item 2); the gallery's
-shots come from the code. It replaces drawing screen by screen.
+shots come from the code.
 
 1. **Where it lives.** `gallery/board/` (slot `app.gallery-board`), committed:
    ```
@@ -437,8 +427,7 @@ code matches its section, is held by the `design` op's `anchors-cited` and by th
 
 ## PROJECT-GALLERY-10 A screen's lane brief maps it to the Grammar first, and its screen.yaml waits for the owner's OK
 
-The owner's rulings of 2026-11-22 (t195, the content layer): "ok h update .claude lại" and "screen phải duyệt kĩ". A screen is approved by its
-look, slowly, and the brief that builds it names the Grammar before any code.
+A screen is approved by its look, slowly, and the brief that builds it names the Grammar before any code.
 
 1. **Before any UI code, the lane brief lists the screen's questions and its component map.** The brief that starts a UI lane states the 2 or
    3 owner questions the screen answers (the same `questions` its `screen.yaml` will carry; [../ui/content.md](../ui/content.md) CONTENT-1)
@@ -448,7 +437,7 @@ look, slowly, and the brief that builds it names the Grammar before any code.
 2. **The order of a screen.** land → dev test → a QA polish pass → the owner's OK on the look → `screen.yaml`. The `screen.yaml` (and its
    audit) is written only AFTER the owner approves the screen as it renders ("screen phải duyệt kĩ"); a `screen.yaml` written before that
    is a draft the lane redoes once the owner has looked. The first audit cycle (PROJECT-GALLERY-8) then runs on the approved shots.
-3. **What the audit adds.** The three content lenses of PROJECT-GALLERY-8 item 3 judge what the brief promised: **business** (each region
+3. **What the audit adds.** The three content lenses of PROJECT-GALLERY-8 item 2 judge what the brief promised: **business** (each region
    answers one of the questions, no tech on a summary), **hand-composed** (no known situation built from primitives, no hand-drawn status
    circle) and **tech-leak** (the app's `audience` rule).
 

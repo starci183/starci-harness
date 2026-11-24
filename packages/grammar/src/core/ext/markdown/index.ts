@@ -3,7 +3,7 @@
  * compare split and the diagram key. `@starci/grammar/core/ext/markdown/react` draws, `@starci/grammar/core/ext/markdown/server` highlights with Shiki on the server and
  * `@starci/grammar/core/ext/markdown/prerender` turns mermaid into SVG at import time.
  */
-export { parse, plainText, DIRECTIVE_NAMES, type ParseOptions } from "./parse.js"
+export { parse, plainText, DIRECTIVE_NAMES } from "./parse.js"
 export { PROFILES, PROFILE_NAMES, INLINE_CODE_MAX, profileOf, type Profile } from "./profiles.js"
 export { validate, validateTree, isValid } from "./validate.js"
 export { compareSegments, type CompareSegment } from "./compare.js"

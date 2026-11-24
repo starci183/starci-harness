@@ -1,4 +1,4 @@
-// A lander batch merges lanes with `git merge`; two lanes each appending a bullet under "## Unreleased" of a changelog must merge with both bullets kept
+// A lane merges origin/dev with `git merge`; two lanes each appending a bullet under "## Unreleased" of a changelog must merge with both bullets kept
 // (root .gitattributes: CHANGELOG.md and packages/*/CHANGELOG.md use the union merge).
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"

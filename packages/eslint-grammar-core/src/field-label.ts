@@ -5,7 +5,7 @@ import { FORM_CONTROLS, attributeOf, elementNameOf, grammarName, nameOf, rendere
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
- * The field label law (owner, 2026-11-09, FIELD-LABEL): a control is labelled by its own `label` prop. The Field
+ * The field label law (FIELD-LABEL): a control is labelled by its own `label` prop. The Field
  * contract spaces label to control 8, control to help 4, and field to field 24 (the Form or the field stack sets that
  * last one). A `Text` placed beside the control as its label is spaced by whoever placed it, and the rhythm drifts.
  *

@@ -20,6 +20,7 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { activeProfile, familyModes, profileNotices } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { matchesBranch, profileFor, profilePolicy, readBranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
+import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-workflow.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 import { renderTargets } from '../sync/index.mjs';
@@ -383,7 +384,7 @@ test('CI: a push to dev runs the reduced CI (sonar and codecov report, lint thro
   const refused = ciWorkflowCommands({ files: [], read: read(declaration('branches:\n  main:\n    gates:\n      lint: report\n')) });
   assert.deepEqual([refused['pushProfileBranches'], refused['planBranchProfiles']], ['', ''], 'a refused profile renders nothing');
   for (const edition of ['lite'] as const) {
-    const source = { files: [], read: read(declaration(DEV)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
+    const source = { files: [], read: read(declaration(DEV)), quality: { ...qualityServices({}), sonar: { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } }, stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const ci: Doc = parseWorkflow(text);
     assert.deepEqual(ci.on.push.branches, ['main', 'release/candidate-*', 'dev'], `a push to dev starts CI`);

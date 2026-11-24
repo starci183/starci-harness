@@ -132,8 +132,8 @@ export const refusedKeyFindings = (text: string, rules: RefusalRules): string[] 
 
 const HUNK_HEADER =/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
-/** True for the path of a sops envelope a repository commits: a legacy `.enc`, or an app member `.enc.yaml`. */
-export const isSealedPath = (file: string): boolean => file.endsWith(".enc") || file.endsWith(".enc.yaml")
+/** True for the path of a sops envelope a repository commits: an app member `.enc.yaml`. */
+export const isSealedPath = (file: string): boolean => file.endsWith(".enc.yaml")
 
 const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => isSealedPath(file) && isSopsEnvelope(readFile(file) ?? "")
 

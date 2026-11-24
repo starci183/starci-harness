@@ -86,7 +86,7 @@ export function requireAgeIdentity(ctx: Pick<StackContext, 'sops'>, _config: Dep
 }
 
 /**
- * Opens one sealed member (`<secretsDir>/<member>.enc.yaml`, or a legacy `.enc`) into a { KEY: value } map. A failure is refused
+ * Opens one sealed member (`<secretsDir>/<member>.enc.yaml`) into a { KEY: value } map. A failure is refused
  * naming the member and the seam's reason (its format, recipients and the identity tried); no value.
  */
 export function openMember(ctx: Pick<StackContext, 'sops'>, config: Pick<DeployConfig, 'secretsDir'>, member: string): SealedMap {

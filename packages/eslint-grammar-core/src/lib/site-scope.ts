@@ -2,12 +2,11 @@ import { hfsOf } from "@starci/eslint-canon-fe/lib/hfs.mjs"
 import type { ReaderContext } from "./types.ts"
 
 /**
- * THE PUBLIC SITE (0.55.0). No hfs slot marks an app's public marketing site yet; the proposed one is `fe.site`, and a file it owns is
+ * THE PUBLIC SITE. No hfs slot marks an app's public marketing site yet; the proposed one is `fe.site`, and a file it owns is
  * the site at once. Until it exists the site is read from the slots the manifest already has, through `classify`, never a raw path test:
  *   - an owner of `fe.components` or `fe.feature` named `Site…` or `Marketing…` (its `<name>` binding: `SiteHead`, `SiteBrandPage`);
  *   - a route file of `fe.route` under the `(site)` or `(marketing)` route group (FE-CSS-2 names the marketing `(site)` group);
  *   - a capability of `fe.modules` named `site…` or `marketing…` (`modules/site-home`).
- * The codemod v0550 mirrors this as `isSitePath` (packages/grammar/codemods/v0550).
  */
 export const SITE_SLOT = "fe.site"
 

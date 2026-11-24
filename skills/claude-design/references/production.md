@@ -102,7 +102,7 @@ PROJECT-GALLERY-6).
 
 ## The UI audit: the critique above, as a gated loop until the first pass
 
-Since 2026-11-19 the final critique is the UI audit, recorded in the screen's `screen.yaml` (one file replaces `explain.md` and `audit.json`) and judged by the "UI Audit" gate (`starci app check --gate uiaudit`) until its first cycle passes. That pass is the screen's baseline (owner, 2026-11-21): after it, drift and later cycles are evidence to compare against, never a finding.
+The final critique is the UI audit, recorded in the screen's `screen.yaml` and judged by the "UI Audit" gate (`starci app check --gate uiaudit`) until its first cycle passes. That pass is the screen's baseline: after it, drift and later cycles are evidence to compare against, never a finding.
 
 1. Shoot the screen at 1440 and 390.
 2. `starci audit run <area>/<screen> --builder <your agent id>`: it records the shot sha256 and writes round 1 as seven open lenses (order, layout, actionable, live, words, states, truth) into `screen.yaml`, and prints the brief.

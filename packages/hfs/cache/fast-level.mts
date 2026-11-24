@@ -1,5 +1,4 @@
-// fast-level.mts - `starci app check --level dev`, the FAST level of the two-level gate (contexts/project/cicd.md "Gate levels"; owner 2026-11-22:
-// "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"). A lane landing on dev, a push of dev and the batch lander's gate on dev run
+// fast-level.mts - `starci app check --level dev`, the FAST level of the two-level gate (contexts/project/cicd.md "Gate levels"). A lane landing on dev and a push of dev run
 // only what breaks dev for everyone at once: the type check (the packages it reads built and the app's codegen first, as the types family does), the lane's own
 // business tests (the unit specs its diff adds or touches and the specs whose closure reaches a changed file, Jest's --findRelatedTests by the closure resolver the
 // test family keys on), the database step and the owner's design approval of a changed screen (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, a product decision, diff-only).

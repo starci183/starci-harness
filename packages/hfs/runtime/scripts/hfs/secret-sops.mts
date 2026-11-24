@@ -140,7 +140,7 @@ function identityMissing(
 function unruledMessage(repoRoot: string, file: string): string {
   const relative = path.relative(repoRoot, file).split(path.sep).join("/");
   const environment = /^\.starcistacks\/([^/]+)\//.exec(relative)?.[1] ?? "<env>";
-  return `SECRET_SOPS_RULE_MISSING: no creation rule of .sops.yaml matches ${relative} (a rule written for the legacy .enc spelling does not match .enc.yaml), so sops cannot seal it; run starci app secret init --env ${environment}, which writes the per-environment rules, or starci app codemod sops-rules --execute to migrate the file`;
+  return `SECRET_SOPS_RULE_MISSING: no creation rule of .sops.yaml matches ${relative} (a rule that ends in .enc$ does not match .enc.yaml), so sops cannot seal it; run starci app secret init --env ${environment}, which writes the per-environment rules`;
 }
 
 function sealRecipients(

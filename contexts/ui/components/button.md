@@ -22,8 +22,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of border `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) |
 | text | any other command or destination, and always the view's primary | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
-Choice `button.choose.variant`: which of the THREE looks the action takes (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có
-tertiary nữa"). A Button and an IconButton take one prop, `variant`: `primary`, `border` (the default) or `danger`. There is no intent, step,
+Choice `button.choose.variant`: which of the THREE looks the action takes. A Button and an IconButton take one prop, `variant`: `primary`, `border` (the default) or `danger`. There is no intent, step,
 ghost, tertiary, secondary, flat or soft-danger look. The first row that applies wins; the label word never decides ("Cancel offer" is
 destructive, a "Cancel" that changes nothing is `border`).
 
@@ -33,7 +32,7 @@ destructive, a "Cancel" that changes nothing is `border`).
 | primary | the ONE main forward action of its region (a page head, a card, a review sheet): the next step of its one decision. At most one per region, and none when the region has no clear main action | `variant="primary"` | `DNA-COMMON-ONE-PRIMARY-PER-REGION` (one per region), `DNA-COMMON-ONE-ACCENT-FILL`; lint `single-commit-per-render`, `no-commit-in-collection-item` |
 | border | every secondary action: opening another view, cancel, close, back, a retry, a negative outcome of the decision ("Not won", "Decline"), the other option beside the primary, a command outside the decision, any per-item command, a section head action, a suggestion pill | `variant="border"` or no `variant` | judgement |
 
-**The CTA rule** (owner 2026-11-23): primary is the one main forward action of a region, border is every secondary action (a negative
+**The CTA rule**: primary is the one main forward action of a region, border is every secondary action (a negative
 outcome included), danger is the destructive one, confirmed and never filled. A destination to another page is a `Link`; a command is a Button.
 The gate is law `DNA-COMMON-ONE-PRIMARY-PER-REGION` ([contract.yaml](../../grammars/contract.yaml)): a region (a `SurfaceCard` or
 `EntitySummaryCard`, a `Section` or `PaneSection`, a `Dialog`, `AlertDialog` or `Drawer`, the page head `PageHeader`) holds at most one filled
@@ -44,7 +43,7 @@ The view (a page, or the open modal) has one primary (CTA-1; the red budget, [co
 view, every other call to action `border` or a `Link variant="plain"`; lint `single-commit-per-render` refuses a second `variant="primary"`, so a
 form never holds two): a second candidate falls to `border`, and peers of equal consequence get no primary at all. A text link is a `Link`,
 never a Button. Grammar maps the looks onto the vendor internally: primary is HeroUI `primary`, border is `outline`, danger is `danger`; the
-look no longer depends on where the Button sits (no placement map).
+look does not depend on where the Button sits.
 
 Choice `button.choose.width`: content, fill, fill-narrow or wrap.
 
@@ -67,7 +66,7 @@ Choice `button.choose.glyph`: what a button's glyph says. The first row that app
 
 The same words apply to an `EmptyNotice` action (`actionEndArrow`) and to a row or tile `ItemAction` (`endArrow`).
 
-**No typed arrows, anywhere** (owner 2026-11-22: "Không dùng ký tự mũi tên gõ tay; hướng đi là icon của Grammar"). No arrow character
+**No typed arrows, anywhere**. No arrow character
 (→ ← ↑ ↓ ↗ ⇒ ➜ ➔: the Unicode Arrows block U+2190-U+21FF, the dingbat arrows U+2794-U+27BF, the long arrows U+27F0-U+27FF, or ASCII `->`)
 appears in any rendered text: a label, a title, a description, a row, a chip, a toast. A direction is the Grammar's: `Button endArrow`,
 `Link`'s own arrow (`variant="head"`, the external icon of `kind="external"`) or the Grammar arrow or chevron icon, which slide on hover and
@@ -98,12 +97,12 @@ A Button label is one line (`white-space: nowrap`): a content-width button never
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never
 replace pending with disabled. A disabled button states why in `disabledReason` (`DNA-COMMON-DISABLED-REASON`). A
-disabled primary never stands in for an empty state (CTA-5). A disabled button is neutral whatever its variant (0.42.0):
+disabled primary never stands in for an empty state (CTA-5). A disabled button is neutral whatever its variant:
 a neutral fill (the foreground at 6% over the surface) and neutral words (40%) at full opacity, no hover or press change; a
 `border` button keeps no fill. A disabled primary is never an accent wash and a disabled danger never a pale red; pending and
 loading keep their look.
 
-The reason reaches every input (0.43.1). It is one description element the button and its trigger point at, so a screen
+The reason reaches every input. It is one description element the button and its trigger point at, so a screen
 reader hears it once. Where a pointer can hover it shows in the tooltip on hover and keyboard focus; where none can
 (`(hover: none)` or `(pointer: coarse)`, a touch phone), the tooltip never opens, so the same words stand as a muted helper
 line under the button (the field-description style, xs), and a row of buttons keeps its peers on one top edge. The input
@@ -119,7 +118,7 @@ so in its own content (the field's error or description, an `Alert`), not throug
 - **App author decides:** the label, the handler or `href`, the disabled reason, and which one action is the primary.
 
 ## Icon and size
-A `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): a leading icon (`startGlyph`, `startContent`) is for the primary at `md` or `lg`.
+A `sm` Button never carries an icon, not even the primary: a leading icon (`startGlyph`, `startContent`) is for the primary at `md` or `lg`.
 The type refuses a start icon at `size="sm"`. `Alert` and `EmptyNotice`
 draw their primary action at `md` when it carries an icon and at `sm` as text.
 
@@ -128,24 +127,23 @@ CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-gr
 `starci-fe/single-commit-per-render`, `no-commit-in-collection-item`, `control-height`. Codemod: `v0550` (the intents and vendor variants onto `variant`).
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
 
-## Icons inside Grammar are outline (0.37.4)
-Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, and the Alert status marks use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are replaced; the three-dot `more` glyph stays dots.
+## Icons inside Grammar are outline
+Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, and the Alert status marks use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are never drawn; the three-dot `more` glyph stays dots.
 
-## Icon measures (0.37.5)
+## Icon measures
 A Button with a start icon or an end arrow uses HeroUI v3's padding: 12 (sm) or 16 (md, lg) on both sides, gap 8, a -2px inline margin on the icon. Its icon follows its height (the icon size table, `packages/grammar/src/common/ramps.css`): 20 in a 40 (md) or 48 (lg) button at every width, 16 in a 32 (sm) one; an IconButton the same (20 at md, 16 at sm). Enforcer: story `Controls/Button icon sizes`.
 
-## App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
+## App bar custom buttons (TOPBAR-CUSTOM-BUTTONS)
 `TopBar customButtons` (`{ id, glyph, label, badge?, onPress | href }`) are the app's own round outline icon buttons (a bell, a help) in the end cluster BEFORE the fixed cluster (language dropdown, light/dark switch, account avatar), whose order never changes. They are border `IconButton`s like the language button, `label` is the accessible name, `badge` draws the attention dot only when work is waiting. At phone width (under 48rem) only the first stays in the bar; the others are the entries `useTopBarOverflowEntries()` returns (glyph + label) for the account menu to append to its own entries. Never a hand-built button beside the bar's cluster. A `WorkspaceShell` takes the bar through its `header` slot, so the prop passes through with the `TopBar` the app composes. Story `Surfaces/Top bar custom buttons`.
 
-## A Button on a band, and the head link's hit area (0.48.0)
+## A Button on a band, and the head link's hit area
 `Button ground="accent" | "inverse"` is a Button on a band that is not the page's ground: an `accent` band (the brand colour, a site's call-to-action band) or an `inverse` one (the foreground as the ground). The looks keep their rank and take the band's contrast: `primary` is filled with the band's foreground and inked in the band's colour, `border` and `danger` are the band's foreground as an outline and its ink, transparent inside. An app writes no class for it (`DNA-COMMON-BUTTON-GROUND-CONTRAST`: at least 4.5:1).
 
-`Button variant="primary" tone="accent" | "info" | "success" | "warning"` (0.55.0) is the primary SOLID in the tone's own colour, `--<tone>` with
-`--<tone>-foreground`, on the vendor's `primary` painted (HeroUI ships no success, warning or info variant); never an outline (owner: "button phải là
-màu tương ứng, ko phải border"). `tone` is only the colour of a primary, never a fourth look: the types refuse it on `border` and `danger`, and a
+`Button variant="primary" tone="accent" | "info" | "success" | "warning"` is the primary SOLID in the tone's own colour, `--<tone>` with
+`--<tone>-foreground`, on the vendor's `primary` painted (HeroUI ships no success, warning or info variant); never an outline. `tone` is only the colour of a primary, never a fourth look: the types refuse it on `border` and `danger`, and a
 destruction is `variant="danger"`. It keeps the primary's rules (the icon rule, the one-primary count). An `Alert`'s buttons do not use it: they take the
-banner's tint, the `border` rank painted one step over the banner's soft fill in its ink at 500 ([toast-alert](toast-alert.md) "Buttons in a banner", 0.55.1). Not with `ground`.
+banner's tint, the `border` rank painted one step over the banner's soft fill in its ink at 500 ([toast-alert](toast-alert.md) "Buttons in a banner"). Not with `ground`.
 
-Every Button label is the label.item weight, 500: Grammar states it on `.starci-core-button` (0.55.1) rather than leaning on the vendor's `--font-weight-medium`.
+Every Button label is the label.item weight, 500: Grammar states it on `.starci-core-button` rather than leaning on the vendor's `--font-weight-medium`.
 
 A head link (`Link variant="head"`: a section head's "Xem tất cả", a Bento tile's "Tìm hiểu thêm") keeps its drawn line and gains an unseen 48 x 48 hit layer centred on it, so a standalone link meets the touch floor without a visual change (`DNA-COMMON-LINK-HEAD-HIT-44` at 320, 360 and 390). A link inside prose keeps its line. Stories `Surfaces/Figures, rows, bands and pages (0.48.0)` (ButtonOnBands) and `Navigation & Data/Phone fixes (0.48.0)` (LinkHitArea).

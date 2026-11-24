@@ -1,4 +1,4 @@
-// The harness's own two-level gate (owner: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"): the FAST level builds and
+// The harness's own two-level gate: the FAST level builds and
 // typechecks what the diff changed and its dependents and runs the publish checks, no test suite; the FULL level of the train adds every package, the
 // tests, lint and CI's light gates (core/release/gate.ts).
 import assert from "node:assert/strict"
@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { blockingFindings } from "../../harness/land-queue.js"
+import { blockingFindings } from "../../harness/lane-state.js"
 import { CI_LIGHT_GATES, harnessGateSteps, runHarnessGate, tsSpecifierDeclarations } from "./gate.js"
 import type { GateStep } from "./gate.js"
 import type { Affected } from "./affected.js"
@@ -76,7 +76,7 @@ void test("a built declaration naming a .ts specifier is found; .js specifiers a
     }
 })
 
-void test("a red build skips what needs it, names the folder in a finding the lander reads, and every other step still runs", async () => {
+void test("a red build skips what needs it, names the folder in a finding `lane gate` reads, and every other step still runs", async () => {
     const ran: string[] = []
     const gate = await runHarnessGate("/r", plan(), "dev", scriptsOf, (_root, step) => {
         ran.push(`${step.kind} ${step.dir}`)
@@ -85,7 +85,7 @@ void test("a red build skips what needs it, names the folder in a finding the la
     assert.equal(gate.verdict, "red")
     assert.deepEqual(ran, ["install packages/tsconfig", "install packages/grammar", "build packages/grammar"], "grammar's own steps and gallery (which builds against it) are skipped")
     assert.deepEqual(gate.findings.map((finding) => [finding.code, finding.path]), [["HARNESS_GATE_BUILD", "packages/grammar"]])
-    assert.deepEqual(blockingFindings(JSON.stringify({ ok: false, data: gate })), [{ code: "HARNESS_GATE_BUILD", path: "packages/grammar", message: gate.findings[0]?.message ?? "" }], "the batch lander reads the verdict from the --json envelope")
+    assert.deepEqual(blockingFindings(JSON.stringify({ ok: false, data: gate })), [{ code: "HARNESS_GATE_BUILD", path: "packages/grammar", message: gate.findings[0]?.message ?? "" }], "lane gate reads the verdict from the --json envelope")
     const green = await runHarnessGate("/r", plan(), "dev", scriptsOf, () => Promise.resolve({ ok: true, output: "" }))
     assert.equal(green.verdict, "green")
     assert.deepEqual(blockingFindings(JSON.stringify({ data: green })), [])

@@ -28,16 +28,6 @@ interface Context {
     readonly source: string
     readonly issues: Issue[]
     readonly definitions: ReadonlyMap<string, string>
-    readonly caption: RegExp | undefined
-}
-
-/** How a text is read. */
-export interface ParseOptions {
-    /**
-     * A paragraph right under a mermaid fence with no `caption=` whose words match this becomes the figure's caption (a legacy
-     * caption line, e.g. `/^Figure d+:/`). Left out, no paragraph is taken.
-     */
-    readonly legacyCaption?: RegExp
 }
 
 interface Positioned {
@@ -374,25 +364,7 @@ const block = (context: Context, node: RootContent): Block[] => {
     }
 }
 
-/** A mermaid fence with no `caption=` takes the legacy caption paragraph that follows it, which is then not drawn twice. */
-const adoptCaptions = (list: Block[], caption: RegExp | undefined): Block[] => {
-    if (caption === undefined) return list
-    const out: Block[] = []
-    for (const node of list) {
-        const previous = out[out.length - 1]
-        if (node.type === "paragraph" && previous?.type === "mermaid" && previous.caption === "") {
-            const words = plainText(node.children).trim()
-            if (caption.test(words)) {
-                out[out.length - 1] = { ...previous, caption: words }
-                continue
-            }
-        }
-        out.push(node)
-    }
-    return out
-}
-
-const blocks = (context: Context, nodes: readonly RootContent[]): Block[] => adoptCaptions(nodes.flatMap((node) => block(context, node)), context.caption)
+const blocks = (context: Context, nodes: readonly RootContent[]): Block[] => nodes.flatMap((node) => block(context, node))
 
 const definitionsOf = (root: Root): Map<string, string> => {
     const found = new Map<string, string>()
@@ -411,12 +383,12 @@ export const parseMdast = (source: string): Root => processor.runSync(processor.
 
 /**
  * Reads a markdown text into the tree `<Markdown>` draws: GFM (tables, strikethrough, task lists, autolinks), the fences with meta
- * (`file=` `highlight=` `start=`, `diff title=`, `terminal`, `mermaid caption=`), `:::compare`, the callouts and the legacy
+ * (`file=` `highlight=` `start=`, `diff title=`, `terminal`, `mermaid caption=`), `:::compare`, the callouts and the
  * directives (`::::::accordion` / `:::::panel{title}`, `::::tab` / `:::code` / `:::preview`). Raw HTML is never kept. What it had to drop
  * or could not read is in `issues`; `validate` adds the rules of a profile.
  */
-export const parse = (source: string, options: ParseOptions = {}): MarkdownTree => {
+export const parse = (source: string): MarkdownTree => {
     const root = parseMdast(source)
-    const context: Context = { source, issues: [], definitions: definitionsOf(root), caption: options.legacyCaption }
+    const context: Context = { source, issues: [], definitions: definitionsOf(root) }
     return { version: 1, children: blocks(context, root.children), issues: context.issues }
 }

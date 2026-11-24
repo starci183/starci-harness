@@ -19,10 +19,7 @@
   (`$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`, on Windows too). Never inside a package, so
   `npm ci` never deletes a running stack's data, and never under `%LOCALAPPDATA%`: an MSIX-packaged app (the Claude desktop app
   and every agent it starts) writes each new file under AppData into its own `Packages/<package>/LocalCache`, so its processes
-  and the host's (a terminal, the lander, Docker) would see two different bases. The first `starci app` verb merges a legacy
-  base into it: the former `%LOCALAPPDATA%/starci-harness/state` on Windows, then a `.runtime/` a copy still keeps inside itself
-  (a file the base holds with the same bytes is dropped, only a differing one is kept under `legacy-<stamp>/<path>`), and
-  refuses `HFS_STATE_LEGACY_HELD` while a running stack holds it (`starci app stack down` first).
+  and the host's (a terminal, Docker) would see two different bases.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
 - **Product Work** lives in the app repository's `.starciwork/` (the product's concepts, the brand, `workspace.yaml`;

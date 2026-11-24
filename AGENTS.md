@@ -9,6 +9,8 @@ checkout's path and the project root on explicitly.
 
 ## Where the rules are
 
+- Before adding anything to the harness, or removing or replacing something in it: [CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-21
+  (challenge the addition first; a removal migrates NIVO and Next and leaves nothing behind).
 - Look a rule up before you act, in English and in several phrasings, and after every context compaction:
   [contexts/harness/rules.md](contexts/harness/rules.md) rule 7, as [contexts/README.md](contexts/README.md) "Looking a rule up" says.
 - Before changing anything in a repository, read its `.starcistacks/application-stacks.yaml` WHOLE (gates declared off with
@@ -38,98 +40,15 @@ checkout's path and the project root on explicitly.
 
 ## Dev and prod: two flows that never wait for each other
 
-The owner's rules, in his words:
+Dev is the fast path and comes first; prod is the slow, careful path and may run later. Neither waits for the other and neither moves the
+other's checkout ([contexts/project/cicd.md](contexts/project/cicd.md) "Dev and prod").
 
-> ".claude nói rõ tách biệt quy trình dev (đưa lên cloudflare) và prod riêng biệt ko đợi nhau. npm cũng vào local và dev server mở thẳng lun"
-
-> "prod tối cũng dc, tập trung dev cho thầy trc!!!"
-
-> "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"
-
-> "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"
-
-> "dev thì chạy trên nhánh dev, code xong cứ merge vào dev, mở server local ra test (build từ code dev hiện tại và chạy để tránh hot-reload), trong quá trình làm có thể upgrade grammars,hfs,... nhưng mà đơn giản là publish local nên dev trơn tru. và cứ từ từ đưa lên .claude các bản vá, đưa lên code, check kĩ, build docker, app check,.. để dần dần lên prod sau dev"
-
-> "merge hết vô local dc không? pin 1 lần prod phát hành ntn kệ nó, và update .claude để tối đa hóa thời gian code local"
-
-> "dồn!!! nhiều changes thì gộp 1 commit duy nhất và ci làm kiểu nếu push commit mới thì cancel lun commit cũ"
-
-In short: dev and prod are separate pipelines. Dev is the fast path and comes first: finished work merges into `dev` and
-the owner tests it on the running dev server at once. Prod is the slow, careful path and may run later (in the evening
-is fine). Neither one waits for the other, and neither moves the other's checkout.
-
-**Dev (fast, first).** Lanes -> `starci lane gate --push --land` -> the `dev` branch -> the debounced dev sync of the
-app's main dev checkout -> the dev stack, exposed through its Cloudflare tunnel. The owner, in his words:
-
-> "bỏ lander đi, cứ xong là merge vô dev là được, vì cũng bỏ hết gate nặng rồi"
-
-1. A lane lands itself: `starci lane gate --push --land` runs its gate, then under the repository's dev lock merges the
-   newest `origin/dev`, re-checks (codegen and typecheck) only when dev moved since the gate, squashes the lane into ONE
-   commit on `dev` (its message names the lane, branch and sha) and pushes it, never forced. A conflict stops with its
-   files: merge `origin/dev` in the lane, resolve, run it again
-   ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-2). A new push of a lane cancels its
-   running gate; the status says `superseded by <sha>`. The batch lander (`starci lane land`, `lane gate --ready`) still
-   runs but is deprecated.
-   **Two-level gate.** Landing on dev runs the FAST level once per push (`app check --level dev`: deps, types with its
-   builds and codegen, the lane's own tests, db, the owner's design approval). It names what it skips: the hfs rule
-   sweep, the rule-188 first audits, the ui-audit blocks, the nivoos package checks, the whole test suite, sonar and
-   coverage. Those run ONCE at the main cut (`--level full`: a push of main, `release cut`, `release push`,
-   `app release`), and a red full run is fixed in a hardening lane before the cut.
-2. `starci dev sync --execute` in the app's main dev checkout fast-forwards it to `origin/dev`, runs `npm ci`, installs
-   each `--local <pkg>` from the local npm registry, builds the workspace packages (the app's `codegen` and `build:modules`), migrates the dev database when new migrations arrived (`app stack up`), then **builds** the api and the web from that code and runs the
-   built artifacts (`next start`, `node dist/...`; never `next dev`, `ts-node-dev` or another watcher). It restarts only
-   the changed side, waits for its health (over the tunnel hostname when one routes it) and keeps the database, the
-   storage and the tunnel up. It prints any local overlay in effect. A plain `dev sync` (no `--local`) puts every
-   `@starci` package back to its registry version, so an overlay never outlives a sync that does not name it again.
-   It is a dry run until `--execute`.
-   The new tree is built first, in a staging worktree beside the checkout, while the running api and web keep serving;
-   only the swap and the restart happen after they stop.
-3. A landing only marks its app's dev checkout as wanting a sync (`devSync.repos` in `.runtime/local-settings.json`,
-   git-ignored); one detached runner per checkout (`starci dev sync-runner`, no terminal owns it) waits until no landing
-   marked it for `devSync.debounceSeconds` (120 s), syncs once to the newest dev, and writes its status, a failure with its
-   reason (`starci dev sync-runner --status --dir <checkout>`). Two syncs of a checkout never run at once.
-4. **Local first.** A harness change (Grammar, hfs, the CLI, ...) is published to the local registry at once
-   (`starci deps publish-local --execute --package <pkg>` in the harness checkout), and apps adopt it on dev at once:
-   `starci deps install-local <pkg> --execute` in a lane, with `"deps": { "devAllowsLocalRegistry": true }` in the app's
-   `hfs.json` so `dev` and lane branches may commit those local pins. `devSync.local` (`.runtime/local-settings.json`) is
-   the default way the dev checkout runs harness builds. A lane NEVER waits for npm. `deps install-local --restore` is
-   needed only for main and a prod cut: main, release branches, tags and prod deploys still refuse local pins.
-5. Hot reload is opt-in, for live coding only: `starci app stack up --env dev --execute --watch`.
-6. **One web and one api server per app**, the shared dev stack's (owner: "chốt vậy chỉ có 1 next server fe chạy thôi, lane xong f5 lại,
-   chấp nhận giật ở fe", "Tương tự 1 be server"). A lane never starts its own to look or shoot: it lands, the dev sync brings the change in,
-   and it looks at the running stack (`starci app look`, `starci gallery shoot --port`); the owner presses F5
-   ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Shots and looks").
-
-**Hotfix (coordinator only).** The owner: "hotfix là sửa xong chạy lại luôn, không gate gì hết". A small fix (at most 5 files and 200 changed lines, `ops/hotfix.yaml`,
-one repository) the coordinator makes in the app's dev checkout from the chat, with no lane: `starci hotfix land --message "<fix>"` commits it as one `Hotfix:` commit
-on dev, pushes without the pre-push gate (the only path that skips it; the pass is written by the command itself, never by a flag), restarts dev at once (light, or the
-full sync steps when a lockfile, migration or schema changed), waits for health and starts the CI watch, which catches mistakes after the fact. In the harness (`D:/.claude`, `--profile harness`, `--only <path>` required) nothing is a dev server, so after the push it rebuilds the CLI copy (`_cli-<sha>`, then repoints `_cli-current`), runs `deps publish-dev` when a package changed and syncs every app of `devSync.repos` at once. Over the limit it refuses
-"quá lớn cho hotfix (N file / M dòng), mở lane". Subagents and workers never hotfix: they use lanes. While it runs it holds the dev lock; otherwise the dev checkout stays sync-owned.
-[contexts/authority/lanes.md](contexts/authority/lanes.md) "Hotfix" has the table and the rules.
-
-**Prod (slow, careful, after dev).** npm is published once per release train, for prod only (`starci release push` /
-`release publish` on the harness). Prod pins npm versions ONCE, at release time: the cut bumps the app's local pins to the
-npm versions (`deps install-local --restore`, then the npm version of each). Then the app code is pushed, fully checked, its docker images built, `app check --env prod --level full`, staging, the tag,
-CI, prod. The release is cut from a fixed sha with `starci release cut --from <sha> --execute`, in its own temporary
-worktree that is removed afterwards. The dev checkout never moves for prod work, and prod never waits for dev to go quiet.
-
-**The harness itself: dev and main.** The owner, in his words:
-
-> "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"
-
-The harness repository has `dev` and `main` too ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-3). Harness lanes
-fork from `origin/dev` and land with `lane gate --push --land` exactly as an app's do, under the harness profile: the gate is the harness FAST gate
-(`starci release gate --level dev`: install, build and typecheck of the changed packages and their dependents plus the publish checks, NO test
-suite), the push `git push origin HEAD:dev`. Package tests run only in the FULL gate of the train (`--level full`), never on a landing.
-Every harness landing that changes a published package (Grammar, hfs, ...) is published to the local registry as the dev line right after its push
-(`starci deps publish-dev --execute`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, pinned to each other exactly in
-the publish copies, never in committed files), `devSync.local` names exactly those versions, and every app's dev checkout of `devSync.repos` is
-marked for its debounced sync, which installs them. A train moves `dev` to `main` after `starci release gate --level full`; `release push` and publish.yml publish the plain versions; then
-`starci release back-merge --execute` brings `main` back into `dev`. Which branch `D:/.claude` has checked out is the owner's choice: it runs on
-`dev` today.
-
-**CI.** Many changes are gathered into one commit, and a newer push cancels the CI run of the commit it supersedes (the harness's ci.yml runs
-the FAST level on `dev`, the FULL level on `main`); a run
-that deploys or publishes (a release tag run, `stack-deploy.yml`, the harness `publish.yml`) is never cancelled.
-
-The full design: [contexts/project/cicd.md](contexts/project/cicd.md) "Dev and prod".
+- **Dev.** A lane lands itself: `starci lane gate --push --land` gates the lane, then under the repository's dev lock squashes it into one
+  commit on `dev` and pushes it ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-2). The app's dev checkout syncs by
+  its debounced runner and runs built artifacts, never a watcher; it is the one web and the one api of the app, and a lane looks at it, never starts its own
+  ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Gate and land", "Shots and looks"). A harness change reaches apps through the local registry at once.
+- **Hotfix.** A small coordinator-only fix (the limits of `ops/hotfix.yaml`) goes straight to `dev` with `starci hotfix land` and no lane
+  ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Hotfix").
+- **Prod.** A release is cut from one fixed sha on `main` with the full checks, npm pins, docker images, staging, the tag and CI
+  ([contexts/project/cicd.md](contexts/project/cicd.md)).
+- **The harness repository** has `dev` and `main` too ([contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-3).

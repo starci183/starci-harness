@@ -137,12 +137,6 @@ test("no-response-envelope: no envelope class, decorator, mapping interceptor or
             { filename: RESOLVER, code: `${BUS}@Resolver() export class R { @Mutation(() => String) place() { return { success: true, data: 1 } } }`, errors: [{ messageId: "literal" }] },
             { filename: RESOLVER, code: `${BUS}@Resolver() export class R { @Mutation(() => String) async place(ok: boolean) { if (ok) { return await ({ success: true, message: "ok", data: 1 } as never) } return null } }`, errors: [{ messageId: "literal" }] },
             { filename: CONTROLLER, code: `${BUS}@Controller() export class C { @Get() list() { return { "success": true, "data": [] } } }`, errors: [{ messageId: "literal" }] },
-            { filename: RESOLVER, code: `export class GraphQLTransformInterceptor {}`, errors: [{ messageId: "named" }] },
-            { filename: DOMAIN, code: `export abstract class AbstractGraphQLResponse {}`, errors: [{ messageId: "named" }] },
-            { filename: DOMAIN, code: `export class RestTransformInterceptor {}`, errors: [{ messageId: "named" }] },
-            { filename: DOMAIN, code: `export const GraphQLSuccessMessage = (text: string) => text`, errors: [{ messageId: "named" }] },
-            // an import under a rename is still the envelope name
-            { filename: RESOLVER, code: `import { GraphQLSuccessMessage as Msg } from "@modules/platform/graphql"\n@Msg("ok") export class R {}`, errors: [{ messageId: "named" }] },
         ],
     }) })
 })

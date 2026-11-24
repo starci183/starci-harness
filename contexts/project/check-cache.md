@@ -27,7 +27,7 @@ For a lane, a lead, an app session and CI alike:
    package carries no source digest ([The fingerprint](#the-fingerprint)). `--env local` lists them marked `LOCAL, REPORT ONLY`, never red, writes no
    cache for an unportable install, and ends `gate: green for local (not pushable)` when only they remain. `--env prod` blocks them like every
    other finding: the cache is portable and warm and every pin is served by npm.
-2. The cache records a run writes are committed with the code it judged, by `starci app push` and the lander, never by hand and never to turn a run green: a run whose only complaint is that its commit lacks the records it just wrote (`HFS_CHECK_CACHE_UNWARMED`) is green, the finding is info. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
+2. The cache records a run writes are committed with the code it judged, by `starci app push` and the lane's landing, never by hand and never to turn a run green: a run whose only complaint is that its commit lacks the records it just wrote (`HFS_CHECK_CACHE_UNWARMED`) is green, the finding is info. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
 3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and `starci app release gate` run `--env prod`. **Push with `npx --no-install starci app push [git push args]`: one round.** The hook cannot add a commit to a push under way, so a plain `git push` of a tree whose cache a real run changes is refused by the hook, whose run alone (`STARCI_PUSH_GATE=1`) makes `HFS_CHECK_CACHE_UNWARMED` an error, after the run wrote the records, and costs a commit and a second push (a third when the commit moved a record). `app push` runs that same `app check --env prod` first, commits the records it wrote as their own commit (`chore(cache): warm the check cache for <sha>`, never an amend, the commit hook runs), repeats the run until it writes nothing (three runs at most) and then runs `git push`, whose hook finds a warm cache. It refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`: the records would describe files the push does not carry) and a check red for any reason other than the cache, and it never bypasses a hook; the plain `git push` still works and is still judged by the hook. Push, and let
    CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
 4. A bug in `app check` itself (a false finding, wrong env, a path the gate breaks) is fixed in the harness, never worked
@@ -354,7 +354,7 @@ result (it holds versions and signatures, not findings), so it stays in the untr
 A program reads one untracked kind of file: the generated code the app's declared code generation writes (`npm run codegen`, into folders named
 `__generated__`), which every checkout of one commit has alike. Everything else git ignores that a tsconfig's include globs reach is a *build
 artifact* (`packages/hfs/runtime/scripts/hfs/program-artifacts.mts`): what a framework's build or dev server writes into the work tree, such as Next's
-`next-env.d.ts` with its imports of `.next/types/**`, a `dist/`, a `.tsbuildinfo`. A clean checkout, CI and the lander have none, so a key or a
+`next-env.d.ts` with its imports of `.next/types/**`, a `dist/`, a `.tsbuildinfo`. A clean checkout, CI and a landing have none, so a key or a
 program that read them would depend on build history, not on the commit. They are no input of a side key or a program key, and no root of the programs
 the harness builds: `readTypeScriptProject` (the architecture machine and every program built from a tsconfig) drops them from the root names, and the
 `types` family runs `tsc` through `packages/hfs/cache/tsc-launch.mts` when a program's globs reach one, TypeScript's own command line over a directory
@@ -417,8 +417,8 @@ The cache is committed, so the records of `check/secrets/` never hold secret mat
 message itself, never the record). The writer projects every record to that form (`safeSecretRecords` of `cache/secret-records.mts`, applied by the session on `replace` and on read, so a cache
 written before the digests compares like with like), and the secret judgement of R06 (`secretFileFindings`, the one judgement `starci app check` and the commit hook share) judges a file of
 `.starcistacks/cache/check/secrets/` by `secretRecordFaults` (`runtime/scripts/lib/secret-records.mts`): a file that holds anything but codes, paths, positions and digests is refused
-`HFS_PLAINTEXT_SECRET`, and a conforming file is accepted wherever it sits, so the `secrets/` folder name does not make the warm cache uncommittable. A cache written before the digests is migrated
-by `starci app codemod secrets-cache --execute`, or rewritten by the next `starci app check --gate secrets`. Proved by `check-cache-secret-records.spec.mts` and `secrets-cache-codemod.spec.mts`.
+`HFS_PLAINTEXT_SECRET`, and a conforming file is accepted wherever it sits, so the `secrets/` folder name does not make the warm cache uncommittable.
+Proved by `check-cache-secret-records.spec.mts`.
 
 ## ESLint
 
@@ -653,7 +653,7 @@ hide a skipped check: it is raised only after a whole run, which computes every 
 (`HFS_CHECK_CACHE_FORGED` fails, `_STALE` and `_MISSING` warn in CI, `_UNPORTABLE` and `_FILE_TOO_LARGE` fail). CI trusts a committed record only at the trusted base and
 re-runs whatever has none, so a record that was written but never committed is simply recomputed in CI, slower but correct; the nightly verify (`cache-verify.yml`)
 is the proof that the committed records are the ones a fresh run writes. The one place a cold cache costs something is the push, so the managed pre-push hook exports
-`STARCI_PUSH_GATE=1` and only its run makes the finding an error; `starci app push` and the lander commit the records before that hook runs.
+`STARCI_PUSH_GATE=1` and only its run makes the finding an error; `starci app push` and a landing commit the records before that hook runs.
 
 ## Edge cases
 
@@ -671,11 +671,11 @@ is the proof that the committed records are the ones a fresh run writes. The one
 - **A cache from another hfs** differs in the hfs part, so the records of the hfs-run families are replaced, never read; the other families keep theirs. Another CLI changes no part.
 - **A disk error writing the cache** is a warning in the cache line and never changes the exit code.
 
-## As built
+## Flags, CI and side keys
 
 - `--fix` runs the linters with `--fix` before the check reads the cache, so the rewritten files are the dirty set of that same run.
 - `--quiet` mutes progress and keeps the diagnosis on stdout for `check`; other verbs still mute stdout.
-- The managed CI keeps its triggers (push to main, release candidates, tags) and adds the nightly `cache-verify.yml`; a push to main is
+- The managed CI runs on push to main, release candidates and tags, plus the nightly `cache-verify.yml`; a push to main is
   trusted against its first parent, a candidate or tag run against its merge-base with main. The `format` step runs `app check --gate format`.
 - Side keys take the untracked program inputs from the side's tsconfig `include` (generated code, never a build artifact git ignores), not from import resolution of files outside it.
 

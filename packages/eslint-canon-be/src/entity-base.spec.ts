@@ -33,7 +33,7 @@ const UPDATED = "    @Column({ name: \"updated_at\", type: \"timestamptz\", inse
 const OWNER = "    @Column({ name: \"owner_id\", type: \"uuid\" })\n    ownerId!: string\n"
 
 const TABLE_TEMPLATE = new URL("../../hfs/templates/be/table/entity.ts.tpl", import.meta.url)
-/** A table whose timestamp the app sets itself: an entity with a uuid key, a body and an app-set created_at (the shape the retired skeleton note entity had). */
+/** A table whose timestamp the app sets itself: an entity with a uuid key, a body and an app-set created_at. */
 const NOTE_ENTITY = `import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
 
 @Entity("notes")

@@ -1,5 +1,5 @@
 /**
- * CTA-6: the one primary. A Grammar Button has three looks (owner 2026-11-22: "chỉ có danger, border, và primary thôi"): `primary`, `border` (the default) and
+ * CTA-6: the one primary. A Grammar Button has three looks: `primary`, `border` (the default) and
  * `danger`. A render shows at most one `primary`, and a collection item none; every other command is `border`, a destruction `danger`.
  */
 import { attributeValue, stringOf, walk } from "./lib/ast.ts"

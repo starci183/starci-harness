@@ -12,7 +12,7 @@ import { secretMain } from "../runtime/scripts/hfs/secret.mjs";
 import { parseYaml } from "../runtime/engine/yaml.mjs";
 import { auditSecrets } from "../runtime/scripts/hfs/secret-standard.mjs";
 import {
-  BACKUP_SECRET, SERVER_AGE_IDENTITY, ageKeygenScript, ensureIdentityScript, publicKeyScript, swapIdentityScript,
+  SERVER_AGE_IDENTITY, ageKeygenScript, ensureIdentityScript, publicKeyScript, swapIdentityScript,
 } from "../stack/server-key.mjs";
 
 /** One call the fake server received: the remote command and the script sent on its stdin. */
@@ -245,97 +245,13 @@ test("audit holds production to the server key plus the owner key (RECIPIENT_DRI
   assert.match(ownerless[0]?.detail as string, /names only the deploy server recipient/u);
 });
 
-/**
- * A gh port double: the origin repository, the Environment `environment` answers, and the names of the repository's own Actions
- * secrets (`repoSecrets`, or null when they cannot be read). Every gh api call is recorded; none reaches GitHub.
- */
-const fakeGithub = (environment: unknown, policies: unknown[] = [], repoSecrets: string[] | null = [], rulesets: Record<string, unknown>[] = []) => {
-  const runs: string[][] = [];
-  const reads: string[][] = [];
-  return {
-    runs, reads,
-    port: {
-      repository: () => "owner/app",
-      json: (args: string[]) => {
-        reads.push(args);
-        if ((args[1] as string).startsWith("repos/owner/app/actions/secrets")) {
-          if (repoSecrets === null) throw new Error("403");
-          return { total_count: repoSecrets.length, secrets: repoSecrets.map((name: string) => ({ name, created_at: "2026-10-29T00:00:00Z" })) };
-        }
-        if ((args[1] as string).endsWith("/deployment-branch-policies")) return { branch_policies: policies };
-        if ((args[1] as string).startsWith("repos/owner/app/rulesets?")) return rulesets.map(({ id, target, enforcement }) => ({ id, target, enforcement }));
-        const detail = /^repos\/owner\/app\/rulesets\/(\d+)$/u.exec(args[1] as string);
-        if (detail) return rulesets.find((ruleset) => String(ruleset.id) === detail[1]) ?? null;
-        if (environment === null) throw new Error("404");
-        return environment;
-      },
-      run: (args: string[]) => { runs.push(args); return ""; },
-    },
-  };
-};
-
-test("server-key --backup is refused: the server key is never copied into a repository, and nothing is asked of gh or the server", async (t) => {
+test("server-key --backup is refused: the server key is never copied into a repository, and nothing is asked of the server", async (t) => {
   const fixture = await productionApp(t);
   const server = fakeServer({ identity: SERVER });
-  const gh = fakeGithub({ protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "User" }] }] });
   for (const argv of [["production", "--backup", "github", "--execute"], ["production", "--backup", "github"], ["production", "--backup", "anywhere"]]) {
-    const result = await serverKey(fixture, argv, { server, deps: { github: gh.port } });
+    const result = await serverKey(fixture, argv, { server });
     assert.equal(result.code, 2, argv.join(" "));
     assert.match(result.err, /starci app secret: --backup is refused: the server key is never copied into a repository; its break-glass backup lives only in the harness repository's break-glass environment/u);
   }
-  assert.deepEqual([gh.runs, gh.reads, server.state.calls], [[], [], []], "refused before gh or the server is asked anything");
-});
-
-test("server-key --restore github takes a release-tag Environment only under an active ruleset that locks refs/tags/v*", async (t) => {
-  const fixture = await productionApp(t);
-  assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
-  const environment = { protection_rules: [{ type: "branch_policy" }], deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } };
-  const tags = [{ name: "v*", type: "tag" }];
-  const locked = { id: 7, target: "tag", enforcement: "active", conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } }, rules: [{ type: "creation" }, { type: "update" }, { type: "deletion" }] };
-  const run = (rulesets: Record<string, unknown>[], policies: unknown[] = tags) => serverKey(fixture, ["production", "--restore", "github"], { deps: { github: fakeGithub(environment, policies, [], rulesets).port } });
-  const accepted = await run([locked]);
-  assert.equal(accepted.code, 0, accepted.err);
-  assert.match(accepted.out, /dry run: would run gh workflow run stack-key-restore\.yml/u);
-  const none = await run([]);
-  assert.equal(none.code, 2);
-  assert.match(none.err, /STACK_SERVER_KEY_UNPROTECTED: .*deploys only the release tags v\*, but no active tag ruleset covers refs\/tags\/v\*/u);
-  assert.equal((await run([{ ...locked, enforcement: "evaluate" }])).code, 2, "an evaluate-only ruleset enforces nothing");
-  assert.equal((await run([{ ...locked, rules: [{ type: "deletion" }] }])).code, 2, "a tag that can still be moved is not locked");
-  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["refs/tags/v1*"], exclude: [] } } }])).code, 2, "a narrower pattern leaves release tags open");
-  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["~ALL"], exclude: ["refs/tags/v0*"] } } }])).code, 2, "an exclusion leaves release tags open");
-  assert.equal((await run([{ ...locked, conditions: { ref_name: { include: ["~ALL"], exclude: [] } } }])).code, 0, "~ALL covers the release tags");
-  assert.equal((await run([locked], [...tags, { name: "main", type: "branch" }])).code, 2, "a tag policy mixed with a branch is neither main-only nor tags-only");
-  const open = await serverKey(fixture, ["production", "--restore", "github"], { deps: { github: fakeGithub({ protection_rules: [], deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } }).port } });
-  assert.match(open.err, /STACK_SERVER_KEY_UNPROTECTED: .*no required reviewers, its deployment branches are not limited to main and its deployment refs are not limited to the release tags v\*/u);
-  const absent = await serverKey(fixture, ["production", "--restore", "github"], { deps: { github: fakeGithub(null).port } });
-  assert.match(absent.err, /STACK_SERVER_KEY_GITHUB_ENVIRONMENT: the GitHub Environment production of owner\/app does not exist/u);
-});
-
-test("server-key --restore github dispatches the managed restore workflow with the recorded server recipient", async (t) => {
-  const fixture = await productionApp(t);
-  const gh = fakeGithub({ protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "Team" }] }] });
-  const unrecorded = await serverKey(fixture, ["production", "--restore", "github", "--execute"], { deps: { github: gh.port } });
-  assert.equal(unrecorded.code, 2);
-  assert.match(unrecorded.err, /STACK_SERVER_KEY_NO_RECIPIENT: environments\.production\.deploy\.remote records no serverRecipient/u);
-  assert.deepEqual([gh.runs, gh.reads], [[], []], "refused before gh is asked anything");
-  assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
-  const result = await serverKey(fixture, ["production", "--restore", "github", "--execute"], { deps: { github: gh.port } });
-  assert.equal(result.code, 0, result.err);
-  assert.deepEqual(gh.runs, [["workflow", "run", "stack-key-restore.yml", "--repo", "owner/app", "-f", "environment=production", "-f", `recipient=${SERVER}`]]);
-});
-
-test("server-key --restore github notes, by name only, a repository SOPS_AGE_KEY: it may only be the CI key", async (t) => {
-  const fixture = await productionApp(t);
-  assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
-  const environment = { protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "User" }] }] };
-  const held = fakeGithub(environment, [], ["NPM_TOKEN", BACKUP_SECRET]);
-  const result = await serverKey(fixture, ["production", "--restore", "github"], { deps: { github: held.port } });
-  assert.equal(result.code, 0, result.err);
-  assert.match(result.out, /warning: owner\/app holds a repository secret SOPS_AGE_KEY; .*It may only be the app's CI key \(deploy\.custody ci-key\), never the server key or the owner key\./u);
-  assert.ok(held.reads.some((args) => args[0] === "api" && (args[1] as string).startsWith("repos/owner/app/actions/secrets")), "the names are read from the repository's Actions secrets");
-  const clean = await serverKey(fixture, ["production", "--restore", "github"], { deps: { github: fakeGithub(environment, [], ["NPM_TOKEN"]).port } });
-  assert.doesNotMatch(clean.out, /warning/u);
-  const unreadable = await serverKey(fixture, ["production", "--restore", "github"], { deps: { github: fakeGithub(environment, [], null).port } });
-  assert.equal(unreadable.code, 0, unreadable.err);
-  assert.match(unreadable.out, /warning: the repository secret names of owner\/app cannot be read/u);
+  assert.deepEqual(server.state.calls, [], "refused before the server is asked anything");
 });

@@ -12,8 +12,8 @@ import { bar } from "./fixtures/app-shell.ts"
 
 const FILE = at("apps/web/src/features/layouts/AppShell/component.tsx")
 const PAGE = at("apps/web/src/components/branches/Article/index.tsx")
-const SITE_IMPORTS = 'import { Button, Image, NavLandmark, SegmentedControl, TextAction, TopBar, WorkspaceShell } from "@starci/grammar/common";'
-const SITE_LANGUAGE = '<SegmentedControl label={props.language.label} isLabelHidden size="control" value={props.language.locale} onValueChange={props.on.choose} options={props.language.options} />'
+const SITE_IMPORTS = 'import { Button, Image, NavLandmark, Select, TextAction, TopBar, WorkspaceShell } from "@starci/grammar/common";'
+const SITE_LANGUAGE = '<Select label={props.language.label} isLabelHidden size="control" value={props.language.locale} onValueChange={props.on.choose} options={props.language.options} />'
 const SITE_ACTIONS = `<>${SITE_LANGUAGE}<Button variant="border" size="control" href={props.accountHref}>{props.accountLabel}</Button><Button variant="border" size="control" href={props.tryHref}>{props.tryLabel}</Button></>`
 const SITE_BAR = `<TopBar position="sticky" brand={<TextAction href={props.homeHref} size="control"><Image src={props.logo} alt={props.home} width={102} height={36} /></TextAction>} navigation={<NavLandmark label={props.navLabel} layout="bar"><TextAction href={props.anchor} appearance="route" size="control">{props.anchorLabel}</TextAction></NavLandmark>} actions={${SITE_ACTIONS}} />`
 
@@ -45,7 +45,7 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <Drawer placement="left" trigger={<IconButton />}><Sidebar presentation="rail" /></Drawer>' },
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" compactHeader={<Drawer trigger={<IconButton size="control" />}><Form><Input label={copy.query} /><Button /></Form></Drawer>} />' },
         { filename: FILE, code: 'const view = <TopBar brand={<Button size="control" {...(disabled ? { isDisabled: true } : {})} />} />' },
-        { filename: FILE, code: 'const view = <TopBar actions={<SegmentedControl label={copy.language} isLabelHidden size="control" options={options} />} />' },
+        { filename: FILE, code: 'const view = <TopBar actions={<Select label={copy.language} isLabelHidden size="control" options={options} />} />' },
         { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="toggle" />} />' },
         { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="toggle" size="md" />} />' },
         { filename: FILE, code: 'const kind = "toggle"; const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind={kind} />} />' },
@@ -54,8 +54,8 @@ for (const lite of [false, true]) {
       ],
       invalid: [
         { filename: FILE, code: 'const view = <TopBar brand={<Button size="sm" />} />', errors: [{ messageId: "control" }] },
-        { filename: FILE, code: 'const view = <TopBar actions={<SegmentedControl label={copy.language} isLabelHidden options={options} />} />', errors: [{ messageId: "control" }] },
-        { filename: FILE, code: 'const view = <TopBar actions={<SegmentedControl label={copy.language} size="lg" options={options} />} />', errors: [{ messageId: "control" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Select label={copy.language} isLabelHidden options={options} />} />', errors: [{ messageId: "control" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Select label={copy.language} size="lg" options={options} />} />', errors: [{ messageId: "control" }] },
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" header={<Switch size="lg" />} compactHeader={<IconButton size="sm" />} />', errors: [{ messageId: "control" }, { messageId: "control" }] },
         { filename: FILE, code: 'const view = <TopBar brand={<Button size="control" {...unknown} />} />', errors: [{ messageId: "control" }] },
         { filename: FILE, code: 'import { Button as Action } from "@starci/grammar/common"; const view = <TopBar brand={<Action size="lg" />} />', errors: [{ messageId: "control" }] },

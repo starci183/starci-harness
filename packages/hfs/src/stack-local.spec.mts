@@ -89,7 +89,7 @@ function host(root: string, { platform = 'linux', missing = [], decrypt }: { pla
     if (options.background) return { pid: 4242, unref() {} };
     return answer(command, args);
   }) as unknown as Spawn;
-  const sops: Sops = { decrypt: decrypt ?? ((file: string) => Object.fromEntries([...fs.readFileSync(file, 'utf8').matchAll(/^([A-Z_]+): ENC/gmu)].map((match) => [match[1] as string, `value-of-${match[1]}-0123456789`])) ), decryptBinary: () => '', updateKeys: () => {} };
+  const sops: Sops = { decrypt: decrypt ?? ((file: string) => Object.fromEntries([...fs.readFileSync(file, 'utf8').matchAll(/^([A-Z_]+): ENC/gmu)].map((match) => [match[1] as string, `value-of-${match[1]}-0123456789`])) ), updateKeys: () => {} };
   let clock = 0;
   const io = {
     cwd: root, platform, spawn, sops,

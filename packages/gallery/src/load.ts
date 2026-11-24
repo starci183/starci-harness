@@ -1,4 +1,4 @@
-// Reads the gallery from the disk: gallery/pages (screen.yaml, or explain.md until a screen is migrated, links.json, the shots), gallery/flows.json, and the design canvas (`.starcistacks/canvas`: design.json,
+// Reads the gallery from the disk: gallery/pages (screen.yaml, links.json, the shots), gallery/flows.json, and the design canvas (`.starcistacks/canvas`: design.json,
 // tokens.css, canvas.css and the fragments of pages/, skills/claude-design references/format.md). Nothing here is drawn; the plugin serves the result.
 import { createHash } from "node:crypto"
 import fs from "node:fs"
@@ -150,13 +150,10 @@ export function loadGallery(options: LoadOptions): Loaded {
             const compared = sha === null ? [] : (["1440", "390"] as const).filter((width) => shots.includes(width) && typeof sha[width] === "string")
             const yaml = read(path.join(dir, "screen.yaml"))
             const screen = yaml === null ? undefined : parseScreenYaml(yaml)
-            // screen.yaml is the description; explain.md is read only while a screen has no screen.yaml (the transition).
-            const explain = yaml === null ? read(path.join(dir, "explain.md")) : null
             const links = readJson(path.join(dir, "links.json"))
             screens[id] = {
                 shots,
                 ...(screen === undefined ? {} : { screen }),
-                ...(explain === null ? {} : { explain }),
                 ...(links === undefined ? {} : { links }),
                 ...(compared.length === 0 || sha === null ? {} : { shotsMatchRecord: compared.every((width) => sha[width] === sha256(path.join(dir, `${width}.png`))) }),
             }

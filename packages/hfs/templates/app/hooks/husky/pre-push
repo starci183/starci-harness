@@ -11,7 +11,7 @@
 # whose every ref is dev or a lane branch, of an app declaring hfs.json deps.devAllowsLocalRegistry, may carry local-registry pins (dev only).
 # The two-level gate (owner: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"): a push whose every ref is dev or a lane branch lands on dev and
 # runs the FAST level once, `app check --env prod --level dev --push-refs <refs>` (the deps check, types, the lane's own tests, db, the design approval; it names what it skips,
-# and a tree the lander's gate or lane gate already judged green is not judged again); main, a release tag and any other branch run the FULL level (`--level full`), every gate once.
+# and a tree the lane gate already judged green is not judged again); main, a release tag and any other branch run the FULL level (`--level full`), every gate once.
 set -e
 refs=$(cat)
 printf '%s\n' "$refs" | STARCI_PUSH_REMOTE="$1" node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"

@@ -121,7 +121,7 @@ image, so any digest-pinned supported reverse proxy serves.
   of one provider or service (the owner's group: an app's own keys, the keys one service reads),
   `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a multi-line key, a trailing
   newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
-  A legacy dotenv `<member>.enc` stays readable until `migrate` moves it. Nothing else under `.starcistacks/` is ciphertext.
+  A member is `<provider>.enc.yaml` only. Nothing else under `.starcistacks/` is ciphertext.
   A business package keeps its provider keys the same way: `packages/<pkg>/secrets/<name>.sops.yaml`, committed only as a valid sops
   document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of the package's own `.sops.yaml`
   (R277: `HFS_PACKAGE_SECRET_NOT_SEALED` for plaintext, `HFS_PACKAGE_SECRET_RECIPIENT` for a missing or different recipient set);
@@ -133,9 +133,9 @@ image, so any digest-pinned supported reverse proxy serves.
   environment's secret is wired with its stack (runtimeName and the deploy grant) by hand.
   A delivery or quality-service key is declared by its exact `services.<id>.credentials[]` member path and `key`
   instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations and binds a quality-service member (`sonar.enc.yaml`) to its service, the
-  `credentials` entry and the `ci.secrets` entry the template shows, or prints the exact binding when the file's shape is not the template's
-  (`starci app codemod quality-binding` binds an app scaffolded before). The audit recognizes both consumers.
-- **One shared dev key, one key per server; one rule per environment** (owner, 2026-11-21, model B; R451). Every member is sealed
+  `credentials` entry and the `ci.secrets` entry the template shows, or prints the exact binding when the file's shape is not the template's.
+  The audit recognizes both consumers.
+- **One shared dev key, one key per server; one rule per environment** (R451). Every member is sealed
   to exactly the public recipients of its environment's rule in the app's `.sops.yaml`, one rule per environment and no catch-all
   (`HFS_SOPS_CATCH_ALL`). The recipients are data: `ops/vps/recipients.yaml` of the harness repository (public halves only, shipped to
   @starci/hfs as `knowledge/hfs/sops-recipients.yaml`) names the harness recipient, each managed VPS's server and backup recipient, and
@@ -164,8 +164,7 @@ image, so any digest-pinned supported reverse proxy serves.
   environment whose set cannot be resolved yet (`HFS_SOPS_RECIPIENT_UNDECLARED`: no recorded server, an undeclared server, a backup not
   minted); and a member whose cleartext `sops.age` recipients differ from the set (`HFS_SOPS_MEMBER_RECIPIENTS`). A rewrite (`set`,
   `migrate`, `split`, an edit) seals to the rule's set, or to the member's own set when no rule reaches an existing member; a new member
-  no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (a rule written for the legacy `.enc` spelling does not reach a
-  `.enc.yaml` member; `starci app secret init` writes the per-environment rules and `starci app codemod sops-rules` migrates a legacy file).
+  no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (`starci app secret init` writes the per-environment rules).
 - **The dev identity, found by itself and guarded.** Every verb that opens a dev member (`starci app secret`, `stack`, `release`, `db`,
   the CLI's custody) finds the identity with nothing exported or pointed to through one lookup, taking the first of: SOPS_AGE_KEY or
   SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a worktree), the harness
@@ -177,8 +176,8 @@ image, so any digest-pinned supported reverse proxy serves.
   recipient prefix, the prefix expected and any later place that would have matched, and `starci app check --env local` warns
   `HFS_SOPS_IDENTITY_MISMATCH`. It guards dev members only: a dev machine holding no identity for a deployed environment is expected, and
   `stack down` opens no member. **A package key lives under its own variable name** (e.g. `NIVO_PACKAGE_AGE_KEY`), never
-  `SOPS_AGE_KEY`: on 2026-11-21 a package key pasted over `SOPS_AGE_KEY` in an app's `.claude/secret.env` shadowed the identity its dev
-  members were sealed to. A member it cannot open is refused naming the member, the format it was read as, its recipients, the
+  `SOPS_AGE_KEY`: a package key pasted over `SOPS_AGE_KEY` in an app's `.claude/secret.env` shadows the identity its dev
+  members are sealed to. A member it cannot open is refused naming the member, the format it was read as, its recipients, the
   identity's source and recipient, and why.
 - **The server's own identity, made on the server.** `starci app secret server-key --env <env>` (a dry run until `--execute`)
   reaches the environment's deploy server the way the deploy does (`deploy.remote`, the same host, user and key source;
@@ -197,12 +196,7 @@ image, so any digest-pinned supported reverse proxy serves.
   break-glass workflow opens the members with it and seals them again to the new server key and the backup. The server key
   is never copied into a repository: `--backup` is refused, and its break-glass backup lives only in the harness repository's
   break-glass environment. An app's CI opens the members with its own CI key, a recipient of the environment whose private half
-  is that repository's Actions secret SOPS_AGE_KEY. `--restore github --execute` is legacy: it serves only an old Environment
-  backup, which nothing writes any more. It dispatches the managed
-  `.github/workflows/stack-key-restore.yml` with the recorded `serverRecipient`, which writes the GitHub Environment `<env>`'s
-  SOPS_AGE_KEY to the server over the deploy's CI ssh key only when its public key is that recipient (umask 077, mode 600,
-  never echoed, never over an existing identity); it notes a repository-level SOPS_AGE_KEY (`gh api
-  repos/<o>/<r>/actions/secrets`, names only), which may only be the CI key, never the server key or the owner key. The deploy's owner-machine transport opens `deploy.remote.sealed`, one member
+  is that repository's Actions secret SOPS_AGE_KEY, which may only be the CI key, never the server key or the owner key. The deploy's owner-machine transport opens `deploy.remote.sealed`, one member
   (`sealed: vps`, `.starcistacks/<env>/secrets/vps.enc.yaml`) holding `VPS_HOST`, `VPS_USER`, an optional `VPS_PORT` (the SSH port, default 22; the transport passes `-p`, `-i` and `UserKnownHostsFile` explicitly, so a non-default port and the pinned key work on Windows, Git Bash and Linux CI alike), the PEM private key under
   `privateKey` and the pinned known_hosts under `knownHosts` (`SEALED_SSH_KEYS`, @starci/hfs `stack/remote.mjs`). A member per
   role is refused; `starci app secret migrate --env <env> <member> --to vps --into-existing` folds each into `vps`. `stack deploy` opens the members where it runs (the owner machine with the owner key, or CI with the bound
@@ -210,14 +204,14 @@ image, so any digest-pinned supported reverse proxy serves.
   this key file (@starci/hfs `stack/server-key.mjs`).
 - **Set in one write.** `starci app secret set --env <env> <provider> <KEY>...` prompts for each key with masked input on a
   terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
-  is left half filled. `starci app secret audit [--env <env>]` names every deviation (a legacy member, a member mixing providers by
+  is left half filled. `starci app secret audit [--env <env>]` names every deviation (a member mixing providers by
   the first word of its keys unless the stack groups it on purpose, each key declared by its runtime consumer or exact
   service credential reference; one sealed to other recipients than its rule, a key not declared, a declared member not sealed, an untracked
   member, a rule that does not name the recorded `deploy.remote.serverRecipient` beside the owner key, a production swarm
   deploy that records none) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`, decrypting in
   memory only. Either merges into a member that already exists only with `--into-existing`: a key the target holds with
   another value refuses the whole move, naming the key, an identical one merges, each target is written once and the
-  source goes only after every target is written. The audit is a verb, not a gate row, until every app has moved.
+  source goes only after every target is written. The audit is a verb, not a gate row.
 - **A sealed file outside the stack: `--ext <target>`.** A project may keep credentials in a sealed file that is no member of its `.starcistacks`:
   a package's seed standard holds them in `secrets.<env>.enc.yaml` of its own checkout, the data around it plain. The project's extension declares
   each such file once, in `secretTargets` of `ext/manifest.json` ([lint.md](lint.md) PROJECT-LINT-3): `{id, why, root, environments: {<env>: <file>},
@@ -252,7 +246,7 @@ image, so any digest-pinned supported reverse proxy serves.
      makes the server key, and each deployed environment moves to its server key plus the server's backup as the next bullet says; CI deploys
      with the app's own CI key (PROJECT-STACKS-7), never the server key.
   4. `starci app secret migrate --env <env> <member> [--to <provider>] [--into-existing]`, then the same with `--execute`, moves
-     each legacy member, or merges one into an existing member; `split --env <env> <member> [--group KEY=member ...]
+     each member to a provider name, or merges one into an existing member; `split --env <env> <member> [--group KEY=member ...]
      [--group-file <yaml>] [--into-existing]` (dry run, then `--execute`) divides one that mixes providers, each key to its
      first word's member unless `--group` (or the file's `KEY: member` map) names the owner's. A member no identity here
      opens is removed (`remove --env <env> <member> --force-nonempty --execute`) and its keys set again. A member the deploy names
@@ -584,10 +578,7 @@ it. Identities are synthetic (`HFS_SEED_PII`), and a level a production environm
 environment that is not docker-compose) holds no test data (no example.test identity, no uat- or test- prefix) but in its one
 test-account entry.
 
-A new app is scaffolded with the three levels, each an empty manifest and a `.gitkeep` in each kind folder. `starci app codemod
-seeds-layout` moves an older app's `db/seed.sql` to the shared level's `sql/reference.sql` and each loose SQL file of `<env>/seeds/` into
-that level's `sql/`, declares them, completes every level and leaves a conflict, a loose seed that is no SQL and a source that names an
-old seed home for a person. `starci app db baseline --squash --seed-tables` writes its reference rows as the shared entry `reference`.
+A new app is scaffolded with the three levels, each an empty manifest and a `.gitkeep` in each kind folder. `starci app db baseline --squash --seed-tables` writes its reference rows as the shared entry `reference`.
 
 Why: one structure per level puts seed data beside the environment that applies it, keeps it apart from schema and custody, and lets the
 harness order, validate and judge every seed while the app keeps what the data means.
@@ -609,7 +600,7 @@ the environment's for a manual run.
 
 Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`), R06
 (a plaintext secret on any tracked line), R259 (`HFS_SEED_PII` over the SQL and the JSON and YAML data), R332 (no SQL under `db/` but
-migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
+migrations, the archive and the bootstrap); the scaffold by `hfs-seeds-shape.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
 ## PROJECT-STACKS-13 Data lives in seed copies: a standard is how a thing is born, a backup is what it became
@@ -788,10 +779,6 @@ repository (no package dependency, workspace, submodule or path into one).
 one sealed credential file per environment), the harness judges the declaration (name, pin, purpose, the once-and-force rule) and the
 project reads the repository through `pinRepository` of `@starci/seed/git`, while the project's check judges what makes the
 copy complete.
-
-A repository written in the earlier `<project>-data@<major>` format (an entity file per record type, sealed value by value) is a
-`seed-backup` in that format: its owner re-exports it through the driver into `<project>-seed-backup-<env>` and retires it; it is not
-renamed in place.
 
 Why: one model for every copy lets the harness prove sealing, size, pins and receipts the same way for every project, while a standard
 stays readable for review and a backup stays unreadable to every environment but its own.
@@ -994,7 +981,7 @@ can land before the owner seals the key. The block, the catalog, the key's custo
 
 ## PROJECT-STACKS-22 One web image per sha; its public config is read at runtime
 
-The owner, 2026-11-21: "1 ảnh chỉnh theo môi trường chứ?" (one image, configured per environment). A front end is built once per commit,
+A front end is built once per commit,
 and the same digest goes from staging to production; only its environment differs. Next.js inlines every `process.env.NEXT_PUBLIC_*` read at
 build time, so a public URL passed as a build argument ties the image to the environment it was built for. An image entry opts out of that
 with `runtimePublicEnv: true`:

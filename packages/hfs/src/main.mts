@@ -105,8 +105,7 @@ import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
 import { explainPath, readWhy, trackedFiles, untrackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
 import { judgedCounts, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
-import { LegacyStateHeld, adoptLegacyState, skillRoot } from '../runtime/engine/runtime-root.mjs';
-import type { StateAdoption } from '../runtime/engine/runtime-root.mjs';
+import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
 import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
@@ -221,8 +220,6 @@ interface AppIo {
   runHeavyNode?: HeavyNodeRun | undefined;
   /** The room the CLI's governor would give the next heavy child now, MB (free RAM less the reserve and what recent admissions planned); a step sizes its parallel children by it. */
   heavyRoom?: (() => number) | undefined;
-  /** The runtime root whose host state main moves out of an installed copy before a verb (adoptLegacyState); this package's by default. */
-  stateRoot?: string | undefined;
   /** --quiet: no progress on stderr (the diagnosis stays). */
   quiet?: boolean | undefined; stderrIsTty?: boolean | undefined;
 }
@@ -237,7 +234,7 @@ type UsageForm = ParsedVerb['forms'][number];
 /** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
 export class UsageError extends Error {}
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'uiaudit', 'gallery', 'codemod']);
+export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'uiaudit', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain], ['adopt', dbAdoptMain]]);
 
 /**
@@ -324,7 +321,6 @@ const VERB_USAGE: Record<string, string[]> = {
   coverage: COVERAGE_USAGE.replace(/^usage: /, '').split(' | ').map((text) => text.replace(' [--cwd <dir>]', '')),
   audit: [AUDIT_USAGE.replace(/^usage: /, '').replace(' [--cwd <dir>]', '')],
   uiaudit: ['starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]', 'starci app uiaudit cycle <area>/<screen> --reason <why>', 'starci app uiaudit status [--json]'],
-  gallery: ['starci app gallery migrate-explain [--execute]'],
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
 every verb: [--cwd <dir>] [--quiet] [--help]
@@ -766,7 +762,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const landing = landingBase(repoRoot, io.env, profile.branch);
     const galleryBase = landing.base;
     const galleryChanged = level === 'dev' ? laneChanged : changedSince(repoRoot, galleryBase);
-    // the base is stated, so a lane and the lander (whose gate is a merge of the lane into origin/dev) can be compared: both judge the diff from the merge-base with origin/dev
+    // the base is stated, so the lane gate (a merge of the lane into origin/dev) and the push gate can be compared: both judge the diff from the merge-base with origin/dev
     lines.push(`  gallery coupling: judged ${galleryChanged.length} file(s) changed since ${galleryBase === null ? 'no base (a root commit)' : galleryBase.slice(0, 10)}, ${landing.source}`);
     // A screen's source changed without an approved canvas page (PROJECT-GALLERY-7): the same judged set, a canvas-managed screen only.
     const unapproved = galleryDesignChangeFindings({ repoRoot, changed: galleryChanged, base: galleryBase });
@@ -1095,7 +1091,7 @@ async function worldAppMain(argv: string[], { cwd, stackMain, stdout: out, stder
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['desktop', (argv: string[], io: AppIo) => desktopMain(argv, io)], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['audit', async (argv: string[], io: AppIo) => (await import('../audit/cli.mjs')).auditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['uiaudit', async (argv: string[], io: AppIo) => (await import('../uiaudit/cli.mjs')).uiauditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['gallery', async (argv: string[], io: AppIo) => (await import('../uiaudit/cli.mjs')).galleryMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['desktop', (argv: string[], io: AppIo) => desktopMain(argv, io)], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['audit', async (argv: string[], io: AppIo) => (await import('../audit/cli.mjs')).auditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['uiaudit', async (argv: string[], io: AppIo) => (await import('../uiaudit/cli.mjs')).uiauditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);
@@ -1104,16 +1100,10 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);
 }
 
-/** The line `main` prints once a legacy state base moved to the state base; it names only the files kept aside because they differed. */
-function adoptionNotice({ from, to, kept }: StateAdoption): string {
-  const aside = kept.length ? ` (${kept.join(', ')} differed from the copy already there; the older one is kept under legacy-*)` : '';
-  return `starci app: moved the state kept in ${from} to ${to}${aside}\n`;
-}
-
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof ScaffoldRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal || error instanceof DesktopRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof SideRefusal || error instanceof DesktopRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
 }
@@ -1126,7 +1116,7 @@ function errorMessage(error: unknown): string {
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, heavyRoom, checkApp, stderrIsTty = process.stderr.isTTY === true, stateRoot = skillRoot,
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, heavyRoom, checkApp, stderrIsTty = process.stderr.isTTY === true,
 }: MainOptions = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
@@ -1135,7 +1125,6 @@ export async function main(argv: string[], {
     const out = global.quiet && verb !== 'check' ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
-    for (const adopted of adoptLegacyState(env, stateRoot)) stderr(adoptionNotice(adopted));
     return await dispatchMain(verb as string, given, { cwd: global.cwd, harness, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, heavyRoom, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
