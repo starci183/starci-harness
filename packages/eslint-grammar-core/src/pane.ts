@@ -211,7 +211,7 @@ export const paneChildren: Rule.RuleModule = exemptFreestyle(defineRule({
     schema: [],
     messages: {
       notSection:
-        "{{what}} is placed straight in a `Pane`, so it skips the inset the pane publishes to its bands. Wrap it in a `<PaneSection>` (with `grow`, `scroll`, `align` or `bleed` as the band needs), make the pane's one child a nested `<PaneGrid>`, or for a chat pane (`content="chat"`) its one child a `<ChatFrame>`.",
+        "{{what}} is placed straight in a `Pane`, so it skips the inset the pane publishes to its bands. Wrap it in a `<PaneSection>` (with `grow`, `scroll`, `align` or `bleed` as the band needs), make the pane's one child a nested `<PaneGrid>`, or for a chat pane (`content=\"chat\"`) its one child a `<ChatFrame>`.",
     },
   },
   create(context) {
