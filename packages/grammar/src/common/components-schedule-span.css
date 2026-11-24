@@ -59,7 +59,7 @@
     .starci-core-schedule-cell > .starci-core-schedule-resizable { position: relative; z-index: 1; display: block; }
 
     /* A group row: its label folds the rows under it. */
-    .starci-core-schedule-row-label[data-grammar-group="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025); }
+    .starci-core-schedule-row-label[data-grammar-group="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); }
     .starci-core-schedule-row-label[data-grammar-depth="1"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card)); }
     .starci-core-schedule-row-label[data-grammar-depth="2"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card) * 2); }
     .starci-core-schedule-row-label[data-grammar-depth="3"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card) * 3); }

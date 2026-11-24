@@ -2,8 +2,7 @@
  * The icon table (owner 2026-11-23, ramps.css "THE ICON TABLE"). Four roles, never pixels: `control` 16 (the one leading icon beside 14px
  * words, every labelled button, a field, a chip, a navigation entry; a status mark is that 14/16 pair), `row` 20 in the 40 tile (radius 10),
  * `head` 24 in the 48 tile (radius 12), `text` 1em of the words it trails (carets only). An icon-only 40 button is 20 (`--grammar-icon-alone`).
- * The stroke follows the weight of the text: every rule that sets a font weight sets `--grammar-icon-stroke`, and a text that carries an icon is
- * regular (400, stroke 1.5). Every glyph size Grammar's own stylesheets set is one of those tokens (or fills a control part's box).
+ * Every icon strokes 1.5, buttons included (owner 2026-11-24: the icons are bigger now); a text that carries an icon is regular (400). Every glyph size Grammar's own stylesheets set is one of those tokens (or fills a control part's box).
  *
  *   node --import ./specs/support/register.mts --test specs/icon-sizes.spec.mts
  */
@@ -31,9 +30,9 @@ const GLYPH = /\.starci-core-(?:icon|status-glyph|inline-status-glyph|inline-sta
 const SIZE_DECL = /(?:^|;)\s*(width|height|inline-size|block-size)\s*:\s*([^;]+)/g
 const ALLOWED = new Set(["var(--grammar-icon-text)", "var(--grammar-icon-control)", "var(--grammar-icon-alone)", "var(--grammar-icon-row)", "var(--grammar-icon-head)", "var(--grammar-tile-row-size)", "var(--grammar-tile-head-size)", "100%"])
 
-test("ramps.css holds the icon table: text 1em, control 16, alone 20, row 20, head 24, the two tiles and the three strokes", () => {
+test("ramps.css holds the icon table: text 1em, control 16, alone 20, row 20, head 24, the two tiles", () => {
     const ramps = read("common/ramps.css")
-    for (const line of ["--grammar-icon-text: 1em;", "--grammar-icon-control: 1rem;", "--grammar-icon-alone: 1.25rem;", "--grammar-icon-row: 1.25rem;", "--grammar-icon-head: 1.5rem;", "--grammar-tile-row-size: 2.5rem;", "--grammar-tile-row-radius: 0.625rem;", "--grammar-tile-head-size: 3rem;", "--grammar-tile-head-radius: 0.75rem;", "--grammar-icon-stroke-regular: 1.5;", "--grammar-icon-stroke-medium: 1.75;", "--grammar-icon-stroke-semibold: 2;"]) {
+    for (const line of ["--grammar-icon-text: 1em;", "--grammar-icon-control: 1rem;", "--grammar-icon-alone: 1.25rem;", "--grammar-icon-row: 1.25rem;", "--grammar-icon-head: 1.5rem;", "--grammar-tile-row-size: 2.5rem;", "--grammar-tile-row-radius: 0.625rem;", "--grammar-tile-head-size: 3rem;", "--grammar-tile-head-radius: 0.75rem;"]) {
         assert.ok(ramps.includes(line), line)
     }
     const sizes = [...ramps.matchAll(/(--grammar-icon-(?!stroke)[\w-]+):/g)].map((m) => m[1])
@@ -93,22 +92,41 @@ test("a leading icon is the 14/16 pair, one inline step apart, at regular weight
     assert.match(css, /:is\(\.starci-type-caption[^)]*\) \.starci-core-inline-status \{\s*font-size: inherit;/)
     assert.match(css, /\.starci-core-text:is\(:not\(\[data-role\]\), \[data-role="body"\], \[data-role="label\.item"\], \[data-role="label\.field"\]\):has\(> \.starci-core-icon\) \{\s*display: flex;\s*align-items: center;\s*gap: var\(--grammar-inline-gap\);/)
     assert.match(css, /\.starci-core-text > \.starci-core-icon \{\s*width: var\(--grammar-icon-control\);/)
-    assert.match(css, /font-weight: var\(--grammar-weight-regular\) !important;\s*--grammar-icon-stroke: var\(--grammar-icon-stroke-regular\);/)
+    assert.match(css, /font-weight: var\(--grammar-weight-regular\) !important;\s*\}/)
     const markup = renderToStaticMarkup(createElement(InlineStatus, { state: "done", label: "Xong" }))
     assert.doesNotMatch(markup, /data-size|style=/)
 })
 
-test("the stroke follows the weight: every rule that sets a font weight from a token sets --grammar-icon-stroke from the same value", () => {
+/** The selectors that identify text carrying an icon or a status glyph: the owner's "text that carries an icon is regular" (contexts/ui/scale.md). */
+const ICON_TEXT = /:has\([^)]*(?:\.starci-core-icon|\.starci-core-inline-status-glyph)|\.starci-core-inline-status(?![-\w])/
+/** A control keeps its 500 label and sets its own stroke; it is not text. */
+const CONTROL = /\.starci-core-(?:button|text-action|tab|tabs-more|choice-chip|pane-trigger|icon-button)(?![-\w])/
+
+test("text that carries an icon is regular: no rule on it sets a weight above 400, a control excepted", () => {
     const off: string[] = []
     for (const { file, css } of sheets()) {
         for (const { selector, body } of rules(css)) {
-            const weight = /font-weight:\s*(var\([^;!]+\))/.exec(body)
-            if (weight === null) continue
-            if (!body.includes("--grammar-icon-stroke")) off.push(`${file}: ${selector}`)
+            if (!ICON_TEXT.test(selector) || CONTROL.test(selector)) continue
+            const weight = /(?:^|[;\s])font-weight:\s*([^;!]+)/.exec(body)?.[1]?.trim()
+            if (weight !== undefined && weight !== "var(--grammar-weight-regular)" && weight !== "400") off.push(`${file}: ${selector} { font-weight: ${weight} }`)
         }
     }
     assert.deepEqual(off, [])
-    assert.match(read("common/styles.css"), /\.starci-core-icon :where\(path, circle, line, polyline, polygon, rect, ellipse\)/)
+    const common = read("common/styles.css")
+    assert.match(common, /\.starci-core-icon :where\(path, circle, line, polyline, polygon, rect, ellipse\)/)
+})
+
+test("every icon strokes 1.5, buttons included: one global stroke-width on the glyph, no stroke variable, no other stroke", () => {
+    const off: string[] = []
+    for (const { file, css } of sheets()) {
+        for (const { selector, body } of rules(css)) {
+            if (/--grammar-icon-stroke/.test(body) || /--grammar-icon-stroke/.test(selector)) off.push(`${file}: ${selector} (stroke variable)`)
+            const width = /(?:^|[;\s])stroke-width:\s*([^;]+)/.exec(body)?.[1]?.trim()
+            if (width !== undefined && GLYPH.test(selector) && width !== "1.5") off.push(`${file}: ${selector} { stroke-width: ${width} }`)
+        }
+    }
+    assert.deepEqual(off, [])
+    assert.match(read("common/styles.css"), /\.starci-core-status-glyph :where\(path, circle, line, polyline, polygon, rect, ellipse\) \{\s*stroke-width: 1\.5;/)
 })
 
 test("the empty state's tile is the head tile: 48 with a 24 glyph", () => {

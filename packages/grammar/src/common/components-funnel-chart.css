@@ -41,7 +41,6 @@
         flex: 1 1 auto;
         color: var(--foreground);
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
     }
 
     .starci-core-funnel-label > .starci-core-skeleton-group { inline-size: 8rem; }
@@ -60,7 +59,7 @@
 
     .starci-core-funnel-step { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
 
-    .starci-core-funnel-step[data-grammar-drop="largest"] { color: var(--danger); font-weight: var(--grammar-weight-medium); --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025); }
+    .starci-core-funnel-step[data-grammar-drop="largest"] { color: var(--danger); font-weight: var(--grammar-weight-medium); }
 
     .starci-core-funnel-track {
         display: block;

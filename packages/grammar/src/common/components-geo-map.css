@@ -55,7 +55,6 @@
         font-size: var(--grammar-text-md);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
         pointer-events: auto;
         transform: translate(-50%, -50%);

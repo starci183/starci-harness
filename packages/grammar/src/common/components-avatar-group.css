@@ -129,7 +129,6 @@
         color: var(--muted);
         font-size: var(--starci-avatar-letters-size);
         font-weight: var(--grammar-weight-medium);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-medium), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-none);
         white-space: nowrap;
         user-select: none;

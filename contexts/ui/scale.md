@@ -98,9 +98,8 @@ Three icon sizes, 16, 20 and 24, each drawn at its native size (no scaling, no o
 - **No icon on a heading** (18 to 28): a heading takes the head tile beside it. **No icon on 12px meta or caption text**: words only
   ("16 hours ago", never a clock before it). The 1em family is exactly three: the leading disclosure caret, the leading status glyph and the trailing go caret or arrow. Position
   carries meaning: a caret before words expands in place, one after words goes elsewhere. Every other icon beside 14px words is 16.
-- **Text that carries an icon is regular** (400), so the icon beside words always strokes 1.5; a status word is regular too. A button keeps its label weight (500, stroke 1.75): it is a control, not text. Bold words inside a sentence stay allowed.
-- **The stroke follows the weight of the text**: 400 strokes 1.5, 500 strokes 1.75, 600 and heavier 2 (`--grammar-icon-stroke`, set by every
-  rule that sets a font weight, so a glyph inherits it from its line; Grammar's spec `icon-sizes` refuses a weight rule without it).
+- **Text that carries an icon is regular** (400): the owner's rule. Any rule styling text with a leading or trailing icon or status glyph sets no weight above 400; a status word is regular too. Exception: a **control** (a button, a text action, a tab, a chip) keeps its 500 label. Bold words inside a sentence stay allowed. Grammar's spec `icon-sizes` enforces it.
+- **Every icon strokes 1.5, buttons included; the stroke never follows the text weight** (owner 2026-11-24: icons are bigger now). It is written once, on the glyph; there is no stroke variable and no per-control stroke.
 - **Never filled**, not for a current, selected or active state: the state is shown by colour and background.
 - **One set: Tabler outline.** Grammar draws its own glyphs from it (`src/core/leaf/Icon/tabler.tsx`); an app takes the rest from
   `@tabler/icons-react`.

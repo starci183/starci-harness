@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased - Every icon strokes 1.5; the stroke variable is gone
+
+- Changed, BREAKING for apps that set it (THE ICON STROKE, owner 2026-11-24: icons are bigger now; replaces the 0.57.0 rule "the stroke follows the weight"): every icon strokes 1.5, buttons and controls included, and the stroke never follows the text weight. `.starci-core-icon` and the status glyphs write `stroke-width: 1.5` once. The custom properties `--grammar-icon-stroke`, `--grammar-icon-stroke-regular`, `--grammar-icon-stroke-medium` and `--grammar-icon-stroke-semibold` are REMOVED (184 per-rule declarations and the 1.75 button exception deleted); an app that sets or reads one deletes that line. Bold text with an icon is still the owner's rule: text that carries an icon is regular (400), a control excepted. `.starci-core-inline-status` is weight 400 in its own rule (it was 500, overridden by the icon-text rule). Spec `icon-sizes` now enforces that rule and that no rule sets a stroke but the one global 1.5.
+
 ## 0.57.3 - 2026-11-24 - Sidenotes: one calm column; Markdown tables stack on a phone
 
 A patch: two fixes in the lesson reading.
