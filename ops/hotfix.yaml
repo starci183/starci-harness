@@ -1,0 +1,12 @@
+# The scope of a coordinator hotfix (`starci hotfix land`, contexts/authority/lanes.md "Hotfix"): a small change made in the app's dev checkout from the
+# coordinator chat, landed on dev and restarted at once, with no lane. A change over either limit is refused ("quá lớn cho hotfix (N file / M dòng), mở lane")
+# and goes through a lane. The limits are the owner's; nothing else bounds a hotfix: adding, editing and deleting files, a migration, a lockfile and a schema
+# are all allowed inside them (the restart then runs the full sync steps).
+# maxFiles: the most files one hotfix changes (added, edited, deleted or renamed, each one counts).
+# maxLines: the most lines it changes (added plus deleted; a binary file counts as over the limit).
+# healthWaitSeconds: how long `hotfix land --health-url <url>` waits for the url to answer 200 after the restart.
+# Read by cli/src/core/hotfix/rules.ts (`starci hotfix`).
+schema: starci/hotfix@1
+maxFiles: 5
+maxLines: 200
+healthWaitSeconds: 120

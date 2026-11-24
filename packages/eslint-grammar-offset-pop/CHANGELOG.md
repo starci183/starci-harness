@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.58.0 - 2026-11-24
+
+- No rule of its own changed: versioned with @starci/grammar 0.58.0 and @starci/eslint-grammar-core 0.58.0.
+
 ## 0.57.0 - 2026-11-23
 
 - No rule of its own changed: versioned with @starci/grammar 0.57.0 and @starci/eslint-grammar-core 0.57.0.

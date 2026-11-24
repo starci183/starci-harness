@@ -55,7 +55,8 @@ step, and a running web or api server takes none. Nothing starts while the drive
 
 The shared stack of an app (its dev database, its running api, its main checkout) belongs to the coordinator and the dev refresh.
 A lane never runs `stack up`, never applies a migration to the shared database, never edits or installs the main checkout, and
-never starts a second api against the shared database. Whoever is allowed to touch it holds the `stack` slot for the whole of it
+never starts a second api against the shared database. The one exception is a coordinator hotfix ("Hotfix" below), which edits the main checkout in place
+while it holds the dev lock. Whoever is allowed to touch it holds the `stack` slot for the whole of it
 (`starci slot run stack -- <command>`), leaves the main checkout fast-forwarded to the remote integration branch, never to an
 unpushed lane commit, and releases. A migration a lane adds is additive and applied by the refresh once landed.
 
@@ -140,6 +141,78 @@ and the seconds each phase took.
 
 A lane never adds an hfs exception (that needs the owner: stop and report), never uses `--no-verify` and never force-pushes; the
 pre-push hook needs `.husky/_` present. Before every commit run `git diff --cached --stat`.
+
+## Hotfix
+
+The owner's rule, in his words:
+
+> ".claude thêm 1 phần là hot fix, ví dụ không cần mở lane thì fix thẳng ở chat và restart dev lại luôn hiểu không? trừ khi việc fix quá nặng. xác định rõ scope."
+
+> "hotfix là sửa xong chạy lại luôn, không gate gì hết"
+
+A hotfix is a small fix the **coordinator** makes directly in the app's dev checkout from the chat, with no lane and no worktree, landed on dev and restarted at
+once. It is coordinator-only (`owner`, `coordinator`): a subagent, a worker or an Orca seat never runs `starci hotfix`; it works in a lane.
+
+| | a hotfix | a lane |
+|---|---|---|
+| who | the coordinator, in the chat | any lane agent, in its own worktree |
+| where | the app's dev checkout, edited in place | `lane/<lane>`, a worktree |
+| size | at most 5 files and 200 changed lines (added plus deleted), one repository | no limit |
+| gate | none: no typecheck, hfs, secrets or spec | `lane gate`, the fast level |
+| lands | one `Hotfix:` commit pushed to dev at once | `lane gate --push --land` |
+| dev | restarts right away | the debounced sync |
+
+**Scope.** The limits are `ops/hotfix.yaml` (`maxFiles`, `maxLines`), the owner's. Adding, editing and deleting files, a migration, a lockfile and a schema are all
+allowed inside them. A change over either limit is refused `HOTFIX_SCOPE` with "quá lớn cho hotfix (N file / M dòng), mở lane" and goes through a lane. Typical
+hotfixes: a copy or i18n string, a CSS value, a one-line logic bug, a seed typo, a config value. A hotfix is the wrong tool when the fix needs thought: open a lane.
+
+**Use.** Edit the files in the dev checkout (an app's main checkout, or `D:/.claude` on `dev` for the harness; the CLI that runs it is the machine's
+`_cli-current`, never the checkout's own build), then:
+
+1. `starci hotfix status [--only <path>...]` (reads only): the files and lines against the limits, tracked changes outside the hotfix, whether the restart is light or full, the dev lock and whether a dev sync runs.
+2. `starci hotfix land --message "<what it fixes>" [--only <path>...] [--health-url <url>] [--dry-run] [--profile harness]`.
+3. `starci hotfix abort [--only <path>...] [--execute]` gives the checkout its HEAD back instead (tracked files restored, named new files deleted; dry until `--execute`).
+
+`--only` names the hotfix's paths (a folder ends with a slash). Without it every tracked change is the hotfix and no untracked file is: a stray file of the checkout is
+never swept in, so a NEW file lands only when `--only` names it. With it, a tracked change outside the list refuses `HOTFIX_FOREIGN` (nothing is committed) and a named
+path with no change refuses `HOTFIX_ONLY_UNCHANGED`. The harness checkout holds other work, so `--only` is required there (`HOTFIX_ONLY_REQUIRED`).
+
+`hotfix land` judges only the size. Under the dev lock (the one the lander and `lane gate --land` take) it refuses `HOTFIX_SYNC_BUSY` while a dev sync of the
+checkout runs, makes ONE commit with a `Hotfix:` trailer, rebases it onto the newest `origin/dev` (a conflict puts the edit back and lands nothing) and pushes
+`dev`, never forced. Then the stack restarts through `dev sync` told where the checkout was before the hotfix: **light** (only the api and/or web the change
+reaches, no install and no prepare) or, when a lockfile or manifest, a migration, a schema or a workspace package changed, the **full sync steps** (npm ci,
+build, migrate); the output says which and why. It waits for `--health-url` to answer 200 (without it, the restart's own health wait stands) and starts the CI
+watch, which judges the commit after the fact; a red CI is the cost of skipping the gate and is fixed forward, never reverted. A failed restart or health wait
+does not undo the landing: it is reported and the exit is red.
+
+**What follows the push depends on the repository kind** (`--profile`, by default `harness` in the harness checkout, else `app`):
+
+| | an app repo (NIVO, StarCi Next, ...) | the harness (`D:/.claude`, `--profile harness`) |
+|---|---|---|
+| the checkout | the app's main dev checkout, on `dev` | `D:/.claude` on `dev`; the commit is rebased onto `origin/dev` first |
+| after the push | an immediate `dev sync` of the checkout, light or the full steps | nothing is a dev server, so: (1) the CLI copy is rebuilt |
+| | | (2) `deps publish-dev` when a published package changed |
+| | | (3) every app of `devSync.repos` syncs at once |
+| health | `--health-url`, else the restart's own wait | each app's sync prints its restart and health |
+
+*App repo.* The restart is `dev sync` told where the checkout was before the hotfix (`since`): light, or the full sync steps when a lockfile or manifest, a migration, a
+schema or a workspace package changed, the output saying which.
+
+*Harness.* (1) When the hotfix touches `cli/`, `ops/`, `policy/`, `contexts/` or `skills/`, a new `<lanes>/_cli-<sha9>` worktree of the pushed commit is made (`git worktree
+add --detach`, `npm ci` and `npm run build` in its `cli/`, under the heavy governor) and the junction `<lanes>/_cli-current` is repointed to it by renaming a new junction
+into place, so the next command of the machine runs the hotfix; a failed build leaves the junction where it was and the exit is red, and old copies stay for the janitor.
+(2) The dev line is published (`deps publish-dev`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, never a committed pin). (3) After a
+publish, every app checkout of `devSync.repos` gets an IMMEDIATE sync with no debounce, the same marking `--land` makes after a harness publish; each app's machine
+overlay (`devSync.local`) installs the new dev build, so the change shows on every app's dev within minutes without changing any app's committed pins. The output lists
+each app's sync and its restart result.
+
+**The dev checkout stays sync-owned** (only `dev sync` and the landers move it), **except during a coordinator hotfix**, which holds the dev lock from its first
+step to the end of the restart and is the only thing that edits the checkout in place.
+
+**Hotfix is the only path that skips the pre-push gate.** The skip lives in the CLI: while `hotfix land` pushes its one commit it writes a pass beside the
+repository's git objects (`core/hotfix/pass.ts`), and the fast-level check the pre-push hook runs reads it. The pass covers exactly the push of that commit to `dev`
+alone, while that `hotfix land` process lives and for at most 10 minutes; there is no flag, variable or setting for anything else, and an agent never skips a
+gate any other way. An app whose pinned `starci-harness` predates this build still runs the fast level on a hotfix push, which is slow but correct: bump the pin.
 
 ## Shots and looks: the one web and one api server of the app
 

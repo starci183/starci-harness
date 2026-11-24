@@ -9,7 +9,7 @@ import { runV0540, v0540Markdown, type V0540Report } from "./v0540/index.mts"
 import { runV0550, v0550Markdown, type V0550Report } from "./v0550/index.mts"
 import { runV0551, v0551Markdown, type V0551Report } from "./v0551/index.mts"
 import { runV0570, v0570Markdown, type V0570Report } from "./v0570/index.mts"
-import { runV0571, v0571Markdown, type V0571Report } from "./v0571/index.mts"
+import { runV0580, v0580Markdown, type V0580Report } from "./v0580/index.mts"
 
 /** What one codemod run reports: its findings are the cases left for a person. */
 export interface GrammarCodemodReport {
@@ -65,11 +65,11 @@ export const CODEMODS: readonly GrammarCodemod[] = Object.freeze([
         markdown: (report) => v0570Markdown(report as V0570Report),
     },
     {
-        id: "v0571",
-        version: "0.57.1",
+        id: "v0580",
+        version: "0.58.0",
         summary: "the neutral Sparkline: its tone and emptyLabel props are deleted and dropped (the line is always the muted ink; no data or only zeros draws nothing)",
-        run: runV0571,
-        markdown: (report) => v0571Markdown(report as V0571Report),
+        run: runV0580,
+        markdown: (report) => v0580Markdown(report as V0580Report),
     },
 ])
 

@@ -182,7 +182,9 @@ export async function ensureEdge(ctx: StackContext, local: LocalConfig, run: Loc
     Reflect.deleteProperty(edges, run.name);
   }
   const marker = grammarMarker(local.repoRoot);
-  const probePath = /^https?:\/\/[^/]+(\/[^?#]*)?/u.exec(run.health?.url ?? '')?.[1] ?? '/';
+  // The CSS marker check needs a page that links stylesheets; a health route (e.g. /health/live) answers JSON with none, so the edge never
+  // went live for a web whose health url is not a page (StarCi Next's landing). With a marker the edge probes the root page.
+  const probePath = marker !== null ? '/' : /^https?:\/\/[^/]+(\/[^?#]*)?/u.exec(run.health?.url ?? '')?.[1] ?? '/';
   const config: EdgeConfig = { listen: port, backendFile, statusFile, probePath, marker, title: local.project };
   const started = await (deps.startEdge ?? realStartEdge(ctx, dir, run.name))(config);
   if (typeof started === 'string') return { ok: false, line: `edge ${run.name}: not started on port ${port} (${started}); ${run.name} runs on the port itself` };

@@ -146,6 +146,7 @@ import { laneStatusVerb } from "./core/lane/status.js"
 import { laneCiWatchVerb } from "./core/lane/ci-watch.js"
 import { laneWithdrawVerb } from "./core/lane/withdraw.js"
 import { laneGateVerb } from "./core/lane/gate.js"
+import { hotfixAbortVerb, hotfixLandVerb, hotfixStatusVerb } from "./core/hotfix/hotfix.js"
 import { slotListVerb } from "./core/slot/list.js"
 import { slotReleaseVerb } from "./core/slot/release.js"
 import { slotRunVerb } from "./core/slot/run.js"
@@ -317,6 +318,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     devSyncVerb,
     devSyncRunnerVerb,
     laneGateVerb,
+    hotfixLandVerb,
+    hotfixStatusVerb,
+    hotfixAbortVerb,
     slotTakeVerb,
     slotReleaseVerb,
     slotListVerb,

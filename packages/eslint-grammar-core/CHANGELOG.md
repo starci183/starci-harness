@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.58.0 - 2026-11-24
+
+- No rule of its own changed: versioned with @starci/grammar 0.58.0.
+
 ## 0.57.0 - 2026-11-23
 
 - Added (`no-raw-spacing-style`, law SPACING-ROLES, owner 2026-11-23): a gap, padding or margin key in a JSX `style` object in product source is reported; the distance is a Grammar spacing role (a Stack, Cluster or Grid `gap`, the inset of a Grammar box). A counting rule at warn until both apps migrate. The class-string half stays the canon's `starci-fe/no-spacing-utility` (R350).

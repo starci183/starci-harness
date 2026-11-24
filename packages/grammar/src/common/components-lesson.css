@@ -254,7 +254,7 @@
     .starci-core-sidenote-anchor[data-grammar-sidenote-active="true"] { text-decoration-color: var(--foreground); }
     .starci-core-sidenote-anchor[aria-expanded="true"] { text-decoration-color: var(--foreground); }
 
-    /* `narrow="inline"` (0.57.1): an opened note stands in the paragraph, under its term, on the accent edge; never on a wide frame. */
+    /* `narrow="inline"` (0.58.0): an opened note stands in the paragraph, under its term, on the accent edge; never on a wide frame. */
     .starci-core-sidenote-inline {
         display: flex;
         flex-direction: column;
