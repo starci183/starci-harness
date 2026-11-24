@@ -68,7 +68,7 @@
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-reply-strip {
         --starci-core-reply-strip-edge: currentcolor;
 
-        background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
+        background: color-mix(in oklab, var(--accent-foreground) 16%, transparent);
         color: inherit;
     }
 
