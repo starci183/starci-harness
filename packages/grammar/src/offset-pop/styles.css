@@ -51,7 +51,6 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Heading"][data-scale="display"] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-black);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-black), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-display);
         line-height: var(--grammar-leading-display);
         text-wrap: balance;
@@ -71,7 +70,6 @@
         border: var(--offset-pop-outline-width) solid var(--border);
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: var(--grammar-weight-extrabold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
@@ -88,7 +86,6 @@
         border-radius: var(--offset-pop-pill-radius);
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
     }
 
     /* The filled status dot takes a hairline ink outline so it reads on the cream canvas. */
@@ -153,7 +150,6 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-label] {
         color: var(--foreground);
         font-weight: var(--grammar-weight-extrabold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-extrabold), 400), 600) - 400) * 0.0025);
         letter-spacing: var(--grammar-tracking-snug);
     }
 

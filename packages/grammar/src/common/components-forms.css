@@ -86,7 +86,6 @@
         color: var(--muted);
         font-size: var(--grammar-type-label-field-size);
         font-weight: var(--grammar-type-label-field-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-label-field-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-label-field-line);
         overflow-wrap: anywhere;
     }
@@ -102,7 +101,6 @@
         color: var(--muted);
         font-size: var(--grammar-type-caption-size);
         font-weight: var(--grammar-type-caption-weight);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-type-caption-weight), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-type-caption-line);
         overflow-wrap: anywhere;
     }
@@ -110,7 +108,6 @@
     .starci-core-field-error {
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-semibold);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-semibold), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
@@ -605,7 +602,6 @@
     [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-label] {
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-lg);
     }
 
@@ -613,7 +609,6 @@
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        --grammar-icon-stroke: calc(1.5 + (min(max(var(--grammar-weight-regular), 400), 600) - 400) * 0.0025);
         line-height: var(--grammar-leading-md);
     }
 

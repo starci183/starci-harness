@@ -4,7 +4,7 @@ import { createElement, type ReactElement, type SVGProps } from "react"
  * THE ONE ICON SET (owner 2026-11-23): Tabler outline, drawn from @tabler/icons 3.52.0 (MIT, Copyright (c) 2020-2024 Paweł Kuna,
  * https://github.com/tabler/tabler-icons). Generated, one export per glyph Grammar draws itself; an app takes the rest of the set from
  * `@tabler/icons-react`. Every glyph is outline on the 24 grid; its stroke is never written here: `.starci-core-icon` sets
- * `stroke-width` from `--grammar-icon-stroke`, the weight of the text it stands with (ramps.css "THE ICON STROKE").
+ * `stroke-width: 1.5` for every icon, buttons included (styles.css "THE ICON STROKE").
  */
 /** A glyph component: any SVG props in, so a part can pass its own class and aria attributes; an IconSource wherever one is taken. */
 export type TablerGlyph = (props: SVGProps<SVGSVGElement>) => ReactElement

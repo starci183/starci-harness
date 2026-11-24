@@ -75,7 +75,7 @@ test("the stylesheet paints every Button in a banner with the banner's tint: one
     for (const [tone, token] of [["informative", "info"], ["accent", "accent"], ["affirmative", "success"], ["cautionary", "warning"], ["negative", "danger"]] as const) {
         assert.match(overlays, new RegExp(`\\.starci-core-alert\\[data-grammar-tone="${tone}"\\] \\{[^}]*--starci-core-alert-ink: var\\((?:--informative-soft-foreground, )?var\\(--${token}-soft-foreground\\)|\\.starci-core-alert\\[data-grammar-tone="${tone}"\\] \\{[^}]*--starci-core-alert-ink: var\\(--${token}-soft-foreground\\)`, "u"), tone)
     }
-    assert.match(css, /\.starci-core-button \{ font-weight: var\(--grammar-type-label-item-weight\); --grammar-icon-stroke: [^}]*\}/u, "every Button label is 500, stated by Grammar")
+    assert.match(css, /\.starci-core-button \{ font-weight: var\(--grammar-type-label-item-weight\); \}/u, "every Button label is 500, stated by Grammar")
 })
 
 test("a Button an app writes into the banner's copy is a Grammar button the tint rule reaches", () => {
