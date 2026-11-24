@@ -100,6 +100,13 @@ app's main dev checkout -> the dev stack, exposed through its Cloudflare tunnel.
    and it looks at the running stack (`starci app look`, `starci gallery shoot --port`); the owner presses F5
    ([contexts/authority/lanes.md](contexts/authority/lanes.md) "Shots and looks").
 
+**Hotfix (coordinator only).** The owner: "hotfix là sửa xong chạy lại luôn, không gate gì hết". A small fix (at most 5 files and 200 changed lines, `ops/hotfix.yaml`,
+one repository) the coordinator makes in the app's dev checkout from the chat, with no lane: `starci hotfix land --message "<fix>"` commits it as one `Hotfix:` commit
+on dev, pushes without the pre-push gate (the only path that skips it; the pass is written by the command itself, never by a flag), restarts dev at once (light, or the
+full sync steps when a lockfile, migration or schema changed), waits for health and starts the CI watch, which catches mistakes after the fact. In the harness (`D:/.claude`, `--profile harness`, `--only <path>` required) nothing is a dev server, so after the push it rebuilds the CLI copy (`_cli-<sha>`, then repoints `_cli-current`), runs `deps publish-dev` when a package changed and syncs every app of `devSync.repos` at once. Over the limit it refuses
+"quá lớn cho hotfix (N file / M dòng), mở lane". Subagents and workers never hotfix: they use lanes. While it runs it holds the dev lock; otherwise the dev checkout stays sync-owned.
+[contexts/authority/lanes.md](contexts/authority/lanes.md) "Hotfix" has the table and the rules.
+
 **Prod (slow, careful, after dev).** npm is published once per release train, for prod only (`starci release push` /
 `release publish` on the harness). Prod pins npm versions ONCE, at release time: the cut bumps the app's local pins to the
 npm versions (`deps install-local --restore`, then the npm version of each). Then the app code is pushed, fully checked, its docker images built, `app check --env prod --level full`, staging, the tag,

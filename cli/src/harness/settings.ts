@@ -18,6 +18,7 @@ import { loadStallRules } from "./stall.js"
 import { loadTelegram } from "./telegram.js"
 import { loadUat } from "./uat.js"
 import { loadVpsPolicy } from "./vps/policy.js"
+import { loadHotfixRules } from "../core/hotfix/rules.js"
 
 /**
  * Every settings file of ops/ by name, with the validated view its own loaders give of a folder holding it. A key is a
@@ -34,6 +35,7 @@ const SETTINGS: Readonly<Record<string, (dir: string) => unknown>> = {
     telegram: (dir) => loadTelegram(dir),
     vps: (dir) => loadVpsPolicy(dir),
     slots: (dir) => loadSlotRules(dir),
+    hotfix: (dir) => loadHotfixRules(dir),
 }
 
 /** The names of the settings files, `<name>.yaml` in ops/. */

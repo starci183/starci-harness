@@ -10,6 +10,7 @@ import { packageVersion } from "../version.js"
 import { judgePush } from "../deps/push-gate.js"
 import { LEVEL_FLAG, memoStore, runFastCheck, treeMemoKey } from "./fast-check.js"
 import type { FastPorts } from "./fast-check.js"
+import { passFor } from "../hotfix/pass.js"
 import { applyHfsEnv, argValue, FORWARDED, runHfs } from "./hfs.js"
 
 /**
@@ -45,6 +46,7 @@ const fastPorts = async (context: VerbContext, env: string): Promise<FastPorts> 
             process.stderr.write(`${line}\n`)
         },
         json: context.json,
+        hotfix: (pushRefs) => passFor(root, pushRefs),
     }
 }
 

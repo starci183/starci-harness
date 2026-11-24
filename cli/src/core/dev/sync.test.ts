@@ -653,3 +653,21 @@ void test("a swapped install that does not resolve (picocolors from next/node_mo
     assert.ok(said.includes("the clean install resolves"))
     assert.equal(existsSync(join(gitIn(checkout, "rev-parse", "--path-format=absolute", "--git-path", "starci-dev-sync-unswapped"))), false, "a clean install clears the mark")
 })
+
+void test("a hotfix committed and pushed from the checkout itself is synced from where the checkout was: the side restarts, light skips the prepare, the full steps run it", async (t) => {
+    const { checkout } = scratch(t)
+    const start = gitIn(checkout, "rev-parse", "HEAD")
+    mkdirSync(join(checkout, "be"), { recursive: true })
+    writeFileSync(join(checkout, "be", "main.ts"), "export {}\n")
+    gitIn(checkout, "add", ".")
+    gitIn(checkout, "commit", "-q", "-m", "hotfix in place")
+    gitIn(checkout, "push", "-q", "origin", "dev")
+    const light: string[] = []
+    const done = await devSync(request(checkout, { execute: true, restart: true, since: start, light: true }), fakeDeps(light))
+    assert.deepEqual(light, ["restart api"], "the api restarts on its own build; nothing is installed or prepared")
+    assert.deepEqual(done.data.sides, ["be"])
+    assert.equal(done.data.from, start)
+    const full: string[] = []
+    await devSync(request(checkout, { execute: true, restart: true, since: start, light: false }), fakeDeps(full))
+    assert.deepEqual(full, ["prepare", "restart api"], "without light the prepare scripts run before the restart")
+})
