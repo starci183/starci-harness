@@ -191,8 +191,8 @@ does not undo the landing: it is reported and the exit is red.
 |---|---|---|
 | the checkout | the app's main dev checkout, on `dev` | `D:/.claude` on `dev`; the commit is rebased onto `origin/dev` first |
 | after the push | an immediate `dev sync` of the checkout, light or the full steps | nothing is a dev server, so: (1) the CLI copy is rebuilt |
-| | | (2) `deps publish-dev` when a published package changed |
-| | | (3) every app of `devSync.repos` syncs at once |
+| | | (2) `deps publish-dev` when the hotfix changes a package the apps consume |
+| | | (3) every app of `devSync.repos` syncs at once, after a publish only |
 | health | `--health-url`, else the restart's own wait | each app's sync prints its restart and health |
 
 *App repo.* The restart is `dev sync` told where the checkout was before the hotfix (`since`): light, or the full sync steps when a lockfile or manifest, a migration, a
@@ -201,7 +201,10 @@ schema or a workspace package changed, the output saying which.
 *Harness.* (1) When the hotfix touches `cli/`, `ops/`, `policy/`, `contexts/` or `skills/`, a new `<lanes>/_cli-<sha9>` worktree of the pushed commit is made (`git worktree
 add --detach`, `npm ci` and `npm run build` in its `cli/`, under the heavy governor) and the junction `<lanes>/_cli-current` is repointed to it by renaming a new junction
 into place, so the next command of the machine runs the hotfix; a failed build leaves the junction where it was and the exit is red, and old copies stay for the janitor.
-(2) The dev line is published (`deps publish-dev`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, never a committed pin). (3) After a
+(2) When the hotfix's own files change a package the apps consume (a package folder, `cli/`, `ops/` or `policy/`; never `contexts/`, `skills/` or Markdown, which
+no app runs), the dev line is published (`deps publish-dev`: `X.Y.Z-dev.N` of each changed package and of every package that pins one, never a committed pin); a docs
+or contexts hotfix publishes nothing and restarts and syncs no app, and says so. A package whose dev build fails is printed with its cause and the exit is red, while
+the packages published beside it still reach the apps. (3) After a
 publish, every app checkout of `devSync.repos` gets an IMMEDIATE sync with no debounce, the same marking `--land` makes after a harness publish; each app's machine
 overlay (`devSync.local`) installs the new dev build, so the change shows on every app's dev within minutes without changing any app's committed pins. The output lists
 each app's sync and its restart result.

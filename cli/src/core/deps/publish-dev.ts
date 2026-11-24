@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { hostname, tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
 import { withHeavySlot } from "../../harness/heavy.js"
+import { takeLiveLock } from "../../harness/slots.js"
 import { inOrder } from "../../harness/sequential.js"
 import { loadLocalSettings, localSettingsPath, writeDevSyncLocal } from "../../harness/local-settings.js"
 import { Refusal } from "../../shared/errors.js"
@@ -86,6 +87,19 @@ export const changedNodes = (nodes: readonly DevNode[], files: readonly string[]
     }
     return changed
 }
+
+/** A file of the harness's docs and contexts (contexts/, skills/, any Markdown, LICENSE): the agents read it from the checkout, and no app runs it. Pure. */
+export const isDocsFile = (file: string): boolean => {
+    const slashed = file.replaceAll("\\", "/")
+    return slashed.startsWith("contexts/") || slashed.startsWith("skills/") || /\.md$/iu.test(slashed) || /(^|\/)LICENSE$/u.test(slashed)
+}
+
+/**
+ * The dev-line packages the apps consume that `files` change: changedNodes of the files that are not docs or contexts. `packages/hfs/stack/local-edge.mts`
+ * names `@starci/hfs`; `contexts/code/be/cli.md` names none (the CLI's tarball carries contexts/, yet no app restarts or syncs for a rule's wording). Pure.
+ */
+export const consumedPackages = (nodes: readonly DevNode[], files: readonly string[]): string[] =>
+    [...changedNodes(nodes, files.filter((file) => !isDocsFile(file)))].toSorted((left, right) => left.localeCompare(right))
 
 /**
  * The closure of a set of changed packages: they, and every package that requires one of the closure, transitively. A dev build of a package is a
@@ -267,33 +281,96 @@ export interface DevPublishData {
     readonly local: readonly string[]
     readonly dropped: readonly string[]
     readonly published: readonly string[]
+    /** The dev builds planned and not made, each with why; the packages published beside them stand. */
+    readonly failed: readonly DevFailure[]
+}
+
+/** A dev build a publish did not make: the package, the version planned, and why (its own build or publish failed, or a package it needs did). */
+export interface DevFailure {
+    readonly package: string
+    readonly version: string
+    readonly reason: string
+}
+
+/** What an executed plan did: the dev builds published and those it did not make. */
+export interface DevExecuted {
+    readonly published: readonly string[]
+    readonly failed: readonly DevFailure[]
+    /** The `devSync.local` written: the plan's, with a dev build not made replaced by the entry the overlay held for its package (or left out). */
+    readonly local: readonly string[]
+}
+
+/** The first line of a failure that names its cause, for a one-line report (the whole text stays in the progress output). Pure. */
+export const causeLine = (message: string): string => {
+    const lines = message.split(/\r?\n/u).map((line) => line.trim()).filter((line) => line !== "" && line !== "...")
+    const cause = lines.find((line, at) => at > 0 && /✖|not ok|error TS\d+|Error|E\d{3}|EPUBLISHCONFLICT|code E/u.test(line) && !/^npm error (?:path|command|A complete log)/u.test(line))
+    return [lines[0] ?? "", cause].filter((part) => part !== undefined && part !== "").join(" ").slice(0, 400)
 }
 
 /**
- * Executes a plan: builds what the rows need in `order` (a row's build prerequisites included), publishes each row's copy with its dev manifest, counts
- * each build, then records the publish and writes `devSync.local`. The record and the setting are written only once every row is published, so a run
- * that stops part way is run again whole (each rerun takes new numbers; nothing is replaced). Returns the published `name@version`.
+ * Executes a plan: builds what the rows need in `order` (a row's build prerequisites included), publishes each row's copy with its dev manifest and counts
+ * each build. A row whose build or publish fails is reported and the run goes on with the rest: only the rows that need it (a build prerequisite, or a
+ * package of the line it pins, `requires`) are left out with it, since their copies would pin a dev build that does not exist. `devSync.local` then names
+ * what was published, keeping the overlay's entry of a package not made. The record moves to `head` only when every row was published, so the next run
+ * measures from the last complete publish and makes the missing builds again (each rerun takes new numbers; nothing is replaced).
  */
-export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly packages: readonly WorkspacePackage[]; readonly order: readonly string[]; readonly needs: (dir: string) => readonly string[]; readonly head: string; readonly io: DevPublishIo }): Promise<string[]> => {
+export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly packages: readonly WorkspacePackage[]; readonly order: readonly string[]; readonly needs: (dir: string) => readonly string[]; readonly requires?: (name: string) => ReadonlySet<string>; readonly overlay?: readonly string[]; readonly head: string; readonly io: DevPublishIo }): Promise<DevExecuted> => {
     const { plan, packages, order, needs, head, io } = given
     const needed = new Set(plan.rows.flatMap((row) => needs(row.dir)))
     const published: string[] = []
+    const failed: DevFailure[] = []
+    /** The folders that did not build and the packages of the line not published, each with why. */
+    const broken = new Map<string, string>()
+    const missing = new Map<string, string>()
+    const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
     await inOrder(order.filter((dir) => needed.has(dir)), async (dir) => {
         const pkg = packages.find((one) => one.relativeDir === dir)
         if (pkg === undefined) return
-        io.say(`building ${pkg.name}`)
-        await io.build(pkg)
         const row = plan.rows.find((one) => one.dir === dir)
+        const brokenNeed = (row === undefined ? [] : needs(dir)).find((need) => need !== dir && broken.has(need))
+        const missingPin = row === undefined ? undefined : [...(given.requires?.(row.package) ?? [])].find((name) => missing.has(name))
+        const blocked = brokenNeed === undefined ? missingPin === undefined ? undefined : `it pins ${missingPin}, whose dev build was not made` : `its build prerequisite ${brokenNeed} did not build`
+        if (blocked !== undefined && row !== undefined) {
+            io.say(`NOT publishing ${row.package}@${row.version}: ${blocked}`)
+            failed.push({ package: row.package, version: row.version, reason: blocked })
+            missing.set(row.package, blocked)
+            broken.set(dir, blocked)
+            return
+        }
+        io.say(`building ${pkg.name}`)
+        try {
+            await io.build(pkg)
+        } catch (error) {
+            const reason = `the build failed: ${causeLine(message(error))}`
+            io.say(`BUILD FAILED ${pkg.name}: ${message(error)}`)
+            broken.set(dir, reason)
+            if (row !== undefined) {
+                failed.push({ package: row.package, version: row.version, reason })
+                missing.set(row.package, reason)
+            }
+            return
+        }
         if (row === undefined) return
         io.say(`publishing ${row.package}@${row.version} (${row.why})`)
-        await io.publish(pkg, row, (text) => devManifest(text, row.version, withTreePins(text, plan.pins, io.treePins)), devDataEdit(plan.pins, io.treePins))
+        try {
+            await io.publish(pkg, row, (text) => devManifest(text, row.version, withTreePins(text, plan.pins, io.treePins)), devDataEdit(plan.pins, io.treePins))
+        } catch (error) {
+            const reason = causeLine(message(error))
+            io.say(`PUBLISH FAILED ${row.package}@${row.version}: ${message(error)}`)
+            failed.push({ package: row.package, version: row.version, reason })
+            missing.set(row.package, reason)
+            return
+        }
         const counter = readCounter(io.files.counter)
         writeJson(io.files.counter, { ...counter, [`${row.package}@${row.next}`]: Math.max(counter[`${row.package}@${row.next}`] ?? 0, devNumber(row.version)) })
         published.push(`${row.package}@${row.version}`)
     })
-    writeJson(io.files.record, { schema: "starci/dev-publish@1", sha: head, at: new Date().toISOString(), versions: [...plan.local] } satisfies DevRecord)
-    writeDevSyncLocal(io.files.settings, plan.local)
-    return published
+    const notMade = new Set(failed.map((failure) => failure.package))
+    const kept = (given.overlay ?? []).filter((entry) => notMade.has(parseRequested(entry).name))
+    const local = [...plan.local.filter((entry) => !notMade.has(parseRequested(entry).name)), ...kept].toSorted((left, right) => left.localeCompare(right))
+    if (failed.length === 0) writeJson(io.files.record, { schema: "starci/dev-publish@1", sha: head, at: new Date().toISOString(), versions: [...local] } satisfies DevRecord)
+    writeDevSyncLocal(io.files.settings, local)
+    return { published, failed, local }
 }
 
 /** Packs the package with its dev manifest and publishes it to the local registry under the `local` tag, then reads it back. */
@@ -334,19 +411,58 @@ export const devSince = async (root: string, head: string, since: string | undef
     return fork.exitCode === 0 && fork.stdout.trim() !== "" ? fork.stdout.trim() : null
 }
 
+/** The lock one executed dev publish holds, beside the line's record: two at once would plan the same dev numbers and the second publish fails. */
+export const devPublishLock = (folder: string = registryFolder()): string => join(folder, "dev-publish.lock")
+
+const holderOf = (file: string): string => {
+    try {
+        return readFileSync(file, "utf8").trim()
+    } catch {
+        return "released"
+    }
+}
+
 /**
- * Plans, and with `execute` performs, the dev publish of the harness checkout `root` at `head`. Safe to run again: a head the last record already
- * published is `unchanged` (its `devSync.local` is written again as recorded); a dry run publishes nothing and writes nothing.
+ * Runs `work` holding the dev publish lock of `folder`, waiting while a live process holds it (a lock whose pid is gone is taken over). Two dev publishes once
+ * ran at once (a landing's and a hotfix's): both planned `@starci/grammar@0.58.0-dev.1`, the registry refused the second, and its run stopped. The plan is
+ * made inside the lock, so a run that waited measures from the publish it waited for.
+ */
+export const withDevPublishLock = async <T>(folder: string, say: (line: string) => void, work: () => Promise<T>, pollMs = 3000): Promise<T> => {
+    const file = devPublishLock(folder)
+    const line = `publish-dev ${new Date().toISOString()} pid=${String(process.pid)} host=${hostname()}`
+    let waited = false
+    while (!takeLiveLock(file, line, say)) {
+        if (!waited) say(`waiting for ${file}: another dev publish runs (${holderOf(file)})`)
+        waited = true
+        await new Promise((done) => setTimeout(done, pollMs))
+    }
+    try {
+        return await work()
+    } finally {
+        if (holderOf(file) === line) rmSync(file, { force: true })
+    }
+}
+
+/**
+ * Plans, and with `execute` performs, the dev publish of the harness checkout `root` at `head`, an executed one under the dev publish lock. Safe to run again: a
+ * head the last record already published is `unchanged` (its `devSync.local` is written again as recorded); a dry run publishes nothing and writes nothing. A
+ * package that fails is reported in `failed` and the rest are published (executeDevPlan).
  */
 export const publishDev = async (given: { readonly root: string; readonly head?: string | undefined; readonly since?: string | undefined; readonly execute: boolean; readonly say: (line: string) => void; readonly folder?: string | undefined; readonly settings?: string | undefined }): Promise<DevPublishData> => {
     const { root, execute, say } = given
     if (!isHarnessCheckout(root)) throw new Refusal("PUBLISH_LOCAL_NOT_HARNESS", `${root} is not a harness checkout (cli/, contexts/ and packages/): the dev line is the harness's`)
     const head = await resolveSha(root, given.head ?? "HEAD")
     const files = { ...devLineFiles(given.folder), settings: given.settings ?? localSettingsPath() }
+    if (!execute) return planOrPublish(given, head, files)
+    return withDevPublishLock(dirname(files.record), say, () => planOrPublish(given, head, files))
+}
+
+const planOrPublish = async (given: { readonly root: string; readonly since?: string | undefined; readonly execute: boolean; readonly say: (line: string) => void }, head: string, files: DevPublishIo["files"]): Promise<DevPublishData> => {
+    const { root, execute, say } = given
     const record = readDevRecord(files.record)
     if (given.since === undefined && record?.sha === head) {
         if (execute) writeDevSyncLocal(files.settings, record.versions)
-        return { mode: "unchanged", since: head, head, rows: [], local: record.versions, dropped: [], published: [] }
+        return { mode: "unchanged", since: head, head, rows: [], local: record.versions, dropped: [], published: [], failed: [] }
     }
     const since = await devSince(root, head, given.since, record)
     const diff = since === null ? undefined : await captureGit(["diff", "--name-only", "--no-renames", "-z", since, head], root)
@@ -356,18 +472,19 @@ export const publishDev = async (given: { readonly root: string; readonly head?:
     if (execute) await ensureRegistry(root)
     const counter = readCounter(files.counter)
     const order = await globalOrder(root)
+    const overlay = loadLocalSettings(files.settings).devSync.local
     const plan = await planDevPublish({
-        nodes, changed, order,
-        overlay: loadLocalSettings(files.settings).devSync.local,
+        nodes, changed, order, overlay,
         asked: { onNpm: (name, version) => servedByNpm(root, name, version), listed: (name) => registryVersions(name, PORT, root), counted: (name, next) => counter[`${name}@${next}`] ?? 0 },
     })
-    if (!execute) return { mode: "plan", since, head, rows: plan.rows, local: plan.local, dropped: plan.dropped, published: [] }
+    if (!execute) return { mode: "plan", since, head, rows: plan.rows, local: plan.local, dropped: plan.dropped, published: [], failed: [] }
     const npmrc = writePublishNpmrc(PORT)
     const affected = await affectedBy(root, undefined, undefined)
     const needs = (dir: string): readonly string[] => (dir === CLI_DIR ? [CLI_DIR] : (affected.packages.find((one) => one.dir === dir)?.build ?? [dir]))
     const treePins = await treeServed(root, packages)
-    const published = await executeDevPlan({
-        plan, packages, order, needs, head,
+    const done = await executeDevPlan({
+        plan, packages, order, needs, head, overlay,
+        requires: (name) => nodes.find((node) => node.name === name)?.requires ?? new Set<string>(),
         io: {
             treePins,
             build: (pkg) => buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined }),
@@ -375,18 +492,19 @@ export const publishDev = async (given: { readonly root: string; readonly head?:
             files, say,
         },
     })
-    return { mode: "publish", since, head, rows: plan.rows, local: plan.local, dropped: plan.dropped, published }
+    return { mode: "publish", since, head, rows: plan.rows, local: done.local, dropped: plan.dropped, published: done.published, failed: done.failed }
 }
 
 /** The report of a dev publish. Pure. */
 export const devPublishMessage = (data: DevPublishData): string => {
     if (data.mode === "unchanged") return `the dev line is already published at ${data.head.slice(0, 10)}; devSync.local: ${data.local.join(", ") || "(empty)"}`
     const table = formatTable([["PACKAGE", "COMMITTED", "DEV BUILD", "WHY"], ...data.rows.map((row) => [row.package, row.committed, row.version, row.why])])
-    const what = data.mode === "publish" ? `published ${String(data.published.length)} dev build(s) to ${registryUrl(PORT)}` : `${String(data.rows.length)} dev build(s) to publish (plan only, add --execute)`
+    const what = data.mode === "publish" ? `published ${String(data.published.length)} dev build(s) to ${registryUrl(PORT)}${data.published.length > 0 ? `: ${data.published.join(", ")}` : ""}` : `${String(data.rows.length)} dev build(s) to publish (plan only, add --execute)`
     return [
         `measured from ${data.since === null ? "nothing (every package)" : data.since.slice(0, 10)} to ${data.head.slice(0, 10)}`,
         table,
         what,
+        ...(data.failed.length > 0 ? [`FAILED ${String(data.failed.length)} dev build(s), not published (the record stays at the last complete publish, so the next run makes them again):`, ...data.failed.map((failure) => `  ${failure.package}@${failure.version}: ${failure.reason}`)] : []),
         ...(data.dropped.length > 0 ? [`dropped from devSync.local (npm serves their release): ${data.dropped.join(", ")}`] : []),
         `devSync.local${data.mode === "publish" ? "" : " would be"}: ${data.local.join(", ") || "(empty)"}`,
     ].join("\n")
@@ -411,6 +529,6 @@ export const depsPublishDevVerb = defineVerb({
         const root = await repositoryRoot(resolve(flags.cwd ?? context.cwd))
         if (!existsSync(join(root, "packages"))) throw new Refusal("PUBLISH_LOCAL_NOT_HARNESS", `${root} holds no packages/`)
         const data = await publishDev({ root, since: flags.since, execute: flags.execute, say: context.progress })
-        return { data, message: devPublishMessage(data) }
+        return { data, message: devPublishMessage(data), ...(data.failed.length > 0 ? { exitCode: 1 } : {}) }
     },
 })

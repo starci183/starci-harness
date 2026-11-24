@@ -4,7 +4,8 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { installStale, isManifest } from "./packages.js"
+import { captureGitSync } from "../../shared/git.js"
+import { copiesStale, fileCopies, installStale, isManifest, tail } from "./packages.js"
 
 void test("the root and workspace package.json files are manifests", () => {
     assert.equal(isManifest("package.json"), true)
@@ -52,4 +53,43 @@ void test("a folder with no install record is stale, and one with a record but n
     } finally {
         rmSync(root, { recursive: true, force: true })
     }
+})
+
+void test("a file: copy (install-links) is stale once its sibling's source moves past the install that copied it; a linked sibling never is", async () => {
+    const root = mkdtempSync(join(tmpdir(), "starci-file-copies-"))
+    try {
+        const git = (...args: string[]): void => {
+            assert.equal(captureGitSync(["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", ...args], root).exitCode, 0)
+        }
+        git("init", "-q")
+        mkdirSync(join(root, "hfs", "runtime"), { recursive: true })
+        writeFileSync(join(root, "hfs", "package.json"), '{ "name": "@starci/hfs", "version": "6.17.9" }\n')
+        writeFileSync(join(root, "hfs", "runtime", "a.mjs"), "export {}\n")
+        const fe = join(root, "fe")
+        mkdirSync(join(fe, "node_modules", "@starci", "hfs"), { recursive: true })
+        mkdirSync(join(fe, "node_modules", "@starci", "tsconfig-target"), { recursive: true })
+        symlinkSync(join(fe, "node_modules", "@starci", "tsconfig-target"), join(fe, "node_modules", "@starci", "tsconfig"), "junction")
+        writeFileSync(join(fe, "package-lock.json"), JSON.stringify({ lockfileVersion: 3, packages: { "": {}, "node_modules/@starci/hfs": { version: "5.13.0", resolved: "file:../hfs" }, "node_modules/@starci/tsconfig": { version: "2.0.0", resolved: "file:../tsconfig" }, "node_modules/eslint": { version: "9.0.0", resolved: "https://registry.npmjs.org/eslint/-/eslint-9.0.0.tgz" } } }))
+        git("add", ".")
+        git("commit", "-q", "-m", "start")
+        assert.deepEqual([...fileCopies(fe).keys()], ["@starci/hfs"], "the junction is live; a registry package is no copy")
+        const first = await copiesStale(fe)
+        assert.equal(first.stale, true, "no install recorded the copy's source")
+        writeFileSync(join(fe, "node_modules", ".starci-file-copies"), `${first.digest ?? ""}\n`)
+        assert.equal((await copiesStale(fe)).stale, false, "the install recorded the sibling as it is")
+        writeFileSync(join(root, "hfs", "runtime", "project-ext.mjs"), "export const extEslintConfigs = []\n")
+        git("add", ".")
+        git("commit", "-q", "-m", "hfs gains a module")
+        assert.equal((await copiesStale(fe)).stale, true, "the lockfile still names the copy the same, yet hfs moved")
+    } finally {
+        rmSync(root, { recursive: true, force: true })
+    }
+})
+
+void test("the output of a failed npm run leads with the lines that name a cause, far above npm's closing lines", () => {
+    const stdout = ["> prepack", "> npm test", "✖ src/config.spec.ts (496ms)", "Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'project-ext.mjs'", ...Array.from({ length: 30 }, (_, at) => `line ${String(at)}`)].join("\n")
+    const text = tail(stdout, "npm error code 1\nnpm error command failed")
+    assert.match(text.split("\n")[0] ?? "", /✖ src\/config\.spec\.ts/u)
+    assert.match(text, /ERR_MODULE_NOT_FOUND/u)
+    assert.match(text, /npm error command failed$/u)
 })

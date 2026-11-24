@@ -5,10 +5,13 @@ import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import test from "node:test"
 import { captureTool } from "../../shared/exec.js"
 import { captureGitSync } from "../../shared/git.js"
 import { landPaths } from "../../harness/land-queue.js"
+import { listPackages } from "../../shared/workspace.js"
+import { consumedPackages, devNodes } from "../deps/publish-dev.js"
 import { hotfixAbort, hotfixLand, hotfixMessage, hotfixStatus } from "./land.js"
 import type { HotfixDeps } from "./land.js"
 import { passFile, passFor } from "./pass.js"
@@ -69,7 +72,7 @@ const fakeDeps = (seen: Seen, extra: Partial<HotfixDeps> = {}): HotfixDeps => ({
         seen.passes.push(passFor(root, `refs/heads/dev ${sha} refs/heads/dev ${"0".repeat(40)}`))
         return captureTool("git", ["push", "origin", `${sha}:refs/heads/dev`], root)
     },
-    publish: () => Promise.resolve([]),
+    publish: () => Promise.resolve({ published: [], failed: [] }),
     watchCi: (_root, _dir, sha, lanes) => {
         seen.log.push(`watch ${lanes.join(",")} ${sha.length === 40 ? "sha" : sha}`)
         return Promise.resolve()
@@ -80,6 +83,7 @@ const fakeDeps = (seen: Seen, extra: Partial<HotfixDeps> = {}): HotfixDeps => ({
         return Promise.resolve({ checkout, state: "done", note: "restarted api" })
     },
     busy: () => Promise.resolve(undefined),
+    consumed: () => Promise.resolve([]),
     syncTargets: () => Promise.resolve([]),
     cliCopy: () => Promise.resolve({ state: "skipped", note: "unused" }),
     health: (url) => {
@@ -265,7 +269,8 @@ void test("a harness hotfix rebuilds the CLI copy, publishes the dev line and sy
     const seen = seenOf()
     const lines: string[] = []
     const harness = fakeDeps(seen, {
-        publish: () => Promise.resolve(["@starci/hfs"]),
+        consumed: () => Promise.resolve(["starci-harness"]),
+        publish: () => Promise.resolve({ published: ["@starci/hfs"], failed: [] }),
         syncTargets: () => Promise.resolve(["D:/app-one", "D:/app-two"]),
         cliCopy: (_root, _dir, sha, files) => {
             seen.log.push(`cli copy ${sha.length === 40 ? "sha" : sha}: ${files.join(",")}`)
@@ -281,6 +286,86 @@ void test("a harness hotfix rebuilds the CLI copy, publishes the dev line and sy
     assert.ok(lines.some((line) => line.includes("syncing every app dev checkout of devSync.repos now, no debounce")))
     assert.equal(gitIn(world.checkout, "ls-files", "stray.txt"), "", "an untracked file that is not named is never swept in")
     assert.equal(existsSync(landPaths(world.dir, "harness").devLock), false, "the harness lock scope is released")
+})
+
+/** The harness checkout this spec was built from (cli/dist/core/hotfix is four folders below it). */
+const HARNESS = fileURLToPath(new URL("../../../../", import.meta.url))
+
+void test("the packages a harness hotfix changes are read from its files: packages/hfs/stack/local-edge.mts is @starci/hfs, a contexts or docs file is none", () => {
+    const nodes = devNodes(listPackages(HARNESS))
+    assert.deepEqual(consumedPackages(nodes, ["packages/hfs/stack/local-edge.mts"]), ["@starci/hfs"], "hfs is published: the edge probe fix reaches the apps through its dev build")
+    assert.deepEqual(consumedPackages(nodes, ["contexts/code/be/cli.md"]), [], "a rule's wording restarts and syncs no app, though the CLI's tarball carries contexts/")
+    assert.deepEqual(consumedPackages(nodes, ["contexts/hfs/rules.yaml", "skills/starci/SKILL.md", "packages/hfs/README.md", "README.md"]), [])
+    assert.deepEqual(consumedPackages(nodes, ["cli/src/main.ts", "contexts/code/be/cli.md"]), ["starci-harness"], "a CLI change still names the CLI beside a docs file")
+})
+
+void test("a harness hotfix of docs or contexts only publishes nothing, restarts and syncs no app and says so; it never claims a FULL restart", async (t) => {
+    const world = scratch(t)
+    mkdirSync(join(world.checkout, "contexts", "code", "be"), { recursive: true })
+    writeFileSync(join(world.checkout, "contexts", "code", "be", "cli.md"), "# cli\n")
+    writeFileSync(join(world.checkout, "package-lock.json"), "{}\n")
+    gitIn(world.checkout, "add", ".")
+    gitIn(world.checkout, "commit", "-q", "-m", "docs")
+    gitIn(world.checkout, "push", "-q", "origin", "dev")
+    // Another landing moves dev meanwhile, with a lockfile and a package: the rebase brings it in, and it is not the hotfix's.
+    gitIn(world.pusher, "pull", "-q", "origin", "dev")
+    mkdirSync(join(world.pusher, "packages", "hfs"), { recursive: true })
+    writeFileSync(join(world.pusher, "packages", "hfs", "x.mts"), "export {}\n")
+    writeFileSync(join(world.pusher, "package-lock.json"), "{ \"lockfileVersion\": 3 }\n")
+    gitIn(world.pusher, "add", ".")
+    gitIn(world.pusher, "commit", "-q", "-m", "someone else's landing")
+    gitIn(world.pusher, "push", "-q", "origin", "dev")
+    writeFileSync(join(world.checkout, "contexts", "code", "be", "cli.md"), "# cli\n\nA client cli is scoped.\n")
+    const seen = seenOf()
+    const lines: string[] = []
+    const asked: string[][] = []
+    const deps = fakeDeps(seen, {
+        consumed: (_root, files) => {
+            asked.push([...files])
+            return Promise.resolve([])
+        },
+        publish: () => {
+            seen.log.push("publish")
+            return Promise.resolve({ published: ["starci-harness@1.0.0-dev.1"], failed: [] })
+        },
+        syncTargets: () => Promise.resolve(["D:/app-one"]),
+    })
+    const done = await hotfixLand({ root: world.checkout, dir: world.dir, profile: "harness", message: "cli rule wording", rules: RULES, only: ["contexts/code/be/cli.md"], say: (line) => lines.push(line) }, deps)
+    assert.deepEqual(asked, [["contexts/code/be/cli.md"]], "the hotfix's own files decide, never the commits the rebase brought in")
+    assert.equal(seen.log.includes("publish"), false, "no dev publish runs")
+    assert.deepEqual(seen.restarts, [], "no app restarts or syncs")
+    assert.deepEqual(done.escalation, [], "the harness has no FULL restart")
+    assert.deepEqual(done.consumed, [])
+    assert.ok(lines.some((line) => line.startsWith("apps: no restart and no sync")))
+    assert.equal(lines.some((line) => line.includes("changed no published package")), false)
+})
+
+void test("a harness hotfix of a published package whose dev publish fails says FAILED with the cause, never that it changed no published package; what was published still syncs", async (t) => {
+    const world = scratch(t)
+    mkdirSync(join(world.checkout, "packages", "hfs", "stack"), { recursive: true })
+    writeFileSync(join(world.checkout, "packages", "hfs", "stack", "local-edge.mts"), "export const probe = '/'\n")
+    const seen = seenOf()
+    const lines: string[] = []
+    const thrown = fakeDeps(seen, {
+        consumed: () => Promise.resolve(["@starci/hfs"]),
+        publish: () => Promise.reject(new Error("npm pack of @starci/eslint-canon-fe failed:\nError [ERR_MODULE_NOT_FOUND]: Cannot find module project-ext.mjs")),
+        syncTargets: (_root, published) => Promise.resolve(published.length === 0 ? [] : ["D:/app-one"]),
+    })
+    const failed = await hotfixLand({ root: world.checkout, dir: world.dir, profile: "harness", message: "edge probe", rules: RULES, only: ["packages/hfs/stack/local-edge.mts"], say: (line) => lines.push(line) }, thrown)
+    assert.deepEqual(failed.consumed, ["@starci/hfs"])
+    assert.equal(failed.publishFailed.length, 1)
+    assert.ok(lines.some((line) => line.includes("Cannot find module project-ext.mjs")), "the whole cause is printed, not only the first line")
+    assert.equal(lines.some((line) => line.includes("changed no published package")), false)
+    assert.deepEqual(seen.restarts, [], "nothing published, nothing to sync")
+    writeFileSync(join(world.checkout, "packages", "hfs", "stack", "local-edge.mts"), "export const probe = '/health'\n")
+    const partial = await hotfixLand({ root: world.checkout, dir: world.dir, profile: "harness", message: "edge probe again", rules: RULES, only: ["packages/hfs/stack/local-edge.mts"], say: () => undefined }, fakeDeps(seen, {
+        consumed: () => Promise.resolve(["@starci/hfs"]),
+        publish: () => Promise.resolve({ published: ["@starci/hfs@6.17.10-dev.12"], failed: [{ package: "@starci/eslint-canon-fe", version: "9.22.1-dev.38", reason: "npm pack failed" }] }),
+        syncTargets: (_root, published) => Promise.resolve(published.length === 0 ? [] : ["D:/app-one"]),
+    }))
+    assert.deepEqual(partial.published, ["@starci/hfs@6.17.10-dev.12"])
+    assert.deepEqual(partial.publishFailed, ["@starci/eslint-canon-fe@9.22.1-dev.38: npm pack failed"])
+    assert.deepEqual(partial.restarts.map((one) => one.checkout), ["D:/app-one"], "the published hfs reaches the apps although another package failed")
 })
 
 void test("tracked changes outside --only stop the hotfix, a named path with no change is a typo, and a new file lands only when named", async (t) => {

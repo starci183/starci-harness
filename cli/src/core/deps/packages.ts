@@ -1,5 +1,6 @@
-import { existsSync, lstatSync, readFileSync, statSync } from "node:fs"
-import { join, posix } from "node:path"
+import { createHash } from "node:crypto"
+import { existsSync, lstatSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { join, posix, resolve } from "node:path"
 import { z } from "zod"
 import { installSatisfies } from "../../harness/install-cache.js"
 import { inOrder } from "../../harness/sequential.js"
@@ -119,14 +120,21 @@ export const assertNpm = (root: string): void => {
 /** A line of output that says nothing about why a run failed: a blank line, or a stack frame inside node's own runtime (`node:internal/...`). */
 const NO_CAUSE = /^\s*$|^\s*at (?:async )?(?:.* \()?node:/
 
-/** The last lines of an npm run's output that can say why it failed, for a refusal or a gate finding. */
-export const tail = (stdout: string, stderr: string): string =>
-    [stdout, stderr]
-        .join("\n")
-        .split("\n")
-        .filter((line) => !NO_CAUSE.test(line))
-        .slice(-15)
-        .join("\n")
+/** A line that names why a run failed: a failed test (`node --test`'s cross, TAP's `not ok`), a TypeScript error or a thrown error's first line. */
+const CAUSE = /✖|^\s*not ok\b|error TS\d+|^\s*(?:\w*Error|Error \[ERR_\w+\])[:\s]/u
+
+/** npm's own closing lines (`npm error code 1`, the log path), which repeat that a script failed and never why. */
+const NPM_NOISE = /^npm (?:error|ERR!)/u
+
+/**
+ * The lines of an npm run's output that can say why it failed, for a refusal or a gate finding: its last 15, led by up to 10 lines above them that name a cause.
+ * A lifecycle script that failed (a prepack's typecheck, build or tests) prints its cause far above npm's closing lines, which alone name no cause. Pure.
+ */
+export const tail = (stdout: string, stderr: string): string => {
+    const lines = [stdout, stderr].join("\n").split("\n").filter((line) => !NO_CAUSE.test(line))
+    const causes = lines.slice(0, -15).filter((line) => CAUSE.test(line) && !NPM_NOISE.test(line)).slice(0, 10)
+    return [...causes, ...(causes.length > 0 ? ["..."] : []), ...lines.slice(-15)].join("\n")
+}
 
 /**
  * A package folder's install is stale when it does not hold the lockfile's packages. npm's record of the install (read through the folder's
@@ -161,13 +169,101 @@ const unlinkedInstallOptions = (folder: string, options: RunOptions = {}): RunOp
     return options
 }
 
-/** Installs a package folder's private dependencies when they are missing or stale (`npm ci`, else `npm install`); refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */
+const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex")
+
+/**
+ * The digest of a package's source: every tracked file of its folder by path and content. A file the work tree holds as git does is named by its blob, so a clean
+ * tree digests to the same value on every host for one commit; a file the work tree changed (or removed) is named by its bytes, so a dirty build never claims
+ * the digest of the commit it started from.
+ */
+export const sourceDigest = async (root: string, relativeDir: string): Promise<string> => {
+    const staged = nulPaths(await git(root, ["ls-files", "-s", "-z", "--", relativeDir]))
+    const modified = new Set(nulPaths(await git(root, ["ls-files", "-m", "-z", "--", relativeDir])))
+    const lines = staged
+        .map((entry) => {
+            const tab = entry.indexOf("\t")
+            const blob = entry.slice(0, tab).split(" ")[1] ?? ""
+            const file = entry.slice(tab + 1)
+            if (!modified.has(file)) return `${file}\0${blob}`
+            try {
+                return `${file}\0work:${sha256(readFileSync(join(root, file)))}`
+            } catch {
+                return `${file}\0removed`
+            }
+        })
+        .toSorted((left, right) => left.localeCompare(right))
+    return sha256(lines.join("\n"))
+}
+
+/** Where an install records the digest of the `file:` siblings it copied (fileCopiesDigest). */
+const FILE_COPIES_RECORD = ".starci-file-copies"
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
+
+/**
+ * The `file:` siblings a folder's lockfile installs as copies (npm's `install-links=true`, which the harness packages' `.npmrc` sets): the package name to the
+ * sibling's folder. A sibling installed as a junction or symlink is live and never listed. Reads the lockfile and node_modules only.
+ */
+export const fileCopies = (folder: string): ReadonlyMap<string, string> => {
+    const copies = new Map<string, string>()
+    let lock: unknown
+    try {
+        lock = JSON.parse(readFileSync(join(folder, "package-lock.json"), "utf8"))
+    } catch {
+        return copies
+    }
+    const packages = isRecord(lock) && isRecord(lock.packages) ? lock.packages : {}
+    for (const [key, entry] of Object.entries(packages)) {
+        const name = /^node_modules\/((?:@[^/]+\/)?[^/]+)$/u.exec(key)?.[1]
+        const resolved = isRecord(entry) && typeof entry.resolved === "string" ? entry.resolved : ""
+        if (name === undefined || !resolved.startsWith("file:")) continue
+        const installed = lstatSync(join(folder, "node_modules", name), { throwIfNoEntry: false })
+        if (installed === undefined || installed.isSymbolicLink()) continue
+        copies.set(name, resolve(folder, resolved.slice("file:".length)))
+    }
+    return copies
+}
+
+/**
+ * The digest of the sources of a folder's `file:` copies (sourceDigest of each sibling), or undefined when it installs none. A copy is a snapshot of its sibling
+ * taken at install time, and the lockfile names it the same however far the sibling moved since, so the lockfile comparison of installStale never sees it age:
+ * `@starci/eslint-canon-fe`'s copy of `@starci/hfs` stayed at the build it was installed with, and its prepack tests failed on a module hfs gained later.
+ */
+export const fileCopiesDigest = async (folder: string): Promise<string | undefined> => {
+    const copies = [...fileCopies(folder)].toSorted(([left], [right]) => left.localeCompare(right))
+    if (copies.length === 0) return undefined
+    const parts = await inOrder(copies, async ([name, sibling]) => `${name}\0${existsSync(sibling) ? await sourceDigest(sibling, ".") : "missing"}`)
+    return sha256(parts.join("\n"))
+}
+
+/** The digest the folder's last install recorded for its `file:` copies; undefined when none was recorded. */
+const recordedCopies = (folder: string): string | undefined => {
+    try {
+        return readFileSync(join(folder, "node_modules", FILE_COPIES_RECORD), "utf8").trim()
+    } catch {
+        return undefined
+    }
+}
+
+/** Whether a private install's `file:` copies are older than their siblings' sources; never for a linked or shared install, which this CLI does not reinstall. */
+export const copiesStale = async (folder: string): Promise<{ readonly stale: boolean; readonly digest: string | undefined }> => {
+    if (lstatSync(join(folder, "node_modules"), { throwIfNoEntry: false })?.isSymbolicLink() === true || installHazard(folder) !== undefined) return { stale: false, digest: undefined }
+    const digest = await fileCopiesDigest(folder)
+    return { stale: digest !== undefined && digest !== recordedCopies(folder), digest }
+}
+
+/**
+ * Installs a package folder's private dependencies when they are missing or stale, its `file:` copies included (`npm ci`, else `npm install`), and records the
+ * digest of the copies it installed; refuses DEPS_INSTALL_LINKED before reinstalling a linked install.
+ */
 export const installPackage = async (pkg: Pick<LocalPackage, "name" | "folder">): Promise<void> => {
-    if (!installStale(pkg.folder)) return
+    const copies = await copiesStale(pkg.folder)
+    if (!installStale(pkg.folder) && !copies.stale) return
     unlinkedInstallOptions(pkg.folder)
     const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
     const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, unlinkedInstallOptions(pkg.folder, held.options)))
     if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
+    if (copies.digest !== undefined) writeFileSync(join(pkg.folder, "node_modules", FILE_COPIES_RECORD), `${copies.digest}\n`)
 }
 
 /** Builds a package, installing missing or stale private dependencies; refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */

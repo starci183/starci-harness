@@ -38,14 +38,18 @@ export const hotfixLandVerb = defineVerb({
         const dir = flags["dry-run"] ? (flags.dir ?? "") : lanesDir(flags.dir)
         const landed = await hotfixLand({ root, dir, profile, message: flags.message, rules: loadHotfixRules(), only: flags.only, dryRun: flags["dry-run"], healthUrl: flags["health-url"], say: context.progress })
         if (landed.dryRun) return { data: landed, message: `hotfix dry run: ${String(landed.scope.files)} file(s) / ${String(landed.scope.lines)} line(s), within the limits` }
-        const failed = [...landed.restarts.filter((restart) => restart.state === "failed"), ...(landed.cliCopy?.state === "failed" ? [landed.cliCopy] : [])]
+        const failed = [...landed.restarts.filter((restart) => restart.state === "failed"), ...(landed.cliCopy?.state === "failed" ? [landed.cliCopy] : []), ...landed.publishFailed]
         const unhealthy = landed.health.startsWith("FAILED")
+        const restart = profile === "harness"
+            ? landed.consumed.length === 0 ? "no app restart or sync (it changes no package the apps consume)" : `apps synced: ${String(landed.restarts.length)} (it changes ${landed.consumed.join(", ")})`
+            : `restart ${landed.escalation.length === 0 ? "light" : `FULL (${landed.escalation.join("; ")})`}`
         const lines = [
-            `hotfix ${landed.sha.slice(0, 10)} is on dev (${String(landed.scope.files)} file(s) / ${String(landed.scope.lines)} line(s)); restart ${landed.escalation.length === 0 ? "light" : `FULL (${landed.escalation.join("; ")})`}`,
-            ...landed.restarts.map((restart) => `${restart.state === "done" ? "restarted" : "RESTART FAILED"} ${restart.checkout}: ${restart.note}`),
+            `hotfix ${landed.sha.slice(0, 10)} is on dev (${String(landed.scope.files)} file(s) / ${String(landed.scope.lines)} line(s)); ${restart}`,
+            ...landed.restarts.map((one) => `${one.state === "done" ? "restarted" : "RESTART FAILED"} ${one.checkout}: ${one.note}`),
             `health: ${landed.health}`,
             ...(landed.cliCopy === undefined ? [] : [`CLI copy: ${landed.cliCopy.state}: ${landed.cliCopy.note}`]),
             ...(landed.published.length === 0 ? [] : [`published to the dev line: ${landed.published.join(", ")}`]),
+            ...landed.publishFailed.map((failure) => `dev publish FAILED ${failure}`),
             "CI watch started: starci lane status shows its verdict",
         ]
         return { data: landed, message: lines.join("\n"), ...(failed.length > 0 || unhealthy ? { exitCode: 1 } : {}) }
@@ -69,7 +73,7 @@ export const hotfixStatusVerb = defineVerb({
             `${root} on ${status.branch ?? "a detached HEAD"}, ${String(status.behind)} commit(s) behind origin/dev`,
             status.files.length === 0 ? "no uncommitted edit" : `${String(status.scope.files)} file(s) / ${String(status.scope.lines)} line(s) (limits ${String(rules.maxFiles)} / ${String(rules.maxLines)}): ${status.scope.ok ? "within the hotfix scope" : "OVER the limit: quá lớn cho hotfix, mở lane"}`,
             ...status.files.map((file) => `  ${file}`),
-            status.files.length === 0 ? "" : status.escalation.length === 0 ? "restart: light (the changed api/web only)" : `restart: the full sync steps (${status.escalation.join("; ")})`,
+            status.files.length === 0 ? "" : profile === "harness" ? "restart: none in the harness; the apps sync only for a package they consume (hotfix land --dry-run says which)" : status.escalation.length === 0 ? "restart: light (the changed api/web only)" : `restart: the full sync steps (${status.escalation.join("; ")})`,
             ...(status.foreign.length === 0 ? [] : [`tracked changes OUTSIDE the hotfix (they stop it): ${status.foreign.join(", ")}`]),
             ...(status.untracked.length === 0 ? [] : [`untracked, left alone unless --only names them: ${status.untracked.slice(0, 8).join(", ")}${status.untracked.length > 8 ? ", ..." : ""}`]),
             `dev lock: ${status.devLock ?? "free"}`,
