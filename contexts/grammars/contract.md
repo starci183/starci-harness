@@ -260,6 +260,8 @@ commands stay separate presses. A list has one look wherever it stands, flat row
 BOUNDARY-7; lint `surface-in-surface`). Loading shows the same rows at rest and
 removes the title link.
 
+**Selected and hover.** A navigation item (a `Sidebar` item, the current one) and a selectable list row (a `ListBox` option, a selected table row and its phone list row) mark the selected state with the accent soft pair: the `--accent-soft` fill, `--accent-soft-foreground` words and glyph, rounded like the item, and NO bar on any one edge. Hover is the neutral soft fill (`--default`; a table row `--surface-secondary`) with the words unchanged, and a selected item under the pointer keeps its accent soft fill. Keyboard focus keeps its ring. A status `edgeTone` bar is not a selected mark and stays.
+
 ### Link
 
 `Link` is a native destination carried by text or one image. An inline text link takes the size of the text around it

@@ -72,7 +72,7 @@ const DropzoneRow = ({ item, labels, onRetry }: { readonly item: DropzoneItem; r
         <Icon source={KIND_ICON[fileKindOf(item.name, item.type)]} usage="control" />
         <div className="starci-core-dropzone-row-main">
             <Text role="body" overflow="truncate">{item.name}</Text>
-            <Progress label={labels.progressOf(item.name)} value={progressOfItem(item)} tone="info" />
+            <Progress label={labels.progressOf(item.name)} value={progressOfItem(item)} tone="success" />
         </div>
         <div className="starci-core-dropzone-row-status">
             <Text as="span" role="caption"><InlineStatus state={MARK_OF_STATUS[item.status]} label={statusLabelOf(item, labels)} /></Text>

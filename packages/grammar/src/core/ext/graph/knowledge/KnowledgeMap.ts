@@ -15,10 +15,10 @@ import type { KnowledgeCluster, KnowledgeItem, KnowledgeMapProps, KnowledgeState
 /** The tones the clusters take in turn when the app names none. */
 export const CLUSTER_TONES: readonly GraphTone[] = ["accent", "info", "success", "warning", "danger"]
 
-/** The core mark state of an item's state (the core's status map draws its glyph) and its tone: ready done, pending running (the info blue), stale not run, error error. */
+/** The core mark state of an item's state (the core's status map draws its glyph) and its tone: ready done, pending running (the success green, owner 2026-11-24), stale not run, error error. */
 export const STATE_GLYPH: Readonly<Record<KnowledgeState, { readonly state: MarkState; readonly tone: GraphTone }>> = {
     ready: { state: "done", tone: "success" },
-    pending: { state: "running", tone: "info" },
+    pending: { state: "running", tone: "success" },
     stale: { state: "notRun", tone: "muted" },
     error: { state: "error", tone: "danger" },
 }

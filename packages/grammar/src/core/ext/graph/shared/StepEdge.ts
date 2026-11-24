@@ -7,7 +7,7 @@ import type { StepEdgeData } from "../build.js"
 
 const CORNER = 12
 /** The Badge tone of an edge's words, by the way the run went. */
-const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "info", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
+const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", running: "success", wait: "warning", danger: "danger", fallback: "warning", skipped: "muted", pending: "neutral", default: "neutral" }
 /** The hollow circle at the source port (8px) and the open triangle at the target port (10px long, 10px across). */
 const DOT = 4
 const ARROW = 10
@@ -106,7 +106,7 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
                   EdgeLabelRenderer,
                   null,
                   // The words of an edge are the core's Badge, in the tone of the way the run went, on the surface so no line runs through them.
-                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
+                  h("span", { className: "starci-graph-edge-pill", "data-style": data?.style, "data-edge": id, style: place }, h(Badge, { tone: data?.pillTone ?? PILL_TONE[data?.style ?? "default"] ?? "neutral" }, pill)),
               ),
     )
 }

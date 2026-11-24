@@ -32,12 +32,12 @@ const serially = <T>(work: (mermaid: MermaidApi) => Promise<T>): Promise<T> => {
 const BASE = { startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true, htmlLabels: false } as const
 
 /** Parses the source with Mermaid's own parser (a source it refuses throws) and maps its database to what the canvas draws. */
-export const parseDiagram = (source: string, tones?: Readonly<Record<string, MermaidTone>>, messageTones?: Readonly<Record<number, MermaidTone>>): Promise<ParsedDiagram> =>
+export const parseDiagram = (source: string, tones?: Readonly<Record<string, MermaidTone>>, messageTones?: Readonly<Record<number, MermaidTone>>, edgeTones?: Readonly<Record<number, MermaidTone>>): Promise<ParsedDiagram> =>
     serially(async (mermaid) => {
         mermaid.initialize({ ...BASE })
         await mermaid.parse(source)
         const parsed = await mermaid.mermaidAPI.getDiagramFromText(source)
-        return diagramOf(parsed, tones, messageTones)
+        return diagramOf(parsed, tones, messageTones, edgeTones)
     })
 
 /** Mermaid's own SVG of a kind the canvas does not lay out (gantt, pie, journey, ...), themed from the Grammar's tokens. */

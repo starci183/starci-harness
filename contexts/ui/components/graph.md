@@ -86,7 +86,7 @@ A node is in exactly one of six states (`status`, `todo` when left out). Every n
 | state | example word | look |
 |---|---|---|
 | `done` | Done | success border |
-| `running` | Running | info (blue) border, a turning ring on the tile; **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
+| `running` | Running | success (green) border, a turning ring on the tile (owner 2026-11-24, "Xanh lá toàn app"; done is green too, the glyph tells them apart); **the edge into it flows** (moving dots on a solid line, not for a reader who asked for reduced motion) |
 | `wait` | Waiting | warning (amber) border; the edge into it is solid amber and **still** (paused, no animation) |
 | `error` | Failed | danger border |
 | `skipped` | Skipped | muted solid border, faded |
@@ -178,7 +178,7 @@ The first view and the phone are the routing law's rule 4 (below): every graph o
 | line | meaning |
 |---|---|
 | solid, in the state tone | a path the run took (`taken`) |
-| solid info blue with moving dots | flowing into the running step (not for a reader who asked for reduced motion) |
+| solid success green with moving dots | flowing into the running step (not for a reader who asked for reduced motion) |
 | solid amber, still | the edge into a waiting step |
 | dashed grey | not reached yet |
 | dotted, faint | a branch not taken (`skipped`) |
@@ -272,7 +272,7 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    A branch on a side vertex runs straight only when its vertex stands inside its target's span; otherwise it turns round to its target, never dropping past it.
    A decision with three or more answers (a lesson `MermaidDiagram` switch) fans its exits left to right in the order written instead (`switchAt` in
    `diagram/graph.ts`): the first and last out of the side vertices, the ones between along the slanted sides, a middle exit straight on, each with its words at its
-   own port; the step the branches meet stands under the decision and they rejoin on one line above it with one arrowhead. A parallel's bar spans its branches and
+   own port; the step the branches meet stands under the decision and each branch enters it by its own point with its own arrowhead. A parallel's bar spans its branches and
    every line meets it straight; a loop's back edge returns by one bend to the decision's side vertex; a foreach is a dashed frame (dashes mean "repeats"), see
    [diagram](diagram.md) "Four shapes beyond an if/else".
    A lesson `MermaidDiagram` gives every `{…}` decision with two or more edges out these vertex ports (`decisionBranches` in `diagram/graph.ts`), in the order the
@@ -281,17 +281,22 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    `MermaidDiagram` keeps a readable floor: never opened under zoom 0.85 (caption words at 11px or more), from its start when it does not fit whole (`diagram/open.ts`).
 5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
    edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight.
-6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the info tone, its dashes moving), never a second path over or
+6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the success tone, its dashes moving), never a second path over or
    beside it. Where two edges would share a stretch (a corridor into one target, a run out of one source), the stronger state keeps it with the one arrowhead
    (running over waiting over taken over plain over pending and skipped) and the other ends or starts where it meets that line, at a small junction dot
    (`dedupeRuns` in `shared/overlap.ts`, run by the canvas once the states are known); a middle run that would lie in another edge's corridor moves
-   `PARALLEL_GAP` (12) aside. A branch's words stand on its own edge at the split, and that edge visibly reaches its target.
+   `PARALLEL_GAP` (12) aside. A branch's words stand on its own edge at the split, and that edge visibly reaches its target. A lesson `MermaidDiagram` has no
+   junction: every edge is its own line with its own arrowhead, since its edges may each take a tone and two tones on one line would read as one flow. Two
+   edges never leave or enter a node at one point: the ends on one side are spread `END_SPREAD` (16) apart in the order of their other ends, a first run that
+   would lie along another edge's run slides clear (`separateEnds` in `diagram/graph.ts`), a step three or more edges enter is wide enough for them, and the
+   canvas cuts no route short (`dedupeRuns` with `join: false`), so no junction dot is drawn.
 
 Proof: `specs/ext-graph-diagram.spec.mts` "the routing law" (no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, the decision's
 main branch straight, branch words at the split, every point inside the fitted first view, the dot hidden read-only, one arrowhead size), "every stretch is
-drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge) , "a branch is an if/else" (a lesson decision: each branch out of its own
-vertex with its words there, the two answers apart, the side branch ending on its target, the branches rejoining at one junction with one arrowhead) "switch, parallel, loop and foreach" (a switch's exits on the outline of the diamond, each with its words, at most one bend, the branches rejoining under it with one
-arrowhead; a bar spanning its branches with straight lines; a loop's back edge with one bend into the side vertex crossing no step; a foreach frame entered at its top and left at its bottom) and
+drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge), "every edge is its own line" (a
+diagram: no junction, no shared stretch, two ends on one node at least 16 apart, each on its node's border), "a branch is an if/else" (a lesson decision: each branch out of its own
+vertex with its words there, the two answers apart, the side branch ending on its target, the branches entering the step they rejoin at by their own points) "switch, parallel, loop and foreach" (a switch's exits on the outline of the diamond, each with its words, at most one bend, the branches entering the step under it
+in the order of the cases; a bar spanning its branches with straight lines; a loop's back edge with one bend into the side vertex crossing no step; a foreach frame entered at its top and left at its bottom) and
 `specs/ext-graph-arrange.spec.mts` (a decision's main branch under it, the other to the side). Known gap: the one-bend route is refused where it would cross a node,
 and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends; the spec holds the law on
 graphs with room for it.

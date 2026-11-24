@@ -94,8 +94,6 @@ const NEUTRAL_HOOKS = {
   '--starci-core-sidebar-selected': 'var(--default)',
   '--starci-core-sidebar-selected-foreground': 'var(--foreground)',
   '--starci-core-sidebar-weight': 'var(--grammar-weight-regular)',
-  '--starci-core-sidebar-bar-width': '2px',
-  '--starci-core-sidebar-selected-start-radius': '0',
   '--starci-core-tabs-indicator': 'var(--foreground)',
   '--starci-core-plate': 'var(--surface)',
   '--starci-core-plate-border': '1px solid var(--border)',

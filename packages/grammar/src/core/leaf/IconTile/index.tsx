@@ -41,8 +41,8 @@ type IconTileIdentity = IconTileShared & {
 }
 
 /**
- * (B) A status mark (0.55.0): the round 40px tile whose PLATE TONE is the state (`MARK_STATE_TONE`: done success, running info with a spinning
- * ring, waiting warning, error danger, skipped and notRun neutral); `tone` is ignored.
+ * (B) A status mark (0.55.0): the round 40px tile whose PLATE TONE is the state (`MARK_STATE_TONE`: done success, running success with a spinning
+ * ring (owner 2026-11-24), waiting warning, error danger, skipped and notRun neutral); `tone` is ignored.
  * - With `source` (case 2, "which thing is which?"): the glyph is the SUBJECT the app passes in (the workflow, step or channel icon); the status
  *   trails beside it as an inline status (`InlineStatus`), a small glyph plus a word.
  * - Without `source` (case 1, "how far along is it?", or a mark with no subject of its own): the tile carries the STATUS glyph (the bare three: check,

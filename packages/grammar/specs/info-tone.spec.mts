@@ -1,6 +1,6 @@
 /**
  * The built-in info tone (Grammar 0.55.0, owner 2026-11-22: "Thêm info mà? Mặc định có info chứ? Là màu xanh, tất cả grammar kế thừa đều có info"):
- * a blue pair every family inherits, with AA contrast in both themes, and RUNNING is info, never the brand accent.
+ * a blue pair every family inherits, with AA contrast in both themes. RUNNING is no longer info: it is success (owner 2026-11-24, "Xanh lá toàn app").
  *
  *   node --import ./specs/support/register.mts --test specs/info-tone.spec.mts
  */
@@ -39,9 +39,9 @@ test("info is blue and keeps AA: the foreground on info and the soft foreground 
     }
 })
 
-test("running is info, never the accent: the status-mark tone of running and the running ring read --info", () => {
-    assert.equal(MARK_STATE_TONE.running, "info")
-    assert.match(read("common/styles.css"), /\.starci-core-icon-tile-ring \{[^}]*border-block-start-color: var\(--info\)/u)
+test("running is success, never info nor the accent (owner 2026-11-24): the status-mark tone of running and the running ring read --success", () => {
+    assert.equal(MARK_STATE_TONE.running, "success")
+    assert.match(read("common/styles.css"), /\.starci-core-icon-tile-ring \{[^}]*border-block-start-color: var\(--success\)/u)
     assert.match(read("common/styles.css"), /\.starci-core-icon-tile\[data-tone="info"\]\[data-artwork="false"\]\[data-loading="false"\] \{\s*background: var\(--info-soft\);\s*color: var\(--info-soft-foreground\);/u)
 })
 

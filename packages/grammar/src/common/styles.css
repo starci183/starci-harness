@@ -3152,57 +3152,6 @@
         justify-content: center;
     }
 
-    /*
-     * THE COLLAPSE ROW AT THE FOOT (0.46.0, collapsePlacement="bottom"): a labelled row under the footer, one hairline above it, drawn as a sidebar item (glyph, muted words, the
-     * item's hover fill); the collapsed rail shows the expand icon button centred in the same place.
-     */
-    .starci-core-sidebar-collapse-foot {
-        display: flex;
-        min-width: 0;
-        justify-content: center;
-        border-block-start: 1px solid var(--separator);
-        padding: 0.75rem;
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-collapse-foot {
-        justify-content: stretch;
-    }
-
-    .starci-core-sidebar-collapse-row {
-        display: flex;
-        min-width: 0;
-        flex: 1 1 auto;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.5rem 0.75rem;
-        border: 0;
-        border-radius: var(--grammar-radius-md);
-        background: none;
-        color: var(--muted);
-        font: inherit;
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        text-align: start;
-        cursor: pointer;
-    }
-
-    .starci-core-sidebar-collapse-row[data-hovered="true"] {
-        background: var(--default);
-        color: var(--foreground);
-    }
-
-    .starci-core-sidebar-collapse-row[data-focus-visible="true"] {
-        outline: var(--grammar-ring-width) solid var(--focus);
-        outline-offset: calc(-1 * var(--grammar-ring-width));
-    }
-
-    .starci-core-sidebar-collapse-text {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
     .starci-core-sidebar-header {
         min-width: 0;
         padding-inline: 0.75rem;
@@ -3288,31 +3237,14 @@
     }
 
     /*
-     * THE SELECTED ITEM. Default: the accent soft pair, no bar. 0.40.0 hooks, each defaulting to that look: `--starci-core-sidebar-selected` (fill),
-     * `--starci-core-sidebar-selected-foreground` (words and glyph), `--starci-core-sidebar-selected-weight` (the label weight),
-     * `--starci-core-sidebar-bar-width` (default 0: no bar) and `--starci-core-sidebar-bar` (default `--accent`): a bar on the item's start edge,
-     * full height, drawn by `::before` so it never competes with the focus ring (a box-shadow). `--starci-core-sidebar-selected-start-radius`
-     * squares the start corners of a selected item so the bar stands straight (default: the item radius). The collapsed rail keeps its pills, no bar.
+     * THE SELECTED ITEM: the accent soft pair (the fill, the words and the glyph), rounded like the item, with NO bar on any edge. Hooks, each defaulting to that look:
+     * `--starci-core-sidebar-selected` (fill), `--starci-core-sidebar-selected-foreground` (words and glyph) and `--starci-core-sidebar-selected-weight` (the label weight).
+     * Hover is the neutral `--default` fill with the words unchanged; a selected item under the pointer keeps its own fill.
      */
     .starci-core-sidebar-item[data-selected="true"],
     .starci-core-sidebar-item[data-grammar-current="true"] {
         background: var(--starci-core-sidebar-selected, var(--accent-soft)) !important;
         color: var(--starci-core-sidebar-selected-foreground, var(--accent-soft-foreground));
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) {
-        border-start-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
-        border-end-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
-    }
-
-    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"])::before {
-        content: "";
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: 0;
-        inline-size: var(--starci-core-sidebar-bar-width, 0);
-        background: var(--starci-core-sidebar-bar, var(--accent));
-        pointer-events: none;
     }
 
     .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) .starci-core-sidebar-item-label {
@@ -5427,7 +5359,7 @@
      */
     .starci-core-icon-tile[data-grammar-mark="status"] { position: relative; }
     .starci-core-icon-tile .starci-core-status-glyph { width: var(--grammar-icon-row); height: var(--grammar-icon-row); flex: none; }
-    /* Running is the plain circle as a spinning ring (the three status glyphs, owner 2026-11-22); still under reduced motion. */
+    /* Running is the plain circle as a spinning ring (the three status glyphs, owner 2026-11-22) in the success tone (owner 2026-11-24); still under reduced motion. */
     .starci-core-status-spin { transform-origin: center; animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -5439,13 +5371,13 @@
         inset: 0;
         border: var(--grammar-ring-width) solid transparent;
         border-radius: var(--grammar-radius-pill);
-        border-block-start-color: var(--info);
+        border-block-start-color: var(--success);
         animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
         pointer-events: none;
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .starci-core-icon-tile-ring { animation: none; border-color: var(--info); }
+        .starci-core-icon-tile-ring { animation: none; border-color: var(--success); }
     }
 
     /*

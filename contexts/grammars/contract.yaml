@@ -2090,8 +2090,8 @@ mustKeep:
       owner: contract roles.button
     - id: DNA-CORE-STEPPER-MARKER-CURRENT
       role: list
-      law: "In Core the current step of the markers form is its number on the round 40px info tile (the info soft pair; 0.55.0, the status-mark rule: in progress is info, never the brand accent). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
-      measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-grammar-stepper-size="dense"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="current"] [data-grammar-step-marker] > .starci-core-icon-tile', checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
+      law: "In Core the current step of the markers form is its number on the round 40px running tile (the success soft pair; the status-mark rule, owner 2026-11-24: in progress is success, never info nor the brand accent). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
+      measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-grammar-stepper-size="dense"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="current"] [data-grammar-step-marker] > .starci-core-icon-tile', checks: [{ metric: background-color, op: "=", value: { token: --success-soft } }, { metric: color, op: "=", value: { token: --success-soft-foreground } }] }
       owner: grammars/core.md; CHANGELOG 0.55.0 (the status-mark rule)
     - id: DNA-CORE-STEPPER-MARKER-UPCOMING
       role: list
