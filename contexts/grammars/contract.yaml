@@ -1760,11 +1760,11 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-INCOMING-FLAT
       role: pane-grid
-      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in every measure and every content kind: the --surface fill, --foreground words, no border, no shadow (a message is never a card). No surface changes it, and an app never restyles it."
+      law: "A message of someone else (MessageBubble incoming, MessageCard) has one look on every host, in every measure and every content kind: the --surface fill, --foreground words, the 1px edge line, no shadow (a message is never a card), so it reads on a white host as on the page tone. No surface changes it, and an app never restyles it."
       measure:
         kind: style
         select: '.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
-        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 1px }, { metric: box-shadow, op: "=", value: none }]
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
       role: pane-grid

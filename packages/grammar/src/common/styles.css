@@ -6423,12 +6423,13 @@
     .starci-core-message-bubble .starci-core-message-bubble-body { border-radius: var(--grammar-bubble-radius); }
 
     /*
-     * The other party's message and a MessageCard are the flat surface: `--surface` with `--foreground`, no edge, no shadow. The Grammar decides both chat faces;
+     * The other party's message and a MessageCard are the flat surface: `--surface` with `--foreground`, the edge line, no shadow, so it reads on a white
+     * host as on the page tone. The Grammar decides both chat faces;
      * no theme hook repaints them.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: 0;
+        border: var(--grammar-border-edge);
         background: var(--surface);
         color: var(--foreground);
         box-shadow: none;

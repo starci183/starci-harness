@@ -13,7 +13,7 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
 - **the thread** is the page tone `--background`, never white: the `ChatFrame` thread paints it and meets the header line above and the
   footer line below edge to edge;
 - **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) has ONE look on every host, in every measure and content kind
-  (text, card): the `--surface` fill, `--foreground` words, no border, no shadow; a message is never a card, and no surface (a thread, a drawer
+  (text, card): the `--surface` fill, `--foreground` words, the 1px edge line, no shadow; a message is never a card, and no surface (a thread, a drawer
   of pinned messages, a white pane) changes it;
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it. A
   `Badge` in it (a mention, a tag) is the inverse pair (`--accent-foreground` ground, `--accent` words) and a `Quote` in it (the message

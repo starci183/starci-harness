@@ -363,7 +363,7 @@ marks; readers retain accessible names and localized overflow copy. Its announce
 A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
 bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`): the thread is the page tone (`--background`),
 the reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`), and the
-other party's (incoming, and every `MessageCard`) is one flat look on every host, the `--surface` fill with no border and no shadow
+other party's (incoming, and every `MessageCard`) is one flat look on every host, the `--surface` fill with the 1px edge line and no shadow
 (`DNA-COMMON-CHAT-INCOMING-FLAT`). A chat is one `ChatFrame` on any host (`DNA-COMMON-CHAT-FRAME`): the header, the thread and the footer
 on `--background`, two 1px lines between them, a `Pane content="chat"`, a `Drawer` body or a page section as its host; the thread is
 the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
