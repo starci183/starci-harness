@@ -97,7 +97,7 @@ next step of the page's one job. Every other next step on that view is `border`.
 Equal-consequence peers get no commit at all: no paint breaks a tie. A landing may repeat its one conversion
 command once, never in the same viewport (`budgets.commitPerView`).
 Peer choices are not buttons and there is one component for each meaning: `Tabs` switches a view or filters a list that stays in place
-(`kind="filter"`), `ChoiceChips` or `RadioGroup` chooses a value of a form, a `Calendar` with `ChoiceChips` picks a date and a time,
+(`kind="filter"`) and `Tabs appearance="primary"` switches a mode or period, a `Select` chooses a value of a form or a toolbar, a `Calendar` with a `Select` of its free times picks a date and a time,
 and separate `Button`s or a `DropdownMenu` carry actions. The Grammar draws no group of attached buttons (`ButtonGroup`,
 `FilterButtonGroup` and `SegmentedControl` are deleted; R380 names the replacement), chosen by [components/tabs.md](components/tabs.md), and no commit
 sits among them.

@@ -19,7 +19,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's primary, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
 | file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is the `Dropzone` of `@starci/grammar/core/ext/dropzone` ([upload](upload.md)) | judgement |
-| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of border `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) |
+| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of border `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) |
 | text | any other command or destination, and always the view's primary | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.variant`: which of the THREE looks the action takes (owner 2026-11-22: "chỉ có danger, border, và primary thôi, k có
@@ -87,7 +87,7 @@ Three, from `button.choose.variant`: `primary` (solid), `border` (outline, the d
 `primary` (below). `IconButton` takes the same three; with neither `source` nor `glyph` it draws the close glyph.
 
 ## Size
-Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of border `Button size="sm"` (the single Button radius stays); the alternatives (a Link row, a `ChoiceChips` that sends, a `Chip` that sends) are not suggestions.
+Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of border `Button size="sm"` (the single Button radius stays); the alternatives (a Link row, a `Chip` that sends) are not suggestions.
 
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
 changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`); `width="wrap"`

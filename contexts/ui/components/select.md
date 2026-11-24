@@ -3,20 +3,20 @@
 Contract: [Select](../../grammars/contract.md#select). Vendor: [Select, ComboBox, ListBox](../../vendor/heroui.md#select).
 
 ## Job
-Pick one value (or several) from a list too long to show all at once.
+Pick one value (or several) of a form or a toolbar from a list: the one control for choosing a value, however few the options (owner 2026-11-24, "trong form thì chọn dropdown"; [segmented-control](segmented-control.md)).
 
 ## Choose
 
 Choice `select.choose.role`: which list control picks the value. Reached from
-`segmented-control.choose.role:list`, which settles the short sets first. The first row that applies wins.
+`segmented-control.choose.role:select` and `:several`, which settle views, filters, modes and switches first. The first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | action | the entries are actions, not values | `menu.choose.placement` | judgement |
 | multi-visible | several values, and every option fits on screen | `CheckboxGroup` | judgement |
-| multi | several values from a longer list | a multi-select | judgement |
+| multi | several values from a longer list, or the values of a filter in a toolbar | a multi-selection list: `DropdownMenu` with a `multiple` selection group behind a compact trigger in a toolbar, `ListBox selectionMode="multiple"` in a form; never chips. Known gap: `Select` has no multiple selection, so a filter of several values has no field-looking trigger | judgement |
 | combo | a long or searchable list, or free entry with suggestions | `ComboBox` | judgement |
-| select | six or more known options, one value | `Select` | candidate: a `Select` lists at least six options |
+| select | known options, one value, however few | `Select`: `appearance="field"` in a form, `"compact"` in a toolbar, a pane head or a `Section` filter row | judgement |
 
 ## Variants
 Same layer rule as a [text field](text-field.md): the grammar resolves the treatment from context. The selection
