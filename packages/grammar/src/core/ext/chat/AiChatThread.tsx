@@ -58,7 +58,7 @@ const PART_COMPONENTS = { Text: TextPart, tools: { Fallback: ToolPart } }
 /** The reader's turn: the neutral soft bubble at the end side (no accent fill). */
 const UserTurn = ({ message }: { readonly message: AiChatMessage | undefined }) => (
     <MessagePrimitive.Root className="starci-ai-chat-turn" data-grammar-ai-chat-role="user">
-        <MessageBubble side="outgoing" tone="neutral" body={<AiChatUserText text={message === undefined ? "" : textOfMessage(message)} />} />
+        <MessageBubble side="outgoing" body={<AiChatUserText text={message === undefined ? "" : textOfMessage(message)} />} />
         {message?.source === undefined ? null : <AiChatSource text={message.source} side="end" />}
     </MessagePrimitive.Root>
 )

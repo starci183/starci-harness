@@ -131,28 +131,6 @@ export const AgentNameSmallChip: Story = {
   ),
 };
 
-/** A card bubble that waits on the reader: MessageBubble content="card" tone="warning" (the SurfaceCard tone edge, one rule), the fill unchanged. */
-export const CardBubbleTone: Story = {
-  render: () => (
-    <Matrix maxWidth={880}>
-      <State label="tone=warning: an approval card that waits" direction="column">
-        <G.MessageCard
-          tone="warning"
-          author="Sales"
-          title="Báo giá chờ bạn duyệt"
-          chip={<G.Badge tone="warning">Chờ duyệt</G.Badge>}
-          details={[{ id: 'k', term: 'Khách', description: 'Chị Lan' }, { id: 't', term: 'Tổng', description: '12.500.000 đ' }]}
-          actions={[{ id: 'ok', label: 'Duyệt', kind: 'primary', onPress: noop }, { id: 'edit', label: 'Sửa', onPress: noop }]}
-          meta="Sales · 09:14"
-        />
-      </State>
-      <State label="no tone: the plain card face" direction="column">
-        <G.MessageCard author="Sales" title="Đơn hàng đã tạo" body="Đơn #1042 cho anh Minh." meta="Sales · 09:20" />
-      </State>
-    </Matrix>
-  ),
-};
-
 /** RadioGroup appearance="rows": the chosen row is quiet (the dot says which; the edge at most --accent-border, never dark or thicker). */
 export const RadioRowsChosen: Story = {
   render: () => (

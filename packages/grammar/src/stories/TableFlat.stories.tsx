@@ -159,11 +159,10 @@ export const WorkspaceChatMain: Story = {
     <G.Page chrome="panes" layout="workspace" header={{ title: 'Sales assistant' }}>
       <G.PaneGrid label="Chat" areas={['list chat aside']} columns={['standard', 'fill', 'standard']}>
         {listPane}
-        <G.Pane area="chat" label="Chat">
-          <G.PaneSection as="header"><G.PaneHeader title="Sales assistant" description="Replies within a minute" /></G.PaneSection>
-          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background', align: 'end' }}>
-            {Array.from({ length: 14 }, (_, index) => <G.MessageBubble key={index} side={index % 2 === 0 ? 'incoming' : 'outgoing'} author={index % 2 === 0 ? 'Assistant' : undefined} body={`Message ${index + 1}: customer booked a table for 4 at 19:30.`} />)}
-          </G.PaneSection>
+        <G.Pane area="chat" content="chat" label="Chat">
+          <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Sales assistant" description="Replies within a minute" mark={<G.Avatar name="Sales assistant" size="md" />} />}>
+            {Array.from({ length: 14 }, (_, index) => <G.MessageBubble key={index} side={index % 2 === 0 ? 'incoming' : 'outgoing'} avatar={<G.Avatar name={index % 2 === 0 ? 'Sales assistant' : 'You'} size="md" />} author={index % 2 === 0 ? 'Assistant' : undefined} body={`Message ${index + 1}: customer booked a table for 4 at 19:30.`} />)}
+          </G.ChatFrame>
         </G.Pane>
         {asidePane}
       </G.PaneGrid>

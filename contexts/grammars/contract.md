@@ -363,10 +363,10 @@ marks; readers retain accessible names and localized overflow copy. Its announce
 A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
 bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`): the thread is the page tone (`--background`),
 the reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`), and the
-other party's (incoming, and every `MessageCard`) is one look on every host, the 1px `--border` edge with no fill and no shadow
-(`DNA-COMMON-CHAT-INCOMING-OUTLINE`). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`):
-`Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
-is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
+other party's (incoming, and every `MessageCard`) is one flat look on every host, the `--surface` fill with no border and no shadow
+(`DNA-COMMON-CHAT-INCOMING-FLAT`). A chat is one `ChatFrame` on any host (`DNA-COMMON-CHAT-FRAME`): the header, the thread and the footer
+on `--background`, two 1px lines between them, a `Pane content="chat"`, a `Drawer` body or a page section as its host; the thread is
+the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
 bubble's foreground so it reads on either face. The replies a card offers are `Section kind="list" layout="suggestions"`. The
 corner on the author's side tightens to point at the avatar. An app never restyles a face.
 

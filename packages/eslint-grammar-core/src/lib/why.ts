@@ -119,7 +119,7 @@ export const why: Record<string, WhyEntry> = {
   },
   "pane-children": {
     code: "FE_PANE_CHILD_NOT_SECTION",
-    en: "A raw element or a Grammar component other than PaneSection and PaneGrid is placed straight in a `Pane` in `<file>`, skipping the inset the pane publishes.",
+    en: "A raw element or a Grammar component other than PaneSection, PaneGrid and ChatFrame is placed straight in a `Pane` in `<file>`, skipping the inset the pane publishes.",
     fix: "Wrap it in a `<PaneSection>` (grow, scroll, align or bleed as the band needs), or make the pane's one child a nested `<PaneGrid>`.",
   },
   "pane-grid-children": {

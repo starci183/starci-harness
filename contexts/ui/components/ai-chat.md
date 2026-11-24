@@ -8,7 +8,7 @@ external store runtime only), pinned in `contexts/stack/pins.yaml`. Parts: [mess
 A whole chat with an assistant, drawn the way Claude and Codex draw one: the reader asks, the assistant answers in streaming markdown, calls
 tools, and proposes a final result the reader approves or keeps revising. Apps take EVERY assistant chat page with it: never
 `@assistant-ui/react` imported directly (`DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY`, lint `starci-grammar/no-graph-or-animation-library`), never
-a hand-built thread of bubbles and a composer for an assistant. A chat between people stays `MessageBubble` in a `Pane content="chat"`.
+a hand-built thread of bubbles and a composer for an assistant. A chat between people stays `MessageBubble` in a `ChatFrame`.
 
 ## Where it lives
 An ext of the core grammar: `import { AiChatThread } from "@starci/grammar/core/ext/chat"` and `@starci/grammar/core/ext/chat.css` after the
@@ -32,10 +32,10 @@ assistant-ui styled package, no shadcn styles.
   inline Alert for an error) and `composerHint` (a string, the caption at the start of the composer's foot row).
 
 ## Look
-- **The frame** is the chat frame ([message bubble](message-bubble.md) "The chat frame"): head, thread and composer foot on `--background`,
+- **The frame** follows the chat frame ([message bubble](message-bubble.md) "The chat frame"): head, thread and composer foot on `--background`,
   hairlines between them, only the thread scrolls. Turns and the composer stand in one centred reading column with the page gutter, so 390
   has no horizontal scroll.
-- **The reader's turn** is the neutral soft `MessageBubble` (`tone="neutral"`, no accent fill) at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
+- **The reader's turn** is the outgoing `MessageBubble` (the accent fill) at the end side, its text as typed. **An assistant turn** is no bubble: plain markdown
   across the column (the core `Markdown`, fences in the code palette with their Copy), then its actions, the `sm` border icon buttons copy and,
   on the last turn, retry. With `assistantAvatar` each assistant turn starts with its `sm` (24px) decorative Avatar, the answer beside it at the
   row gap.

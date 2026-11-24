@@ -156,7 +156,7 @@ const AlignGrid = ({ align, content }: { readonly align: "end" | "center"; reado
     <div style={{ height: "18rem", display: "flex" }}>
         <G.PaneGrid label="Chat" areas={["main"]} columns={["fill"]}>
             <G.Pane area="main" surface label="Thread">
-                <G.PaneSection scroll={{ label: "Messages", role: "log", align }}>{content}</G.PaneSection>
+                <G.PaneSection scroll={{ label: "Messages", align }}>{content}</G.PaneSection>
             </G.Pane>
         </G.PaneGrid>
     </div>

@@ -2,6 +2,6 @@
 
 Versioned history starts at beta; earlier history is in git.
 
-## 0.58.0 - 2026-11-24
+## 0.59.0 - 2026-11-24
 
-- Lint rules of the Grammar's layout, text, form and surface laws, versioned with @starci/grammar.
+- Lint rules of the Grammar's layout, text, form and surface laws, versioned with @starci/grammar; a `Pane` may hold the one `ChatFrame` of a chat pane (`pane-children`).

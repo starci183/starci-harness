@@ -65,14 +65,14 @@
     }
 
     /* On the brand face of the reader's own bubble the strip keeps the bubble's ink: a tint of it as the ground, the ink softened, the bar in the ink. */
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-reply-strip {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-reply-strip {
         --starci-core-reply-strip-edge: currentcolor;
 
         background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
         color: inherit;
     }
 
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body .starci-core-reply-strip-text {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-reply-strip-text {
         color: inherit;
         opacity: var(--grammar-opacity-secondary);
     }

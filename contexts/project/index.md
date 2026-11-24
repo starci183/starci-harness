@@ -239,7 +239,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules · Icons inside Grammar are outline · Icon measures · App bar custom buttons (TOPBAR-CUSTOM-BUTTONS) · A Button on a band, and the head link's hit area
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 12 KB — Contract: Card.
+- [ui/components/card.md](../ui/components/card.md) · 11 KB — Contract: Card.
   - sections: Job · Choose · Actions · Look · Icons are outline (ICONS-OUTLINE) · Size · States · Owner split · Rules · Rows and labels · A card that waits on the reader, and an agent's tile
   - ids: CHOICE-ROW-CONTROL, LABEL-SUBLABEL-HIERARCHY, LIST-ROW-NAVIGATION, ROW-TITLES-NOUNS
 - [ui/components/charts.md](../ui/components/charts.md) · 5 KB — Contract: Charts.
@@ -329,7 +329,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 12 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · The icon table · The spacing roles · Density
-- [ui/situations.md](../ui/situations.md) · 30 KB — An author says what the thing is; the grammar decides how it looks.
+- [ui/situations.md](../ui/situations.md) · 31 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Icon and mark sizes · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here

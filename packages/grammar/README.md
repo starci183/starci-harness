@@ -613,8 +613,17 @@ label and authoritative `isToday`; it owns native time/current-date semantics wi
 `MessageCard` is an agent's rich message as data: `title` with an optional `chip`, then `body` or `details` (a compact `DescriptionList`), then
 `actions` (the `primary` first, an `open` action ending in the arrow last), then a muted xs `meta` line. It renders
 `MessageBubble content="card"` and is capped at the bubble measure (`measure="wide"` for the 70% step) with the `avatar` at the start. A `Tabs`
-strip that ends a `PaneSection` stands on the band's one full-width separator; a pane head band above a scroll band ends in one separator; an
-`EmptyNotice` inside a thread (a `PaneSection scroll role="log"`) draws no card surface.
+strip that ends a `PaneSection` stands on the band's one full-width separator; an
+`EmptyNotice` inside a thread (the `ChatFrame` thread) draws no card surface.
+
+`ChatFrame` is the one chat on any host: `label` (the thread's name), `header` (a `PaneHeader`, and for a customer chat the owner row in the same zone),
+the thread as children (`MessageBubble`s and day `Divider`s, oldest first), `footer` (the composer or the decision actions), `scrollRef`, `isLoading` and
+`error`. It draws the header, one 1px line, the thread (the only scroller, on `--background`, opening at the newest message and following new ones
+while the reader is at the foot), one 1px line and the footer, and fills the height its host gives it. A grid holds it as
+`<Pane area="chat" content="chat"><ChatFrame ... /></Pane>` (the pane takes no `footer`, `head`, `surface` or `inset`), a drawer as
+`<Drawer bodyInset="none"><ChatFrame ... /></Drawer>` (the sheet's title row and the frame header are one zone), a page as the frame in a box with a height.
+An incoming `MessageBubble` and every `MessageCard` are the flat `--surface` with no border and no shadow, an outgoing bubble is `--accent`, and every
+bubble passes its `avatar`.
 
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
@@ -650,7 +659,7 @@ exactly one `PaneGrid` attached flush to the band's separator, reaching both con
 ```tsx
 <Page chrome="panes" header={{ title: "Support agent", tabs }}>
   <PaneGrid label="Setup" areas={["chat side"]} columns={["fill", "standard"]}>
-    <Pane area="chat"><PaneSection scroll={{ label: "Conversation", role: "log" }}>{bubbles}</PaneSection></Pane>
+    <Pane area="chat" content="chat"><ChatFrame label="Conversation" header={<PaneHeader title="Support agent" />}>{bubbles}</ChatFrame></Pane>
     <Pane area="side" surface><PaneSection gap="section">{settings}</PaneSection></Pane>
   </PaneGrid>
 </Page>
@@ -665,10 +674,10 @@ Every side takes the container inset `--grammar-inset` (0.75rem) at every breakp
 bottom edge) and `--grammar-pane-inset-block-end-divider` (a divider below).
 A `collapse="drawer"` pane renders its children in the drawer under the same inset.
 
-`PaneSection` is the one band of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
+`PaneSection` is the one band of a pane: every child of a Pane is a `PaneSection`, one nested `PaneGrid` or, in a `content="chat"` pane, the one `ChatFrame`.
 It pads inline by the pane inset; the sections of a pane stack with the row gap between them, the first takes the
 block-start inset and the last the block-end inset. Props: `grow` (takes the remaining height), `scroll`
-(`{ label, role?: "log" | "region", tone?: "surface" | "background", scrollRef? }`: its own full-bleed scroll owner
+(`{ label, tone?: "surface" | "background", align?: "start" | "center" | "end" }`: its own full-bleed scroll owner
 with the inset on its content, so the scrollbar sits on the pane edge), `align` (`start` | `center`), `bleed="inline"`
 (the one `HorizontalScrollRegion` in it, such as a chip row, reaches both pane edges and takes the inset as its own
 padding and scroll padding), `gap` (`inline` | `row` | `section`) and `as` (`div` | `header` | `footer`). It takes no

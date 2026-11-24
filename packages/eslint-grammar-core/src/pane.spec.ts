@@ -18,7 +18,7 @@ import { noPaneSectionPadding, paneChildren, paneGridChildren, paneGridPage, rec
 const BLOCK = at("apps/web/src/components/blocks/Category/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
 const IMPORTS =
-  "import { Freestyle, Divider, Page, Pane, PaneGrid, PaneSection, SearchField, SurfaceCard } from \"@starci/grammar/core\"\n" +
+  "import { ChatFrame, Freestyle, Divider, Page, Pane, PaneGrid, PaneHeader, PaneSection, SearchField, SurfaceCard } from \"@starci/grammar/core\"\n" +
   "import { CategoryPane } from \"./CategoryPane\"\n"
 
 test("the law publishes four rules, each an error, each with its failure code", () => {
@@ -77,6 +77,7 @@ test("R346: a Pane holds PaneSections or one PaneGrid", () => {
     valid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"a\"><PaneSection><SearchField /></PaneSection><PaneSection grow scroll={{ label: \"x\" }}><div /></PaneSection></Pane>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"a\" inset=\"flush\"><PaneGrid areas={{ base: [\"b\"] }}><Pane area=\"b\" /></PaneGrid></Pane>" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"a\" content=\"chat\"><ChatFrame label=\"x\" header={<PaneHeader title=\"x\" />} /></Pane>" },
       { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <Pane area=\"a\">{p.head ? <PaneSection align=\"center\" /> : null}{p.open && <PaneSection />}{p.rows.map((row) => <PaneSection key={row.id} />)}</Pane>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"a\"><><PaneSection /><PaneSection /></></Pane>" },
       // a project component is judged in its own file

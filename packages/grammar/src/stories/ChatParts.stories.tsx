@@ -39,20 +39,17 @@ export const PaneTabsLine: Story = { render: () => <TabsPaneDemo /> }
 const thread = (
     <>
         <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="md" />} body="Can the order for table 4 move to 19:30?" />
-        <G.MessageBubble side="outgoing" meta="09:14" body="Yes, I moved it." />
+        <G.MessageBubble side="outgoing" meta="09:14" avatar={<G.Avatar name="You" size="md" />} body="Yes, I moved it." />
     </>
 )
 
-/** A chat pane: the PaneHeader band ends in one full-width separator above the thread. */
+/** A chat pane: the frame's header ends in one full-width separator above the thread. */
 export const ChatPaneHeadLine: Story = {
     render: () => (
         <div style={{ blockSize: "22rem" }}>
             <G.PaneGrid label="Chat" areas={{ base: ["chat"], medium: ["chat"] }} columns={{ base: ["fill"], medium: ["fill"] }} rows={{ base: ["fill"], medium: ["fill"] }}>
-                <G.Pane area="chat" surface>
-                    <G.PaneSection align="center">
-                        <G.PaneHeader title="Support agent" description="Replies in a minute" mark={<G.Avatar name="Support agent" size="md" />} />
-                    </G.PaneSection>
-                    <G.PaneSection scroll={{ label: "Conversation", role: "log", align: "end" }}>{thread}</G.PaneSection>
+                <G.Pane area="chat" content="chat">
+                    <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Support agent" description="Replies in a minute" mark={<G.Avatar name="Support agent" size="md" />} />}>{thread}</G.ChatFrame>
                 </G.Pane>
             </G.PaneGrid>
         </div>
@@ -94,15 +91,15 @@ export const MessageCards: Story = {
     ),
 }
 
-/** An EmptyNotice in a thread (a chat scroll band) is centred words with no fill, border or shadow. */
+/** An EmptyNotice in a thread (the chat frame's thread) is words with no fill, border or shadow. */
 export const EmptyNoticeInThread: Story = {
     render: () => (
         <div style={{ blockSize: "18rem" }}>
             <G.PaneGrid label="Empty chat" areas={{ base: ["chat"], medium: ["chat"] }} columns={{ base: ["fill"], medium: ["fill"] }} rows={{ base: ["fill"], medium: ["fill"] }}>
-                <G.Pane area="chat">
-                    <G.PaneSection scroll={{ label: "Conversation", role: "log", align: "center" }}>
+                <G.Pane area="chat" content="chat">
+                    <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Support agent" mark={<G.Avatar name="Support agent" size="md" />} />}>
                         <G.EmptyNotice message="No messages yet" description="Say hello to start the conversation." />
-                    </G.PaneSection>
+                    </G.ChatFrame>
                 </G.Pane>
             </G.PaneGrid>
         </div>

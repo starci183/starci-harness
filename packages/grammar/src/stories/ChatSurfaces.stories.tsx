@@ -5,14 +5,12 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, the owner-approved drawing chat-surfaces). Every chat (team chat, an agent's chat, an inbox
- * thread, the assistant) draws the same three faces: the thread on the page tone (`--background`; a `PaneSection scroll role="log"` paints it even when the
- * app asks for `tone="surface"`), a message of someone else (MessageBubble incoming, MessageCard) one outlined look (0.52.0: the 1px `--border` edge, no fill, no shadow), and the
- * reader's own message `--accent` with `--accent-foreground`. The replies a card offers are one flat list, a pressable plain-text row per reply with a
- * chevron (`Section kind="list" layout="suggestions"`, law DNA-COMMON-CARD-SUGGESTIONS); the pills by the composer stay `Button size="sm"`. The pane
- * footer that holds the composer starts at its own hairline: no empty band above the suggestions, no second line.
+ * THE CHAT SURFACES (law DNA-COMMON-CHAT-SURFACES). Every chat (team chat, an agent's chat, an inbox thread, the assistant) draws the same three faces: the
+ * thread on the page tone (`--background`, the `ChatFrame` thread), a message of someone else (MessageBubble incoming, MessageCard) one flat look (`--surface`, no
+ * border, no shadow), and the reader's own message `--accent` with `--accent-foreground`. The replies a card offers are one flat list, a pressable plain-text row
+ * per reply with a chevron (`Section kind="list" layout="suggestions"`, law DNA-COMMON-CARD-SUGGESTIONS); the pills by the composer stay `Button size="sm"`.
  */
-const meta: Meta = { title: 'Navigation & Data/Chat surfaces (0.37.31)', parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Navigation & Data/Chat surfaces', parameters: { layout: 'fullscreen' } };
 export default meta;
 type Story = StoryObj;
 
@@ -52,18 +50,18 @@ const Thread = () => (
       ]}
       meta="Chatbot · Answer a question · 14:24"
     />
-    <G.MessageBubble side="outgoing" meta="14:30" body="Ok, let me check" />
+    <G.MessageBubble side="outgoing" meta="14:30" avatar={<G.Avatar name="You" size="md" />} body="Ok, let me check" />
   </>
 );
 
 const Composer = () => (
-  <G.PaneSection as="footer" rule="start" gap="row">
+  <>
     <G.Cluster gap="inline" label="Suggestions">
       <G.Button variant="border" size="sm" onPress={noop}>What did you do today?</G.Button>
       <G.Button variant="border" size="sm" onPress={noop}>Is anything waiting for my approval?</G.Button>
     </G.Cluster>
     <G.Textarea label="Message" isLabelHidden placeholder="Type a message..." onSubmitShortcut={noop} />
-  </G.PaneSection>
+  </>
 );
 
 const ChatPage = () => (
@@ -74,14 +72,10 @@ const ChatPage = () => (
           <G.PaneSection align="center"><G.PaneHeader title="Chat" /></G.PaneSection>
           <G.PaneSection><G.Text tone="muted">Chatbot</G.Text></G.PaneSection>
         </G.Pane>
-        <G.Pane area="room" surface content="full" label="Chatbot room" footer={<Composer />}>
-          <G.PaneSection align="center">
-            <G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="md" />} />
-          </G.PaneSection>
-          {/* tone="surface" on purpose: a thread is the page tone whatever the app asks. */}
-          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'surface', align: 'end' }}>
+        <G.Pane area="room" content="chat" label="Chatbot room">
+          <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="md" />} />} footer={<Composer />}>
             <Thread />
-          </G.PaneSection>
+          </G.ChatFrame>
         </G.Pane>
       </G.PaneGrid>
     </G.Page>
@@ -98,12 +92,12 @@ const tokenColour = (host: Element, token: string): string => {
   return colour;
 };
 
-/** The approved drawing: the pink thread, flat white incoming messages and card, the accent own message, the card's replies as a bordered list, no band above the composer. */
+/** The thread on the page tone, flat incoming messages and card, the accent own message, the card's replies as a flat list. */
 export const ChatPane: Story = {
   render: () => <ChatPage />,
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('[data-component="MessageCard"]')).not.toBeNull());
-    const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-section-thread="true"]')!;
+    const thread = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame-thread')!;
     expect(thread.getAttribute('data-grammar-scroll-region-tone')).toBe('background');
     expect(getComputedStyle(thread).backgroundColor).toBe(tokenColour(thread, '--background'));
 
@@ -111,9 +105,9 @@ export const ChatPane: Story = {
     expect(incoming.length).toBe(2);
     for (const face of incoming) {
       const style = getComputedStyle(face);
-      expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+      expect(style.backgroundColor).toBe(tokenColour(thread, '--surface'));
       expect(style.boxShadow).toBe('none');
-      expect(Number.parseFloat(style.borderTopWidth)).toBe(1);
+      expect(Number.parseFloat(style.borderTopWidth)).toBe(0);
     }
 
     const own = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
@@ -125,7 +119,7 @@ export const ChatPane: Story = {
     foreground.remove();
 
     const list = canvasElement.querySelector<HTMLElement>('[data-grammar-list-layout="suggestions"]')!;
-    // One look (0.43.0): the replies are a flat list in the card body, never a nested card.
+    // The replies are a flat list in the card body, never a nested card.
     expect(list.closest('.starci-core-surface')).toBeNull();
     expect(Number.parseFloat(getComputedStyle(list).borderTopWidth)).toBe(0);
     expect(getComputedStyle(list).boxShadow).toBe('none');
@@ -137,16 +131,12 @@ export const ChatPane: Story = {
       expect(getComputedStyle(row.querySelector<HTMLElement>('.starci-core-list-row-name')!).fontWeight).toBe('400');
     }
 
-    const footer = canvasElement.querySelector<HTMLElement>('.starci-core-pane-footer')!;
-    const stack = footer.querySelector<HTMLElement>(':scope > .starci-core-pane-stack')!;
-    const band = stack.querySelector<HTMLElement>(':scope > .starci-core-pane-section')!;
-    expect(Number.parseFloat(getComputedStyle(stack).paddingTop)).toBe(0);
-    expect(Number.parseFloat(getComputedStyle(band).borderTopWidth)).toBe(0);
-    expect(Math.round(band.getBoundingClientRect().top - footer.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
+    const footer = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame-footer')!;
+    expect(Number.parseFloat(getComputedStyle(footer).borderTopWidth)).toBe(1);
   },
 };
 
-/** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the 1px border edge, no fill, no shadow. */
+/** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the flat surface, no border, no shadow. */
 export const BubblesOnWhite: Story = {
   render: () => (
     <G.Drawer title="Pinned messages" closeLabel="Close" isOpen onOpenChange={noop}>
@@ -159,13 +149,13 @@ export const BubblesOnWhite: Story = {
   play: async () => {
     await waitFor(() => expect(document.querySelector('.starci-core-drawer .starci-core-message-bubble')).not.toBeNull());
     const face = document.querySelector<HTMLElement>('.starci-core-drawer .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
-    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(1);
+    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(0);
     expect(getComputedStyle(face).boxShadow).toBe('none');
-    expect(getComputedStyle(face).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    expect(getComputedStyle(face).backgroundColor).toBe(tokenColour(face, '--surface'));
   },
 };
 
-/** A chip and a quote in the reader's own message stay readable on the brand fill: the Badge is the inverse pair, the Quote the foreground tint (0.52.0). */
+/** A chip and a quote in the reader's own message stay readable on the brand fill: the Badge is the inverse pair, the Quote the foreground tint. */
 export const OwnBubbleChips: Story = {
   render: () => (
     <div style={{ padding: 24, maxWidth: 640 }}>
@@ -271,7 +261,7 @@ export const LoadingThread: Story = {
     expect(getComputedStyle(face).backgroundColor).toBe(tokenColor(canvasElement, '--accent-soft'));
     expect(getComputedStyle(face).backgroundColor).not.toBe(tokenColor(canvasElement, '--accent'));
     const incoming = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
-    expect(getComputedStyle(incoming).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    expect(getComputedStyle(incoming).backgroundColor).toBe(tokenColor(canvasElement, '--surface'));
   },
 };
 
@@ -280,10 +270,10 @@ export const FailedThread: Story = {
   render: () => (
     <div style={{ blockSize: '18rem' }}>
       <G.PaneGrid label="Failed chat" areas={{ base: ['chat'], medium: ['chat'] }} columns={{ base: ['fill'], medium: ['fill'] }} rows={{ base: ['fill'], medium: ['fill'] }}>
-        <G.Pane area="chat">
-          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}>
+        <G.Pane area="chat" content="chat">
+          <G.ChatFrame label="Conversation" header={<G.PaneHeader title="Chatbot" mark={<G.Avatar name="Chatbot" size="md" />} />}>
             <G.MessageBubble error={{ message: 'Could not load the messages', description: 'Check the connection, then try again.', actionLabel: 'Try again', onAction: noop }} />
-          </G.PaneSection>
+          </G.ChatFrame>
         </G.Pane>
       </G.PaneGrid>
     </div>
