@@ -33,6 +33,9 @@ Evidence (Rule 1). NIVO console shell canvas, repository `nivoos-lite` at `8759c
 drawn as a sidebar item; the collapsed rail shows the expand control (`expandLabel`, icon only) centred at the same foot. Persist the state in the app as before. Evidence (Rule 1): NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html``:208` (the foot: the credit line, then the "Thu gon" row with a glyph), `:264` (the collapsed rail), `:240`.
 Story `Navigation/Shell gaps (0.46.0)` `CollapseAtTheFoot`.
 
+## Selected and hover
+The current item is the accent soft pair (`--accent-soft` fill, `--accent-soft-foreground` words and glyph, the label at medium weight), rounded like every item, with NO bar on its start edge or any other. Hover is the neutral `--default` fill, the words unchanged; the current item under the pointer keeps its accent soft fill; focus keeps its ring. Hooks: `--starci-core-sidebar-selected`, `--starci-core-sidebar-selected-foreground`, `--starci-core-sidebar-selected-weight`. A selectable `ListBox` row and a selected table row follow the same rule ([grammars/contract.md](../../grammars/contract.md#list)).
+
 ## Size
 An item is 40 high with a leading 20 glyph; the count is a pill of the badge step (12 text). The rail is 3.5rem wide, a drawer is the sheet's width.
 

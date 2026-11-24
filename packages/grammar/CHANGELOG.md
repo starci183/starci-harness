@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Changed, visual only (SELECTED IS ACCENT SOFT, owner 2026-11-24: "Chốt đổi"): the selected state of navigation items and selectable list rows is the accent soft background (`--accent-soft`), accent soft text and glyph, rounded like the item, and NO one-sided accent edge bar; hover is the neutral soft background (`--default`, a table row `--surface-secondary`) with the text colour unchanged; the focus-visible ring is as before. Applies to the `Sidebar` current item, the `ListBox` selected option (it was `--default`), the selected `DataTable` row and its phone list row (they were `--default` with a 2px accent bar; a selected row under the pointer keeps its fill). A row `edgeTone` bar is a status, not a selected mark, and stays. No API changes.
+- Removed, BREAKING (theme hooks): `--starci-core-sidebar-bar-width`, `--starci-core-sidebar-bar` and `--starci-core-sidebar-selected-start-radius`, which drew and squared the sidebar's selected bar. An app's brand.css drops them (`--starci-core-sidebar-selected` and `-foreground` default to the accent soft pair and need no override). Contexts: `grammars/contract.md` "Selected and hover", `ui/components/sidebar.md`, `list-table.md`, `menu.md`. `@starci/stylelint-canon` vocabulary follows.
+
 ## 0.58.0 - 2026-11-24 - Every icon strokes 1.5; the neutral Sparkline; AiChatThread slots; lesson outline, inline notes and glossary terms; phone tables stack
 
 A minor: it deletes API (the `--grammar-icon-stroke` custom properties, `Sparkline tone` and `emptyLabel`), with new optional props, components and fixes.
