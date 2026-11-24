@@ -58,14 +58,14 @@ test("R380: a grouped choice control is red and names its replacement", () => {
   slotTester().run("no-grouped-choice-controls", noGroupedChoiceControls, {
     valid: [
       { filename: BLOCK, code: "export const A = () => <Tabs label=\"Status\" kind=\"filter\" items={items} />" },
-      { filename: BLOCK, code: "export const A = () => <ChoiceChips label=\"Time\" options={slots} empty={null} />" },
+      { filename: BLOCK, code: "export const A = () => <Select label=\"Time\" options={slots} />" },
       { filename: BLOCK, code: "export const A = () => <RadioGroup label=\"Mode\" options={modes} />" },
       { filename: SCRIPT, code: "export const A = () => <ButtonGroup>x</ButtonGroup>" },
     ],
     invalid: [
       { filename: BLOCK, code: "export const A = () => <ButtonGroup label=\"Actions\" />", errors: grouped("ButtonGroup", "separate `Button`s (one commit, the rest alternative or dismiss), or a `DropdownMenu` for the overflow") },
       { filename: BLOCK, code: "export const A = () => <G.FilterButtonGroup label=\"Status\" options={o} />", errors: grouped("FilterButtonGroup", "`Tabs kind=\"filter\"` (compact underline tabs with a `count` each, under the list's search field) to narrow a list that stays in place") },
-      { filename: BLOCK, code: "export const A = () => <SegmentedControl label=\"Mode\" options={o} />", errors: grouped("SegmentedControl", "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs appearance=\"primary\"` (in the `action` of its `Section`) to switch a mode or period of one block") },
+      { filename: BLOCK, code: "export const A = () => <SegmentedControl label=\"Mode\" options={o} />", errors: grouped("SegmentedControl", "a `Select` to choose a value of a form or a toolbar, or `Tabs appearance=\"primary\"` (in the `action` of its `Section`) to switch a mode or period of one block") },
     ],
   })
 })

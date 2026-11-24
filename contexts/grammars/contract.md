@@ -171,9 +171,9 @@ owns the visible panel, including when every item is temporarily disabled.
 
 ### SegmentedControl
 
-The value role is one value inside a form or a toolbar (period, audience, density), not navigation, and its renderer is
-`ChoiceChips` (or a `RadioGroup` when each option needs a sentence). The pill-in-a-track look belongs to `Tabs
-appearance="primary"`, a mode or period switch.
+The value role is one value inside a form or a toolbar (audience, density, a tool), not navigation, and its renderer is a
+dropdown `Select`, whatever the weight of the options (a plan level, an amount); a `RadioGroup` when each option needs a sentence.
+The pill-in-a-track look belongs to `Tabs appearance="primary"`, a mode or period switch; a one-value choice in a form or toolbar is a `Select`.
 
 ### Removable filter chips
 
@@ -207,7 +207,7 @@ vanishes into its surface; the app omits `variant`. A field has one step, `md`, 
 mobile text stays at the size that prevents focus zoom.
 
 The field rule spaces every control alike, whatever it is (Input, Select, NumberField, Textarea, ComboBox, the date and time
-fields, Search, CopyField, Checkbox and Radio groups, ChoiceChips, Switch, Slider): the label (md 14 / 500) stands 8 above the
+fields, Search, CopyField, Checkbox and Radio groups, Switch, Slider): the label (md 14 / 500) stands 8 above the
 control, the help, error or counter 4 below it, and fields stand 24 apart, set by the `Form`, the form `Grid` and the
 `Fieldset`, never by a field; a `Fieldset` legend stands 8 above its fields and its actions 24 below them
 ([ui/components/field](../ui/components/field.md) FIELD-1..4). A hand-made label beside a control is refused by lint
@@ -478,19 +478,14 @@ its column and empty cells are not drawn, and a loading grid keeps its headings 
 sparklines are the charts extension's (`@starci/grammar/core/ext/recharts`); core draws no chart of its own (0.55.0).
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
-`kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a grey chip, an attention count (`isAttention`) on the accent soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
-of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
+`kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a grey chip, an attention count (`isAttention`) on the accent soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `Tabs appearance="primary"` switches a mode or period; a `Select` chooses a value
+of a form or a toolbar, since a tablist is not a form field; a date is the `Calendar` and a time a `Select` of the free times; actions are separate `Button`s or a
 `DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` were deleted in 0.55.0, and R380 still names the replacement in product source.
 
 The `Calendar` takes a controlled `value`, `minValue` and `maxValue`, `isDateUnavailable` with an `unavailableReason` (a full day says so
 on hover and to a screen reader), a `locale` (and so the week's first day: Monday for Vietnamese) with `firstDayOfWeek` to override,
-and `isLoading` (header and cells kept, numbers as geometry, nothing focusable). A taken time is a `ChoiceChips` option that is
-disabled with a `disabledReason`.
-
-`ChoiceChips` is one choice among a few short options (a time, a size) as pills that wrap onto as many rows as the width needs,
-so every option stays visible. It behaves as a radio group (one selected, arrows move, a taken option is disabled and keeps its
-place) and answers for its own empty, loading and error states. It is neither a filter (`Tabs kind="filter"`, one row with a "+n"
-fold) nor a mode switch (`Tabs appearance="primary"`).
+and `isLoading` (header and cells kept, numbers as geometry, nothing focusable). A taken time is a disabled option of the time
+`Select`, its reason in the option's `description`.
 
 ### Freestyle
 

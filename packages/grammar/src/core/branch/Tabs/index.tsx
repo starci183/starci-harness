@@ -45,7 +45,7 @@ export type TabItem = {
 
 /**
  * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (the `filter` row of its
- * `Section`); `ChoiceChips` or `RadioGroup` choose a form value; a `Button` holds a command, never a selection state.
+ * `Section`); a `Select` chooses a value of a form or a toolbar; a `Button` holds a command, never a selection state.
  * Two joined buttons or pills acting as tabs are banned (R380, `no-button-view-switch`).
  *
  * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
@@ -76,7 +76,7 @@ type TabsCommon = NoChildren & {
  * role, height, underline and count chip; a second tab row is never a smaller variant), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
  * its edges fade where more tabs wait and the selected one is scrolled into view.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
- * form is `ChoiceChips` or `RadioGroup`.
+ * form or a toolbar is a `Select`.
  */
 export type SecondaryTabsProps = TabsCommon & {
     readonly appearance?: "secondary"

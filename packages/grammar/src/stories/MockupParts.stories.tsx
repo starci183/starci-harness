@@ -184,44 +184,6 @@ export const AlertAccentTone: Story = {
     ),
 }
 
-const levelOptions = ["2.4M", "3.5M", "4.8M", "8M", "12M"].map((level) => ({ value: level, label: level }))
-
-const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ value: day, label: day }))
-
-/**
- * The two choice groups: ChoiceChips at a Chip's height beside a Badge (DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT), and ChoiceButtons at a
- * Button's height, md and sm (DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT).
- */
-export const ChoiceChipsAndButtons: Story = {
-    render: () => (
-        <Matrix maxWidth={420}>
-            <State label="choice chips / a badge of the same height / loading" direction="column">
-                <G.ChoiceChips label="Days" options={dayOptions} defaultValue="Mon" empty={empty} />
-                <G.Badge tone="accent">Mon</G.Badge>
-                <G.ChoiceChips label="Days loading" options={dayOptions} isLoading empty={empty} />
-            </State>
-            <State label="choice buttons md / sm / loading" direction="column">
-                <G.ChoiceButtons label="Level" options={levelOptions} defaultValue="3.5M" empty={empty} />
-                <G.ChoiceButtons label="Level small" size="sm" options={levelOptions} defaultValue="3.5M" empty={empty} />
-                <G.ChoiceButtons label="Level loading" options={levelOptions} isLoading empty={empty} />
-            </State>
-        </Matrix>
-    ),
-}
-
-/** ChoiceChips width fill: the chips share the row evenly, and wrap only when they cannot fit (DNA-COMMON-CHOICE-CHIPS-FILL). */
-export const ChoiceChipsFill: Story = {
-    render: () => (
-        <Matrix maxWidth={420}>
-            <State label="fill, one row / narrow, wrapped / loading" direction="column">
-                <G.ChoiceChips label="Days" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} />
-                <div style={{ maxWidth: 200 }}><G.ChoiceChips label="Days narrow" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} /></div>
-                <G.ChoiceChips label="Days loading" width="fill" options={dayOptions} isLoading empty={empty} />
-            </State>
-        </Matrix>
-    ),
-}
-
 /** Filter tabs in a loading region: labels real, counts as geometry (DNA-COMMON-TABS-FILTER-LOADING-COUNTS). */
 export const FilterTabsLoading: Story = {
     render: () => (
