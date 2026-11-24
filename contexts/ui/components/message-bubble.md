@@ -32,7 +32,7 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
   a Button, so the danger Button rule does not apply to it) and asks once more. Never a row of Buttons under a text bubble for a question.
   Story `Navigation & Data/Chat parts` `ChoiceCards`.
 
-Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
+Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no theme hook repaints a bubble, and no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`.
 Story `Navigation & Data/Chat surfaces`.
 

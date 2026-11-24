@@ -6363,9 +6363,9 @@
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
-        border: var(--starci-core-bubble-outgoing-border, 0);
-        background: var(--starci-core-bubble-outgoing, var(--accent));
-        color: var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground));
+        border: 0;
+        background: var(--accent);
+        color: var(--accent-foreground);
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
@@ -6374,7 +6374,7 @@
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
 
     /*
      * A chip and a quote on the brand fill (0.52.0): a Badge (a mention, a tag) is the inverse pair, the fill's foreground as its ground and
@@ -6382,12 +6382,12 @@
      */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Badge"] {
         border-color: transparent !important;
-        background: var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) !important;
-        color: var(--starci-core-bubble-outgoing, var(--accent)) !important;
+        background: var(--accent-foreground) !important;
+        color: var(--accent) !important;
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body .starci-core-quote {
-        background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent);
+        background: color-mix(in oklab, var(--accent-foreground) 16%, transparent);
         color: inherit;
     }
 
@@ -6423,21 +6423,15 @@
     .starci-core-message-bubble .starci-core-message-bubble-body { border-radius: var(--grammar-bubble-radius); }
 
     /*
-     * THE BUBBLE TOKENS: optional, each defaulting to the faces above. The other party's message: `--starci-core-bubble-incoming` (fill, default `--surface`) and
-     * `--starci-core-bubble-incoming-foreground` (default `--foreground`); it has no edge. The reader's own: `--starci-core-bubble-outgoing` (default `--accent`),
-     * `--starci-core-bubble-outgoing-foreground` (default `--accent-foreground`), `--starci-core-bubble-outgoing-border` (default `0`). A MessageCard:
-     * `--starci-core-message-card`, defaulting to the incoming face.
+     * The other party's message and a MessageCard are the flat surface: `--surface` with `--foreground`, no edge, no shadow. The Grammar decides both chat faces;
+     * no theme hook repaints them.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
         border: 0;
-        background: var(--starci-core-bubble-incoming, var(--surface));
-        color: var(--starci-core-bubble-incoming-foreground, var(--foreground));
+        background: var(--surface);
+        color: var(--foreground);
         box-shadow: none;
-    }
-
-    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, var(--surface)));
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }

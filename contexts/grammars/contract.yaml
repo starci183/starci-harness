@@ -1768,13 +1768,12 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
       role: pane-grid
-      law: "The reader's own message (MessageBubble outgoing) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own."
+      law: "The reader's own message (MessageBubble outgoing) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own and no theme hook that repaints it."
       measure:
         kind: style
         select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"]:not([data-grammar-skeleton="true"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body'
         checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
       owner: ui/components/message-bubble.md
-      followUp: "the theme-hooks story repaints the outgoing bubble on purpose: exempt a hooked app or keep"
     - id: DNA-COMMON-CHAT-SKELETON-SOFT
       role: pane-grid
       law: "A loading outgoing bubble (MessageBubble isLoading side outgoing, and the outgoing bubbles of a loading thread) is the brand's soft pair, --accent-soft with its lines in --accent-soft-foreground at a tint (the tone-pair rule: lines on a ground take the ground's soft pair), never the solid --accent fill a real message wears."

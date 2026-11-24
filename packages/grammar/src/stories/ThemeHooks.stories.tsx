@@ -99,9 +99,6 @@ const NEUTRAL_HOOKS = {
   '--starci-core-plate-border': '1px solid var(--border)',
   '--starci-core-plate-selected': 'var(--default)',
   '--starci-core-plate-selected-foreground': 'var(--foreground)',
-  '--starci-core-bubble-outgoing': 'var(--surface)',
-  '--starci-core-bubble-outgoing-foreground': 'var(--foreground)',
-  '--starci-core-bubble-outgoing-border': '1px solid var(--border)',
 } as CSSProperties;
 
 /** The same parts under a neutral set of hooks, as an app's theme layer sets them. */
