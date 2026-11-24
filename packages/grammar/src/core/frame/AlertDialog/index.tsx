@@ -136,7 +136,7 @@ export const AlertDialog = ({
                                     <div className="starci-core-overlay-heading-group">
                                         <HeroAlertDialog.Heading className="starci-core-overlay-title">{title}</HeroAlertDialog.Heading>
                                         {description === undefined ? null : (
-                                            <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
+                                            <div id={descriptionId} className="starci-core-overlay-description">{description}</div>
                                         )}
                                     </div>
                                 </HeroAlertDialog.Header>
