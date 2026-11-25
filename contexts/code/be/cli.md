@@ -93,6 +93,12 @@ the versions the app root pins) and `tsconfig.build.json` (extends `../../tsconf
 packed and published from `be/apps/<app>` (`npm pack`, `npm publish`); the root `cli`, `migrate`, `start:*` and
 `docker:build*` scripts and the images workflow never name it.
 
+A client cli whose users should install one file, with no dependency tree resolved on their machine, declares `"bundle": true` beside
+its `package` and `bin`. Its build stays the same (`npm run build:<app>`); `be/apps/<app>/bundle.mjs` bundles that output (esbuild over
+tsc's JavaScript, which keeps the decorator metadata) into `dist/bundle/<bin>.cjs`, and the manifest's `bin` is `{ "<command>":
+"dist/bundle/<bin>.cjs" }`, its `files` hold `dist/bundle`, its `prepack` is `node bundle.mjs`, and it lists no runtime `dependencies`
+(the bundle carries them; what the script bundles are `devDependencies`). A tracked `bundle.mjs` without the declaration is refused.
+
 Why: what reaches a user's machine must hold nothing of the server, so the audience is a kind of app, with its own root,
 build and manifest, and the ops commands cannot ride along in its package.
 

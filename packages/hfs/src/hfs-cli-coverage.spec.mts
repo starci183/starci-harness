@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { cliFindings } from '../runtime/scripts/hfs/rules/cli.mjs';
+import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
 import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRef, ConnectionView } from '../runtime/scripts/hfs/slots.mjs';
 
@@ -119,5 +120,34 @@ for (const edition of ['lite'] as const) {
         for (const part of [/its name is "@acme\/other"/, /its bin is/, /it is private/, /no semver version/, /files do not hold dist/, /nest-commander@3\.20\.0; the app root pins 3\.21\.0/, /lodash, which the app root's package\.json does not pin/]) assert.match(said, part);
         const whole = judge(GOOD_MANIFEST, { compilerOptions: { outDir: '../../dist', rootDir: '.' }, include: ['src/**/*.ts'] });
         assert.deepEqual(whole.map((finding) => finding.path), [CLIENT_BUILD, CLIENT_BUILD, CLIENT_BUILD, CLIENT_BUILD]);
+    });
+
+    test(`a client cli that declares a bundle ships its one bundled file, and only a declared bundle may track bundle.mjs`, (t) => {
+        const BUNDLED = { ...CLIENT, bundle: true };
+        const BUNDLER = 'be/apps/relay-cli/bundle.mjs';
+        const files = [COMMAND, IMAGE, ...CLIENT_FILES, BUNDLER];
+        const bundleManifest = { name: '@acme/relay', version: '0.1.0', bin: { relay: 'dist/bundle/relay.cjs' }, files: ['dist/bundle', 'README.md'],
+            scripts: { prepack: 'node bundle.mjs' }, devDependencies: { 'nest-commander': '3.21.0', esbuild: '0.28.2' } };
+        const judge = (apps: AppRef[], tracked: string[], manifestJson: unknown) => cliFindings({ ...input(edition, [API, CLI, ...apps], tracked, [], ['api', 'cli', 'client-cli']), repoRoot: clientRoot(t, manifestJson) });
+        assert.deepEqual(judge([BUNDLED], files, bundleManifest), [], 'a declared bundle with its script, bin, files and prepack passes');
+        const resolver = input(edition, [API, CLI, BUNDLED], []).resolver.sides!.be;
+        assert.equal(resolver.classifyPath('apps/relay-cli/bundle.mjs').slot, 'be.app.client-cli.package');
+
+        const wrong = judge([BUNDLED], files, { ...bundleManifest, bin: { relay: 'dist/apps/relay-cli/src/main.js' }, files: ['dist/apps'], scripts: {}, dependencies: { 'nest-commander': '3.21.0' } });
+        assert.ok(wrong.every((finding) => finding.code === 'BE_CLI_CLIENT' && finding.path === CLIENT_MANIFEST));
+        const said = wrong.map((finding) => finding.message).join('\n');
+        for (const part of [/bin is \{ "relay": "dist\/bundle\/relay\.cjs" \}/, /files do not hold dist\/bundle/, /prepack is "node bundle\.mjs"/, /lists the runtime dependencies nest-commander/]) assert.match(said, part);
+
+        const scriptless = judge([BUNDLED], [COMMAND, IMAGE, ...CLIENT_FILES], bundleManifest);
+        assert.deepEqual(scriptless.map((finding) => finding.path), [BUNDLER], 'a declared bundle tracks its script');
+        const undeclared = judge([CLIENT], files, GOOD_MANIFEST);
+        assert.deepEqual(undeclared.map((finding) => finding.path), [BUNDLER], 'bundle.mjs without a declared bundle is refused');
+        const shape = (app: Record<string, unknown>): string => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'cli-proof',
+            sides: { be: { apps: [API, app], kinds: ['api', 'client-cli'] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } } }, ['be', 'fe']).join('; ');
+        assert.doesNotMatch(shape(BUNDLED), /bundle/, 'hfs.json admits bundle: true on a client cli');
+        assert.match(shape({ ...CLIENT, bundle: 'esbuild' }), /bundle is declared true by a client cli of be only/);
+        assert.match(shape({ name: 'worker', kind: 'api', bundle: true }), /bundle is declared true by a client cli of be only/);
+        const unbundled = judge([CLIENT], [COMMAND, IMAGE, ...CLIENT_FILES], bundleManifest);
+        assert.ok(unbundled.some((finding) => finding.code === 'BE_CLI_CLIENT' && /its bin is/.test(finding.message)), 'without the declaration a bundled bin stays refused');
     });
 }

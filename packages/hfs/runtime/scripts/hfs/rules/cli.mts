@@ -7,7 +7,10 @@
 //                         live in its own feature root be/src/features/client-cli/<app>/ (every folder there is a declared client cli),
 //                         and be/apps/<app>/ tracks package.json (that name, that bin on dist/apps/<app>/src/main.js, not private,
 //                         files holding dist, a version, every dependency one the app root pins at the same version) and
-//                         tsconfig.build.json (it emits into dist/ the import closure of src/main.ts alone).
+//                         tsconfig.build.json (it emits into dist/ the import closure of src/main.ts alone). A client cli that declares
+//                         `"bundle": true` ships one self-contained file instead: bundle.mjs beside its manifest bundles that tsc output
+//                         into dist/bundle/<bin>.cjs, the bin points there, files hold dist/bundle, prepack is `node bundle.mjs` and
+//                         the manifest lists no runtime dependency (the bundle carries them); bundle.mjs with no declared bundle is refused.
 // Where a command is declared and that every command has its unit spec beside it are eslint-be's (cli-command-shape, and
 // unit-test-colocated over ruleParams.be.unitRoles); what a client cli may import is eslint-be's cli-client-boundary (R398).
 // Paths are app-relative; the cli apps and the cli feature roots are read from the slot manifest through the resolver.
@@ -29,10 +32,16 @@ const CLIENT_FEATURE_SLOT = 'be.client-cli';
 const CLIENT_MANIFEST = 'package.json';
 const CLIENT_BUILD = 'tsconfig.build.json';
 const CLIENT_OUT = 'dist';
+/** The bundling script of a client cli that declares `bundle`, beside its manifest, and the folder its one file goes to. */
+const CLIENT_BUNDLER = 'bundle.mjs';
+const CLIENT_BUNDLE_OUT = `${CLIENT_OUT}/bundle`;
+const CLIENT_BUNDLE_PREPACK = `node ${CLIENT_BUNDLER}`;
 const ROOT_MANIFEST = 'package.json';
 
 /** The entry of a client cli inside its package: the compiled main of its app under the package's own dist. */
 export const clientCliEntry = (app: string): string => `${CLIENT_OUT}/apps/${app}/src/main.js`;
+/** The bin of a client cli that declares `bundle`: the one file its bundle.mjs writes. */
+export const clientCliBundle = (bin: string): string => `${CLIENT_BUNDLE_OUT}/${bin}.cjs`;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 /** A path of package.json `files` or `bin` without its leading `./` and trailing `/`. */
@@ -96,14 +105,25 @@ function clientRootFindings({ clients, onBe, beResolver }: { clients: Parsed[]; 
 /** What is wrong with the package.json of one client cli against its declaration and the app root's pins. */
 function manifestProblems(app: Parsed, manifest: Record<string, unknown>, rootPins: Record<string, unknown>): string[] {
   const bad: string[] = [];
-  const entry = clientCliEntry(app.name);
+  const bundled = app.bundle === true;
+  const entry = bundled ? clientCliBundle(String(app.bin)) : clientCliEntry(app.name);
   if (app.package !== undefined && manifest.name !== app.package) bad.push(`its name is ${JSON.stringify(manifest.name)}; hfs.json declares the package ${app.package}`);
   const bin = manifest.bin;
   if (app.bin !== undefined && !(isRecord(bin) && Object.keys(bin).length === 1 && plain(bin[app.bin]) === entry)) bad.push(`its bin is ${JSON.stringify(bin)}; hfs.json declares the command ${app.bin}, so bin is { "${app.bin}": "${entry}" }`);
   if (manifest.private === true) bad.push('it is private; a client cli is published to npm');
   if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(manifest.version)) bad.push('it has no semver version');
-  if (!(Array.isArray(manifest.files) && manifest.files.some((item) => plain(item) === CLIENT_OUT))) bad.push(`its files do not hold ${CLIENT_OUT}; the package ships its compiled ${CLIENT_OUT}/ and nothing of the source tree`);
+  const shipped = bundled ? [CLIENT_OUT, CLIENT_BUNDLE_OUT] : [CLIENT_OUT];
+  if (!(Array.isArray(manifest.files) && manifest.files.some((item) => shipped.includes(plain(item))))) bad.push(bundled
+    ? `its files do not hold ${CLIENT_BUNDLE_OUT}; the package ships its one bundled file and nothing of the source tree`
+    : `its files do not hold ${CLIENT_OUT}; the package ships its compiled ${CLIENT_OUT}/ and nothing of the source tree`);
   const dependencies = isRecord(manifest.dependencies) ? manifest.dependencies : {};
+  if (bundled) {
+    const scripts = isRecord(manifest.scripts) ? manifest.scripts : {};
+    if (scripts.prepack !== CLIENT_BUNDLE_PREPACK) bad.push(`its prepack is ${JSON.stringify(scripts.prepack)}; a bundled client cli builds its file when it is packed, so prepack is "${CLIENT_BUNDLE_PREPACK}"`);
+    const listed = Object.keys(dependencies).sort();
+    if (listed.length > 0) bad.push(`it declares a bundle yet lists the runtime dependencies ${listed.join(', ')}; the bundle carries them, so they are devDependencies`);
+    return bad;
+  }
   for (const [name, version] of Object.entries(dependencies)) {
     if (rootPins[name] === undefined) bad.push(`it depends on ${name}, which the app root's package.json does not pin`);
     else if (rootPins[name] !== version) bad.push(`it depends on ${name}@${String(version)}; the app root pins ${String(rootPins[name])}`);
@@ -137,6 +157,10 @@ function clientPackageFindings({ clients, tracked, repoRoot }: { clients: Parsed
       const problems = isRecord(manifest) ? manifestProblems(app, manifest, rootPins) : ['it is not a JSON object'];
       for (const problem of problems) findings.push(found(CLI_CLIENT, manifestPath, `${manifestPath}: ${problem}.`, { app: app.name }));
     }
+    const bundler = `${folder}/${CLIENT_BUNDLER}`;
+    const tracksBundler = tracked.has(`apps/${app.name}/${CLIENT_BUNDLER}`);
+    if (app.bundle === true && !tracksBundler) findings.push(found(CLI_CLIENT, bundler, `the client cli ${app.name} declares a bundle but tracks no ${bundler}: the script that bundles the tsc output of its main into ${clientCliBundle(String(app.bin))}, which prepack runs.`, { app: app.name }));
+    if (app.bundle !== true && tracksBundler) findings.push(found(CLI_CLIENT, bundler, `${bundler} is tracked but hfs.json declares no bundle for the client cli ${app.name}; declare "bundle": true to ship one bundled file, or remove it.`, { app: app.name }));
     if (!tracked.has(`apps/${app.name}/${CLIENT_BUILD}`)) findings.push(found(CLI_CLIENT, buildPath, `the client cli ${app.name} has no ${buildPath}: the build of its package (extends ../../tsconfig.build.json, outDir ./${CLIENT_OUT}, rootDir ../.., files ["src/main.ts"], include []), which \`npm run build:${app.name}\` runs.`, { app: app.name }));
     else if (repoRoot !== undefined) {
       const config = readJson(repoRoot, buildPath);
