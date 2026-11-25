@@ -657,8 +657,13 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
   const rootPackages = packagesCoverage(libraryPackageFolders(app, source), (folder) => source.packageScopes?.[folder] ?? null);
   const moduleDirs = rootPackages.folders;
-  // A declared nivoos package has no coverage scope, but its specs (when it has any) run in the unit run with the library packages' (the preset's `tests`).
-  const specOnlyFolders = rootPackageFolders({ rootPackages: source.rootPackageSpecs ?? [] }).filter(folder => !moduleDirs.includes(folder));
+  // A declared nivoos package is no library package (no build:modules, Sonar source or tsconfig path: its SDK is linked), but its logic is measured by the same
+  // unit run at the business bar (owner 2026-11-25, BE-TEST-13): it joins the packages of the jest coverage scope and of codecov.yml, in a component of its own.
+  const businessFolders = rootPackageFolders(source).filter(folder => (app.nivoosPackages ?? []).some(entry => `packages/${entry.name}` === folder));
+  const business = packagesCoverage(businessFolders, (folder) => source.packageScopes?.[folder] ?? null);
+  const measuredPackages: PackagesCoverage = { folders: [...moduleDirs, ...business.folders], files: [...rootPackages.files, ...business.files], excludes: [...rootPackages.excludes, ...business.excludes] };
+  // A package whose specs run unmeasured (the preset's `tests`): one with specs that is neither a library nor a business package.
+  const specOnlyFolders = rootPackageFolders({ rootPackages: source.rootPackageSpecs ?? [] }).filter(folder => !measuredPackages.folders.includes(folder));
   const modulesFirst = moduleDirs.length ? `${BUILD_MODULES} && ` : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
@@ -722,13 +727,13 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     ...ciWorkflowCommands(source, LCOV_REPORT, quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
     // The coverage scope is the same in both editions: measures exactly what full measures (R212).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers), bar.file) : '',
-    jestPackages: scope === 'be' ? jestPackagesSource(rootPackages, specOnlyFolders) : '',
+    jestPackages: scope === 'be' ? jestPackagesSource(measuredPackages, specOnlyFolders) : '',
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
-    codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
-    codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
+    codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...measuredPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
+    codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...measuredPackages.folders.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovComponents: scope === APP_SCOPE ? componentsYaml([...coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers }), ...packageComponents(moduleDirs)]) : '',
     // The coverage tiers (owner 2026-11-25): a component per tier at its bar; the modules are the app's declaration (sides.be.coverageTiers), the numbers the canon's.
-    codecovTierComponents: scope === APP_SCOPE ? tierComponentsYaml(tierScopes({ roots: coverageScope(manifest, providers).roots, files: source.files, packageFolders: moduleDirs, declaration: app.sides.be.coverageTiers, bar }), bar.patch) : '',
+    codecovTierComponents: scope === APP_SCOPE ? tierComponentsYaml(tierScopes({ roots: coverageScope(manifest, providers).roots, files: source.files, packageFolders: moduleDirs, businessFolders: business.folders, declaration: app.sides.be.coverageTiers, bar }), bar.patch) : '',
     codecovPatch: String(bar.patch),
     dependabotUpdates: dependabotUpdates(quality.dependabot),
     tsconfigPaths: ['be/tsconfig.json', ...fe.apps.map(entry => `fe/apps/${entry.name}/tsconfig.json`), ...(packages ? ['fe/packages/*/tsconfig.json'] : []), ...moduleDirs.map(dir => `${dir}/tsconfig.json`)].join(','),

@@ -72,6 +72,15 @@ test('the tiers of an app scope group its modules, each tier with the globs of i
   assert.equal(tierComponentId('A'), 'tier-a');
 });
 
+test('the business packages are a tier of their own at the business bar, after the declared tiers', () => {
+  const scopes = tierScopes({ roots: ['src/modules/domain/*/'], files: ['src/modules/domain/leads/leads.service.ts'], packageFolders: ['packages/sdk'], businessFolders: ['packages/spa', 'packages/biz'], declaration: undefined, bar });
+  assert.deepEqual(scopes.map((scope) => [scope.tier, scope.bar, scope.paths]), [
+    ['B', { lines: 75, branches: 65 }, ['be/src/modules/domain/leads/**', 'packages/sdk/src/**']],
+    ['business', { lines: 60 }, ['packages/biz/src/**', 'packages/spa/src/**']],
+  ]);
+  assert.equal(tierComponentId('business'), 'tier-business');
+});
+
 test('the rendered be/jest.config.js holds every measured file to the canon per-file floor on the four metrics', () => {
   const source = jestCoverageSource({ roots: ['src/modules/domain/*/'], roles: ['service'], files: [], excludes: [] });
   assert.match(source, /perFile: \{ lines: 50, branches: 50, functions: 50, statements: 50 \},/);

@@ -86,7 +86,7 @@ export interface TierScope { tier: string; bar: TierBar; modules: string[]; path
  * @param files the back end's source files (be-relative)
  * @param packageFolders the measured root packages (app-relative, `packages/<name>`)
  */
-export function tierScopes({ roots, files, packageFolders, declaration, bar = coverageBar() }: { roots: readonly string[]; files: readonly string[]; packageFolders: readonly string[]; declaration: TierDeclaration | undefined; bar?: CoverageBar }): TierScope[] {
+export function tierScopes({ roots, files, packageFolders, businessFolders = [], declaration, bar = coverageBar() }: { roots: readonly string[]; files: readonly string[]; packageFolders: readonly string[]; businessFolders?: readonly string[]; declaration: TierDeclaration | undefined; bar?: CoverageBar }): TierScope[] {
   const modules = new Map<string, string>();
   for (const root of roots) {
     const layer = /^src\/modules\/([^/]+)\/\*\/$/.exec(root)?.[1];
@@ -106,11 +106,20 @@ export function tierScopes({ roots, files, packageFolders, declaration, bar = co
     const tier = tierOf(key, declaration, bar);
     byTier.set(tier, [...(byTier.get(tier) ?? []), key]);
   }
-  return Object.keys(bar.tiers).sort(byCodeUnit).filter((tier) => byTier.has(tier)).map((tier): TierScope => {
+  const tiers = Object.keys(bar.tiers).sort(byCodeUnit).filter((tier) => byTier.has(tier)).map((tier): TierScope => {
     const held = byTier.get(tier) as string[];
     return { tier, bar: bar.tiers[tier] as TierBar, modules: held, paths: held.map((key) => modules.get(key) as string) };
   });
+  // The business packages (hfs.json sides.nivoos) are no module of a tier: they are held to the business bar, together.
+  const business = [...new Set(businessFolders)].sort(byCodeUnit);
+  return business.length === 0 ? tiers : [...tiers, { tier: BUSINESS_TIER, bar: bar.business, modules: business, paths: business.map((folder) => `${folder}/src/**`) }];
 }
+
+/** The tier of the business packages (hfs.json sides.nivoos): the business bar of the canon gate, never a tier an app declares. */
+export const BUSINESS_TIER = 'business';
+
+/** The bar of a tier name: a declared tier's, or the business bar. */
+export const barOf = (tier: string, bar: CoverageBar = coverageBar()): TierBar => (tier === BUSINESS_TIER ? bar.business : bar.tiers[tier] as TierBar);
 
 /** The Codecov component id of a tier (`tier-a`): no service app, `platform` or `package-<name>` component is ever named so. */
 export const tierComponentId = (tier: string): string => `tier-${tier.toLowerCase()}`;

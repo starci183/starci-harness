@@ -6062,6 +6062,16 @@ HFS_NIVOOS_UNDECLARED:
   nextStep_vi: "Thêm { \"name\": \"<tên>\" } vào sides.nivoos.packages của hfs.json, hoặc bỏ phụ thuộc vào SDK nếu đó không phải gói nghiệp vụ."
   owner: op-retry
   kind: check-finding
+HFS_NIVOOS_SPEC_MISSING:
+  title: "A cell or flow of a business package has no spec"
+  title_vi: "Cell hoặc flow của gói nghiệp vụ chưa có spec"
+  meaning_vi: "Mỗi cell (<tên>.cell.ts) và flow (<tên>.workflow.ts) trong src/ của gói nivoos đã khai báo phải có spec cạnh nó (<tên>.cell.spec.ts, <tên>.flow.spec.ts hoặc <tên>.workflow.spec.ts); gói được đo ở mức bao phủ nghiệp vụ (owner 2026-11-25, BE-TEST-13)."
+  causes_vi:
+    - "Vi phạm R436: cell hoặc flow mới được thêm mà chưa viết spec."
+    - "Spec đặt sai thư mục hoặc sai tên nên không nằm cạnh tệp."
+  nextStep_vi: "Viết spec cạnh tệp được nêu (cell: <tên>.cell.spec.ts, flow: <tên>.flow.spec.ts) rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
 HFS_NIVOOS_PACKAGE_CHECK:
   title: "The nivoos package check failed"
   title_vi: "Bước kiểm tra gói nivoos không đạt"

@@ -222,6 +222,26 @@ test('HFS_COVERAGE_BELOW: the tiers sum their files, so a covered module carries
   assert.deepEqual(apart.tiers.map((tier: { tier: string; ok: boolean }) => [tier.tier, tier.ok]), [['A', false], ['B', true]]);
 });
 
+test('HFS_COVERAGE_BELOW: a business package (hfs.json sides.nivoos) is measured but its barrels, and held to the business bar of 60 as a whole', (t) => {
+  const CELL = 'packages/biz/src/book-lead.cell.ts';
+  const STEP = 'packages/biz/src/steps/send.step.ts';
+  const files = [LOGIC, CELL, STEP, 'packages/biz/package.json', 'packages/biz/tsconfig.json', 'packages/biz/src/biz.package.ts', 'packages/biz/src/index.ts'];
+  const judged = (lcov: string) => {
+    const context = fixture(t, 'lite', lcov, files);
+    const sides = { ...declaration('lite').sides, nivoos: { packages: [{ name: 'biz' }] } };
+    fs.writeFileSync(path.join(context.repoRoot, 'hfs.json'), JSON.stringify({ ...declaration('lite'), sides }));
+    return coverageBelowReport({ ...context, all: files, repo: resolveRepoDeclaration(manifest, { ...declaration('lite'), sides }) });
+  };
+  const entry = record('../packages/biz/src/biz.package.ts');
+  const above = judged(record(LOGIC) + entry + spread(`../${CELL}`, 7, 10) + spread(`../${STEP}`, 6, 10));
+  assert.ok(above.measured.includes(CELL) && above.measured.includes(STEP), 'the cells and steps of the package are measured');
+  assert.ok(above.unmeasured.includes('packages/biz/src/index.ts'), 'its barrel is not');
+  assert.deepEqual(above.tiers.map((tier: { tier: string; ok: boolean }) => [tier.tier, tier.ok]), [['B', true], ['business', true]], '14/21 lines is above 60');
+  const below = judged(record(LOGIC) + entry + spread(`../${CELL}`, 5, 10) + spread(`../${STEP}`, 5, 10));
+  assert.equal(below.ok, false);
+  assert.match(below.findings.at(-1).message, /coverage tier business \(3 measured files\): lines 11\/21 \(52\.38%\) is below the tier business bar of 60%/);
+});
+
 test('HFS_COVERAGE_BELOW: manifest coverage changes alter the denominator', (t) => {
   const context = fixture(t, 'lite', record(LOGIC), [LOGIC, POLICY]);
   const changed = { ...manifest, slots: manifest.slots.map((slot) => slot.id === 'be.domain' ? { ...slot, coverage: 'none' } : slot) };

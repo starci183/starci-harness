@@ -328,22 +328,28 @@ export function declaredPackageSlots(read: (file: string) => string | null): (fo
   };
 }
 
-/** The glob a declared nivoos package leaves unmeasured: everything below its src/ (package-relative). */
-export const NIVOOS_UNMEASURED = 'src/**';
+/**
+ * The globs a declared nivoos package leaves unmeasured (package-relative): its barrels and type modules, like every root package. The rest of its src/
+ * is measured at the business bar (owner 2026-11-25, BE-TEST-13: knowledge/sonar-gate.yaml `overall.coverage.business`) and the per-file floor.
+ */
+export const NIVOOS_UNMEASURED: readonly string[] = PACKAGE_ALWAYS_UNMEASURED;
 
-/** The unmeasured globs of each package the project declares sound slots for (declaredPackageSlots), and a declared nivoos package whole; null for the rest. */
+/** The folders of the nivoos packages an hfs.json text declares (`packages/<name>`), or none when it declares none or cannot be read. */
+export function nivoosFoldersOf(hfsJson: string | null): ReadonlySet<string> {
+  try { return new Set(nivoosPackagesOf((JSON.parse(hfsJson ?? 'null') as { sides?: unknown } | null)?.sides).map((entry) => `packages/${entry.name}`)); } catch { return new Set(); }
+}
+
+/** The unmeasured globs of each package the project declares sound slots for (declaredPackageSlots) and of a declared nivoos package; null for the rest. */
 export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
   const slots = declaredPackageSlots(read);
   let nivoos: ReadonlySet<string> | undefined;
-  /** The folders of the nivoos packages hfs.json declares: a business package has no unit specs (`nivoos package check` proves it), so nothing of it is measured (slot app.nivoos-package). */
+  /** The folders of the nivoos packages hfs.json declares (slot app.nivoos-package): measured at the business bar, `nivoos package check` proving the seed beside it. */
   const nivoosFolders = (): ReadonlySet<string> => {
-    if (nivoos === undefined) {
-      try { nivoos = new Set(nivoosPackagesOf((JSON.parse(read('hfs.json') ?? 'null') as { sides?: unknown } | null)?.sides).map((entry) => `packages/${entry.name}`)); } catch { nivoos = new Set(); }
-    }
+    nivoos ??= nivoosFoldersOf(read('hfs.json'));
     return nivoos;
   };
   return (folder) => {
-    if (nivoosFolders().has(folder)) return [NIVOOS_UNMEASURED];
+    if (nivoosFolders().has(folder)) return NIVOOS_UNMEASURED;
     const manifest = slots(folder);
     return manifest === null ? null : unmeasuredGlobs(manifest);
   };

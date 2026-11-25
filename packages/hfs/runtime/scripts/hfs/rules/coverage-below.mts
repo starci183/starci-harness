@@ -11,7 +11,7 @@ import { loadTypescript } from '../../lib/package-at.mjs';
 import { coverageScope, declaredPackageScopes, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { effectiveSlot } from '../slot-presence.mjs';
 import { coverageBar, type CoverageBar } from '../../gates/sonar-gate.mjs';
-import { moduleKeyOf, tierOf, type TierDeclaration } from '../coverage-tiers.mjs';
+import { BUSINESS_TIER, barOf, moduleKeyOf, tierOf, type TierDeclaration } from '../coverage-tiers.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -203,11 +203,12 @@ function measuredResult(file: string, records: Parsed, floor: number) {
 }
 
 /** The tier totals of the measured files: each tier's lines and branches summed over its files, judged against the tier's bar. */
-function tierResults(results: Parsed[], declaration: TierDeclaration | undefined, bar: CoverageBar) {
+function tierResults(results: Parsed[], declaration: TierDeclaration | undefined, bar: CoverageBar, business: ReadonlySet<string>) {
   const totals = new Map<string, { files: string[]; lines: { found: number; hit: number }; branches: { found: number; hit: number } }>();
   for (const result of results) {
     if (result.metrics.lines === undefined) continue;
-    const tier = tierOf(moduleKeyOf(result.path), declaration, bar);
+    const key = moduleKeyOf(result.path);
+    const tier = key !== null && business.has(key) ? BUSINESS_TIER : tierOf(key, declaration, bar);
     const total = totals.get(tier) ?? { files: [], lines: { found: 0, hit: 0 }, branches: { found: 0, hit: 0 } };
     total.files.push(result.path);
     for (const metric of ['lines', 'branches'] as const) {
@@ -217,7 +218,7 @@ function tierResults(results: Parsed[], declaration: TierDeclaration | undefined
     totals.set(tier, total);
   }
   return [...totals.entries()].sort(([left], [right]) => byCodeUnit(left, right)).map(([tier, total]) => {
-    const want = bar.tiers[tier]!;
+    const want = barOf(tier, bar);
     const problems: string[] = [];
     const percentOf = (metric: 'lines' | 'branches') => total[metric].found === 0 ? 100 : 100 * total[metric].hit / total[metric].found;
     for (const metric of ['lines', 'branches'] as const) {
@@ -283,7 +284,9 @@ export function coverageBelowReport({ repoRoot, files, all, repo, manifest, cove
     report.results = boundary.measured.map((file) => measuredResult(file, mapped.get(file), bar.file));
     for (const result of report.results.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, result.path, `${result.path}: ${result.problems.join('; ')}; every measured logic file reaches ${bar.file}% lines, functions and branches`, { coverage: result.metrics }));
     // The tiers (owner 2026-11-25): which module is in which tier is the app's declaration (hfs.json sides.be.coverageTiers), the default tier the rest.
-    report.tiers = tierResults(report.results, (repo.coverageTiers ?? repo.sides?.be?.coverageTiers) as TierDeclaration | undefined, bar);
+    // A business package (hfs.json sides.nivoos) is held to the business bar.
+    const business = new Set<string>(((repo.nivoosPackages ?? []) as readonly { name: string }[]).map((entry) => `packages/${entry.name}`));
+    report.tiers = tierResults(report.results, (repo.coverageTiers ?? repo.sides?.be?.coverageTiers) as TierDeclaration | undefined, bar, business);
     for (const tier of report.tiers.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, reportPath, `coverage tier ${tier.tier} (${tier.files.length} measured files): ${tier.problems.join('; ')}; declare a module's tier in hfs.json sides.be.coverageTiers, or cover it`, { tier: tier.tier }));
   }
   report.findings.push(...typeModuleFindings(repoRoot, boundary.unmeasured));

@@ -901,8 +901,9 @@ slots:
     profiles: [app]
     # A business package the project declares under hfs.json `sides.nivoos.packages` (R436): agents, workflows, cells, steps, brain, accounts and the seed document
     # `nivoos package build` writes, at packages/<package>/, authored with the nivoos SDK. It is a root workspace package (its own package.json) that no side imports and
-    # that has no unit specs: `nivoos package check` proves it (HFS_NIVOOS_PACKAGE_CHECK), the SDK authoring lint profile judges its source (`lintProfile: nivoos` of
-    # @starci/eslint-canon-be) and its coverage is none. A folder of packages/ that depends on the SDK and is not declared is HFS_NIVOOS_UNDECLARED.
+    # whose seed `nivoos package check` proves (HFS_NIVOOS_PACKAGE_CHECK), whose source the SDK authoring lint profile judges (`lintProfile: nivoos` of
+    # @starci/eslint-canon-be), whose every cell and flow has a spec beside it (HFS_NIVOOS_SPEC_MISSING) and whose logic the back end's unit run measures at the
+    # business bar (owner 2026-11-25, BE-TEST-13; its specs are not the canon's unit-beside kinds, so `tests` stays none). A folder of packages/ that depends on the SDK and is not declared is HFS_NIVOOS_UNDECLARED.
     path: "packages/<package>/"
     declaredBy: nivoos
     lintProfile: nivoos
@@ -911,7 +912,7 @@ slots:
     tier: none
     requires: [package.json, tsconfig.json]
     tests: none
-    rules: [HFS_NIVOOS_PACKAGE_MISSING, HFS_NIVOOS_UNDECLARED, HFS_NIVOOS_PACKAGE_CHECK]
+    rules: [HFS_NIVOOS_PACKAGE_MISSING, HFS_NIVOOS_UNDECLARED, HFS_NIVOOS_PACKAGE_CHECK, HFS_NIVOOS_SPEC_MISSING]
   - id: app.desktop-config
     since: 6.14.0
     profiles: [app]

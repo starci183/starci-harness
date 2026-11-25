@@ -50,6 +50,8 @@ newCode:
 #   starci-hfs   the repository findings of the gates a run selects (managed files, tree, pins, CI, contracts; the rule id is the finding code)
 #   eslint       ESLint's json over the repository (the BE and FE canon plugins alike, per-file and project-graph rules)
 #   stylelint    stylelint's json over the style glob (front ends)
+# Only errors are imported: a linter warning (a style rule of the canon at `warn`, PROJECT-LINT-6, owner 2026-11-25) and a report-only check finding stay in the
+# app check's report and never reach the gate, so `max: 0` below counts errors and nothing else.
 # The engines share ONE placement rule (a finding on a file Sonar does not index is filed on the first source file); Sonar's own
 # ESLint import (sonar.eslint.reportPaths) is not used because it drops such issues.
 # A SonarQube gate condition cannot filter issues by engine, so the condition is the project's open issues (`violations`,

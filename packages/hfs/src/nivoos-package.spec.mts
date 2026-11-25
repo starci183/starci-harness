@@ -5,6 +5,7 @@
 // proves: HFS_NIVOOS_UNDECLARED
 // proves: HFS_NIVOOS_PACKAGE_CHECK
 // proves: HFS_NIVOOS_PACKAGE_CHECK
+// proves: HFS_NIVOOS_SPEC_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,6 +25,7 @@ import { declaredPackagesHfsView } from '../runtime/scripts/hfs/view.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 import { appSource, renderTargets, type AppSourceFacts } from '../sync/index.mjs';
 import { formatFindings } from '../sync/format.mjs';
+import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { createRequire } from 'node:module';
 
 // reason: hfs.json declarations are JSON trees the assertions build and judge.
@@ -114,11 +116,32 @@ test('a declared package at packages/<name>/ is no service root, while the same 
   assert.deepEqual(placed(['biz/package.json']), ['biz/package.json'], 'a folder of the app root with a manifest is a service root, declared or not');
 });
 
-test('the coverage: a declared package is left unmeasured whole, a plain package keeps the barrel and type rules', () => {
+test('the coverage: a declared package is measured but its barrels and type modules (owner 2026-11-25), a plain package keeps the barrel and type rules', () => {
   const read = (file: string): string | null => (file === 'hfs.json' ? JSON.stringify(declarationOf({ be: BE, nivoos: NIVOOS })) : null);
   const scopes = declaredPackageScopes(read);
-  assert.deepEqual(scopes('packages/biz'), ['src/**']);
+  assert.deepEqual(scopes('packages/biz'), ['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']);
   assert.equal(scopes('packages/shared'), null);
+});
+
+test('HFS_NIVOOS_SPEC_MISSING: every cell and flow of a declared package has its spec beside it; other files and undeclared packages need none', (t) => {
+  const repoRoot = mkdtemp(t, 'starci-nivoos-specs-');
+  const repo = declare({ be: BE, nivoos: NIVOOS });
+  const base = ['packages/biz/package.json', 'packages/biz/tsconfig.json', 'packages/biz/src/biz.package.ts'];
+  const tree = [...base,
+    'packages/biz/src/booking/book-lead.cell.ts', 'packages/biz/src/booking/book-lead.cell.spec.ts',
+    'packages/biz/src/booking/tell-booking.cell.ts',
+    'packages/biz/src/booking/reminder/reminder.workflow.ts', 'packages/biz/src/booking/reminder/reminder.flow.spec.ts',
+    'packages/biz/src/leads/capture.workflow.ts', 'packages/biz/src/leads/capture.workflow.spec.ts',
+    'packages/biz/src/report/week.workflow.ts', 'packages/biz/src/report/other/week.flow.spec.ts',
+    'packages/biz/src/booking/booking-made.event.ts', 'packages/biz/src/booking/steps/send.step.ts',
+    'packages/shared/src/x.cell.ts'];
+  const found = nivoosFindings({ repoRoot, files: tree, repo });
+  assert.deepEqual(found.map((finding) => [finding.code, finding.path]), [
+    ['HFS_NIVOOS_SPEC_MISSING', 'packages/biz/src/booking/tell-booking.cell.ts'],
+    ['HFS_NIVOOS_SPEC_MISSING', 'packages/biz/src/report/week.workflow.ts'],
+  ], 'a cell without its .cell.spec.ts and a flow whose spec is in another folder are findings; a step, an event and an undeclared package are not');
+  assert.match(found[0]!.message, /add packages\/biz\/src\/booking\/tell-booking\.cell\.spec\.ts/);
+  assert.match(found[1]!.message, /a flow of the business package biz/);
 });
 
 /** An app root holding `files` (app-relative path -> text), hfs.json declaring the package `biz`. */
@@ -235,30 +258,32 @@ const rendered = (rootPackages: string[], out?: string, rootPackageSpecs?: strin
   return (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
 };
 
-test('sync: a declared package is no jest project, Codecov path or component, Sonar source or tsconfig, no build:modules or dev watch entry; a library package beside it still is', () => {
+test('sync: a declared package is measured at the business bar (jest packages, a Codecov path and the tier-business component), but is no Sonar source, tsconfig, build:modules or dev watch entry', () => {
   const render = rendered(['biz', 'shared']);
-  for (const file of ['sonar-project.properties', 'codecov.yml', 'be/jest.config.js', 'package.json']) {
+  for (const file of ['sonar-project.properties', 'package.json']) {
     const text = render(file);
     assert.ok(text.length > 0, `${file} is rendered`);
     assert.equal(text.includes('packages/biz'), false, `${file} names no declared package`);
-    assert.equal(text.includes('package-biz'), false, `${file} has no component of it`);
   }
   assert.match(render('sonar-project.properties'), /^sonar\.sources=be\/apps,be\/src,packages\/shared\/src$/m);
-  assert.ok(render('codecov.yml').includes('package-shared') && render('be/jest.config.js').includes('packages/shared'), 'the library package is still measured');
+  const jest = render('be/jest.config.js');
+  assert.ok(jest.includes('"packages/biz/src/**/*.ts"') && jest.includes('"packages/shared/src/**/*.ts"'), 'both packages are measured by the unit run');
+  const codecov = parseYaml(render('codecov.yml'));
+  assert.ok(codecov.coverage.status.patch.default.paths.includes('packages/biz/src/**'));
+  const components: { component_id: string; paths: string[]; statuses?: { type: string; target: string }[] }[] = codecov.component_management.individual_components;
+  assert.equal(components.some((component) => component.component_id === 'package-biz'), false, 'no library component of it');
+  const business = components.find((component) => component.component_id === 'tier-business');
+  assert.deepEqual(business?.paths, ['packages/biz/src/**']);
+  assert.deepEqual(business?.statuses?.map((status) => `${status.type} ${status.target}`), ['project 60%', 'patch 80%']);
+  assert.ok(components.some((component) => component.component_id === 'package-shared'), 'the library package keeps its component');
 });
 
-test('sync: a declared package that holds specs runs them in the unit run (the preset tests option), measured nowhere; without specs, or without facts, the jest config is as before', () => {
+test('sync: a declared package is a measured folder of the unit run whether or not it holds specs, so it is never a spec-only tests entry', () => {
   const plain = rendered(['biz', 'shared'])('be/jest.config.js');
-  assert.equal(rendered(['biz', 'shared'], undefined, ['shared'])('be/jest.config.js'), plain, 'a library package with specs is already a project: nothing is added');
-  const withSpecs = rendered(['biz', 'shared'], undefined, ['biz', 'shared'])('be/jest.config.js');
-  const EOL = String.fromCharCode(10);
-  const testsLine = '        tests: ["packages/biz"],';
-  assert.ok(withSpecs.split(EOL).includes(testsLine), 'the declared package with specs is listed under tests');
-  assert.equal(withSpecs.split(EOL).filter(line => line !== testsLine).join(EOL), plain, 'only the tests list is added');
-  const only = rendered(['biz'], undefined, ['biz'])('be/jest.config.js');
-  assert.ok(only.includes(['    packages: {', '        folders: [],', '        files: [],', '        excludes: [],', testsLine, '    },'].join(EOL)), 'a project with only a declared package still gets the option');
-  assert.equal(rendered(['biz'], undefined, [])('be/jest.config.js'), rendered(['biz'])('be/jest.config.js'), 'no spec, no option');
-  assert.equal(rendered(['biz'])('be/jest.config.js').includes('packages'), false);
+  assert.equal(rendered(['biz', 'shared'], undefined, ['biz', 'shared'])('be/jest.config.js'), plain, 'its specs add nothing: it is already a measured folder');
+  assert.equal(plain.includes('tests:'), false);
+  const only = rendered(['biz'])('be/jest.config.js');
+  assert.ok(only.includes('        folders: ["packages/biz"],'), 'a project whose only package is a declared one still measures it');
   for (const file of ['codecov.yml', 'sonar-project.properties', 'package.json']) assert.equal(rendered(['biz', 'shared'], undefined, ['biz', 'shared'])(file), rendered(['biz', 'shared'])(file), `${file} is the same: the specs add no coverage scope`);
 });
 
