@@ -10,7 +10,8 @@ and dead exports are [shared imports](../shared/imports.md) SHARED-IMPORTS-1..3;
 ## FE-IMPORTS-1 The grammar comes from its published entry, imported where it renders
 
 Grammar components are imported from the selected grammar's published entry (`@starci/grammar/common`) in the file
-that renders them, never from the package root or an internal path, and an app never re-exports a grammar export
+that renders them, never from the package root or an internal path (a core-ext component comes from its own declared entry,
+`@starci/grammar/core/ext/<name>` such as `core/ext/graph` or `core/ext/markdown/react`, which the installed Grammar exports), and an app never re-exports a grammar export
 under its own name.
 
 Why: the entry is the grammar's contract; a shim makes one app green while the defect it hides stays in the grammar

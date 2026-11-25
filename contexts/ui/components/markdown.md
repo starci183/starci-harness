@@ -13,8 +13,7 @@ Raw HTML is never drawn. The package holds no copy of its own: every word it sho
 ## Minimal use
 
 ```tsx
-import "@starci/grammar/core/styles.css"
-import "@starci/grammar/core/ext/markdown.css"
+// globals.css: @import "@starci/grammar/core.css"; then @import "@starci/grammar/core/ext/markdown.css";
 import { Markdown } from "@starci/grammar/core/ext/markdown/react"
 
 <Markdown source={"## Hello\n\nSome `code` and a list:\n\n- one\n- two"} labels={{ copy: t("copy"), copied: t("copied") }} />
