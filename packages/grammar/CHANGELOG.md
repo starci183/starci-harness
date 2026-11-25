@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.60.2 - 2026-11-26
+
+- Fixed (h-ci-red-1126): `NoteRow` stamps `data-tier="frame"`, the tier of the frame folder it lives in beside `NoteList` (it stamped `composite`, which the tier check refuses: the stamp is the folder). No API change.
+
 ## 0.60.1 - 2026-11-26
 
 - Fixed (h-offset-pop-parity): Offset Pop covers the renderers that landed after its last pass. The family root sets four Common tokens: `--grammar-border-edge` (the 2px ink outline: code block, GradedChoice answer and key, the other party's message), `--grammar-shadow-popover` and `--grammar-shadow-lift` (the hard offset: a popover, which had kept Common's soft `!important` shadow, the reaction picker, a lifted Board card, the pane trigger) and `--starci-core-surface-radius` (Board columns and cards and a framed EmptyNotice take the family card radius instead of Common's 32px; the `--starci-core-card-radius` hook still wins). The new `components-content.css` adds outlined, offset Board cards with press travel, a dashed origin slot and 2px drop slot and end band, the ink ring on the Progress, ProportionBar, SegmentBar and FunnelChart tracks, pressable GradedChoice answers, outlined SchemaForm marks, proposals and ConflictCard sides, and the pink offset of a `SurfaceCard emphasis="accent"`, which the family's card rule had hidden. A SchemaForm field left empty keeps its warning edge and a field being written keeps its paint, which the family's field box had covered. No API change.
