@@ -6,6 +6,11 @@ import { dirname, join, parse } from "node:path"
  * It resolves packages the way Node does, by file: from the root and from each workspace folder, the packages that folder declares (a few, sorted) and the
  * probes `next`, `postcss` and `picocolors` when the lockfile holds them, then, from where each of those really lives (junctions followed), the packages
  * IT declares, so a nested package whose own dependency is not hoisted where Node looks fails here, not in the web's first request. Reads files only.
+ *
+ * A miss counts only when the lockfile installs the package where Node looks for it (`node_modules/<name>` in the folder or a folder above it): that is an
+ * install that differs from its lockfile, which a clean `npm ci` repairs. A dependency the lockfile itself places nowhere on that chain (npm left a peer
+ * cycle's package out of the lockfile, say) is a `gap`: every `npm ci` of that lockfile, staged or in place, reproduces it, so no reinstall fixes it, and
+ * it is reported as the lockfile's, for a lane to fix, never as a broken swap.
  */
 
 /** The names probed from every folder when the lockfile holds them: the ones the failure above went through. */
@@ -22,6 +27,8 @@ export interface SmokeFailure {
     readonly name: string
     /** Why: not found on the node_modules chain, or a package.json that cannot be read. */
     readonly reason: string
+    /** True when the lockfile itself installs no such package on the folder's chain: npm ci reproduces the miss, so it is the lockfile's, not the install's. */
+    readonly gap?: boolean
 }
 
 interface Manifest {
@@ -81,6 +88,31 @@ const lockedNames = (root: string, names: readonly string[]): string[] => {
     }
 }
 
+/** The `packages` keys of the root lockfile; undefined when there is none to read (no file, or a lockfile without `packages`), so no miss is judged a gap. */
+const lockedKeys = (root: string): ReadonlySet<string> | undefined => {
+    try {
+        const lock = JSON.parse(readFileSync(join(root, "package-lock.json"), "utf8")) as { readonly packages?: Readonly<Record<string, unknown>> }
+        return lock.packages === undefined ? undefined : new Set(Object.keys(lock.packages))
+    } catch {
+        return undefined
+    }
+}
+
+/**
+ * True when the lockfile places `name` nowhere Node would look from `folder` (relative to the root, forward slashes): no `<dir>/node_modules/<name>` key for
+ * the folder or any folder above it. False when it does, or when it cannot tell (no keys, a folder outside the root). Pure.
+ */
+export const lockfileGap = (keys: ReadonlySet<string> | undefined, folder: string, name: string): boolean => {
+    if (keys === undefined || folder === ".." || folder.startsWith("../") || /^[A-Za-z]:\//u.test(folder) || folder.startsWith("/")) return false
+    const keyIn = (dir: string): string => `${dir === "" ? "" : `${dir}/`}node_modules/${name}`
+    let dir = folder === "." ? "" : folder
+    while (!keys.has(keyIn(dir))) {
+        if (dir === "") return true
+        dir = dir.includes("/") ? dir.slice(0, dir.lastIndexOf("/")) : ""
+    }
+    return false
+}
+
 /** What a manifest declares that must be installed: dependencies and devDependencies, not optional ones, not a file: or link: spec. Sorted. */
 const declared = (manifest: Manifest | undefined, dev: boolean): string[] =>
     Object.entries({ ...manifest?.dependencies, ...(dev ? manifest?.devDependencies : undefined) })
@@ -106,11 +138,14 @@ export const smokeInstall = (root: string): SmokeFailure[] => {
     const failures: SmokeFailure[] = []
     const seen = new Set<string>()
     const probes = lockedNames(root, PROBES)
+    const keys = lockedKeys(root)
     const visit = (folder: string, name: string, via: string | undefined, depth: number): void => {
         const found = resolveFrom(folder, name)
         const from = relativeTo(root, folder)
         if (found === undefined) {
-            failures.push({ from, name, reason: via === undefined ? "not found in any node_modules up the chain" : `a dependency of ${via} that is not found in any node_modules up the chain` })
+            const gap = lockfileGap(keys, from, name)
+            const reason = via === undefined ? "not found in any node_modules up the chain" : `a dependency of ${via} that is not found in any node_modules up the chain`
+            failures.push({ from, name, reason: gap ? `${reason}, and package-lock.json installs none there either` : reason, ...(gap ? { gap } : {}) })
             return
         }
         let real: string
@@ -137,6 +172,12 @@ export const smokeInstall = (root: string): SmokeFailure[] => {
     }
     return failures
 }
+
+/** The misses a clean install can repair: every failure that is not a lockfile gap. Pure. */
+export const repairable = (failures: readonly SmokeFailure[]): SmokeFailure[] => failures.filter((failure) => failure.gap !== true)
+
+/** The misses the lockfile itself makes, which every npm ci of it reproduces. Pure. */
+export const lockfileGaps = (failures: readonly SmokeFailure[]): SmokeFailure[] => failures.filter((failure) => failure.gap === true)
 
 /** The one line that names the failures, at most five. Pure. */
 export const smokeLine = (failures: readonly SmokeFailure[]): string =>
