@@ -252,7 +252,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
 - [ui/components/data-views.md](../ui/components/data-views.md) · 9 KB — Contract: data-views.
   - sections: Meter reading voice · Bars follow HeroUI ProgressBar sizes · Job · Choose
-- [ui/components/diagram.md](../ui/components/diagram.md) · 11 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 12 KB — Contract: Diagram.
   - sections: Job · Choose · The canvas · Variants · Size · States · Accessibility · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Popover width · Popover size · Popover edge and the phone sheet · Scrolling · Size · States · Owner split · Rules
