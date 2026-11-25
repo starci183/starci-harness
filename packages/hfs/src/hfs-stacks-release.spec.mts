@@ -293,6 +293,20 @@ for (const edition of ['lite'] as const) {
     });
   });
 
+  test('HFS_SCHEDULE_UNDECLARED@' + edition + ': a client-cli app own timers are its process schedule, a server app timer still fails', () => {
+    withFixture(edition, (value: Fixture) => {
+      const timer = 'export const start = () => setInterval(() => undefined, 5000);\n';
+      writeTracked(value, 'be/apps/relay/src/relay.service.ts', timer);
+      writeTracked(value, 'be/apps/api/src/api.service.ts', timer);
+      const apps = (kind: string) => JSON.stringify({ sides: { be: { apps: [{ name: 'api', kind: 'api' }, { name: 'relay', kind }] } } });
+      const at = () => scheduleIssues(value).map(issue => issue.at.split(':')[0]);
+      writeTracked(value, 'hfs.json', apps('client-cli'));
+      assert.deepEqual(at(), ['be/apps/api/src/api.service.ts']);
+      writeTracked(value, 'hfs.json', apps('worker'));
+      assert.deepEqual(at().sort(), ['be/apps/api/src/api.service.ts', 'be/apps/relay/src/relay.service.ts']);
+    });
+  });
+
   test('HFS_SCHEDULE_UNDECLARED@' + edition + ': declaration requires nonempty schedule and a named CLI action', () => {
     const bad = ['', 'node dist/apps/cli/main.js', 'node dist/apps/cli/main.js --eval work',
       'node dist/apps/cli/main.js --help', 'node dist/apps/cli/../worker/main.js report',
