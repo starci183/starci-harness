@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.202 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.15, @starci/grammar 0.59.3 (MermaidDiagram always opens the whole drawing, contain-fitted and clear of its controls row) and @starci/gallery 0.1.27.
+
 ## 1.1.0-alpha.201 - 2026-11-25
 
 - Changed: the CLI requires @starci/hfs@6.17.14, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

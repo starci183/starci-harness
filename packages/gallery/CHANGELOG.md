@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.1.27 - 2026-11-25
+
+- Changed: requires @starci/grammar 0.59.3 (MermaidDiagram always opens the whole drawing, contain-fitted and clear of its controls row).
+
 ## 0.1.26 - 2026-11-25
 
 - Changed: requires @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px).

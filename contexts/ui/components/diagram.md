@@ -62,12 +62,16 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
 
 ## Variants
 `height` reserves the canvas box (`sm` 16rem, `md` 24rem, `lg` 32rem): pick the step the finished drawing fills, so the loading box is the
-ready box. A taller drawing grows the canvas to fit it, up to 45rem (30rem on a phone, so the page stays in reach past a canvas a finger pans). The first view
-is the whole drawing, centred, at 100% or less, but never under the **readable floor**: `READABLE_ZOOM` 0.85, where caption-role words (13px) stay at 11px or more.
-A sequence or a flowchart that does not fit whole at 0.85 opens at 0.85 from its start (a sequence: its first participant and first message at the top left; a
-flowchart or state diagram: its entry node, the first node nothing leads into, kept in view) and the reader pans by touch or drag and zooms by pinch, the
-buttons or + and -; fit (the button) still shows the whole drawing down to 0.2, reset (0) returns to the first view. Any other kind (Mermaid's own SVG)
-keeps the least zoom of 0.2. There is no list fallback on a phone: the same canvas, the controls row kept, the text version visually hidden for assistive
+ready box. A taller drawing grows the canvas to hold it at its width fit, up to 45rem (35rem on a phone, so the page stays in reach past a canvas a
+finger pans). **The fit rule** (`diagram/open.ts`, Next UI audit round 3, 2026-11-25): the first view is always the WHOLE drawing, contain-fitted
+(zoom = min(1, room width / width, room height / height)) and centred in the room, the frame less 16px on three sides and the 64px controls row along the
+bottom, so no node is cut on any side and the zoom buttons never stand over the drawing. Height is bought first (the canvas grows, up to its tallest);
+width by the layout (a flowchart or state diagram is top-down under 480px, and elsewhere when across would open under the readable zoom and top-down
+opens it larger). A drawing that still opens under the **readable zoom**, `READABLE_ZOOM` 0.85 (caption-role words of 13px at 11px or more), opens whole
+and small: the reader zooms in by pinch, double tap, the buttons or + and -, pans by touch, drag or the arrow keys; fit (the button) and reset (0)
+return to the whole drawing. A first view that hides a part the reader cannot know is there is the worse failure; a small one only asks for a zoom. The
+canvas's least zoom is 0.2, or the first view's own zoom when a very large drawing needs less. There is no list fallback on a phone: the same canvas,
+the controls row kept, the text version visually hidden for assistive
 technology. The drawing follows the graph ext's routing law ([graph](graph.md) "The routing law": no handle dots, straight or one bend, a decision's main branch straight on with every branch
 labelled at the split, fitted, dashed only when the source means it and one open arrowhead). Under 480px a flowchart or a state diagram is laid out
 top-down so it fits the width. Paint is the grammar's, read from the root's tokens; an app passes no

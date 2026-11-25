@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.59.3 - 2026-11-25
+
+- Fixed (h-grammar-mermaid-fit, the Next UI audit round 3): `MermaidDiagram` opens the WHOLE drawing at its first view, contain-fitted (zoom = min(1, room width / width, room height / height)) and centred in the room the 64px controls row leaves clear, so no node is cut on any side and the zoom buttons never stand over one (a tall lesson diagram cut "Loyalty" in half under the controls at 390px; a wide one ran off both edges at 1440 and 390). The canvas grows to hold the drawing at its width fit first, up to 45rem (35rem on a phone, was 30rem); a left-to-right graph too wide to read across is laid out top-down only when that opens it larger. A drawing that still needs a zoom under 0.85 opens whole and small, and the reader zooms in; the old readable floor no longer cuts the first view. `openZoom(frame, drawing)` and `canvasHeight(frameWidth, drawing, reserved)` lose their floor argument; `fittedZoom` and `betterTopDown` are new in `diagram/open.ts`.
+
 ## 0.59.2 - 2026-11-25
 
 - Fixed (h-grammar-390): the action buttons of an `EmptyNotice` (the primary, the endArrow primary and the secondary) are `md`, the 40px control height, on every scope; they were `sm` (32px) in a region. The head of a `Section` wraps below 30rem (a 390px phone): the action slot drops under the title, at the start, instead of squeezing or cutting it.
