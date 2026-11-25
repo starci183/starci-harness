@@ -11,7 +11,6 @@ import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
 import type { Linter } from 'eslint';
 import { loadHfs, starciFeConfig } from '../../eslint-canon-fe/src/index.ts';
-import { coreGrammarConfig } from '../../eslint-grammar-core/src/index.ts';
 import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
@@ -30,6 +29,14 @@ const lockedOk = (root: string): LockResult => {
  */
 const TYPE_GRAPH_RULES = new Set(['@typescript-eslint/no-unsafe-assignment', '@typescript-eslint/no-unsafe-member-access', '@typescript-eslint/no-unsafe-call', '@typescript-eslint/no-unsafe-return', '@typescript-eslint/no-unsafe-argument']);
 
+/**
+ * The core family's lint factory, loaded from the sibling package's source at run time: a static import would pull that package's sources into
+ * this package's typecheck, against this package's own vendor types.
+ */
+type GrammarFactory = (input: { readonly hfs: unknown }) => Linter.Config[];
+const coreGrammarConfig = async (): Promise<GrammarFactory> =>
+  ((await import(pathToFileURL(path.resolve(import.meta.dirname, '..', '..', 'eslint-grammar-core', 'src', 'index.ts')).href)) as { coreGrammarConfig: GrammarFactory }).coreGrammarConfig;
+
 /** The canon's flat config as the rendered fe/eslint.config.mjs builds it, all of it but TYPE_GRAPH_RULES. */
 const shippedCanon = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
   ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => !TYPE_GRAPH_RULES.has(id))),
@@ -45,8 +52,7 @@ for (const edition of ['lite'] as const) {
     // The rendered fe/eslint.config.mjs composes the canon AND the selected family's Grammar lint (the starter selects core): a template the
     // family refuses (a Page header with no breadcrumbs, a Form inside a Section) is as red in a new app as a canon finding.
     assert.equal(hfs.grammar, 'core');
-    // reason: loadHfs types `profile` as a string; the fe view it returns here is the profile 'fe' the family factory checks at run time.
-    const config = shippedCanon([...starciFeConfig({ hfs }), ...coreGrammarConfig({ hfs: hfs as Parameters<typeof coreGrammarConfig>[0]['hfs'] })]);
+    const config = shippedCanon([...starciFeConfig({ hfs }), ...(await coreGrammarConfig())({ hfs })]);
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-grammar/page-breadcrumbs')), 'the Grammar family rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-fe/base-props-atom')), 'the canon rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).some((id) => id.startsWith('@typescript-eslint/'))), 'the borrowed rules are on');
