@@ -14,7 +14,7 @@ export const appResendMetadata = async (): Promise<Metadata> => {
 export const AppResendPage = async (_props: Record<string, never>): Promise<ReactElement> => {
     const t = await getTranslations("app.emailAuth.resend")
     return (
-        <Page header={{ title: t("title") }} measure="reading">
+        <Page header={{ title: t("title"), breadcrumbs: "root" }} measure="reading">
             <EmailDoorForm door="resend" />
         </Page>
     )

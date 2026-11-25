@@ -16,6 +16,10 @@ const genericContract = {
   package: '@fixture/ui-grammar', entry: '@fixture/ui-grammar/renderers',
   styleEntry: '@fixture/ui-grammar/palette.css', peers: ['react', '@fixture/primitives'],
 };
+/** The generic contract as the resolver returns it: a family with no own entries admits the shared ones alone. */
+const genericResolved: Readonly<GrammarComponentContract> = {
+  ...genericContract, entries: [genericContract.entry], styleEntries: [genericContract.styleEntry], themeEntries: [],
+};
 
 function selectedCatalog(context: TestContext): void {
   const catalog = new URL('../runtime/knowledge/grammars/index.yaml', import.meta.url);
@@ -30,7 +34,8 @@ function selectedCatalog(context: TestContext): void {
   });
 }
 
-function fixture(context: TestContext, edition: string, grammar?: string, contract: Readonly<GrammarComponentContract> = genericContract, files: FileMap = {}): string {
+function fixture(context: TestContext, edition: string, grammar?: string, contract: Readonly<GrammarComponentContract> = genericResolved, files: FileMap = {}): string {
+  const exported = (specifier: string): [string, string] => [`.${specifier.slice(contract.package.length)}`, `./dist${specifier.slice(contract.package.length)}`];
   const dependencies = Object.fromEntries([contract.package, ...contract.peers].map((name) => [name, '1.0.0']));
   const declared = appDeclaration('fe', {
     apps: [{ name: 'web', kind: 'next' }], ...(grammar === undefined ? {} : { grammar }),
@@ -44,10 +49,7 @@ function fixture(context: TestContext, edition: string, grammar?: string, contra
     'packages/ui/package.json': JSON.stringify({ name: '@fixture/ui', dependencies }),
     'packages/foreign/package.json': JSON.stringify({ name: '@fixture/foreign', dependencies: { '@fixture/unselected-grammar': '1.0.0' } }),
     [`../node_modules/${contract.package}/package.json`]: JSON.stringify({
-      name: contract.package, exports: {
-        [`.${contract.entry.slice(contract.package.length)}`]: './renderers.js',
-        [`.${contract.styleEntry.slice(contract.package.length)}`]: './palette.css',
-      },
+      name: contract.package, exports: Object.fromEntries([...contract.entries, ...contract.styleEntries, ...contract.themeEntries].map(exported)),
       peerDependencies: Object.fromEntries(contract.peers.map(name => [name, '*'])),
     }),
     ...files,
@@ -79,12 +81,47 @@ for (const edition of ['lite'] as const) {
     }
   });
 
+  test(`each family admits its own code, style and theme entries beside Common's, and refuses another family's (${edition})`, context => {
+    const pop = grammarContractFor('offset-pop');
+    assert.equal(pop.entry, '@starci/grammar/offset-pop');
+    assert.equal(pop.styleEntry, '@starci/grammar/offset-pop/styles.css');
+    assert.deepEqual(pop.entries, ['@starci/grammar/offset-pop', '@starci/grammar/common']);
+    assert.deepEqual(pop.styleEntries, ['@starci/grammar/offset-pop/styles.css', '@starci/grammar/common.css']);
+    assert.deepEqual(pop.themeEntries, ['@starci/grammar/offset-pop/theme.css']);
+    const core = grammarContractFor('core');
+    assert.deepEqual(core.entries, ['@starci/grammar/core', '@starci/grammar/common']);
+    assert.deepEqual(core.themeEntries, ['@starci/grammar/core/theme.css']);
+    // An Offset Pop app as packages/grammar/README.md writes it: OffsetPopGrammarRoot from the family entry, its sheet and its optional palette.
+    const root = fixture(context, edition, 'offset-pop', pop, {
+      'apps/web/src/app/globals.css': '@import "@starci/grammar/offset-pop/styles.css";
+@import "@starci/grammar/offset-pop/theme.css";
+',
+    });
+    const config = loadArchitectureConfig(root);
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'the family sheet and palette satisfy the style contract');
+    const findings = (specifier: string): string[] => checkGrammar(config, grammarSource(root, specifier), sourceFinding).map(finding => finding.ruleId);
+    assert.deepEqual(findings('@starci/grammar/offset-pop'), [], 'the family code entry');
+    assert.deepEqual(findings('@starci/grammar/common'), [], 'the shared entry it re-exports stays admitted');
+    assert.deepEqual(findings('@starci/grammar/core'), ['ARCH_GRAMMAR_EXPORT_BYPASS'], 'another family');
+    const globals = path.join(root, 'apps/web/src/app/globals.css');
+    fs.writeFileSync(globals, '@import "@starci/grammar/common.css";
+');
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'the common sheet stays admitted');
+    fs.writeFileSync(globals, '@import "@starci/grammar/offset-pop/theme.css";
+');
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId), ['ARCH_GRAMMAR_CONTRACT_INVALID'], 'a theme never replaces a base sheet');
+    fs.writeFileSync(globals, '@import "@starci/grammar/offset-pop/styles.css";
+@import "@starci/grammar/core/theme.css";
+');
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort(), ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'another family's palette');
+  });
+
   test(`architecture uses a selected contract's package, entries and peers without family literals (${edition})`, context => {
     selectedCatalog(context);
     const root = fixture(context, edition, 'alternate');
     const config = loadArchitectureConfig(root);
     assert.deepEqual(config.frontend.grammar, {
-      ...genericContract, styleSources: ['apps/web/src/app/globals.css'],
+      ...genericResolved, styleSources: ['apps/web/src/app/globals.css'],
       consumerManifests: ['apps/web/package.json', 'packages/ui/package.json'],
     });
     assert.deepEqual(checkGrammar(config, grammarSource(root, genericContract.entry), sourceFinding), []);
@@ -127,7 +164,7 @@ for (const edition of ['lite'] as const) {
   test(`architecture accepts an exported core-ext stylesheet beside the style entry and refuses other Grammar css (${edition})`, context => {
     selectedCatalog(context);
     const { package: name, styleEntry } = genericContract;
-    const root = fixture(context, edition, 'alternate', genericContract, {
+    const root = fixture(context, edition, 'alternate', genericResolved, {
       'apps/web/src/app/globals.css': `@import "${styleEntry}";\n@import "${name}/core/ext/graph.css";\n@import "${name}/core/ext/markdown.css";\n`,
     });
     const installed = path.join(path.dirname(root), 'node_modules', name, 'package.json');
@@ -186,7 +223,7 @@ for (const edition of ['lite'] as const) {
   });
 
   test(`architecture keeps the contract unavailable without a globals style source (${edition})`, context => {
-    const root = fixture(context, edition, undefined, genericContract, { 'apps/web/src/app/globals.css': null });
+    const root = fixture(context, edition, undefined, genericResolved, { 'apps/web/src/app/globals.css': null });
     assert.equal(loadArchitectureConfig(root).frontend.grammar, null);
   });
 }

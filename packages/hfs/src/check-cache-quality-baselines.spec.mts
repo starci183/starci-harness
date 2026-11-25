@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createFakeSession } from '../cache/fake-session.mjs';
 import { serializeRecords } from '../cache/jsonl.mjs';
 import {
-  CODECOV_FOLDER, PREDICTION, SONAR_FOLDER, baselineDrift, baselineRecords, changedLinesFromDiff, formatPredictions, lineCoverageOf, predict, readCodecovTargets, readSonarGate,
+  CODECOV_FOLDER, PREDICTION, SONAR_FOLDER, baselineDrift, baselineRecords, changedLinesFromDiff, formatPredictions, lineCoverageOf, predict, RATCHET, readCodecovTargets, readSonarGate,
   recordsAtCommit, runQualityFamily, scopeDigest,
 } from '../cache/quality-baselines.mjs';
 import type { BaselineSources, QualityInputs } from '../cache/quality-baselines.mjs';
@@ -74,6 +74,31 @@ const inputs = (over: Partial<QualityInputs> = {}): QualityInputs => ({
   targets: { project: 90, patch: 95 },
   measured: (file) => file.endsWith('.service.ts'),
   ...over,
+});
+
+test('the project target `auto` is the ratchet (owner 2026-11-25): read as such, recorded, and predicted against the base commit; `auto` on the patch is refused', () => {
+  // The managed codecov.yml of a fresh scaffold (templates/app/quality-config/codecov.yml): project `target: auto`, threshold 0; the patch a number.
+  const ratchet = 'coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0%
+    patch:
+      default:
+        target: 80%
+';
+  assert.deepEqual(readCodecovTargets(ratchet), { project: RATCHET, patch: 80 });
+  assert.deepEqual(readCodecovTargets(ratchet.replace('target: auto', 'target: AUTO')), { project: RATCHET, patch: 80 });
+  assert.throws(() => readCodecovTargets(ratchet.replace('target: 80%', 'target: auto')), /codecov\.yml is not declared at coverage\.status\.patch\.default\.target/u);
+  assert.throws(() => readCodecovTargets(ratchet.replace('target: auto', 'target: soon')), /coverage\.status\.project\.default\.target/u);
+  const targets = baselineRecords(sources({ codecovYaml: ratchet })).codecov.find((record) => record.path === 'targets');
+  assert.deepEqual(targets?.data, { project: 'auto', patch: 80, owner: 'codecov.yml' });
+  const project = predict(inputs({ targets: { project: RATCHET, patch: 80 } })).find((prediction) => prediction.metric === 'project change');
+  assert.equal(project?.target, 'project >= its base commit (target auto, the ratchet)');
+  assert.equal(project?.value, 33.34);
+  const template = fs.readFileSync(path.join(here, '..', 'templates', 'app', 'quality-config', 'codecov.yml'), 'utf8').replace(/\{\{codecovPatch\}\}/gu, '80').replace(/^\{\{\w+\}\}$/gmu, '');
+  assert.equal(readCodecovTargets(template).project, RATCHET, 'the scaffold template reads');
 });
 
 test('line coverage is the union of what every spec covers over the lines a statement starts on', () => {

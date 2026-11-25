@@ -90,6 +90,32 @@ test('a sync of the starter renders its managed sign-in files prettier-clean', a
   assert.deepEqual(await unformatted(root), []);
 });
 
+test('every file the starter scaffold writes passes the app's own prettier --check (format:check), not only the managed ones', async (t) => {
+  const { root, files } = scaffoldApp({
+    name: 'demo',
+    into: mkdtemp(t, 'starci-scaffold-prettier-'),
+    harness: { version: '1.1.0-alpha.3' },
+    presets: bundledPresets(),
+    lock: (at: string) => {
+      fs.writeFileSync(path.join(at, 'package-lock.json'), '{}
+');
+      return { ok: true };
+    },
+    initGit: init,
+  });
+  installCanon(root);
+  const found: string[] = [];
+  for (const relative of files) {
+    const file = path.join(root, relative);
+    if (!fs.existsSync(file)) continue;
+    const info = await prettier.getFileInfo(file, { ignorePath: path.join(root, '.prettierignore'), resolveConfig: true });
+    if (info.ignored || info.inferredParser === null) continue;
+    const options = { ...(await prettier.resolveConfig(file, { editorconfig: false })), filepath: file };
+    if (!(await prettier.check(fs.readFileSync(file, 'utf8'), options))) found.push(relative);
+  }
+  assert.deepEqual(found, []);
+});
+
 test('canonList and canonJson print what prettier prints: one line while it fits, else one item a line', async () => {
   const check = async (text: string, filepath: string): Promise<boolean> => prettier.check(text, { ...canon, ...(filepath.endsWith('.json') ? { tabWidth: CANON_JSON_INDENT.length } : {}), overrides: [], filepath });
   const short = `${canonList({ head: 'export default ', items: ['a', 'b'] })}\n`;

@@ -26,6 +26,12 @@ export interface GrammarContext {
   package: string;
   entry: string;
   styleEntry: string;
+  /** Every code entry the family admits (its own, then the shared one it re-exports). */
+  entries: readonly string[];
+  /** Every base stylesheet the family admits; a style source imports one of them. */
+  styleEntries: readonly string[];
+  /** The family's optional default palettes, admitted beside a base stylesheet. */
+  themeEntries: readonly string[];
   peers: readonly string[];
   styleSources: string[];
   consumerManifests: string[];

@@ -18,7 +18,7 @@ export const AppConfirmPage = async (props: AppConfirmPageProps): Promise<ReactE
     const { token } = await props.searchParams
     const t = await getTranslations("app.emailAuth.confirm")
     return (
-        <Page header={{ title: t("title") }} measure="reading">
+        <Page header={{ title: t("title"), breadcrumbs: "root" }} measure="reading">
             <EmailDoorForm door="confirm" token={typeof token === "string" ? token : token?.[0]} />
         </Page>
     )

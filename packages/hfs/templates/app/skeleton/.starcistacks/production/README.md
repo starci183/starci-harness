@@ -37,4 +37,4 @@ Every item is pending. Swarm initialization, provider URIs, DNS changes and key 
 
 No host scheduler is installed. Scheduled application work belongs to the back-end scheduler or an explicitly declared replicated job.
 
-Monitoring is opt-in: uncomment `environments.production.monitoring` in `.starcistacks/application-stacks.yaml` to be scraped, probed and have logs kept by the server's shared monitoring stack (`starci vps monitor up`, contexts/project/monitoring.md in the harness). Without it the stack renders unchanged.
+Monitoring is opt-in: uncomment `environments.production.monitoring` in `.starcistacks/application-stacks.yaml` to be scraped, probed and have logs kept by the server's shared monitoring stack (`starci vps monitor up`, PROJECT-MONITORING-2 of the harness contexts). Without it the stack renders unchanged.
