@@ -212,6 +212,8 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 
 The map of the records of an app, for any app: entities, fields and relations, with no word of its own. `ErdMap` takes `entities` (`{ id, label, count?, icon?, fields?: { id, label, type? }[] }`; `icon` is an SVG component of the app's own set, Grammar's `IconSource`, left out the tile shows the first letter), `relations` (`{ id?, source, field?, target, label?, from?, to? }`: the field `field` of `source` points at `target`; `from` and `to` are `{ many?, optional? }`, many at `from` and one at `to` by default), `label`, `onOpen(type)`, `maxFields` (8; the fields a relation starts at always stay), `moreLabel(n)`, `isLoading`, `emptyLabel` and `ariaLabelConfig`. A field a relation starts at shows a link icon and the other entity's name in place of its type. The type words ("text", "number", "money"), the record counts and the words on the lines are all the app's.
 
+**Files and selection.** A field that holds files carries `file: { kind, many? }` (`image`, `video`, `audio`, `document`, `file`): its row draws the kind's glyph (`FILE_GLYPHS`, the same the `MediaGrid` draws) before its type words and stays drawn past `maxFields`. With `onOpenField(entity, field)` the name of a file field is a button that opens the field's files (the box still opens the entity). `selectedId` and `selectedField` draw the entity and row the page shows in the selection tone, the map's one accent.
+
 ```tsx
 // globals.css, after the Grammar stylesheet: @import "@starci/grammar/core/ext/graph.css";
 import { ErdMap, type ErdEntity, type ErdRelation } from "@starci/grammar/core/ext/graph"
