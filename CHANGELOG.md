@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.199 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.13 (the managed .gitattributes keeps binaries binary under the .starcistacks LF rule).
+
 ## 1.1.0-alpha.198 - 2026-11-25
 
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.12 (the app.gallery-look slot, R268 skips client-cli apps), @starci/grammar 0.59.1 and @starci/gallery 0.1.25.
