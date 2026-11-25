@@ -83,8 +83,13 @@ source; the node is painted in the tone's soft pair and edge, and a colour the s
 edge takes a tone to tell two flows apart (a read path and a write path): by Mermaid's own edge id and class (`A r1@--> R`, then `class r1,r2 info`), or
 by its place among the links counted from 1, `edgeTones={{ 2: "info" }}` (the map wins); its line, arrowhead and words take the tone. `legend` names
 what each edge tone means, one short line in the tone and its words per item, as a row under the canvas above the caption. A node may name an icon with
-Mermaid's own `R@{ icon: "redis" }` (the shape `R[(…)]` gave it stays); the app maps the name to what to draw with `icons={{ redis: <img … /> }}`, drawn
-before the node's words one line high, the node widened for it; a name the map lacks draws nothing. A sequence's message takes a tone by its place
+Mermaid's own `R@{ icon: "redis" }` (the shape `R[(…)]` gave it stays); Grammar draws the name itself:
+the built-in tech logos of `techIcons` (exported from `@starci/grammar/core/ext/graph`) are the default, so every app shows the same ones and passes nothing. Built-in names, exactly as
+written in the source: `postgresql`, `mongodb`, `mysql`, `redis`, `express`, `nestjs`, `nodedotjs`, `docker`, `kubernetes`, `rabbitmq`, `apachekafka`, `nginx`, `graphql`, `typescript`, `javascript`, `go`, `python`, `react`, `nextdotjs`, `elasticsearch`, `minio` (simple-icons, CC0;
+`amazons3` is not shipped there), the generic outline marks `database` (any store without a logo) and `service` (any program without one), and the aliases
+`postgres`, `pg`, `mongo`, `nodejs`, `node`, `kafka`, `k8s`, `nextjs`, `next`, `golang`, `nest`, `elastic`, `ts`, `js`. A logo is monochrome: it fills with the current colour (the node's ink), never
+a brand colour, is hidden from a screen reader (the node's words name it) and is one line of the words high. `icons={{ redis: <img … /> }}` adds a name or overrides a built-in one;
+a name neither has draws nothing and takes no room. A subgraph takes an icon the same way (`D@{ icon: "docker" }`), drawn before its name.  A sequence's message takes a tone by its place
 among the messages, counted from 1: `messageTones={{ 5: "danger" }}` paints the fifth message's line, head and words. `caption` is one line under the
 canvas in the caption role, saying what to look at. `labels` gives the canvas's words (the zoom, fit and reset buttons; the text version's start and end).
 
@@ -110,4 +115,4 @@ whom, with their words); a sequence's messages in order (who to whom: what) with
 STATE-8, OVERFLOW-4. Stack: [diagrams](../../stack/fe.yaml) (Mermaid is the Grammar's dependency, xyflow and ELK the graph ext's optional
 peers; an app imports `MermaidDiagram` from `@starci/grammar/core/ext/graph` and its stylesheet once, never `mermaid`). Story
 `Content/Lesson diagrams (0.55.1)`: a sequence and one with blocks, a flowchart across and down, a state diagram, other kinds, loading and
-error, each light and dark, with tones; `TonedPaths` two toned flows through the same stores with a legend and icons.
+error, each light and dark, with tones; `TonedPaths` two toned flows through the same stores with a legend and icons; `TechLogos` the shop-giay architecture with the built-in logos (express, postgresql, redis, docker on its group).

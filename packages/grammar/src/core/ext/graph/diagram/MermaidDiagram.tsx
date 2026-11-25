@@ -18,6 +18,7 @@ import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
+import { withTechIcons } from "./techIcons.js"
 
 /** The least height of the canvas, kept by the loading, ready and error states alike: `sm` 16rem, `md` 24rem, `lg` 32rem. */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
@@ -77,7 +78,8 @@ export type MermaidDiagramProps = NoChildren & {
     readonly legend?: ReadonlyArray<MermaidLegendItem>
     /**
      * What to draw for each icon name a node of the source names with Mermaid's own `R@{ icon: "redis" }` (the app passes small logo images): drawn
-     * before the node's words at the height of one line, the node widened for it. A name the map lacks draws nothing and takes no room.
+     * before the node's words at the height of one line, the node widened for it. A name neither this map nor `techIcons` has draws nothing and takes no
+     * room. The map adds to the built-in tech logos (`techIcons`: `postgresql`, `redis`, `express`, `docker`, `database`, ...) and wins over one of the same name.
      */
     readonly icons?: Readonly<Record<string, ReactNode>>
     /** One line under the drawing, in the caption role, saying what to look at. */
@@ -168,7 +170,14 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
 const GroupNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => (
     <div className="starci-graph-diagram-group" data-repeat={data.node.repeat === true ? "true" : undefined} {...toneProps(data.node.tone)} style={{ inlineSize: data.width, blockSize: data.height }}>
         {handles(data.direction)}
-        <span className="starci-graph-diagram-group-label">{data.node.label}</span>
+        <span className="starci-graph-diagram-group-label">
+            {data.icon === undefined || data.icon === null ? null : (
+                <span className="starci-graph-diagram-icon" aria-hidden="true">
+                    {data.icon}
+                </span>
+            )}
+            {data.node.label}
+        </span>
     </div>
 )
 
@@ -639,7 +648,8 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const words = { ...LABELS, ...labels }
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
     // The tones and the icon names are read by value: an inline object passed each render redraws nothing unless what it says changed.
-    const iconNames = Object.keys(icons ?? {}).sort()
+    const iconMap = useMemo(() => withTechIcons(icons), [icons])
+    const iconNames = Object.keys(iconMap).sort()
     const toneKey = JSON.stringify([tones ?? null, messageTones ?? null, edgeTones ?? null, iconNames])
     const toned = useRef({ tones, messageTones, edgeTones, iconNames, label })
     toned.current = { tones, messageTones, edgeTones, iconNames, label }
@@ -697,7 +707,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
                 </div>
             ) : (
                 <ReactFlowProvider>
-                    <Canvas drawn={ready} icons={icons} label={label} words={words} height={canvas} scheme={scheme} />
+                    <Canvas drawn={ready} icons={iconMap} label={label} words={words} height={canvas} scheme={scheme} />
                 </ReactFlowProvider>
             )}
             {ready === undefined ? null : <TextVersion drawn={ready} words={words} />}

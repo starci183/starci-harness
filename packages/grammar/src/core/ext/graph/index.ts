@@ -69,6 +69,7 @@ export { layoutKnowledge, linePairs, radiusOf, labelWidth, MIN_RADIUS, MAX_RADIU
 export type { Bubble, KnowledgeLayout, LabelBox } from "./knowledge/layout.js"
 export type { KnowledgeCluster, KnowledgeItem, KnowledgeKind, KnowledgeLink, KnowledgeLegendItem, KnowledgeMapProps, KnowledgeState, KnowledgeZoomLabels } from "./knowledge/types.js"
 export { canvasHeight, openZoom, READABLE_ZOOM } from "./diagram/open.js"
+export { techIcons, withTechIcons } from "./diagram/techIcons.js"
 export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramLabels, type MermaidDiagramProps, type MermaidLegendItem } from "./diagram/MermaidDiagram.js"
 export { describeDiagram, diagramOf, flowchartGraph, plainLabel, sequenceModel, stateGraph, MERMAID_TONES } from "./diagram/model.js"
 export type { DiagramEdge, DiagramGraph, DiagramNode, DiagramShape, MermaidTone, ParsedDiagram, SequenceBlockKind, SequenceHead, SequenceModel, SequenceParticipant, SequenceRow } from "./diagram/model.js"
