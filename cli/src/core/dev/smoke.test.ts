@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { resolveFrom, smokeInstall, smokeLine, workspaceFolders } from "./smoke.js"
+import { lockfileGap, lockfileGaps, repairable, resolveFrom, smokeInstall, smokeLine, workspaceFolders } from "./smoke.js"
 
 const put = (file: string, content: string): void => {
     mkdirSync(dirname(file), { recursive: true })
@@ -23,7 +23,7 @@ const tree = (t: { after: (fn: () => void) => void }): string => {
     })
     put(join(root, "package.json"), JSON.stringify({ name: "app", workspaces: ["fe/apps/*"] }))
     pkg(root, "fe/apps/web", "@app/web", { next: "14.0.0", react: "18.0.0" })
-    put(join(root, "package-lock.json"), JSON.stringify({ packages: { "": {}, "node_modules/next": {}, "node_modules/postcss": {}, "node_modules/picocolors": {}, "node_modules/next/node_modules/postcss": {} } }))
+    put(join(root, "package-lock.json"), JSON.stringify({ packages: { "": {}, "node_modules/next": {}, "node_modules/postcss": {}, "node_modules/picocolors": {}, "node_modules/next/node_modules/postcss": {}, "node_modules/nanoid": {}, "node_modules/react": {} } }))
     pkg(root, "node_modules/next", "next", { postcss: "8.4.31", react: "18.0.0" })
     pkg(root, "node_modules/next/node_modules/postcss", "postcss", { picocolors: "1.0.0", nanoid: "3.0.0" })
     pkg(root, "node_modules/postcss", "postcss", { picocolors: "1.0.0" })
@@ -66,4 +66,34 @@ void test("workspace patterns expand to the folders that hold a package.json, an
     assert.deepEqual(workspaceFolders(root).map((folder) => folder.replaceAll("\\", "/").split("/").slice(-1)[0]), ["api", "web"])
     assert.equal(resolveFrom(join(root, "fe", "apps", "web"), "react"), join(root, "node_modules", "react"))
     assert.equal(resolveFrom(join(root, "fe", "apps", "web"), "nope"), undefined)
+})
+
+void test("a dependency the lockfile itself installs nowhere on the chain is a gap, not a repairable miss (@adobe/react-spectrum of @react-spectrum/color)", (t) => {
+    const root = tree(t)
+    // The lockfile holds @react-spectrum/color and a package nested under @adobe/react-spectrum, but not @adobe/react-spectrum itself: npm ci never installs it.
+    put(join(root, "package-lock.json"), JSON.stringify({ packages: { "": {}, "node_modules/next": {}, "node_modules/postcss": {}, "node_modules/picocolors": {}, "node_modules/next/node_modules/postcss": {}, "node_modules/nanoid": {}, "node_modules/react": {}, "node_modules/@react-spectrum/color": {}, "node_modules/@adobe/react-spectrum/node_modules/@react-types/shared": {} } }))
+    pkg(root, "node_modules/@react-spectrum/color", "@react-spectrum/color", { "@adobe/react-spectrum": "^3.47.0" })
+    pkg(root, "fe/apps/web", "@app/web", { next: "14.0.0", react: "18.0.0", "@react-spectrum/color": "3.2.1" })
+    const failures = smokeInstall(root)
+    const gap = failures.find((failure) => failure.name === "@adobe/react-spectrum")
+    assert.ok(gap !== undefined, JSON.stringify(failures))
+    assert.equal(gap.from, "node_modules/@react-spectrum/color")
+    assert.equal(gap.gap, true)
+    assert.match(gap.reason, /package-lock\.json installs none there either/u)
+    assert.deepEqual(repairable(failures), [], "no clean install can add what the lockfile leaves out")
+    assert.equal(lockfileGaps(failures).length, 1)
+    // the same package missing while the lockfile installs it is a real miss a clean npm ci repairs
+    rmSync(join(root, "node_modules", "picocolors"), { recursive: true })
+    assert.ok(repairable(smokeInstall(root)).some((failure) => failure.name === "picocolors"))
+})
+
+void test("a gap is judged on the lockfile keys up the folder's chain; with no lockfile keys nothing is a gap", () => {
+    const keys = new Set(["node_modules/a", "fe/apps/web/node_modules/b", "node_modules/c/node_modules/d"])
+    assert.equal(lockfileGap(keys, "node_modules/c", "a"), false, "hoisted at the root")
+    assert.equal(lockfileGap(keys, "node_modules/c", "d"), false, "nested in the folder itself")
+    assert.equal(lockfileGap(keys, "fe/apps/web", "b"), false, "in the workspace's own node_modules")
+    assert.equal(lockfileGap(keys, ".", "b"), true, "a workspace's nested package is not on the root's chain")
+    assert.equal(lockfileGap(keys, "node_modules/c", "e"), true)
+    assert.equal(lockfileGap(undefined, "node_modules/c", "e"), false, "no lockfile to judge by")
+    assert.equal(lockfileGap(keys, "D:/elsewhere/pkg", "e"), false, "a folder outside the checkout")
 })
