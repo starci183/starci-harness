@@ -20,7 +20,7 @@ export const slotTakeVerb = defineVerb({
         lane: { kind: "string", summary: "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)" },
         pid: { kind: "string", required: true, summary: "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot" },
         wait: { kind: "string", summary: "seconds to wait for a free slot before SLOT_BUSY (default: until one frees)" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const rules = loadSlotRules()
@@ -29,9 +29,9 @@ export const slotTakeVerb = defineVerb({
         const pid = positiveInt("pid", flags.pid)
         if (pid === undefined) throw new Refusal("SLOT_PID_REQUIRED", "a slot lock records the pid of the process it lives as long as: pass --pid (in Git Bash $(cat /proc/$$/winpid)) or use slot run, which records its own")
         // A pid that is not running (an MSYS shell's $$ is not a Windows pid) would make the slot look dead at once.
-        if (pid !== undefined && !pidAlive(pid)) throw new Refusal("SLOT_PID_NOT_ALIVE", `pid ${String(pid)} is not a running process of this host (in Git Bash pass $(cat /proc/$$/winpid), not $$)`)
+        if (!pidAlive(pid)) throw new Refusal("SLOT_PID_NOT_ALIVE", `pid ${String(pid)} is not a running process of this host (in Git Bash pass $(cat /proc/$$/winpid), not $$)`)
         const taken = await takeSlot(root, rules, flags.kind, holder, { pid, waitSeconds: waitSeconds(flags.wait), reuse: true, say: context.progress })
         const note = taken.already ? " (already held)" : taken.reclaimed.length > 0 ? ` (reclaimed ${taken.reclaimed.join("; ")})` : ""
-        return { data: { ...taken, root }, message: `${taken.kind} slot ${String(taken.n)} held by ${holder}: ${taken.file}${note}\nrelease: starci slot release ${taken.kind} --lane ${holder}` }
+        return { data: { ...taken, root }, message: `${taken.kind} slot ${String(taken.n)} held by ${holder} (pid ${String(taken.pid)}): ${taken.where}${note}\nrelease: starci slot release ${taken.kind} --lane ${holder}` }
     },
 })

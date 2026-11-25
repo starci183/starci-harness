@@ -18,7 +18,7 @@ export const slotReleaseVerb = defineVerb({
         lane: { kind: "string", summary: "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)" },
         n: { kind: "string", summary: "only this slot number" },
         stale: { kind: "boolean", summary: "reclaim the slots of the kind whose holder is proven gone, whoever holds them; an old one is reported, never removed" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const rules = loadSlotRules()

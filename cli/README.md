@@ -343,13 +343,19 @@ build of `app check` prints the measured peak of its run, the number its cap tak
 its kind's weight.
 
 Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package build, `npm ci` or `npm install`, a contract's setup, a test
-run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row of one queue per host (`heavy_slots` in the governor's store,
-`governorStorePath` of `harness/ledger.ts`: `STARCI_LOCAL_ROOT`'s machine.sqlite when set, else one store per user, so every checkout and every installed
-CLI of the host counts against the same units), whose admissions the store's lock serialises. `admission` is a sum and nothing else: a command starts when
-it heads the queue and `used + weight <= units` (`slotCap`; a weight above the units counts as all of them, so the heaviest command still runs alone on a
-small host); no free-RAM room, reserve or CPU rule decides a start. The one floor is the disk: while the drive the command works on has under
-the host's disk floor free (`harness/host-floors.ts`), nothing starts, a lone command included, and the queue line names the floor and where it is
-set. The floor is the machine's, set in ONE place every CLI copy reads: `host.diskFloorMb` of config.yaml (`harness/host-settings.ts`,
+run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row of one queue per host (`heavy_slots` in the host store, machine.sqlite,
+`machinePath` of `harness/ledger.ts`: one file per host that every checkout, worktree and installed CLI copy resolves alike, see "Machine-wide slots"),
+whose admissions the store's lock serialises. The row maps 1-1 to the work: `pid` and `pid_start` name the CLI process holding it, `child_pid` and
+`child_start` the heavy command once spawned, and it is deleted the moment the command ends (its exit, an error or a signal; a holder killed outright leaves a
+row whose pid is dead, dropped at the next admission or listing and logged in `slot_events`). A live row of an older CLI copy's own
+`%LOCALAPPDATA%/starci/governor.sqlite` is foreign: read only, its units count against the cap until its command ends (`legacyHeavyRows`). `admission`
+is a sum and nothing else: a command starts when it heads the queue and `used + weight <= units` (`slotCap`; a weight above the units counts as all of them,
+so the heaviest command still runs alone on a small host); no free-RAM room, reserve or CPU rule decides a start. Two host floors hold every start, a lone
+command included, and the queue line names the floor: the disk, while the drive the command works on has under the host's disk floor free
+(`harness/host-floors.ts`), and the free commit (Windows: the memory the host can still promise), while the free commit less the planned memory of the
+commands admitted in the last `heavy.commitRampSeconds` (their pages are not in the reading yet) and the command's own is under `heavy.commitFloorMb` of
+ops/liveness.yaml (`commitFloorHeld`): six npm installs admitted at once on a host with 6 GB of free commit left the next process unable to start
+(STATUS_COMMITMENT_LIMIT, 0xC000012D). The disk floor is the machine's, set in ONE place every CLI copy reads: `host.diskFloorMb` of config.yaml (`harness/host-settings.ts`,
 [contexts/harness/host.md](../contexts/harness/host.md) "Host settings"); `heavy.diskFloorMb` of ops/liveness.yaml is only the default of a host
 that sets none. A waiting command reads the rules again at every admission attempt (`currentHeavyRules`), so a floor or a cap changed while it
 waits reaches it without a restart. A command that does not fit waits in a first come, first served queue (`servingOrder`), holding nothing; only the
@@ -404,15 +410,29 @@ harness never runs.
 
 ### Machine-wide slots
 
-The heavy-command governor counts every heavy command of the host in one per-user store (`governorStorePath`); the slots of
-`harness/slots.ts` coordinate the lanes themselves (one gate of a lane at a time, the shared stack, shots) across every checkout of a host with lock files in one slot root (ops/slots.yaml: the root, each kind's count, burst, free-RAM
-floor, poll and `warnMinutes`): `slot take|release|list|run`, `lane gate` (a fresh worktree's install is hard-linked from the per-repository install cache, `harness/shared-install.ts`, and the gate prints its phase timings), `gallery shoot`, `app look` all go through it. A slot is taken whole by a hard link of a written file (`takeLockFile`), its line names the holder, the
-time, the pid and that process's start, the host's boot time and the host, and it is released only once read and found to name its
-holder, through a rename aside so a slot taken again in between stays. A holder is reclaimed only on evidence (`judgeHolder`): a pid
-not alive, a pid whose process started at another time, or a slot taken before this boot (or recording another boot) with no live
-pid proven its own. Age is never evidence: past `warnMinutes` a slot is `old` and only listed. Each reclaim is logged with its
-evidence in `<root>/_slots.log`. The root is `--dir`, else `STARCI_LANES_DIR`, else `slots.root`, else `<shared state>/slots`; the
-lane verbs fall back to the same `slots.root`. The rules a lane follows are [contexts/authority/lanes.md](../contexts/authority/lanes.md).
+Every slot of the host is a row of ONE store, machine.sqlite (`machinePath` of `harness/ledger.ts`, `machineStoreOf`): `STARCI_LOCAL_ROOT/machine.sqlite`
+for a spec, else the file the host pointer `%LOCALAPPDATA%/starci/machine-store` (`~/.local/state/starci/machine-store` elsewhere) names, else, for a CLI
+running from the harness checkout or any worktree of it, `<main checkout>/.runtime/machine.sqlite`, which it records in the pointer so a CLI installed in an
+app's node_modules reaches the same file. No working folder, lanes folder or CLI copy splits it; under `node --test` without `STARCI_LOCAL_ROOT` a spec uses
+its checkout's own store and never the host's. The heavy governor's `heavy_slots` (above) and the lane slots of `harness/slots.ts` live there, one table each:
+`lane_slots` coordinates the lanes themselves (one gate of a lane at a time, the shared stack, shots, installs; ops/slots.yaml: each kind's count, burst,
+free-RAM floor, poll and `warnMinutes`) for `slot take|release|list|run|kill`, `lane gate` (a fresh worktree's install is hard-linked from the per-repository
+install cache, `harness/shared-install.ts`, and the gate prints its phase timings), `gallery shoot` and `app look`; `slot_events` logs every take, release,
+reclaim and kill with who did it and the evidence (`harness/slot-store.ts`).
+
+A lane slot maps 1-1 to a process: its row (`kind`, `n`) names the lane, the ONE process it lives as long as (`pid` with its OS `pid_start`; a take without
+them is refused `SLOT_PID_REQUIRED`, `SLOT_START_UNKNOWN`), the command, the host's boot and, once spawned, the child running the work (`child_pid`). It is
+inserted inside one transaction, so no two takers get one number, and deleted the moment its process lets it go (`withSlot`: the work's end, an error,
+SIGINT, SIGBREAK, SIGHUP, SIGTERM or `process.exit`). A holder is reclaimed only on evidence (`judgeHolder`): a pid not alive (at once, inside the take), a
+pid whose process started at another time, or a slot taken before this boot. Age is never evidence: past `warnMinutes` a slot is `old` and only listed. One
+slot per lane and kind: a take returns the lane's slot when its process is the taker or one the taker runs under, and waits while another live process of the
+lane holds it. A lock FILE in a lanes folder (`<root>/<kind.file>`, written by an older CLI copy or by a script itself) is foreign: never written, read in the
+lanes folder named (`--dir`, `STARCI_LANES_DIR`, `slots.root`) and in `<shared state>/slots`, it holds its number for every taker while its holder is not
+proven gone (a line with no pid once its lane is proven gone, `proveLaneGone`) and is reclaimed, renamed aside first, on that proof. `slot kill <kind> <n>` and
+`slot kill heavy <id>` are the last resort: they kill the process tree of the one process the slot maps to (a lane slot's holder; a heavy row's command,
+else its holder) and free the slot, logging what they killed, and refuse `SLOT_KILL_REUSED` when the pid now runs a process started at another time and
+`SLOT_KILL_UNPROVEN` when no recorded start matches. `slot list` shows every lane and heavy slot with its pid, child, age and command from any folder. The
+rules a lane follows are [contexts/authority/lanes.md](../contexts/authority/lanes.md).
 
 ### Integration and e2e runs (`starci test integration|e2e`)
 

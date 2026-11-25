@@ -5,14 +5,16 @@
 // caps are passed as process limits; an out-of-memory run names the cause; the wait line says why.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
+import { DatabaseSync } from "node:sqlite"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { governorStorePath } from "./ledger.js"
+import { machinePath } from "./ledger.js"
 import { readHostSettings } from "./host-settings.js"
-import { HEAVY_PARENTS_ENV, HOST_HELD, MAX_WEIGHT, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, heavyWeight, kindWeights, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
+import { commitFloorHeld } from "./host-floors.js"
+import { HEAVY_PARENTS_ENV, HOST_HELD, MAX_WEIGHT, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, heavyWeight, killHeavySlot, kindWeights, legacyHeavyRows, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
 import { withMachine } from "./machine.js"
 
 const state = mkdtempSync(join(tmpdir(), "starci-governor-"))
@@ -171,7 +173,7 @@ void test("a heavy command that does not fit heads the queue, and a light one be
 
 void test("a command that ended frees its slot at once, though the next shares its process", async () => {
     await run(host, "tsc", "finished-step", [])
-    assert.deepEqual(withMachine((db) => db.prepare("SELECT id FROM heavy_slots").all(), governorStorePath()), [], "the row went with the command, not with its process")
+    assert.deepEqual(withMachine((db) => db.prepare("SELECT id FROM heavy_slots").all(), machinePath()), [], "the row went with the command, not with its process")
 })
 
 void test("the disk floor holds a start: a verify's bound ends the wait as HOST_HELD, no verdict", async () => {
@@ -214,7 +216,7 @@ void test("the disk floor is the host's config.yaml host.diskFloorMb when set, e
 void test("a row of a process that is gone is dropped at admission, so nothing waits for a dead holder", async () => {
     heavySlots()
     const dead = spawnSync(process.execPath, ["-e", ""]).pid
-    withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('ghost', ?, 'tsc', 'ghost', ?, 'running', ?)").run(dead, state, new Date().toISOString()), governorStorePath())
+    withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('ghost', ?, 'tsc', 'ghost', ?, 'running', ?)").run(dead, state, new Date().toISOString()), machinePath())
     const order: string[] = []
     const text = await stderrOf(() => run(small, "tsc", "after-ghost", order))
     assert.deepEqual(order, ["after-ghost"])
@@ -224,11 +226,11 @@ void test("a row of a process that is gone is dropped at admission, so nothing w
 
 void test("a row written without a weight (by a CLI copy that has none) holds its kind's weight", () => {
     heavySlots()
-    withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('unweighted', ?, 'eslint', 'unweighted', ?, 'running', ?)").run(process.pid, state, new Date().toISOString()), governorStorePath())
+    withMachine((db) => db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('unweighted', ?, 'eslint', 'unweighted', ?, 'running', ?)").run(process.pid, state, new Date().toISOString()), machinePath())
     try {
         assert.equal(must(heavySlots().find((slot) => slot.id === "unweighted")).weight, 2)
     } finally {
-        withMachine((db) => db.prepare("DELETE FROM heavy_slots WHERE id = 'unweighted'").run(), governorStorePath())
+        withMachine((db) => db.prepare("DELETE FROM heavy_slots WHERE id = 'unweighted'").run(), machinePath())
     }
 })
 
@@ -299,4 +301,82 @@ void test("a command that runs out of memory names the heap cap it hit and the R
 void test("a waiting command prints its place, why it waits and who runs", () => {
     const line = waitLine("next build", 2, { cap: 16, need: 3, reason: "14 of 16 slot units in use; next build needs 3" }, ["jest (3 units, pid 7, since 2026-11-23T01:00:00Z)"])
     assert.match(line, /next build waits for a heavy-command slot \(3 of the 16 slot units on this host\): 2 ahead of it; 14 of 16 slot units in use; next build needs 3; running: jest \(3 units, pid 7/u)
+})
+
+void test("the commit floor holds a start while the free commit, less what just-admitted commands and this one plan, is under heavy.commitFloorMb", async () => {
+    assert.deepEqual(commitFloorHeld(null, 8192, 2048), [], "a host that reports no free commit has no commit floor")
+    assert.deepEqual(commitFloorHeld(20 * GB, 8192, 2048), [])
+    assert.match(must(commitFloorHeld(6 * GB, 8192, 2048)[0]), /free commit 6 GB, less the 2 GB this command plans, leaves 4 GB: under heavy\.commitFloorMb 8 GB/u)
+    assert.match(must(commitFloorHeld(12 * GB, 8192, 2048, 4 * GB)[0]), /4 GB promised to commands just admitted/u, "installs admitted together count before their pages show")
+    // Six installs at once on a host with 6 GB of free commit: every one waits (the live failure: the next process could not start, 0xC000012D).
+    const tight: Governed = { ...host, rules: { ...host.rules, commitFloorMb: 8192 }, commitMb: () => 6 * GB }
+    const order: string[] = []
+    const text = await stderrOf(async () => {
+        await assert.rejects(withHeavyBound(300, undefined, () => run(tight, "install", "npm-ci-tight", order)), (error: { code?: string }) => error.code === HOST_HELD)
+    })
+    assert.deepEqual(order, [])
+    assert.match(text, /npm-ci-tight waits .*under heavy\.commitFloorMb 8 GB/u)
+    // With room, one install starts; a second admitted right after counts the first's planned 2 GB against the reading.
+    const roomy: Governed = { ...host, rules: { ...host.rules, commitFloorMb: 8192, commitRampSeconds: 60 }, commitMb: () => 11 * GB }
+    const ran: string[] = []
+    const holder = gate()
+    const first = run(roomy, "install", "first-install", ran, holder.wait)
+    await pause(200)
+    const second = stderrOf(async () => {
+        await assert.rejects(withHeavyBound(300, undefined, () => run(roomy, "install", "second-install", ran)), (error: { code?: string }) => error.code === HOST_HELD)
+    })
+    assert.match(await second, /2 GB promised to commands just admitted/u)
+    holder.open()
+    await first
+    assert.deepEqual(ran, ["first-install"])
+    assert.equal(heavySlots().length, 0)
+})
+
+void test("the npm install weight matches its measured memory: one unit (cap 2 GB, measured 0.2 to 1.8 GB live, a unit 4 GB)", () => {
+    assert.equal(rules.caps.install.capMb, 2048)
+    assert.equal(heavyWeight(rules, "install"), 1)
+})
+
+void test("a heavy row names its holder and the command it runs, each with its start, and a kill takes only a proven process", async () => {
+    const order: string[] = []
+    const holder = gate()
+    let child = 0
+    const running = governed(host, "build", "kill-me", state, { onSpawn: (pid) => (child = pid) }, async (held) => {
+        order.push("kill-me")
+        held.options.onSpawn?.(424_242)
+        await holder.wait
+    })
+    await pause(200)
+    const row = must(heavySlots().find((slot) => slot.label === "kill-me"))
+    assert.equal(row.pid, process.pid)
+    assert.equal(row.childPid, 424_242, "the child doing the work is on the row")
+    assert.equal(child, 424_242, "the caller's own spawn hook still runs")
+    assert.ok(row.pidStart !== null && row.childStart !== null)
+    const alive = (pid: number): boolean => pid === process.pid || pid === 424_242
+    const childStart = Date.parse(must(row.childStart))
+    assert.throws(() => killHeavySlot(row.id, { execute: true, by: "spec", alive, startOf: () => childStart + 600_000, kill: () => assert.fail("a reused pid is never killed") }), /SLOT_KILL_REUSED|nothing is killed/u)
+    assert.throws(() => killHeavySlot(row.id, { execute: true, by: "spec", alive, startOf: () => null, kill: () => assert.fail("an unproven pid is never killed") }), /cannot be proven/u)
+    const dry = killHeavySlot(row.id, { execute: false, by: "spec", alive, startOf: () => childStart })
+    assert.equal(dry.target, 424_242, "the heavy command is the target, not the CLI holding the row")
+    const killed: number[] = []
+    const done = killHeavySlot(row.id, { execute: true, by: "spec", alive, startOf: () => childStart, kill: (pid) => killed.push(pid) > 0 })
+    assert.equal(done.killed, true)
+    assert.deepEqual(killed, [424_242])
+    assert.equal(heavySlots().some((slot) => slot.id === row.id), false, "the row is freed")
+    holder.open()
+    await running
+    assert.throws(() => killHeavySlot("no-such-row", { execute: true, by: "spec", startOf: () => null }), /HEAVY_SLOT_UNKNOWN|no heavy slot/u)
+})
+
+void test("a live row of an older copy's governor.sqlite counts against the cap; a dead one does not", () => {
+    const file = join(state, "legacy-governor.sqlite")
+    const db = new DatabaseSync(file)
+    db.exec("CREATE TABLE heavy_slots (id TEXT PRIMARY KEY, pid INTEGER NOT NULL, child_pid INTEGER, kind TEXT NOT NULL, label TEXT NOT NULL, cwd TEXT NOT NULL, state TEXT NOT NULL, at TEXT NOT NULL, task TEXT, weight INTEGER)")
+    const dead = must(spawnSync(process.execPath, ["-e", ""]).pid)
+    db.prepare("INSERT INTO heavy_slots VALUES ('old-live', ?, NULL, 'install', 'npm ci (older copy)', ?, 'running', ?, NULL, 1)").run(process.pid, state, new Date().toISOString())
+    db.prepare("INSERT INTO heavy_slots VALUES ('old-dead', ?, NULL, 'tsc', 'tsc (older copy)', ?, 'running', ?, NULL, 2)").run(dead, state, new Date().toISOString())
+    db.close()
+    const rows = legacyHeavyRows(rules, file)
+    assert.deepEqual(rows.map((row) => [row.id, row.source, row.weight]), [["old-live", "foreign", 1]])
+    assert.deepEqual(legacyHeavyRows(rules, join(state, "missing.sqlite")), [])
 })
