@@ -82,8 +82,9 @@ heavy:
     eslint: { capMb: 8192 }
     build: { capMb: 4096 }
     appBuild: { capMb: 12288 }
-    # npm ci / npm install, measured live at 0.2 to 1.8 GB each (2026-11-26, `host load` RSS): 2 GB holds the peak, one unit of 4 GB.
-    install: { capMb: 2048 }
+    # npm ci / npm install, measured live at 0.2 to 2.3 GB of working set each (2026-11-26, `host load`): 3 GB holds the peak, still one unit of 4 GB;
+    # the commit floor counts this cap for an install admitted in the last commitRampSeconds.
+    install: { capMb: 3072 }
     uat: { capMb: 4096 }
   timeoutMinutes:
     install: 15

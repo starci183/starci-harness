@@ -316,7 +316,7 @@ void test("the commit floor holds a start while the free commit, less what just-
     })
     assert.deepEqual(order, [])
     assert.match(text, /npm-ci-tight waits .*under heavy\.commitFloorMb 8 GB/u)
-    // With room, one install starts; a second admitted right after counts the first's planned 2 GB against the reading.
+    // With room, one install starts; a second admitted right after counts the first's planned 3 GB against the reading.
     const roomy: Governed = { ...host, rules: { ...host.rules, commitFloorMb: 8192, commitRampSeconds: 60 }, commitMb: () => 11 * GB }
     const ran: string[] = []
     const holder = gate()
@@ -325,15 +325,15 @@ void test("the commit floor holds a start while the free commit, less what just-
     const second = stderrOf(async () => {
         await assert.rejects(withHeavyBound(300, undefined, () => run(roomy, "install", "second-install", ran)), (error: { code?: string }) => error.code === HOST_HELD)
     })
-    assert.match(await second, /2 GB promised to commands just admitted/u)
+    assert.match(await second, /3 GB promised to commands just admitted/u)
     holder.open()
     await first
     assert.deepEqual(ran, ["first-install"])
     assert.equal(heavySlots().length, 0)
 })
 
-void test("the npm install weight matches its measured memory: one unit (cap 2 GB, measured 0.2 to 1.8 GB live, a unit 4 GB)", () => {
-    assert.equal(rules.caps.install.capMb, 2048)
+void test("the npm install weight matches its measured memory: one unit (cap 3 GB, measured 0.2 to 2.3 GB live, a unit 4 GB)", () => {
+    assert.equal(rules.caps.install.capMb, 3072)
     assert.equal(heavyWeight(rules, "install"), 1)
 })
 

@@ -330,7 +330,7 @@ changes moves the weight with it. On this host (4 GB a unit, 28 cores):
 
 | kind | what runs as it | planned | units |
 |---|---|---|---|
-| `install` | `npm ci`, `npm install` | 2 GB | 1 |
+| `install` | `npm ci`, `npm install` (measured 0.2 to 2.3 GB) | 3 GB | 1 |
 | `build` | a package or CLI build, codegen, `build:modules`, `npm pack`, `npm publish`, `prepare` | 4 GB | 1 |
 | `uat` | a uat container | 4 GB | 1 |
 | `tsc` | a typecheck | 8 GB | 2 |
