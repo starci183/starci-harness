@@ -43,6 +43,8 @@ const machineSchema = z.strictObject({
 const hostSettingsSchema = z.strictObject({
     // The free space a heavy command's drive keeps, in MB; over ops/liveness.yaml heavy.diskFloorMb, which is only the default of a host that sets none.
     diskFloorMb: z.number().int().nonnegative().optional(),
+    // The free space under which `lane gate` warns early and lists the landed worktrees that can be removed (harness/disk-warning.ts); over heavy.diskWarnMb of ops/liveness.yaml.
+    diskWarnMb: z.number().int().nonnegative().optional(),
 })
 
 const fileSchema = z.strictObject({

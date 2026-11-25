@@ -41,6 +41,8 @@ type FixedKind = (typeof FIXED_KINDS)[number]
 const heavySchema = z.strictObject({
     gbPerSlot: z.number().int().positive(),
     diskFloorMb: z.number().int().nonnegative(),
+    /** The free space under which `lane gate` warns and lists the landed worktrees that can be removed (harness/disk-warning.ts); default 50 GB, never under the floor. */
+    diskWarnMb: z.number().int().nonnegative().optional(),
     pollSeconds: z.number().positive(),
     caps: z.strictObject(Object.fromEntries(FIXED_KINDS.map((kind) => [kind, z.strictObject({ capMb: z.number().int().positive() })])) as Record<FixedKind, z.ZodObject<{ capMb: z.ZodNumber }, z.core.$strict>>),
     timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),

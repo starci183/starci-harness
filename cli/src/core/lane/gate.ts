@@ -19,6 +19,8 @@ import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import { landLane } from "./land-direct.js"
 import type { LaneLanded } from "./land-direct.js"
+import { diskWarningLines } from "../../harness/disk-warning.js"
+import { commitGenerated } from "../../harness/lane-generated.js"
 import { cleanupLanded } from "../../harness/land-cleanup.js"
 import type { LandCleanup } from "../../harness/land-cleanup.js"
 
@@ -148,6 +150,8 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
     const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
     const profile = harnessProfile(join(runningCliRoot(), "dist", "main.js"))
+    // The generated contexts files (the index, the slices, the section indexes) are regenerated on the lane's tree and committed with it, so the gate judges, and dev receives, a tree whose index is not stale.
+    await commitGenerated(root, say)
     const stale = await staleCli(root, runningCliRoot(), base)
     if (stale !== undefined) say(`WARNING: ${stale}`)
     const command = profile.gate(root, fork === "" ? base : fork)
@@ -206,6 +210,8 @@ export const laneGateVerb = defineVerb({
         }
         const rules = loadSlotRules()
         const slots = slotRoot(flags.dir, rules)
+        // An early warning while the drive still has room: the landed worktrees that can go are listed, never removed here.
+        for (const line of await diskWarningLines(lanesDir(flags.dir), lane)) say(line)
         const wait = waitSeconds(flags.wait)
         // A new gate of the lane supersedes its running one: its process tree is killed and its slot released.
         const head = (await gitOut(root, ["rev-parse", "HEAD"])).out

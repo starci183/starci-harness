@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
-import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
 import { judgeRuleDocs } from "./knowledge-gates.js"
@@ -85,7 +84,7 @@ const slug = (heading: string): string =>
  */
 const unresolvedPath = (knowledge: string, cited: string): string | undefined => {
     const [path = "", anchor] = cited.split("#")
-    const file = path.startsWith("contexts/") ? join(knowledge, path.slice("contexts/".length)) : join(runtimeRoot(), path)
+    const file = path.startsWith("contexts/") ? join(knowledge, path.slice("contexts/".length)) : join(knowledge, "..", path)
     if (!existsSync(file)) return "does not exist"
     if (anchor === undefined) return undefined
     const text = readFileSync(file, "utf8").replaceAll("\r\n", "\n")

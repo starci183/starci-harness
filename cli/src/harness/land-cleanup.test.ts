@@ -84,7 +84,8 @@ void test("--keep keeps the worktree and says so", async (t) => {
     const w = world(t)
     const left: string[] = []
     const result = await cleanupLanded(landed(w, true), deps(w.root, {}, left))
-    assert.deepEqual({ removed: result.removed, line: result.line }, { removed: false, line: "kept: --keep given" })
+    assert.equal(result.removed, false)
+    assert.match(result.line, /^kept: --keep given; remove it when you are done with `starci lane remove .+ --execute`/)
     assert.ok(existsSync(w.tree))
     assert.equal(left.length, 0)
 })
@@ -95,7 +96,33 @@ void test("uncommitted non-cache work keeps the worktree; the line names it", as
     const result = await cleanupLanded(landed(w), deps(w.root))
     assert.equal(result.removed, false)
     assert.match(result.line, /^kept: uncommitted work \(follow-up\.txt\)/)
+    assert.match(result.line, /holds non-generated changes the landing did not take: commit or discard them, then `starci lane remove /)
     assert.ok(existsSync(w.tree))
+})
+
+void test("a stale generated contexts file is no work: the worktree is removed with it", async (t) => {
+    const w = world(t)
+    mkdirSync(join(w.tree, "contexts", "project"), { recursive: true })
+    writeFileSync(join(w.tree, "contexts", "project", "index.md"), "landed" + String.fromCharCode(10))
+    git(w.tree, "add", "-A")
+    git(w.tree, "commit", "-q", "-m", "lane")
+    const sha = git(w.tree, "rev-parse", "HEAD")
+    writeFileSync(join(w.tree, "contexts", "project", "index.md"), "regenerated after the landing" + String.fromCharCode(10))
+    const result = await cleanupLanded({ ...landed(w), laneSha: sha }, deps(w.root))
+    assert.deepEqual({ removed: result.removed, line: result.line }, { removed: true, line: "worktree removed" })
+    assert.ok(!existsSync(w.tree))
+})
+
+void test("a worktree held only by a process of the moment leaves a marker, and the sweep removes it once the process is gone", async (t) => {
+    const w = world(t)
+    const working = [{ pid: 4242, ppid: 1, name: "bash.exe", workingSetMb: 0, cpuMs: 0, startedMs: 0, cwd: w.tree, commandLine: "bash" }]
+    const result = await cleanupLanded(landed(w), deps(w.root, { live: () => quiet(w.root, working) }))
+    assert.equal(result.removed, false)
+    assert.match(result.line, /^kept: pid 4242 bash\.exe works there; marked for the next lane remove or janitor run$/)
+    assert.deepEqual(readMarkers(w.root).map((marker) => marker.lane), ["x"])
+    const swept = await sweepCleanupMarkers(w.root, w.root, rules, deps(w.root))
+    assert.deepEqual(swept.map((one) => one.state), ["removed"])
+    assert.deepEqual(readMarkers(w.root), [])
 })
 
 void test("a branch that moved past the landed sha and a process working inside: the guard keeps it", async (t) => {

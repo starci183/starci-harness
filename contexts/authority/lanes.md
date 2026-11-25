@@ -23,7 +23,9 @@ rule: one heavy slot per 16 GB of the host's RAM (`heavy.gbPerSlot`, 4 on a 64 G
 install, a test run) holds one while it runs, whichever checkout or installed CLI starts it; a gate that runs several in turn takes one for each
 step, and a running web or api server takes none. Nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else `heavy.diskFloorMb`). The lane slots of
 `ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look),
-`stack` (the shared stack and its main checkout). Each kind has a count, and some a burst opened only with free RAM.
+`stack` (the shared stack and its main checkout). Early in every `lane gate`, while the drive still has room, a warning shows when the lanes drive has under `host.diskWarnMb`
+free (config.yaml, else `heavy.diskWarnMb` of ops/liveness.yaml, 50 GB; never under the floor): it lists the landed lanes whose worktrees can be removed and the command
+that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each kind has a count, and some a burst opened only with free RAM.
 
 | verb | does |
 |---|---|
@@ -103,7 +105,9 @@ One verb gates and lands (PROJECT-BRANCH-2):
    delete a folder a live process stands in, so it first leaves for the main checkout (`process.chdir`) and removes in-process. The guard keeps
    the worktree when a removal lock, a slot of the lane or a git operation holds it, a process works inside it, it holds uncommitted work or its
    branch has commits after the landed sha; the check-cache records under `.starcistacks/cache/` are no work and are discarded. `--keep` skips the
-   removal. A node_modules delete that hits EBUSY, EPERM or ENOTEMPTY (an antivirus scan, a shell standing in the folder) is retried with
+   removal (a lane that keeps its worktree to look at dev removes it afterwards with `starci lane remove <worktree> --execute`; an app lane and a harness lane are
+   treated alike, and a worktree kept only because a process of the moment works in it leaves a marker too). Stale generated contexts files are no work; a worktree with
+   other uncommitted changes is kept, and the printed line names the files and the path. A node_modules delete that hits EBUSY, EPERM or ENOTEMPTY (an antivirus scan, a shell standing in the folder) is retried with
    backoff (6 attempts, 0.5 s doubling to 8 s); if it still fails the verb leaves a marker (`<lanes>/_land-cleanup/<lane>.json`), the landing
    stands, and the next `starci lane remove <worktree> --execute` (which clears it) or `starci lane prune-installs --execute` (the janitor sweeps
    the markers with the same guard) finishes it. The verb prints one line, `worktree removed` or `kept: <reason>`; it never changes the exit code.
@@ -114,7 +118,10 @@ One verb gates and lands (PROJECT-BRANCH-2):
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
 gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
 dependents, the CLI and the desktop app when affected, and the publish checks; the typechecks of those folders run together, each `tsc` on its own heavy slot; no test suite, which runs only in the train's full gate), with `--push`
-pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`.
+pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`. Before that gate the lane's own tree is brought up to the generator: `lane gate` regenerates the
+generated contexts files (`contexts/project/index.md`, anatomy.md's block and slices, every `*-sections.md`: what `starci contexts anatomy --execute` writes, and
+what the train's full gate compares) and commits those that changed with the lane (cli/src/harness/lane-generated.ts), so a lane that edits a page never lands a
+stale size line. `contexts anatomy --execute` writes into the harness of `--cwd` (else of the working folder), never into the checkout the CLI was built in.
 
 **The install of a fresh lane is shared.** When the lane's lockfiles and manifests equal those of a reference install, its `node_modules` is made
 by hard links from the repository's install cache (`<lanes>/_install-cache/<repo>/<key>`, keyed by the bytes of every lockfile, manifest and

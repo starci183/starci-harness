@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 26 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+- [authority/lanes.md](../authority/lanes.md) · 27 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
   - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Hotfix · Shots and looks: the one web and one api server of the app · Processes and cleanup
 - [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
@@ -184,7 +184,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 10 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
+- [project/branches.md](../project/branches.md) · 11 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 A lane lands on `dev` itself: one squashed commit, right after its gate · PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
 - [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
@@ -252,7 +252,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
 - [ui/components/data-views.md](../ui/components/data-views.md) · 9 KB — Contract: data-views.
   - sections: Meter reading voice · Bars follow HeroUI ProgressBar sizes · Job · Choose
-- [ui/components/diagram.md](../ui/components/diagram.md) · 11 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 12 KB — Contract: Diagram.
   - sections: Job · Choose · The canvas · Variants · Size · States · Accessibility · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Popover width · Popover size · Popover edge and the phone sheet · Scrolling · Size · States · Owner split · Rules
