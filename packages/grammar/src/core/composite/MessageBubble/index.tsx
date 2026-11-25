@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { AgentName } from "../../leaf/AgentName/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { MessageActions, type MessageActionsConfig } from "../MessageActions/index.js"
+import { MessageMarkdown } from "./MessageMarkdown.js"
 import type { NoChildren } from "../../tier.js"
 import { DEFAULT_REACTION_LABELS, ReactionBar, ReactionPill, topReaction, useReactionBursts, type MessageReaction, type MessageReactionLabels } from "./Reactions.js"
 
@@ -40,6 +41,12 @@ type MessageBubbleMessage = {
     readonly error?: never
     /** The message body. Plain text keeps its line breaks. */
     readonly body: ReactNode
+    /**
+     * How a string `body` is read (0.60.0). `plain` (default): words, line breaks kept. `markdown`: safe Markdown (bold, italic, strikethrough, inline code, links,
+     * lists; nothing else: no heading, image, table or raw HTML, a link off http(s), mailto, tel is its words) drawn by `MessageMarkdown`. A body that is not a string
+     * is drawn as given.
+     */
+    readonly format?: "plain" | "markdown"
     readonly side?: MessageBubbleSide
     /** Who wrote it, shown above the body. Omit on consecutive messages from the same author. */
     readonly author?: ReactNode
@@ -158,8 +165,9 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
 
 /** One resolved message (the part that holds state: the long press, the reaction bursts). */
 const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
-    const { body, side = "incoming", author, isAgent = false, agentLabel, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS, messageActions } = props
+    const { body: rawBody, format = "plain", side = "incoming", author, isAgent = false, agentLabel, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS, messageActions } = props
     const content = props.content ?? "text"
+    const body = format === "markdown" && typeof rawBody === "string" ? <MessageMarkdown source={rawBody} /> : rawBody
     const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar">{actions}</div>
     const hasHead = (author != null || meta != null || status != null) && (groupPosition === "single" || groupPosition === "first")
     const hasReactions = reactions !== undefined && reactions.some((reaction) => reaction.count > 0)
@@ -205,6 +213,7 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
             data-grammar-bubble-footer={footer == null ? "false" : "true"}
             data-grammar-bubble-measure={measure}
             data-grammar-bubble-content={content === "card" ? "card" : undefined}
+            data-grammar-bubble-format={format === "markdown" && typeof rawBody === "string" ? "markdown" : undefined}
             data-grammar-bubble-actions-placement={actions == null ? undefined : actionsPlacement}
             data-grammar-bubble-group={groupPosition}
             data-grammar-bubble-reactions={hasReactions ? "true" : undefined}

@@ -111,3 +111,31 @@ export const avatarGroupTiles = (total: number, max: number = AVATAR_GRID_CAPACI
     const tiles: AvatarTile[] = Array.from({ length: shown }, (_, index) => ({ kind: "member", index }))
     return hidden === 0 ? tiles : [...tiles, { kind: "more", count: hidden }]
 }
+
+/** Where a member of the Zalo-style cluster stands in its square: the four corners of the 2 by 2, or the middle of the foot for a third member. `whole` is a lone member. */
+export type AvatarClusterSlot = "whole" | "top-start" | "top-end" | "bottom-start" | "bottom-end" | "bottom-centre"
+
+/** What one cell of the cluster holds: a member (by index) or the count of every member of the group. */
+export type AvatarClusterCell = { readonly slot: AvatarClusterSlot } & (
+    | { readonly kind: "member"; readonly index: number }
+    | { readonly kind: "count"; readonly total: number; readonly hidden: number }
+)
+
+/**
+ * THE CLUSTER (owner 2026-11-26, "nhóm k cần hình tròn"): a group is NOT one big circle cut into tiles; it is small round member avatars set close in a 2 by 2
+ * square, the way Zalo draws a group. One member is the whole avatar. Two stand on the diagonal (the first top start, the second bottom end). Three are two on
+ * top and one in the middle of the foot. Four or more are three members (top start, top end, bottom start) and, bottom end, a count cell that reads the number of
+ * members of the whole group (4, 5, 29), `hidden` of which are not drawn.
+ */
+export const avatarClusterCells = (total: number): ReadonlyArray<AvatarClusterCell> => {
+    if (total <= 0) return []
+    if (total === 1) return [{ kind: "member", index: 0, slot: "whole" }]
+    if (total === 2) return [{ kind: "member", index: 0, slot: "top-start" }, { kind: "member", index: 1, slot: "bottom-end" }]
+    if (total === 3) return [{ kind: "member", index: 0, slot: "top-start" }, { kind: "member", index: 1, slot: "top-end" }, { kind: "member", index: 2, slot: "bottom-centre" }]
+    return [
+        { kind: "member", index: 0, slot: "top-start" },
+        { kind: "member", index: 1, slot: "top-end" },
+        { kind: "member", index: 2, slot: "bottom-start" },
+        { kind: "count", total, hidden: total - 3, slot: "bottom-end" },
+    ]
+}

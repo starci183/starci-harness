@@ -515,12 +515,14 @@ presentation:
     ownership: FE-RULE-OWNERSHIP
     implements: COLLECTION-3
     requirement: |
-      Compose AvatarGroup layout="grid" at one Avatar size, including size="control". Two members
-      split the round mark; three show one member above two below; four occupy a 2 by 2 grid. Every cell
-      has a ring in the surface colour. At five or more members the first three remain visible and the
-      fourth cell shows the total member count, such as 5 or 30, through Avatar's shared fallback path.
-      The row layout keeps its +N count. overflowLabel receives the hidden-member count in both layouts
-      for accessible naming, while the grid digits show the total. A single person uses Avatar.
+      Compose AvatarGroup layout="grid" at one Avatar size (sm 24 or md 40). The group is the Zalo-style
+      cluster, never one big circle cut into tiles: small round member avatars set close in a 2 by 2
+      inside a square that is not clipped. Two members stand on the diagonal; three are two above one;
+      four or more are three members and a count cell that shows the total member count, such as 4, 5 or
+      30. A group photo (`photo`) replaces the cluster. Every member keeps a ring in the surface colour
+      where circles touch. The row layout keeps its +N count. overflowLabel receives the hidden-member
+      count in both layouts for accessible naming, while the grid digits show the total. A single person
+      uses Avatar; a customer's channel is Avatar's `channel` badge.
       Pass an uploaded image as `src`; otherwise Grammar always draws the bundled DiceBear `initials`
       style, with the first letter of the first word and the first letter of the last word of `name`
       (one word supplies one letter). `seed`, the user or entity id, determines colour when present;

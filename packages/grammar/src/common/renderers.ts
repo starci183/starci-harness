@@ -66,6 +66,8 @@ export { EmptyNotice, type EmptyNoticeIllustration, type EmptyNoticeProps, type 
 export { MessageBubble, REACTION_EMOJI, type MessageBubbleGroupPosition, type MessageBubbleProps, type MessageBubbleSide, type MessageReaction, type MessageReactionLabels } from "../core/composite/MessageBubble/index.js"
 export { EntitySummaryCard, ENTITY_SUMMARY_FIGURE_COUNT, type EntitySummaryCardProps, type EntitySummaryDelta, type EntitySummaryFigure, type EntitySummaryGroup } from "../core/frame/EntitySummaryCard/index.js"
 export { MessageCard, type MessageCardAction, type MessageCardProps } from "../core/composite/MessageCard/index.js"
+export { MessageFrame, MESSAGE_FRAME_MAX_ACTIONS, type MessageFrameAction, type MessageFrameCard, type MessageFrameField, type MessageFrameProps } from "../core/composite/MessageFrame/index.js"
+export { MessageMarkdown, type MessageMarkdownProps } from "../core/composite/MessageBubble/MessageMarkdown.js"
 export { MessageStatus, type MessageStatusProps, type MessageStatusReaders } from "../core/composite/MessageStatus/index.js"
 export { MessageActions, MESSAGE_REACTION_PICKER_EMOJI, type MessageActionsConfig, type MessageActionsLabels, type MessageActionsProps, type MessageActionsSide } from "../core/composite/MessageActions/index.js"
 export { Inset, type InsetProps } from "../core/frame/Inset/index.js"

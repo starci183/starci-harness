@@ -3723,6 +3723,22 @@
         padding-inline: var(--grammar-pane-inset-inline);
     }
 
+    /*
+     * The empty thread (0.60.0, DNA-COMMON-CHAT-EMPTY-CENTRED): messages sit at the foot of the thread, but a thread with nothing to show is one notice in the
+     * MIDDLE of the message area on both axes, never pushed to the foot with the messages' gravity. The frame's `empty` slot sets the attribute; a bare empty
+     * notice as the thread's only child is centred the same way.
+     */
+    .starci-core-chat-frame-thread-content:is([data-grammar-chat-empty="true"], :has(> .starci-core-empty-notice:only-child)) {
+        justify-content: center;
+        align-items: center;
+    }
+
+    .starci-core-chat-frame-thread-content:is([data-grammar-chat-empty="true"], :has(> .starci-core-empty-notice:only-child)) > :is(.starci-core-empty-notice, [data-component="EmptyNotice"]) {
+        flex: 0 0 auto;
+        max-inline-size: min(100%, 28rem);
+        margin-block: auto;
+    }
+
     .starci-core-chat-frame-footer {
         box-sizing: border-box;
         display: flex;
@@ -5289,7 +5305,7 @@
         --avatar-size: var(--grammar-avatar-sm-size);
         inline-size: var(--grammar-avatar-sm-size);
         block-size: var(--grammar-avatar-sm-size);
-        border-radius: var(--grammar-radius-pill);
+        border-radius: var(--grammar-radius-round);
     }
 
     .starci-core-avatar-skeleton[data-grammar-avatar-size] > * {
@@ -6371,6 +6387,35 @@
     .starci-core-message-card-head { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-body { min-width: 0; max-width: 100%; }
     .starci-core-message-card-actions { display: flex; min-width: 0; max-width: 100%; flex-flow: row wrap; align-items: center; gap: var(--grammar-inline-gap); }
+
+    /*
+     * The compact card of a chat frame (0.60.0, MessageFrame): the notification card a sender's structured frame becomes, tighter than the default card (a row step of
+     * inset, an inline gap between its parts), its status dot level with the title's first line, its field rows the compact description list.
+     */
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body:has(> .starci-core-message-card[data-grammar-message-card-density="compact"]) {
+        padding: var(--grammar-row-gap);
+    }
+
+    .starci-core-message-card[data-grammar-message-card-density="compact"] { gap: var(--grammar-inline-gap); }
+    .starci-core-message-card[data-grammar-message-card-density="compact"] .starci-core-message-card-head { flex-wrap: nowrap; }
+    .starci-core-message-card[data-grammar-message-card-density="compact"] .starci-core-message-card-head > [data-component="StatusDot"] { flex: none; }
+    .starci-core-message-card[data-grammar-message-card-density="compact"] .starci-core-message-card-actions { padding-block-start: var(--grammar-identity-gap); }
+
+    /* A frame adds no box of its own: its message (a card or a bubble) is the thread's child, so the thread's gap, alignment and grouping stay the message's. */
+    .starci-core-message-frame { display: contents; }
+
+    /*
+     * Markdown inside a bubble (0.60.0, MessageMarkdown): the subset a message needs, set to the bubble's own size and foreground. Paragraphs touch the bubble's lines
+     * (no outer margin), a second block is one row step below, a list is indented with its markers, a nested list tucks under its item.
+     */
+    .starci-core-message-markdown { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); white-space: normal; }
+    .starci-core-message-markdown > p { margin: 0; white-space: pre-wrap; }
+    .starci-core-message-markdown :is(ul, ol) { margin: 0; padding-inline-start: var(--grammar-inset-card); }
+    .starci-core-message-markdown ul { list-style: disc; }
+    .starci-core-message-markdown ol { list-style: decimal; }
+    .starci-core-message-markdown li { white-space: pre-wrap; }
+    .starci-core-message-markdown li > :is(ul, ol) { margin-block-start: var(--grammar-identity-gap); }
+    .starci-core-message-markdown :is(strong) { font-weight: var(--grammar-weight-semibold); }
 
     .starci-core-message-bubble-head {
         display: flex;

@@ -9,10 +9,10 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { AVATAR_INKS, AVATAR_PALETTE, avatarGroupTiles, avatarHue, avatarInitials, avatarInk } from "../src/core/leaf/Avatar/identity.ts"
+import { AVATAR_INKS, AVATAR_PALETTE, avatarClusterCells, avatarGroupTiles, avatarHue, avatarInitials, avatarInk } from "../src/core/leaf/Avatar/identity.ts"
 import { avatarSvg } from "../src/core/leaf/Avatar/dicebear.ts"
 import { avatarGroupSlots } from "../src/core/leaf/Avatar/identity.ts"
-import { Avatar } from "../src/core/leaf/Avatar/index.tsx"
+import { Avatar, CHANNEL_LOGOS } from "../src/core/leaf/Avatar/index.tsx"
 import { AgentName } from "../src/core/leaf/AgentName/index.tsx"
 import { ListRow } from "../src/core/composite/ListRow/index.tsx"
 import { MessageBubble } from "../src/core/composite/MessageBubble/index.tsx"
@@ -170,20 +170,56 @@ const group = (count: number, extra: Record<string, unknown> = {}): string =>
     render(createElement(AvatarGroup, { label: "Nhóm", items: people(count), layout: "grid", overflowLabel: (hidden: number) => `${hidden} người khác`, ...extra }))
 const cells = (markup: string): string => /data-grammar-avatar-cells="(\d+)"/.exec(markup)?.[1] ?? ""
 
-test("group: the tiles in the markup, each with that member's initials and colour", () => {
+test("group: the cluster in the markup, each member round with its initials and colour; four or more are three members and the headcount", () => {
     for (const [count, expected] of [[1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "4"], [12, "4"]] as const) assert.equal(cells(group(count)), expected, `${count} members`)
-    const four = group(4)
-    const drawn = images(four)
-    assert.deepEqual(drawn.map(lettersOf), ["NA", "TB", "ĐH", "LĐ"])
-    assert.ok(!four.includes("data-grammar-avatar-count"))
-    people(4).forEach((member, index) => assert.equal(fillOf(drawn[index] ?? ""), AVATAR_PALETTE[avatarHue(member.name)]?.hex, member.name))
+    const three = group(3)
+    const drawn = images(three)
+    assert.deepEqual(drawn.map(lettersOf), ["NA", "TB", "ĐH"])
+    assert.ok(!three.includes("data-grammar-avatar-count"))
+    people(3).forEach((member, index) => assert.equal(fillOf(drawn[index] ?? ""), AVATAR_PALETTE[avatarHue(member.name)]?.hex, member.name))
+    assert.deepEqual(letters(group(4)), ["NA", "TB", "ĐH", "4"], "four members: three drawn and the count cell reads 4")
 })
 
-test("group: five or more show +N (the members that do not fit) in the last tile", () => {
+test("group: the cluster's slots (Zalo): two on the diagonal, three as two over one, four or more as three and the count (owner 2026-11-26)", () => {
+    const slots = (count: number): string[] => avatarClusterCells(count).map((cell) => cell.slot)
+    assert.deepEqual(slots(1), ["whole"])
+    assert.deepEqual(slots(2), ["top-start", "bottom-end"])
+    assert.deepEqual(slots(3), ["top-start", "top-end", "bottom-centre"])
+    assert.deepEqual(slots(4), ["top-start", "top-end", "bottom-start", "bottom-end"])
+    assert.deepEqual(slots(29), slots(4))
+    assert.deepEqual(avatarClusterCells(29).at(-1), { kind: "count", total: 29, hidden: 26, slot: "bottom-end" })
+    assert.deepEqual(avatarClusterCells(0), [])
+    for (const count of [2, 3, 5]) {
+        const html = group(count)
+        const marked = [...html.matchAll(/data-grammar-cluster-slot="([a-z-]+)"/g)].map((match) => match[1])
+        assert.deepEqual(marked, slots(count), `${count} members: each cell names its slot in the markup`)
+    }
+})
+
+test("group: the cluster is not one circle: no clip, no radius on the group, every member and the count cell its own circle", () => {
+    const css = read("common/components-avatar-group.css")
+    const cluster = /\.starci-core-avatar-cluster \{([^}]*)\}/u.exec(css)?.[1] ?? ""
+    assert.ok(cluster.length > 0)
+    assert.doesNotMatch(cluster, /overflow|border-radius/u, "the cluster itself neither clips nor rounds")
+    const member = /\.starci-core-avatar-cluster > :is\(\.starci-core-avatar-group-member, \.starci-core-avatar-group-count\) \{([^}]*)\}/u.exec(css)?.[1] ?? ""
+    assert.match(member, /border-radius: var\(--grammar-radius-round\) !important;/u)
+    assert.match(member, /aspect-ratio: 1 \/ 1;/u)
+    assert.ok(!/avatar-group-grid/u.test(css), "the old clipped grid is gone")
+    assert.ok(!group(5).includes("starci-core-avatar-group-grid"))
+})
+
+test("group: a group photo overrides the cluster: one round Avatar of the same size named by the label", () => {
+    const html = group(5, { photo: "https://example.com/group.png" })
+    assert.ok(html.includes('data-grammar-avatar-photo="true"') && html.includes('data-grammar-avatar-cells="1"'))
+    assert.ok(!html.includes("data-grammar-cluster-slot") && !html.includes("data-grammar-avatar-count"), "no member and no count while a photo stands")
+    assert.ok(html.includes('aria-label="Nhóm"'), "the group is still named by its label")
+})
+
+test("group: five or more members: the count cell reads the headcount (5, 7), its label counts those not drawn", () => {
     const five = group(5)
     assert.ok(five.includes("data-grammar-avatar-count"))
-    assert.deepEqual(letters(five), ["NA", "TB", "ĐH", "+2"])
-    assert.deepEqual(letters(group(7)).slice(-1), ["+4"])
+    assert.deepEqual(letters(five), ["NA", "TB", "ĐH", "5"])
+    assert.deepEqual(letters(group(7)).slice(-1), ["7"])
     assert.ok(five.includes('aria-label="2 người khác"'))
 })
 
@@ -209,13 +245,14 @@ test("group: the row follows the same overflow rule: max - 1 members, then +N fo
     assert.deepEqual(avatarGroupSlots(3, 0), { shown: 1, hidden: 2 }, "max is at least 2 slots")
 })
 
-test("group: the grid and the row count the same N, and the grid never exceeds its 2 by 2", () => {
+test("group: the cluster never exceeds its 2 by 2 whatever `max` says, and the row keeps the +N of what it hides", () => {
     for (const count of [5, 6, 9]) {
-        const grid = group(count)
+        const grid = group(count, { max: 12 })
+        assert.equal(cells(grid), "4", `${count} items`)
+        assert.equal(letters(grid).slice(-1)[0], String(count), `${count} items: the headcount`)
         const row = render(createElement(AvatarGroup, { label: "Nhóm", items: people(count), overflowLabel: (hidden: number) => `${hidden} người khác` }))
-        assert.equal(letters(grid).slice(-1)[0], letters(row).slice(-1)[0], `${count} items`)
+        assert.equal(letters(row).slice(-1)[0], `+${count - 3}`, `${count} items: the row hides the rest`)
     }
-    assert.equal(cells(group(9, { max: 12 })), "4")
     assert.deepEqual(avatarGroupTiles(5, 3).map((tile) => (tile.kind === "member" ? "m" : `+${tile.count}`)), ["m", "m", "+3"])
 })
 
@@ -251,7 +288,7 @@ test("group: people and marks share one group, in both layouts, each named once,
     const grid = render(createElement(AvatarGroup, { label: "Kênh", layout: "grid", items: providers, overflowLabel: none }))
     assert.equal(cells(grid), "4")
     assert.equal((grid.match(/data-grammar-avatar-mark=/g) ?? []).length, 3)
-    assert.ok(grid.includes('aria-label="Zalo"') && grid.includes('aria-label="Nguyễn Văn An"'))
+    assert.ok(grid.includes('aria-label="Zalo"') && grid.includes('aria-label="Facebook"'), "four items: three drawn, the fourth is in the count cell")
 })
 
 test("danger: tone=danger rings an item in the danger token, drawn as an outline in its own box, never an invisible area", () => {
@@ -402,8 +439,9 @@ test("the +N mark is the neutral muted pair at both sizes (owner: \"+2 màu mute
     for (const size of ["sm", "md"] as const) {
         for (const layout of ["row", "grid"] as const) {
             const html = render(createElement(AvatarGroup, { label: "Nhóm", items: people(7), size, layout, overflowLabel: (hidden: number) => `${hidden} khác` }))
-            const overflow = /<span[^>]*data-grammar-avatar-overflow-mark="muted"[^>]*>\+\d+<\/span>/u.exec(html)?.[0]
-            assert.ok(overflow !== undefined, `${size} ${layout}: one muted +N`)
+            // The row reads "+N" (the hidden ones); the cluster's cell reads the whole headcount, no plus (Zalo).
+            const overflow = (layout === "row" ? /<span[^>]*data-grammar-avatar-overflow-mark="muted"[^>]*>\+\d+<\/span>/u : /<span[^>]*data-grammar-avatar-overflow-mark="muted"[^>]*>\d+<\/span>/u).exec(html)?.[0]
+            assert.ok(overflow !== undefined, `${size} ${layout}: one muted count`)
             assert.doesNotMatch(overflow, /style=|data-grammar-avatar-hue|src=/u, `${size} ${layout}: no generated colour`)
             assert.doesNotMatch(html, /data:image\/svg\+xml;utf8,[^"]*%2B\d/u, `${size} ${layout}: no hashed +N image`)
         }
@@ -412,4 +450,40 @@ test("the +N mark is the neutral muted pair at both sizes (owner: \"+2 màu mute
     assert.match(rule, /background: var\(--default\);/u)
     assert.match(rule, /color: var\(--muted\);/u)
     assert.doesNotMatch(rule, /accent|hue/u)
+})
+
+test("round: every circle avatar is a square box clipped by a 50% radius, at both sizes, never squeezed or stretched (owner 2026-11-26)", () => {
+    const css = read("common/components-navigation.css")
+    const rule = /\.starci-core-avatar:is\(\[data-grammar-avatar-shape="circle"\], :not\(\[data-grammar-avatar-shape\]\)\) \{([^}]*)\}/u.exec(css)?.[1] ?? ""
+    assert.match(rule, /aspect-ratio: 1 \/ 1;/u)
+    assert.match(rule, /border-radius: var\(--grammar-radius-round\);/u)
+    assert.match(rule, /overflow: hidden;/u)
+    assert.match(rule, /min-inline-size: var\(--avatar-size\);/u)
+    assert.equal(/--grammar-radius-round: 50%;/u.test(read("common/ramps.css")), true)
+    for (const size of ["sm", "md"] as const) {
+        const html = render(createElement(Avatar, { name: "Lễ Tân", size }))
+        assert.ok(html.includes('data-grammar-avatar-shape="circle"') && html.includes(`data-grammar-avatar-size="${size}"`), size)
+    }
+})
+
+test("channel: a customer's avatar carries a small channel badge in its corner, outside the avatar's round clip, named by the channel", () => {
+    const html = render(createElement(Avatar, { name: "Nguyễn Văn An", channel: "messenger" }))
+    assert.ok(html.includes("starci-core-avatar-badged") && html.includes('data-grammar-avatar-channel="messenger"'))
+    assert.ok(html.indexOf("starci-core-avatar-channel") > html.indexOf("starci-core-avatar-initials"), "the badge follows the avatar, a sibling and not inside it")
+    assert.ok(html.includes('aria-label="Messenger"'), "the brand's name")
+    assert.match(read("common/components-navigation.css"), /\[data-grammar-avatar-channel="messenger"\] \{ --starci-avatar-channel-ink: var\(--grammar-channel-messenger\); \}/u, "its colour is a token chosen by the channel")
+    assert.match(read("common/ramps.css"), /--grammar-channel-messenger: #0866ff;/u)
+    assert.ok(html.includes('role="img"') && html.includes('d="'), "a logo path, named")
+    assert.ok(render(createElement(Avatar, { name: "An", channel: "zalo", channelLabel: "Tin nhắn Zalo" })).includes('aria-label="Tin nhắn Zalo"'), "the app's own words win")
+    assert.ok(render(createElement(Avatar, { name: "An", channel: "email" })).includes('aria-label="Email"'), "email is Grammar's own envelope")
+    assert.ok(!render(createElement(Avatar, { name: "An" })).includes("starci-core-avatar-badged"), "no channel, no wrapper")
+    for (const channel of Object.keys(CHANNEL_LOGOS) as Array<keyof typeof CHANNEL_LOGOS>) {
+        const logo = CHANNEL_LOGOS[channel]
+        assert.ok(logo.path.length > 40 && logo.label.length > 0, channel)
+    }
+    for (const channel of ["messenger", "instagram", "facebook", "zalo", "whatsapp", "telegram", "gmail"] as const) assert.ok(channel in CHANNEL_LOGOS, channel)
+    const css = read("common/components-navigation.css")
+    const badge = /\.starci-core-avatar-channel \{([^}]*)\}/u.exec(css)?.[1] ?? ""
+    assert.match(badge, /border-radius: var\(--grammar-radius-round\);/u)
+    assert.match(badge, /aspect-ratio: 1 \/ 1;/u)
 })

@@ -10,6 +10,7 @@ import type { IconSource } from "../Icon/index.js"
 import type { NoChildren } from "../../tier.js"
 import { isToneSlot, toneSlotStyle, type ToneSlot } from "../../toneSlot.js"
 import { TablerMessageDots } from "../Icon/tabler.js"
+import { CHANNEL_LOGOS } from "./channelLogos.js"
 
 /**
  * The two round-mark sizes (owner 2026-11-22: "giữ 2 size phổ biến 40 và 24 thôi, không có 32. 24 là size icon, avatargroup lúc này như icon, còn 40 là size phổ thông"):
@@ -24,6 +25,13 @@ export type AvatarSize = "sm" | "md"
  */
 export type AvatarKind = "person" | "agent" | "logo"
 export type AvatarShape = "circle" | "square" | "rounded"
+
+/**
+ * The channel a customer writes from, drawn as a small round badge on the avatar's corner (`Avatar channel`): the brand logos of `CHANNEL_LOGOS` (simple-icons:
+ * Messenger, Instagram, Facebook, Zalo, WhatsApp, Telegram, TikTok, Gmail, LINE, Viber, WeChat, X, YouTube, Discord, Google Chat) and Grammar's own `email` envelope for a
+ * mailbox no brand names.
+ */
+export type AvatarChannel = keyof typeof CHANNEL_LOGOS | "email"
 
 /** The vendor size each step stands on; the sheet draws `sm` at 24px (`--grammar-avatar-sm-size`) and `md` at 40px (`--grammar-avatar-md-size`). */
 export const vendorAvatarSize = (size: AvatarSize): "sm" | "md" => size
@@ -54,11 +62,20 @@ export type AvatarProps = NoChildren & {
      * A `ToneSlot` (`{ soft, ink }`, 0.55.1): the initials on the app's own soft pair, for an identity palette the app owns (which colour a team or an agent wears).
      */
     readonly tone?: AvatarTone | ToneSlot
+    /**
+     * The channel this person writes from (0.60.0, owner 2026-11-26): a small round badge with the channel's logo on the avatar's bottom end corner, on a white plate
+     * ringed in the surface so it reads on a photo and on initials alike. It is outside the avatar's round clip, never inside it. The badge is named by `channelLabel`
+     * (the brand's own name when omitted) so the avatar and its channel are one image for assistive technology.
+     */
+    readonly channel?: AvatarChannel
+    /** The channel's name in the app's language ("Email", "Tin nhắn Zalo"); the brand's name when omitted. Only with `channel`. */
+    readonly channelLabel?: string
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
     readonly isLoading?: boolean
 }
 
-export { avatarInitials, avatarHue, avatarGroupTiles, avatarGroupSlots, AVATAR_PALETTE, type AvatarTile } from "./identity.js"
+export { avatarInitials, avatarHue, avatarGroupTiles, avatarGroupSlots, avatarClusterCells, AVATAR_PALETTE, type AvatarTile, type AvatarClusterCell, type AvatarClusterSlot } from "./identity.js"
+export { CHANNEL_LOGOS } from "./channelLogos.js"
 
 /**
  * The generated avatar image (DiceBear Initials, drawn locally): two letters on a solid Grammar tone, the colour from `seed` (else the name). The same image
@@ -155,7 +172,31 @@ export type AvatarMark = {
     readonly tone?: Exclude<AvatarTone, "default" | "danger">
 }
 
-const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
+/** The badge: one logo on a round plate. The brand colour is a token of ramps.css chosen by the channel attribute; the envelope is Grammar's own outline mark. */
+export const AvatarChannelBadge = ({ channel, label }: { readonly channel: AvatarChannel; readonly label?: string }) => {
+    const brand = channel === "email" ? undefined : CHANNEL_LOGOS[channel]
+    const name = label ?? brand?.label ?? "Email"
+    return (
+        <span
+            role="img"
+            aria-label={name}
+            className="starci-core-avatar-channel"
+            data-component="AvatarChannel"
+            data-grammar-avatar-channel={channel}
+        >
+            {brand === undefined ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                    <rect x={3} y={5} width={18} height={14} rx={2.5} />
+                    <path d="m3.5 7.5 8.5 6 8.5-6" />
+                </svg>
+            ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d={brand.path} /></svg>
+            )}
+        </span>
+    )
+}
+
+const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", channel, channelLabel, isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     const { plate, style } = avatarToneProps(tone)
     if (isLoading) return (
@@ -165,7 +206,7 @@ const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = 
             <Skeleton shape="circle" size={vendorAvatarSize(size)} />
         </span>
     )
-    return (
+    const avatar = (
         <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
             data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
             data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
@@ -174,6 +215,13 @@ const AvatarInner = ({ name, src, seed, kind = "person", mark, fallback, size = 
             size={vendorAvatarSize(size)}>
             {avatarParts(name, src, fallback, seed, plate, mark)}
         </HeroAvatar>
+    )
+    if (channel === undefined) return avatar
+    return (
+        <span className="starci-core-avatar-badged" data-grammar-avatar-size={size} data-grammar-avatar-badged="true">
+            {avatar}
+            <AvatarChannelBadge channel={channel} {...(channelLabel === undefined ? {} : { label: channelLabel })} />
+        </span>
     )
 }
 

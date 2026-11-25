@@ -323,7 +323,7 @@ geometry under the inert skeleton. A color value is not a semantic status tone a
 ### Figure destinations
 
 Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`. Its whole cell is one named keyboard
-target through the root router; values retain their default-tone figure treatment (DISCIPLINE-2). Loading, disabled
+target through the root router and draws no chevron or arrow (`DNA-COMMON-FIGURE-LINK-CUE`: the pointer cursor and the row hover surface are the cue); values retain their default-tone figure treatment (DISCIPLINE-2). Loading, disabled
 figures and pending cards open nothing. A figure without `href` carries no follow handler or disabled destination state.
 ### Item actions
 
