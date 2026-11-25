@@ -78,16 +78,7 @@ const inputs = (over: Partial<QualityInputs> = {}): QualityInputs => ({
 
 test('the project target `auto` is the ratchet (owner 2026-11-25): read as such, recorded, and predicted against the base commit; `auto` on the patch is refused', () => {
   // The managed codecov.yml of a fresh scaffold (templates/app/quality-config/codecov.yml): project `target: auto`, threshold 0; the patch a number.
-  const ratchet = 'coverage:
-  status:
-    project:
-      default:
-        target: auto
-        threshold: 0%
-    patch:
-      default:
-        target: 80%
-';
+  const ratchet = ['coverage:', '  status:', '    project:', '      default:', '        target: auto', '        threshold: 0%', '    patch:', '      default:', '        target: 80%', ''].join('\n');
   assert.deepEqual(readCodecovTargets(ratchet), { project: RATCHET, patch: 80 });
   assert.deepEqual(readCodecovTargets(ratchet.replace('target: auto', 'target: AUTO')), { project: RATCHET, patch: 80 });
   assert.throws(() => readCodecovTargets(ratchet.replace('target: 80%', 'target: auto')), /codecov\.yml is not declared at coverage\.status\.patch\.default\.target/u);

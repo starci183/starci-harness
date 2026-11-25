@@ -15,7 +15,8 @@ import { init } from '../runtime/scripts/api/git/init.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 
 const HARNESS = { version: '1.1.0-alpha.3' };
-const JUDGED = /^(?:STACKS_|HFS_DOCKER_)/u;
+// HFS_DOC_ too: a runbook the starter writes cites only what the app holds (R270: a harness path like contexts/project/monitoring.md is missing in the app).
+const JUDGED = /^(?:STACKS_|HFS_DOCKER_|HFS_DOC_)/u;
 
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');

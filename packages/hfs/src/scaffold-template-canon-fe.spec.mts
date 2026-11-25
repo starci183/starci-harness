@@ -45,7 +45,8 @@ for (const edition of ['lite'] as const) {
     // The rendered fe/eslint.config.mjs composes the canon AND the selected family's Grammar lint (the starter selects core): a template the
     // family refuses (a Page header with no breadcrumbs, a Form inside a Section) is as red in a new app as a canon finding.
     assert.equal(hfs.grammar, 'core');
-    const config = shippedCanon([...starciFeConfig({ hfs }), ...coreGrammarConfig({ hfs })]);
+    // reason: loadHfs types `profile` as a string; the fe view it returns here is the profile 'fe' the family factory checks at run time.
+    const config = shippedCanon([...starciFeConfig({ hfs }), ...coreGrammarConfig({ hfs: hfs as Parameters<typeof coreGrammarConfig>[0]['hfs'] })]);
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-grammar/page-breadcrumbs')), 'the Grammar family rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-fe/base-props-atom')), 'the canon rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).some((id) => id.startsWith('@typescript-eslint/'))), 'the borrowed rules are on');

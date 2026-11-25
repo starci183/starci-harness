@@ -65,6 +65,9 @@ function grammarSource(root: string, entry: string): TypeContext {
 // reason: a source-free scan reads only workspaces and files of the type context.
 const EMPTY_CONTEXT = { workspaces: [], files: [] } as unknown as TypeContext;
 
+/** A globals.css importing each sheet, one `@import` a line. */
+const css = (...sheets: string[]): string => sheets.map(sheet => `@import "${sheet}";\n`).join('');
+
 const sourceFinding: MakeViolation = (_config, _file, _node, ruleId, message, details) => ({ ruleId, message, ...details });
 
 for (const edition of ['lite'] as const) {
@@ -93,9 +96,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(core.themeEntries, ['@starci/grammar/core/theme.css']);
     // An Offset Pop app as packages/grammar/README.md writes it: OffsetPopGrammarRoot from the family entry, its sheet and its optional palette.
     const root = fixture(context, edition, 'offset-pop', pop, {
-      'apps/web/src/app/globals.css': '@import "@starci/grammar/offset-pop/styles.css";
-@import "@starci/grammar/offset-pop/theme.css";
-',
+      'apps/web/src/app/globals.css': css('@starci/grammar/offset-pop/styles.css', '@starci/grammar/offset-pop/theme.css'),
     });
     const config = loadArchitectureConfig(root);
     assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'the family sheet and palette satisfy the style contract');
@@ -104,16 +105,12 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(findings('@starci/grammar/common'), [], 'the shared entry it re-exports stays admitted');
     assert.deepEqual(findings('@starci/grammar/core'), ['ARCH_GRAMMAR_EXPORT_BYPASS'], 'another family');
     const globals = path.join(root, 'apps/web/src/app/globals.css');
-    fs.writeFileSync(globals, '@import "@starci/grammar/common.css";
-');
+    fs.writeFileSync(globals, css('@starci/grammar/common.css'));
     assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'the common sheet stays admitted');
-    fs.writeFileSync(globals, '@import "@starci/grammar/offset-pop/theme.css";
-');
+    fs.writeFileSync(globals, css('@starci/grammar/offset-pop/theme.css'));
     assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId), ['ARCH_GRAMMAR_CONTRACT_INVALID'], 'a theme never replaces a base sheet');
-    fs.writeFileSync(globals, '@import "@starci/grammar/offset-pop/styles.css";
-@import "@starci/grammar/core/theme.css";
-');
-    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort(), ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'another family's palette');
+    fs.writeFileSync(globals, css('@starci/grammar/offset-pop/styles.css', '@starci/grammar/core/theme.css'));
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort(), ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], "another family's palette");
   });
 
   test(`architecture uses a selected contract's package, entries and peers without family literals (${edition})`, context => {

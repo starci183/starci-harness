@@ -90,15 +90,14 @@ test('a sync of the starter renders its managed sign-in files prettier-clean', a
   assert.deepEqual(await unformatted(root), []);
 });
 
-test('every file the starter scaffold writes passes the app's own prettier --check (format:check), not only the managed ones', async (t) => {
+test("every file the starter scaffold writes passes the app's own prettier --check (format:check), not only the managed ones", async (t) => {
   const { root, files } = scaffoldApp({
     name: 'demo',
     into: mkdtemp(t, 'starci-scaffold-prettier-'),
     harness: { version: '1.1.0-alpha.3' },
     presets: bundledPresets(),
     lock: (at: string) => {
-      fs.writeFileSync(path.join(at, 'package-lock.json'), '{}
-');
+      fs.writeFileSync(path.join(at, 'package-lock.json'), '{}\n');
       return { ok: true };
     },
     initGit: init,
