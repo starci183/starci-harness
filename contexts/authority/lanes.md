@@ -65,8 +65,8 @@ The gate judges the tree once per push, never the branch while a lane works, and
 
 A lane lands on dev, so every gate of this section is the FAST level, `app check --env prod --level dev`, once per push: the deps
 check (local-registry pins allowed where hfs.json declares `deps.devAllowsLocalRegistry`), types with its package builds and codegen,
-the lane's own tests (the unit specs its diff touches and the ones whose closure reaches a changed file), db and the owner's design
-approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED still blocks). The hfs rule sweep, the rule-188 first audits, the ui-audit
+the lane's own tests (the unit specs its diff touches and the ones whose closure reaches a changed file), and db (a screen's design needs no
+owner approval, owner decision 2026-11-25). The hfs rule sweep, the rule-188 first audits, the ui-audit
 stale and missing blocks, the nivoos package checks, the whole test suite, sonar and coverage run once at the main cut
 (`--level full`); a red full run is fixed in a hardening lane before the cut. screen.yaml and audit records may be completed there.
 

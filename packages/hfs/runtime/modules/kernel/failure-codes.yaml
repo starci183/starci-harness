@@ -3305,19 +3305,6 @@ HFS_APP_GALLERY_DESIGN_PAGE_MISSING:
   kind: check-finding
   localOnly: true
 
-HFS_APP_GALLERY_DESIGN_UNAPPROVED:
-  title: "A screen of a designed area has an approved design"
-  title_vi: "Màn hình thuộc khu thiết kế trước nhưng chưa có bản vẽ được duyệt"
-  meaning_vi: "Khu của màn hình có trong `areas` của .starcistacks/canvas/design.json (khu này vẽ trước rồi mới code), màn hình đã có trong gallery (explain.md hoặc ảnh), nhưng sổ không có mục cho nó hoặc mục chỉ ở trạng thái drafted."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-6): ở khu vẽ trước, không màn hình nào được code trước khi chủ dự án nói \"đẹp\" cho bản vẽ của nó."
-    - "Thêm một trạng thái mới (một thư mục màn hình) mà không vẽ, hoặc đưa khu vào `areas` trước khi các trang của nó được duyệt."
-    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Vẽ màn hình đó trên board bằng /claude-design, chờ chủ dự án duyệt rồi đặt approved; nếu khu chưa thiết kế xong thì bỏ nó khỏi `areas`."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
 HFS_APP_GALLERY_DESIGN_SHOT_MISSING:
   title: "A built design page records and holds its 1440 and 390 shots"
   title_vi: "Trang thiết kế đã built mà thiếu ảnh 1440 hoặc 390"
@@ -3370,19 +3357,6 @@ HFS_APP_GALLERY_ROUTE_AMBIGUOUS:
   kind: check-finding
   localOnly: true
 
-HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED:
-  title: "A change to a screen's source follows an approved canvas page"
-  title_vi: "Mã màn hình đổi nhưng trang canvas chưa được duyệt trước khi code"
-  meaning_vi: "Các commit kể từ nhánh gốc, chỉ mục hoặc cây làm việc đổi mã của một màn hình thuộc khu có trong .starcistacks/canvas/design.json, nhưng trang của màn hình trong sổ không có, chỉ ở trạng thái drafted, hoặc được duyệt (approvedAt) trước lần đổi mã mới nhất; thay đổi cũng không cập nhật mục của trang trong sổ."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-7): mọi thay đổi giao diện đi theo thứ tự canvas, rồi code, rồi gallery; sửa mã khi bản vẽ chưa được chủ dự án duyệt lại là đảo thứ tự đó."
-    - "Khu chưa quản lý bằng canvas (không có trong areas và không trang nào trong pages) thì không bị xét."
-    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Vẽ lại thay đổi trên canvas bằng /claude-design, chờ chủ dự án nói \"đẹp\" rồi đặt approved với approvedAt mới trong design.json, sau đó mới code; commit cùng thay đổi mục của trang."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
 HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   title: "A final screen records the options its critique weighed"
   title_vi: "Màn hình đã khớp (matches) nhưng explain.md thiếu mục Phương án đã cân nhắc"
@@ -3395,9 +3369,9 @@ HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   kind: check-finding
 
 HFS_APP_GALLERY_DESIGN_PENDING:
-  title: "A pending screen is skipped by the change gates, listed with its reason"
+  title: "A pending screen is skipped by the UI Audit, listed with its reason"
   title_vi: "Màn hình đánh dấu pending (đã duyệt nhưng chưa dựng được) được liệt kê kèm lý do, và nhắc bỏ dấu khi đã có ảnh thật"
-  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json có `pending: { reason }`: đã duyệt nhưng chưa dựng được vì chờ dữ liệu hoặc API, nằm trên một trạng thái query của route mà code đã đổi. Cổng đổi giao diện (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) và UI Audit bỏ qua nó. Mức info, không bao giờ chặn: mỗi lần chạy liệt kê mọi màn hình pending với lý do, và nhắc bỏ `pending` khi màn hình đã có ảnh thật trong cây làm việc."
+  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json có `pending: { reason }`: đã duyệt nhưng chưa dựng được vì chờ dữ liệu hoặc API, nằm trên một trạng thái query của route mà code đã đổi. UI Audit bỏ qua nó. Mức info, không bao giờ chặn: mỗi lần chạy liệt kê mọi màn hình pending với lý do, và nhắc bỏ `pending` khi màn hình đã có ảnh thật trong cây làm việc."
   causes_vi:
     - "Vi phạm R395 (PROJECT-GALLERY-6 mục 9): pending không phải đường tắt im lặng; nó phải có lý do khác rỗng, và chỉ dùng cho màn hình chưa dựng được."
     - "Màn hình đã được dựng và chụp nhưng design.json vẫn còn pending: cổng đổi giao diện đang bỏ qua một màn hình thật."

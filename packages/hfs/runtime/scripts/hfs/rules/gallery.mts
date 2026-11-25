@@ -9,7 +9,7 @@
 // and the coverage of the front end (PROJECT-GALLERY-4), judged from the explain.md files alone (the shots are local evidence):
 //   HFS_APP_GALLERY_ROUTE_MISSING      a `page.tsx` route of the front end has no screen folder whose explain.md `route` matches it and is not excluded in gallery/routes.json:
 //                                       blocks in `--env prod`, reported in `--env local` (the code is localOnly);
-// and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _UNAPPROVED, _SHOT_MISSING, _SHOT_STALE;
+// and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _SHOT_MISSING, _SHOT_STALE;
 // and the design board of the app (PROJECT-GALLERY-9, rules/gallery-board.mts): HFS_APP_GALLERY_BOARD_INVALID, _ROUTE_MISSING, _SECTION_UNMAPPED.
 import fs from 'node:fs';
 import path from 'node:path';

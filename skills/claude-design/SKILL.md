@@ -16,14 +16,13 @@ triggers: [user]
 The design pass is the app's gallery drawn before code. Where the canvas lives, how its screens map onto the gallery
 (ids, the eight states, the sizes), the note being the screen's `explain.md`, the lifecycle drafted → approved → built →
 matches with who sets each status, and what `starci app check` judges are owned by
-[PROJECT-GALLERY-6](../../contexts/project/gallery.md#project-gallery-6-an-area-can-be-drawn-before-code-the-design-canvas-mirrors-the-gallery-and-records-each-screens-approval).
+[PROJECT-GALLERY-6](../../contexts/project/gallery.md#project-gallery-6-an-area-can-be-drawn-before-code-the-design-canvas-mirrors-the-gallery-and-records-each-screens-design-status).
 This skill owns how a screen is designed and how the board is produced.
 
 ## When to use it
 
 Every UI change, not only a new area: any change a user can see (a redesign, a fix round, a moved region, a changed state or copy) starts here, on the
-screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns it and its check
-(`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A change to an existing page redraws or adjusts its page and concept note; the owner approves; only then is it coded.
+screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns it. A change to an existing page redraws or adjusts its page and concept note, and is coded at once: no owner approval is awaited (owner decision 2026-11-25), the owner fixes it later if needed.
 
 The canvas is a quick sketch: it fixes the direction (regions, the one primary action, the states), not a deep analysis, so a lane does not
 compare it with other products or weigh every alternative. That weighing happens after the code, in the final critique of PROJECT-GALLERY-7 item 3,
@@ -86,7 +85,7 @@ One **Opus lead** and up to **ten Sonnet lanes**, in the app's `.starcistacks/ca
 3. The assembler [kit/build.mjs](kit/build.mjs) joins the fragments in `NN` order into `<app>-design.html`.
 4. The lead reviews the board at full size, fixes what breaks the one product, sets each drawn screen `drafted` in
    `design.json`, publishes the board as an Artifact and records its link as `board`.
-5. The lifecycle then runs as PROJECT-GALLERY-6 item 5 says: the lead sets `approved` on the owner's "đẹp" for a page,
+5. The lifecycle then runs as PROJECT-GALLERY-6 item 5 says: `approved` is optional (the owner's "đẹp" is welcome, never awaited),
    the code lane builds and shoots it and sets `built`, the lead or a reviewer compares and sets `matches`.
 
 [references/production.md](references/production.md) has the brief template, the lane prompt, the assembler's
@@ -96,4 +95,4 @@ contract, the review checklist and each lifecycle step's commands.
 
 The Artifact link to the board and the committed canvas; per page, the screens drawn and the states left out with the
 reason; the `cần Grammar` and `cần API` items; the business questions for the owner. A fix round redraws only the pages
-the owner names, and a redrawn approved screen returns to `drafted`.
+the owner names, and a redrawn screen returns to `drafted`.

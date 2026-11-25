@@ -83,7 +83,7 @@ section, and only lists the pages matched before the rule as not final yet.
 
 Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
 
-- **Approved (the lead).** On the owner's "đẹp" for a page in chat: every screen of that page gets `status: approved`,
+- **Approved (the lead, optional).** Nothing waits for it; when the owner says "đẹp" for a page in chat, or the lead settles the drawing: every screen of that page gets `status: approved`,
   `approvedAt` (now, a full ISO timestamp with the zone such as 2026-11-17T09:30:00+07:00, never a bare date) and no `shots`; the area goes into `areas` once all its screens are approved.
 - **Built (the code lane).** Code the page with its `cần API` operations; shoot `gallery/pages/<area>/<screen>/` at 1440
   and 390; write its `explain.md` from the note by the table of [format.md](format.md#the-note-is-the-explainmd); set
@@ -91,11 +91,11 @@ Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
   ```
   node -e "const c=require('crypto'),f=require('fs');for(const w of ['1440','390'])console.log(w,c.createHash('sha256').update(f.readFileSync('gallery/pages/<area>/<screen>/'+w+'.png')).digest('hex'))"
   ```
-- **Matches (the lead or a reviewer, not the code lane).** Run the final critique below first. Open the shots beside the approved frames at full size; when
+- **Matches (the lead or a reviewer, not the code lane).** Run the final critique below first. Open the shots beside the drawn frames at full size; when
   they match and the record is written, set `status: matches`, `matchedAt` (now, a full ISO timestamp with the zone) and record the sha of the shots compared. A shot that differs goes back to the code
   lane; a design that must change is redrawn and returns to `drafted`.
 
-A UI change to a page that is already built enters this flow at step 1: its page is redrawn or adjusted (back to `drafted`, `approvedAt` and `shots` dropped), approved again, then coded and shot. PROJECT-GALLERY-7 owns the order; `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` flags code that skipped it.
+A UI change to a page that is already built enters this flow at step 1: its page is redrawn or adjusted (back to `drafted`, `approvedAt` and `shots` dropped), then coded and shot at once, with no owner approval to wait for. PROJECT-GALLERY-7 owns the order.
 
 `starci app check` then judges the manifest against the gallery (the `HFS_APP_GALLERY_DESIGN_*` codes of
 PROJECT-GALLERY-6).
