@@ -355,10 +355,14 @@ const TabsInner = (props: TabsProps) => {
     useLayoutEffect(() => {
         const frame = frameRef.current
         if (!isClientReady || frame === null || folds) return
+        const resizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => { reveal() })
+        let watched: HTMLElement | null = null
         const reveal = () => {
             const scroller = frame.querySelector<HTMLElement>(".tabs__list-container__scroller")
             const tab = frame.querySelector<HTMLElement>("[role='tab'][aria-selected='true']")
             if (scroller === null || tab === null) return
+            // The scroller narrows when a page control's gutter opens beside it (the frame keeps its width): watch the scroller too, so the tab is revealed clear of the control.
+            if (watched !== scroller) { if (watched !== null) resizes?.unobserve(watched); resizes?.observe(scroller); watched = scroller }
             const box = scroller.getBoundingClientRect()
             const at = tab.getBoundingClientRect()
             const delta = at.left < box.left ? at.left - box.left : at.right > box.right ? at.right - box.right : 0
@@ -370,7 +374,6 @@ const TabsInner = (props: TabsProps) => {
         // The vendor mounts its tabs after our commit and moves `aria-selected` itself: reveal when the strip is resized and when its tabs or their selection change.
         const mutations = new MutationObserver(reveal)
         mutations.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-selected"] })
-        const resizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(reveal)
         resizes?.observe(frame)
         // A viewport that changes and settles back to the strip's old width reports no resize to the observer, yet clamped the scroll: the window event does.
         window.addEventListener("resize", reveal)

@@ -2210,9 +2210,15 @@
 
     .starci-core-disclosure-title { flex: 0 1 auto; }
 
+    /*
+     * The trigger stands on the START edge of the content (Next v0.0.10 audit): the vendor indicator carries `margin-inline-start: auto`
+     * (built for a caret after the words), and as the FIRST child of the trigger it pushed the caret and the words to the far end of the row.
+     * The caret stands before the words here, so that margin is zero (the vendor sheet's layer is not ours to order, hence `!important`).
+     */
     .starci-core-disclosure-indicator,
     .starci-core-generic-accordion-indicator {
         flex: 0 0 auto;
+        margin-inline-start: 0 !important;
         transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 

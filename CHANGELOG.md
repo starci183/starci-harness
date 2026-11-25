@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.201 - 2026-11-25
 
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.14, @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px; the tab strip's page controls keep their own gutter, MermaidDiagram fits a wide drawing's width or lays it out top-down, the ProportionBar dot on a label's first line, the Disclosure trigger on the start edge) and @starci/gallery 0.1.26.
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.14, @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px) and @starci/gallery 0.1.26.
 
 ## 1.1.0-alpha.200 - 2026-11-25

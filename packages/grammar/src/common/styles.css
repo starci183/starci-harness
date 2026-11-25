@@ -1034,6 +1034,18 @@
         display: inline-flex;
     }
 
+    /*
+     * A tab strip reserves the width of each page control it shows (Next v0.0.10 audit, 390px: the next control covered the edge tab's label,
+     * "Patter", "Challeng"). The control (a 2rem IconButton standing 0.25rem past the frame's edge) gets a 2rem gutter on its side (the 32 step),
+     * so the scroller, its fade and the selected tab's reveal end before the control begins and no label lies under it.
+     */
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"]:has(> :is([data-left-scroll="true"], [data-left-right-scroll="true"])) {
+        padding-inline-start: 2rem;
+    }
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"]:has(> :is([data-right-scroll="true"], [data-left-right-scroll="true"])) {
+        padding-inline-end: 2rem;
+    }
+
     /* Preserve the Tabs glyph's vendor size and center, with a small IconButton hit target. */
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] > .starci-horizontal-scroll-prev { inset-inline-start: -0.25rem; }
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] > .starci-horizontal-scroll-next { inset-inline-end: -0.25rem; }
@@ -1590,8 +1602,12 @@
     .starci-core-proportion-bar[data-size="lg"] .starci-core-proportion-track { block-size: var(--grammar-bar-lg); border-radius: var(--grammar-bar-radius-lg); }
     .starci-core-proportion-segment { flex: 0 0 var(--starci-core-proportion-share); min-inline-size: 0; background: var(--accent); }
     .starci-core-proportion-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
-    .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
-    .starci-core-proportion-dot { flex: none; inline-size: 0.5rem; block-size: 0.5rem; border-radius: var(--grammar-radius-pill); background: var(--accent); }
+    /*
+     * A label that wraps keeps its dot on its FIRST line (Next v0.0.10 audit): the row aligns to the start, and the dot drops by half of
+     * what one line is taller than it, so it stands at the centre of the first line however many lines follow.
+     */
+    .starci-core-proportion-item { display: inline-flex; align-items: start; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-proportion-dot { flex: none; inline-size: 0.5rem; block-size: 0.5rem; margin-block-start: calc((1lh - 0.5rem) / 2); border-radius: var(--grammar-radius-pill); background: var(--accent); }
     .starci-core-proportion-label { color: var(--muted); }
     .starci-core-proportion-value { color: var(--foreground); font-weight: var(--grammar-weight-medium); font-variant-numeric: tabular-nums; }
     :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="success"] { background: var(--success); }

@@ -13,7 +13,7 @@ import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
 import { branchesWithoutDecision, describeDiagram, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
-import { INSETS, canvasHeight, openFloor, openView, type Box } from "./open.js"
+import { INSETS, canvasHeight, needsTopDown, openFloor, openView, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
@@ -50,7 +50,7 @@ export type MermaidDiagramProps = NoChildren & {
     readonly label: string
     /**
      * The least height of the canvas, kept by the loading, ready and error states alike so the page does not jump when the drawing arrives. A taller
-     * drawing grows the canvas up to 45rem; the first view fits the whole drawing when it stays readable (caption-role words at 11px or more, zoom 0.85), else opens at that zoom from the drawing's start and the reader pans and zooms. Default `sm`.
+     * drawing grows the canvas up to 45rem; the first view fits the whole drawing when it stays readable (caption-role words at 11px or more, zoom 0.85), else fits its width when that stays readable (a tall drawing pans down), else a flowchart or state diagram too wide to read across is laid out top-down, and what still does not fit opens at that zoom from the drawing's start and the reader pans and zooms. Default `sm`.
      */
     readonly height?: MermaidDiagramHeight
     /** The error title shown in the region when the source cannot be drawn; the source follows it as code. */
@@ -589,7 +589,12 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
     const known = keepIcons(given, iconNames)
     // On a phone a flowchart or a state diagram is laid out top-down, so it fits the width (the routing law, rule 4).
     const parsed: ParsedDiagram = isPhone && (known.kind === "flowchart" || known.kind === "state") ? { ...known, direction: "TB" } : known
-    if (parsed.kind === "flowchart" || parsed.kind === "state") return { kind: "graph", ...(await layoutDiagram(parsed, textWidth, measureLabel)) }
+    if (parsed.kind === "flowchart" || parsed.kind === "state") {
+        const across = await layoutDiagram(parsed, textWidth, measureLabel)
+        // A graph too wide to read across its frame is laid out top-down instead of opening cut at the readable floor (Next v0.0.10 audit).
+        if (parsed.direction === "LR" && needsTopDown(anchor.getBoundingClientRect().width, across)) return { kind: "graph", ...(await layoutDiagram({ ...parsed, direction: "TB" }, textWidth, measureLabel)) }
+        return { kind: "graph", ...across }
+    }
     if (parsed.kind === "sequence") {
         const layout = layoutSequence(parsed, textWidth)
         return { kind: "sequence", model: parsed, layout, width: layout.width, height: layout.height }
