@@ -28,6 +28,7 @@ import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.m
 import { workflowContextsFindings } from '../runtime/scripts/hfs/rules/workflow-contexts.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 import { renderTargets, retiredFiles } from '../sync/index.mjs';
+import { AGE_SHA256, AGE_VERSION } from '../sync/stack-images.mjs';
 import type { DeclaredStack } from '../sync/stack-images.mjs';
 import { declaredStack } from '../sync/stack-images.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
@@ -180,6 +181,45 @@ for (const edition of ['lite'] as const) {
     // The images are read from the registry by the workflow token, never pushed by a deploy.
     assert.equal(deploy.jobs.deploy.permissions.packages, 'read');
     assert.match(String(deploy.jobs.deploy.steps.find((step: Doc) => step.name === 'CI run of the commit').run), /no green CI run of this commit/u);
+  });
+
+  test(`every job that opens a sealed member installs a pinned, checksum-verified age right after SOPS (connect, deploy, rollback, sealed build values)`, (t) => {
+    for (const custody of [undefined, 'ci-key'] as const) {
+      const stack: DeclaredStack = { ...TWO, environments: [environment('staging'), { ...environment('production'), ...(custody ? { custody } : {}) }] };
+      const workflows = rendered(edition, stack);
+      const jobs: [string, Doc][] = [
+        ...['deploy', 'rollback'].map((id): [string, Doc] => [`stack-deploy ${id}`, parseWorkflow(workflows['stack-deploy']!).jobs[id]]),
+        ['images image-sealed', parseWorkflow(workflows['images']!).jobs['image-sealed']],
+      ];
+      for (const [label, job] of jobs) {
+        const steps: Doc[] = job.steps;
+        const sops = steps.findIndex((step) => step.name === 'install SOPS' || String(step.uses ?? '').startsWith('mdgreenwald/mozilla-sops-action@'));
+        const age = steps.findIndex((step) => step.name === 'install age');
+        const opens = steps.findIndex((step) => JSON.stringify(step).includes('secrets.SOPS_AGE_KEY'));
+        assert.ok(sops >= 0 && age === sops + 1, `${label}: install age comes right after install SOPS`);
+        assert.ok(opens > age, `${label}: age is installed before the key is read`);
+        const step = steps[age];
+        assert.equal(step.env.AGE_VERSION, AGE_VERSION);
+        assert.match(AGE_VERSION, /^v\d+\.\d+\.\d+$/u, 'a fixed release');
+        assert.equal(step.env.AGE_SHA256, AGE_SHA256);
+        assert.match(AGE_SHA256, /^[0-9a-f]{64}$/u, 'a full sha256');
+        const script = String(step.run);
+        assert.ok(script.indexOf('sha256sum -c -') > script.indexOf('curl ') && script.indexOf('sha256sum -c -') < script.indexOf('tar -xzf'), `${label}: the digest is checked before extraction`);
+        assert.match(script, /age\/age age\/age-keygen/u, 'both binaries are extracted');
+        assert.match(script, /GITHUB_PATH/u);
+        assert.doesNotMatch(script, /apt(-get)?\s+install|\|\s*(ba)?sh/u, 'no unpinned package install and no streamed installer');
+      }
+      // The deploy job's age step waits for the pause brake like every step after it.
+      const deploySteps: Doc[] = parseWorkflow(workflows['stack-deploy']!).jobs.deploy.steps;
+      assert.match(String(deploySteps.find((step) => step.name === 'install age')!.if), /steps\.pause\.outputs\.paused != 'true'/u);
+      // R251 and the supply-chain rules accept the rendered workflows.
+      const root = tree(t, workflows);
+      fs.mkdirSync(path.join(root, '.starcistacks'), { recursive: true });
+      const yaml = ['environments:', '  staging:', '    deploy: {}', '  production:', '    deploy:', custody ? `      custody: ${custody}` : '      {}'].join('\n');
+      fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `${yaml}\n`);
+      const findings = deployWorkflowFindings({ repoRoot: root, files: files(workflows), repo: { kind: 'app', edition }, isRoot: true, read: reader(workflows) });
+      assert.deepEqual(findings.map((finding) => finding.message), [], `custody ${custody ?? 'environment'}`);
+    }
   });
 
   test(`a ci-key environment dispatches by choice, binds no Environment for its name, reads the repository's CI key and pause, and R251 accepts it only so`, (t) => {

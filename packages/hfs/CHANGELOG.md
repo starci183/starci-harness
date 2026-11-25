@@ -2,10 +2,15 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.16 - 2026-11-26
+
+- The canon pins name @starci/grammar 0.59.4 and @starci/gallery 0.1.28.
+- Fixed (h-deploy-age, `templates/app/ci-workflows/github/workflows/stack-deploy.yml`, `sync/stack-images.mts`): the deploy and rollback jobs of `stack-deploy.yml`, and the sealed image jobs of `images.yml`, install `age` and `age-keygen` right after "install SOPS" (`installAgeSteps`). The `starci app stack connect` step stopped with "age or age-keygen is not installed" on a runner that had SOPS only, so no release tag could deploy. The step downloads the age v1.2.1 linux-amd64 tarball, checks its sha256 before extracting and puts the two binaries on PATH: no apt install, no streamed installer. Run `starci app sync` to rewrite the app's managed workflows.
+- Changed (h-cache-warm, check cache fingerprint, `cache/fingerprint.mts`): `knowledge/hfs/canon-pins.yaml` is a part of its own (`hfs:canon-pins`, `pkg:@starci/hfs:canon-pins`) that no family reads, and the `hfs` and `pkg:@starci/hfs` parts hold the digest of the rest of the package (`starciSourceParts` of the packed manifest). A release that only moves the pins no longer makes the hfs, secrets, wiring and db records cold; the pin rules run every run on the new pins. A build packed without the parts is keyed by its whole digest as before.
+
 ## 6.17.15 - 2026-11-25
 
 - The canon pins name @starci/grammar 0.59.3 and @starci/gallery 0.1.27.
-- Changed (h-cache-warm, check cache fingerprint, `cache/fingerprint.mts`): `knowledge/hfs/canon-pins.yaml` is a part of its own (`hfs:canon-pins`, `pkg:@starci/hfs:canon-pins`) that no family reads, and the `hfs` and `pkg:@starci/hfs` parts hold the digest of the rest of the package (`starciSourceParts` of the packed manifest). A release that only moves the pins no longer makes the hfs, secrets, wiring and db records cold; the pin rules run every run on the new pins. A build packed without the parts is keyed by its whole digest as before.
 
 ## 6.17.14 - 2026-11-25
 

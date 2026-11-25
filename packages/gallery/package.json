@@ -1,6 +1,6 @@
 {
   "name": "@starci/gallery",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "The screenshot gallery of a StarCi app as one Vite config: the screens of gallery/pages with their explanations, the approved design frames of the canvas beside the real shots (side by side, a slider, shot only), each screen's status from design.json, its states, the flow map. Built with the StarCi Grammar.",
   "keywords": [
     "starci",
