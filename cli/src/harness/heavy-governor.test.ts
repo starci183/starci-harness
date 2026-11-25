@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url"
 import { machinePath } from "./ledger.js"
 import { readHostSettings } from "./host-settings.js"
 import { commitFloorHeld } from "./host-floors.js"
-import { HEAVY_PARENTS_ENV, HOST_HELD, MAX_WEIGHT, admission, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, heavyWeight, killHeavySlot, kindWeights, legacyHeavyRows, loadHeavyRules, oomNote, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
+import { HEAVY_PARENTS_ENV, HOST_HELD, MAX_WEIGHT, admission, commitNeedOf, currentHeavyRules, diskFloorOf, governed, heavyRoomMb, heavySlots, heavyWeight, killHeavySlot, kindWeights, legacyHeavyRows, loadHeavyRules, oomNote, plannedMb, slotCap, testRunSizing, testWorkerArgs, waitLine, withHeavyBound, type Governed, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
 import { withMachine } from "./machine.js"
 
 const state = mkdtempSync(join(tmpdir(), "starci-governor-"))
@@ -329,6 +329,16 @@ void test("the commit floor holds a start while the free commit, less what just-
     holder.open()
     await first
     assert.deepEqual(ran, ["first-install"])
+    assert.equal(heavySlots().length, 0)
+})
+
+void test("a head planning more than the free commit runs alone instead of waiting forever, and counts only its held units once others run", async () => {
+    // The live stall: a test run planning 23 GB (every worker's heap cap) on a host with 24 GB free commit waited for an hour at the head of the queue.
+    const big: Governed = { ...host, rules: { ...host.rules, commitFloorMb: 8192 }, commitMb: () => 24 * GB }
+    const ran: string[] = []
+    await run(big, "test", "big-test-alone", ran)
+    assert.deepEqual(ran, ["big-test-alone"], "nothing runs, the free commit is over the floor: the head starts")
+    assert.equal(commitNeedOf(big.rules, "test", 3), Math.min(plannedMb(big.rules, "test"), 3 * big.rules.gbPerSlot * 1024), "the commit need is capped at the units held")
     assert.equal(heavySlots().length, 0)
 })
 
