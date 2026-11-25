@@ -66,6 +66,11 @@ heavy:
   # `lane gate` warns when the lanes drive has under diskWarnMb free (50 GB, over the floor, so the warning comes while gates still run) and lists the landed
   # worktrees that can be removed; it deletes nothing. A host sets its own as host.diskWarnMb of config.yaml.
   diskWarnMb: 51200
+  # The commit floor (Windows: the memory the host can still promise, FreeVirtualMemory): a heavy command waits while the free commit, less the planned MB
+  # (its cap) of the commands admitted in the last commitRampSeconds, whose pages the reading does not show yet, and its own, is under commitFloorMb. Six
+  # npm installs admitted at once while the host had about 6 GB of free commit left other processes unable to start (STATUS_COMMITMENT_LIMIT, 0xC000012D).
+  commitFloorMb: 8192
+  commitRampSeconds: 60
   pollSeconds: 2
   # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), and sets its weight: a typecheck of a large app's back
   # end outgrows node's default heap (4 GB), and one ESLint child of an app check (a chunk of plan.lintChunk files) peaks near 8 GB on a typed
@@ -77,7 +82,9 @@ heavy:
     eslint: { capMb: 8192 }
     build: { capMb: 4096 }
     appBuild: { capMb: 12288 }
-    install: { capMb: 2048 }
+    # npm ci / npm install, measured live at 0.2 to 2.3 GB of working set each (2026-11-26, `host load`): 3 GB holds the peak, still one unit of 4 GB;
+    # the commit floor counts this cap for an install admitted in the last commitRampSeconds.
+    install: { capMb: 3072 }
     uat: { capMb: 4096 }
   timeoutMinutes:
     install: 15

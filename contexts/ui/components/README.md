@@ -76,6 +76,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | show items as stages, as entries on two axes, or as a few amounts to compare | [data-views](data-views.md) |
+| fill a form the schema describes, filled by the person and an agent together; approve one request on a card with its facts and a quick edit; the first tab of an agent; what an agent remembers and two notes that disagree | [schema-form](schema-form.md) |
 | draw a chart or a sparkline (a measure over a category or a date) | [charts](charts.md) |
 | show a PDF document, a page at a time | [pdf](pdf.md) |
 | take files or folders to upload, and show each upload until it is done | [upload](upload.md) |

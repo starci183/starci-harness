@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * A BOARD COLUMN THAT REFUSES A DROP (0.46.2). `BoardColumn.canDrop(move)` returns `null` to let the card in or a reason to refuse it. A refusing column still shows as a drop
+ * A BOARD COLUMN THAT REFUSES A DROP (0.46.2). `BoardColumn.canDrop(move)` returns `boardAllow` to let the card in or `boardRefuse(reason)` to refuse it (the third answer, `boardNeedsData(kind)`, asks the app for more first: see the Board drag story). A refusing column still shows as a drop
  * place that says no (a danger outline, its reason written in the column), the card is not moved (the drag is not accepted, so it springs back; `onMove` does not run), and the
  * reason is announced. The keyboard move (Alt and an arrow) is held to the same answer.
  */
@@ -26,7 +26,7 @@ const Pipeline = () => {
       count: (stages.won ?? []).length,
       items: (stages.won ?? []).map((id) => ({ id, title: names[id] ?? id, description: 'Won' })),
       empty: <G.EmptyNotice message="Nothing won yet" description="Drag a quoted card here." />,
-      canDrop: (move) => (quoted.has(move.itemId) ? null : REASON),
+      canDrop: (move) => (quoted.has(move.itemId) ? G.boardAllow : G.boardRefuse(REASON)),
     },
   ];
   return (

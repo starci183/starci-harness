@@ -33,6 +33,13 @@ export const CHART_CATEGORY_TONES: readonly ChartTone[] = ["accent", "success", 
 /** The tone of the n-th series or segment that names none (0-based): the categorical order, then the muted tone past its end. */
 export const chartCategoryTone = (index: number): ChartTone => CHART_CATEGORY_TONES[index] ?? "default"
 
+/**
+ * The quiet colour mode: the series the reader should follow is the ink (the foreground at a soft step) and everything else the muted step, so a chart adds no accent of its own and a screen
+ * keeps to the 10% accent budget. Both are mixes of the foreground into the surface, so they hold in every theme.
+ */
+export const CHART_QUIET_INK = "color-mix(in oklab, var(--foreground) 72%, var(--surface))"
+export const CHART_QUIET_MUTED = "color-mix(in oklab, var(--foreground) 22%, var(--surface))"
+
 /** An area's soft fill: its series token at the faded opacity at the top, thinning to none (or to the dimmed opacity when stacked). */
 export const CHART_AREA_FILL_TOP = "var(--grammar-opacity-faded)"
 export const CHART_AREA_FILL_STACKED_BOTTOM = "var(--grammar-opacity-dimmed)"

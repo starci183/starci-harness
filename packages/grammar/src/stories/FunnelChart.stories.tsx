@@ -162,3 +162,48 @@ export const FunnelChartStates: Story = {
     expect(within(canvasElement).getByText('Could not load this')).toBeTruthy();
   },
 };
+
+/**
+ * The compact funnel of ONE ROW (`layout="steps"`): a column per stage with its name, its count and the share that came through from the stage before, a short track under it, and
+ * a side bucket (`lost`) for what left the funnel. From 36rem of chart width the columns stand side by side, every column one width; narrower, the same markup is the rows layout.
+ * `quiet` takes the fills to the ink so a screen with its one accent keeps to the 10% budget.
+ */
+export const FunnelChartOneRow: Story = {
+  render: () => (
+    <Matrix maxWidth={900}>
+      <State label="Steps with a lost bucket" direction="column">
+        <G.FunnelChart
+          label="Leads, last 7 days"
+          layout="steps"
+          stages={[
+            { label: 'Came in', count: 42 },
+            { label: 'Talked to', count: 32 },
+            { label: 'Booked', count: 15 },
+            { label: 'Closed', count: 6 },
+          ]}
+          lost={{ label: 'Not closed', count: 6, note: 'price 3 · no answer 2 · too far 1' }}
+          empty={emptyLine}
+          format={grouped}
+        />
+      </State>
+      <State label="Steps, quiet" direction="column">
+        <G.FunnelChart label="Leads, last 7 days" layout="steps" quiet stages={four} empty={emptyLine} format={grouped} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const charts = all(canvasElement, '[data-component="FunnelChart"]');
+    const [withLost, quiet] = charts as [HTMLElement, HTMLElement];
+    expect(withLost.getAttribute('data-layout')).toBe('steps');
+    expect(boxOf(withLost, '[data-grammar-funnel-lost="true"]').textContent).toContain('Not closed');
+    expect(quiet.getAttribute('data-grammar-quiet')).toBe('true');
+    // Wide: one row, every column one width.
+    const stages = all(withLost, '.starci-core-funnel-stage');
+    const tops = new Set(stages.map((stage) => Math.round(stage.getBoundingClientRect().top)));
+    if (withLost.getBoundingClientRect().width >= 576) {
+      expect(tops.size).toBe(1);
+      const widths = stages.map((stage) => Math.round(stage.getBoundingClientRect().width));
+      expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
+    }
+  },
+};

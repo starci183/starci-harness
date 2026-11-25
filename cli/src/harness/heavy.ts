@@ -7,13 +7,15 @@ import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
 import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
-import { pidAlive } from "../shared/exec.js"
+import { killPidTree, pidAlive } from "../shared/exec.js"
 import type { RunOptions } from "../shared/exec.js"
-import { floorsHeld, freeCommitMb, readFloors } from "./host-floors.js"
+import { COMMIT_FLOOR_MB, COMMIT_RAMP_SECONDS, commitFloorHeld, floorsHeld, freeCommitMb, readFloors } from "./host-floors.js"
 import { readHostSettings } from "./host-settings.js"
 import type { HostSettings } from "./host-settings.js"
-import { governorStorePath, now } from "./ledger.js"
+import { legacyGovernorPath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
+import { logEvent, selfStartMs } from "./slot-store.js"
+import { DatabaseSync as Sqlite } from "node:sqlite"
 import { assertNotRemoving } from "./remove-lock.js"
 import { locateOps } from "./ops.js"
 import { trimEndChars } from "../shared/trim.js"
@@ -49,6 +51,13 @@ const heavySchema = z.strictObject({
     timeoutMinutesPer1000Files: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()).optional(),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
     testRun: z.strictObject({ parentMb: z.number().int().positive(), workerMb: z.number().int().positive() }),
+    /**
+     * The free commit (Windows: the memory the host can still promise, `freeCommitMb`) a heavy command leaves the host: it waits while the free commit, less
+     * the planned memory of the commands admitted in the last `commitRampSeconds` and its own, is under this floor. Absent: 8192.
+     */
+    commitFloorMb: z.number().int().nonnegative().optional(),
+    /** How long a just-admitted command counts its planned memory against the free commit, before its own pages show in the reading. Absent: 60. */
+    commitRampSeconds: z.number().nonnegative().optional(),
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
     bootProofTimeoutSeconds: z.number().int().positive(),
@@ -198,9 +207,9 @@ export interface Judged {
 }
 
 /**
- * Admission is a sum: a heavy command of weight W starts when `used + W <= cap` (`slotCap`) and no host floor holds (`floors`, the free disk;
- * harness/host-floors.ts). A weight above the cap counts as the cap, so the heaviest command still runs alone on a small host. Nothing else decides it:
- * no free-RAM room, no reserve, no CPU rule. Each heavy command holds its units only while it runs, so a gate that runs several in turn takes each one's
+ * Admission is a sum: a heavy command of weight W starts when `used + W <= cap` (`slotCap`) and no host floor holds (`floors`: the free disk and the free
+ * commit, harness/host-floors.ts). A weight above the cap counts as the cap, so the heaviest command still runs alone on a small host. Nothing else decides
+ * it: no free-RAM room, no reserve, no CPU rule. Each heavy command holds its units only while it runs, so a gate that runs several in turn takes each one's
  * as it starts. A running web or api server takes none. Pure.
  */
 export const admission = (rules: Pick<HeavyRules, "gbPerSlot">, judged: Judged): HostLoad & { readonly admits: boolean } => {
@@ -225,8 +234,8 @@ export const admission = (rules: Pick<HeavyRules, "gbPerSlot">, judged: Judged):
     }
 }
 
-/** Runs `work` on the governor's store (ledger.ts governorStorePath), shared by every checkout and installed CLI of the host. */
-const withGovernor = <T>(work: (db: DatabaseSync) => T): T => withMachine(work, governorStorePath())
+/** Runs `work` on the host store (machine.sqlite, ledger.ts machinePath), the one every checkout and installed CLI of the host resolves. */
+const withGovernor = <T>(work: (db: DatabaseSync) => T): T => withMachine(work)
 
 const TABLES = `
 CREATE TABLE IF NOT EXISTS heavy_slots (
@@ -243,6 +252,49 @@ const ensureTables = (db: DatabaseSync): void => {
     const columns = db.prepare("PRAGMA table_info(heavy_slots)").all().map((column) => column.name)
     if (!columns.includes("task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
     if (!columns.includes("weight")) db.exec("ALTER TABLE heavy_slots ADD COLUMN weight INTEGER")
+    // The OS start of the holder and of its child, so a kill (`killHeavySlot`) can prove a pid is still the process that took the row.
+    if (!columns.includes("pid_start")) db.exec("ALTER TABLE heavy_slots ADD COLUMN pid_start TEXT")
+    if (!columns.includes("child_start")) db.exec("ALTER TABLE heavy_slots ADD COLUMN child_start TEXT")
+}
+
+/** A heavy_slots row as a slot. */
+const slotOf = (rules: HeavyRules, row: Record<string, unknown>, source: HeavySlot["source"] = "store"): HeavySlot => ({
+    id: String(row.id),
+    pid: Number(row.pid),
+    pidStart: typeof row.pid_start === "string" ? row.pid_start : null,
+    childPid: row.child_pid === null || row.child_pid === undefined ? null : Number(row.child_pid),
+    childStart: typeof row.child_start === "string" ? row.child_start : null,
+    kind: String(row.kind),
+    label: String(row.label),
+    cwd: String(row.cwd),
+    task: typeof row.task === "string" ? row.task : null,
+    weight: rowWeight(rules, row),
+    state: row.state === "running" ? "running" : "waiting",
+    at: String(row.at),
+    source,
+})
+
+/**
+ * The running rows of a CLI copy older than the host store (its own `governor.sqlite`, ledger.ts legacyGovernorPath) whose pid is alive, read only: they
+ * are foreign, never written, and their units count against the cap until their commands end and their copy deletes them.
+ */
+export const legacyHeavyRows = (rules: HeavyRules, file: string | undefined = legacyGovernorPath()): HeavySlot[] => {
+    if (file === undefined || !existsSync(file)) return []
+    try {
+        const db = new Sqlite(file, { readOnly: true, timeout: 5000 })
+        try {
+            if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'heavy_slots'").get() === undefined) return []
+            return db
+                .prepare("SELECT * FROM heavy_slots WHERE state = 'running' ORDER BY at")
+                .all()
+                .filter((row) => pidAlive(Number(row.pid)))
+                .map((row) => slotOf(rules, row, "foreign"))
+        } finally {
+            db.close()
+        }
+    } catch {
+        return []
+    }
 }
 
 /** The units a row holds: the weight it was admitted with, else (a row a CLI copy without weights wrote) its kind's weight now. */
@@ -252,7 +304,8 @@ const rowWeight = (rules: HeavyRules, row: { readonly kind?: unknown; readonly w
 /** The running commands (live rows) but the `except` ones (the caller's ancestors, which wait on it): how many, and the units they hold. */
 const inUse = (db: DatabaseSync, rules: HeavyRules, except: ReadonlySet<string> = new Set()): { readonly running: number; readonly used: number } => {
     const rows = db.prepare("SELECT id, kind, weight FROM heavy_slots WHERE state = 'running'").all().filter((row) => !except.has(String(row.id)))
-    return { running: rows.length, used: rows.reduce((sum, row) => sum + rowWeight(rules, row), 0) }
+    const foreign = legacyHeavyRows(rules).filter((row) => !except.has(row.id))
+    return { running: rows.length + foreign.length, used: rows.reduce((sum, row) => sum + rowWeight(rules, row), 0) + foreign.reduce((sum, slot) => sum + slot.weight, 0) }
 }
 
 /**
@@ -262,7 +315,8 @@ const inUse = (db: DatabaseSync, rules: HeavyRules, except: ReadonlySet<string> 
 export const hostLoad = (rules: HeavyRules = loadHeavyRules()): HostLoad => {
     const head = heavySlots(rules).find((slot) => slot.state === "waiting")
     const { running, used } = withGovernor((db) => inUse(db, rules))
-    return admission(rules, { used, running, ...(head === undefined ? {} : { weight: head.weight, what: head.label }), floors: heavyFloors(rules, process.cwd()), freeMb: hostFreeMb() })
+    const commit = commitFloorHeld(freeCommitMb(), rules.commitFloorMb ?? COMMIT_FLOOR_MB, head === undefined ? 0 : plannedOf(rules, head.kind))
+    return admission(rules, { used, running, ...(head === undefined ? {} : { weight: head.weight, what: head.label }), floors: [...heavyFloors(rules, process.cwd()), ...commit], freeMb: hostFreeMb() })
 }
 
 /** The waiting rows in the order the governor serves them: first come, first served (the order they joined the queue). */
@@ -271,8 +325,14 @@ const servingOrder = (rows: readonly { readonly id: string; readonly kind: strin
 /** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for its slot units. */
 export interface HeavySlot {
     readonly id: string
+    /** The process that holds the row (the CLI that runs the command) and its OS start; null on a row an older copy wrote. */
     readonly pid: number
+    readonly pidStart: string | null
+    /** The heavy command itself, once spawned, and when: the process the row maps to, which `killHeavySlot` kills. */
     readonly childPid: number | null
+    readonly childStart: string | null
+    /** store: a row of machine.sqlite; foreign: a live row of an older copy's governor.sqlite, counted, never written. */
+    readonly source: "store" | "foreign"
     readonly kind: string
     readonly label: string
     readonly cwd: string
@@ -292,21 +352,10 @@ export const heavySlots = (rules: HeavyRules = loadHeavyRules()): HeavySlot[] =>
         const live: HeavySlot[] = []
         for (const row of rows) {
             if (!pidAlive(Number(row.pid))) {
-                db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
+                dropDead(db, row, `pid ${String(process.pid)}`)
                 continue
             }
-            live.push({
-                id: String(row.id),
-                pid: Number(row.pid),
-                childPid: row.child_pid === null ? null : Number(row.child_pid),
-                kind: String(row.kind),
-                label: String(row.label),
-                cwd: String(row.cwd),
-                task: typeof row.task === "string" ? row.task : null,
-                weight: rowWeight(rules, row),
-                state: row.state === "running" ? "running" : "waiting",
-                at: String(row.at),
-            })
+            live.push(slotOf(rules, row))
         }
         return live
     })
@@ -318,15 +367,32 @@ export const heavySlots = (rules: HeavyRules = loadHeavyRules()): HeavySlot[] =>
  * is never starved by light ones that would fit. The rows of the caller's ancestors (`parents`) are not counted: they wait on it. The load it was
  * judged on, and the holders when it waits.
  */
-const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, freeMb: number, parents: ReadonlySet<string> = new Set(), floors: readonly string[] = [], totalMb?: number): { readonly load: HostLoad; readonly holders: string[] | null; readonly place: number } =>
+const tryAcquire = (
+    slot: Pick<HeavySlot, "id" | "pid" | "pidStart" | "kind" | "label" | "cwd" | "task" | "weight">,
+    rules: HeavyRules,
+    freeMb: number,
+    parents: ReadonlySet<string> = new Set(),
+    floors: readonly string[] = [],
+    totalMb?: number,
+    commitMb: number | null = null,
+): { readonly load: HostLoad; readonly holders: string[] | null; readonly place: number } =>
     withGovernor((db) => {
         ensureTables(db)
-        for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, weight, state, at) VALUES (?, ?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, slot.weight, now())
+        for (const row of db.prepare("SELECT id, pid, child_pid, label FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) dropDead(db, row, `${slot.label} (pid ${String(process.pid)})`)
+        db.prepare("INSERT INTO heavy_slots (id, pid, pid_start, kind, label, cwd, task, weight, state, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.pidStart, slot.kind, slot.label, slot.cwd, slot.task, slot.weight, now())
         const rows = db.prepare("SELECT id, kind, state FROM heavy_slots ORDER BY rowid").all().map((row) => ({ id: String(row.id), kind: String(row.kind), state: String(row.state) }))
-        const running = db.prepare("SELECT id, label, pid, at, kind, weight FROM heavy_slots WHERE state = 'running'").all().filter((row) => !parents.has(String(row.id)))
+        const own = db.prepare("SELECT id, label, pid, at, kind, weight FROM heavy_slots WHERE state = 'running'").all().filter((row) => !parents.has(String(row.id)))
+        // The live rows of an older CLI copy's own store count too (`legacyHeavyRows`): the host's cap is one, whoever runs.
+        const foreign = legacyHeavyRows(rules)
+            .filter((row) => !parents.has(row.id))
+            .map((row) => ({ id: row.id, label: `${row.label} [older copy]`, pid: row.pid, at: row.at, kind: row.kind, weight: row.weight }))
+        const running: Record<string, unknown>[] = [...own, ...foreign]
         const used = running.reduce((sum, row) => sum + rowWeight(rules, row), 0)
-        const load = admission(rules, { used, running: running.length, weight: slot.weight, what: slot.label, floors, freeMb, ...(totalMb === undefined ? {} : { totalMb }) })
+        // The commit floor: the planned memory of the commands admitted in the last commitRampSeconds is not in the reading yet, so it is taken off.
+        const rampFrom = Date.now() - (rules.commitRampSeconds ?? COMMIT_RAMP_SECONDS) * 1000
+        const rampingMb = running.filter((row) => Date.parse(String(row.at)) >= rampFrom).reduce((sum, row) => sum + plannedOf(rules, String(row.kind)), 0)
+        const commit = commitFloorHeld(commitMb, rules.commitFloorMb ?? COMMIT_FLOOR_MB, plannedOf(rules, slot.kind), rampingMb)
+        const load = admission(rules, { used, running: running.length, weight: slot.weight, what: slot.label, floors: [...floors, ...commit], freeMb, ...(totalMb === undefined ? {} : { totalMb }) })
         const order = servingOrder(rows)
         if (order[0]?.id !== slot.id || !load.admits) {
             const place = order.findIndex((row) => row.id === slot.id)
@@ -337,8 +403,18 @@ const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: H
         return { load, holders: null, place: 0 }
     })
 
+/** Deletes the row of a holder that is gone and logs it (slot_events). */
+const dropDead = (db: DatabaseSync, row: Record<string, unknown>, by: string): void => {
+    db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
+    const child = row.child_pid === null || row.child_pid === undefined ? null : Number(row.child_pid)
+    logEvent(db, { action: "reclaimed", slot: `heavy ${String(row.id)}`, holder: String(row.label), pid: Number(row.pid), childPid: child, command: String(row.label), by, evidence: `dead: pid ${String(row.pid)} is not alive` })
+}
+
+/** The planned MB of a row's kind (`plannedMb`); a kind this copy does not know plans one slot unit. */
+const plannedOf = (rules: HeavyRules, kind: string): number => ((HEAVY_KINDS as readonly string[]).includes(kind) ? plannedMb(rules, kind as HeavyKind) : rules.gbPerSlot * 1024)
+
 const setChild = (id: string, pid: number): void => {
-    withGovernor((db) => db.prepare("UPDATE heavy_slots SET child_pid = ? WHERE id = ?").run(pid, id))
+    withGovernor((db) => db.prepare("UPDATE heavy_slots SET child_pid = ?, child_start = ? WHERE id = ?").run(pid, now(), id))
 }
 
 const release = (id: string): void => {
@@ -604,6 +680,8 @@ export interface Governed {
     readonly floors?: (cwd: string, rules: HeavyRules) => string[]
     /** The rules as they stand now, read again at every admission attempt (`currentHeavyRules`); `rules` throughout when absent. */
     readonly reread?: (last: HeavyRules) => HeavyRules
+    /** The host's free commit in MB (`freeCommitMb`), null where the host reports none; no commit floor when absent (a spec's host). */
+    readonly commitMb?: () => number | null
 }
 
 /** The host floors held now for work in `cwd`: the free space of its drive under the host's disk floor (`currentHeavyRules`). */
@@ -614,7 +692,7 @@ export const heavyFloors = (rules: HeavyRules, cwd: string): string[] => {
 
 const liveHost = (): Governed => {
     const rules = loadHeavyRules()
-    return { rules, freeMb: hostFreeMb, reread: (last) => currentHeavyRules(last), floors: (cwd, now) => floorsHeld({ diskFloorMb: now.diskFloorMb, source: (now as { readonly diskFloorSource?: string }).diskFloorSource }, readFloors(cwd)) }
+    return { rules, freeMb: hostFreeMb, commitMb: freeCommitMb, reread: (last) => currentHeavyRules(last), floors: (cwd, now) => floorsHeld({ diskFloorMb: now.diskFloorMb, source: (now as { readonly diskFloorSource?: string }).diskFloorSource }, readFloors(cwd)) }
 }
 
 /** How often a waiting command prints its position, so a hook that waits does not look hung. */
@@ -685,14 +763,14 @@ export const governed = async <T>(host: Governed, kind: HeavyKind, label: string
     const ancestors = new Set(parents)
     // The units it holds: its kind's planned memory in slot units, a test run's from the workers it is sized to.
     const weight = heavyWeight(rules, kind, availableParallelism(), options.workers)
-    const slot = { id: slotId, pid: process.pid, kind, label, cwd, task, weight }
+    const slot = { id: slotId, pid: process.pid, pidStart: new Date(selfStartMs()).toISOString(), kind, label, cwd, task, weight }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
     let live = rules
     const admit = async (lastLineAt: number | null): Promise<{ readonly load: HostLoad; readonly waited: boolean }> => {
         // Re-judged at every poll: the rules as they stand now (the host's disk floor and the caps, read again), the running count and the floors now.
         live = host.reread?.(live) ?? live
-        const tried = tryAcquire(slot, live, host.freeMb(), ancestors, host.floors?.(cwd, live) ?? [], host.totalMb)
+        const tried = tryAcquire(slot, live, host.freeMb(), ancestors, host.floors?.(cwd, live) ?? [], host.totalMb, host.commitMb?.() ?? null)
         const { load } = tried
         if (tried.holders === null) return { load, waited: lastLineAt !== null }
         if (waitsRefused) {
@@ -870,4 +948,70 @@ export const endStarvation = (): void => {
         ensureTables(db)
         db.prepare("DELETE FROM host_starvation").run()
     })
+}
+
+/** What a kill of a heavy slot found or did (`killHeavySlot`). */
+export interface HeavyKill {
+    readonly id: string
+    readonly label: string
+    readonly pid: number
+    readonly childPid: number | null
+    /** The process whose tree is (or would be) killed: the heavy command (the child) once spawned, else the row's holder. */
+    readonly target: number
+    readonly evidence: string
+    readonly killed: boolean
+    /** The holder was already gone: the row was only reclaimed. */
+    readonly reclaimedOnly: boolean
+}
+
+/** How far a recorded start may sit from the OS's reading of it and still be the same process (the child's is stamped right after its spawn). */
+const START_MATCH_MS = 2000
+
+/**
+ * The last resort on a heavy slot (`starci slot kill heavy <id>`): kills the process tree of the heavy command the row maps to (its child, else its
+ * holder while nothing is spawned yet) and deletes the row, logged in slot_events. Refused HEAVY_SLOT_UNKNOWN for no such row of the store (a foreign
+ * row of an older copy is never touched), SLOT_KILL_UNPROVEN when the row records no start to match, and SLOT_KILL_REUSED when the pid now runs a process
+ * started at another time. A holder already gone is not killed: its row is reclaimed. Dry unless `execute`; `startOf`, `alive` and `kill` are seams.
+ */
+export const killHeavySlot = (
+    id: string,
+    given: { readonly execute: boolean; readonly by: string; readonly startOf: (pid: number) => number | null; readonly alive?: (pid: number) => boolean; readonly kill?: (pid: number) => boolean },
+    rules: HeavyRules = loadHeavyRules(),
+): HeavyKill => {
+    const alive = given.alive ?? pidAlive
+    const row = withGovernor((db) => {
+        ensureTables(db)
+        const found = db.prepare("SELECT * FROM heavy_slots WHERE id = ?").get(id)
+        return found === undefined ? undefined : slotOf(rules, found)
+    })
+    if (row === undefined) throw new Refusal("HEAVY_SLOT_UNKNOWN", `no heavy slot ${id} in the host store (starci slot list heavy); a row of an older copy's governor.sqlite is never touched`)
+    const childPid = row.childPid
+    const child = childPid !== null && alive(childPid)
+    const target = child ? childPid : row.pid
+    const recorded = child ? row.childStart : row.pidStart
+    const base = { id, label: row.label, pid: row.pid, childPid: row.childPid, target }
+    if (!alive(row.pid)) {
+        const evidence = `dead: pid ${String(row.pid)} is not alive`
+        if (given.execute) {
+            withGovernor((db) => {
+                dropDead(db, { id, pid: row.pid, child_pid: row.childPid, label: row.label }, `${given.by} (slot kill: nothing left to kill)`)
+            })
+        }
+        return { ...base, evidence, killed: false, reclaimedOnly: given.execute }
+    }
+    if (recorded === null) throw new Refusal("SLOT_KILL_UNPROVEN", `heavy ${id} (${row.label}) records no start for pid ${String(target)}: it cannot be proven to be the process that took the row`)
+    const started = given.startOf(target)
+    if (started === null) throw new Refusal("SLOT_KILL_UNPROVEN", `the host does not report the start of pid ${String(target)}: it cannot be proven to be the process of heavy ${id}`)
+    if (Math.abs(started - Date.parse(recorded)) > START_MATCH_MS) {
+        throw new Refusal("SLOT_KILL_REUSED", `pid ${String(target)} now runs a process started ${new Date(started).toISOString()}, not the one heavy ${id} recorded (${recorded}): nothing is killed`)
+    }
+    const evidence = `pid ${String(target)} (${child ? "the heavy command" : "its holder"}) alive since ${new Date(started).toISOString()}`
+    if (!given.execute) return { ...base, evidence, killed: false, reclaimedOnly: false }
+    ;(given.kill ?? killPidTree)(target)
+    withGovernor((db) => {
+        ensureTables(db)
+        db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(id)
+        logEvent(db, { action: "killed", slot: `heavy ${id}`, holder: row.label, pid: row.pid, childPid: row.childPid, command: row.label, by: given.by, evidence: `killed the process tree of pid ${String(target)}: ${evidence}` })
+    })
+    return { ...base, evidence, killed: true, reclaimedOnly: false }
 }

@@ -413,15 +413,40 @@ roles:
 
   - id: data-views
     ui: ui/components/data-views.md
-    renderers: [Board, ScheduleGrid, ProportionBar, IntervalChart, FunnelChart, Legend, GeoMap]
+    renderers: [Board, ScheduleGrid, ProportionBar, SegmentBar, IntervalChart, FunnelChart, Legend, GeoMap]
     vendorParity: []                              # no HeroUI part: Common regions built from the card, the table and the scroll region
-    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns (todayAt), rows (isGroup, isCollapsed, parent), items placed by row and column (title, meta, tone, endColumn, progress, form, after, resize, onPress), cellLabels, empty, onDrop (source grid or outside), onCellPress, onRowToggle; startScheduleDrag for a list beside it", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty, size (sm, md, lg)", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format", "Legend: label, items (id, label, tone, form)", "GeoMap: label, points (id, lat, lng, count, label), labels, tiles (url, attribution, maxZoom), empty, height, defaultView, onSelect", "every view: isLoading, error (message, description, actionLabel, onAction)"]
+    slots: ["Board: label, columns (id, title, count, items as list rows, empty, canDrop answering boardAllow, boardRefuse(reason) or boardNeedsData(kind), dropHint), endBand (id, label, canDrop), onMove, onRefuse, onNeedsData, moveLabels", "ScheduleGrid: label, columns (todayAt), rows (isGroup, isCollapsed, parent), items placed by row and column (title, meta, tone, endColumn, progress, form, after, resize, onPress), cellLabels, empty, onDrop (source grid or outside), onCellPress, onRowToggle; startScheduleDrag for a list beside it", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty, size (sm, md, lg)", "SegmentBar: label, series (id, label, tone), rows (id, label, values, valueLabel), empty, size (sm, md, lg), quiet", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format, layout (rows, steps), lost (label, count, note), quiet", "Legend: label, items (id, label, tone, form)", "GeoMap: label, points (id, lat, lng, count, label), labels, tiles (url, attribution, maxZoom), empty, height, defaultView, onSelect", "every view: isLoading, error (message, description, actionLabel, onAction)"]
     variants:
       tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items, Legend items) }
     sizes: none
     states: [ready, loading, empty, error]
     grammarMayChange: [column width, bar width, tone paint through tokens]
     dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-INTERVAL-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE, DNA-COMMON-INTERVAL-CHART-STACKS-NARROW, DNA-COMMON-FUNNEL-CHART-ONE-SCALE, DNA-COMMON-FUNNEL-CHART-ONE-START, DNA-COMMON-FUNNEL-CHART-STACKS-NARROW, DNA-COMMON-LEGEND-ONE-MARK-SIZE, DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL, DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL, DNA-COMMON-TABLE-SCROLL-FOCUSABLE]
+
+  - id: schema-form
+    ui: ui/components/schema-form.md
+    renderers: [SchemaForm, ApprovalCard]
+    vendorParity: []                              # no HeroUI part: Common frames over the field controls and the card
+    slots: ["SchemaForm: label, schema (the JSON Schema subset a zod schema emits), value, onChange, labels, marks (edited, writing), proposals, onProposal, meters, upload, onUpload, readOnly, editable, layout (form, kv), showMissing", "ApprovalCard: title, meta, schema, value, editable, onSave, formLabels, labels, marks, proposals, onProposal, meters, approve, open, menu, note, tone", "every form: isLoading"]
+    variants:
+      layout: { values: [form, kv], chosenBy: the form is a form to fill (form) or a card of facts (kv) }
+    sizes: none
+    states: [ready, loading]
+    grammarMayChange: ["control paint through the field tokens, the gap of the rows"]
+    dna: []
+    lint: []
+
+  - id: agent-surfaces
+    ui: ui/components/schema-form.md
+    renderers: [WorkbenchSlot, NoteList, NoteRow, ConflictCard]
+    vendorParity: []                              # no HeroUI part: Common frames and a row over the card and the buttons
+    slots: ["WorkbenchSlot: label, empty (title, description), children, isLoading", "NoteList: label, notes (id, kind, source, text, scope, usage, edit, menu), columns, empty, isLoading, error", "ConflictCard: title, current, proposed (label, text, source), choices, note, isLoading"]
+    variants: {}
+    sizes: none
+    states: [ready, loading, empty, error]
+    grammarMayChange: ["row and card gaps through the spacing tokens"]
+    dna: []
+    lint: []
 
   - id: freestyle
     ui: ui/components/freestyle.md

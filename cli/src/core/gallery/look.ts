@@ -338,7 +338,7 @@ export const appLookVerb = defineVerb({
         settle: { kind: "string", summary: "milliseconds to wait after the page settles, before the shot (default 1500)" },
         lane: { kind: "string", summary: "the lane that holds the shoot slot (default: STARCI_LANE, else the branch lane/<lane>)" },
         wait: { kind: "string", summary: "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const say = context.progress

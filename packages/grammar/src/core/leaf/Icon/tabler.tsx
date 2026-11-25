@@ -192,3 +192,15 @@ export const TablerArrowDown = tabler(["M12 5l0 14","M18 13l-6 6","M6 13l6 6"])
 
 /** Tabler `player-stop`. */
 export const TablerPlayerStop = tabler(["M5 7a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -10"])
+
+/** Tabler `grip-vertical`. */
+export const TablerGripVertical = tabler(["M8 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","M8 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","M8 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","M14 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","M14 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0","M14 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"])
+
+/** Tabler `trash`. */
+export const TablerTrash = tabler(["M4 7l16 0","M10 11l0 6","M14 11l0 6","M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12","M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"])
+
+/** Tabler `arrow-up`. */
+export const TablerArrowUp = tabler(["M12 5l0 14","M18 11l-6 -6","M6 11l6 -6"])
+
+/** Tabler `chevron-up`. */
+export const TablerChevronUp = tabler(["M6 15l6 -6l6 6"])

@@ -13,11 +13,12 @@ import { laneHolder, waitSeconds } from "./holder.js"
  * Runs one argv without a shell. npm and npx go through the heavy-command governor as `heavy` (the kind's, else a build), since nothing
  * else governs them; any other program (`node`, the app's own `starci app check`) runs as it is and governs its own heavy children.
  */
-export const runArgv = async (argv: readonly string[], cwd: string, label: string, heavy: HeavyKind | undefined): Promise<ToolRun> => {
+export const runArgv = async (argv: readonly string[], cwd: string, label: string, heavy: HeavyKind | undefined, onSpawn?: (pid: number) => void): Promise<ToolRun> => {
     const [tool, ...args] = argv
     if (tool === undefined) throw new Refusal("CLI_USAGE", "name the command after --: starci slot run <kind> -- <command...>")
-    if (tool === "npm" || tool === "npx") return withHeavySlot(heavy ?? "build", label, cwd, {}, (held) => captureCommand(argv, cwd, held.options))
-    return captureTool(tool === "node" ? process.execPath : tool, args, cwd)
+    const spawned = onSpawn === undefined ? {} : { onSpawn }
+    if (tool === "npm" || tool === "npx") return withHeavySlot(heavy ?? "build", label, cwd, spawned, (held) => captureCommand(argv, cwd, held.options))
+    return captureTool(tool === "node" ? process.execPath : tool, args, cwd, spawned)
 }
 
 /**
@@ -26,7 +27,7 @@ export const runArgv = async (argv: readonly string[], cwd: string, label: strin
  */
 export const slotRunVerb = defineVerb({
     path: ["slot", "run"],
-    summary: "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot records this process's pid and is released when the command ends, so a killed run never leaves it held",
+    summary: "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot, a row of machine.sqlite, records this process's pid and start and the command's own pid as its child, and is released the moment the command ends (its exit, an error or a signal); a run killed outright leaves a row whose pid is dead, reclaimed at the next take or list",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/slot-run@1",
@@ -36,7 +37,7 @@ export const slotRunVerb = defineVerb({
         lane: { kind: "string", summary: "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)" },
         wait: { kind: "string", summary: "seconds to wait for a free slot before SLOT_BUSY (default: until one frees)" },
         out: { kind: "string", summary: "also write the command's whole output to this file" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const rules = loadSlotRules()
@@ -46,14 +47,15 @@ export const slotRunVerb = defineVerb({
         const label = `slot run ${flags.kind}: ${flags.command.join(" ").slice(0, 80)}`
         const outcome = await withSlot(root, rules, flags.kind, holder, { waitSeconds: waitSeconds(flags.wait), say: context.progress }, async (taken) => {
             context.progress(`${flags.kind} slot ${String(taken.n)} held by ${holder} (pid ${String(process.pid)})`)
-            const run = await runArgv(flags.command, context.cwd, label, kind.heavy)
+            // The command's process is recorded on the slot as its child: slot list shows it, slot kill reaches it.
+            const run = await runArgv(flags.command, context.cwd, label, kind.heavy, taken.spawned)
             return { taken, run }
         })
         const { run, taken } = outcome
         if (flags.out !== undefined) writeFileSync(resolve(context.cwd, flags.out), `${run.stdout}\n${run.stderr}`)
         for (const text of [run.stdout, run.stderr]) if (text !== "") context.progress(text)
         return {
-            data: { kind: flags.kind, n: taken.n, file: taken.file, holder, reclaimed: taken.reclaimed, waitedSeconds: taken.waitedSeconds, exitCode: run.exitCode, timedOut: run.timedOut, stdout: run.stdout.slice(-4000), stderr: run.stderr.slice(-4000) },
+            data: { kind: flags.kind, n: taken.n, where: taken.where, holder, reclaimed: taken.reclaimed, waitedSeconds: taken.waitedSeconds, exitCode: run.exitCode, timedOut: run.timedOut, stdout: run.stdout.slice(-4000), stderr: run.stderr.slice(-4000) },
             message: `${flags.command.join(" ")} exited ${String(run.exitCode)} under ${flags.kind} slot ${String(taken.n)} (released)`,
             exitCode: run.exitCode === 0 ? 0 : 1,
         }

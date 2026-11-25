@@ -157,7 +157,7 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const command = profile.gate(root, fork === "" ? base : fork)
     const run = await withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
         say(`${profile.gateLabel} (gate slot ${String(taken.n)})`)
-        return captureTool(command.file, command.args, root)
+        return captureTool(command.file, command.args, root, { onSpawn: taken.spawned })
     })
     const all = blockingFindings(run.stdout)
     const findings = all ?? []
@@ -260,7 +260,7 @@ export const laneGateVerb = defineVerb({
                 }
                 say(`npm ci (npm slot ${String(taken.n)})`)
                 installSource = "npm ci"
-                const run = await withHeavySlot("install", `lane gate ${lane}: npm ci`, root, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], root, held.options))
+                const run = await withHeavySlot("install", `lane gate ${lane}: npm ci`, root, { onSpawn: taken.spawned }, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], root, held.options))
                 if (run.exitCode !== 0) throw new Refusal("LANE_GATE_INSTALL", `npm ci exited ${String(run.exitCode)}${isOutOfMemory(run.exitCode, run.stderr) ? " (out of memory: run it again once the host has RAM)" : ""}: ${run.stderr.split("\n").slice(-3).join(" ")}`)
                 // A lane whose lockfiles equal the dev line's holds the install every next lane wants: cache it once.
                 if (!flags.install && followsBase(root, ref)) say(await cacheLaneInstall(root, slots))
@@ -277,7 +277,7 @@ export const laneGateVerb = defineVerb({
         const args = flags.push ? ["app", "push", "--json", "origin", `HEAD:${branch}`] : [...LANE_CHECK_ARGS]
         const run = await timed(mode === "push" ? "app push" : "app check", () => withSlot(slots, rules, "gate", lane, { waitSeconds: wait, say }, (taken) => {
             say(`${mode === "push" ? `app push origin HEAD:${branch}` : "app check --env prod --level dev"} (gate slot ${String(taken.n)})`)
-            return captureTool(process.execPath, [appCli(root), ...args], root)
+            return captureTool(process.execPath, [appCli(root), ...args], root, { onSpawn: taken.spawned })
         }))
         const oom = isOutOfMemory(run.exitCode, run.stderr)
         let verdict: GateVerdict
