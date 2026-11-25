@@ -6,6 +6,24 @@
 *.mjs text eol=lf
 .starcistacks/** text eol=lf
 .starcistacks/**/*.enc binary
+# Media, fonts and archives are binary wherever they sit (a text rule above, `.starcistacks/** text eol=lf`, would rewrite their bytes).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.mp4 binary
+*.webm binary
 # The committed check cache (starci app check): union-merged JSON Lines, never a conflict; hidden from language statistics and review diffs.
 .starcistacks/cache/** text eol=lf merge=union linguist-generated=true
 # The repo-owned statics (PROJECT-STATICS-1): media is binary, the prompt files are text.
