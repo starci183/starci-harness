@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 import type { DatabaseSync } from "node:sqlite"
 import { now } from "./ledger.js"
 import { withMachine } from "./machine.js"
@@ -10,6 +11,7 @@ import { withMachine } from "./machine.js"
  *   (`child_pid`, `child_start`). It is deleted when that process lets the slot go (normal end, error or signal) and reclaimed once the process is
  *   proven gone.
  * - slot_events: what happened to a slot (taken, released, reclaimed, killed), with who did it and the evidence, append-only.
+ * - slot_lock_folders: every lanes folder a CLI copy was named, where an older copy's foreign lock files may lie (`rememberLockFolders`).
  * The heavy-command governor's rows (`heavy_slots`) live in the same store (harness/heavy.ts) and log into slot_events too.
  */
 const TABLES = `
@@ -146,3 +148,21 @@ export const recentEvents = (limit: number): (SlotEvent & { readonly at: string 
 
 /** When this process started, as the OS would report it (epoch ms): now less its uptime. Free, unlike asking the OS for another pid's start. */
 export const selfStartMs = (): number => Math.round(Date.now() - process.uptime() * 1000)
+
+/**
+ * Records the lanes folders a CLI copy was named (`--dir`, STARCI_LANES_DIR, `slots.root`) in `slot_lock_folders`, and returns every folder recorded that
+ * still exists: where older copies and scripts may have written foreign slot lock files, so a take or a list from any working folder honours them alike.
+ */
+export const rememberLockFolders = (given: readonly string[]): string[] => {
+    try {
+        return withSlotStore((db) => {
+            db.exec("CREATE TABLE IF NOT EXISTS slot_lock_folders (path TEXT PRIMARY KEY, seen_at TEXT NOT NULL)")
+            for (const path of given) db.prepare("INSERT INTO slot_lock_folders (path, seen_at) VALUES (?, ?) ON CONFLICT (path) DO UPDATE SET seen_at = excluded.seen_at").run(path, now())
+            const known = db.prepare("SELECT path FROM slot_lock_folders ORDER BY path").all().map((row) => String(row.path))
+            for (const path of known.filter((each) => !existsSync(each))) db.prepare("DELETE FROM slot_lock_folders WHERE path = ?").run(path)
+            return known.filter((each) => existsSync(each))
+        })
+    } catch {
+        return [...given]
+    }
+}

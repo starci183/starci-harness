@@ -10,7 +10,7 @@ import { hostFreeMb } from "./heavy.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 import { registerRun } from "./runs.js"
-import { deleteRow, insertRow, logEvent, recordEvent, selfStartMs, slotRows, withSlotStore } from "./slot-store.js"
+import { deleteRow, insertRow, logEvent, recordEvent, rememberLockFolders, selfStartMs, slotRows, withSlotStore } from "./slot-store.js"
 import type { SlotRow } from "./slot-store.js"
 import { sharedStateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
@@ -457,14 +457,15 @@ export const takeLiveLock = (file: string, content: string, say: (line: string) 
 
 /**
  * The folders a foreign lock file of a slot may lie in (a CLI copy before the store wrote `<root>/<kind.file>`, a script of an app wrote one by hand):
- * the lanes folder named, the configured one and `<shared harness state>/slots`. Foreign files are never written; each one not proven gone keeps its
+ * the lanes folder named, the configured one, `<shared harness state>/slots`, and every lanes folder any CLI copy of the host was named before
+ * (`rememberLockFolders`), so a take from any folder honours the same foreign files. Foreign files are never written; each one not proven gone keeps its
  * number busy for every taker, and one proven gone is reclaimed with its evidence.
  */
 export const foreignRoots = (root: string, rules: SlotRules): string[] => {
     const seen = new Set<string>()
     const roots: string[] = []
-    for (const candidate of [root, configuredSlotRoot(rules), join(sharedStateBase(), "slots")]) {
-        if (candidate === undefined) continue
+    const given = [root, configuredSlotRoot(rules)].filter((path): path is string => path !== undefined).map((path) => resolve(path))
+    for (const candidate of [...given, join(sharedStateBase(), "slots"), ...rememberLockFolders(given)]) {
         const at = resolve(candidate)
         const key = process.platform === "win32" ? at.toLowerCase() : at
         if (seen.has(key)) continue

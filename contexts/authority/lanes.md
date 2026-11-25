@@ -66,7 +66,8 @@ opened only with free RAM.
 - **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds when its process is the taker or one the taker
   runs under, so a retried gate never takes a second one; while another live process of the lane holds it, the take waits.
 - **Foreign lock files.** A lock file in a lanes folder (`<root>/_npm-slot-1.lock` and the like), written by a CLI copy older than the store or by a script, is
-  foreign: never written, honoured as holding its number for every taker while its holder is not proven gone, listed with its path, released with its lane
+  foreign: never written, read in every lanes folder any CLI copy of the host was named (so from any working folder alike), honoured as holding its
+  number for every taker while its holder is not proven gone, listed with its path, released with its lane
   and reclaimed on proof. A line with no pid (`<lane> <time>`) is reclaimable (`gone`) once its lane is proven gone: the process table is
   read, and no process works inside the lane's worktree (its working folder or command line lies in it) or names the holder in its command line, and either no worktree
   of the repositories under the lanes folder exists on disk whose folder is `<lane>` or which has `lane/<lane>` checked out (where the lanes folder holds no repository,

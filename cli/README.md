@@ -427,7 +427,8 @@ SIGINT, SIGBREAK, SIGHUP, SIGTERM or `process.exit`). A holder is reclaimed only
 pid whose process started at another time, or a slot taken before this boot. Age is never evidence: past `warnMinutes` a slot is `old` and only listed. One
 slot per lane and kind: a take returns the lane's slot when its process is the taker or one the taker runs under, and waits while another live process of the
 lane holds it. A lock FILE in a lanes folder (`<root>/<kind.file>`, written by an older CLI copy or by a script itself) is foreign: never written, read in the
-lanes folder named (`--dir`, `STARCI_LANES_DIR`, `slots.root`) and in `<shared state>/slots`, it holds its number for every taker while its holder is not
+lanes folder named (`--dir`, `STARCI_LANES_DIR`, `slots.root`), in `<shared state>/slots` and in every lanes folder any CLI copy of the host was named before
+(`slot_lock_folders`), it holds its number for every taker while its holder is not
 proven gone (a line with no pid once its lane is proven gone, `proveLaneGone`) and is reclaimed, renamed aside first, on that proof. `slot kill <kind> <n>` and
 `slot kill heavy <id>` are the last resort: they kill the process tree of the one process the slot maps to (a lane slot's holder; a heavy row's command,
 else its holder) and free the slot, logging what they killed, and refuse `SLOT_KILL_REUSED` when the pid now runs a process started at another time and
