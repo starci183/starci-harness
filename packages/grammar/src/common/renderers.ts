@@ -30,6 +30,8 @@ export { RelativeTime, type RelativeTimeFormat, type RelativeTimeMode, type Rela
 export { CalendarDay, type CalendarDayProps, type CalendarDayValue } from "../core/leaf/CalendarDay/index.js"
 export { TextAction, type TextActionAppearance, type TextActionProps, type TextActionSize } from "../core/leaf/TextAction/index.js"
 export { MediaFrame, type MediaFrameProps } from "../core/leaf/MediaFrame/index.js"
+export { MediaGrid, type FileKind, type MediaGridLayout, type MediaGridProps, type MediaItem, type MediaItemSource } from "../core/composite/MediaGrid/index.js"
+export { FILE_GLYPHS } from "../core/fileGlyph.js"
 export { MASCOT_SIZE_TOKENS, Mascot, type MascotProps, type MascotSize, type MascotVisibility } from "../core/leaf/Mascot/index.js"
 export { PinnedActionBar, type PinnedActionBarProps, type PinnedActionBarVisibility } from "../core/frame/PinnedActionBar/index.js"
 export { Page, type PageBleedProps, type PageChrome, type PagePanesProps, type PageHeaderContent, type PageProps, type PageStandardProps, type PageTrailContent } from "../core/frame/Page/index.js"
