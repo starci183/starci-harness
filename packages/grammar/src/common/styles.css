@@ -352,6 +352,31 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * A phone (390px) head: the row wraps instead of squeezing the title. The copy keeps the first line at the full width it needs, and the
+     * action slot (one command or several) drops to its own line below it, at the start, its own commands wrapping if they must.
+     * Wider than 30rem the head stays the ONE nowrap row of a fixed height above.
+     */
+    @media (max-width: 29.999rem) {
+        .starci-core-section-header {
+            flex-wrap: wrap;
+            align-items: flex-start;
+            block-size: auto;
+            min-block-size: var(--grammar-section-head-size);
+        }
+
+        .starci-core-section-header-copy {
+            flex: 1 1 100%;
+        }
+
+        .starci-core-section-header > .starci-core-section-action {
+            flex: 1 1 100%;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: var(--grammar-inline-gap);
+        }
+    }
+
     /* The head command: a Link in it (size `inherit`) reads at the body step, the size of the head's own text line. */
     .starci-core-section-action {
         display: flex;
