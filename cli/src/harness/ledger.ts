@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
@@ -168,8 +168,89 @@ export const projectsRoot = (): string => {
     return projects === undefined || projects === "" ? join(stateBase(), "projects") : resolve(projects)
 }
 
-/** The host store, `<state base>/machine.sqlite`. */
-export const machinePath = (): string => join(stateBase(), "machine.sqlite")
+/** The per-user state folder of the host every CLI copy reaches whatever its checkout or install: `%LOCALAPPDATA%/starci` on Windows, `~/.local/state/starci` elsewhere. */
+export const userStateDir = (): string =>
+    join(process.platform === "win32" ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local")) : join(homedir(), ".local", "state"), "starci")
+
+/** The host's pointer to its one machine store: a file in `userStateDir` whose one line is the store's absolute path (`machinePath`). */
+export const machinePointerPath = (): string => join(userStateDir(), "machine-store")
+
+const readPointer = (): string | undefined => {
+    try {
+        const named = readFileSync(machinePointerPath(), "utf8").trim()
+        return named === "" ? undefined : resolve(named)
+    } catch {
+        return undefined
+    }
+}
+
+const writePointer = (store: string): void => {
+    try {
+        mkdirSync(userStateDir(), { recursive: true })
+        writeFileSync(machinePointerPath(), `${store}\n`)
+    } catch {
+        // The pointer is how an installed CLI finds the store; a harness checkout resolves it without one, so a failed write is no error here.
+    }
+}
+
+let machineResolved: string | undefined
+
+/** What decides the host store: the facts `machinePath` reads, handed in so the rule is one pure function. */
+export interface MachineFacts {
+    /** STARCI_LOCAL_ROOT, when set. */
+    readonly localRoot: string | undefined
+    /** Running under `node --test` (NODE_TEST_CONTEXT). */
+    readonly testing: boolean
+    /** The checkout's own state base (`stateBase`). */
+    readonly stateBase: string
+    /** The path the host pointer names, when the pointer exists, and whether that file exists. */
+    readonly pointed: string | undefined
+    readonly pointedExists: boolean
+    /** The main checkout of the harness this CLI runs from (a worktree's main), undefined for a CLI installed in node_modules. */
+    readonly checkout: string | undefined
+    /** `userStateDir`. */
+    readonly userState: string
+}
+
+/**
+ * The host store, ONE file per host that every CLI copy and every working folder resolves alike (the lane slots, the heavy governor, the ledger registry),
+ * and whether the pointer is to be written. Pure:
+ * - `STARCI_LOCAL_ROOT/machine.sqlite` when that is set (specs and probes);
+ * - under `node --test` without it, the checkout's own `<state base>/machine.sqlite`, so a spec never writes the host's live store;
+ * - else the store the host pointer names (`machinePointerPath`) when that file exists;
+ * - else, for a CLI running from a harness checkout or any of its worktrees, `<main checkout>/.runtime/machine.sqlite`, recorded in the pointer, so a
+ *   CLI installed in an app's node_modules (no checkout of its own) reaches the same file;
+ * - else (an installed CLI on a host whose harness checkout never ran) `<user state>/harness/machine.sqlite`.
+ */
+export const machineStoreOf = (facts: MachineFacts): { readonly store: string; readonly writePointer: boolean } => {
+    if (facts.localRoot !== undefined && facts.localRoot !== "") return { store: join(resolve(facts.localRoot), "machine.sqlite"), writePointer: false }
+    if (facts.testing) return { store: join(facts.stateBase, "machine.sqlite"), writePointer: false }
+    if (facts.pointed !== undefined && facts.pointedExists) return { store: facts.pointed, writePointer: false }
+    if (facts.checkout !== undefined) return { store: join(facts.checkout, ".runtime", "machine.sqlite"), writePointer: true }
+    return { store: join(facts.userState, "harness", "machine.sqlite"), writePointer: false }
+}
+
+/** The host store (`machineStoreOf` over this process's facts), resolved once per process. */
+export const machinePath = (): string => {
+    const local = process.env[LOCAL_ROOT_ENV]
+    const testing = (process.env.NODE_TEST_CONTEXT ?? "") !== ""
+    if ((local !== undefined && local !== "") || testing) return machineStoreOf({ localRoot: local, testing, stateBase: stateBase(), pointed: undefined, pointedExists: false, checkout: undefined, userState: userStateDir() }).store
+    if (machineResolved !== undefined) return machineResolved
+    const pointed = readPointer()
+    const root = runtimeRoot()
+    const resolved = machineStoreOf({
+        localRoot: undefined,
+        testing: false,
+        stateBase: stateBase(),
+        pointed,
+        pointedExists: pointed !== undefined && existsSync(pointed),
+        checkout: existsSync(join(root, ".git")) ? mainCheckoutOf(root) : undefined,
+        userState: userStateDir(),
+    })
+    if (resolved.writePointer) writePointer(resolved.store)
+    machineResolved = resolved.store
+    return resolved.store
+}
 
 /**
  * The main checkout of the harness at `root`: a linked worktree's `.git` is a file naming `<main>/.git/worktrees/<name>`; a main
@@ -187,15 +268,13 @@ export const mainCheckoutOf = (root: string): string => {
 export const sharedStateBase = (): string => ((process.env[LOCAL_ROOT_ENV] ?? "") === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime") : stateBase())
 
 /**
- * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else one store per user
- * of the host (`%LOCALAPPDATA%/starci/governor.sqlite` on Windows, `~/.local/state/starci/governor.sqlite` elsewhere), so the harness checkout, its
- * worktrees and every CLI installed in an app's node_modules count against the same heavy slots.
+ * The store older CLI copies (before the slots moved into the host store) kept the heavy governor in (`userStateDir/governor.sqlite`); undefined when it is the host store itself
+ * (a spec's STARCI_LOCAL_ROOT). The governor now lives in machine.sqlite; this one is only read, so the units a running older copy holds still count
+ * (harness/heavy.ts `legacyHeavyRows`) until its commands end.
  */
-export const governorStorePath = (): string => {
-    const local = process.env[LOCAL_ROOT_ENV]
-    if (local !== undefined && local !== "") return machinePath()
-    const base = process.platform === "win32" ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local")) : join(homedir(), ".local", "state")
-    return join(base, "starci", "governor.sqlite")
+export const legacyGovernorPath = (): string | undefined => {
+    if ((process.env[LOCAL_ROOT_ENV] ?? "") !== "" || (process.env.NODE_TEST_CONTEXT ?? "") !== "") return undefined
+    return join(userStateDir(), "governor.sqlite")
 }
 
 /** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */

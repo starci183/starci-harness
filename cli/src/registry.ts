@@ -146,6 +146,7 @@ import { laneGateVerb } from "./core/lane/gate.js"
 import { hotfixAbortVerb, hotfixLandVerb, hotfixStatusVerb } from "./core/hotfix/hotfix.js"
 import { slotListVerb } from "./core/slot/list.js"
 import { slotReleaseVerb } from "./core/slot/release.js"
+import { slotKillVerb } from "./core/slot/kill.js"
 import { slotRunVerb } from "./core/slot/run.js"
 import { slotTakeVerb } from "./core/slot/take.js"
 import { appLookVerb } from "./core/gallery/look.js"
@@ -317,6 +318,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     slotTakeVerb,
     slotReleaseVerb,
     slotListVerb,
+    slotKillVerb,
     slotRunVerb,
     appLookVerb,
     galleryShootVerb,

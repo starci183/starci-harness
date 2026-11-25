@@ -4,8 +4,8 @@ import { captureToolSync } from "../shared/exec.js"
 
 /**
  * The host's readings beside the heavy-command count (harness/heavy.ts): the free space of the drive a heavy command writes to, the one floor
- * admission keeps (`heavy.diskFloorMb` of ops/liveness.yaml: npm installs onto a full drive died with ENOSPC and "disk I/O error"), and the free
- * commit, which the seat floor's free memory reads (`hostFreeMb`) and admission does not.
+ * admission keeps on disk (`heavy.diskFloorMb` of ops/liveness.yaml: npm installs onto a full drive died with ENOSPC and "disk I/O error"), and the free
+ * commit, which the seat floor's free memory reads (`hostFreeMb`) and admission keeps a floor on (`commitFloorHeld`, `heavy.commitFloorMb`).
  */
 
 /** How long one reading of the host's free commit serves, in ms: its CIM query takes about half a second. */
@@ -66,3 +66,23 @@ const floorName = (rules: FloorRules): string => {
 /** The floor a reading is under, as the clause a queue line names; empty when the drive has room or cannot be read. Pure. */
 export const floorsHeld = (rules: FloorRules, reading: FloorReading): string[] =>
     reading.diskMb !== null && reading.diskMb < rules.diskFloorMb ? [`free disk ${gbOf(reading.diskMb)} on the drive of ${reading.disk} is under ${floorName(rules)}`] : []
+
+/** The default of `heavy.commitFloorMb` (ops/liveness.yaml): the free commit a heavy command leaves the host. */
+export const COMMIT_FLOOR_MB = 8192
+
+/** The default of `heavy.commitRampSeconds`: how long a just-admitted command's planned memory counts against the free commit. */
+export const COMMIT_RAMP_SECONDS = 60
+
+/**
+ * The commit floor (`heavy.commitFloorMb`), as the clause a queue line names; empty when the host has room or reports no free commit (null: not
+ * Windows, or the query failed). A command of `needMb` planned memory is held while `commitMb - rampingMb - needMb` is under the floor, where
+ * `rampingMb` is the planned memory of the commands admitted in the last `commitRampSeconds`, which the reading does not show yet: six npm installs
+ * admitted at once on a host with 6 GB of free commit left the next process unable to start (STATUS_COMMITMENT_LIMIT, 0xC000012D). Pure.
+ */
+export const commitFloorHeld = (commitMb: number | null, floorMb: number, needMb: number, rampingMb = 0): string[] => {
+    if (commitMb === null || floorMb <= 0) return []
+    const left = commitMb - rampingMb - needMb
+    if (left >= floorMb) return []
+    const ramp = rampingMb > 0 ? `, ${gbOf(rampingMb)} promised to commands just admitted` : ""
+    return [`free commit ${gbOf(commitMb)}${ramp}, less the ${gbOf(needMb)} this command plans, leaves ${gbOf(Math.max(0, left))}: under heavy.commitFloorMb ${gbOf(floorMb)} (ops/liveness.yaml)`]
+}

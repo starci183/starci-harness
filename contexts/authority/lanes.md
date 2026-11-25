@@ -9,8 +9,9 @@ slot or landing script; every step that coordinates with other lanes is a verb.
 
 - **Name.** Set `STARCI_LANE=<lane>`, or work on the branch `lane/<lane>`; every verb below reads it from there (`--lane` overrides).
   A verb that cannot tell the lane refuses `SLOT_LANE_UNSET`, so no slot names a lane that does not exist.
-- **The slot root and lanes folder** are one folder: `--dir`, else `STARCI_LANES_DIR`, else `slots.root` of `ops/slots.yaml`
-  (`starci config set slots.root <dir>`), else `<harness state>/slots`. The coordinator sets it once per host.
+- **The lanes folder** (land status, the dev lock, run records, and the foreign slot lock files older copies left): `--dir`, else `STARCI_LANES_DIR`, else
+  `slots.root` of `ops/slots.yaml` (`starci config set slots.root <dir>`), else `<harness state>/slots`. The coordinator sets it once per host. The slots
+  themselves are rows of the host store, the same from every folder.
 - **The CLI** is the worktree's own, `node_modules/.bin/starci` after its install, so the judge is the harness the app pins. A
   global or another checkout's CLI reports false pin drift. `HFS_CLI_HFS_SKEW` means reinstall, never `STARCI_ALLOW_CLI_SKEW`. A harness
   lane is gated by the CLI build the coordinator names (a `_cli-<sha>` worktree of the harness); `lane gate` warns at its start when that build
@@ -18,38 +19,63 @@ slot or landing script; every step that coordinates with other lanes is a verb.
 
 ## Slots
 
+The owner's rule, in his words:
+
+> "phải nhả slot khi xong việc, phải mapping 1-1 để kill process nếu cần biện pháp mạnh tay"
+
+Every slot maps 1-1 to the OS process doing the work, is released the moment that work ends, and can be killed through, its whole process tree, as a last
+resort. Every slot of the host is a row of ONE store, machine.sqlite, that every CLI copy resolves alike from any folder ([cli/README.md](../../cli/README.md)
+"Machine-wide slots"), so `slot list` shows the same slots from a lane, the lanes folder or an app.
+
 Two layers bound the host's work. The heavy-command governor ([cli/README.md](../../cli/README.md) "Heavy-command governor") is the owner's
 rule: one heavy slot per 16 GB of the host's RAM (`heavy.gbPerSlot`, 4 on a 64 GB host), and each heavy command (a tsc, an eslint, a build, an
 install, a test run) holds one while it runs, whichever checkout or installed CLI starts it; a gate that runs several in turn takes one for each
-step, and a running web or api server takes none. Nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else `heavy.diskFloorMb`). The lane slots of
-`ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look),
-`stack` (the shared stack and its main checkout). Early in every `lane gate`, while the drive still has room, a warning shows when the lanes drive has under `host.diskWarnMb`
-free (config.yaml, else `heavy.diskWarnMb` of ops/liveness.yaml, 50 GB; never under the floor): it lists the landed lanes whose worktrees can be removed and the command
-that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each kind has a count, and some a burst opened only with free RAM.
+step, and a running web or api server takes none. Nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else
+`heavy.diskFloorMb`), nor while the free commit, less what the commands just admitted and the command itself plan, is under `heavy.commitFloorMb` of
+ops/liveness.yaml. The lane slots of `ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a
+shot or a look), `stack` (the shared stack and its main checkout). Early in every `lane gate`, while the drive still has room, a warning shows when the lanes
+drive has under `host.diskWarnMb` free (config.yaml, else `heavy.diskWarnMb` of ops/liveness.yaml, 50 GB; never under the floor): it lists the landed lanes whose
+worktrees can be removed and the command that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each kind has a count, and some a burst
+opened only with free RAM.
 
 | verb | does |
 |---|---|
-| `starci slot run <kind> -- <command...>` | holds a slot for exactly the command's life, recording this process; npm and npx run through the governor |
-| `starci slot take <kind> [--pid <pid>]` | holds a slot until released; `--pid` names the long-lived process it belongs to (in Git Bash, `$(cat /proc/$$/winpid)`) |
+| `starci slot run <kind> -- <command...>` | holds a slot for exactly the command's life, recording this process and the command's own pid as its child; npm and npx run through the governor |
+| `starci slot take <kind> --pid <pid>` | holds a slot until released; `--pid` names the long-lived process it belongs to (in Git Bash, `$(cat /proc/$$/winpid)`) |
 | `starci slot release <kind>` | releases the lane's own slots, each only once read and found to name the lane |
-| `starci slot list [kind]` | every slot with its lane, age, whether the holder is alive (yes, no, unknown), whether it is reclaimable, pid and state |
+| `starci slot list [kind\|heavy] [--events N]` | every lane slot (lane, pid, child, age, command, alive, state, reclaimable) and every heavy slot (id, units, pid, child, age, command), from any folder |
 | `starci slot release <kind\|all> --stale` | reclaims every slot whose holder is proven gone |
+| `starci slot kill <kind> <n> [--execute]`, `starci slot kill heavy <id> [--execute]` | the last resort: kills the process tree of the one process the slot maps to and frees the slot |
 
 - **Prefer `slot run`.** A slot held by a command cannot outlive it; `slot take` is for a step that spans several commands.
 - **Release only your own.** A slot is removed only after it is read and names your lane; another lane's slot is never deleted by hand.
-- **Reclaim only on evidence.** A slot line is `<lane> <taken> pid=<pid> start=<pid start> boot=<host boot> host=<host>`. A take,
-  or `slot release --stale`, reclaims a slot only when its holder is proven gone: its pid is not alive, its pid runs a process
-  started at another time, or the host booted after it was taken. Each reclaim is logged with its evidence in `<root>/_slots.log`.
+- **Every slot records its process.** A row names the lane, the pid it lives as long as and that process's start, the host boot, the command and, once
+  spawned, the child doing the work. A take refuses (`SLOT_PID_REQUIRED`, `SLOT_START_UNKNOWN`) without a live pid whose start the OS reports; `slot take`
+  needs `--pid`. A script of an app never writes a `_npm-slot-*.lock` itself: it calls `starci slot run npm -- <command>`.
+- **Released when the work ends.** A slot held by `slot run`, `lane gate`, `gallery shoot` or `app look` is deleted in a `finally`, on SIGINT, SIGBREAK, SIGHUP
+  and SIGTERM and on `process.exit`, step by step: `lane gate` takes its npm slot for the install and its gate slot for the check, never across steps. On
+  Windows a process killed outright (`taskkill /F`, `process.kill`, a dead parent) runs nothing: its row records its pid, and the next take or list reclaims it
+  as `dead` at once.
+- **Reclaim only on evidence.** A take, or `slot release --stale`, reclaims a slot only when its holder is proven gone: its pid is not alive, its pid runs a
+  process started at another time, or the host booted after it was taken. Each reclaim is logged with its evidence in `slot_events` (`slot list --events N`).
   Age is never evidence: a slot past its kind's `warnMinutes` is listed `old`, and the coordinator asks its holder.
-- **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds, so a retried gate never takes a
-  second one. A slot held by `slot run` or `lane gate` is released in a `finally`, on SIGINT, SIGBREAK, SIGHUP and SIGTERM and on `process.exit`.
-  On Windows a process killed outright (`taskkill /F`, `process.kill`, a dead parent) runs nothing: its slot records its pid, and the next take reclaims it as `dead`.
-- **Locks with no pid** (a lock line `<lane> <time>` alone) cannot be probed. They are reclaimable (`gone`) once their lane has no worktree: no
-  worktree of the repositories under the slot root exists on disk whose folder ends in `/<lane>` or which has `lane/<lane>` checked out (where the slot root
-  holds no repository, `_land-status/<lane>.json` saying `landed` or `rejected` stands in), or taken before this boot (`rebooted`). Otherwise they are
-  only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or such a lock can be reclaimed.
+- **Kill by slot, as a last resort.** `slot kill <kind> <n>` (a lane slot: its holder's tree) and `slot kill heavy <id>` (the heavy command's tree, else its
+  holder's) print what they would kill; `--execute` kills it, frees the slot and logs the pid, child, command and evidence in `slot_events`. They refuse a free
+  slot, a pid that now runs another program (`SLOT_KILL_REUSED`) and a holder whose recorded start cannot be matched (`SLOT_KILL_UNPROVEN`); a holder already
+  dead is not killed, its slot is reclaimed. Kill only a slot whose work must stop; never one of a live lane you were not asked to stop.
+- **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds when its process is the taker or one the taker
+  runs under, so a retried gate never takes a second one; while another live process of the lane holds it, the take waits.
+- **Foreign lock files.** A lock file in a lanes folder (`<root>/_npm-slot-1.lock` and the like), written by a CLI copy older than the store or by a script, is
+  foreign: never written, read in every lanes folder any CLI copy of the host was named (so from any working folder alike), honoured as holding its
+  number for every taker while its holder is not proven gone, listed with its path, released with its lane
+  and reclaimed on proof. A line with no pid (`<lane> <time>`) is reclaimable (`gone`) once its lane is proven gone: the process table is
+  read, and no process works inside the lane's worktree (its working folder or command line lies in it) or names the holder in its command line, and either no worktree
+  of the repositories under the lanes folder exists on disk whose folder is `<lane>` or which has `lane/<lane>` checked out (where the lanes folder holds no repository,
+  `_land-status/<lane>.json` saying `landed` stands in) or that worktree has no live process. A holder name ending in `-<pid>` whose pid is alive and started before
+  the lock keeps it held; a dead suffix pid proves nothing (a lane may be named `h-x-390`). Taken before this boot is `rebooted`. Otherwise the lock is held,
+  `slot list` prints `not reclaimable: <why>` for it (the process that works there, or that nothing was read about its lane), and it is `old` past `warnMinutes`.
 - **A lane lets go of its slots.** `starci lane remove` releases every slot the lane holds, of any kind, as part of the removal (its dry run lists them;
-  `--dir` names the slot root). Each release is logged in `_slots.log`.
+  `--dir` names the lanes folder whose foreign locks of the lane go too). Each release is logged in `slot_events`.
 - **Never hold a slot while you wait** for a review, an audit or another lane; take it for the run, then let it go.
 
 ## The shared stack

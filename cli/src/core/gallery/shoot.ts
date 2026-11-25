@@ -67,7 +67,7 @@ export const galleryShootVerb = defineVerb({
         timeout: { kind: "string", summary: "seconds --ready-url has to answer (default 180)" },
         lane: { kind: "string", summary: "the lane that holds the slot (default: STARCI_LANE, else the branch lane/<lane>)" },
         wait: { kind: "string", summary: "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const say = context.progress
@@ -86,7 +86,7 @@ export const galleryShootVerb = defineVerb({
         const slots = slotRoot(flags.dir, rules)
         const outcome = await withSlot(slots, rules, "shoot", lane, { waitSeconds: waitSeconds(flags.wait), say }, async (taken) => {
             say(`shoot slot ${String(taken.n)} held by ${lane}`)
-            return { taken, run: await runArgv(capture, root, `gallery shoot ${lane}`, "build") }
+            return { taken, run: await runArgv(capture, root, `gallery shoot ${lane}`, "build", taken.spawned) }
         })
         const { run, taken } = outcome
         for (const text of [run.stdout, run.stderr]) if (text !== "") say(text)

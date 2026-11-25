@@ -1,29 +1,62 @@
 import { EVERYONE, defineVerb } from "../../shared/verb.js"
-import { listSlots, loadSlotRules, slotRoot } from "../../harness/slots.js"
+import { heavySlots, legacyHeavyRows, loadHeavyRules } from "../../harness/heavy.js"
+import type { HeavySlot } from "../../harness/heavy.js"
+import { machinePath } from "../../harness/ledger.js"
+import { recentEvents } from "../../harness/slot-store.js"
+import { listSlots, loadSlotRules, slotProbe, slotRoot } from "../../harness/slots.js"
+import type { SlotView } from "../../harness/slots.js"
+import { positiveInt } from "./holder.js"
 
-/** `starci slot list [kind]`: every slot with its lane, age, holder alive and reclaimable, pid and state (free, held, old, dead, reused, rebooted, gone). */
+const minutesSince = (at: string | undefined): string => (at === undefined ? "?" : String(Math.max(0, Math.round((Date.now() - Date.parse(at)) / 60_000))))
+
+/** One lane slot as a line: number, state, lane, pid, child, age, command, and where a foreign lock lies. */
+const laneLine = (slot: SlotView): string => {
+    const name = `${slot.kind} ${String(slot.n)}${slot.burst ? " (burst)" : ""}`
+    if (slot.source === "free") return `${name}: free`
+    const pid = slot.pid === null || slot.pid === undefined ? "pid none" : `pid ${String(slot.pid)}`
+    const child = slot.childPid === null || slot.childPid === undefined ? "" : ` child ${String(slot.childPid)}`
+    const command = slot.command === undefined ? "" : ` command ${slot.command}`
+    const foreign = slot.source === "foreign" ? ` foreign lock ${slot.where}` : ""
+    const why = slot.why === undefined ? "" : `\n    not reclaimable: ${slot.why}`
+    return `${name}: ${slot.state} lane ${String(slot.holder)} ${pid}${child} age ${String(slot.ageMinutes)} min alive ${String(slot.alive)} reclaimable ${slot.reclaimable === true ? "yes" : "no"}${command}${foreign}${why}`
+}
+
+/** One heavy slot as a line: id, state, units, pid, child, age, command (its label), and an older copy's row marked. */
+const heavyLine = (slot: HeavySlot): string =>
+    `heavy ${slot.id}: ${slot.state} ${slot.kind} ${String(slot.weight)} unit(s) pid ${String(slot.pid)}${slot.childPid === null ? "" : ` child ${String(slot.childPid)}`} age ${minutesSince(slot.at)} min command ${slot.label}${slot.source === "foreign" ? " [older copy's governor.sqlite, counted, never written]" : ""}`
+
+/**
+ * `starci slot list [kind]`: every slot of the host store (machine.sqlite, the same file from every folder and CLI copy): the lane slots with their lane,
+ * pid, child, age, command, state and whether they are reclaimable, the foreign lock files of older copies, and the heavy-command rows (`heavy`).
+ */
 export const slotListVerb = defineVerb({
     path: ["slot", "list"],
-    summary: "list the machine-wide slots (every kind, or one) with lane, age, holder alive (yes, no, unknown), pid, state and whether it is reclaimable: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process), rebooted (taken before this boot) or gone (an old-helper lock whose lane has no worktree)",
+    summary:
+        "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, units, pid, child, age, command); a held slot says why it is not reclaimable",
     effect: "read",
     roles: EVERYONE,
-    schema: "starci/slot-list@1",
+    schema: "starci/slot-list@2",
     flags: {
-        kind: { kind: "string", summary: "only this kind", positional: true },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        kind: { kind: "string", summary: "only this kind (a lane kind of ops/slots.yaml, or heavy)", positional: true },
+        events: { kind: "string", summary: "also print the newest N slot events (taken, released, reclaimed, killed, with who and the evidence)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
-    run: (_context, flags) => {
+    run: async (_context, flags) => {
         const rules = loadSlotRules()
         const root = slotRoot(flags.dir, rules)
-        const slots = listSlots(root, rules, flags.kind === undefined ? [] : [flags.kind])
+        const store = machinePath()
+        const laneKinds = flags.kind === undefined ? [] : flags.kind === "heavy" ? undefined : [flags.kind]
+        const slots = laneKinds === undefined ? [] : listSlots(root, rules, laneKinds, await slotProbe(root, rules, laneKinds))
+        const heavyRules = loadHeavyRules()
+        const heavy = flags.kind === undefined || flags.kind === "heavy" ? [...heavySlots(heavyRules), ...legacyHeavyRows(heavyRules)] : []
+        const limit = positiveInt("events", flags.events)
+        const events = limit === undefined ? [] : recentEvents(limit)
         const lines = [
-            `root: ${root}`,
-            ...slots.map((slot) =>
-                slot.state === "free"
-                    ? `${slot.kind} ${String(slot.n)}${slot.burst ? " (burst)" : ""}: free`
-                    : `${slot.kind} ${String(slot.n)}${slot.burst ? " (burst)" : ""}: ${slot.state} lane ${String(slot.holder)} age ${String(slot.ageMinutes)} min alive ${String(slot.alive)} reclaimable ${slot.reclaimable === true ? "yes" : "no"}${slot.pid === null || slot.pid === undefined ? "" : ` pid ${String(slot.pid)}`}`,
-            ),
+            `store: ${store}`,
+            ...slots.map(laneLine),
+            ...(flags.kind === undefined || flags.kind === "heavy" ? (heavy.length === 0 ? ["heavy: none running or waiting"] : heavy.map(heavyLine)) : []),
+            ...(events.length === 0 ? [] : ["events:", ...events.map((event) => `  ${event.at} ${event.action} ${event.slot} lane/label ${String(event.holder)} pid ${String(event.pid)}${event.childPid === null ? "" : ` child ${String(event.childPid)}`} by ${event.by}: ${event.evidence}`)]),
         ]
-        return Promise.resolve({ data: { root, slots }, message: lines.join("\n") })
+        return { data: { store, root, slots, heavy, events }, message: lines.join("\n") }
     },
 })

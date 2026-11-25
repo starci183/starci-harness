@@ -16,7 +16,7 @@ interface RemoveData {
     readonly branchKept: boolean
     readonly unlinked: readonly { readonly path: string; readonly target: string; readonly targetSurvived: boolean }[]
     readonly leftover: number
-    /** The slot files the lane holds (a dry run) or held (released with the removal). */
+    /** The slots the lane holds (a dry run) or held (released with the removal). */
     readonly slots: readonly string[]
 }
 
@@ -35,7 +35,7 @@ export const laneRemoveVerb = defineVerb({
         "keep-branch": { kind: "boolean", summary: "keep the lane's branch (the default and the only mode: the branch is never deleted)" },
         discard: { kind: "boolean", summary: "remove although tracked changes stand, throwing them away" },
         lane: { kind: "string", summary: "the lane named in the removal lock (default: STARCI_LANE, else the worktree's lane/<lane> branch)" },
-        dir: { kind: "string", summary: "the slot root whose slots of the lane are released (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder whose foreign slot lock files of the lane are released too (its store rows always are; default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
         execute: { kind: "boolean", summary: "remove the worktree (default: a dry run that prints the plan and changes nothing)" },
     },
     run: async (context, flags): Promise<VerbResult<RemoveData>> => {
@@ -44,11 +44,11 @@ export const laneRemoveVerb = defineVerb({
         const held = removeLockOf(plan.worktree)
         const rules = loadSlotRules()
         const slotsDir = slotRoot(flags.dir, rules)
-        const slotLines = slotsOfLane(slotsDir, rules, lane).map((slot) => `${slot.kind} ${String(slot.n)}: ${slot.file} (${slot.content})`)
+        const slotLines = slotsOfLane(slotsDir, rules, lane).map((slot) => `${slot.kind} ${String(slot.n)}: ${slot.where} (${slot.content})`)
         const links = plan.links.map((link) => `  ${link.directory ? "junction" : "link"} ${link.relative} -> ${link.target}${link.targetExists ? "" : " (dangling)"}`)
         const head = [`worktree ${plan.worktree}`, `branch   ${plan.branch ?? "(detached)"} (kept)`, `tracked changes: ${String(plan.dirty.length)}${plan.dirty.length > 0 ? " (discarded)" : ""}`, `links to unlink, link only: ${String(plan.links.length)}`, ...links]
         if (!flags.execute) {
-            const steps = [`1. take the removal lock (install paths refuse to run in the worktree)${held === undefined ? "" : `: HELD by ${held.lane}`}`, "2. unlink each link itself, verify it is gone and its target survives", "3. refuse if any link remains", "4. git worktree remove --force, git worktree prune, delete what is left with lstat", "5. keep the branch, release the lock", `6. release every slot lane ${lane} holds in ${slotsDir}: ${slotLines.length === 0 ? "none held" : String(slotLines.length)}`, ...slotLines.map((line) => `   ${line}`)]
+            const steps = [`1. take the removal lock (install paths refuse to run in the worktree)${held === undefined ? "" : `: HELD by ${held.lane}`}`, "2. unlink each link itself, verify it is gone and its target survives", "3. refuse if any link remains", "4. git worktree remove --force, git worktree prune, delete what is left with lstat", "5. keep the branch, release the lock", `6. release every slot lane ${lane} holds (machine.sqlite, and foreign lock files in ${slotsDir}): ${slotLines.length === 0 ? "none held" : String(slotLines.length)}`, ...slotLines.map((line) => `   ${line}`)]
             return { data: { dryRun: true, worktree: plan.worktree, branch: plan.branch, dirty: plan.dirty, links: plan.links.map((link) => ({ path: link.relative, target: link.target, directory: link.directory, targetExists: link.targetExists })), lockHeld: held?.lane ?? null, branchKept: true, unlinked: [], leftover: 0, slots: slotLines }, message: [...head, "plan:", ...steps, "dry run: nothing changed; pass --execute"].join("\n") }
         }
         const done = await removeWorktree(plan, lane, context.progress)

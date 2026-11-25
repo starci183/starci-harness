@@ -6,7 +6,7 @@ import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 import { readStatuses } from "./lane-state.js"
 import { releaseRemoveLock, removeLockOf, takeRemoveLock } from "./remove-lock.js"
-import { RECLAIMABLE, judgeHolder, liveProbe, slotKind, slotsOfLane, readHolder, worktreesUnder } from "./slots.js"
+import { listSlots, liveProbe, worktreesUnder } from "./slots.js"
 import type { SlotRules } from "./slots.js"
 import { busySubject } from "./worktree-busy.js"
 import { deleteTree, findLinks, unlinkLinks } from "./worktree-remove.js"
@@ -196,10 +196,11 @@ export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: st
     const reasons: string[] = []
     const lock = removeLockOf(tree.path, context.root)
     if (lock !== undefined) reasons.push(`being removed by ${lock.lane} (pid ${String(lock.pid)})`)
-    const probe = liveProbe()
-    for (const slot of slotsOfLane(context.root, context.rules, tree.lane)) {
-        const read = readHolder(slot.file)
-        if (read !== undefined && !RECLAIMABLE.has(judgeHolder(slotKind(context.rules, slot.kind), read, probe).state)) reasons.push(`lane ${tree.lane} holds ${slot.kind} slot ${String(slot.n)}`)
+    // The process starts come from the table already read, so judging the rows asks the OS nothing more.
+    const starts = typeof context.processes === "string" ? undefined : new Map(context.processes.map((item) => [item.pid, item.startedMs]))
+    const probe = starts === undefined ? liveProbe() : { ...liveProbe(), startMs: (pid: number) => starts.get(pid) ?? null }
+    for (const slot of listSlots(context.root, context.rules, [], probe)) {
+        if (slot.holder === tree.lane && slot.source !== "free" && slot.reclaimable !== true) reasons.push(`lane ${tree.lane} holds ${slot.kind} slot ${String(slot.n)}`)
     }
     const gitdir = gitDirOf(tree.path)
     if (gitdir !== undefined && existsSync(join(gitdir, "index.lock"))) reasons.push("a git operation is under way (index.lock)")

@@ -5,11 +5,11 @@ import { laneHolder, positiveInt } from "./holder.js"
 
 /**
  * `starci slot release <kind>`: remove the slots of a kind the lane holds, each only once read and found to name the lane. With
- * `--stale` (no lane), reclaim every slot of the kind (every kind for `all`) whose holder is proven gone (its pid dead or reused, or taken before this boot); age alone never reclaims.
+ * `--stale` (no lane), reclaim every slot of the kind (every kind for `all`) whose holder is proven gone (its pid dead or reused, taken before this boot, or a lock with no pid whose lane is proven gone); age alone never reclaims.
  */
 export const slotReleaseVerb = defineVerb({
     path: ["slot", "release"],
-    summary: "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, or taken before this boot), logging the evidence; age never reclaims",
+    summary: "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, taken before this boot, or a pid-less lock whose lane is proven gone), logging the evidence; age never reclaims",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/slot-release@1",
@@ -18,7 +18,7 @@ export const slotReleaseVerb = defineVerb({
         lane: { kind: "string", summary: "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)" },
         n: { kind: "string", summary: "only this slot number" },
         stale: { kind: "boolean", summary: "reclaim the slots of the kind whose holder is proven gone, whoever holds them; an old one is reported, never removed" },
-        dir: { kind: "string", summary: "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)" },
+        dir: { kind: "string", summary: "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder" },
     },
     run: async (context, flags) => {
         const rules = loadSlotRules()
@@ -27,7 +27,7 @@ export const slotReleaseVerb = defineVerb({
             if (flags.lane !== undefined || flags.n !== undefined) throw new Refusal("CLI_USAGE", "--stale reclaims by state, whoever holds the slot: it takes no --lane or --n")
             const names = flags.kind === "all" ? Object.keys(rules.kinds) : [flags.kind]
             for (const name of names) slotKind(rules, name)
-            const done = reclaimStale(root, rules, names, `slot release --stale (pid ${String(process.pid)})`)
+            const done = await reclaimStale(root, rules, names, `slot release --stale (pid ${String(process.pid)})`)
             const lines = [...done.released.map((file) => `reclaimed ${file}`), ...done.kept]
             return { data: { root, ...done }, message: lines.length === 0 ? "no slot whose holder is proven gone" : lines.join("\n") }
         }
