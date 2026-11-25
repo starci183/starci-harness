@@ -10,7 +10,7 @@ import { captureGitSync } from "../../shared/git.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import type { HostProcess } from "../../harness/process-table.js"
-import { readRunnerStatus, readWanted, requestDevSync, runDevSyncRunner, runnerPaths, settingsForCheckout, strayDevServers } from "./sync-runner.js"
+import { readRunnerStatus, readWanted, reasonLine, requestDevSync, runDevSyncRunner, runnerPaths, settingsForCheckout, strayDevServers } from "./sync-runner.js"
 import type { RunnerDeps } from "./sync-runner.js"
 
 const repo = (t: { after: (fn: () => void) => void }): string => {
@@ -171,4 +171,23 @@ void test("after a failed sync every declared process is checked and brought up;
     await runDevSyncRunner(checkout, paths, { ...fakeDeps(broken, { start: marked + 300_000, fail: true }), ensureUp: () => Promise.reject(new Error("powershell gone")) })
     assert.deepEqual(broken, ["sync"])
     assert.equal(readWanted(paths), undefined)
+})
+
+void test("a refusal whose first line only opens its reason keeps the reason in the status, and the log keeps every line", async (t) => {
+    assert.equal(reasonLine("dev sync: npm ci in D:/app failed:\n\nnpm error code ENOSPC\nmore"), "dev sync: npm ci in D:/app failed: npm error code ENOSPC")
+    assert.equal(reasonLine("dev sync: npm ci in D:/app exited 124: killed past its time budget\ntail"), "dev sync: npm ci in D:/app exited 124: killed past its time budget")
+    assert.equal(reasonLine("x".repeat(700)).length, 600)
+    const checkout = repo(t)
+    const paths = await runnerPaths(checkout)
+    const marked = Date.parse("2026-11-23T10:00:00.000Z")
+    await requestDevSync(checkout, "lane-a landed", () => undefined, () => Promise.resolve(1))
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(marked).toISOString(), reason: "lane-a landed" }))
+    const deps: RunnerDeps = {
+        ...fakeDeps([], { start: marked + 300_000 }),
+        sync: () => Promise.reject(Object.assign(new Error("dev sync: npm ci in D:/app failed:\nnpm error code ENOSPC\nnpm error syscall write"), { code: "DEPS_INSTALL_FAILED" })),
+    }
+    const said: string[] = []
+    const written = await runDevSyncRunner(checkout, paths, deps, (line) => said.push(line))
+    assert.match(written[0]?.reason ?? "", /dev sync refused: DEPS_INSTALL_FAILED: dev sync: npm ci in D:\/app failed: npm error code ENOSPC$/u)
+    assert.ok(said.includes("  npm error syscall write"), said.join("\n"))
 })
