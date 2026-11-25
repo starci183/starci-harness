@@ -1011,15 +1011,14 @@
 
     /*
      * A tab strip reserves the width of each page control it shows (Next v0.0.10 audit, 390px: the next control covered the edge tab's label,
-     * "Patter", "Challeng"). The control (a 2rem IconButton standing 0.25rem past the frame's edge) gets its own gutter on its side, so the
-     * scroller, its fade and the selected tab's reveal end where the control begins and no label lies under it.
+     * "Patter", "Challeng"). The control (a 2rem IconButton standing 0.25rem past the frame's edge) gets a 2rem gutter on its side (the 32 step),
+     * so the scroller, its fade and the selected tab's reveal end before the control begins and no label lies under it.
      */
-    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] { --starci-horizontal-scroll-caret-gutter: 1.75rem; }
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"]:has(> :is([data-left-scroll="true"], [data-left-right-scroll="true"])) {
-        padding-inline-start: var(--starci-horizontal-scroll-caret-gutter);
+        padding-inline-start: 2rem;
     }
     .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"]:has(> :is([data-right-scroll="true"], [data-left-right-scroll="true"])) {
-        padding-inline-end: var(--starci-horizontal-scroll-caret-gutter);
+        padding-inline-end: 2rem;
     }
 
     /* Preserve the Tabs glyph's vendor size and center, with a small IconButton hit target. */
