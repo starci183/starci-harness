@@ -1431,6 +1431,7 @@ slots:
       - concepts/<topic>.md
       - concepts/index.yaml
       - concepts/<name>/index.yaml
+      - prompts/**/*.md
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY
