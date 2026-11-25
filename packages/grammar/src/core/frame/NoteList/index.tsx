@@ -53,7 +53,7 @@ export type NoteListProps = {
 
 /** One note as a row of the list. */
 export const NoteRow = ({ note, isLoading = false }: { readonly note: NoteRowData; readonly isLoading?: boolean }) => (
-    <li className="starci-core-note-row" data-tier="composite" data-component="NoteRow" data-contract="GAP-3" data-grammar-row-id={note.id}>
+    <li className="starci-core-note-row" data-tier="frame" data-component="NoteRow" data-contract="GAP-3" data-grammar-row-id={note.id}>
         <div className="starci-core-note-copy">
             <span className="starci-core-note-meta">{isLoading ? <Skeleton shape="text" /> : `${note.kind} · ${note.source}`}</span>
             <span className="starci-core-note-text">{isLoading ? <Skeleton shape="text" /> : note.text}</span>
