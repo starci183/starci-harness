@@ -42,7 +42,8 @@ function fixture(t: TestContext, partial = false, logic?: Declared): string {
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, isolatedModules: true } }));
   write('jest.config.cjs', `const config = require(${JSON.stringify(presetIndex)}).starciJestConfig({ coverage: {
     roots: ['src/modules/domain/*/', 'src/modules/integrations/*/', 'src/modules/platform/*/'],
-    roles: ['service', 'guard', 'client'], files: ${JSON.stringify(logic?.declared ? [logicFile] : [])}, excludes: []
+    roles: ['service', 'guard', 'client'], files: ${JSON.stringify(logic?.declared ? [logicFile] : [])}, excludes: [],
+    perFile: { lines: 100, branches: 100, functions: 100, statements: 100 }
   } })
 const defaults = require(${JSON.stringify(tsJestPreset)}).transform
 for (const project of config.projects) {
@@ -156,7 +157,7 @@ test('a partially covered file fails all four per-file metrics despite a large f
   }
 });
 
-test('a declared logic file is held at 100 per file: one branch left uncovered fails its threshold', (t) => {
+test('a declared logic file is held at its coverage tier and the per-file floor: one branch left uncovered fails its threshold', (t) => {
   const app = fixture(t, false, { declared: true, covered: false });
   const { result, output, summary } = run(app, [coveredFile, logicFile]);
   assert.equal(result.status, 1, output);

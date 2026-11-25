@@ -13,7 +13,7 @@
 // A package has no manifest of its own: the project declares it. `packages/<name>/slots.yaml` (`schema: starci/package-slots@1`, the same keys in
 // YAML) is still read for a package the project's manifest does not declare.
 // hfs enforces the slots as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no
-// slot are findings, and a declaration it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in
+// slot are findings, and a declaration it cannot read is one too. Coverage follows the slots: every file of a package is measured at its coverage tier (BE-TEST-13) in
 // the back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason
 // required. A package no declaration names is measured whole but its barrels and type files (PACKAGE_ALWAYS_UNMEASURED).
 // The canon that lints a file follows the slots too (packageLintScopes): the first slot that holds a file decides, as it decides the file's place;

@@ -54,14 +54,14 @@ versioning:
 #   requiredWhen       connections: required only when hfs.json declares a database connection.
 #   allows / forbids   names inside the instance; the loader exposes them, slot-check enforces them.
 #   tests       unit-beside | e2e | none.
-#   coverage    required | none, on every tracked slot of profile be. A required slot's subtree is measured at 100 per file on every
+#   coverage    required | none, on every tracked slot of profile be. A required slot's subtree is measured at its coverage tier (BE-TEST-13) on every
 #               ruleParams.be.logicRoles file and on every file a slot of it declares in `logic` (lines, branches, functions,
 #               statements); a none slot's subtree is never measured and is excluded from Sonar's coverage. scripts/hfs/coverage-scope.mts
 #               derives the jest per-file thresholds, Sonar's sonar.coverage.exclusions and the Codecov paths and components from this
 #               field and `logic` and nowhere else (R204). Every app has the same coverage scope.
 #   logic       on a coverage-required unit-beside directory slot: the files of the slot that carry logic without a logic-role suffix
 #               (`<name>.<part>.ts`, relative to the slot path, each one the slot requires or allows, none of a logic role). Each is
-#               measured at 100 per file like a logic-role file, and its `<name>.<part>.spec.ts` beside it is a legitimate unit spec
+#               measured like a logic-role file (its coverage tier and the per-file floor, BE-TEST-13), and its `<name>.<part>.spec.ts` beside it is a legitimate unit spec
 #               (R47, R48): the slot admits it without listing it. No role name is added to ruleParams.be.logicRoles.
 #   composedBy the app kinds allowed to compose a transport slot (an app of another kind imports none of its modules); on an
 #               owner slot (be.cli) the app kinds that list its root module, every folder of the root holding one static module.
@@ -91,7 +91,7 @@ testValues: [unit-beside, e2e, none]
 
 # The one app edition (R212): the architecture on the app's own self-hosted PostgreSQL - one monorepo, the slots below, the CQRS shape
 # and the patterns (queue, event bus, saga, reactors, projection, realtime, webhooks, fenced job), declared in hfs.json the same way,
-# and the unit specs (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders). The adapters behind the ports are
+# and the unit specs (unitRoles, logicRoles, the coverage bar (BE-TEST-13), @starci/jest-preset doubles, builders). The adapters behind the ports are
 # fixed: schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json sides.be.backing declares (fed by the
 # Postgres outbox), event-bus ports on pgmq topics sent in the publisher's transaction, cache and locks on Postgres or the declared
 # Redis, schedules as platform/jobs ticks enqueueing through the queue outbox (R335), storage on S3-compatible MinIO
@@ -356,11 +356,11 @@ ruleParams:
       - {role: service, spec: service.spec}
       - {role: cli, spec: cli.spec, slots: [be.cli, be.client-cli], exempt: [BE_TRANSPORT_SHAPE]}
     # R204 HFS_COVERAGE_SCOPE_DRIFT. THE roles that carry logic: a file `<name>.<role>.ts` of one of these roles
-    # inside a slot whose `coverage` is required is measured at 100 per file on lines, branches, functions and statements (the three
+    # inside a slot whose `coverage` is required is measured at its coverage tier and the per-file floor (BE-TEST-13) (the three
     # generated consumers: jest thresholds, sonar.coverage.exclusions, codecov.yml). A role that is not listed here (module, module-definition,
     # options, config, command, query, contracts, port, event, queue, entity, sql, rows, messages, log-events, error, decorators, cache-keys,
     # projection-entity, connection, and every file with no role: index.ts, main.ts, migrations) is declaration or composition and is never measured.
-    # A unit spec beside such a file (`<name>.<role>.spec.ts`) is legal but not required: the file owes 100, not a spec of its own.
+    # A unit spec beside such a file (`<name>.<role>.spec.ts`) is legal but not required: the file owes its coverage bar, not a spec of its own.
     logicRoles: [service, schema, policy, projection, guard, mapper, client, adapter, filter, interceptor, processor, step, saga, saga-step, compensation, consumer, webhook]
     # R281 BE_SPEC_FORM_ALL_ROLES. THE logic roles whose file declares values Nest never constructs (a zod schema): its spec parses the declared
     # value directly and builds no testing module; every other logic role is built through `Test.createTestingModule`.
@@ -901,8 +901,9 @@ slots:
     profiles: [app]
     # A business package the project declares under hfs.json `sides.nivoos.packages` (R436): agents, workflows, cells, steps, brain, accounts and the seed document
     # `nivoos package build` writes, at packages/<package>/, authored with the nivoos SDK. It is a root workspace package (its own package.json) that no side imports and
-    # that has no unit specs: `nivoos package check` proves it (HFS_NIVOOS_PACKAGE_CHECK), the SDK authoring lint profile judges its source (`lintProfile: nivoos` of
-    # @starci/eslint-canon-be) and its coverage is none. A folder of packages/ that depends on the SDK and is not declared is HFS_NIVOOS_UNDECLARED.
+    # whose seed `nivoos package check` proves (HFS_NIVOOS_PACKAGE_CHECK), whose source the SDK authoring lint profile judges (`lintProfile: nivoos` of
+    # @starci/eslint-canon-be), whose every cell and flow has a spec beside it (HFS_NIVOOS_SPEC_MISSING) and whose logic the back end's unit run measures at the
+    # business bar (owner 2026-11-25, BE-TEST-13; its specs are not the canon's unit-beside kinds, so `tests` stays none). A folder of packages/ that depends on the SDK and is not declared is HFS_NIVOOS_UNDECLARED.
     path: "packages/<package>/"
     declaredBy: nivoos
     lintProfile: nivoos
@@ -911,7 +912,7 @@ slots:
     tier: none
     requires: [package.json, tsconfig.json]
     tests: none
-    rules: [HFS_NIVOOS_PACKAGE_MISSING, HFS_NIVOOS_UNDECLARED, HFS_NIVOOS_PACKAGE_CHECK]
+    rules: [HFS_NIVOOS_PACKAGE_MISSING, HFS_NIVOOS_UNDECLARED, HFS_NIVOOS_PACKAGE_CHECK, HFS_NIVOOS_SPEC_MISSING]
   - id: app.desktop-config
     since: 6.14.0
     profiles: [app]
@@ -2205,7 +2206,7 @@ slots:
     owner: true
     requires: [index.ts, "<name>.module.ts", "<name>.projection.ts"]
     allows: [index.ts, "<name>.module.ts", "<name>.module-definition.ts", "<name>.options.ts", "<name>.projection.ts", "<name>.contracts.ts", persistence/]
-    tests: unit-beside            # a measured slot: <name>.projection.spec.ts beside its projection is legal (the file owes 100 per file; a spec of its own is optional)
+    tests: unit-beside            # a measured slot: <name>.projection.spec.ts beside its projection is legal (the file owes its coverage bar per file; a spec of its own is optional)
     coverage: required
     rules: [BE_PROJECTION_WRITE_OWNER, BE_PROJECTION_SHAPE, BE_TIER_DIRECTION, BE_CONTEXT_COUPLING]
     exemplifiedBy:
@@ -2251,7 +2252,7 @@ slots:
     owner: true
     requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
     allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts, errors/]
-    logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
+    logic: [passport.kit.ts]   # the verifier mapping over the package: measured at its coverage tier (BE-TEST-13)
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
     coverage: required

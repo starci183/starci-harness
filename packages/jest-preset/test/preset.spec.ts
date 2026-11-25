@@ -52,7 +52,9 @@ const callsOf = (fn: unknown): unknown[][] => {
 // The config is read from a repository root (jest runs there): the default one below has a test world, so all four
 // projects exist; `withoutWorld` is a repository whose world is not written yet.
 // The coverage scope the managed jest.config.js passes (starci app sync renders it from the slot manifest): roots, the logic roles measured in them, the none directories inside a root.
-const SCOPE = { roots: ['src/modules/domain/*/', 'src/modules/platform/*/'], roles: ['service', 'guard'], excludes: ['src/modules/domain/*/persistence/**'] };
+/** The per-file floor a render passes (the canon's number, knowledge/sonar-gate.yaml of @starci/hfs): the preset holds whatever it is given. */
+const FLOOR = { lines: 50, branches: 50, functions: 50, statements: 50 };
+const SCOPE = { roots: ['src/modules/domain/*/', 'src/modules/platform/*/'], roles: ['service', 'guard'], excludes: ['src/modules/domain/*/persistence/**'], perFile: FLOOR };
 const OPTIONS = { coverage: SCOPE };
 const withWorld = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-world-'));
 fs.mkdirSync(path.join(withWorld, 'src', 'tests', 'world'), { recursive: true });
@@ -254,7 +256,7 @@ test('starciJestConfig is unit + integration + e2e + contract, ts-jest, diagnost
 test('starciJestConfig takes ONE option, the coverage scope starci app sync renders: it refuses to run without it, and any other option changes nothing', () => {
   assert.equal(preset.starciJestConfig.length, 1);
   assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, []), /needs the coverage scope starci app sync renders/);
-  assert.throws(() => preset.starciJestConfig({ coverage: { roots: ['src/'], roles: [], excludes: [] } }), /needs the coverage scope/, 'a scope that measures no role is refused');
+  assert.throws(() => preset.starciJestConfig({ coverage: { roots: ['src/'], roles: [], excludes: [], perFile: FLOOR } }), /needs the coverage scope/, 'a scope that measures no role is refused');
   assert.throws(() => configOf({ coverage: { roots: 'src/', roles: ['service'], excludes: [] } }), /needs the coverage scope/);
   const tuned = configOf({ coverage: SCOPE, moduleNameMapper: { '^@x/(.*)$': '<rootDir>/x/$1' }, e2e: { globalSetup: 'x' }, unit: { setupFiles: ['x'] } });
   assert.deepEqual(tuned, preset.starciJestConfig(OPTIONS), 'an argument other than the scope changes nothing');
@@ -315,7 +317,7 @@ test('each test kind is its own project, matched by folder and suffix together; 
   assert.deepEqual(preset.TEST_KIND_FOLDERS, ['world', 'integration', 'e2e', 'contract']);
 });
 
-test('coverage is measured on the logic roles of the rendered roots only, with a per-file threshold of 100', () => {
+test('coverage is measured on the logic roles of the rendered roots only, with the rendered per-file floor', () => {
   const globs = preset.collectCoverageFrom(SCOPE);
   assert.deepEqual(globs.filter((g) => !g.startsWith('!')), ['src/modules/domain/*/**/*.{service,guard}.ts', 'src/modules/platform/*/**/*.{service,guard}.ts']);
   for (const excluded of ['src/modules/domain/*/persistence/**', '**/dist/**', '**/coverage/**']) {
@@ -325,10 +327,10 @@ test('coverage is measured on the logic roles of the rendered roots only, with a
   const coverageThreshold = preset.starciJestConfig(OPTIONS).coverageThreshold ?? {};
   assert.ok(Object.keys(coverageThreshold).length <= 1, 'the measured roots share one glob threshold group');
   assert.equal('global' in coverageThreshold, false, 'coverage is checked per file, never as a global average');
-  for (const glob of Object.keys(coverageThreshold)) assert.deepEqual(coverageThreshold[glob], { lines: 100, branches: 100, functions: 100, statements: 100 });
+  for (const glob of Object.keys(coverageThreshold)) assert.deepEqual(coverageThreshold[glob], FLOOR);
 });
 
-test('empty roots have no threshold and populated roots share one glob with every metric held at 100', () => {
+test('empty roots have no threshold and populated roots share one glob with every metric held at the rendered floor', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-roles-'));
   const previous = process.cwd();
   try {
@@ -337,7 +339,7 @@ test('empty roots have no threshold and populated roots share one glob with ever
     fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'a.service.ts'), 'export {};\n');
     assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
-      './src/modules/domain/*/**/*.{service,guard}.ts': { lines: 100, branches: 100, functions: 100, statements: 100 },
+      './src/modules/domain/*/**/*.{service,guard}.ts': FLOOR,
     });
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.{service,guard}.ts'), true);
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.guard.ts'), false, 'no guard yet');
@@ -352,7 +354,7 @@ test('empty roots have no threshold and populated roots share one glob with ever
     fs.writeFileSync(path.join(root, 'src', 'modules', 'platform', 'a', 'a.guard.ts'), 'export {};\n');
     assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
       './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/platform/*/**/*.{service,guard}.ts}':
-        { lines: 100, branches: 100, functions: 100, statements: 100 },
+        FLOOR,
     });
     assert.deepEqual(preset.starciJestConfig(OPTIONS).collectCoverageFrom, preset.collectCoverageFrom(SCOPE), 'threshold grouping preserves the full rendered collection scope');
   } finally {
@@ -377,9 +379,11 @@ test('a declared logic file is collected and joins the per-file threshold once i
     fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'a.service.ts'), 'export {};\n');
     assert.deepEqual(preset.starciJestConfig({ coverage: declared }).coverageThreshold, {
-      './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/integrations/passport/passport.tokens.ts}': { lines: 100, branches: 100, functions: 100, statements: 100 },
+      './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/integrations/passport/passport.tokens.ts}': FLOOR,
     });
-    assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, [{ coverage: { ...SCOPE, files: 'src/x.ts' } }]), /coverage: \{ roots, roles, files, excludes \}/, 'files is a list');
+    assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, [{ coverage: { ...SCOPE, files: 'src/x.ts' } }]), /coverage: \{ roots, roles, files, excludes, perFile \}/, 'files is a list');
+    assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, [{ coverage: { ...SCOPE, perFile: undefined } }]), /per-file floor/, 'a scope rendered without the per-file floor is refused');
+    assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, [{ coverage: { ...SCOPE, perFile: { ...FLOOR, lines: 101 } } }]), /per-file floor/, 'a floor is a percent');
   } finally {
     process.chdir(previous);
     removeTree(root);
@@ -823,7 +827,7 @@ function isolationRepo({ stockRunner, state = worldState(2) }: { stockRunner: bo
   put('node_modules/fake-graphql/package.json', JSON.stringify({ name: 'fake-graphql', main: 'index.js' }));
   put('node_modules/fake-graphql/index.js', FAKE_GRAPHQL);
   // The fixture's files are plain JavaScript, so ts-jest is not needed: its preset and transform are dropped, nothing else changes.
-  put('jest.config.js', `const config = require(${JSON.stringify(distPath('index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [] } })
+  put('jest.config.js', `const config = require(${JSON.stringify(distPath('index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } })
 for (const project of config.projects) {
   delete project.preset
   project.transform = {}

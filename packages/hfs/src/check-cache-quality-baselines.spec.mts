@@ -28,7 +28,7 @@ const specRecord = (spec: string, source: string, lines: number, covered: readon
 
 test('the baselines read the gate and the targets from their owners and hold reference data and digests only', () => {
   const gate = readSonarGate(GATE);
-  assert.deepEqual(gate, { coverageMinPercent: 100, duplicationMaxPercent: 3 });
+  assert.deepEqual(gate, { coverageMinPercent: 80, duplicationMaxPercent: 3 });
   assert.deepEqual(readCodecovTargets(CODECOV), { project: 90, patch: 95 });
   assert.throws(() => readCodecovTargets('coverage: {}\n'), /codecov\.yml is not declared at coverage\.status\.project\.default\.target/u);
   const records = baselineRecords(sources());
@@ -51,7 +51,7 @@ test('the scope digest follows the scope settings and nothing else; drift names 
   assert.notEqual(scopeDigest(PROPERTIES.replace('be/src/features/**', 'be/src/features/**,be/src/x/**')), base);
   const stored = baselineRecords(sources());
   assert.deepEqual(baselineDrift(stored.sonar, baselineRecords(sources()).sonar), []);
-  const moved = baselineRecords(sources({ baseCommit: 'b'.repeat(40), sonarGateYaml: GATE.replace('minPercent: 100', 'minPercent: 95') }));
+  const moved = baselineRecords(sources({ baseCommit: 'b'.repeat(40), sonarGateYaml: GATE.replace('minPercent: 80', 'minPercent: 75') }));
   assert.deepEqual(baselineDrift(stored.sonar, moved.sonar), ['new-code-base', 'quality-gate']);
   assert.deepEqual(baselineDrift(stored.codecov, moved.codecov), ['base']);
 });
@@ -70,7 +70,7 @@ const inputs = (over: Partial<QualityInputs> = {}): QualityInputs => ({
   coverage: lineCoverageOf([specRecord('s1', 'be/src/a.service.ts', 6, [1, 2, 3]), specRecord('s2', 'be/src/a.service.ts', 6, [1, 5])]),
   baseCoverage: lineCoverageOf([specRecord('s1', 'be/src/a.service.ts', 6, [1, 2])]),
   clones: [{ path: 'be/src/b.ts', startLine: 2, endLine: 8 }, { path: 'be/src/a.service.ts', startLine: 4, endLine: 4 }],
-  gate: { coverageMinPercent: 100, duplicationMaxPercent: 3 },
+  gate: { coverageMinPercent: 80, duplicationMaxPercent: 3 },
   targets: { project: 90, patch: 95 },
   measured: (file) => file.endsWith('.service.ts'),
   ...over,
@@ -102,7 +102,7 @@ test('every prediction is labelled a prediction, says it is not the server\'s re
   assert.ok(predictions.every((prediction) => !('ok' in prediction) && !('passed' in prediction)));
   const below = predict(inputs({ changed: { 'be/src/a.service.ts': [4, 6] }, coverage: lineCoverageOf([specRecord('s', 'be/src/a.service.ts', 6, [])]) }));
   assert.equal(below[0]?.value, 0, 'far below the gate, and still only a number with its target beside it');
-  assert.equal(formatPredictions(below)[0], "sonar: new-code coverage 0% (0 of 2 coverable changed lines) [prediction from the local run, not the server's result; the server holds it to >= 100%]");
+  assert.equal(formatPredictions(below)[0], "sonar: new-code coverage 0% (0 of 2 coverable changed lines) [prediction from the local run, not the server's result; the server holds it to >= 80%]");
 });
 
 test('nothing measurable is said so, and an unreadable base gives no project change', () => {

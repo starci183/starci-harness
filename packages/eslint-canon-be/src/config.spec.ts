@@ -16,7 +16,7 @@ import { pathToFileURL } from "node:url"
 import { TSESLint } from "@typescript-eslint/utils"
 import type { RuleEntry } from "./lib/rule.ts"
 import plugin, { linterOptions, loadHfs, recommended, starciBeConfig } from "./index.ts"
-import { BORROWED, IGNORED, SOURCE_FILES, buildBeConfig } from "./lib/config.ts"
+import { BORROWED, IGNORED, SOURCE_FILES, STYLE, buildBeConfig, canonLevel } from "./lib/config.ts"
 import { BE_DECLARATION, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"
 
@@ -42,8 +42,8 @@ const settingsHfsOf = (block: TSESLint.FlatConfig.Config): unknown => {
     return starci.hfs
 }
 
-test("every published rule ships at error", () => {
-    const weak = Object.entries(recommended).filter(([, setting]) => levelOf(setting) !== "error")
+test("every published rule ships at its canon level: error, warn for a style rule", () => {
+    const weak = Object.entries(recommended).filter(([name, setting]) => levelOf(setting) !== canonLevel(name))
     assert.deepEqual(weak, [])
     assert.deepEqual(Object.keys(recommended).sort(), Object.keys(plugin.rules).map((name) => `starci-be/${name}`).sort())
 })
@@ -65,7 +65,11 @@ test("the config is one ignore block and one typed rule block over every source,
     assert.equal(published?.meta, plugin.meta)
     assert.deepEqual(Object.keys(published?.rules ?? {}).sort(), Object.keys(plugin.rules).sort(), "the edition view keeps every rule name")
     assert.ok(block.plugins?.["@typescript-eslint"]?.rules, "the borrowed rules have their plugin")
-    for (const [name, setting] of Object.entries(rules)) assert.equal(levelOf(setting), "error", `${name} is not an error`)
+    for (const [name, setting] of Object.entries(rules)) assert.equal(levelOf(setting), canonLevel(name), `${name} is not at its canon level`)
+    for (const name of Object.keys(STYLE)) assert.equal(levelOf(rules[name] ?? "off"), "warn", `${name} is a style rule, at warn`)
+    for (const name of ["@typescript-eslint/no-floating-promises", "@typescript-eslint/no-misused-promises", "starci-be/feature-thin", "starci-be/no-non-ascii-source"]) {
+        if (name in rules) assert.equal(levelOf(rules[name] ?? "off"), "error", `${name} catches a bug or holds the architecture, at error`)
+    }
     for (const name of Object.keys(BORROWED)) assert.ok(name in rules, `${name} is borrowed`)
     assert.deepEqual(rules["@typescript-eslint/consistent-type-assertions"], ["error", { assertionStyle: "never" }])
     for (const name of ["no-unsafe-assignment", "no-unsafe-member-access", "no-unsafe-call", "no-unsafe-return", "no-unsafe-argument"]) {
@@ -84,8 +88,9 @@ test("the factory takes only the HFS view: no globs, ignores or rule overrides",
 test("a missing HFS view, the view of the fe side or a weakened recommendation is refused", async () => {
     await assert.rejects(() => starciBeConfig({}), /loadHfs\(import\.meta\.url\)/)
     await assert.rejects(() => starciBeConfig({ hfs: { ...fixtureHfs(), profile: "fe", side: "fe" } }), /this view is the fe side/)
-    await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: { ...recommended, "starci-be/error-home": "warn" } }), /not at error: starci-be\/error-home/)
-    await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: { ...recommended, "starci-be/error-home": ["off"] } }), /not at error/)
+    await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: { ...recommended, "starci-be/error-home": "warn" } }), /not at their canon level.*starci-be\/error-home/)
+    await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: { ...recommended, "starci-be/error-home": ["off"] } }), /not at their canon level/)
+    await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: { ...recommended, "starci-be/require-export-jsdoc": "error" } }), /not at their canon level.*require-export-jsdoc/)
     await assert.rejects(() => buildBeConfig({ hfs: fixtureHfs(), plugin, recommended: {} }), /empty recommendation/)
 })
 

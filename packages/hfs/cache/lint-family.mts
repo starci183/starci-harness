@@ -59,6 +59,21 @@ export interface CanonDeclarations {
   readonly graphRules: boolean;
   /** Its `projectGraph` export; null when it publishes graph rules without the export (the side is then linted whole). */
   readonly projectGraph: ((input: { repoRoot: string }) => GraphSnapshot) | null;
+  /**
+   * The level of each rule the installed canon asks for (its `levels`, else its `recommended`): a replayed finding takes its severity from here, from the canon
+   * installed now, never from the run that recorded it (a style rule at warn, PROJECT-LINT-6). Absent for a canon that publishes no levels: its findings are errors.
+   */
+  readonly levels?: Readonly<Record<string, 'error' | 'warn'>>;
+}
+
+/**
+ * The ESLint severity of a replayed finding of `rule`, read from the canons installed now: 1 (warn) for a rule a canon asks at warn, 2 (error) for every other
+ * (an unknown rule and a parse error included), so a cached warning is never replayed as an error and a rule raised to error is never replayed as a warning.
+ */
+export function canonSeverity(canons: readonly CanonDeclarations[]): (rule: string | null) => 1 | 2 {
+  const warn = new Set(canons.flatMap((canon) => Object.entries(canon.levels ?? {}).filter(([, level]) => level === 'warn').map(([rule]) => rule)));
+  const error = new Set(canons.flatMap((canon) => Object.entries(canon.levels ?? {}).filter(([, level]) => level === 'error').map(([rule]) => rule)));
+  return (rule) => (rule !== null && warn.has(rule) && !error.has(rule) ? 1 : 2);
 }
 
 /** The fields of an ESLint result the cache keeps and rebuilds. */
@@ -177,15 +192,15 @@ const crossOf = (record: CacheRecord | undefined): string | undefined => {
   return typeof cross === 'string' ? cross : undefined;
 };
 
-/** The ESLint result a record stands for. */
-function toEslint(sideRoot: string, file: string, record: CacheRecord): EslintResult {
+/** The ESLint result a record stands for, each finding at the severity the installed canon gives its rule now (`canonSeverity`). */
+export function toEslint(sideRoot: string, file: string, record: CacheRecord, severityOf: (rule: string | null) => 1 | 2): EslintResult {
   const ends = endsOf(record);
   return {
     filePath: path.join(sideRoot, file),
-    messages: record.findings.map((finding, at): EslintMessage => ({
-      ruleId: finding.rule === 'eslint-error' ? null : finding.rule, message: finding.message, line: finding.line, column: finding.column,
-      ...((ends[at] ?? 0) > 0 ? { endLine: ends[at] as number } : {}), severity: 2,
-    })),
+    messages: record.findings.map((finding, at): EslintMessage => {
+      const ruleId = finding.rule === 'eslint-error' ? null : finding.rule;
+      return { ruleId, message: finding.message, line: finding.line, column: finding.column, ...((ends[at] ?? 0) > 0 ? { endLine: ends[at] as number } : {}), severity: severityOf(ruleId) };
+    }),
   };
 }
 
@@ -539,6 +554,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const eslintRecords: CacheRecord[] = [];
   const styleRecords: CacheRecord[] = [];
   const planHash = (file: string): string => hashOf(file) ?? 'absent';
+  const severityOf = canonSeverity(input.canons);
   for (const file of scope) {
     const fresh = freshEslint.get(file);
     const reuse = fresh === undefined ? validEslint.get(file) : undefined;
@@ -549,7 +565,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
       const cross = crossEslint.get(file);
       eslintRecords.push({ path: file, step: LINT_STEPS.eslint, hash: planHash(file), findings: converted.findings, data: { ends: converted.ends, ...(cross === undefined ? {} : { cross }) } });
     } else if (reuse !== undefined) {
-      eslintResults.push(toEslint(sideRoot, file, reuse));
+      eslintResults.push(toEslint(sideRoot, file, reuse, severityOf));
       current.push(...reuse.findings);
       eslintRecords.push(reuse);
     }

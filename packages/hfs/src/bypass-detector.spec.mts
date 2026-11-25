@@ -79,7 +79,7 @@ test('HFS_BYPASS_MARKER: the tree rule and the staged pre-commit guard refuse a 
 
 test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code, and its managed lists stay with the drift check', (t) => {
   const root = stagedRepo(t, {
-    'codecov.yml': form('codecov target below 100'),
+    'codecov.yml': form('codecov target below the per-file floor'),
     'be/tsconfig.json': form('tsconfig strict off'),
     'sonar-project.properties': form('extra sonar exclusion'),
     'modules/kernel/approvals.yaml': form('an approvals file'),

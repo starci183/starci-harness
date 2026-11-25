@@ -25,16 +25,25 @@ export type { RecordingQueueOutbox } from "./queue.ts"
 export type { FakeInbox } from "./inbox.ts"
 export type { RefusalReason } from "./matchers.ts"
 
+/** The four jest coverage metrics, each a percent from 0 to 100. */
+export interface StarciCoverageMetrics {
+  readonly lines: number
+  readonly branches: number
+  readonly functions: number
+  readonly statements: number
+}
 /**
  * The coverage scope `starci app sync` renders from the slot manifest: the measured roots (a directory pattern per measured slot, a placeholder
  * folder written as a star), the logic roles measured in them, the logic files a slot declares (`logic`: a file that carries logic without a
- * logic-role suffix, measured like one) and the directories inside a root that are never measured (each ending in a double star).
+ * logic-role suffix, measured like one), the directories inside a root that are never measured (each ending in a double star) and the per-file
+ * floor every measured file reaches on every metric (`perFile`, the canon's number in @starci/hfs knowledge/sonar-gate.yaml; owner 2026-11-25).
  */
 export interface StarciCoverageScope {
   readonly roots: readonly string[]
   readonly roles: readonly string[]
   readonly files?: readonly string[]
   readonly excludes: readonly string[]
+  readonly perFile: StarciCoverageMetrics
 }
 /**
  * The root workspace packages of an app (`packages/<name>` at the app root, PROJECT-3), as `starci app sync` renders them from the same derivation as the
@@ -71,12 +80,11 @@ export type StarciJestConfig = Omit<Config, "projects" | "coverageReporters" | "
  * The features (handlers, resolvers, controllers, consumers, processors, steps, sagas, cli commands) are thin by rule (BE_FEATURE_THIN) and are
  * never measured. The scope is NOT written here: `starci app sync` renders it from the manifest (scripts/hfs/coverage-scope.mjs) into the repository's
  * jest.config.js as `starciJestConfig({ coverage: { roots, roles, files, excludes } })`, and the same derivation renders Sonar's
- * `sonar.coverage.exclusions` and the Codecov paths and components, so the three can never disagree. Every measured file must reach 100 on every metric.
+ * `sonar.coverage.exclusions` and the Codecov paths and components, so the three can never disagree. Every measured file must reach the rendered per-file
+ * floor (`perFile`) on every metric; the tier bars (a group of modules as a whole) are held by R273 over the lcov and by Codecov, since a jest glob key holds each file alone.
  * The unit run also writes `coverage/lcov.info`: Sonar and Codecov import it.
  */
 const COVERAGE_EXCLUDES: string[] = ["**/dist/**", "**/coverage/**"]
-/** The four metrics, each held at 100 per file. */
-const COVERAGE_THRESHOLD = Object.freeze({ lines: 100, branches: 100, functions: 100, statements: 100 })
 
 /** The glob one measured root stands for: every file of a logic role below it. */
 function rootGlob(root: string, roles: readonly string[]): string {
@@ -107,7 +115,7 @@ function coverageThresholdOf(coverage: StarciCoverageScope, root: string): Recor
   const rootGlobs = [...coverage.roots.map((entry) => rootGlob(entry, coverage.roles)), ...(coverage.files ?? [])].filter((glob) => hasCoverageSubjects(root, glob))
   if (rootGlobs.length === 0) return {}
   const glob = rootGlobs.length === 1 ? rootGlobs[0] : `{${rootGlobs.join(",")}}`
-  return { [`./${glob}`]: { ...COVERAGE_THRESHOLD } }
+  return { [`./${glob}`]: { ...coverage.perFile } }
 }
 
 /**
@@ -115,9 +123,9 @@ function coverageThresholdOf(coverage: StarciCoverageScope, root: string): Recor
  * each key names normalised paths outside the back end. A key also matches a file the scope excludes, which jest never holds to it: it only checks the files
  * of its coverage map, and an excluded file is never in it.
  */
-function packageThresholdsOf(packages: StarciPackagesScope, root: string): Record<string, { lines: number; branches: number; functions: number; statements: number }> {
+function packageThresholdsOf(packages: StarciPackagesScope, root: string, perFile: StarciCoverageMetrics): Record<string, { lines: number; branches: number; functions: number; statements: number }> {
   const globs = packages.files.map((glob) => `${APP_ROOT}/${glob}`).filter((glob) => hasCoverageSubjects(root, glob))
-  return Object.fromEntries(globs.map((glob) => [`./${glob}`, { ...COVERAGE_THRESHOLD }]))
+  return Object.fromEntries(globs.map((glob) => [`./${glob}`, { ...perFile }]))
 }
 
 /**
@@ -239,8 +247,8 @@ const underTests = (folder: string): string => String.raw`[\\/]src[\\/]tests[\\/
  * (`world-runner.js`; a slot's data is reset when a file boots, so no two files ever share a slot); a spec that declares `exclusive: true` in its `useTestWorld` call runs alone after the parallel files.
  * The integration and e2e files go through the result cache (world-cache.ts): a file whose inputs are unchanged since its last green run is skipped and reported cached.
  * A declared lite app runs its existing integration, e2e and contract specs without a world: integration and e2e one file at a time on the same cache (`cache-runner.js`), contract on jest's stock runner. The unit project alone has a `setupFilesAfterEnv` (the Outcome matchers).
- * Coverage is collected from the logic roles of the measured roots only (`coverage` option), with a per-file threshold of 100 on lines, branches, functions and
- * statements: the `test` script runs the unit project with `--coverage`, fails below it and writes `coverage/lcov.info` for Sonar. It uses v8: istanbul instruments the helpers TypeScript emits (`__decorate`, `__param`, `__awaiter`, interop wrappers)
+ * Coverage is collected from the logic roles of the measured roots only (`coverage` option), with the rendered per-file floor (`coverage.perFile`) on lines, branches,
+ * functions and statements: the `test` script runs the unit project with `--coverage`, fails below it and writes `coverage/lcov.info` for Sonar. It uses v8: istanbul instruments the helpers TypeScript emits (`__decorate`, `__param`, `__awaiter`, interop wrappers)
  * as thousands of branches no spec can cover, while v8 measures the real source.
  */
 /** The runner of the integration, e2e and contract projects (`world-runner.js`): every spec file in a worker process of its own. */
@@ -291,7 +299,7 @@ function globRegExp(glob: string): RegExp {
 /**
  * True when the repository at `root` holds a file the coverage glob matches: jest refuses a threshold key that matches no covered file,
  * and a back end may have no file of a measured root yet (no projection, no integration), so a root without files gets no key (its files,
- * once added, are measured and held at 100 like every other).
+ * once added, are measured and held to the per-file floor like every other).
  */
 function hasCoverageSubjects(root: string, glob: string): boolean {
   const base = glob.slice(0, Math.max(0, glob.search(/[*?{]/))).replace(/[^/]*$/, "")
@@ -327,10 +335,22 @@ function coverageOf(options: unknown): StarciCoverageScope {
   const roles = fieldOf(coverage, "roles")
   const files = fieldOf(coverage, "files") ?? []
   const excludes = fieldOf(coverage, "excludes")
-  if (!coverage || !isList(roots) || !isList(roles) || !roles.length || !isList(files) || !isList(excludes)) {
-    throw new Error("starciJestConfig({ coverage: { roots, roles, files, excludes } }) needs the coverage scope starci app sync renders from the slot manifest; run \"npx starci app sync --execute\"")
+  const perFile = metricsOf(fieldOf(coverage, "perFile"))
+  if (!coverage || !isList(roots) || !isList(roles) || !roles.length || !isList(files) || !isList(excludes) || perFile === null) {
+    throw new Error("starciJestConfig({ coverage: { roots, roles, files, excludes, perFile } }) needs the coverage scope starci app sync renders from the slot manifest, with the per-file floor of the canon gate; run \"npx starci app sync --execute\"")
   }
-  return { roots, roles, files, excludes }
+  return { roots, roles, files, excludes, perFile }
+}
+
+const METRICS = ["lines", "branches", "functions", "statements"] as const
+
+/** The per-file floor of a rendered scope: the four metrics, each a percent from 0 to 100, and nothing else; null otherwise. */
+function metricsOf(value: unknown): StarciCoverageMetrics | null {
+  if (typeof value !== "object" || value === null || Object.keys(value).length !== METRICS.length) return null
+  const numbers = METRICS.map((metric) => fieldOf(value, metric))
+  if (!numbers.every((number): number is number => typeof number === "number" && Number.isFinite(number) && number >= 0 && number <= 100)) return null
+  const [lines, branches, functions, statements] = numbers as [number, number, number, number]
+  return { lines, branches, functions, statements }
 }
 
 /** The root packages of an options object (none when absent), or a refusal: each field is a list of app-relative paths `starci app sync` renders. */
@@ -420,7 +440,7 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
     }
   }
   // A shard of the managed CI (STARCI_COVERAGE_SHARD=1, one of npm test -- --shard=i/N) measures only the files its tests load, without the per-file threshold, and
-  // writes istanbul JSON: the coverage job merges the shards by source location (merge.ts) and the coverage proof enforces 100 per file on the merged report. The
+  // writes istanbul JSON: the coverage job merges the shards by source location (merge.ts) and the coverage proof (R273) enforces the per-file floor and the tiers on the merged report. The
   // all-files instrumentation of collectCoverageFrom is off there: it instruments an unloaded file with another transform (other functions and branches).
   // The check cache's unit run (STARCI_SPEC_COVERAGE_DIR=<folder>, `starci app check --test`) is a partial run too: it runs the specs whose key changed, writes the coverage of
   // each spec file on its own (spec-coverage-reporter.ts) with the files it loaded (spec-loaded-runtime.ts) and leaves the threshold to the merged total of every spec's record.
@@ -433,8 +453,8 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
     ...(specCoverageDir ? { reporters: ["default", [require.resolve("./spec-coverage-reporter.js"), { dir: specCoverageDir, include: collectCoverageFrom(coverage, packages) }]] satisfies StarciJestConfig["reporters"] } : {}),
     ...(shard ? {} : {
       collectCoverageFrom: collectCoverageFrom(coverage, packages),
-      // A glob key is applied to every matching file on its own: each measured file must reach 100, not the average.
-      coverageThreshold: { ...coverageThresholdOf(coverage, root), ...packageThresholdsOf(packages, root) },
+      // A glob key is applied to every matching file on its own: each measured file must reach the per-file floor, not the average.
+      coverageThreshold: { ...coverageThresholdOf(coverage, root), ...packageThresholdsOf(packages, root, coverage.perFile) },
     }),
     coverageDirectory: "coverage",
     // lcov is what Sonar imports (coverage/lcov.info); text-summary and text are what the developer reads; a shard writes the json the merge reads.
@@ -486,7 +506,6 @@ export {
   sonarExclusions,
   hasCoverageSubjects,
   COVERAGE_EXCLUDES,
-  COVERAGE_THRESHOLD,
   UNIT_COMPILER_OPTIONS,
   WORLD_RUNNER,
   CACHE_RUNNER,

@@ -144,7 +144,7 @@ files:
     optional: true
   - path: src/modules/platform/saga/
     slot: be.platform
-    role: 'The fenced `saga_states` store and the state machine in `saga.service.ts`, which claims deliveries through the shared `platform/inbox` port (BE-IDEMPOTENCY-2). The service is a measured file of a `coverage: required` slot, held at 100 per file with its spec beside it.'
+    role: 'The fenced `saga_states` store and the state machine in `saga.service.ts`, which claims deliveries through the shared `platform/inbox` port (BE-IDEMPOTENCY-2). The service is a measured file of a `coverage: required` slot, held at its coverage tier and the per-file floor with its spec beside it.'
     rules: [R80]
     optional: true
   - path: src/tests/e2e/<area>/<name>.e2e-spec.ts

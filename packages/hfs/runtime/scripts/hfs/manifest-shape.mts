@@ -215,7 +215,7 @@ export const APP_KIND = 'app';
  */
 export const unitRolesOf = (manifest: SlotManifest): UnitRole[] => manifest.ruleParams.be.unitRoles;
 
-/** The roles that carry logic (ruleParams.be.logicRoles): measured at 100 per file inside a coverage-required slot. */
+/** The roles that carry logic (ruleParams.be.logicRoles): measured at its coverage tier (BE-TEST-13) inside a coverage-required slot. */
 export const logicRolesOf = (manifest: SlotManifest): string[] => manifest.ruleParams.be.logicRoles;
 
 /** A declared logic file: `<name>.<part>.ts` below the slot path, kebab-case parts, no placeholder, glob or spec. */
@@ -226,7 +226,7 @@ export const suffixOf = (file: string): string | null => /\.([a-z0-9-]+)\.ts$/.e
 
 /**
  * The files a slot declares as logic (`logic`, names relative to the slot path): a file that carries logic without a logic-role suffix.
- * Each is measured at 100 per file like a logic-role file (scripts/hfs/coverage-scope.mts), and its `<stem>.spec.ts` beside it is a
+ * Each is measured like a logic-role file (its coverage tier and the per-file floor, BE-TEST-13) (scripts/hfs/coverage-scope.mts), and its `<stem>.spec.ts` beside it is a
  * legitimate unit spec its slot admits (scripts/hfs/allows.mts, eslint-canon-be unit-test-colocated). No role name is added for it.
  */
 export const declaredLogicOf = (slot: Pick<Slot, 'logic'> | null | undefined): string[] => (Array.isArray(slot?.logic) ? slot.logic : []);

@@ -1,7 +1,7 @@
 /**
  * RENDERER-PURITY-1: a renderer of a root workspace package (every `.tsx` file of its source, `packages/<pkg>/src/**\/*.tsx`) holds presentation only: mapping rows to
  * components, choosing what to show, formatting. The business logic it would otherwise hold lives in a measured `.ts` module the renderer calls,
- * where the unit run holds it at 100 per file (BE-TEST-13); the renderer itself is outside coverage (SHARED-TEST-1).
+ * where the unit run holds it at its coverage tier and the per-file floor (BE-TEST-13); the renderer itself is outside coverage (SHARED-TEST-1).
  *
  * Refused in such a file, each as `FE_RENDERER_LOGIC`:
  *   - data computation: arithmetic (`- * / % **`) between two non-literal values, `+=`/`-=` accumulation of a data value;

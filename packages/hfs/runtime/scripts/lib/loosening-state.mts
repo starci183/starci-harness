@@ -5,7 +5,8 @@
 //                   a hook or a workflow, a warning budget, a pass-with-no-tests flag, a hook skipped (scripts/lib/bypass-markers.mjs);
 //   list-extra      an entry of an ignore or exclude list (codecov, sonar, jest, eslint, stylelint, tsconfig, a *ignore file) that the canon does not
 //                   derive and the design-truths manifest does not allow FOR THAT FILE;
-//   threshold       a coverage target below 100, a threshold above 0, a gate limit looser than the manifest's;
+//   threshold       a coverage target or jest threshold below the canon's per-file floor (knowledge/sonar-gate.yaml, owner 2026-11-25), a threshold
+//                   above 0, a gate limit looser than the manifest's;
 //   setting         a switch that relaxes a gate (`require_ci_to_pass: false`, `informational: true`, `passWithNoTests`, `requireCi: false`) that the
 //                   manifest does not allow;
 //   rule-off        an ESLint or stylelint rule turned off or down in a config;
@@ -26,6 +27,7 @@ import { byCodeUnit, list as asArray } from './list.mjs';
 import { budgetRecords } from './loosening-budgets.mjs';
 import type { BudgetPin } from './loosening-budgets.mjs';
 import { manifestDigest as truthsDigest } from './grammar-vendor-parity.mjs';
+import { coverageBar } from '../gates/sonar-gate.mjs';
 
 export { truthsDigest };
 
@@ -59,7 +61,11 @@ export interface TruthsRead {
   budgets: (BudgetPin & { file?: string; cite?: unknown })[];
 }
 /** What the canon derives for a list of a file, allowed only when the manifest names `by`. */
-export interface Canon { derive?: (file: string, list: string) => { by: string; items: readonly string[] } | null }
+export interface Canon {
+  derive?: (file: string, list: string) => { by: string; items: readonly string[] } | null;
+  /** The lowest coverage number the canon renders anywhere (the per-file floor); a target or a jest threshold below it is a loosening. Read from the gate when absent. */
+  coverageFloor?: number;
+}
 /** One loosening of the tree. */
 export interface LooseningFinding { id: string; kind: string; file: string; line: number; detail: string }
 
@@ -154,9 +160,9 @@ function listFindings(file: string, records: readonly ListRecord[], truths: Trut
   return records.filter((entry) => !allowed(entry)).map((entry) => finding('list-extra', file, entry.line, `${entry.key}: ${entry.item}`));
 }
 
-function numberFindings(file: string, numbers: readonly NumberRecord[]): LooseningFinding[] {
+function numberFindings(file: string, numbers: readonly NumberRecord[], floor: number): LooseningFinding[] {
   return numbers.flatMap((entry) => {
-    const loose = entry.key === 'threshold' ? entry.value > 0 : entry.value < 100;
+    const loose = entry.key === 'threshold' ? entry.value > 0 : entry.value < floor;
     return loose ? [finding('threshold', file, entry.line, `${entry.key} ${entry.value}`)] : [];
   });
 }
@@ -180,7 +186,7 @@ function configFindings(file: string, kind: ConfigKind, text: string, truths: Tr
   const records = configRecords(kind, text, file);
   return [
     ...(withLists ? listFindings(file, records.lists, truths, canon) : []),
-    ...numberFindings(file, records.numbers),
+    ...numberFindings(file, records.numbers, canon.coverageFloor ?? coverageBar().file),
     ...settingFindings(file, records.settings, truths),
     ...records.rulesOff.map((entry) => finding('rule-off', file, entry.line, entry.rule)),
     ...strictnessFindings(file, records.strictness, truths),
@@ -189,16 +195,40 @@ function configFindings(file: string, kind: ConfigKind, text: string, truths: Tr
   ];
 }
 
-/** The gate limits of the file the manifest names (the Sonar gate): a floor lowered or a ceiling raised against the manifest's numbers. */
+/** The bound a table of the manifest sets for a key path: the entry of the longest dotted suffix of the path (`tiers.A.lines`, then `A.lines`, then `lines`). */
+function boundOf(table: Record<string, number> | undefined, path: readonly string[]): number | undefined {
+  for (let at = 0; at < path.length; at += 1) {
+    const bound = table?.[path.slice(at).join('.')];
+    if (bound !== undefined) return bound;
+  }
+  return undefined;
+}
+
+/**
+ * The gate limits of the file the manifest names (the Sonar gate): a floor lowered or a ceiling raised against the manifest's numbers. A number is
+ * known by its key path in the block YAML (the keys of the lines above it, by indentation), so one key name carries its own bound in each place
+ * (the coverage tiers, owner 2026-11-25: `tiers.A.lines` 85, `tiers.C.lines` 60; `newCode.coverage.minPercent` 80, `overall.coverage.minPercent` 50).
+ */
 function limitFindings(file: string, text: string, limits: TruthsDocument): LooseningFinding[] {
   const found: LooseningFinding[] = [];
+  const open: { indent: number; key: string }[] = [];
   text.split(/\r?\n/).forEach((raw, index) => {
-    const match = /^\s*(?:-\s+)?([A-Za-z]\w*)\s*:\s*(-?\d+(?:\.\d+)?)\s*(?:#.*)?$/.exec(raw);
+    const match = /^(\s*)(?:-\s+)?([A-Za-z]\w*)\s*:\s*(.*?)\s*(?:#.*)?$/.exec(raw);
     if (!match) return;
-    const value = Number(match[2]);
-    const floor = limits.floors?.[match[1] as string];
-    const ceiling = limits.ceilings?.[match[1] as string];
-    if ((floor !== undefined && value < floor) || (ceiling !== undefined && value > ceiling)) found.push(finding('threshold', file, index + 1, `${match[1]} ${value}`));
+    const indent = (match[1] as string).length;
+    while (open.length > 0 && (open.at(-1) as { indent: number }).indent >= indent) open.pop();
+    const key = match[2] as string;
+    const text = match[3] as string;
+    if (text === '') {
+      open.push({ indent, key });
+      return;
+    }
+    if (!/^-?\d+(?:\.\d+)?$/.test(text)) return;
+    const value = Number(text);
+    const path = [...open.map((entry) => entry.key), key];
+    const floor = boundOf(limits.floors, path);
+    const ceiling = boundOf(limits.ceilings, path);
+    if ((floor !== undefined && value < floor) || (ceiling !== undefined && value > ceiling)) found.push(finding('threshold', file, index + 1, `${path.join('.')} ${value}`));
   });
   return found;
 }

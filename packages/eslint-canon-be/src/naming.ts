@@ -126,6 +126,7 @@ export const rules = {
 
 /** Every rule of this law at `error`. */
 export const recommended: Recommended = {
-  "starci-be/no-version-in-name": "error",
-  "starci-be/no-default-export": "error",
+  // Style rules (lib/config.ts STYLE, owner 2026-11-25): reported and counted, never failing a land.
+  "starci-be/no-version-in-name": "warn",
+  "starci-be/no-default-export": "warn",
 }

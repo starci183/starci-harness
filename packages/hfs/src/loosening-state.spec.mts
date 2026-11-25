@@ -98,10 +98,20 @@ test('a placeholder of a template is not an entry', () => {
 
 test('thresholds: a gate limit of the Sonar gate must equal the manifest, a floor lowered or a ceiling raised is red, the same number is not', () => {
   const file = 'knowledge/sonar-gate.yaml';
-  assert.deepEqual(scan({ [file]: 'newCode:\n  coverage:\n    minPercent: 100\n  duplication:\n    maxPercent: 3\n  issues:\n    max: 0\n' }), []);
-  assert.deepEqual(scan({ [file]: 'newCode:\n  coverage:\n    minPercent: 95\n' }).map((entry) => entry.detail), ['minPercent 95']);
-  assert.deepEqual(scan({ [file]: 'newCode:\n  duplication:\n    maxPercent: 5\n' }).map((entry) => entry.detail), ['maxPercent 5']);
-  assert.deepEqual(scan({ [file]: 'overall:\n  issues:\n    max: 4\n' }).map((entry) => entry.detail), ['max 4']);
+  assert.deepEqual(scan({ [file]: 'newCode:\n  coverage:\n    minPercent: 80\n  duplication:\n    maxPercent: 3\n  issues:\n    max: 0\n' }), []);
+  assert.deepEqual(scan({ [file]: 'newCode:\n  coverage:\n    minPercent: 79\n' }).map((entry) => entry.detail), ['newCode.coverage.minPercent 79']);
+  assert.deepEqual(scan({ [file]: 'newCode:\n  duplication:\n    maxPercent: 5\n' }).map((entry) => entry.detail), ['newCode.duplication.maxPercent 5']);
+  assert.deepEqual(scan({ [file]: 'overall:\n  issues:\n    max: 4\n' }).map((entry) => entry.detail), ['overall.issues.max 4']);
+});
+
+test('thresholds: each coverage number of the Sonar gate keeps its own floor by its key path (owner 2026-11-25): the patch, the file, every tier', () => {
+  const file = 'knowledge/sonar-gate.yaml';
+  const tiers = (a: number, b: number, c: number, file50 = 50) => `overall:\n  coverage:\n    minPercent: ${file50}\n    tiers:\n      A:\n        lines: ${a}\n        branches: 80\n      B:\n        lines: ${b}\n        branches: 65\n      C:\n        lines: ${c}\n    business:\n      lines: 60\n`;
+  assert.deepEqual(scan({ [file]: tiers(85, 75, 60) }), [], 'the canon numbers');
+  assert.deepEqual(scan({ [file]: tiers(90, 80, 70) }), [], 'a raised bar is never a loosening');
+  assert.deepEqual(scan({ [file]: tiers(60, 75, 60) }).map((entry) => entry.detail), ['overall.coverage.tiers.A.lines 60'], 'tier A lowered to the C number is red although C holds 60');
+  assert.deepEqual(scan({ [file]: tiers(85, 75, 59) }).map((entry) => entry.detail), ['overall.coverage.tiers.C.lines 59']);
+  assert.deepEqual(scan({ [file]: tiers(85, 75, 60, 40) }).map((entry) => entry.detail), ['overall.coverage.minPercent 40'], 'the per-file floor');
 });
 
 test('settings: the design truth requireCi false is allowed because the manifest lists it; requireCi true and a codecov that does not require CI are judged apart', () => {
@@ -126,8 +136,16 @@ test('the audit exceptions of PROJECT-LINT-5 are a design truth: the manifest al
 });
 
 test('the app gate leaves the managed lists to the drift check and still judges markers, thresholds and exception files', () => {
-  const tree = { 'codecov.yml': 'ignore:\n  - "x/**"\ncoverage:\n  status:\n    project:\n      default:\n        target: 80%\n' };
+  const tree = { 'codecov.yml': 'ignore:\n  - "x/**"\ncoverage:\n  status:\n    project:\n      default:\n        target: 40%\n' };
   assert.deepEqual(kinds(scan(tree, { lists: false })), ['threshold']);
+});
+
+test('codecov: the project ratchet (target auto) and the canon bars are not loosenings; auto on the patch or a target below the per-file floor is', () => {
+  const codecov = (status: string) => ({ 'codecov.yml': `coverage:\n  status:\n${status}` });
+  assert.deepEqual(scan(codecov('    project:\n      default:\n        target: auto\n        threshold: 0%\n    patch:\n      default:\n        target: 80%\n')), []);
+  assert.deepEqual(scan(codecov('    patch:\n      default:\n        target: auto\n')).map((entry) => entry.detail), ['target 0']);
+  assert.deepEqual(scan(codecov('    patch:\n      default:\n        target: 49%\n')).map((entry) => entry.detail), ['target 49']);
+  assert.deepEqual(scan(codecov('    project:\n      default:\n        target: auto\n        threshold: 1%\n')).map((entry) => entry.detail), ['threshold 1'], 'a ratchet that allows a drop is no ratchet');
 });
 
 test('scope: only the vendored dependency copy and the declared fixture files are not read; every other tracked file is, whatever its folder or name', () => {

@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const preset: typeof import('../src/index.ts') = require('../dist/index.js');
-const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [] } };
+const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } };
 
 const SOURCES: Record<string, string> = {
   'src/modules/domain/alpha/alpha.service.ts': 'export class AlphaService {\n  pick(value: number): string {\n    if (value > 0) return "positive";\n    return value < 0 ? "negative" : "zero";\n  }\n  constant(): number {\n    return 1;\n  }\n}\n',

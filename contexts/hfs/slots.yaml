@@ -1333,6 +1333,7 @@ slots:
       - HFS_NIVOOS_PACKAGE_MISSING
       - HFS_NIVOOS_UNDECLARED
       - HFS_NIVOOS_PACKAGE_CHECK
+      - HFS_NIVOOS_SPEC_MISSING
   - id: app.desktop-config
     profiles:
       - app
