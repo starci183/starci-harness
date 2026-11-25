@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.60.4 - 2026-11-26
+
+- Fixed (h-offset-pop-seams): every Offset Pop row seam is one 2px ink line, not only a ListRow's. Common gains the token `--grammar-seam-width` (default the hairline, so Core is unchanged); the Offset Pop root binds it to `--offset-pop-outline-width`, and the seams of a disclosure item, note, schema and kv row, schedule and Markdown table row, DataTable row, header line and mobile list row, description pair, upload row, interval row and media list row read it. The family's own `[data-grammar-row]` seam rule is gone: the token carries it. `offsetPopRuleConformance` BOUNDARY-3 and BOUNDARY-5 state the rule. No API change.
+
 ## 0.60.3 - 2026-11-26
 
 - Fixed (h-grammar-strip-fade-tabs, StarCi Next audit round 5): a strip that scrolls only sideways fades its end again. Breadcrumbs, the `DataTable` scroller, the fenced code `pre`, the markdown table frame and the top bar's navigation took their fade from `animation-timeline: scroll(self)`, the BLOCK axis, which they never scroll, so the timeline stayed inactive and `--grammar-fade-end` stayed 0px (a long last crumb was cut mid-word at 390px). They follow `scroll(self inline)`; a browser without scroll-driven animations still skips the fade.

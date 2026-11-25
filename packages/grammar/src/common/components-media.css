@@ -367,7 +367,7 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         padding-block: var(--grammar-row-gap);
-        border-block-end: var(--grammar-hairline) solid var(--separator);
+        border-block-end: var(--grammar-seam-width) solid var(--separator);
     }
 
     .starci-core-media-grid[data-grammar-media-layout="list"] .starci-core-media-grid-preview {

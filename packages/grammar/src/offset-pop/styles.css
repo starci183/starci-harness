@@ -55,6 +55,8 @@
         --grammar-shadow-popover: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
         --grammar-shadow-lift: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
         --starci-core-surface-radius: var(--starci-core-card-radius, var(--offset-pop-surface-radius));
+        /* Every row seam (a list, a table, a stack of records) is one 2px ink line, from Common's `--grammar-seam-width`; Core leaves it a hairline (BOUNDARY-3, BOUNDARY-5). */
+        --grammar-seam-width: var(--offset-pop-outline-width);
 
         color: var(--foreground);
         background: var(--background);
@@ -167,15 +169,6 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
         background: transparent;
-    }
-
-    /*
-     * One seam per pair of rows (BOUNDARY-3). Common draws it as the between-rows top edge; the
-     * family repaints that SAME edge at its outline width instead of adding a second one below each
-     * row, so a seam is exactly one 2px line and the first and last rows have no outer edge.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] + [data-grammar-row] {
-        border-block-start: var(--offset-pop-outline-width) solid var(--separator);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state-mark] {

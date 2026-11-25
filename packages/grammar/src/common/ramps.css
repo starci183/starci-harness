@@ -165,6 +165,8 @@
         --grammar-stroke-fine: 1.5px;
         --grammar-ring-width: 2px;
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
+        /* The width of a seam between two rows of a list, a table or a stack of records; the family that draws its edges heavier re-binds it once. */
+        --grammar-seam-width: var(--grammar-hairline);
         --grammar-separator-edge: var(--grammar-hairline) solid var(--separator);
         /* The 1px border edge of an outlined part with no fill (0.52.0: the other party's message), as one border value. */
         --grammar-border-edge: var(--grammar-hairline) solid var(--border);

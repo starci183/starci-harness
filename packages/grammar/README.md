@@ -154,8 +154,10 @@ tokens the family root sets once, so no renderer needs a rule of its own:
 and the small offset, and the press collapses it. Progress, ProportionBar, SegmentBar and FunnelChart
 tracks get the ink ring, and Meter keeps its own track. Open GradedChoice answers are pressable
 stickers. SchemaForm marks, the agent's proposal and ConflictCard sides are outlined. A
-`SurfaceCard emphasis="accent"` throws its offset in pink, because it is the chosen card. List seams
-stay Common's hairline. An app sets the `--starci-core-card-radius` hook to change the card radius;
+`SurfaceCard emphasis="accent"` throws its offset in pink, because it is the chosen card. Every row seam (a
+list row, a disclosure item, a note, schema or schedule row, a DataTable row and its mobile list, a description pair, an
+upload or media row, an interval row) is one 2px ink line: the family root sets Common's `--grammar-seam-width` to
+`--offset-pop-outline-width`, and Core leaves it the 1px hairline. An app sets the `--starci-core-card-radius` hook to change the card radius;
 it never restyles a renderer.
 
 ## Client-side navigation
