@@ -256,6 +256,47 @@ export const TonedPaths: Story = {
   },
 };
 
+const SHOP_GIAY = `flowchart LR
+  K[Khách] --> O[orders]
+  subgraph D["Docker trên máy bạn"]
+    O --> P[payments]
+    O --> S[stock]
+    O --> N[notify]
+    O --> OD[(orders db)]
+    P --> PD[(payments db)]
+    S --> SD[(stock db)]
+    N --> ND[(notify db)]
+    P --> R[(redis)]
+  end
+  D@{ icon: "docker" }
+  O@{ icon: "express" }
+  P@{ icon: "express" }
+  S@{ icon: "express" }
+  N@{ icon: "express" }
+  OD@{ icon: "postgresql" }
+  PD@{ icon: "postgresql" }
+  SD@{ icon: "postgresql" }
+  ND@{ icon: "postgresql" }
+  R@{ icon: "redis" }`;
+
+/**
+ * The built-in tech logos (owner 2026-11-26): the shop-giay architecture names its logos only by `R@{ icon: "name" }` and passes no `icons`; Grammar draws
+ * express, postgresql, redis and docker in the node's ink, never a brand colour.
+ */
+export const TechLogos: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" caption="Mỗi dịch vụ Express giữ database Postgres của nó; payments có thêm Redis." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    // Four Express services, four Postgres databases, one Redis and the Docker group: nine node logos and one on the group.
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(10 * 2);
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon svg[aria-hidden="true"]').length).toBe(10 * 2);
+  },
+};
+
 // The lesson's cache-aside read (owner 2026-11-23: "if else mới rẽ nhánh và arrow nối nhau"): the condition is a decision, each answer its own edge, and
 // both branches rejoin before "Trả giá".
 const ASIDE_TB = `flowchart TB
