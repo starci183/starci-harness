@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## Unreleased
+
+- Fixed (t195-grammar-ext, R93 machine `grammar`, `runtime/scripts/hfs/architecture/frontend-grammar.mts`; found by `app check --env prod --level full` on Grammar 0.55): the installed Grammar's optional peers (`optional: true` in `peerDependenciesMeta`: the core ext's `@xyflow/react`, `elkjs`, `d3-force`, `recharts`, `shiki`, ...) no longer count against the selected peers, so Grammar 0.55 no longer reports ARCH_GRAMMAR_CONTRACT_INVALID for every app; the required peers must still equal the selected peers exactly. A style source may import a core-ext stylesheet (`<package>/core/ext/<name>.css`, e.g. `core/ext/graph.css`, `core/ext/markdown.css`) that the installed Grammar declares in `exports`, beside the selected style entry, which must still be imported; any other Grammar CSS path stays ARCH_GRAMMAR_EXPORT_BYPASS. Product source (and so the eslint `grammar-entry` rule, which reports the machine's findings) may import a core-ext code entry (`<package>/core/ext/<name>` or one declared sub-entry, e.g. `core/ext/graph`, `core/ext/markdown/react`) that the installed Grammar exports to a target inside the package; a non-exported ext, a deeper path, an ext stylesheet in TSX, another family's entry and internal files stay refused.
+
 ## 6.17.11 - 2026-11-25
 
 - App scaffolding, lint, check, sync, stack, secret and database tooling of the StarCi harness; the canon pins name the Grammar family 0.59.0 and @starci/gallery 0.1.24, and R346 admits the one ChatFrame of a chat pane.

@@ -11,7 +11,7 @@ They draw only from the tokens of the Grammar theme in the page (`--surface`, `-
 An order-approval flow in a plain app; every word and icon is the app's:
 
 ```tsx
-import "@starci/grammar/core/ext/graph.css"
+// globals.css, after the Grammar stylesheet: @import "@starci/grammar/core/ext/graph.css";
 import { FlowGraph, type FlowNode, type GraphEdge } from "@starci/grammar/core/ext/graph"
 
 const nodes: FlowNode[] = [
@@ -42,10 +42,10 @@ The package has no words, icons or routes of its own and no default language; th
 
 ## Use it
 
-A graph is a Grammar component, so it needs no `Fragment` (the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's; it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
+A graph is a Grammar component, so it needs no `Fragment` (the ext draws in the Grammar's tokens and primitives, and `starci-fe/fragment-only-library` keeps naming only the raw toolkits). Import the ext's stylesheet once, after the core's (in an app, in `globals.css` right after the Grammar stylesheet, [FE-CSS-2](../../code/fe/ui.md#fe-css-2-globalscss-imports-in-the-cascade-order); R93 accepts an exported `core/ext/<name>.css` there, and the ext's code entry `@starci/grammar/core/ext/graph` in product source); it carries xyflow's base sheet, so an app imports nothing from xyflow. Like every Grammar component, a graph stands inside the app's `GrammarRoot`, whose ramps it reads:
 
 ```tsx
-import "@starci/grammar/core/ext/graph.css"
+// globals.css, after the Grammar stylesheet: @import "@starci/grammar/core/ext/graph.css";
 import { FlowGraph, type FlowNode, type GraphEdge } from "@starci/grammar/core/ext/graph"
 
 const nodes: FlowNode[] = [
@@ -213,7 +213,7 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 The map of the records of an app, for any app: entities, fields and relations, with no word of its own. `ErdMap` takes `entities` (`{ id, label, count?, icon?, fields?: { id, label, type? }[] }`; `icon` is an SVG component of the app's own set, Grammar's `IconSource`, left out the tile shows the first letter), `relations` (`{ id?, source, field?, target, label?, from?, to? }`: the field `field` of `source` points at `target`; `from` and `to` are `{ many?, optional? }`, many at `from` and one at `to` by default), `label`, `onOpen(type)`, `maxFields` (8; the fields a relation starts at always stay), `moreLabel(n)`, `isLoading`, `emptyLabel` and `ariaLabelConfig`. A field a relation starts at shows a link icon and the other entity's name in place of its type. The type words ("text", "number", "money"), the record counts and the words on the lines are all the app's.
 
 ```tsx
-import "@starci/grammar/core/ext/graph.css"
+// globals.css, after the Grammar stylesheet: @import "@starci/grammar/core/ext/graph.css";
 import { ErdMap, type ErdEntity, type ErdRelation } from "@starci/grammar/core/ext/graph"
 
 const entities: ErdEntity[] = [

@@ -928,7 +928,7 @@ rules:
       - {kind: eslint-fe, id: component-purity}
   - id: R93
     code: FE_VENDOR_BOUNDARY
-    law: Vendor primitives and icons reach components only through their named owners with one icon size per region from the Grammar scale, and the Grammar package is imported only through its public entries.
+    law: Vendor primitives and icons reach components only through their named owners with one icon size per region from the Grammar scale, and the Grammar package is imported only through its public entries (beside them, a core-ext code entry or, in a style source, a core-ext stylesheet the installed Grammar exports) and its required, non-optional peers are exactly the selected peers.
     failureCodes:
       - FE_VENDOR_BOUNDARY
       - ARCH_GRAMMAR_CONTRACT_INVALID
