@@ -222,3 +222,42 @@ export const DonutChart: Story = {
     expect(frames(canvasElement, 'empty')).toHaveLength(1);
   },
 };
+
+type Booked = { readonly day: string; readonly booked: number };
+const bookings: readonly Booked[] = [
+  { day: 'Thu', booked: 7 },
+  { day: 'Fri', booked: 8 },
+  { day: 'Sat', booked: 9 },
+  { day: 'Sun', booked: 9 },
+  { day: 'Mon', booked: 4 },
+  { day: 'Tue', booked: 2 },
+  { day: 'Wed', booked: 2 },
+];
+
+/**
+ * Chosen bars, a capacity line and the quiet colour mode. `highlight` sets the chosen bars apart (the days that need attention) in `highlightTone`, the rest in the muted step;
+ * `capacity` draws a dashed line at a level the bars are read against, labelled, and the scale always reaches it; `showValues` writes each bar's value above it; `quiet` keeps the
+ * bars to the ink and the muted step so a screen of several charts spends its accent once.
+ */
+export const BarChartChosenBarsAndCapacity: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Chosen bars in danger, capacity line, quiet" direction="column">
+        <E.BarChart data={bookings} xKey="day" yKey="booked" quiet highlight={['Tue', 'Wed']} highlightTone="danger" capacity={{ value: 9, label: 'Capacity 9' }} showValues height={200} ariaLabel="Bookings per day" emptyLabel="No bookings yet" />
+      </State>
+      <State label="Chosen bars by test, tone accent" direction="column">
+        <E.BarChart data={bookings} xKey="day" yKey="booked" highlight={(row) => row.booked <= 2} capacity={{ value: 12, label: 'Capacity 12' }} height={200} ariaLabel="Bookings per day" emptyLabel="No bookings yet" />
+      </State>
+      <State label="Quiet only: every bar the ink" direction="column">
+        <E.BarChart data={bookings} xKey="day" yKey="booked" quiet height={160} ariaLabel="Bookings per day" emptyLabel="No bookings yet" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getAllByRole('img', { name: /Bookings per day/ })).toHaveLength(3));
+    expect(canvas.getAllByRole('img', { name: 'Bookings per day, Capacity 9: 9' })).toHaveLength(1);
+    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-reference-line').length).toBe(2));
+    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-bar-rectangle').length).toBeGreaterThan(0));
+  },
+};

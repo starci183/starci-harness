@@ -19,12 +19,32 @@ import { Link } from "../../leaf/Link/index.js"
 import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
-import { TablerDots } from "../../leaf/Icon/tabler.js"
+import { TablerDots, TablerGripVertical } from "../../leaf/Icon/tabler.js"
 
 /** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column of their own. */
 const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
 /** The visible label over a diff row's value (0.55.0) when the app passes no `diffLabel`: an app localises it ("Đang dùng", "Sau khi duyệt"). */
 const DIFF_LABELS = { added: "Added", removed: "Removed", changed: "Changed" } as const
+
+/**
+ * Starts a drag with a LIFTED copy of the row as the image under the pointer: the copy carries `data-grammar-row-lifted` (a soft shadow on the card face, no tilt, no scale), stands
+ * out of the flow for one tick so the browser can take its picture, and is removed at once; the row itself stays put as the origin slot.
+ */
+const liftRow = (event: DragEvent<HTMLLIElement>) => {
+    const row = event.currentTarget
+    const parent = row.parentElement
+    if (parent === null || typeof event.dataTransfer.setDragImage !== "function") return
+    const copy = row.cloneNode(true) as HTMLElement
+    copy.setAttribute("data-grammar-row-lifted", "true")
+    copy.removeAttribute("draggable")
+    copy.removeAttribute("data-grammar-row-origin")
+    copy.setAttribute("aria-hidden", "true")
+    const box = row.getBoundingClientRect()
+    copy.style.width = `${box.width}px`
+    parent.appendChild(copy)
+    event.dataTransfer.setDragImage(copy, Math.max(0, event.clientX - box.left), Math.max(0, event.clientY - box.top))
+    window.setTimeout(() => copy.remove(), 0)
+}
 
 export type ListRowProps = NoChildren & {
     readonly row: ListRowData
@@ -184,14 +204,16 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(drag === undefined ? {} : {
                     draggable: true,
                     "data-grammar-row-draggable": "true",
-                    onDragStart: (event: DragEvent<HTMLLIElement>) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.id); drag.onDragStart() },
+                    onDragStart: (event: DragEvent<HTMLLIElement>) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.id); liftRow(event); drag.onDragStart() },
                     onDragEnd: drag.onDragEnd,
                 })}
+                {...(drag?.isOrigin === true ? { "data-grammar-row-origin": "true" } : {})}
                 {...(drag?.onMoveKey !== undefined && row.onPress === undefined && row.href === undefined ? { tabIndex: 0, ...pressKeys } : {})}
                 data-grammar-row-id={row.id}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3"
             >
                 {drag?.keyHint === undefined ? null : <span id={hintId} hidden>{drag.keyHint}</span>}
+                {drag === undefined ? null : <span className="starci-core-list-row-grip" aria-hidden="true"><Icon source={TablerGripVertical} usage="text" /></span>}
                 {row.diff === undefined && row.leading === undefined && !hasMark ? null : (
                     <span className="starci-core-list-row-leading">
                         {row.diff === undefined ? null : <span className="starci-core-list-row-diff" data-grammar-diff-mark={row.diff} aria-hidden="true">{DIFF_GLYPHS[row.diff]}</span>}

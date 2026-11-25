@@ -76,7 +76,7 @@ type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
 
 /**
  * A row that can be moved by dragging, with a keyboard alternative (Alt + arrow keys). A `Board` supplies it to its rows; an app
- * rarely writes it. The row keeps its look at rest: no handle is drawn.
+ * rarely writes it. The row keeps its look at rest: the grip (six dots at the start edge) shows on hover and on focus only.
  */
 export type RowDrag = {
     readonly onDragStart: () => void
@@ -85,6 +85,8 @@ export type RowDrag = {
     readonly onMoveKey?: (direction: "previous" | "next") => void
     /** The words that explain the keyboard move to a screen reader (the app's language). */
     readonly keyHint?: string
+    /** This row is the one being dragged: it stays where it started as the origin slot (a dashed, emptied place), while the card itself is in flight. */
+    readonly isOrigin?: boolean
 }
 
 /**
