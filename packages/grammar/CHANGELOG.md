@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.59.1 - 2026-11-25
+
+- Fixed (h-overlay-description-div): the `description` of `Dialog`, `AlertDialog` and `Drawer` is drawn in a `div` (was a `p`), so block content (a status line, a row) is valid HTML; it stays the overlay's `aria-describedby`.
+
 ## 0.59.0
 
 - The StarCi Grammar: React components, compositions and packaged visual DNA.
