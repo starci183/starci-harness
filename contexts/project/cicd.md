@@ -96,6 +96,25 @@ scanning a large file) runs again up to four times, its `node_modules` removed w
 (its pid) and its log. `starci dev sync-runner --status --dir <checkout>` prints the status and the pending mark; `--request` marks and starts it
 by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once.
 
+**Warming the cache after a pin move (a design, not built).** A pin or lockfile move that changes a part of the check cache fingerprint
+([check-cache.md](check-cache.md) "The fingerprint") leaves the committed records cold, and the next gate pays for the full run (NIVO's: `hfs structure reused 0 checked 12868`,
+8m25s). The one data file such a move touched without cause, `canon-pins.yaml`, is now a part of its own and costs nothing. For the moves that do invalidate (an hfs rule change,
+a lint package, Jest, TypeScript), the sync-runner could warm the cache once, and lanes.md permits only this shape of it:
+1. **Never in the dev checkout.** It is sync-owned, and its overlay (`devSync.local`) installs local dev builds, whose fingerprint is unportable
+   (`HFS_CHECK_CACHE_UNPORTABLE`: the run writes no record), so a run there warms nothing and leaves the checkout dirty for the next sync. The run belongs to a lane worktree
+   cut from the new `origin/dev`, installed from the committed lockfile (the shared install of `lane gate`), where the fingerprint is the portable one CI judges.
+2. **The trigger** is the runner's own sync result: it already knows whether the sync moved the lockfile, a manifest or an `@starci` pin (the `npm ci` decision). Only then
+   does it start the warm lane, once per sync, detached (the relay that started the runner), never waiting on it.
+3. **The lane** runs `app check --env prod --level full` in its worktree (no `--fresh`); when records changed, `app push` commits them as `chore(cache): warm the check cache for <sha>`
+   (the round [check-cache.md](check-cache.md) "The operating procedure" describes) and `lane gate --push --land` lands that one commit on dev under the dev lock like any lane,
+   so dev never receives a hand commit. A run that wrote nothing lands nothing and removes its worktree.
+4. **It terminates:** the landing marks the checkout for a sync, but a `chore(cache)` commit moves no pin and no lockfile, so that sync starts no warm lane. A lane that is
+   already landing waits on the same dev lock; a conflict in the cache folder is resolved by discarding the lane's records and running again, never by merging them (a record is a function of its key).
+5. **What is not settled and keeps it unbuilt:** the lanes rules define no unattended lane (who owns its slot, what notifies the coordinator when its full run is red, how it
+   yields to a coordinator hotfix or a train that holds the dev lock), a full run takes 8 minutes and 2 of the 16 heavy slots at the moment two apps deploy, and a warm commit lands
+   on every sync that moves a pin, so the coordinator's release trains would race it. The owner decides those, by CONTRIB-21, before the sync-runner starts lanes of its own.
+Until then the warm commit is made by the lane that needs it (`lane gate --push` runs the `app push` round, above) or by `starci app push` on a branch.
+
 Its settings are this machine's alone, in `<harness>/.runtime/local-settings.json` (git-ignored; the state base `STARCI_LOCAL_ROOT` when set; a CLI
 installed in an app's `node_modules` reads the same file through the harness home above its working folder), schema `starci/local-settings@1`:
 

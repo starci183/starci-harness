@@ -171,28 +171,55 @@ const unlinkedInstallOptions = (folder: string, options: RunOptions = {}): RunOp
 
 const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex")
 
+/** The tracked files of a package folder, each with the line its digest holds (see sourceDigest), in digest order. */
+const sourceLines = async (root: string, relativeDir: string): Promise<{ readonly file: string; readonly line: string }[]> => {
+    const staged = nulPaths(await git(root, ["ls-files", "-s", "-z", "--", relativeDir]))
+    const modified = new Set(nulPaths(await git(root, ["ls-files", "-m", "-z", "--", relativeDir])))
+    return staged
+        .map((entry) => {
+            const tab = entry.indexOf("\t")
+            const blob = entry.slice(0, tab).split(" ")[1] ?? ""
+            const file = entry.slice(tab + 1)
+            if (!modified.has(file)) return { file, line: `${file}\0${blob}` }
+            try {
+                return { file, line: `${file}\0work:${sha256(readFileSync(join(root, file)))}` }
+            } catch {
+                return { file, line: `${file}\0removed` }
+            }
+        })
+        .toSorted((left, right) => left.line.localeCompare(right.line))
+}
+
 /**
  * The digest of a package's source: every tracked file of its folder by path and content. A file the work tree holds as git does is named by its blob, so a clean
  * tree digests to the same value on every host for one commit; a file the work tree changed (or removed) is named by its bytes, so a dirty build never claims
  * the digest of the commit it started from.
  */
-export const sourceDigest = async (root: string, relativeDir: string): Promise<string> => {
-    const staged = nulPaths(await git(root, ["ls-files", "-s", "-z", "--", relativeDir]))
-    const modified = new Set(nulPaths(await git(root, ["ls-files", "-m", "-z", "--", relativeDir])))
-    const lines = staged
-        .map((entry) => {
-            const tab = entry.indexOf("\t")
-            const blob = entry.slice(0, tab).split(" ")[1] ?? ""
-            const file = entry.slice(tab + 1)
-            if (!modified.has(file)) return `${file}\0${blob}`
-            try {
-                return `${file}\0work:${sha256(readFileSync(join(root, file)))}`
-            } catch {
-                return `${file}\0removed`
-            }
-        })
-        .toSorted((left, right) => left.localeCompare(right))
-    return sha256(lines.join("\n"))
+export const sourceDigest = async (root: string, relativeDir: string): Promise<string> => sha256((await sourceLines(root, relativeDir)).map((entry) => entry.line).join("\n"))
+
+/** A pure-data file of a package that the check cache keys as a part of its own: the part's name and the file's path inside the package. */
+export interface SourceSplit {
+    readonly name: string
+    readonly file: string
+}
+
+/**
+ * The digest of a package's source split into the parts a data file makes: `core` is every tracked file but the named ones (the same lines as sourceDigest), and
+ * each named file has its own digest under its part name (`absent` when the package does not track it). The check cache keys a data file that only a few hfs rules
+ * read as a part of its own, so a change of it never makes the rest of the package look changed (`@starci/hfs` `cache/fingerprint.mts` SPLIT_PARTS).
+ * `sourceDigest` stays the digest of the whole, the one the publish judgement compares, so a change of the data file still republishes the package.
+ */
+export const sourceDigestParts = async (root: string, relativeDir: string, split: readonly SourceSplit[]): Promise<Readonly<Record<string, string>>> => {
+    const lines = await sourceLines(root, relativeDir)
+    const folder = relativeDir.replaceAll("\\", "/").replace(/\/+$/u, "").replace(/^\.$/u, "")
+    const named = new Map(split.map(({ name, file }) => [folder === "" ? file : `${folder}/${file}`, name]))
+    const parts: Record<string, string> = { core: sha256(lines.filter((entry) => !named.has(entry.file)).map((entry) => entry.line).join("\n")) }
+    for (const { name } of split) parts[name] = "absent"
+    for (const entry of lines) {
+        const name = named.get(entry.file)
+        if (name !== undefined) parts[name] = sha256(entry.line)
+    }
+    return parts
 }
 
 /** Where an install records the digest of the `file:` siblings it copied (fileCopiesDigest). */

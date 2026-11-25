@@ -5,6 +5,7 @@ Versioned history starts at beta; earlier history is in git.
 ## 6.17.15 - 2026-11-25
 
 - The canon pins name @starci/grammar 0.59.3 and @starci/gallery 0.1.27.
+- Changed (h-cache-warm, check cache fingerprint, `cache/fingerprint.mts`): `knowledge/hfs/canon-pins.yaml` is a part of its own (`hfs:canon-pins`, `pkg:@starci/hfs:canon-pins`) that no family reads, and the `hfs` and `pkg:@starci/hfs` parts hold the digest of the rest of the package (`starciSourceParts` of the packed manifest). A release that only moves the pins no longer makes the hfs, secrets, wiring and db records cold; the pin rules run every run on the new pins. A build packed without the parts is keyed by its whole digest as before.
 
 ## 6.17.14 - 2026-11-25
 
