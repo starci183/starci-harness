@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 6.17.12 - 2026-11-25
 
+- Fixed (h-gitattributes-binary, the managed `.gitattributes` of `templates/app/skeleton`): `.starcistacks/** text eol=lf` no longer rewrites a binary file there (a brand reference PNG was corrupted in git); png, jpg, jpeg, gif, webp, avif, ico, woff, woff2, ttf, otf, pdf, zip, gz, tgz, mp4 and webm are `binary` after that rule. Apps pick it up with `starci app sync`.
 - Added (h-cli-bundle, R397 BE_CLI_CLIENT, `runtime/scripts/hfs/rules/cli.mts`): a client cli may declare `"bundle": true` in hfs.json and ship one self-contained file, so its users install it with no dependency tree: `be/apps/<app>/bundle.mjs` bundles the tsc output of its main into `dist/bundle/<bin>.cjs`, the bin points there, `files` holds `dist/bundle`, `prepack` is `node bundle.mjs` and the manifest lists no runtime dependency. Without the declaration the bin stays `dist/apps/<app>/src/main.js` and a tracked `bundle.mjs` is refused.
 - The canon pins name @starci/grammar 0.59.1 and @starci/gallery 0.1.25.
 - Added (h-grammar-ext-css, slot `app.gallery-look`, since 6.17.12): `gallery/look.json`, an app's optional declaration of each environment's web and api origin and the seed owner `starci app look` signs in as (the password a custody reference, never a value).
