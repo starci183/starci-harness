@@ -1,6 +1,8 @@
-// R273: an explicitly supplied lcov report proves 100% per measured logic file.
+// R273: an explicitly supplied lcov report proves the coverage bar of the canon (owner 2026-11-25, BE-TEST-13): every measured logic file reaches
+// the per-file floor on lines, functions and branches, and each coverage tier (the modules hfs.json sides.be.coverageTiers puts in it, the default
+// tier the rest) reaches its own lines and branches bar as a whole. The numbers are knowledge/sonar-gate.yaml's (coverageBar), never restated here.
 // The denominator is the existing slot-derived coverage scope, never the source records present in the report.
-// lcov carries lines, functions and branches; the unit runner also enforces its statement threshold.
+// lcov carries lines, functions and branches; the unit runner also enforces the per-file floor on statements.
 import fs from 'node:fs';
 import path from 'node:path';
 import type ts from 'typescript';
@@ -8,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { coverageScope, declaredPackageScopes, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { effectiveSlot } from '../slot-presence.mjs';
+import { coverageBar, type CoverageBar } from '../../gates/sonar-gate.mjs';
+import { moduleKeyOf, tierOf, type TierDeclaration } from '../coverage-tiers.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -166,12 +170,12 @@ function metricOf(record: Parsed, metric: Parsed) {
   return { found, hit, problems, detailed: details.size > 0 };
 }
 
-function measuredMetric(records: Parsed, metric: Parsed) {
+function measuredMetric(records: Parsed, metric: Parsed, floor: number) {
   const values = records.map((record: Parsed) => metricOf(record, metric));
   const problems = values.flatMap((value: Parsed) => value.problems);
   const details = new Map();
   for (const record of records) for (const [key, hits] of record[metric]) addHits(details, key, hits);
-  // Detailed test-name records merge by line/function/branch identity. Without identities, every summary must prove 100%.
+  // Detailed test-name records merge by line/function/branch identity. Without identities, the worst summary is the file's measure.
   const hasOnlyDetails = values.every((value: Parsed) => value.detailed || value.found === 0);
   const valid = values.every((value: Parsed) => !value.problems.length);
   const worst = values.reduce((lowest: Parsed, value: Parsed) => {
@@ -182,20 +186,46 @@ function measuredMetric(records: Parsed, metric: Parsed) {
   const hit = hasOnlyDetails ? [...details.values()].filter((count) => count > 0).length : (worst.hit ?? 0);
   let percent = null;
   if (valid) percent = found === 0 ? 100 : 100 * hit / found;
-  if (valid && hit !== found) problems.push(`${metric} ${hit}/${found} (${(100 * hit / found).toFixed(2)}%) is below 100%`);
+  if (valid && percent !== null && percent < floor) problems.push(`${metric} ${hit}/${found} (${percent.toFixed(2)}%) is below the per-file floor of ${floor}%`);
   return { metric: { found, hit, percent }, problems };
 }
 
-function measuredResult(file: string, records: Parsed) {
+function measuredResult(file: string, records: Parsed, floor: number) {
   const problems = records.flatMap((record: Parsed) => record.problems);
   const metrics: Record<string, Parsed> = {};
   if (!records.length) return { path: file, metrics, problems: ['no lcov source record for this measured logic file'], ok: false };
   for (const metric of METRICS) {
-    const result = measuredMetric(records, metric);
+    const result = measuredMetric(records, metric, floor);
     metrics[metric] = result.metric;
     problems.push(...result.problems);
   }
   return { path: file, metrics, problems: [...new Set(problems)], ok: problems.length === 0 };
+}
+
+/** The tier totals of the measured files: each tier's lines and branches summed over its files, judged against the tier's bar. */
+function tierResults(results: Parsed[], declaration: TierDeclaration | undefined, bar: CoverageBar) {
+  const totals = new Map<string, { files: string[]; lines: { found: number; hit: number }; branches: { found: number; hit: number } }>();
+  for (const result of results) {
+    if (result.metrics.lines === undefined) continue;
+    const tier = tierOf(moduleKeyOf(result.path), declaration, bar);
+    const total = totals.get(tier) ?? { files: [], lines: { found: 0, hit: 0 }, branches: { found: 0, hit: 0 } };
+    total.files.push(result.path);
+    for (const metric of ['lines', 'branches'] as const) {
+      total[metric].found += result.metrics[metric].found ?? 0;
+      total[metric].hit += result.metrics[metric].hit ?? 0;
+    }
+    totals.set(tier, total);
+  }
+  return [...totals.entries()].sort(([left], [right]) => byCodeUnit(left, right)).map(([tier, total]) => {
+    const want = bar.tiers[tier]!;
+    const problems: string[] = [];
+    const percentOf = (metric: 'lines' | 'branches') => total[metric].found === 0 ? 100 : 100 * total[metric].hit / total[metric].found;
+    for (const metric of ['lines', 'branches'] as const) {
+      const min = want[metric];
+      if (min !== undefined && percentOf(metric) < min) problems.push(`${metric} ${total[metric].hit}/${total[metric].found} (${percentOf(metric).toFixed(2)}%) is below the tier ${tier} bar of ${min}%`);
+    }
+    return { tier, files: total.files, lines: { ...total.lines, percent: percentOf('lines') }, branches: { ...total.branches, percent: percentOf('branches') }, problems, ok: problems.length === 0 };
+  });
 }
 
 /** A statement that emits nothing: a type, an interface, a type-only import or export, an ambient declaration. */
@@ -231,10 +261,10 @@ function typeModuleFindings(repoRoot: string | undefined, unmeasured: string[]):
  * Read-only R273 report for an app or be side. `lcov` injects report text; `coverageFrom` selects a path relative to repoRoot.
  * Only an explicit report enables the check; ordinary app check does not infer a stale report from coverage/lcov.info.
  */
-export function coverageBelowReport({ repoRoot, files, all, repo, manifest, coverageFrom, lcov }: { repoRoot?: string; files?: string[]; all?: string[]; repo?: Repo; manifest?: Parsed; coverageFrom?: string; lcov?: string } = {}) {
+export function coverageBelowReport({ repoRoot, files, all, repo, manifest, coverageFrom, lcov, bar = coverageBar() }: { repoRoot?: string; files?: string[]; all?: string[]; repo?: Repo; manifest?: Parsed; coverageFrom?: string; lcov?: string; bar?: CoverageBar } = {}) {
   const enabled = coverageFrom !== undefined || lcov !== undefined;
   const reportPath = typeof coverageFrom === 'string' && coverageFrom ? slash(coverageFrom) : '<lcov>';
-  const empty: Record<string, Parsed> = { ok: true, enabled, reportPath, metrics: METRICS, measured: [], unmeasured: [], unmeasuredScopes: [], results: [], findings: [] };
+  const empty: Record<string, Parsed> = { ok: true, enabled, reportPath, metrics: METRICS, floor: bar.file, measured: [], unmeasured: [], unmeasuredScopes: [], results: [], tiers: [], findings: [] };
   if (!enabled || !repo || !['app', 'be'].some((value) => value === repo.profile)) return empty;
   const boundary = inventory({ files: files!, all: all!, repo, manifest, repoRoot });
   const report: Record<string, Parsed> = { ...empty, ...boundary };
@@ -250,8 +280,11 @@ export function coverageBelowReport({ repoRoot, files, all, repo, manifest, cove
     const parsed = parseLcov(lcov);
     const { mapped, problems } = recordsByFile(parsed.records, boundary.measured, boundary.prefix);
     for (const problem of [...parsed.problems, ...problems]) reportFailure(problem);
-    report.results = boundary.measured.map((file) => measuredResult(file, mapped.get(file)));
-    for (const result of report.results.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, result.path, `${result.path}: ${result.problems.join('; ')}; measured logic files require 100% lines, functions and branches`, { coverage: result.metrics }));
+    report.results = boundary.measured.map((file) => measuredResult(file, mapped.get(file), bar.file));
+    for (const result of report.results.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, result.path, `${result.path}: ${result.problems.join('; ')}; every measured logic file reaches ${bar.file}% lines, functions and branches`, { coverage: result.metrics }));
+    // The tiers (owner 2026-11-25): which module is in which tier is the app's declaration (hfs.json sides.be.coverageTiers), the default tier the rest.
+    report.tiers = tierResults(report.results, (repo.coverageTiers ?? repo.sides?.be?.coverageTiers) as TierDeclaration | undefined, bar);
+    for (const tier of report.tiers.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, reportPath, `coverage tier ${tier.tier} (${tier.files.length} measured files): ${tier.problems.join('; ')}; declare a module's tier in hfs.json sides.be.coverageTiers, or cover it`, { tier: tier.tier }));
   }
   report.findings.push(...typeModuleFindings(repoRoot, boundary.unmeasured));
   report.ok = report.findings.length === 0;

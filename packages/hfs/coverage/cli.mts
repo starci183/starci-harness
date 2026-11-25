@@ -6,7 +6,7 @@
 // `--records <dir>` merges instead the committed per-spec records of the check cache (`.starcistacks/cache/test-coverage`): the union of what every spec covers,
 // which is the total of a full unit run, written as the same lcov.
 // `starci app coverage verify <lcov>`: the coverage proof alone (scripts/hfs/coverage-from.mts, the judgement `starci app check --coverage-from`
-// adds to the whole check): every measured logic file is in the merged lcov at 100 per file. The managed CI's coverage job runs it after the merge,
+// adds to the whole check): every measured logic file is in the merged lcov at its coverage tier and the per-file floor. The managed CI's coverage job runs it after the merge,
 // so the job re-runs none of the rules the fast and lint jobs already judged. Exit 0 proved, 1 refused (the report lists every finding), 2 bad usage.
 import path from 'node:path';
 import { createRequire } from 'node:module';

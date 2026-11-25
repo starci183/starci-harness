@@ -4,6 +4,7 @@ import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
 import { dbFunctionsOk, ddlRenderersOk, receiptPortsOk, sqlPassThroughOk } from './rule-params-shape.mjs';
+import { tierDeclarationProblems } from './coverage-tiers.mjs';
 import { engineOwnedOk } from './engine-owned.mjs';
 import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
@@ -135,7 +136,9 @@ function declarationSideProblems(side: Parsed, value: Parsed, names: Parsed): st
   const bad: string[] = [];
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
-  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned', 'ddlRenderers', 'receiptPorts'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned', 'ddlRenderers', 'receiptPorts', 'coverageTiers'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  // Which measured module is held to which coverage tier (owner 2026-11-25, BE-TEST-13): the app's own declaration, the numbers the canon's.
+  if (value.coverageTiers !== undefined) bad.push(...(side === 'be' ? tierDeclarationProblems(value.coverageTiers) : [`${at}.coverageTiers belongs to the be side`]));
   if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions, { bare: true }))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions, each schema-qualified (schema.name, never pg_catalog) or a bare pg built-in of the canon's list, with unique names`);
   if (value.sqlPassThrough !== undefined && (side !== 'be' || !sqlPassThroughOk(value.sqlPassThrough))) bad.push(`${at}.sqlPassThrough belongs to the be side and lists {file, reason} files relative to the side folder, forward slashes, unique, each with the reason its SQL text is not the app's own`);
   if (value.receiptPorts !== undefined && (side !== 'be' || !receiptPortsOk(value.receiptPorts))) bad.push(`${at}.receiptPorts belongs to the be side and lists {class, method, repeat, reason} or {class, method, many: true, reason}: a class of the app, its method that records a delivery once, the answer it gives a repeat ("false" or "undefined"), or many: true for a delivery of several events whose method answers the new ones (no repeat then), and the reason, each class and method once (R263)`);

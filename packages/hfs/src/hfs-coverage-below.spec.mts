@@ -27,10 +27,10 @@ const OUTSIDE = [
   'be/src/modules/domain/orders/persistence/orders.mapper.ts',
   'be/src/modules/domain/orders/orders.module.ts',
 ];
-const declaration = (edition: string) => ({
+const declaration = (edition: string, coverageTiers?: Record<string, string[]>) => ({
   hfs: 3, kind: 'app', project: 'coverage-demo', edition,
   sides: {
-    be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database', provider: 'postgres' }] },
+    be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database', provider: 'postgres' }], ...(coverageTiers === undefined ? {} : { coverageTiers }) },
     fe: { apps: [{ name: 'web', kind: 'next' }] },
   },
 });
@@ -41,31 +41,40 @@ const record = (file: string, { line = 1, fn = 1, branch = 1 }: { line?: number;
   `BRDA:1,0,0,${branch}`, 'BRF:1', `BRH:${branch !== '-' && branch > 0 ? 1 : 0}`, 'end_of_record', '',
 ].join('\n');
 
-function fixture(t: TestContext, edition: string, report: string | undefined, files = [LOGIC, ...OUTSIDE]): Context {
+/** A record of `found` lines of which the first `hit` ran, its one function run and no branch: a file at hit/found lines. */
+const spread = (file: string, hit: number, found: number) => [
+  `SF:${file}`, 'FN:1,run', 'FNDA:1,run', 'FNF:1', 'FNH:1',
+  ...Array.from({ length: found }, (_, at) => `DA:${at + 1},${at < hit ? 1 : 0}`), `LF:${found}`, `LH:${hit}`, 'BRF:0', 'BRH:0', 'end_of_record', '',
+].join('\n');
+
+/** The per-file findings of a report (a tier finding is filed on the report). */
+const fileFindings = (report: Record<string, unknown>, file: string): Finding[] => (report.findings as Finding[]).filter((finding) => finding.path === file);
+
+function fixture(t: TestContext, edition: string, report: string | undefined, files = [LOGIC, ...OUTSIDE], coverageTiers?: Record<string, string[]>): Context {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-coverage-below-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify(declaration(edition)));
+  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify(declaration(edition, coverageTiers)));
   fs.mkdirSync(path.join(dir, 'coverage'));
   if (report !== undefined) fs.writeFileSync(path.join(dir, 'coverage/lcov.info'), report);
   for (const file of files) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), 'export class Subject { run() { return 1; } }\n');
   }
-  const repo = resolveRepoDeclaration(manifest, declaration(edition));
+  const repo = resolveRepoDeclaration(manifest, declaration(edition, coverageTiers));
   return { repoRoot: dir, repo, manifest, files, coverageFrom: 'coverage/lcov.info' };
 }
 
 for (const edition of ['lite'] as const) {
-  test(`HFS_COVERAGE_BELOW ${edition}: refuses each metric below 100% per measured file`, (t) => {
+  test(`HFS_COVERAGE_BELOW ${edition}: refuses each metric below the per-file floor of a measured file`, (t) => {
     for (const partial of [{ line: 0 }, { fn: 0 }, { branch: '-' }] as const) {
       const report = coverageBelowReport(fixture(t, edition, record(LOGIC, partial)));
       assert.equal(report.ok, false);
-      assert.deepEqual(report.findings.map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
-      assert.match(report.findings[0].message, /0\/1 \(0\.00%\) is below 100%/);
+      assert.deepEqual(fileFindings(report, LOGIC).map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
+      assert.match(fileFindings(report, LOGIC)[0]!.message, /0\/1 \(0\.00%\) is below the per-file floor of 50%/);
     }
   });
 
-  test(`HFS_COVERAGE_BELOW ${edition}: accepts 100% and lists features, cli and webhooks outside measured scope`, (t) => {
+  test(`HFS_COVERAGE_BELOW ${edition}: accepts a fully covered file and lists features, cli and webhooks outside measured scope`, (t) => {
     const report = coverageFrom(fixture(t, edition, record(LOGIC) + OUTSIDE.map((file) => record(file, { line: 0, fn: 0, branch: 0 })).join('')));
     assert.equal(report.ok, true);
     assert.deepEqual(report.findings, []);
@@ -109,11 +118,11 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('HFS_COVERAGE_BELOW: the alpha.15 registry judges an explicit report and accepts its 100% replacement', (t) => {
+test('HFS_COVERAGE_BELOW: the alpha.15 registry judges an explicit report and accepts its covered replacement', (t) => {
   const context = fixture(t, 'full', record(LOGIC, { line: 0 }));
   const own = (list: Finding[]) => list.filter((finding: Finding) => finding.code === HFS_COVERAGE_BELOW);
   const findings = own(a15Findings(context));
-  assert.deepEqual(findings.map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
+  assert.deepEqual(findings.map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC], [HFS_COVERAGE_BELOW, 'error', 'coverage/lcov.info']], 'the file below the floor, and its tier below its bar');
   fs.writeFileSync(path.join(context.repoRoot, context.coverageFrom!), record(LOGIC));
   assert.deepEqual(own(a15Findings(context)), []);
 });
@@ -157,7 +166,7 @@ test('HFS_COVERAGE_BELOW: duplicate test-name records merge covered identities, 
   assert.deepEqual(bad.results[0].metrics.branches, { found: 2, hit: 1, percent: 50 });
 });
 
-test('HFS_COVERAGE_BELOW: invalid counts and contradictory summary metadata refuse a nominally 100% report', (t) => {
+test('HFS_COVERAGE_BELOW: invalid counts and contradictory summary metadata refuse a nominally covered report', (t) => {
   const context = fixture(t, 'full', record(LOGIC));
   for (const lcov of [record(LOGIC).replace('DA:1,1', 'DA:1,-1'), record(LOGIC).replace('LF:1', 'LF:2'), record(LOGIC).replace('LH:1', 'LH:2')]) {
     const report = coverageBelowReport({ ...context, lcov });
@@ -177,13 +186,40 @@ test('HFS_COVERAGE_BELOW: metrics missing from lcov are unavailable while explic
   assert.deepEqual(zero.results[0].metrics.functions, { found: 0, hit: 0, percent: 100 });
 });
 
-test('HFS_COVERAGE_BELOW: summary-only reports require each record to prove 100%, with no percentage rounding escape', (t) => {
+test('HFS_COVERAGE_BELOW: summary-only reports require each record to prove the floor, with no percentage rounding escape', (t) => {
   const context = fixture(t, 'lite', record(LOGIC));
   const summary = (found: number, hit: number) => `SF:${LOGIC}\nLF:${found}\nLH:${hit}\nFNF:0\nFNH:0\nBRF:0\nBRH:0\nend_of_record\n`;
   assert.equal(coverageBelowReport({ ...context, lcov: summary(2, 2) + summary(1, 1) }).ok, true);
-  const below = coverageBelowReport({ ...context, lcov: summary(100000, 99999) });
+  const below = coverageBelowReport({ ...context, lcov: summary(2000000, 999999) });
   assert.equal(below.ok, false);
-  assert.equal(below.results[0].metrics.lines.hit, 99999);
+  assert.equal(below.results[0].metrics.lines.hit, 999999);
+  assert.match(fileFindings(below, LOGIC)[0]!.message, /is below the per-file floor of 50%/, '49.99995% is below 50, never rounded up to it');
+});
+
+test('HFS_COVERAGE_BELOW: a tier is judged over its files as a whole, against the bar of the tier the app declares (owner 2026-11-25)', (t) => {
+  // orders at 70% lines: above the per-file floor (50), below tier A (85) and the default tier B (75), above tier C (60).
+  const lcov = spread(LOGIC, 7, 10);
+  const undeclared = coverageBelowReport(fixture(t, 'lite', lcov));
+  assert.deepEqual(fileFindings(undeclared, LOGIC), [], 'the file reaches the per-file floor');
+  assert.deepEqual(undeclared.tiers.map((tier: { tier: string; files: string[]; ok: boolean }) => [tier.tier, tier.files, tier.ok]), [['B', [LOGIC], false]], 'an undeclared module is in the default tier');
+  assert.match(undeclared.findings.at(-1).message, /coverage tier B \(1 measured files\): lines 7\/10 \(70\.00%\) is below the tier B bar of 75%/);
+  const money = coverageBelowReport(fixture(t, 'lite', lcov, undefined, { A: ['domain/orders'] }));
+  assert.equal(money.ok, false);
+  assert.match(money.findings.at(-1).message, /below the tier A bar of 85%/);
+  const integration = coverageBelowReport(fixture(t, 'lite', lcov, undefined, { C: ['domain/*'] }));
+  assert.equal(integration.ok, true, 'a module the app puts in tier C is held to 60');
+  const exact = coverageBelowReport(fixture(t, 'lite', lcov, undefined, { A: ['domain/orders'], C: ['domain/*'] }));
+  assert.equal(exact.tiers[0].tier, 'A', 'an entry without * wins over a pattern');
+});
+
+test('HFS_COVERAGE_BELOW: the tiers sum their files, so a covered module carries a weaker one of the same tier, never one of another', (t) => {
+  const files = [LOGIC, POLICY, ...OUTSIDE];
+  const lcov = spread(LOGIC, 10, 10) + spread(POLICY, 6, 10);
+  const together = coverageBelowReport(fixture(t, 'lite', lcov, files));
+  assert.equal(together.ok, true, 'B: 16/20 lines is 80%, above 75');
+  const apart = coverageBelowReport(fixture(t, 'lite', lcov, files, { A: ['platform/access'] }));
+  assert.equal(apart.ok, false, 'A holds access alone at 60%');
+  assert.deepEqual(apart.tiers.map((tier: { tier: string; ok: boolean }) => [tier.tier, tier.ok]), [['A', false], ['B', true]]);
 });
 
 test('HFS_COVERAGE_BELOW: manifest coverage changes alter the denominator', (t) => {
@@ -240,7 +276,7 @@ test('HFS_COVERAGE_BELOW: an explicit coverage proof refuses an fe side instead 
   assert.match(errors, /requires an app root or its be side/);
 });
 
-test('HFS_COVERAGE_BELOW measures the logic of the root packages at the app root, named from the jest root in the lcov, and refuses one below 100%', (t) => {
+test('HFS_COVERAGE_BELOW measures the logic of the root packages at the app root, named from the jest root in the lcov, and refuses one below the floor', (t) => {
   const PACKAGE_LOGIC = 'packages/sdk/src/registry.ts';
   // No folder name of a package is unmeasured: a plain .ts file beside a view is logic like any other.
   const PACKAGE_VIEW = 'packages/sdk/src/views/view.ts';

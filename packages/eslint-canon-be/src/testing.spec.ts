@@ -98,7 +98,7 @@ test("R47: only a service is unit-tested, its spec sits beside it, and there are
       { filename: at("src/features/api/checkout/transport/graphql/order.mapper.ts"), code: "export const toType = () => 1" },
       { filename: at("src/modules/domain/order/policies/refund.policy.ts"), code: "export class RefundPolicy {}" },
       { filename: at("src/modules/integrations/beta-pay/beta-pay.client.ts"), code: "export class BetaPayClient {}" },
-      // a logic role of the measured modules (coverage required) may carry its own spec beside it: the file owes 100 per file, a spec of its own is optional
+      // a logic role of the measured modules (coverage required) may carry its own spec beside it: the file owes its coverage bar per file, a spec of its own is optional
       { filename: at("src/modules/domain/order/order.pause.policy.spec.ts"), code: "export {}" },
       { filename: at("src/modules/domain/order/http.client.spec.ts"), code: "export {}" },
       { filename: at("src/modules/domain/order/order.contracts.ts"), code: "export interface Order {}" },

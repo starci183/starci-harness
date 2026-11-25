@@ -31,22 +31,24 @@ the logic files a slot declares (`logic`) and the exclusions. A repository has n
   there; its own option is deprecated). Types are checked once, by `typecheck` (unit specs included) and `typecheck:tests`
   (`src/tests/tsconfig.json`), and `test:integration`/`test:e2e`/`test:contract` run `typecheck:tests` first, so no world spec
   runs on code that does not type-check.
-- **Coverage of the measured logic, per-file 100.** `collectCoverageFrom` is one glob per `coverage.roots` entry covering `<root>/**/*.{<roles>}.ts`
+- **Coverage of the measured logic, per-file floor.** `collectCoverageFrom` is one glob per `coverage.roots` entry covering `<root>/**/*.{<roles>}.ts`
   (the `ruleParams.be.logicRoles` of the rendered scope) plus each `coverage.files` entry (a logic file its slot declares), minus its `excludes`, `dist` and `coverage`, and `coverageThreshold` holds
-  `{ lines: 100, branches: 100, functions: 100, statements: 100 }` on one union glob of those roots and files. Jest applies a glob threshold to each file on its own, so every file of a
-  `ruleParams.be.logicRoles` role inside a measured slot, and every declared logic file, must reach 100 on every metric (an average never passes). The
+  the rendered `coverage.perFile` (the per-file floor of the coverage tiers, owner 2026-11-25; its number is @starci/hfs knowledge/sonar-gate.yaml's, never this package's) on one union glob
+  of those roots and files. Jest applies a glob threshold to each file on its own, so every file of a `ruleParams.be.logicRoles` role inside a measured slot, and every declared logic file,
+  must reach the floor on every metric (an average never passes); a scope rendered without `perFile` is refused. The tier bars, which hold a group of modules as a whole, are R273's and
+  Codecov's, since a jest glob key cannot hold a group. The
   managed `test` script runs the unit project with `--coverage` and fails below it. Coverage is measured by v8, which counts the
   real source. The unit project overlays `isolatedModules: true`, `importHelpers: true` and `sourceMap: true` on the repository tsconfig, so ts-jest
   transpiles each file without building a type program. `unit-metadata.js`, a ts-jest wrapper and after-transformer, maps
   only synthetic `typeof value === "function" ? value : Object` guards inside TypeScript's generated `__metadata("design:paramtypes", ...)` calls to the dedicated `unit-metadata.generated.js` coverage anchor. Their runtime guards remain unchanged, including
   the fallback to `Object` for an undefined or non-class dependency; generated branches are not attributed to source parameters.
   The wrapper restores that second source after ts-jest emits its map. The anchor ignores generated guards only and is omitted from LCOV. Application source calls and guards remain measured. Source maps are enabled even when the build config disables them.
-  Source conditionals, including branches on the same constructor line, still count toward per-file 100 coverage. Decorator helpers
+  Source conditionals, including branches on the same constructor line, still count toward per-file coverage. Decorator helpers
   come from `tslib`, which the repository lists in its devDependencies (`UNIT_COMPILER_OPTIONS`). Reporters are `text-summary`,
   `text` and the bundled LCOV reporter (which gives same-named callbacks unique function identities): the run writes `coverage/lcov.info` under the repository (be/) root.
 - **Sonar and Codecov import that lcov, scoped to the same measured files.** `starci app sync` renders `sonar.coverage.exclusions` (the complement of the measured files: SonarQube has no coverage inclusions) and the `codecov.yml`
   status paths and components from the one derivation (`scripts/hfs/coverage-scope.mjs`), so jest, Sonar and Codecov measure the same files;
-  the Sonar gate holds coverage at 100 overall, on new code and per file. `sonarExclusions()` still renders `sonar.exclusions`
+  the Sonar gate holds new code at the patch bar and every measured file at the per-file floor. `sonarExclusions()` still renders `sonar.exclusions`
   (`**/*.spec.ts,**/*.e2e-spec.ts,**/dist/**,**/coverage/**`). There is no coverage exclusion list.
 
 ## Result cache and slots (integration and e2e)

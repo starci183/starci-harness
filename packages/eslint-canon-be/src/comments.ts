@@ -435,9 +435,11 @@ export const rules = {
  * one reason is easier to obey, and impossible to satisfy by switching alphabets.
  */
 export const recommended: Recommended = {
-  "starci-be/require-export-jsdoc": "error",
-  "starci-be/require-enum-member-jsdoc": "error",
-  "starci-be/require-public-member-jsdoc": "error",
+  // The JSDoc rules are style (lib/config.ts STYLE, owner 2026-11-25): reported and counted, never failing a land. no-non-ascii-source stays an error:
+  // a non-ASCII character in code is a homoglyph or a user string that skipped the catalog, never a matter of form.
+  "starci-be/require-export-jsdoc": "warn",
+  "starci-be/require-enum-member-jsdoc": "warn",
+  "starci-be/require-public-member-jsdoc": "warn",
   "starci-be/no-non-ascii-source": "error",
-  "starci-be/no-restated-name-jsdoc": "error",
+  "starci-be/no-restated-name-jsdoc": "warn",
 }

@@ -23,7 +23,7 @@ function synced(context: TestContext, edition: string) {
 
 const mutations: [string, (text: string) => string][] = [
   ['be/jest.config.js', (text: string) => text.replace('"service",', '')],
-  ['codecov.yml', (text: string) => text.replace('target: 100%', 'target: 80%')],
+  ['codecov.yml', (text: string) => text.replace('target: 80%', 'target: 79%')],
   ['sonar-project.properties', (text: string) => text.replace('sonar.coverage.exclusions=', 'sonar.coverage.exclusions=be/src/modules/**,')],
 ];
 

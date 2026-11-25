@@ -32,10 +32,12 @@ outsideTheGates:
     entries: [reports, contracts, .starcistacks, .starciwork, package-lock.json]
 
 # The gate limits of the Sonar gate (knowledge/sonar-gate.yaml): a floor is a number that may not be lower, a ceiling a number that may not be higher.
+# A key is a dotted path suffix of the number in that file (the longest one that names it wins), so each coverage tier keeps its own floor. The coverage
+# floors are the owner's tiers of 2026-11-25 (BE-TEST-13, R273): the patch 80, every measured file 50, tier A 85/80, B 75/65, C and a business package 60.
 gateLimits:
   file: knowledge/sonar-gate.yaml
   cite: {rule: R236}
-  floors: {minPercent: 100, minReviewedPercent: 100}
+  floors: {newCode.coverage.minPercent: 80, overall.coverage.minPercent: 50, tiers.A.lines: 85, tiers.A.branches: 80, tiers.B.lines: 75, tiers.B.branches: 65, tiers.C.lines: 60, business.lines: 60, minReviewedPercent: 100}
   ceilings: {maxPercent: 3, max: 0, unreviewedMax: 0, ignoreBelowChangedLines: 0}
 
 # The numeric budgets of the slot manifests, pinned: a ceiling raised, a floor lowered or a budget removed there is red. An app or example config
@@ -100,7 +102,7 @@ truths:
       - {list: sonar-scope, derivedBy: runtime-coverage-scope}
   - id: thin-wiring-roles-outside-coverage
     cite: {rule: R47}
-    says: Back end unit coverage is 100 per file on the logic roles only; the files of a thin wiring role (module, controller, resolver, port, options, entity and the like) and the slots marked coverage none are outside coverage, derived once from the slot manifest.
+    says: Back end unit coverage is the coverage bar (BE-TEST-13) on the logic roles only; the files of a thin wiring role (module, controller, resolver, port, options, entity and the like) and the slots marked coverage none are outside coverage, derived once from the slot manifest.
     allows:
       - {list: coverage-exclusions, derivedBy: coverage-scope}
   - id: app-config-renders-from-the-canon

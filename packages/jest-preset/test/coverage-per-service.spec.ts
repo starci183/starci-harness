@@ -1,4 +1,4 @@
-// The per-file coverage law, proven by running jest itself: every file of a measured logic role (a service, a guard) must reach 100 on lines, branches,
+// The per-file coverage law, proven by running jest itself: every file of a measured logic role (a service, a guard) must reach the rendered per-file floor on lines, branches,
 // functions and statements ON ITS OWN. A large fully covered service cannot carry a small one that misses a single branch,
 // however high the average is. The fixture app lives in a temporary folder inside this package (so jest, ts-jest and
 // typescript resolve from this package's own devDependencies; no link is ever made) and is removed afterwards.
@@ -35,7 +35,7 @@ function runFixture(t: TestContext, missBranch: boolean): SpawnSyncReturns<strin
   const write = (rel: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
   write('package.json', JSON.stringify({ name: 'coverage-fixture', private: true }));
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, isolatedModules: true } }));
-  write('jest.config.cjs', `const preset = require(${JSON.stringify(path.join(dist, 'index.js'))})\nmodule.exports = preset.starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service', 'guard'], excludes: ['src/modules/*/persistence/**'] } })\n`);
+  write('jest.config.cjs', `const preset = require(${JSON.stringify(path.join(dist, 'index.js'))})\nmodule.exports = preset.starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service', 'guard'], excludes: ['src/modules/*/persistence/**'], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } })\n`);
   fs.mkdirSync(path.join(app, 'apps'), { recursive: true });
   // A large service, fully covered, and a small one: together the average is far above 99.
   write('src/modules/big/big.service.ts', service('BigService', 40, false));
@@ -62,7 +62,7 @@ test('a guard (a logic role other than service) below 100 fails the run, and a n
   const write = (rel: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
   write('package.json', JSON.stringify({ name: 'coverage-fixture', private: true }));
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, isolatedModules: true } }));
-  write('jest.config.cjs', `const preset = require(${JSON.stringify(path.join(dist, 'index.js'))})\nmodule.exports = preset.starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service', 'guard'], excludes: ['src/modules/*/persistence/**'] } })\n`);
+  write('jest.config.cjs', `const preset = require(${JSON.stringify(path.join(dist, 'index.js'))})\nmodule.exports = preset.starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service', 'guard'], excludes: ['src/modules/*/persistence/**'], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } })\n`);
   fs.mkdirSync(path.join(app, 'apps'), { recursive: true });
   write('src/modules/a/a.guard.ts', 'export class AGuard {\n  pick(flag: boolean): string {\n    if (flag) return "yes"\n    return "no"\n  }\n}\n');
   write('src/modules/a/a.guard.spec.ts', 'import { AGuard } from "./a.guard"\n\ndescribe("AGuard", () => {\n  it("works", () => {\n    expect(new AGuard().pick(false)).toBe("no")\n  })\n})\n');
@@ -84,7 +84,7 @@ function decoratedFixture(t: TestContext, covered: boolean): SpawnSyncReturns<st
   const write = (rel: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
   write('package.json', JSON.stringify({ name: 'metadata-fixture', private: true }));
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', experimentalDecorators: true, emitDecoratorMetadata: true, removeComments: true, isolatedModules: false, sourceMap: false } }));
-  write('jest.config.cjs', `module.exports = require(${JSON.stringify(path.join(dist, 'index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [] } })`);
+  write('jest.config.cjs', `module.exports = require(${JSON.stringify(path.join(dist, 'index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } })`);
   fs.mkdirSync(path.join(app, 'apps'), { recursive: true });
   write('src/modules/a/dep.ts', 'export class Dep {}\nexport interface NotClass {}\nexport const NotClass = 42\nexport interface Missing {}\nexport const Missing = undefined\n');
   write('src/modules/a/a.service.ts', `import { Dep as Alias, NotClass, Missing } from "./dep"
@@ -153,7 +153,7 @@ function reporterFixture(t: TestContext): string {
   const write = (rel: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(app, rel)), { recursive: true }); fs.writeFileSync(path.join(app, rel), text); };
   write('package.json', JSON.stringify({ name: 'reporter-fixture', private: true }));
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', isolatedModules: true } }));
-  write('jest.config.cjs', `module.exports = require(${JSON.stringify(path.join(dist, 'index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [] } })\nmodule.exports.coverageReporters = [['lcov', { file: 'stock/lcov.info' }], [${JSON.stringify(path.join(dist, 'lcov.js'))}, { file: 'custom/lcov.info' }]]\n`);
+  write('jest.config.cjs', `module.exports = require(${JSON.stringify(path.join(dist, 'index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } } })\nmodule.exports.coverageReporters = [['lcov', { file: 'stock/lcov.info' }], [${JSON.stringify(path.join(dist, 'lcov.js'))}, { file: 'custom/lcov.info' }]]\n`);
   fs.mkdirSync(path.join(app, 'apps'), { recursive: true });
   write('src/modules/a/a.service.ts', 'export const hooks = [{ run: (flag: boolean) => flag ? 1 : 2 }, { run: () => 3 }]\n');
   write('src/modules/a/a.service.spec.ts', 'import { hooks } from "./a.service"\ntest("callbacks", () => { expect(hooks[0].run(true)).toBe(1); expect(hooks[0].run(false)).toBe(2); expect(hooks[1].run(false)).toBe(3) })\n');

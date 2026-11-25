@@ -92,7 +92,7 @@ items:
     check: ci-standard
   - id: test-sharding
     title: the unit run in shards, merged once
-    requires: "the test job is a matrix over shard (ci.jobs.test.shards, default defaults.shards); each shard runs npm test with --shard=<i>/<N> and STARCI_COVERAGE_SHARD=1 (the preset owns shard mode: it measures only the files the shard loads, no all-files instrumentation, no per-file threshold) and uploads its istanbul JSON, with no --passWithNoTests and no --coverageThreshold flag; the shard count never exceeds what the unit specs fill (jest gives shard i the slice of ceil(specs / N) specs, so an empty shard is impossible) ; the coverage job merges them by source location (starci app coverage merge, @starci/jest-preset/merge) and the coverage proof then requires every measured file to be present in the merge at 100 per file"
+    requires: "the test job is a matrix over shard (ci.jobs.test.shards, default defaults.shards); each shard runs npm test with --shard=<i>/<N> and STARCI_COVERAGE_SHARD=1 (the preset owns shard mode: it measures only the files the shard loads, no all-files instrumentation, no per-file threshold) and uploads its istanbul JSON, with no --passWithNoTests and no --coverageThreshold flag; the shard count never exceeds what the unit specs fill (jest gives shard i the slice of ceil(specs / N) specs, so an empty shard is impossible) ; the coverage job merges them by source location (starci app coverage merge, @starci/jest-preset/merge) and the coverage proof then requires every measured file to be present in the merge at its coverage tier and the per-file floor"
     covers: [app-ci]
     check: ci-standard
   - id: lint-parallel

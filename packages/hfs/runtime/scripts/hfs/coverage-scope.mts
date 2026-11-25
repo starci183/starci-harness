@@ -3,13 +3,13 @@
 // One input: the slot manifest. Every tracked slot of the be profile declares `coverage: required | none`,
 // `ruleParams.be.logicRoles` names the roles that carry logic, and a required slot may declare in `logic` the files of its own that
 // carry logic without a logic-role suffix. A file `<name>.<role>.ts` of a logic role inside a required slot, and every declared logic
-// file, is measured at 100 per file; every other file of the back end is not. Three consumers read this module and nothing else:
+// file, is measured at its coverage tier (BE-TEST-13); every other file of the back end is not. Three consumers read this module and nothing else:
 //   - the jest preset: `jestCoverage` (roots x roles, the declared logic files, and the none subtrees inside a root) becomes the
 //     per-file thresholds and collectCoverageFrom of the rendered be/jest.config.js;
 //   - Sonar: `sonarCoverageExclusions` are the complement (SonarQube has no inclusions and no negation), rendered into
 //     sonar.coverage.exclusions;
 //   - Codecov: `codecovPaths` are the measured roots, and `coverageComponents` one component per service app plus platform,
-//     each 100% and red below it, rendered into codecov.yml.
+//     each at the patch bar (the tier components hold the tier bars), rendered into codecov.yml.
 // starci app sync renders the three for an app, scripts/checks/check-examples-ci.mjs for the example apps of the runtime repository,
 // and `starci app check` compares the files with this derivation. Nothing here lists a path of a product: it all comes from slots.yaml.
 import { braceVariants, globExpression } from '../lib/glob.mjs';
@@ -285,7 +285,7 @@ export interface PackagesCoverage { folders: string[]; files: string[]; excludes
 
 /**
  * THE derivation of what the root packages measure (BE-TEST-13): every TypeScript file below a package's `src/` but its barrels and type modules
- * (PACKAGE_ALWAYS_UNMEASURED) and the slots the project opts out with a reason (ext/manifest.json packages), at 100 per file in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
+ * (PACKAGE_ALWAYS_UNMEASURED) and the slots the project opts out with a reason (ext/manifest.json packages), at its coverage tier and the per-file floor in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
  */
 export function packagesCoverage(folders: readonly string[], declared: (folder: string) => readonly string[] | null = () => null): PackagesCoverage {
   const sorted = [...new Set(folders)].sort(byCodeUnit);
@@ -296,7 +296,7 @@ export function packagesCoverage(folders: readonly string[], declared: (folder: 
 /** The id of the Codecov component of one root package (`packages/ui-kit` is `package-ui-kit`): no service app or `platform` is ever named so. */
 export const packageComponentId = (folder: string): string => `package-${folder.slice(folder.lastIndexOf('/') + 1)}`;
 
-/** One Codecov component per root package, over everything below its `src/`: the 100 per file bar is read for each package apart, not only for the project and the patch. */
+/** One Codecov component per root package, over everything below its `src/`: the patch bar is read for each package apart (its tier bar is its tier component), not only for the project and the patch. */
 export const packageComponents = (folders: readonly string[]): CoverageComponent[] => [...new Set(folders)].sort(byCodeUnit).map((folder): CoverageComponent => ({ id: packageComponentId(folder), name: packageComponentId(folder), paths: [`${folder}/src/**`] }));
 
 /**

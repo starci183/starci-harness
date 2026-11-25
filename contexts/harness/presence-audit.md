@@ -46,7 +46,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R268 | a jobs declaration per scheduler | a | `rules/stacks-release.mts:37` |
 | R269 | Dependabot, `npm audit`, SBOM and provenance | a | `rules/supply-chain.mts:205` |
 | R272 | the boot proof of every lite back-end app | a | `rules/boot-proof.mts:8` |
-| R273, BE-TEST-13 | full coverage per measured logic file | a | coverage gate, `rules/coverage-below.mts` |
+| R273, BE-TEST-13 | the coverage tiers and the per-file floor over the measured logic (owner 2026-11-25) | a | coverage gate, `rules/coverage-below.mts` |
 | R275 | one ingress per Swarm environment | a | `rules/stacks-ingress.mts:35` |
 | R280 | a production consumer per enum member, queue constant, error code, catalog key | a | `rules/unused-symbol.mts:14` |
 | R295, BE-ARCHITECTURE-3 | a module definition and options file per module | a | eslint `module-definition-required` |

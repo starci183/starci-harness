@@ -68,7 +68,7 @@ export const VERSION = /^(\d+)\.(\d+)\.(\d+)$/u;
 const THRESHOLD_MISS = /coverage threshold .* not met/gu;
 const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
-// fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the database lint, and Sonar.
+// fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file floor), build, the database lint, and Sonar.
 /**
  * The cache use of the release gate (contexts/project/check-cache.md, "The release"): every row runs diff-only against the warm committed cache the
  * release commit carries, which main's CI verified and the nightly run watches. `--full` (an explicit opt-in) runs the `app-check` row as

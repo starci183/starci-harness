@@ -188,7 +188,7 @@ export function qualityServices(doc: ParsedDoc, { example = false, repository }:
       token: sonar.ci?.token || nameOf(sonar.ci?.secrets?.[0]) || 'SONAR_TOKEN', hostVar: sonar.ci?.hostVar || 'SONAR_HOST_URL',
     },
     codecov: { enabled: codecov.mode !== 'disabled', auth: codecov.auth ?? 'oidc', token: codecov.ci?.token ?? null,
-      flag: codecov.flag ?? null, target: codecov.target ?? 100, components: codecov.components ?? 'auto', required: codecov.required ?? true, wiring: codecov.ci?.wiring ?? 'required' },
+      flag: codecov.flag ?? null, components: codecov.components ?? 'auto', required: codecov.required ?? true, wiring: codecov.ci?.wiring ?? 'required' },
     dependabot: { ecosystems: [...(dependabot.ecosystems ?? ['npm', 'github-actions', 'docker'])],
       schedule: { interval: 'weekly', ...dependabot.schedule }, groups: { minorPatch: 'grouped', major: 'per-package', ...dependabot.groups },
       ignore: [...(dependabot.ignore ?? ['@starci/*'])], security: dependabot.security ?? 'immediate' },

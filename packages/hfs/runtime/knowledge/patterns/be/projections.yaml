@@ -185,6 +185,6 @@ adapter:
   ports:
     - {port: read model table, adapter: "a db migration plus its entity under persistence/entities/ and the capability's persistence/entities/index.ts list; no <name>.sql.ts or <name>.rows.ts"}
   proof: >-
-    Unit specs as full (the projection is a logic role at 100 per file); declaring projection requires integration specs titled
+    Unit specs as full (the projection is a logic role at its coverage tier and the per-file floor); declaring projection requires integration specs titled
     `projection/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R284).
   see: [knowledge/patterns/be/event-bus.yaml, knowledge/patterns/be/queues.yaml]

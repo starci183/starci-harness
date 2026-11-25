@@ -62,8 +62,10 @@ export function formatCoverageReport(report: Parsed): string {
   const roles = report.scope?.roles ?? [];
   const rolePattern = roles.length === 1 ? roles[0] : '{' + roles.join(',') + '}';
   const lines = [
-    `coverage: ${report.ok ? 'passed' : 'refused'} (${report.measured.length} measured logic files; lines/functions/branches at 100% per file)`,
+    `coverage: ${report.ok ? 'passed' : 'refused'} (${report.measured.length} measured logic files; lines/functions/branches at least ${report.floor}% per file)`,
     'statement coverage is enforced by the unit runner; lcov does not carry statement counts',
+    'coverage tiers (hfs.json sides.be.coverageTiers; an undeclared module is in the default tier):',
+    ...(report.tiers ?? []).map((tier: Parsed) => `  ${tier.tier}: ${tier.files.length} files, lines ${tier.lines.percent.toFixed(2)}%, branches ${tier.branches.percent.toFixed(2)}%${tier.ok ? '' : ' (below its bar)'}`),
     'measured scope:',
     ...(report.scope?.roots ?? []).map((root: string) => `  ${report.prefix ?? ''}${root}**/*.${rolePattern}.ts`),
     'unmeasured scope:',

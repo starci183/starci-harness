@@ -1732,7 +1732,7 @@ rules:
       - {kind: hfs, id: boot-proof}
   - id: R273
     code: HFS_COVERAGE_BELOW
-    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope, and a root package's type module, which that scope leaves out, holds types only.
+    law: "A supplied coverage report proves the coverage bar (owner 2026-11-25, BE-TEST-13): every back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope reaches the per-file floor of lines, functions and branches, and each coverage tier (the modules hfs.json sides.be.coverageTiers puts in it, the default tier the rest) reaches its lines and branches bar as a whole, the numbers being knowledge/sonar-gate.yaml's; a root package's type module, which that scope leaves out, holds types only."
     failureCodes:
       - HFS_COVERAGE_BELOW
     enforcers:
@@ -2438,7 +2438,7 @@ rules:
       - {kind: hfs, id: project-ext}
   - id: R382
     code: HFS_PACKAGE_SLOT_UNPLACED
-    law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
+    law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at its coverage tier (BE-TEST-13) but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
     failureCodes:
       - HFS_PACKAGE_SLOT_UNPLACED
       - HFS_PACKAGE_SLOT_MISSING

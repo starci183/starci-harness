@@ -650,7 +650,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "coverage": {
-          "summary": "merge the sharded unit coverage into one lcov report, or prove that report at 100 per file",
+          "summary": "merge the sharded unit coverage into one lcov report, or prove that report against the coverage tiers and the per-file floor",
           "flags": [],
           "positional": [
             {

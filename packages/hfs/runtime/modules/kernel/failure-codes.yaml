@@ -3767,11 +3767,11 @@ HFS_CONTRACT_SNAPSHOT_DRIFT:
   kind: check-finding
 
 HFS_COVERAGE_BELOW:
-  title: "Measured back-end logic file is below 100 percent coverage"
-  title_vi: "Tệp logic back-end trong phạm vi đo chưa đạt độ bao phủ 100 phần trăm"
-  meaning_vi: "Báo cáo lcov được cung cấp không chứng minh mỗi tệp logic trong phạm vi đo của edition đạt 100 phần trăm dòng, hàm và nhánh; phạm vi cùng các tệp ngoài phạm vi được liệt kê riêng. Độ bao phủ câu lệnh do trình chạy unit test kiểm tra."
+  title: "Measured back-end logic is below its coverage bar"
+  title_vi: "Logic back-end trong phạm vi đo chưa đạt mức bao phủ của nó"
+  meaning_vi: "Báo cáo lcov được cung cấp không chứng minh mức bao phủ đã chốt (owner 2026-11-25): mỗi tệp logic trong phạm vi đo đạt ngưỡng tối thiểu mỗi tệp về dòng, hàm và nhánh, và mỗi tầng (A, B, C, khai báo ở hfs.json sides.be.coverageTiers) đạt ngưỡng dòng và nhánh của tầng đó; các con số nằm ở knowledge/sonar-gate.yaml. Phạm vi cùng các tệp ngoài phạm vi được liệt kê riêng. Độ bao phủ câu lệnh do trình chạy unit test kiểm tra."
   causes_vi:
-    - "Có dòng, hàm hoặc nhánh chưa được chạy trong một tệp logic thuộc phạm vi đo"
+    - "Một tệp logic thuộc phạm vi đo dưới ngưỡng tối thiểu mỗi tệp, hoặc một tầng dưới ngưỡng của tầng"
     - "Báo cáo thiếu tệp nguồn, thiếu số liệu, sai định dạng hoặc không đọc được"
   nextStep_vi: "Bổ sung unit test cho tệp được nêu, tạo lại báo cáo lcov đầy đủ rồi chạy starci app check --coverage-from <lcov>; features, cli và webhooks ngoài phạm vi đo vẫn được liệt kê."
   owner: op-retry

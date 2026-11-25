@@ -476,7 +476,7 @@ const SOURCES: Record<string, string> = {
   'be/src/tests/tsconfig.json': JSON.stringify({ compilerOptions: { module: 'commonjs', target: 'es2022', isolatedModules: true } }),
   'hfs.json': JSON.stringify({}),
 };
-const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [] } };
+const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [], perFile: { lines: 50, branches: 50, functions: 50, statements: 50 } } };
 
 function realApp(scope: object = SCOPE, extra: Record<string, string> = {}): string {
   const app = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-real-'));

@@ -71,7 +71,9 @@ ci:
   sonar-new-code:
     gate: starci-quality
     newCodePeriodDays: 30
-    coverageMinPercent: 100
+    # The patch bar of the coverage tiers (owner 2026-11-25, BE-TEST-13): new code reaches 80. The tiers, the per-file floor and the
+    # ratchet are @starci/hfs knowledge/sonar-gate.yaml's, which the product renders read; this is the harness's own server gate.
+    coverageMinPercent: 80
     duplicationMaxPercent: 3
     ignoreBelowChangedLines: 0
     issuesMax: 0

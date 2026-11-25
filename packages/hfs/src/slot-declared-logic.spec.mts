@@ -1,4 +1,4 @@
-// A slot may declare which of its own files carry logic (`logic`): each is measured at 100 per file like a logic-role file
+// A slot may declare which of its own files carry logic (`logic`): each is measured like a logic-role file (its coverage tier and the per-file floor, BE-TEST-13)
 // (scripts/hfs/coverage-scope.mts, R204, R273), and its `<file>.spec.ts` beside it is admitted by the slot without being listed
 // (scripts/hfs/allows.mts). No role name joins ruleParams.be.logicRoles. be.integrations.passport declares its kit file (the verifier
 // mapping over @starci/auth). The same file also proves the object-storage slot's names are the capability folder's (`object-storage.*`).
@@ -29,7 +29,7 @@ test('be.integrations.passport declares its kit file as logic, and no role name 
   for (const part of ['kit']) assert.equal(manifest.ruleParams.be.logicRoles.includes(part), false, part);
 });
 
-test('the coverage scope measures every declared logic file at 100 per file: jest files, R273 measured, never a Sonar coverage exclusion', () => {
+test('the coverage scope measures every declared logic file at its coverage tier and the per-file floor: jest files, R273 measured, never a Sonar coverage exclusion', () => {
   const scope = coverageScope(manifest);
   assert.deepEqual(scope.files, DECLARED);
   assert.deepEqual(jestCoverage(manifest).files, DECLARED);

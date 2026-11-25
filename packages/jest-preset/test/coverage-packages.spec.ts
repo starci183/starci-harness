@@ -18,7 +18,7 @@ const tsJestTransformer = require.resolve('ts-jest');
 const tslibFolder = path.dirname(require.resolve('tslib/package.json'));
 const preset = require(presetIndex) as { starciJestConfig(options: unknown): { projects: Array<{ displayName?: unknown; roots?: string[] }> } };
 
-const scope = { roots: ['src/modules/domain/*/'], roles: ['service'], files: [], excludes: [] };
+const scope = { roots: ['src/modules/domain/*/'], roles: ['service'], files: [], excludes: [], perFile: { lines: 100, branches: 100, functions: 100, statements: 100 } };
 const packages = { folders: ['packages/sdk'], files: ['packages/sdk/src/**/*.ts'], excludes: ['packages/sdk/src/**/index.ts', 'packages/sdk/src/workbench/**'] };
 
 function fixture(t: TestContext, { covered }: { covered: boolean }): string {

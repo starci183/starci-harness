@@ -195,8 +195,8 @@ export const rules: Record<string, RuleModule> = Object.fromEntries(
 )
 
 /**
- * The levels this canon asks for: every rule at `error`. There is no `warn` and no burn-down level; a rule with
- * debt is fixed in the repositories before it ships, never published weaker.
+ * The levels this canon asks for: every rule at `error` but the style rules of lib/config.ts `STYLE` (owner 2026-11-25), which ship at
+ * `warn`. There is no burn-down level; a bug or architecture rule with debt is fixed in the repositories before it ships, never published weaker.
  */
 export const recommended: Record<string, RuleEntry> = Object.fromEntries(
     CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),

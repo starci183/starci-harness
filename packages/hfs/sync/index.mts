@@ -21,7 +21,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
-import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
+import { coverageBar } from '../runtime/scripts/gates/sonar-gate.mjs';
+import { tierComponentId, tierScopes, type TierScope } from '../runtime/scripts/hfs/coverage-tiers.mjs';
+import { codecovPaths, coverageComponents, coverageScope, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
 import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
 import { devServicesUpgrade, STORAGE_IMAGE } from './dev-services.mjs';
@@ -444,13 +446,37 @@ export function componentsYaml(components: readonly { id: string; name: string; 
   return components.map(component => [`    - component_id: ${ids(component.id)}`, `      name: ${ids(component.name)}`, '      paths:', ...component.paths.map(glob => `        - ${JSON.stringify(prefix + glob)}`)].join('\n')).join('\n');
 }
 
-/** The managed be/jest.config.js option text of a coverage scope { roots, roles, files, excludes }, laid out exactly as prettier lays it out (width 120, indent 4). */
-export function jestCoverageSource(coverage: { roots: string[]; roles: string[]; files: string[]; excludes: string[] }): string {
+/**
+ * The managed be/jest.config.js option text of a coverage scope { roots, roles, files, excludes } and the canon's per-file floor (`perFile`, every metric of
+ * every measured file, knowledge/sonar-gate.yaml overall.coverage.minPercent; owner 2026-11-25), laid out exactly as prettier lays it out (width 120, indent 4).
+ */
+export function jestCoverageSource(coverage: { roots: string[]; roles: string[]; files: string[]; excludes: string[] }, floor: number = coverageBar().file): string {
   const list = (key: string, items: readonly string[]): string => {
     const one = `        ${key}: [${items.map(item => JSON.stringify(item)).join(', ')}],`;
     return one.length <= 120 ? one : [`        ${key}: [`, ...items.map(item => `            ${JSON.stringify(item)},`), '        ],'].join('\n');
   };
-  return ['{', list('roots', coverage.roots), list('roles', coverage.roles), list('files', coverage.files), list('excludes', coverage.excludes), '    }'].join('\n');
+  const perFile = `        perFile: { lines: ${floor}, branches: ${floor}, functions: ${floor}, statements: ${floor} },`;
+  return ['{', list('roots', coverage.roots), list('roles', coverage.roles), list('files', coverage.files), list('excludes', coverage.excludes), perFile, '    }'].join('\n');
+}
+
+/**
+ * The Codecov `individual_components` entries of the coverage tiers (coverage-tiers.mts): one `tier-<letter>` component per tier that holds a module,
+ * its paths the modules the app declares in it (the default tier the rest), its project status the tier's lines bar and its patch status the patch bar.
+ */
+export function tierComponentsYaml(tiers: readonly TierScope[], patch: number): string {
+  return tiers.map(scope => [
+    `    - component_id: ${tierComponentId(scope.tier)}`,
+    `      name: ${tierComponentId(scope.tier)}`,
+    '      paths:',
+    ...scope.paths.map(glob => `        - ${JSON.stringify(glob)}`),
+    '      statuses:',
+    '        - type: project',
+    `          target: ${scope.bar.lines}%`,
+    '          threshold: 0%',
+    '        - type: patch',
+    `          target: ${patch}%`,
+    '          threshold: 0%',
+  ].join('\n')).join('\n');
 }
 
 /**
@@ -625,6 +651,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const withFe = sideDeclared(app, 'fe');
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
+  // Every coverage number of the canon (knowledge/sonar-gate.yaml): the per-file floor, the patch bar and the tier bars.
+  const bar = coverageBar();
   // The root packages are built before anything imports them (typecheck, lint, the fe build and the be
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
   const rootPackages = packagesCoverage(libraryPackageFolders(app, source), (folder) => source.packageScopes?.[folder] ?? null);
@@ -693,13 +721,15 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
     // The coverage scope is the same in both editions: measures exactly what full measures (R212).
-    jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
+    jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers), bar.file) : '',
     jestPackages: scope === 'be' ? jestPackagesSource(rootPackages, specOnlyFolders) : '',
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
     codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovComponents: scope === APP_SCOPE ? componentsYaml([...coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers }), ...packageComponents(moduleDirs)]) : '',
-    codecovTarget: quality.codecov.target,
+    // The coverage tiers (owner 2026-11-25): a component per tier at its bar; the modules are the app's declaration (sides.be.coverageTiers), the numbers the canon's.
+    codecovTierComponents: scope === APP_SCOPE ? tierComponentsYaml(tierScopes({ roots: coverageScope(manifest, providers).roots, files: source.files, packageFolders: moduleDirs, declaration: app.sides.be.coverageTiers, bar }), bar.patch) : '',
+    codecovPatch: String(bar.patch),
     dependabotUpdates: dependabotUpdates(quality.dependabot),
     tsconfigPaths: ['be/tsconfig.json', ...fe.apps.map(entry => `fe/apps/${entry.name}/tsconfig.json`), ...(packages ? ['fe/packages/*/tsconfig.json'] : []), ...moduleDirs.map(dir => `${dir}/tsconfig.json`)].join(','),
     styleGlob: STYLE_GLOB,
