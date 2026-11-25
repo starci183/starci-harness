@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { INSETS, LEAST_OPEN_ZOOM, READABLE_ZOOM, canvasHeight, openFloor, openView, openZoom } from "../src/core/ext/graph/diagram/open.ts"
+import { INSETS, LEAST_OPEN_ZOOM, READABLE_ZOOM, canvasHeight, needsTopDown, openFloor, openView, openZoom } from "../src/core/ext/graph/diagram/open.ts"
 
 const PHONE = { width: 390, height: 480 }
 const DESKTOP = { width: 820, height: 480 }
@@ -67,6 +67,28 @@ describe("the readable floor of the first view", () => {
         const room = 480 - INSETS.top - INSETS.bottom
         assert.ok(Math.abs(view.y + 1420 * view.zoom - (INSETS.top + room / 2)) < 0.001)
         assert.equal(view.y, INSETS.top + room / 2 - 1420 * view.zoom)
+    })
+})
+
+describe("a wide flowchart's first view (Next v0.0.10 audit)", () => {
+    it("fits the drawing's width when that stays readable, even when its height does not fit", () => {
+        // A canvas whose rounded height leaves the height fit a hair under the width fit, under the floor: the width still fits, so nothing is cut across.
+        const frame = { width: 760, height: 300 }
+        const drawing = { width: 800, height: 300 }
+        const zoom = openZoom(frame, drawing, READABLE_ZOOM)
+        assert.equal(zoom, (frame.width - INSETS.left - INSETS.right) / drawing.width)
+        assert.ok(drawing.width * zoom <= frame.width - INSETS.left - INSETS.right + 0.001)
+        assert.ok(zoom >= READABLE_ZOOM)
+    })
+
+    it("keeps the floor when not even the width fits readably", () => {
+        assert.equal(openZoom(PHONE, { width: 2000, height: 100 }, READABLE_ZOOM), READABLE_ZOOM)
+    })
+
+    it("lays a graph out top-down only when its width does not fit the frame at the readable zoom", () => {
+        assert.equal(needsTopDown(820, { width: 640, height: 300 }), false)
+        assert.equal(needsTopDown(820, { width: 1200, height: 300 }), true)
+        assert.equal(needsTopDown(390, { width: 460, height: 300 }), true)
     })
 })
 

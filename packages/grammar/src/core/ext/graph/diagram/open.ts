@@ -32,12 +32,26 @@ export const openFloor = (kind: "graph" | "sequence" | "other"): number => (kind
 
 const roomOf = (frame: Size): Size => ({ width: frame.width - INSETS.left - INSETS.right, height: frame.height - INSETS.top - INSETS.bottom })
 
-/** The zoom of the first view in a frame: the whole drawing when it fits at 100% or less, never under `floor`. */
+/**
+ * The zoom of the first view in a frame: the whole drawing when it fits at 100% or less and stays at or over `floor`; else the drawing FITTED TO THE
+ * WIDTH when that stays at or over `floor` (Next v0.0.10 audit: a wide flowchart opened at the floor and cut its last node off the canvas although its
+ * whole width fitted readably; a drawing taller than the room pans down instead); else `floor`, anchored at the start.
+ */
 export const openZoom = (frame: Size, drawing: Size, floor: number = LEAST_OPEN_ZOOM): number => {
     const room = roomOf(frame)
-    const fit = Math.min(room.width / Math.max(1, drawing.width), room.height / Math.max(1, drawing.height))
-    return Math.max(floor, Math.min(1, fit))
+    const widthFit = room.width / Math.max(1, drawing.width)
+    const fit = Math.min(widthFit, room.height / Math.max(1, drawing.height))
+    if (fit >= floor) return Math.min(1, fit)
+    if (widthFit >= floor) return Math.min(1, widthFit)
+    return floor
 }
+
+/**
+ * Whether a graph laid out left to right is laid out again top-down for its frame: its width does not fit the room at the readable zoom, so across it
+ * would open cut at the floor (Next v0.0.10 audit). A phone lays every graph out top-down already.
+ */
+export const needsTopDown = (frameWidth: number, drawing: Size, floor: number = READABLE_ZOOM): boolean =>
+    (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width) < floor
 
 /** The canvas height for a frame width: the drawing as large as the width lets it (never under `floor`), between the reserved box and the tallest. */
 export const canvasHeight = (frameWidth: number, drawing: Size, reserved: number, floor: number = LEAST_OPEN_ZOOM): number => {
