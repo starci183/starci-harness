@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.14 - 2026-11-25
+
+- The canon pins name @starci/grammar 0.59.2 and @starci/gallery 0.1.26.
+
 ## 6.17.13 - 2026-11-25
 
 - Changed (h-coverage-tiers): the coverage bar of R273 (floor, tiers, business bar) and HFS_NIVOOS_SPEC_MISSING are test and coverage obligations: an app that declares its `test` or `coverage` gate off (PROJECT-LINT-4) is not judged for them, and `coverage verify` prints `coverage: <gate>: off (declared: <reason>)` (`coverageObligationsOff`, `scripts/hfs/coverage-tiers.mts`).

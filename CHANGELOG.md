@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.201 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.14, @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px) and @starci/gallery 0.1.26.
+
 ## 1.1.0-alpha.200 - 2026-11-25
 
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.13 (coverage tiers, the managed .gitattributes keeps binaries binary), @starci/jest-preset 2.12.2, @starci/eslint-canon-be 3.28.6 and @starci/eslint-canon-fe 9.22.2.

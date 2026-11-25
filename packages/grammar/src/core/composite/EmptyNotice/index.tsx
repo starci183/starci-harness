@@ -190,7 +190,7 @@ export const EmptyNotice = ({
         <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
     ) : (
         <Button
-            {...(actionEndArrow ? { size: "sm" as const, variant: actionVariant, endArrow: true as const } : actionVariant === "primary" && actionStartContent !== undefined ? { size: "md" as const, variant: actionVariant, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, variant: actionVariant })}
+            {...(actionEndArrow ? { size: "md" as const, variant: actionVariant, endArrow: true as const } : actionVariant === "primary" && actionStartContent !== undefined ? { size: "md" as const, variant: actionVariant, startContent: actionStartContent } : { size: "md" as const, variant: actionVariant })}
             isPending={isActionPending}
             {...(onAction === undefined ? {} : { onPress: onAction })}
         >
@@ -239,9 +239,9 @@ export const EmptyNotice = ({
             <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
                 {primaryInStep ? null : primary}
                 {secondary === undefined ? null : secondary.href === undefined ? (
-                    <Button size={scope === "page" ? "md" : "sm"} variant="border" onPress={secondary.onPress}>{secondary.label}</Button>
+                    <Button size="md" variant="border" onPress={secondary.onPress}>{secondary.label}</Button>
                 ) : (
-                    <Button size={scope === "page" ? "md" : "sm"} variant="border" href={secondary.href}>{secondary.label}</Button>
+                    <Button size="md" variant="border" href={secondary.href}>{secondary.label}</Button>
                 )}
             </div>
         ) : null}
