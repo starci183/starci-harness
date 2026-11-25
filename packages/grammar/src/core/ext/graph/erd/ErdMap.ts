@@ -12,6 +12,7 @@ import { endMarker, markerAngle, unitFrom, type Marker } from "./markers.js"
 import { ERD_DEFAULT_FIELDS, ERD_WIDTH, HEAD_PORT, erdPortId, erdPortY, erdStructureKey, resolveErd, type ErdEdge, type ErdModel, type ErdNode } from "./model.js"
 import type { ErdMapProps } from "./types.js"
 import { TablerLink } from "../../../leaf/Icon/tabler.js"
+import { FILE_GLYPHS } from "../../../fileGlyph.js"
 
 const CORNER = 12
 /** The first view's room round the map: on the left the 40px zoom controls and their gap. */
@@ -31,6 +32,12 @@ interface EntityData extends Record<string, unknown> {
     more: string | undefined
     /** Opens an entity (a field's link to the entity it points at). */
     open: (id: string) => void
+    /** Drawn as the selected entity. */
+    selected: boolean
+    /** The field row drawn as selected. */
+    selectedRow: string | undefined
+    /** Opens a file field's files; undefined when the app opens none. */
+    openField: ((field: string) => void) | undefined
 }
 type EntityRfNode = Node<EntityData, "erd">
 
@@ -42,11 +49,11 @@ interface RelationData extends Record<string, unknown> {
 type RelationRfEdge = Edge<RelationData, "erd">
 
 const EntityView = ({ data }: NodeProps<EntityRfNode>): ReactElement => {
-    const { node, lit, litRow, used, more, open } = data
+    const { node, lit, litRow, used, more, open, selected, selectedRow, openField } = data
     const entity = node.entity
     return h(
         "div",
-        { className: "starci-graph-entity starci-erd", "data-lit": lit ? "true" : undefined },
+        { className: "starci-graph-entity starci-erd", "data-lit": lit ? "true" : undefined, "data-selected": selected ? "true" : undefined },
         used.map((port) =>
             h(Handle, {
                 key: `${port.kind}:${port.id}`,
@@ -79,14 +86,44 @@ const EntityView = ({ data }: NodeProps<EntityRfNode>): ReactElement => {
                   node.rows.map((row) =>
                       h(
                           "li",
-                          { key: row.field.id, className: "starci-erd-row", "data-link": row.links === undefined ? undefined : "true", "data-lit": litRow === row.field.id ? "true" : undefined },
-                          h("span", { className: "starci-erd-field", title: row.field.label }, h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label)),
+                          {
+                              key: row.field.id,
+                              className: "starci-erd-row",
+                              "data-link": row.links === undefined ? undefined : "true",
+                              "data-file": row.field.file?.kind,
+                              "data-lit": litRow === row.field.id ? "true" : undefined,
+                              "data-selected": selected && selectedRow === row.field.id ? "true" : undefined,
+                          },
+                          row.field.file !== undefined && openField !== undefined
+                              ? // A file field opens its files: the name is the button (nodrag, so the map does not pan under the press), the box itself still opens the entity.
+                                h(
+                                    "button",
+                                    {
+                                        type: "button",
+                                        className: "starci-erd-field starci-erd-file-open nodrag",
+                                        title: row.field.label,
+                                        "aria-pressed": selected && selectedRow === row.field.id,
+                                        onClick: (event: MouseEvent) => {
+                                            event.stopPropagation()
+                                            openField(row.field.id)
+                                        },
+                                        onKeyDown: (event: KeyboardEvent) => {
+                                            // Enter and Space press the button; they never reach the box, which would open the entity instead.
+                                            if (event.key === "Enter" || event.key === " ") event.stopPropagation()
+                                        },
+                                    },
+                                    h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label),
+                                )
+                              : h("span", { className: "starci-erd-field", title: row.field.label }, h(Text, { as: "span", role: "body", overflow: "truncate" }, row.field.label)),
                           row.links !== undefined && row.linksTo !== undefined
                               ? // The core's Link to the entity the field points at, after the link icon.
                                 h("span", { className: "starci-erd-type starci-erd-link" }, h(Icon, { source: TablerLink, usage: "text" }), h(Link, { href: `#${row.linksTo}`, variant: "plain", onFollow: () => { open(row.linksTo ?? "") }, children: row.links }))
-                              : row.field.type === undefined
-                                ? null
-                                : h("span", { className: "starci-erd-type" }, h(Text, { as: "span", role: "caption" }, row.field.type)),
+                              : row.field.file !== undefined
+                                ? // The file mark: the glyph of the kind, then the type words (the kind and, for a list, "many" in the app's words).
+                                  h("span", { className: "starci-erd-type starci-erd-file" }, h(Icon, { source: FILE_GLYPHS[row.field.file.kind], usage: "text" }), row.field.type === undefined ? null : h(Text, { as: "span", role: "caption" }, row.field.type))
+                                : row.field.type === undefined
+                                  ? null
+                                  : h("span", { className: "starci-erd-type" }, h(Text, { as: "span", role: "caption" }, row.field.type)),
                       ),
                   ),
                   more === undefined ? null : h("li", { key: "more", className: "starci-erd-row starci-erd-more" }, h(Text, { as: "span", role: "caption" }, more)),
@@ -212,7 +249,7 @@ const Viewport = ({ bounds, focus, shapes, token, words }: { readonly bounds: Re
 const Canvas = (props: ErdMapProps): ReactElement => {
     const anchor = useRef<HTMLDivElement | null>(null)
     const scheme = useGraphScheme(anchor)
-    const { entities, relations, label, onOpen, maxFields = ERD_DEFAULT_FIELDS, moreLabel, isLoading = false, emptyLabel } = props
+    const { entities, relations, label, onOpen, onOpenField, selectedId, selectedField, maxFields = ERD_DEFAULT_FIELDS, moreLabel, isLoading = false, emptyLabel } = props
     const [placed, setPlaced] = useState<Placed | undefined>(undefined)
     const [lit, setLit] = useState<Lit>({ edge: undefined, node: undefined })
     const model = useMemo(() => resolveErd(entities, relations, maxFields), [entities, relations, maxFields])
@@ -269,7 +306,7 @@ const Canvas = (props: ErdMapProps): ReactElement => {
         initialWidth: ERD_WIDTH,
         initialHeight: node.height,
         ariaLabel: [node.entity.label, node.entity.count === undefined ? undefined : String(node.entity.count)].filter((part) => part !== undefined).join(", "),
-        data: { node, lit: litNodes.has(node.id), litRow: litRows.get(node.id), used: usedBy.get(node.id) ?? [], more: node.more > 0 ? (moreLabel === undefined ? `+${String(node.more)}` : moreLabel(node.more)) : undefined, open: (id: string) => { onOpen?.(id) } },
+        data: { node, lit: litNodes.has(node.id), litRow: litRows.get(node.id), used: usedBy.get(node.id) ?? [], more: node.more > 0 ? (moreLabel === undefined ? `+${String(node.more)}` : moreLabel(node.more)) : undefined, open: (id: string) => { onOpen?.(id) }, selected: node.id === selectedId, selectedRow: node.id === selectedId ? selectedField : undefined, openField: onOpenField === undefined ? undefined : (field: string) => { onOpenField(node.id, field) } },
     }))
     const edges: RelationRfEdge[] = model.edges.flatMap((edge) => {
         const route = ready.routes[edge.id]
@@ -282,6 +319,7 @@ const Canvas = (props: ErdMapProps): ReactElement => {
     }
     const onKeyDown = (event: KeyboardEvent): void => {
         if (event.key !== "Enter" && event.key !== " ") return
+        if ((event.target as Element).closest("button") !== null) return
         const id = (event.target as Element).closest(".react-flow__node")?.getAttribute("data-id")
         if (id !== null && id !== undefined) {
             event.preventDefault()
@@ -315,8 +353,8 @@ const Canvas = (props: ErdMapProps): ReactElement => {
                     nodesConnectable: false,
                     elementsSelectable: false,
                     onNodeClick: (event: MouseEvent, node: Node) => {
-                        // A field's link opens the entity it points at, not its own.
-                        if ((event.target as Element).closest("a") !== null) return
+                        // A field's link opens the entity it points at, not its own; a file field's button opens its files.
+                        if ((event.target as Element).closest("a, button") !== null) return
                         press(node.id)
                     },
                     onNodeMouseEnter: (_event: unknown, node: Node) => {
