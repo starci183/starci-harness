@@ -63,6 +63,9 @@ reviveMax: 3
 heavy:
   gbPerSlot: 4
   diskFloorMb: 15360
+  # `lane gate` warns when the lanes drive has under diskWarnMb free (50 GB, over the floor, so the warning comes while gates still run) and lists the landed
+  # worktrees that can be removed; it deletes nothing. A host sets its own as host.diskWarnMb of config.yaml.
+  diskWarnMb: 51200
   pollSeconds: 2
   # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), and sets its weight: a typecheck of a large app's back
   # end outgrows node's default heap (4 GB), and one ESLint child of an app check (a chunk of plan.lintChunk files) peaks near 8 GB on a typed

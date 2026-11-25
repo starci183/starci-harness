@@ -159,13 +159,19 @@ export const liveContext = async (root: string, rules: SlotRules): Promise<LiveC
 /** The minutes a worktree counts as in use after its last touch, when ops/slots.yaml names none. */
 export const TOUCHED_MINUTES = 60
 
+/**
+ * The generated files of a harness worktree (`contexts anatomy --execute` writes them: the contexts index, anatomy.md and its slices, the section indexes).
+ * They are rewritten from the tree by the next gate, so a landed worktree that holds a stale copy loses nothing by being removed. Pure.
+ */
+export const isGeneratedContextsFile = (path: string): boolean => /^contexts\/(?:project\/(?:index|anatomy(?:-[a-z]+)?)\.md|.+-sections\.md)$/u.test(path.replaceAll("\\", "/"))
+
 /** The uncommitted work of a worktree: what `git status` lists outside the janitor's own folders (a safe install's trash is not work). Empty when clean or unreadable. */
 export const uncommittedWork = (worktree: string, dirs: readonly string[], cacheIsNotWork = false): string[] => {
     const run = captureGitSync(["status", "--porcelain", "--untracked-files=normal"], worktree)
     if (run.exitCode !== 0) return []
     return run.stdout.split(/\r?\n/).flatMap((line) => {
         const path = line.trim().replace(/^[^ ]+ +/u, "").replace(/^"|"$/gu, "")
-        return path === "" || isInstallEntry(path, dirs) || (cacheIsNotWork && path.startsWith(CHECK_CACHE_DIR)) ? [] : [path]
+        return path === "" || isInstallEntry(path, dirs) || (cacheIsNotWork && (path.startsWith(CHECK_CACHE_DIR) || isGeneratedContextsFile(path))) ? [] : [path]
     })
 }
 
@@ -184,7 +190,7 @@ export const landedShaOf = (root: string, lane: string): string | undefined => r
  * inside it, a process table that could not be read, uncommitted work, commits after `landedSha` (the lane's branch moved on), or a touch within
  * `janitor.touchedMinutes` of ops/slots.yaml (default 60). `now` is the clock (epoch ms). `afterLanding` is the land cleanup's question
  * (harness/land-cleanup.ts): the lane has just landed, so its own touch says nothing (that rule is skipped) and the check-cache records under
- * `.starcistacks/cache/` are no work (they may be discarded); every other reason stands.
+ * `.starcistacks/cache/` and the generated contexts files are no work (they may be discarded); every other reason stands.
  */
 export const liveReasons = (tree: LaneTree, context: LiveContext, landedSha?: string, now: number = Date.now(), afterLanding = false): string[] => {
     const reasons: string[] = []

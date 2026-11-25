@@ -117,6 +117,7 @@ its working folder) reads them fresh at each use (`harness/host-settings.ts`):
 ```yaml
 host:
   diskFloorMb: 15360   # the free space a heavy command's drive keeps; over heavy.diskFloorMb of ops/liveness.yaml, the default
+  diskWarnMb: 51200    # under this much free, lane gate warns early and lists the landed worktrees that can be removed; over heavy.diskWarnMb of ops/liveness.yaml
 ```
 
 A host with no config.yaml (a CI runner) reads every default.
