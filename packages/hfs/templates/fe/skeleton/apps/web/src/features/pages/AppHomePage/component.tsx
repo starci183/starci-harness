@@ -15,7 +15,7 @@ export type AppHomePageBaseProps = {
 
 /** Draws the front door as one Grammar Page (R325): the title heads the band, the body the sign-in form or the reader and sign-out. */
 export const AppHomePageBase = (props: AppHomePageBaseProps) => (
-    <Page header={{ title: props.props.title }}>
+    <Page header={{ title: props.props.title, breadcrumbs: "root" }}>
         <SignInForm />
         <Link href={props.props.signupHref}>{props.props.signupLabel}</Link>
         <Link href={props.props.forgotHref}>{props.props.forgotLabel}</Link>

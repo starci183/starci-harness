@@ -27,15 +27,19 @@ export interface SonarGate {
   readonly coverageMinPercent: number;
   readonly duplicationMaxPercent: number;
 }
-/** The targets of codecov.yml, in percent. */
+/**
+ * The targets of codecov.yml, in percent. The project target may be `auto`, the canon's ratchet (owner 2026-11-25, `knowledge/sonar-gate.yaml`
+ * `overall.coverage`, `project: ratchet`): the project never drops below its base commit. The patch target is always a number.
+ */
 export interface CodecovTargets {
-  readonly project: number;
+  readonly project: number | typeof RATCHET;
   readonly patch: number;
 }
+/** The project target of a ratchet: codecov.yml's `target: auto`. */
+export const RATCHET = 'auto';
 
 function numberAt(document: unknown, keys: readonly string[], what: string): number {
-  let value: unknown = document;
-  for (const key of keys) value = typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[key] : undefined;
+  const value = valueAt(document, keys);
   const parsed = typeof value === 'string' ? Number.parseFloat(value) : value;
   if (typeof parsed !== 'number' || !Number.isFinite(parsed)) throw new Error(`${what} is not declared at ${keys.join('.')}`);
   return parsed;
@@ -47,11 +51,24 @@ export function readSonarGate(gateYaml: string): SonarGate {
   return { coverageMinPercent: numberAt(document, ['newCode', 'coverage', 'minPercent'], 'the Sonar gate'), duplicationMaxPercent: numberAt(document, ['newCode', 'duplication', 'maxPercent'], 'the Sonar gate') };
 }
 
-/** The patch and project targets of codecov.yml (`coverage.status.{project,patch}.default.target`, `90%`). */
+/** The value at a key path of a parsed document, undefined when a step is missing. */
+function valueAt(document: unknown, keys: readonly string[]): unknown {
+  let value: unknown = document;
+  for (const key of keys) value = typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[key] : undefined;
+  return value;
+}
+
+const PROJECT_TARGET = ['coverage', 'status', 'project', 'default', 'target'] as const;
+
+/**
+ * The patch and project targets of codecov.yml (`coverage.status.{project,patch}.default.target`, `90%`). The project target may be `auto` (the ratchet the
+ * managed codecov.yml renders); `auto` on the patch is no bar (the loosening check flags it) and is refused here like any other non-number.
+ */
 export function readCodecovTargets(codecovYaml: string): CodecovTargets {
   const document: unknown = parseYaml(codecovYaml);
+  const project = valueAt(document, PROJECT_TARGET);
   return {
-    project: numberAt(document, ['coverage', 'status', 'project', 'default', 'target'], 'codecov.yml'),
+    project: typeof project === 'string' && project.trim().toLowerCase() === RATCHET ? RATCHET : numberAt(document, PROJECT_TARGET, 'codecov.yml'),
     patch: numberAt(document, ['coverage', 'status', 'patch', 'default', 'target'], 'codecov.yml'),
   };
 }
@@ -218,6 +235,9 @@ export interface Prediction {
   readonly minPercent?: number;
 }
 
+/** What the server holds the project to: a percent, or under the ratchet its base commit's own value. */
+const projectTarget = (targets: CodecovTargets): string => (targets.project === RATCHET ? 'project >= its base commit (target auto, the ratchet)' : `project >= ${targets.project}%`);
+
 const percent = (part: number, whole: number): number | undefined => (whole === 0 ? undefined : Math.round((part / whole) * 10000) / 100);
 
 /** Covered and coverable lines among the changed lines of the measured sources. */
@@ -270,12 +290,12 @@ export function predict(inputs: QualityInputs): Prediction[] {
   const now = total(inputs.coverage, inputs.measured);
   const nowPercent = percent(now.covered, now.coverable);
   if (inputs.baseCoverage === undefined) {
-    out.push({ label: PREDICTION, provider: 'codecov', metric: 'project change', value: undefined, basis: 'the base commit holds no readable coverage records', target: `project >= ${inputs.targets.project}%` });
+    out.push({ label: PREDICTION, provider: 'codecov', metric: 'project change', value: undefined, basis: 'the base commit holds no readable coverage records', target: projectTarget(inputs.targets) });
   } else {
     const base = total(inputs.baseCoverage, inputs.measured);
     const basePercent = percent(base.covered, base.coverable);
     const change = nowPercent === undefined || basePercent === undefined ? undefined : Math.round((nowPercent - basePercent) * 100) / 100;
-    out.push({ label: PREDICTION, provider: 'codecov', metric: 'project change', value: change, basis: `${nowPercent ?? 'n/a'}% now against ${basePercent ?? 'n/a'}% at the base commit`, target: `project >= ${inputs.targets.project}%` });
+    out.push({ label: PREDICTION, provider: 'codecov', metric: 'project change', value: change, basis: `${nowPercent ?? 'n/a'}% now against ${basePercent ?? 'n/a'}% at the base commit`, target: projectTarget(inputs.targets) });
   }
   return out;
 }

@@ -18,7 +18,7 @@ export const AppResetPage = async (props: AppResetPageProps): Promise<ReactEleme
     const { token } = await props.searchParams
     const t = await getTranslations("app.emailAuth.reset")
     return (
-        <Page header={{ title: t("title") }} measure="reading">
+        <Page header={{ title: t("title"), breadcrumbs: "root" }} measure="reading">
             <EmailDoorForm door="reset" token={typeof token === "string" ? token : token?.[0]} />
         </Page>
     )

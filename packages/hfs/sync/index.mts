@@ -26,6 +26,7 @@ import { tierComponentId, tierScopes, type TierScope } from '../runtime/scripts/
 import { codecovPaths, coverageComponents, coverageScope, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
 import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
+import { grammarLintDependencyEdits } from './grammar-lint-dependency.mjs';
 import { devServicesUpgrade, STORAGE_IMAGE } from './dev-services.mjs';
 import { storageNeed, staticsFilesOnDisk } from '../runtime/scripts/lib/storage-need.mjs';
 import { APP_SCOPE, SIDES, declaredAppSides, loadSlotManifest, presenceOf, resolveAppDeclaration, sideDeclared, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
@@ -995,7 +996,9 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
   };
   const services = devServicesUpgrade(root, read);
-  for (const edit of [...services.edits, ...staticsStarterEdits(root, read), ...harnessCheckScriptEdits(read)]) {
+  // Each producer reads the files as the earlier ones left them (two edits of package.json build on each other).
+  const producers: (() => DeclarationEdit[])[] = [() => services.edits, () => staticsStarterEdits(root, read), () => harnessCheckScriptEdits(read), () => grammarLintDependencyEdits(read)];
+  for (const produce of producers) for (const edit of produce()) {
     const earlier = edits.get(edit.path);
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }

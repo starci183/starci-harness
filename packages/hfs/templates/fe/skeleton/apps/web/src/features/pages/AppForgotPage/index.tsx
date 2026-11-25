@@ -14,7 +14,7 @@ export const appForgotMetadata = async (): Promise<Metadata> => {
 export const AppForgotPage = async (_props: Record<string, never>): Promise<ReactElement> => {
     const t = await getTranslations("app.emailAuth.forgot")
     return (
-        <Page header={{ title: t("title") }} measure="reading">
+        <Page header={{ title: t("title"), breadcrumbs: "root" }} measure="reading">
             <EmailDoorForm door="forgot" />
         </Page>
     )

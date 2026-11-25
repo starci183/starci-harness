@@ -91,6 +91,13 @@ families:
   - id: core
     title: core
     contractRef: common
+    # The family's own public entries over the common contract (packages/grammar/README.md "Entry point"): its root and components from
+    # `@starci/grammar/core` (which re-exports Common), one base stylesheet (each family sheet imports Common anatomy first) and the
+    # optional default palette. The common entries stay admitted.
+    familyEntries:
+      entry: '@starci/grammar/core'
+      styleEntry: '@starci/grammar/core/styles.css'
+      themeEntries: ['@starci/grammar/core/theme.css']
     lint:
       package: '@starci/eslint-grammar-core'
       factory: coreGrammarConfig
@@ -103,6 +110,13 @@ families:
   - id: offset-pop
     title: offset-pop
     contractRef: common
+    # The family's own public entries over the common contract (packages/grammar/README.md "Entry point"): its root and components from
+    # `@starci/grammar/offset-pop` (which re-exports Common), one base stylesheet (each family sheet imports Common anatomy first) and the
+    # optional default palette. The common entries stay admitted.
+    familyEntries:
+      entry: '@starci/grammar/offset-pop'
+      styleEntry: '@starci/grammar/offset-pop/styles.css'
+      themeEntries: ['@starci/grammar/offset-pop/theme.css']
     lint:
       package: '@starci/eslint-grammar-offset-pop'
       factory: offsetPopGrammarConfig

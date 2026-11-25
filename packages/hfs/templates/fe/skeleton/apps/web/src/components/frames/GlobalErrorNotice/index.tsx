@@ -5,7 +5,12 @@ import { ErrorNotice } from "@/components/composites/ErrorNotice"
 type GlobalErrorNoticeProps = {
     readonly lang: string
     /** The catalog's words of the failure: the title, the description, the way home and the retry. */
-    readonly words: { readonly title: string; readonly description: string; readonly home: string; readonly retry: string }
+    readonly words: {
+        readonly title: string
+        readonly description: string
+        readonly home: string
+        readonly retry: string
+    }
     /** Re-render the whole app. */
     readonly onRetry: () => void
     /** Where the statics are served from (statics/ at the repository root, mirrored to object storage). */

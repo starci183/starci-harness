@@ -150,8 +150,8 @@ function grammarPackageRoot(installs: GrammarConsumer[], local: WorkspaceRecord 
 function addInstallContractProblems(install: GrammarConsumer, installs: GrammarConsumer[], grammar: GrammarContext, configRoot: string, problems: string[]): void {
   const where = installs.length > 1 ? ` (as ${install.relative} resolves it, ${relativePath(configRoot, install.packageRoot)})` : '';
   if (install.packageManifest?.name !== grammar.package) problems.push(`installed package ${grammar.package} is unavailable or has a different name${where}`);
-  if (!grammarExport(install.packageManifest, grammar.package, grammar.entry)) problems.push(`${grammar.entry} is not a safe declared package export${where}`);
-  if (!grammarExport(install.packageManifest, grammar.package, grammar.styleEntry)) problems.push(`${grammar.styleEntry} is not a safe declared style export${where}`);
+  for (const entry of grammar.entries) if (!grammarExport(install.packageManifest, grammar.package, entry)) problems.push(`${entry} is not a safe declared package export${where}`);
+  for (const entry of grammar.styleEntries) if (!grammarExport(install.packageManifest, grammar.package, entry)) problems.push(`${entry} is not a safe declared style export${where}`);
   // Optional peers (peerDependenciesMeta optional: true, the core ext's libraries) are no part of the contract;
   // the required ones must equal the selected peers exactly.
   const actualPeers = requiredPeers(install.packageManifest).sort(byCodeUnit);
@@ -184,20 +184,37 @@ function extStylesheetAllowed(grammar: GrammarContext, consumers: GrammarConsume
   return judged.length > 0 && judged.every(install => grammarExport(install.packageManifest, grammar.package, specifier));
 }
 
+/**
+ * A theme stylesheet of the selected family (its optional default palette, `<package>/<family>/theme.css`) that the Grammar install the
+ * source resolves declares as a safe package export; judged like a core-ext stylesheet.
+ */
+function themeStylesheetAllowed(grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], sourceFile: string, specifier: string): boolean {
+  if (!grammar.themeEntries.includes(specifier)) return false;
+  const owner = grammarOwner(consumers, sourceFile);
+  const judged = owner ? [owner] : installs;
+  return judged.length > 0 && judged.every(install => grammarExport(install.packageManifest, grammar.package, specifier));
+}
+
 function addGrammarStyleProblems(config: ArchitectureConfig, grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], problems: string[], styleBypasses: ArchitectureViolation[]): void {
   for (const source of grammar.styleSources) {
     const sourceFile = path.join(config.root, ...source.split('/'));
     const content = fs.readFileSync(sourceFile, 'utf8');
     const grammarStyles = cssImports(content).filter(item => item.specifier === grammar.package || item.specifier.startsWith(`${grammar.package}/`));
-    if (!grammarStyles.some(item => item.specifier === grammar.styleEntry)) problems.push(`${source} does not import ${grammar.styleEntry}`);
+    if (!grammarStyles.some(item => grammar.styleEntries.includes(item.specifier))) problems.push(`${source} does not import ${grammar.styleEntries.join(' or ')}`);
     for (const imported of grammarStyles) {
-      if (imported.specifier === grammar.styleEntry || extStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)) continue;
-      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entry and the declared core-ext stylesheets`);
+      if (grammar.styleEntries.includes(imported.specifier) || themeStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)
+        || extStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)) continue;
+      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entries, the family theme and the declared core-ext stylesheets`);
       styleBypasses.push({ ruleId: 'ARCH_GRAMMAR_EXPORT_BYPASS', path: source,
         line: content.slice(0, imported.index).split(/\r?\n/u).length, column: 1, package: grammar.package, specifier: imported.specifier,
-        message: `Style source must use the selected Grammar style entry ${grammar.styleEntry}, beside which only a core-ext stylesheet (${grammar.package}/core/ext/<name>.css) the installed Grammar exports may be imported; ${imported.specifier} is outside that contract.` });
+        message: `Style source must use a selected Grammar style entry (${styleContract(grammar)}), beside which only a core-ext stylesheet (${grammar.package}/core/ext/<name>.css) the installed Grammar exports may be imported; ${imported.specifier} is outside that contract.` });
     }
   }
+}
+
+/** The style entries a message names: the base sheets, then the optional family theme. */
+function styleContract(grammar: GrammarContext): string {
+  return [...grammar.styleEntries, ...grammar.themeEntries.map(entry => `${entry} (optional)`)].join(', ');
 }
 
 function grammarOwner(consumers: GrammarConsumer[], fileName: string): GrammarConsumer | null {
@@ -223,7 +240,7 @@ function reportGrammarReference(scan: GrammarScan, sourceFile: SourceFile, refer
   if (!sameOrUnder(reference.specifier, grammar.package)) return;
   if (grammarReferenceAllowed(reference, sourceFile, owner, edgesByStart, grammar, allowed)) return;
   violations.push(makeViolation(config, sourceFile, reference.node, 'ARCH_GRAMMAR_EXPORT_BYPASS',
-    `Product source must import the selected Grammar code entry ${grammar.entry}, its style entry ${grammar.styleEntry} or a core-ext entry (${grammar.package}/core/ext/<name>) the installed Grammar exports; ${reference.specifier} is outside that contract.`,
+    `Product source must import a selected Grammar code entry (${grammar.entries.join(', ')}), its style entries (${styleContract(grammar)}) or a core-ext entry (${grammar.package}/core/ext/<name>) the installed Grammar exports; ${reference.specifier} is outside that contract.`,
     { specifier: reference.specifier, package: grammar.package }));
 }
 
@@ -270,7 +287,7 @@ export function checkGrammar(config: ArchitectureConfig, context: TypeContext, m
   addConsumerDependencyProblems(grammar, consumers, contractProblems);
   addGrammarStyleProblems(config, grammar, consumers, installs, contractProblems, styleBypasses);
   addGrammarContractFinding(config, grammar, manifestFile, contractProblems, violations);
-  const allowed = new Set([grammar.entry, grammar.styleEntry]);
+  const allowed = new Set([...grammar.entries, ...grammar.styleEntries, ...grammar.themeEntries]);
   violations.push(...styleBypasses);
   const scan: GrammarScan = { config, context, grammar, consumers, installs, allowed, violations, makeViolation };
   for (const sourceFile of context.files) inspectGrammarSource(scan, sourceFile);
