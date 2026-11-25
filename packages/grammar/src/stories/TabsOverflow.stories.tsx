@@ -42,6 +42,46 @@ export const DirectionalOverflow: Story = {
   ),
 };
 
+const lessonPages: ReadonlyArray<G.TabItem> = [
+  { id: 'intro', label: 'Introduction' },
+  { id: 'setup', label: 'Setup' },
+  { id: 'happy', label: 'The happy path' },
+  { id: 'unhappy', label: 'When things fail' },
+  { id: 'pattern', label: 'Wrap-up' },
+  { id: 'submit', label: 'Submit' },
+];
+
+const LessonHeader = () => {
+  const [page, setPage] = useState('unhappy');
+  return (
+    <div style={{ width: 390, maxWidth: '100%', border: '1px dashed var(--border)' }}>
+      <G.Page
+        header={{
+          breadcrumbs: {
+            label: 'Location',
+            items: [
+              { id: 'essentials', label: 'Essentials', href: '#essentials' },
+              { id: 'course', label: 'Your shoe shop', href: '#course' },
+              { id: 'lesson', label: 'Ordering across four services without the customer losing money' },
+            ],
+          },
+          title: 'Ordering across four services without the customer losing money',
+          titleScale: 'standard',
+          tabs: { label: 'Lesson pages', kind: 'views', selectedKey: page, items: lessonPages, onSelect: setPage },
+        }}
+      >
+        <G.Text>{lessonPages.find((item) => item.id === page)?.label} panel</G.Text>
+      </G.Page>
+    </div>
+  );
+};
+
+/**
+ * A phone-width page header (StarCi Next audit rounds 5 and 6): the trail's long last crumb fades at its end (the strip follows its inline scroll), and the
+ * selected page tab, fourth of six, opens fully in view, clear of the next control and of the strip's fading edge. `specs/sideways-strips.browser.spec.mts` measures both.
+ */
+export const PhoneHeaderSelectedMiddle: Story = { render: () => <LessonHeader /> };
+
 const prompts = ['Summarize this document', 'Explain with examples', 'Test me', 'Suggest a plan', 'Review my answer', 'What should I read next?'];
 
 const ChipsRows = () => (

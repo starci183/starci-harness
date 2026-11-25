@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.1.29 - 2026-11-26
+
+- Changed: requires @starci/grammar 0.60.3 (sideways strips fade their end; the selected tab opens clear of the strip's fade).
+
 ## 0.1.28 - 2026-11-26
 
 - Changed: requires @starci/grammar 0.59.4 (tech logo icons in the Mermaid diagram).

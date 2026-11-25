@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.204 - 2026-11-26
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.17, @starci/grammar 0.60.3 (sideways strips fade their end; the selected tab opens clear of the strip's fade) and @starci/gallery 0.1.29.
+
 ## 1.1.0-alpha.203 - 2026-11-26
 
 - Changed (h-cache-warm): a packed `@starci/hfs` carries its source digest in parts (`starciSourceParts`: the core and `canon-pins.yaml`) beside the unchanged `starciSource`, so the check cache keys the pins apart (`SOURCE_SPLITS`, `sourceDigestParts`).

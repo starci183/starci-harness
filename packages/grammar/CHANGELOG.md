@@ -2,6 +2,11 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.60.3 - 2026-11-26
+
+- Fixed (h-grammar-strip-fade-tabs, StarCi Next audit round 5): a strip that scrolls only sideways fades its end again. Breadcrumbs, the `DataTable` scroller, the fenced code `pre`, the markdown table frame and the top bar's navigation took their fade from `animation-timeline: scroll(self)`, the BLOCK axis, which they never scroll, so the timeline stayed inactive and `--grammar-fade-end` stayed 0px (a long last crumb was cut mid-word at 390px). They follow `scroll(self inline)`; a browser without scroll-driven animations still skips the fade.
+- Fixed (h-grammar-strip-fade-tabs, StarCi Next audit round 6): the selected tab of a scrolling strip opens clear of the strip's fading edge, not only of the page control. The reveal brought the tab to the scroller's bare edge, where the vendor `ScrollShadow` masks its last `--scroll-shadow-size` (64px) on a side where more tabs wait, so the label dissolved beside the next control ("Khi có sự cố" at 390px). It now keeps that fade's width clear on each side (a tab wider than the room is centred) and reveals again once the web fonts are in. Spec `specs/sideways-strips.browser.spec.mts`, story `Navigation & Data/Tabs overflow/Phone Header Selected Middle`.
+
 ## 0.60.2 - 2026-11-26
 
 - Fixed (h-ci-red-1126): `NoteRow` stamps `data-tier="frame"`, the tier of the frame folder it lives in beside `NoteList` (it stamped `composite`, which the tier check refuses: the stamp is the folder). No API change.

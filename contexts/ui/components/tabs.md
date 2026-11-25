@@ -51,7 +51,9 @@ selected weight, 500, plus the underline, whatever the layer: page tabs, region 
 told by position and by the separator, not by type size, so a second row never reads as a footnote of the first. The pane line rule: region tabs inside a pane (a `Tabs` strip that ends a `PaneSection`) sit on ONE full-width separator, the
 band's bottom edge through the pane inset; the strip draws no short line of its own, no padding stands under it, and the
 neighbouring pane loses its block-start border, so there is no second border 12px lower. A tab
-without a leading glyph always shows its label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4).
+without a leading glyph always shows its label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4), and the
+selected tab opens fully in view on the first render and on every change of the selection, the list or the box: clear of the carets'
+gutter and of the strip's fading edge on a side where more tabs wait, centred when it is wider than that room.
 
 A command that belongs at the end of a strip (an "Add region" button) is the strip's `end` slot, inside the strip frame
 after the tabs and centred in its height, so the strip's line (its own, or the page band's) spans the full column under it;
