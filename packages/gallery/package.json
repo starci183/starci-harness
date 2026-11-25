@@ -60,7 +60,7 @@
   "dependencies": {
     "@heroui/react": "3.2.6",
     "@heroui/styles": "3.2.6",
-    "@starci/grammar": "0.59.4",
+    "@starci/grammar": "0.59.5",
     "@tailwindcss/postcss": "4.3.3",
     "@xyflow/react": "12.11.6",
     "react": "19.2.3",

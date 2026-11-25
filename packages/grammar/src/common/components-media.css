@@ -266,4 +266,121 @@
     @media (max-width: 47.999rem) {
         .starci-core-notice-art { inline-size: var(--grammar-illustration-state-compact); }
     }
+
+    /* ---------- MediaGrid: the files of a collection ---------- */
+    .starci-core-media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+        gap: var(--grammar-section-gap) var(--grammar-row-gap);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .starci-core-media-grid-item {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-media-grid-preview {
+        position: relative;
+        display: block;
+        overflow: hidden;
+        aspect-ratio: 1;
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface-secondary, transparent);
+    }
+
+    .starci-core-media-grid-item[data-selected="true"] .starci-core-media-grid-preview {
+        outline: var(--grammar-ring-width) solid var(--accent);
+        outline-offset: var(--grammar-ring-width);
+    }
+
+    .starci-core-media-grid-plate {
+        display: flex;
+        inline-size: 100%;
+        block-size: 100%;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: var(--grammar-text-xl);
+    }
+
+    .starci-core-media-grid-audio {
+        display: flex;
+        inline-size: 100%;
+        block-size: 100%;
+        flex-direction: column;
+    }
+
+    .starci-core-media-grid-audio .starci-core-media-grid-plate { flex: 1; }
+
+    .starci-core-media-grid-player {
+        inline-size: 100%;
+        min-inline-size: 0;
+    }
+
+    .starci-core-media-grid-words {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-media-grid-open {
+        display: block;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+        cursor: pointer;
+    }
+
+    .starci-core-media-grid-open:hover { text-decoration: underline; }
+
+    .starci-core-media-grid-open:focus-visible {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: var(--grammar-ring-width);
+        border-radius: var(--grammar-radius-sm);
+    }
+
+    .starci-core-media-grid-source,
+    .starci-core-media-grid-badge {
+        display: flex;
+        min-inline-size: 0;
+    }
+
+    /* The list: one hairline row per file, a small preview at the start, never a card. */
+    .starci-core-media-grid[data-grammar-media-layout="list"] {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .starci-core-media-grid[data-grammar-media-layout="list"] .starci-core-media-grid-item {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        padding-block: var(--grammar-row-gap);
+        border-block-end: var(--grammar-hairline) solid var(--separator);
+    }
+
+    .starci-core-media-grid[data-grammar-media-layout="list"] .starci-core-media-grid-preview {
+        flex: none;
+        inline-size: 3rem;
+        block-size: 3rem;
+    }
+
+    .starci-core-media-grid[data-grammar-media-layout="list"] .starci-core-media-grid-plate { font-size: var(--grammar-text-md); }
+
+    .starci-core-media-grid[data-grammar-media-layout="list"] .starci-core-media-grid-words { flex: 1; }
+
+    @media (width < 30rem) {
+        .starci-core-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
 }

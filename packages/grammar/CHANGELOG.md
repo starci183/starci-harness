@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.59.5 - 2026-11-26
+
+- Added (h-grammar-media, NIVO /data storage): `MediaGrid` (common): the files of a collection as a grid of square previews (the picture, a video that plays in place, a sound's player, the glyph of a document) or a list of hairline rows, each with its name (the button that opens its detail), one line of facts, a link back to the record it is used by and an optional state badge; `FILE_GLYPHS` and `FileKind` give each file kind one glyph. `ErdMap` marks file fields: `ErdField.file` (`{ kind, many }`) draws the kind's glyph before the type words and keeps the row drawn past `maxFields`; `onOpenField(entity, field)` makes a file field's name a button; `selectedId` and `selectedField` draw the selected entity and row in the selection tone.
+
 ## 0.59.4 - 2026-11-26
 
 - Added (h-grammar-tech-logos): `MermaidDiagram` draws the built-in tech logos of `techIcons` (new export of `@starci/grammar/core/ext/graph`) for a node's `R@{ icon: "name" }` with no `icons` entry: `postgresql`, `mongodb`, `mysql`, `redis`, `express`, `nestjs`, `nodedotjs`, `docker`, `kubernetes`, `rabbitmq`, `apachekafka`, `nginx`, `graphql`, `typescript`, `javascript`, `go`, `python`, `react`, `nextdotjs`, `elasticsearch`, `minio` (simple-icons 16.38.1, CC0, vendored; `amazons3` is no longer shipped there), plus Grammar's own `database` and `service`. Each is monochrome (`currentColor`, aria-hidden, one line high). The `icons` prop still adds and overrides. A subgraph takes an icon too (`G@{ icon: "docker" }`), drawn before its name.

@@ -61,8 +61,10 @@ const visibleRows = (entity: ErdEntity, linked: ReadonlyMap<string, { readonly i
     const fields = entity.fields ?? []
     const capacity = Math.max(max, linked.size)
     const keep = new Set<string>()
-    for (const field of fields) if (linked.has(field.id)) keep.add(field.id)
-    for (const field of fields) if (keep.size < capacity) keep.add(field.id)
+    const files = fields.filter((field) => field.file !== undefined && !linked.has(field.id)).length
+    const room = Math.max(capacity, linked.size + files)
+    for (const field of fields) if (linked.has(field.id) || field.file !== undefined) keep.add(field.id)
+    for (const field of fields) if (keep.size < room) keep.add(field.id)
     const rows = fields.filter((field) => keep.has(field.id)).map((field) => ({ field, links: linked.get(field.id)?.label, linksTo: linked.get(field.id)?.id }))
     return { rows, more: fields.length - rows.length }
 }
