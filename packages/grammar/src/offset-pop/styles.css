@@ -2,6 +2,7 @@
 @import "./components-forms.css";
 @import "./components-overlays.css";
 @import "./components-navigation.css";
+@import "./components-content.css";
 
 @layer starci-grammar-offset-pop {
     /*
@@ -43,6 +44,17 @@
         --grammar-loop-marquee-compact: 24s;
         /* The danger tone is a fill (3.57:1 as text), so danger painted as TEXT is mixed toward the ink. */
         --offset-pop-error: color-mix(in srgb, var(--danger) 65%, var(--foreground));
+        /*
+         * Common's material tokens, re-bound once for the family so every renderer that reads them is a sticker without a rule of its
+         * own (0.60.1): an outlined part's edge (a code block, a graded answer, the other party's message) is the ink outline; the
+         * popover and lift shadows (a popover, the reaction picker, a lifted Board card, the pane trigger) are the hard offset; and
+         * every card surface (SurfaceCard, Board columns and cards, a framed EmptyNotice) takes the family's card radius, unless the
+         * app's theme sets the `--starci-core-card-radius` hook.
+         */
+        --grammar-border-edge: var(--offset-pop-outline-width) solid var(--border);
+        --grammar-shadow-popover: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        --grammar-shadow-lift: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        --starci-core-surface-radius: var(--starci-core-card-radius, var(--offset-pop-surface-radius));
 
         color: var(--foreground);
         background: var(--background);

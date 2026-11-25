@@ -13,26 +13,25 @@ appliesTo:
 family: offset-pop
 provenance:
   package: "@starci/grammar"
-  version: "0.5.0"
-  checkout: b6a13be97a9d1e15b7d3f628709158e81c744a2a
-  captured: "2026-09-23"
+  version: "0.60.1"
+  captured: "2026-11-26"
   publicEntry: "@starci/grammar/common"
   familyEntry: "@starci/grammar/offset-pop"
   limitations: |
     Use this playbook only when Offset Pop is selected in the current .starciwork specification. The
     shapes are package usage written from the family's source, not observations of a shipped product;
     verify installed exports, props and CSS before promising a capability, and do not invent Grammar
-    APIs absent from DNA.yaml or installed source. Reading steps are reasoning within one op, not an
+    APIs absent from the installed exports and their types. Reading steps are reasoning within one op, not an
     auto-running op chain.
 shapes:
   - id: app-shell
-    title: App shell — fixed frame, navbar, sidebar drawer, one Toaster
+    title: App shell — fixed frame, navbar, sidebar drawer, bottom navigation, one Toaster
     knowledge: knowledge/ui/composition/app-shell.yaml
     composition:
       - renderer: OffsetPopGrammarRoot
         role: |
-          The one root around the whole app, `theme="system"` unless the product fixes a theme; imports
-          `@starci/grammar/offset-pop/styles.css`
+          The one root around the whole app; imports `@starci/grammar/offset-pop/styles.css` and, unless the
+          product brings its own palette, `@starci/grammar/offset-pop/theme.css`
       - renderer: WorkspaceShell
         role: |
           `viewport="fixed"` owns the frame, navbar, mobile opener band and independent sidebar and
@@ -45,12 +44,16 @@ shapes:
         role: |
           The desktop navigation and its icon rail use `presentation="rail"`. The route owns
           `selectedKey`; the product owns permissions, groups and collapse persistence.
+      - renderer: BottomNav
+        role: |
+          At phone widths the shell's compact navigation is the one bottom bar (learn, practice, ranking,
+          profile); the current item is the pink pill, never a hand-made tab bar
       - renderer: Drawer
         role: |
           The mobile opener below the navbar opens a left drawer containing Sidebar
           `presentation="drawer"`, plus language and theme controls. Selection, backdrop and Escape
           dismiss it; focus stays inside while it is open (FE-APP-SHELL-4).
-      - renderer: PageContainer
+      - renderer: Page
         role: |
           Route content lives in the shell's primary region. Create actions belong on their pages
           (FE-APP-SHELL-5); app classes express layout only.
@@ -60,8 +63,8 @@ shapes:
           clear of the shell controls and the current task.
     notes: |
       FE-RULE-OWNERSHIP in knowledge/patterns/fe/index.yaml keeps shell semantics in universal
-      knowledge and the named API checks in the selected Grammar lint package. The app shell has no
-      hand-made bottom tab bar (the Grammar BottomNav in compactNavigation is the one bottom bar). Offset Pop owns the outline, palette and hard shadow in its packaged CSS.
+      knowledge and the named API checks in the selected Grammar lint package. Offset Pop owns the
+      outline, palette and hard shadow in its packaged CSS.
 
   - id: home-continue
     title: Home — where the reader left off, one next step
@@ -73,61 +76,132 @@ shapes:
         role: The greeting or section title
       - renderer: SurfaceCard
         role: |
-          One top-level sticker for the next step (`isHighlight` on that card only), holding the title
-          and one supporting line (Text size="sm" tone="muted"), a real measurement, and one
-          Button variant="primary" — the view's single pink fill
+          The one card for the next step, `emphasis="accent"` on that card only (its hard offset turns
+          pink), holding the title, one supporting line (Text tone="muted"), a real measurement, and one
+          Button variant="primary" in `actions` — the view's single pink fill
       - renderer: "Progress / ProgressCircle / Meter"
         role: Only a verified value with a truthful `label` (ACCENT-4); an unknown value is not drawn
-      - renderer: SurfaceCard (list kind)
-        role: Peers (recent items, suggestions) as static rows; no second primary Button
+      - renderer: Section
+        role: |
+          `kind="list"` for peers (recent lessons, suggestions) as rows; no second primary Button
       - renderer: "Skeleton / EmptyNotice"
-        role: Pending is the same tree at rest (Skeleton in place of content); empty or failed is EmptyNotice
+        role: Pending is the same tree at rest (`isLoading` keeps the shape); empty or failed is EmptyNotice
     notes: |
-      A streak, level or reward count is a Badge or a Meter, not a second pink call to action.
+      A streak, level or reward count is a Badge, a figure of `Section kind="figures"` or a Meter, never a
+      second pink call to action.
+
+  - id: lesson-list
+    title: Lesson list — the lessons of a unit, where the reader stands in each
+    composition:
+      - renderer: Section
+        role: |
+          `kind="list"`, its `title` the unit; one row per lesson with `leading: { position }` (its number),
+          a `description` of its length, and at most two `badges` for its state (done in the success tone, in
+          progress in the accent tone); a row the reader opens is an `href` or `onPress`, never a button inside
+          the row
+      - renderer: Progress
+        role: The unit's progress above the list, `steps={{ total, completed }}` from the real lesson count
+      - renderer: EmptyNotice
+        role: The list's `empty` (a unit with no lessons yet)
+    notes: |
+      A locked lesson is a row with `state="unavailable"` and its reason in the description, never hidden.
+      The list keeps Common's hairline seams; the sticker is for objects, not rows.
 
   - id: practice-step
     title: One question per screen — choose, check, see the outcome
     composition:
       - renderer: Progress
-        role: How far through the set the reader is, from a real count
-      - renderer: Heading
-        role: The prompt; `scale="display"` only for a single short prompt
+        role: |
+          How far through the set the reader is, `steps={{ total, completed }}` with a `label` in words
+          ("Question 4 of 10")
+      - renderer: "Heading / Text"
+        role: The prompt; `Text role="reading.title"` for a long prompt, Heading `scale="display"` only for a single short one
+      - renderer: GradedChoice
+        role: |
+          The answers with their keys (A, B, C): `grading="local"` with `isCorrect` and `explanation` when the
+          browser may know the answer, `grading="server"` with `verdicts` and `pendingId` when it may not. Each
+          open answer is a pressable sticker (outline and small offset); a wrong pick keeps the danger pair and
+          its explanation, the right one the success pair
       - renderer: "RadioGroup / CheckboxGroup"
         role: |
-          The answer choices as the control itself (each choice is a full-width, 44px-plus target with
-          its own label); `isInvalid`/`errorMessage` only for a validation problem, never for a wrong answer
+          Instead of GradedChoice when the answer is checked later as a whole (a survey, a multi-select
+          question); `isInvalid`/`errorMessage` only for a validation problem, never for a wrong answer
       - renderer: Button
         role: |
-          One variant="primary" type="submit" ("check" in the product's words), full width at the bottom
-          of the content, `isDisabled` until a choice exists — the layout does not move when it enables
-      - renderer: Alert
-        role: |
-          The outcome in place, above the action: `tone="affirmative"` (mint) or `tone="negative"`
-          (critical), its single `action` for the next step; the tone is the outcome, never decoration
+          One variant="primary" `width="fill"` at the bottom of the content ("continue" in the product's words),
+          `isDisabled` until the question is solved — the layout does not move when it enables
       - renderer: Drawer
         role: |
-          `placement="bottom"` for an optional explanation or hint the reader opens; the handle is
+          `placement="bottom"` for an optional hint or explanation the reader opens; the handle is
           decorative, the close button and Escape are the ways out
     notes: |
       Feedback that must not interrupt (a streak kept, an item saved) is a Toast, not an Alert; feedback
       the reader must act on stays in the page.
 
+  - id: streak-progress
+    title: Streak and progress — the week at a glance
+    composition:
+      - renderer: Section
+        role: |
+          `kind="figures"` for the few counts that matter (days in a row, points, words learned), each a
+          `term`, a `value` and a `unit`; a change says its direction with `trend` and `trendLabel`
+      - renderer: Meter
+        role: The weekly goal, `value` with a `valueLabel` in words ("3 of 5 days")
+      - renderer: "Progress / ProgressCircle"
+        role: The progress of a unit or a course, from a real count
+      - renderer: CalendarDay
+        role: A day the streak counts, when the screen lists days
+    notes: |
+      Nothing here is a call to action: the counts are ink, the measures fill with the accent as a
+      measurement, and the screen's one primary Button (if any) is the next lesson.
+
   - id: result-celebration
     title: Result — celebrate a finished set, offer one way on
     composition:
       - renderer: SurfaceCard
-        role: The result sticker, `isHighlight`
+        role: The result card, `emphasis="accent"`
       - renderer: Heading
-        role: "`scale=\"display\"` (weight 900, tight tracking) for the one headline"
-      - renderer: "ProgressCircle / Meter / DescriptionList"
-        role: The score and its facts, each a real value with a label
+        role: "`scale=\"display\"` (the display tracking and line height) for the one headline"
+      - renderer: "ProgressCircle / Meter / Section"
+        role: The score and its facts (`Section kind="figures"` or `kind="list" layout="keyValue"`), each a real value with a label
       - renderer: Button
         role: One variant="primary" onward; a secondary Button or TextAction to review
       - renderer: Toast
         role: An earned reward announced politely (`toastQueue.add` with `tone="affirmative"`)
     notes: |
-      Celebration is the display headline, the mint outcome and the sticker's press; the family adds no
+      Celebration is the display headline, the mint outcome and the card's press; the family adds no
       confetti, and motion stays press travel only (removed under reduced motion).
+
+  - id: profile
+    title: Profile — who the reader is and how they are doing
+    composition:
+      - renderer: "Avatar / IdentityLockup"
+        role: The reader's face and name; the current identity takes the pink ring (`isCurrent`)
+      - renderer: Section
+        role: |
+          `kind="figures"` for the totals, then `kind="list" layout="keyValue"` for the facts (level, learning
+          since, goal); `layout="settings"` when a row carries a Switch or a Select
+      - renderer: Button
+        role: The one primary action of the page (edit the goal), or none
+    notes: |
+      The profile is a page of facts, not a card of cards: one SurfaceCard at most, for the one object the
+      page offers to act on.
+
+  - id: leaderboard
+    title: Leaderboard — the ranking of a period
+    composition:
+      - renderer: Tabs
+        role: "`kind=\"filter\"` as the list's `filter` when the period can change (this week, this month)"
+      - renderer: Section
+        role: |
+          `kind="list"`, one row per person: `leading: { position }` for the place (or the avatar with the place
+          in the title), the points as the row's `value`; the reader's own row is marked by `edgeTone="accent"`
+          and by words in its title ("you"), never by colour alone
+      - renderer: "Skeleton / EmptyNotice"
+        role: Pending keeps the rows; nobody ranked yet is the list's `empty`
+    notes: |
+      The top three are not podium artwork: a product that wants a podium draws it in its own assets above
+      the list, and the list stays the record.
 
   - id: bottom-sheet-task
     title: Secondary task on a phone — filters, pickers, details, quick edit
@@ -135,8 +209,7 @@ shapes:
       - renderer: Drawer
         role: |
           `placement="bottom"` below 48rem (upward hard shadow, grab handle), `placement="right"` on wide
-          layouts; `title` names the task, `footer` holds one primary Button (a render function receives
-          `close`)
+          layouts; `title` names the task, `footer` holds one primary Button
       - renderer: "Select / DatePicker / TagGroup / Switch"
         role: The controls inside; their own popovers stay inside the root and the sheet
     notes: |
@@ -152,10 +225,10 @@ shapes:
         role: "`label`, `onSubmit(FormData)`, `validationErrors` by field `name`, `isPending`"
       - renderer: Fieldset
         role: One per named group
-      - renderer: "Select / DateField / Checkbox / Switch / RadioGroup / Textarea"
+      - renderer: "Select / DateField / Checkbox / Switch / RadioGroup / Textarea / OtpInput"
         role: Each with its own `label`, `description`, `errorMessage`, `isRequired`, `name`
       - renderer: Field
-        role: Only for a control the package does not publish (OtpInput, a third-party widget)
+        role: Only for a control the package does not publish (a third-party widget)
       - renderer: Button
         role: One variant="primary" type="submit" per step
     notes: |
@@ -164,8 +237,8 @@ shapes:
   - id: settings
     title: Settings — immediate toggles, grouped, destructive actions confirmed
     composition:
-      - renderer: Fieldset
-        role: One per group of settings
+      - renderer: Section
+        role: "`kind=\"list\" layout=\"settings\"` per group, each row its `control` (a Switch or a Select)"
       - renderer: "Switch / Select"
         role: A Switch applies immediately; confirm the change with a polite Toast, not a dialog
       - renderer: AlertDialog
@@ -181,11 +254,11 @@ shapes:
       - renderer: SearchField
         role: The query, labelled
       - renderer: TagGroup
-        role: Filters as outlined chips; selected chips turn pink and lift
-      - renderer: "ListBox / SurfaceCard (list kind)"
+        role: Filters as outlined chips
+      - renderer: "ListBox / Section"
         role: |
-          ListBox when picking is the task (yellow hover wash, pink focus ring, soft-pink selected row
-          with a pink leading edge); the list kind of SurfaceCard when rows only report facts
+          ListBox when picking is the task (pink focus ring, soft-pink selected row read in the text-safe
+          accent); `Section kind="list"` when rows only report facts or open a page
       - renderer: Pagination
         role: Current page is the raised pink pill
       - renderer: "Skeleton / EmptyNotice"
@@ -216,8 +289,9 @@ readingSteps:
     order: 4
     title: Compare DNA with actually installed source
     instruction: |
-      Confirm named renderers, props and closed values against DNA.yaml and installed exports, and read
-      family.yaml's gaps before promising a capability.
+      Confirm named renderers, props and closed values against the installed exports of
+      `@starci/grammar/offset-pop` and their types, and `OFFSET_POP_DNA` for the family's values, before
+      promising a capability.
   - id: resolve-product-composition
     order: 5
     title: Then resolve the remaining product composition
@@ -231,8 +305,8 @@ authoritySplit:
     DIRECTION_CHOICE_REQUIRED is reserved for a material product choice whose acceptable options lead to
     different outcomes and whose answer is absent from the request. Product facts, copy, mascot and
     assets come from the product; Common semantics from knowledge/ui; outline, shadow, palette and
-    reusable treatments from this family. The two decisions flagged for the family owner in family.yaml
-    (BOUNDARY-6 departure, single pink) are not the product's to change.
+    reusable treatments from this family. The family's two owner decisions (the BOUNDARY-6 outline
+    plus offset departure, the single pink) are not the product's to change.
 
 guidance:
   - id: one-root-overlays-inside
@@ -253,10 +327,10 @@ guidance:
       a family where selection, current and focus share the same pink.
   - id: big-touch-targets
     requirement: |
-      Keep the published sizes: Common's 40px control height for controls, the Subnav toggle and the TopBar
-      trigger, and `size="control"` throughout the navbar. Do not shrink them with app classes,
-      and put answer choices in RadioGroup/CheckboxGroup rather than small
-      custom chips.
+      Keep the published sizes: Common's control height for controls, the TopBar trigger and
+      `size="control"` throughout the navbar, and Common's 44px touch floor on a coarse pointer or a
+      narrow viewport. Do not shrink them with app classes, and put answers in GradedChoice,
+      RadioGroup or CheckboxGroup rather than small custom chips.
     rationale: |
       A playful, thumb-driven app is used one-handed; the family's targets are part of its idiom.
   - id: bottom-sheet-for-secondary
@@ -274,8 +348,9 @@ guidance:
   - id: no-extra-chrome
     requirement: |
       Do not add app-level borders, blur shadows, gradients or a second accent colour to family
-      renderers; do not restyle the palette per screen. Adapt the family only through the
-      `OFFSET_POP_TOKEN_NAMES` custom properties on the root.
+      renderers; do not restyle the palette per screen. Adapt the family only through the HeroUI tokens of
+      the app's theme (in place of `theme.css`), `--offset-pop-shadow-ink` and the Grammar theme hooks
+      (`src/common/theme-hooks.json`, such as `--starci-core-card-radius`).
     rationale: |
       The outline, the hard offset and the one pink are the family; an extra layer turns stickers into
       a different, noisier family and breaks the dark and forced-colours mappings.
