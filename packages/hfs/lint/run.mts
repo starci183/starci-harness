@@ -416,9 +416,24 @@ function declaredInputs(value: unknown): CanonDeclarations['crossFileInputs'] {
   return sound ? value : null;
 }
 
-const declarationOf = (name: string, installed: Dynamic, graphRules: boolean): CanonDeclarations => ({
-  name, crossFileInputs: declaredInputs(installed?.crossFileInputs), graphRules, projectGraph: graphRules && typeof installed?.projectGraph === 'function' ? installed.projectGraph : null,
-});
+/** The rule levels an installed canon publishes (`levels`, else `recommended`), each `error` or `warn`; an entry at another level or of another shape is left out. */
+function declaredLevels(installed: Dynamic): CanonDeclarations['levels'] {
+  const source: unknown = installed?.levels ?? installed?.recommended;
+  if (source === null || typeof source !== 'object' || Array.isArray(source)) return undefined;
+  const levels = Object.entries(source as Record<string, unknown>).flatMap(([rule, entry]) => {
+    const level = Array.isArray(entry) ? entry[0] : entry;
+    return level === 'error' || level === 'warn' ? [[rule, level] as const] : [];
+  });
+  return Object.fromEntries(levels);
+}
+
+const declarationOf = (name: string, installed: Dynamic, graphRules: boolean): CanonDeclarations => {
+  const levels = declaredLevels(installed);
+  return {
+    name, crossFileInputs: declaredInputs(installed?.crossFileInputs), graphRules, projectGraph: graphRules && typeof installed?.projectGraph === 'function' ? installed.projectGraph : null,
+    ...(levels === undefined ? {} : { levels }),
+  };
+};
 
 /** What the cache reads of the canons a side lints with: the ESLint canon (which publishes the project-graph rules) and the grammar family of the fe side. */
 export async function canonDeclarations({ repoRoot, cwd, side }: { repoRoot: string; cwd: string; side: string }): Promise<CanonDeclarations[]> {

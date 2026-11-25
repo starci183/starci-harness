@@ -42,6 +42,6 @@ export function stagedSpecFindings(manifest: Parsed, added: Parsed, indexed: Par
     .map((file: string) => ({
       file,
       code: SPEC_NOT_STAGED,
-      message: `is a new back-end logic file the unit coverage measures at 100 per file, staged without ${siblingSpec(file).slice(file.lastIndexOf('/') + 1)} beside it; write the spec in the same change (starci gate read, code and spec, starci gate run --tests) and stage both`,
+      message: `is a new back-end logic file the unit coverage measures at its coverage tier and the per-file floor, staged without ${siblingSpec(file).slice(file.lastIndexOf('/') + 1)} beside it; write the spec in the same change (starci gate read, code and spec, starci gate run --tests) and stage both`,
     }));
 }

@@ -128,7 +128,7 @@ const pushPorts = (): { ports: PushPorts; log: string[] } => {
             },
             push: (args) => {
                 log.push(`push ${args.join(" ")}`)
-                return 0
+                return { exitCode: 0, stdout: "" }
             },
             say: () => undefined,
         },

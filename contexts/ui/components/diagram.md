@@ -62,12 +62,16 @@ the bottom, the Grammar's nodes, edges, arrowheads and fonts (`label.field`, 13 
 
 ## Variants
 `height` reserves the canvas box (`sm` 16rem, `md` 24rem, `lg` 32rem): pick the step the finished drawing fills, so the loading box is the
-ready box. A taller drawing grows the canvas to fit it, up to 45rem (30rem on a phone, so the page stays in reach past a canvas a finger pans). The first view
-is the whole drawing, centred, at 100% or less, but never under the **readable floor**: `READABLE_ZOOM` 0.85, where caption-role words (13px) stay at 11px or more.
-A sequence or a flowchart that does not fit whole at 0.85 opens at 0.85 from its start (a sequence: its first participant and first message at the top left; a
-flowchart or state diagram: its entry node, the first node nothing leads into, kept in view) and the reader pans by touch or drag and zooms by pinch, the
-buttons or + and -; fit (the button) still shows the whole drawing down to 0.2, reset (0) returns to the first view. Any other kind (Mermaid's own SVG)
-keeps the least zoom of 0.2. There is no list fallback on a phone: the same canvas, the controls row kept, the text version visually hidden for assistive
+ready box. A taller drawing grows the canvas to hold it at its width fit, up to 45rem (35rem on a phone, so the page stays in reach past a canvas a
+finger pans). **The fit rule** (`diagram/open.ts`, Next UI audit round 3, 2026-11-25): the first view is always the WHOLE drawing, contain-fitted
+(zoom = min(1, room width / width, room height / height)) and centred in the room, the frame less 16px on three sides and the 64px controls row along the
+bottom, so no node is cut on any side and the zoom buttons never stand over the drawing. Height is bought first (the canvas grows, up to its tallest);
+width by the layout (a flowchart or state diagram is top-down under 480px, and elsewhere when across would open under the readable zoom and top-down
+opens it larger). A drawing that still opens under the **readable zoom**, `READABLE_ZOOM` 0.85 (caption-role words of 13px at 11px or more), opens whole
+and small: the reader zooms in by pinch, double tap, the buttons or + and -, pans by touch, drag or the arrow keys; fit (the button) and reset (0)
+return to the whole drawing. A first view that hides a part the reader cannot know is there is the worse failure; a small one only asks for a zoom. The
+canvas's least zoom is 0.2, or the first view's own zoom when a very large drawing needs less. There is no list fallback on a phone: the same canvas,
+the controls row kept, the text version visually hidden for assistive
 technology. The drawing follows the graph ext's routing law ([graph](graph.md) "The routing law": no handle dots, straight or one bend, a decision's main branch straight on with every branch
 labelled at the split, fitted, dashed only when the source means it and one open arrowhead). Under 480px a flowchart or a state diagram is laid out
 top-down so it fits the width. Paint is the grammar's, read from the root's tokens; an app passes no
@@ -79,8 +83,13 @@ source; the node is painted in the tone's soft pair and edge, and a colour the s
 edge takes a tone to tell two flows apart (a read path and a write path): by Mermaid's own edge id and class (`A r1@--> R`, then `class r1,r2 info`), or
 by its place among the links counted from 1, `edgeTones={{ 2: "info" }}` (the map wins); its line, arrowhead and words take the tone. `legend` names
 what each edge tone means, one short line in the tone and its words per item, as a row under the canvas above the caption. A node may name an icon with
-Mermaid's own `R@{ icon: "redis" }` (the shape `R[(…)]` gave it stays); the app maps the name to what to draw with `icons={{ redis: <img … /> }}`, drawn
-before the node's words one line high, the node widened for it; a name the map lacks draws nothing. A sequence's message takes a tone by its place
+Mermaid's own `R@{ icon: "redis" }` (the shape `R[(…)]` gave it stays); Grammar draws the name itself:
+the built-in tech logos of `techIcons` (exported from `@starci/grammar/core/ext/graph`) are the default, so every app shows the same ones and passes nothing. Built-in names, exactly as
+written in the source: `postgresql`, `mongodb`, `mysql`, `redis`, `express`, `nestjs`, `nodedotjs`, `docker`, `kubernetes`, `rabbitmq`, `apachekafka`, `nginx`, `graphql`, `typescript`, `javascript`, `go`, `python`, `react`, `nextdotjs`, `elasticsearch`, `minio` (simple-icons, CC0;
+`amazons3` is not shipped there), the generic outline marks `database` (any store without a logo) and `service` (any program without one), and the aliases
+`postgres`, `pg`, `mongo`, `nodejs`, `node`, `kafka`, `k8s`, `nextjs`, `next`, `golang`, `nest`, `elastic`, `ts`, `js`. A logo is monochrome: it fills with the current colour (the node's ink), never
+a brand colour, is hidden from a screen reader (the node's words name it) and is one line of the words high. `icons={{ redis: <img … /> }}` adds a name or overrides a built-in one;
+a name neither has draws nothing and takes no room. A subgraph takes an icon the same way (`D@{ icon: "docker" }`), drawn before its name.  A sequence's message takes a tone by its place
 among the messages, counted from 1: `messageTones={{ 5: "danger" }}` paints the fifth message's line, head and words. `caption` is one line under the
 canvas in the caption role, saying what to look at. `labels` gives the canvas's words (the zoom, fit and reset buttons; the text version's start and end).
 
@@ -106,4 +115,4 @@ whom, with their words); a sequence's messages in order (who to whom: what) with
 STATE-8, OVERFLOW-4. Stack: [diagrams](../../stack/fe.yaml) (Mermaid is the Grammar's dependency, xyflow and ELK the graph ext's optional
 peers; an app imports `MermaidDiagram` from `@starci/grammar/core/ext/graph` and its stylesheet once, never `mermaid`). Story
 `Content/Lesson diagrams (0.55.1)`: a sequence and one with blocks, a flowchart across and down, a state diagram, other kinds, loading and
-error, each light and dark, with tones; `TonedPaths` two toned flows through the same stores with a legend and icons.
+error, each light and dark, with tones; `TonedPaths` two toned flows through the same stores with a legend and icons; `TechLogos` the shop-giay architecture with the built-in logos (express, postgresql, redis, docker on its group).

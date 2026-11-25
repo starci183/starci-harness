@@ -139,18 +139,17 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    change. On a branch other than `main` and `dev` the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/dev`, else with
    `origin/main`, so a lane's own check judges the whole diff its landing brings to dev (the lane merged into `origin/dev`); on `main`, on `dev`
    or when none of those refs is behind `HEAD` it is the lint ratchet's base (`origin/<branch>`, else `HEAD^`). The same base serves
-   `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (PROJECT-GALLERY-7) and the UI Audit (PROJECT-GALLERY-8), and the run prints it
+   the UI Audit (PROJECT-GALLERY-8), and the run prints it
    (`gallery coupling: judged N file(s) changed since <sha>, <why>`). A lane's own `origin/<lane>` is never the base: once the lane is pushed it
-   equals `HEAD` and the base would fall to `HEAD^`, the last commit alone. The pre-commit guard (`starci app check --staged`) lists `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` for the staged files and never blocks
-   the commit.
+   equals `HEAD` and the base would fall to `HEAD^`, the last commit alone.
 3. **Keeping it current.** An excluded route and a route with no screen have nothing to keep current (the second is `HFS_APP_GALLERY_ROUTE_MISSING`). Re-read each region of the screen against the new source, rewrite the `Vì sao`, `Luật` and `Grammar` lines
    that changed (a fix that changes no visible region still opens `explain.md` and confirms it), and re-shoot the shots (PROJECT-GALLERY-1).
 
-## PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval
+## PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's design status
 
 The design pass (`/claude-design`; [skills/claude-design/SKILL.md](../../skills/claude-design/SKILL.md) owns how it is drawn and produced) is
 the gallery drawn before code: it takes the business of an existing or planned page and draws its best UX on the app's Grammar, for the owner
-to approve before the page is coded. This rule owns where the canvas lives, how it maps onto the gallery, the lifecycle of a screen and what
+for the page to be coded from. No owner approval gates the build (owner decision 2026-11-25): an agent drafts, builds, and the owner fixes later if needed; the same holds for NIVO and StarCi Next. This rule owns where the canvas lives, how it maps onto the gallery, the lifecycle of a screen and what
 the gate judges.
 
 1. **The canvas lives in the app.** `.starcistacks/canvas/` at the app root (slot `app.starcistacks.canvas`; a reserved folder,
@@ -203,8 +202,8 @@ the gate judges.
 5. **The lifecycle, and who sets each status.**
    - `drafted`: the lead, when the screen is drawn on the board. A redraw of an approved screen returns it to `drafted` and drops `approvedAt` and
      `shots`.
-   - `approved`: the lead, only when the owner said the page is approved ("đẹp") in the owner's own words; no other word approves. It sets
-     `approvedAt` and drops any `shots`. The lead adds an area to `areas` once its screens are approved.
+   - `approved`: optional, the lead, when the drawing is settled (the owner's "đẹp" is welcome, never required). It sets
+     `approvedAt` and drops any `shots`. A `drafted` page may be built without it: the code lane goes `drafted` to `built`.
    - `built`: the code lane that builds the screen: it codes the page (with every `cần API` operation of its notes), saves the screen's shots in
      `gallery/pages/<area>/<screen>/` at 1440 and 390, copies the approved note as its `explain.md`, and records the sha256 of the 1440 and
      390 PNGs.
@@ -212,28 +211,30 @@ the gate judges.
      the shots with the approved frames; it records the sha256 of the shots it compared and `matchedAt` (a full ISO timestamp with its zone, `matches`
      only). It requires the section `## Phương án đã cân nhắc` in the screen's `explain.md`: a screen without that record is not final.
 6. **How the order is judged.** The shots are never tracked (PROJECT-GALLERY-1 item 5) and file times mean nothing in a fresh checkout, so a
-   shot's age is read neither from the disk nor from git. The manifest carries the order: an approval drops the shot record, so a sha recorded on
-   a page is by construction taken after its latest approval, and a shot record on a page that is only drafted or approved is older than the
-   approval. Where the work tree holds the PNGs (the author's machine, the push hook), each is hashed and must equal the recorded sha; a fresh
+   shot's age is read neither from the disk nor from git. The manifest carries the order: a redraw or an approval drops the shot record, so a sha recorded on
+   a page is by construction taken after its latest design, and a shot record on a page that is only drafted or approved is older than the
+   design. Where the work tree holds the PNGs (the author's machine, the push hook), each is hashed and must equal the recorded sha; a fresh
    checkout judges the record alone.
 7. **Severity.** A manifest that is not this shape is an error. The other findings are warnings in `--env local` and errors in `--env prod`, as
    item 4 of PROJECT-GALLERY-4.
 
 8. **The gallery is where the canvas is reviewed too.** Every page of the canvas shows in the gallery's tree, drafted or approved and not coded yet, with
    no `gallery/pages` folder needed: its frames at 1440 and 390 and its note (what the board shows on claude.ai; whoever does not open the board there reads
-   it here) with the chip of its status (`Bản vẽ, chờ duyệt`, `Đã duyệt, chưa code`). The gallery only reads: approval is the owner's word recorded in
-   `design.json` by the lead (item 5), and no button of the gallery writes it.
-9. **A screen approved but not buildable yet is `pending`.** A screen that waits on data or an API often lives on a query state of a route the code really
-   changes (`/premium?step=qr`, `/premium/result?state=expired`): it renders the page's own code, so matching on the route alone flags it for a change
-   it cannot yet be built for, and its `approvedAt` predates that change. Its entry carries `"pending": { "reason": "<what it waits on>" }`:
+   it here) with the chip of its status (`Bản vẽ, chưa code`, `Đã duyệt, chưa code`). The gallery only reads: the status is recorded in
+   `design.json` by the lead or the lane (item 5), and no button of the gallery writes it.
+9. **A screen not buildable yet is `pending`.** A screen that waits on data or an API often lives on a query state of a route the code really
+   changes (`/premium?step=qr`, `/premium/result?state=expired`): it renders the page's own code, so the UI Audit would flag it for a change
+   it cannot yet be built for. Its entry carries `"pending": { "reason": "<what it waits on>" }`:
    ```json
    "premium/qr-payment": { "status": "approved", "approvedAt": "2026-11-11T09:00:00+07:00", "board": "https://claude.ai/artifact/…", "pending": { "reason": "waits on the QR payment API" } }
    ```
-   A pending screen is skipped by `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (item 7 below) and by the UI Audit (PROJECT-GALLERY-8 item 3), the gallery shows it as
+   A pending screen is skipped by the UI Audit (PROJECT-GALLERY-8 item 3), the gallery shows it as
    `Chờ: <reason>` (`pending: <reason>` in English) instead of hiding it, and it needs no folder in `gallery/pages` (the reason is the
    note). It is not a silent bypass: `reason` is required and non-empty, and only `drafted` or `approved` may carry it (a `built` page is judged like any
    other); every run lists each pending screen with its reason, and a pending screen whose shots exist in the work tree is nudged to drop `pending`
    (`HFS_APP_GALLERY_DESIGN_PENDING`, level info, never failing). A board section (PROJECT-GALLERY-9) carries the same `pending: { reason }`.
+
+There is no finding for a screen without an approved design: a screen of a listed area with no entry, or only `drafted`, is built like any other.
 
 **Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, `gallery-routes.mts` and `gallery-design.mts`, values from `ruleParams.gallery`):
 
@@ -249,15 +250,13 @@ the gate judges.
   folder's.
 - `HFS_APP_GALLERY_DESIGN_MANIFEST` (PROJECT-GALLERY-6): `.starcistacks/canvas/design.json` is not JSON or not the shape of its item 4.
 - `HFS_APP_GALLERY_DESIGN_PAGE_MISSING` (`localOnly`): a `built` or `matches` page has no `gallery/pages/<area>/<screen>/explain.md`.
-- `HFS_APP_GALLERY_DESIGN_UNAPPROVED` (`localOnly`): a screen (an `explain.md` or a shot) of an area listed in `areas` has no design entry or
-  only a `drafted` one.
 - `HFS_APP_GALLERY_DESIGN_SHOT_MISSING` (`localOnly`): a `built` or `matches` page records no sha256 of its 1440 or 390 shot, or the work tree
   holds shots of the screen without one of those widths.
 - `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` (`rules/gallery-design.mts`; not `localOnly`): a `matches` page whose `explain.md` has no non-empty section
   `## Phương án đã cân nhắc`. An error when the page's `matchedAt` is at or after `2026-11-18T00:00:00+07:00` (the release of this rule); for an older
   `matches` page, or one with no `matchedAt`, it is level `info` ("not final yet"): listed, never failing, so the owner fixes those gradually.
 - `HFS_APP_GALLERY_DESIGN_PENDING` (level info, never failing): lists every `pending` screen with its reason, and nudges a pending screen that has a shot in the work tree to drop the mark (item 9). A pending with no reason, a malformed one, or one on a `built` or `matches` page is `HFS_APP_GALLERY_DESIGN_MANIFEST`.
-- `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (`localOnly`): a `drafted` or `approved` page still records `shots` (a record older than the approval), or
+- `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (`localOnly`): a `drafted` or `approved` page still records `shots` (a record older than the design), or
   a 1440 or 390 shot in the work tree is not the sha the manifest records.
 
 The shots are the author's work in every UI round; a reviewer compares the screens, and reads their explanation, in the gallery.
@@ -269,14 +268,13 @@ drawing is where the owner decides how the app looks; the code copies the decisi
 whole gallery. An app with a design board (PROJECT-GALLERY-9) draws on the board; an app without one keeps its canvas (PROJECT-GALLERY-6) in the
 same order until it adopts a board.
 
-1. **Board first, approved once.** Draw or revise the app's board (`gallery/board`, the `design` op): one task per app or per board revision
+1. **Board first, no approval gate.** Draw or revise the app's board (`gallery/board`, the `design` op): one task per app or per board revision
    draws every screen it changes in every named state at 1440 and 390, from the Grammar's components and the app's tokens, raises `revision` and
-   drops `approvedAt`. The owner reviews the revision on the board (the gallery's `#/board`) and approves it once, in the owner's own words; only
-   then does the lead set `approvedAt` (a full ISO timestamp with its zone). The revision is the unit of approval, never one screen. In an app
-   with a canvas, the screen's page is drawn with `/claude-design`, set `drafted` and approved the same way into `approved` (PROJECT-GALLERY-6 item 5).
-2. **Then the code, copying the board.** The code lane builds the screens of the approved revision, each state with the components its section
-   draws; a section's `planned` mark goes once its route is coded. Code written before the approval is a draft: it is redone from the approved
-   drawing, never approved after the fact. In an app with a canvas the same commit records the page's build in `design.json` (`built`).
+   drops `approvedAt`. The owner may look at the revision on the board (the gallery's `#/board`) and fixes it later if needed; nothing waits for an approval
+   (owner decision 2026-11-25), so the lead may set `approvedAt` (a full ISO timestamp with its zone) when the revision is settled, and the code lane starts at once. In an app
+   with a canvas, the screen's page is drawn with `/claude-design` and set `drafted` (PROJECT-GALLERY-6 item 5).
+2. **Then the code, copying the board.** The code lane builds the screens of the drawn revision, each state with the components its section
+   draws; a section's `planned` mark goes once its route is coded. In an app with a canvas the same commit records the page's build in `design.json` (`built`).
 2b. **Look on dev with real data.** Green gates and gallery shots from clean demo data prove nothing about the page the owner opens next, and
    the gallery (3) and review (4) wait for the owner's OK on dev (PROJECT-GALLERY-10), so this is the look between land and the owner. After the
    lane lands and the app's dev sync has run, open every screen the change reaches on the app's dev workspace with its real data (NIVO: the demo
@@ -308,20 +306,7 @@ same order until it adopts a board.
    The owner gives feedback on the finished screens gradually, never all at once; a `matches` page from before this rule is listed as not final yet.
 5. **Who is bound.** Every author of a UI change: a worker, a Kernel plan, the Supervisor and a person alike. A change that touches no visible
    region (a rename, a refactor, a type fix) needs no drawing.
-6. **Canvas-managed.** A screen is canvas-managed when its area is in `areas` of `design.json` or one of its pages is in `pages`. An app with no
-   `design.json`, and a screen of an area it does not list, is outside the canvas gate below until its first page is drawn.
-
-**Enforced by** (R395, `rules/gallery-coupling.mts`, run by `starci app check` and, listing only, by the commit guard):
-
-- `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (`localOnly`: a warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4; the
-  commit guard lists it and never blocks): the source of a canvas-managed screen changed (the same screen to source map and the same judged set of
-  PROJECT-GALLERY-5: the commits since the base, the index and the work tree) and the screen's page in
-  `design.json` is missing, `drafted`, or `approved` with an `approvedAt` earlier than the newest change of that screen's source. The time of a
-  change is the committer time of the newest commit since the base that touched its source files; a change not yet committed counts as now. The change
-  passes when the page's entry in `design.json` also differs from the base's (a fresh `approvedAt`, or the build recorded with its shots), which is how
-  an approved page is built in one change. A route with several screen folders needs every one of its canvas-managed screens to pass.
-  The rule judges code against the canvas, so a screen with no `explain.md` has no mapped source and is not judged here (`HFS_APP_GALLERY_ROUTE_MISSING` is its finding).
-  It is not `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, which judges a screen existing in a designed area, not a change.
+6. **No design gate.** Nothing in `starci app check` couples a screen's code change to an approved canvas page; the UI Audit (PROJECT-GALLERY-8) and the final review of item 4 are the only gates on a UI change.
 
 ## PROJECT-GALLERY-8 One file per screen, `screen.yaml`, audited until it first passes
 
@@ -333,7 +318,7 @@ reach a pass, and that pass is its baseline evidence. From then on nothing about
    `sha256` null before the first shot; a state shot `<state>-<width>`, such as `empty-1440`, is a further key and a further PNG), `sections` (top to bottom as the user reads:
    `id` in kebab case, `title`, `why` required; `shows`, `actions`, `states` mapping a state to its text or null, `needsApi` listing the "cần API" items, and the optional `law` and `grammar` lines), `considered` (`option`, `chosen`, `why` of each option weighed) and `audit` (item 2; `null` for a screen not audited yet). The values are Vietnamese prose, the keys English.
    The folder holds `screen.yaml`, the shots and `links.json`.
-   Approval is not here: it stays in `design.json` (PROJECT-GALLERY-6) and only the owner's words set it. A screen.yaml that is not this shape is `HFS_APP_GALLERY_SCREEN_INVALID`
+   Design status is not here: it stays in `design.json` (PROJECT-GALLERY-6). A screen.yaml that is not this shape is `HFS_APP_GALLERY_SCREEN_INVALID`
    (R395: sections without a `why`, a screen or area that is not the folder's, a shot that is no width, a sha that is not a lowercase sha256). The gallery app renders the file: summary, code, sections,
    the options considered and the audit table (rounds by lenses).
 2. **The UI audit.** A touched screen is audited by an agent other than its builder until its first cycle passes (item 3). A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (`packages/hfs/cache/screen-reach.mts`, `symbol-diff.mts`, `catalog-reach.mts`: a shared composite, a hook, a module, a workspace package, the i18n keys its sources read; a barrel is transparent, a `renders: false` slot marks nothing), or when its audited screen.yaml changed. The audit holds
@@ -370,7 +355,7 @@ reach a pass, and that pass is its baseline evidence. From then on nothing about
 ## PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar
 
 The board is the app's one drawing: every screen of the app, in every named state, at 1440 and 390, composed only of the app's Grammar and
-its tokens, so that what the owner approves is already what the code renders. The code copies it (PROJECT-GALLERY-7 item 2); the gallery's
+its tokens, so that what the owner looks at is already what the code renders. The code copies it (PROJECT-GALLERY-7 item 2); the gallery's
 shots come from the code.
 
 1. **Where it lives.** `gallery/board/` (slot `app.gallery-board`), committed:
@@ -386,7 +371,7 @@ shots come from the code.
    ```yaml
    schema: 1
    revision: 3                            # raised by every change the owner reviews
-   approvedAt: null                       # the owner's approval of this revision, a full ISO timestamp with its zone; null until then
+   approvedAt: null                       # optional: when the revision is settled, a full ISO timestamp with its zone; gates nothing
    tokens: [fe/apps/web/src/modules/brand/brand.css]   # app-root relative stylesheets, loaded after the Grammar's
    sections:
      - id: customers/list                 # the gallery screen id it becomes: gallery/pages/customers/list/screen.yaml
@@ -422,8 +407,7 @@ shots come from the code.
   or it is `planned` while its route is coded.
 
 **Known gap**: the gate reads the record and the files, never the render: that a section module imports only the Grammar, and that the
-code matches its section, is held by the `design` op's `anchors-cited` and by the one review of PROJECT-GALLERY-7 item 4. The canvas gate
-`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` reads `design.json` only, so a board revision's `approvedAt` gates no code change yet.
+code matches its section, is held by the `design` op's `anchors-cited` and by the one review of PROJECT-GALLERY-7 item 4. A board revision's `approvedAt` gates no code change.
 
 ## PROJECT-GALLERY-10 A screen's lane brief maps it to the Grammar first, and its screen.yaml waits for the owner's OK
 

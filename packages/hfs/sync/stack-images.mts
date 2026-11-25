@@ -129,6 +129,33 @@ const SETUP_QEMU = 'docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d28338
 const DOCKER_LOGIN = 'docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0';
 const BUILD_PUSH = 'docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2';
 const INSTALL_SOPS = 'mdgreenwald/mozilla-sops-action@bb2d96a13ef438ad122e5827a57ebd75d6ff118d # v2.1.0';
+/** The age release the workflows install (the `starci` secret verbs refuse to run without `age` and `age-keygen` on PATH, R251 judges the step). */
+export const AGE_VERSION = 'v1.2.1';
+/** sha256 of age-v1.2.1-linux-amd64.tar.gz: age publishes no checksum file, so this is the digest of two independent downloads of the release asset. */
+export const AGE_SHA256 = '7df45a6cc87d4da11cc03a539a7470c15b1041ab2b396af088fe9990f7c79d50';
+/**
+ * The step that puts `age` and `age-keygen` on the runner's PATH, placed right after "install SOPS" in every job that opens a sealed member (connect,
+ * deploy, rollback, sealed build values). A pinned release tarball is downloaded and its sha256 is checked before anything is extracted or
+ * put on PATH: no unpinned apt install, no streamed installer. `condition` is the job's own `if` (the deploy job's pause brake), or empty.
+ */
+export const installAgeSteps = (condition = ''): string[] => [
+  '- name: install age',
+  ...(condition ? [`  if: ${condition}`] : []),
+  '  shell: bash',
+  '  env:',
+  `    AGE_VERSION: ${AGE_VERSION}`,
+  `    AGE_SHA256: ${AGE_SHA256}`,
+  '  run: |',
+  '    set -euo pipefail',
+  '    curl -fsSL --retry 3 -o "$RUNNER_TEMP/age.tar.gz" "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"',
+  '    echo "${AGE_SHA256}  $RUNNER_TEMP/age.tar.gz" | sha256sum -c -',
+  '    mkdir -p "$RUNNER_TEMP/age-bin"',
+  '    tar -xzf "$RUNNER_TEMP/age.tar.gz" -C "$RUNNER_TEMP/age-bin" --strip-components=1 age/age age/age-keygen',
+  '    echo "$RUNNER_TEMP/age-bin" >> "$GITHUB_PATH"',
+  '    age --version',
+  '    age-keygen --version',
+];
+
 const TAG_MATCHES_VERSION = 'node -e "const version=require(\'./package.json\').version;if(process.env.GITHUB_REF_NAME!==\'v\'+version)process.exit(1)"';
 
 /** An app the images workflow builds: its Dockerfile. */
@@ -250,7 +277,7 @@ function imageJob(id: 'image' | 'image-sealed', plans: readonly ImagePlan[], { p
     '  with:', `    node-version: ${nodeMajor}`, '    cache: npm',
     '- run: npm ci --ignore-scripts',
     '  if: ${{ matrix.args }}',
-    ...(sealed ? ['- name: install SOPS', '  if: ${{ matrix.args }}', `  uses: ${INSTALL_SOPS}`, '  with:', '    version: v3.13.2'] : []),
+    ...(sealed ? ['- name: install SOPS', '  if: ${{ matrix.args }}', `  uses: ${INSTALL_SOPS}`, '  with:', '    version: v3.13.2', ...installAgeSteps('${{ matrix.args }}')] : []),
     '- name: public build values',
     '  id: args',
     '  if: ${{ matrix.args }}',
@@ -415,6 +442,7 @@ function releaseEnvironment(environments: Record<string, string[]>): string {
 
 /**
  * The text blocks the managed workflows place at the end of a line or on a line of their own (empty when there is nothing to place):
+ *   stackInstallAge, stackInstallAgeRollback   the install age step of the deploy job (behind the pause brake) and of the rollback job
  *   stackGuard       the first step of the deploy job when the app declares no image (it fails with the reason)
  *   stackImageList   the `<service> <app>` lines the image step of stack-deploy.yml reads (the registry holds sha-<sha> of each)
  *   stackImageEnv    the env entries of the deploy step: IMAGE_<SERVICE> = repository@digest, from the image step
@@ -440,6 +468,8 @@ export function stackWorkflowVariables({ images = [], passEnv = [], imageEnviron
     ...ciDeployVariables(stack, image.imagesCollected === 'true'),
     ...custodyVariables(deploying),
     stackGuard: guard,
+    stackInstallAge: block(installAgeSteps("${{ steps.pause.outputs.paused != 'true' }}"), ' '.repeat(6)),
+    stackInstallAgeRollback: block(installAgeSteps(), ' '.repeat(6)),
     stackImageList: images.map(entry => `${entry.service} ${entry.app}`).join('\n          '),
     stackImageEnv: block(images.map(entry => `${envName(entry.service)}: \${{ steps.images.outputs.${entry.service} }}`), ' '.repeat(10)),
     stackImageArgs: block(images.map(entry => `--image "${entry.service}=$${envName(entry.service)}" ${CONTINUE}`), ' '.repeat(12)),

@@ -1,13 +1,15 @@
 // `starci app push`: the check runs first, the records it writes are committed as their own commit, and git push runs once (core/app/push.ts).
 import assert from "node:assert/strict"
 import test from "node:test"
-import { porcelainPath, warmAndPush, type PushPorts, type PushRun } from "./push.js"
+import { porcelainPath, pushesHead, UNWARMED_CODE, warmAndPush, type PushPorts, type PushRun } from "./push.js"
 
 interface Script {
     /** What each check run prints and whether it leaves cache files dirty, in order. */
     readonly checks: readonly { readonly exitCode: number; readonly findings: readonly object[]; readonly writes?: boolean }[]
     readonly outside?: readonly string[]
     readonly pushExit?: number
+    /** What each push prints, in order (the last repeats); the push exits `pushExit` unless it prints the unwarmed refusal. */
+    readonly pushes?: readonly { readonly exitCode: number; readonly stdout: string }[]
     readonly commitExit?: number
 }
 
@@ -18,6 +20,7 @@ const harness = (script: Script): { ports: PushPorts; log: string[] } => {
     let cacheDirty = false
     let run = 0
     let head = 0
+    let pushed = 0
     const ports: PushPorts = {
         git: (args): PushRun => {
             if (args[0] === "status") {
@@ -45,9 +48,11 @@ const harness = (script: Script): { ports: PushPorts; log: string[] } => {
             if (step?.writes === true) cacheDirty = true
             return { exitCode: step?.exitCode ?? 0, stdout: JSON.stringify({ ok: step?.exitCode === 0, data: { output: { findings: step?.findings ?? [] } } }) }
         },
-        push: (args): number => {
+        push: (args): PushRun => {
             log.push(`push ${args.join(" ")}`)
-            return script.pushExit ?? 0
+            const scripted = script.pushes?.[Math.min(pushed, script.pushes.length - 1)]
+            pushed += 1
+            return scripted ?? { exitCode: script.pushExit ?? 0, stdout: "" }
         },
         say: () => undefined,
     }
@@ -134,4 +139,49 @@ void test("a dirty first line that lost its leading space is reported with its f
     const { ports } = harness({ checks: [{ exitCode: 0, findings: [] }] })
     const status = (stdout: string): PushPorts => ({ ...ports, git: (args) => (args[0] === "status" ? { exitCode: 0, stdout } : ports.git(args)) })
     assert.match(warmAndPush(status("M .github/a.yml"), []).refusal ?? "", /\(\.github\/a\.yml\)/)
+})
+
+const HOOK_REFUSAL = { exitCode: 1, stdout: `[ERROR] ${UNWARMED_CODE} x1: the pushed cache is not the one a run on this tree writes\nhusky - pre-push script failed (code 1)` }
+
+void test("a landing on dev pushes once with no check of its own while the hook's fast level accepts", () => {
+    const { ports, log } = harness({ checks: [{ exitCode: 0, findings: [] }] })
+    const outcome = warmAndPush(ports, ["origin", "HEAD:lane/x"], "dev", "lane/x")
+    assert.deepEqual(log, ["push origin HEAD:lane/x"])
+    assert.equal(outcome.pushed, true)
+    assert.equal(outcome.runs, 0)
+})
+
+void test("a landing the hook refused as unwarmed falls into the warm round: check, commit the records, push again", () => {
+    const { ports, log } = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }, { exitCode: 0, findings: [] }], pushes: [HOOK_REFUSAL, { exitCode: 0, stdout: "" }] })
+    const outcome = warmAndPush(ports, ["origin", "HEAD:lane/x"], "dev", "lane/x")
+    assert.deepEqual(log, ["push origin HEAD:lane/x", "check", "add", "commit chore(cache): warm the check cache for sha0", "check", "push origin HEAD:lane/x"])
+    assert.equal(outcome.pushed, true)
+    assert.equal(outcome.commits.length, 1)
+    assert.equal(outcome.runs, 2)
+})
+
+void test("a landing refused for any other reason is reported as it was, with no check and no second push", () => {
+    const { ports, log } = harness({ checks: [{ exitCode: 0, findings: [] }], pushes: [{ exitCode: 1, stdout: "[ERROR] DEPS_PIN_UNSERVED x1" }] })
+    const outcome = warmAndPush(ports, ["origin", "HEAD:lane/x"], "dev", "lane/x")
+    assert.deepEqual(log, ["push origin HEAD:lane/x"])
+    assert.equal(outcome.pushed, false)
+    assert.equal(outcome.exitCode, 1)
+})
+
+void test("the landing's squash (a push of a sha, not HEAD) refused as unwarmed is refused with a reason, never committed onto the wrong commit", () => {
+    const { ports, log } = harness({ checks: [{ exitCode: 0, findings: [UNWARMED], writes: true }], pushes: [HOOK_REFUSAL] })
+    const outcome = warmAndPush(ports, ["origin", "abc123:refs/heads/dev"], "dev", "lane/x")
+    assert.deepEqual(log, ["push origin abc123:refs/heads/dev"])
+    assert.equal(outcome.pushed, false)
+    assert.match(outcome.refusal ?? "", /does not send the checked-out commit/u)
+})
+
+void test("a push sends HEAD when it names no refspec, HEAD, or the current branch", () => {
+    assert.equal(pushesHead(["origin"], "lane/x"), true)
+    assert.equal(pushesHead([], undefined), true)
+    assert.equal(pushesHead(["origin", "HEAD:lane/x"], "lane/x"), true)
+    assert.equal(pushesHead(["origin", "lane/x"], "lane/x"), true)
+    assert.equal(pushesHead(["origin", "-u", "refs/heads/lane/x:lane/x"], "lane/x"), true)
+    assert.equal(pushesHead(["origin", "abc123:refs/heads/dev"], "lane/x"), false)
+    assert.equal(pushesHead(["origin", "HEAD:dev", "abc123:refs/heads/dev"], "lane/x"), false)
 })

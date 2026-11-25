@@ -19,6 +19,8 @@ import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import { landLane } from "./land-direct.js"
 import type { LaneLanded } from "./land-direct.js"
+import { diskWarningLines } from "../../harness/disk-warning.js"
+import { commitGenerated } from "../../harness/lane-generated.js"
 import { cleanupLanded } from "../../harness/land-cleanup.js"
 import type { LandCleanup } from "../../harness/land-cleanup.js"
 
@@ -148,6 +150,8 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     const base = (await gitOut(root, ["rev-parse", given.merging ? ref : "HEAD"])).out
     const fork = (await gitOut(root, ["merge-base", "HEAD", base])).out
     const profile = harnessProfile(join(runningCliRoot(), "dist", "main.js"))
+    // The generated contexts files (the index, the slices, the section indexes) are regenerated on the lane's tree and committed with it, so the gate judges, and dev receives, a tree whose index is not stale.
+    await commitGenerated(root, say)
     const stale = await staleCli(root, runningCliRoot(), base)
     if (stale !== undefined) say(`WARNING: ${stale}`)
     const command = profile.gate(root, fork === "" ? base : fork)
@@ -174,7 +178,7 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
  */
 export const laneGateVerb = defineVerb({
     path: ["lane", "gate"],
-    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db, the design approval; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
+    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/lane-gate@1",
@@ -206,6 +210,8 @@ export const laneGateVerb = defineVerb({
         }
         const rules = loadSlotRules()
         const slots = slotRoot(flags.dir, rules)
+        // An early warning while the drive still has room: the landed worktrees that can go are listed, never removed here.
+        for (const line of await diskWarningLines(lanesDir(flags.dir), lane)) say(line)
         const wait = waitSeconds(flags.wait)
         // A new gate of the lane supersedes its running one: its process tree is killed and its slot released.
         const head = (await gitOut(root, ["rev-parse", "HEAD"])).out

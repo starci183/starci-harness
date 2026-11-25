@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { walkSqlAst, sqlParser, sqlCallArgument } from '../../lib/sql-ast.mjs';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
-import { found, readText } from './read.mjs';
+import { found, readJson, readText } from './read.mjs';
 import { memoUnit } from '../rule-memo.mjs';
 import { stacksDeploymentContexts } from './stacks-runtime.mjs';
 import { recoveryComponents } from './stateful-components.mjs';
@@ -345,9 +345,19 @@ ${JSON.stringify(doc)}`, { observations: [], issues: [] }, () => observationsOf(
   return one.observations;
 }
 
+/**
+ * The apps whose own loop is their own process: an app of kind `client-cli` runs on the member's machine (`<bin> start`), so it is no
+ * deployed component and a deployment job cannot apply to it. Its timers are its process schedule; R268 judges deployed server code only.
+ */
+const clientAppRoots = (repoRoot: string): string[] => {
+  const apps = readJson(repoRoot, 'hfs.json')?.sides?.be?.apps;
+  return Array.isArray(apps) ? apps.filter((app: Parsed) => app?.kind === 'client-cli' && present(app.name)).map((app: Parsed) => `be/apps/${app.name}/`) : [];
+};
+
 function recurringSourceIssues({ doc, repoRoot, files }: { doc: Parsed; repoRoot: string; files: string[] }) {
   const issues: Parsed[] = [], cron = new Map();
-  const paths = [...new Set(files)].sort((left, right) => left.localeCompare(right));
+  const clients = clientAppRoots(repoRoot);
+  const paths = [...new Set(files)].filter(file => !clients.some(root => file.startsWith(root))).sort((left, right) => left.localeCompare(right));
   const tracked = new Set(paths), links = new Map<string, boolean>();
   const tools = `typescript=${loadTypescript(repoRoot, HERE) !== null} sql=${pg !== null}`;
   for (const file of paths) {

@@ -13,11 +13,12 @@ import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
 import { branchesWithoutDecision, describeDiagram, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
-import { INSETS, canvasHeight, openFloor, openView, type Box } from "./open.js"
+import { INSETS, LEAST_OPEN_ZOOM, betterTopDown, canvasHeight, needsTopDown, openView, openZoom, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
+import { withTechIcons } from "./techIcons.js"
 
 /** The least height of the canvas, kept by the loading, ready and error states alike: `sm` 16rem, `md` 24rem, `lg` 32rem. */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
@@ -50,7 +51,9 @@ export type MermaidDiagramProps = NoChildren & {
     readonly label: string
     /**
      * The least height of the canvas, kept by the loading, ready and error states alike so the page does not jump when the drawing arrives. A taller
-     * drawing grows the canvas up to 45rem; the first view fits the whole drawing when it stays readable (caption-role words at 11px or more, zoom 0.85), else opens at that zoom from the drawing's start and the reader pans and zooms. Default `sm`.
+     * drawing grows the canvas to hold it at its width fit, up to 45rem (35rem on a phone). The first view is always the whole drawing, contain-fitted
+     * (at 100% or less) and centred, clear of the controls row; a flowchart or state diagram too wide to read across is laid out top-down when that opens it
+     * larger, and a drawing that still opens under the readable zoom (0.85) is zoomed in by the reader. Default `sm`.
      */
     readonly height?: MermaidDiagramHeight
     /** The error title shown in the region when the source cannot be drawn; the source follows it as code. */
@@ -75,7 +78,8 @@ export type MermaidDiagramProps = NoChildren & {
     readonly legend?: ReadonlyArray<MermaidLegendItem>
     /**
      * What to draw for each icon name a node of the source names with Mermaid's own `R@{ icon: "redis" }` (the app passes small logo images): drawn
-     * before the node's words at the height of one line, the node widened for it. A name the map lacks draws nothing and takes no room.
+     * before the node's words at the height of one line, the node widened for it. A name neither this map nor `techIcons` has draws nothing and takes no
+     * room. The map adds to the built-in tech logos (`techIcons`: `postgresql`, `redis`, `express`, `docker`, `database`, ...) and wins over one of the same name.
      */
     readonly icons?: Readonly<Record<string, ReactNode>>
     /** One line under the drawing, in the caption role, saying what to look at. */
@@ -92,8 +96,8 @@ const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", f
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
 const PAN_STEP = 48
 const px = (n: number): `${number}px` => `${String(n)}px` as `${number}px`
-/** The fit button: the whole drawing, clear of the controls row. */
-const FIT_OPTIONS = { padding: { top: px(INSETS.top), right: px(INSETS.right), bottom: px(INSETS.bottom), left: px(INSETS.left) }, minZoom: 0.2, maxZoom: 1.5 } as const
+/** The fit button: the whole drawing, clear of the controls row, down to `least` (the first view's own zoom when a very large drawing needs under 0.2). */
+const fitOptions = (least: number) => ({ padding: { top: px(INSETS.top), right: px(INSETS.right), bottom: px(INSETS.bottom), left: px(INSETS.left) }, minZoom: least, maxZoom: 1.5 }) as const
 
 /* ---------------------------------------------------------------- sizes */
 
@@ -166,7 +170,14 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
 const GroupNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => (
     <div className="starci-graph-diagram-group" data-repeat={data.node.repeat === true ? "true" : undefined} {...toneProps(data.node.tone)} style={{ inlineSize: data.width, blockSize: data.height }}>
         {handles(data.direction)}
-        <span className="starci-graph-diagram-group-label">{data.node.label}</span>
+        <span className="starci-graph-diagram-group-label">
+            {data.icon === undefined || data.icon === null ? null : (
+                <span className="starci-graph-diagram-icon" aria-hidden="true">
+                    {data.icon}
+                </span>
+            )}
+            {data.node.label}
+        </span>
     </div>
 )
 
@@ -404,17 +415,14 @@ const useWidth = (target: RefObject<HTMLElement | null>): number | null => {
     return width
 }
 
-/** The start of a drawing: a flowchart's entry node (a sequence's is its top left, its first participant and first message). */
-const startOf = (drawn: Drawn): Box | undefined => (drawn.kind === "graph" ? drawn.entry : undefined)
-
-/** The first view: the drawing at its open zoom (never under the readable floor), centred where it fits, else from its start so the reader pans on from there. */
+/** The first view: the whole drawing, contain-fitted at 100% or less and centred, clear of the controls row (open.ts, the fit rule). */
 const useOpenView = (drawing: Drawn) => {
     const flow = useReactFlow()
     const width = useStore((state) => state.width)
     const height = useStore((state) => state.height)
     return useCallback(() => {
         if (width === 0 || height === 0) return undefined
-        const { x, y, zoom } = openView({ width, height }, drawing, openFloor(drawing.kind), startOf(drawing))
+        const { x, y, zoom } = openView({ width, height }, drawing)
         return { x, y, zoom, set: () => void flow.setViewport({ x, y, zoom }) }
     }, [drawing, flow, height, width])
 }
@@ -449,6 +457,9 @@ interface CanvasProps {
 const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): ReactElement => {
     const flow = useReactFlow()
     const open = useOpenView(drawn)
+    const flowWidth = useStore((state) => state.width)
+    // The reader may zoom out as far as the first view went, so a very large drawing still opens whole.
+    const least = flowWidth === 0 ? LEAST_OPEN_ZOOM : Math.min(LEAST_OPEN_ZOOM, openZoom({ width: flowWidth, height }, drawn))
     const elements = useMemo(() => {
         if (drawn.kind === "graph") return graphElements(drawn, icons)
         if (drawn.kind === "sequence") return sequenceElements(drawn)
@@ -484,7 +495,7 @@ const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): Re
                     nodeTypes={NODE_TYPES}
                     edgeTypes={EDGE_TYPES}
                     defaultViewport={{ x: INSETS.left, y: INSETS.top, zoom: 1 }}
-                    minZoom={0.2}
+                    minZoom={least}
                     maxZoom={3}
                     nodesDraggable={false}
                     nodesConnectable={false}
@@ -510,7 +521,7 @@ const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): Re
                     words={{ zoomIn: words.zoomIn, zoomOut: words.zoomOut, fit: words.fit }}
                     onZoomIn={() => void flow.zoomIn()}
                     onZoomOut={() => void flow.zoomOut()}
-                    onFit={() => void flow.fitView(FIT_OPTIONS)}
+                    onFit={() => void flow.fitView(fitOptions(least))}
                     reset={{ label: words.reset, onPress: reset }}
                 />
             </div>
@@ -589,7 +600,14 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
     const known = keepIcons(given, iconNames)
     // On a phone a flowchart or a state diagram is laid out top-down, so it fits the width (the routing law, rule 4).
     const parsed: ParsedDiagram = isPhone && (known.kind === "flowchart" || known.kind === "state") ? { ...known, direction: "TB" } : known
-    if (parsed.kind === "flowchart" || parsed.kind === "state") return { kind: "graph", ...(await layoutDiagram(parsed, textWidth, measureLabel)) }
+    if (parsed.kind === "flowchart" || parsed.kind === "state") {
+        const across = await layoutDiagram(parsed, textWidth, measureLabel)
+        const frameWidth = anchor.getBoundingClientRect().width
+        if (parsed.direction !== "LR" || !needsTopDown(frameWidth, across)) return { kind: "graph", ...across }
+        // A graph too wide to read across its frame is laid out top-down when that opens it larger, whole either way (the fit rule, rule 3).
+        const down = await layoutDiagram({ ...parsed, direction: "TB" }, textWidth, measureLabel)
+        return { kind: "graph", ...(betterTopDown(frameWidth, across, down) ? down : across) }
+    }
     if (parsed.kind === "sequence") {
         const layout = layoutSequence(parsed, textWidth)
         return { kind: "sequence", model: parsed, layout, width: layout.width, height: layout.height }
@@ -630,7 +648,8 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const words = { ...LABELS, ...labels }
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
     // The tones and the icon names are read by value: an inline object passed each render redraws nothing unless what it says changed.
-    const iconNames = Object.keys(icons ?? {}).sort()
+    const iconMap = useMemo(() => withTechIcons(icons), [icons])
+    const iconNames = Object.keys(iconMap).sort()
     const toneKey = JSON.stringify([tones ?? null, messageTones ?? null, edgeTones ?? null, iconNames])
     const toned = useRef({ tones, messageTones, edgeTones, iconNames, label })
     toned.current = { tones, messageTones, edgeTones, iconNames, label }
@@ -664,7 +683,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const state = isLoading ? "loading" : drawing.status
     const reserved = RESERVED[height]
     const ready = state === "ready" && drawing.status === "ready" ? drawing.drawn : undefined
-    const canvas = ready === undefined || width === null ? reserved : canvasHeight(width, ready, reserved, openFloor(ready.kind))
+    const canvas = ready === undefined || width === null ? reserved : canvasHeight(width, ready, reserved)
     return (
         <figure
             ref={frame}
@@ -688,7 +707,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
                 </div>
             ) : (
                 <ReactFlowProvider>
-                    <Canvas drawn={ready} icons={icons} label={label} words={words} height={canvas} scheme={scheme} />
+                    <Canvas drawn={ready} icons={iconMap} label={label} words={words} height={canvas} scheme={scheme} />
                 </ReactFlowProvider>
             )}
             {ready === undefined ? null : <TextVersion drawn={ready} words={words} />}

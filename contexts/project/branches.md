@@ -88,7 +88,9 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
    lint and their test suites, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
    (`release publish`, never a `-dev` version). Then `starci release back-merge --execute` brings `main` back into `dev`, the cli-follow commit
    included: a fast-forward when dev is behind, else a merge commit, pushed under the harness's dev lock. `release push` of main and
-   `release publish --execute` print that step; it runs only with `--execute`.
+   `release publish --execute` print that step; it runs only with `--execute`. **Cadence:** one harness train per day, batching the Grammar and canon
+   fixes that landed on `dev` since the last one; an extra train only for a fix that blocks a prod deploy. A train costs the full gate (about 40 minutes), and
+   the coordinator runs it, never a lane.
 5. CI (`.github/workflows/ci.yml`) runs on pushes of and pull requests into both branches: the FAST level on `dev` (no sonar, no Grammar theme
    proof, no CLI lint), the FULL level on `main`; a newer push cancels the older run. publish.yml listens to the runs of `main` only, and a run
    that publishes is never cancelled.

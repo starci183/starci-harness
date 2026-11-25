@@ -1333,6 +1333,7 @@ slots:
       - HFS_NIVOOS_PACKAGE_MISSING
       - HFS_NIVOOS_UNDECLARED
       - HFS_NIVOOS_PACKAGE_CHECK
+      - HFS_NIVOOS_SPEC_MISSING
   - id: app.desktop-config
     profiles:
       - app
@@ -1431,6 +1432,7 @@ slots:
       - concepts/<topic>.md
       - concepts/index.yaml
       - concepts/<name>/index.yaml
+      - prompts/**/*.md
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY
@@ -1656,10 +1658,8 @@ slots:
     rules:
       - HFS_APP_GALLERY_DESIGN_MANIFEST
       - HFS_APP_GALLERY_DESIGN_PAGE_MISSING
-      - HFS_APP_GALLERY_DESIGN_UNAPPROVED
       - HFS_APP_GALLERY_DESIGN_SHOT_MISSING
       - HFS_APP_GALLERY_DESIGN_SHOT_STALE
-      - HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
       - HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING
       - HFS_APP_GALLERY_DESIGN_PENDING
   - id: app.starcistacks.security
@@ -2157,7 +2157,7 @@ slots:
     parent: be.app.client-cli
     profiles:
       - be
-    path: apps/<app>/{package.json,tsconfig.build.json,README.md}
+    path: apps/<app>/{package.json,tsconfig.build.json,README.md,bundle.mjs}
     appKind: client-cli
     presence: opt-in
     tracked: tracked

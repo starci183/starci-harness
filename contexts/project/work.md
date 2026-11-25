@@ -14,6 +14,7 @@ This file owns the tree, the concepts and who writes what.
 | `master-plan.yaml` | `starci/master-plan@1` | the project's Master Plan: nine layers of decisions, a reason and always/never rules ([master-plan-record.md](master-plan-record.md) PROJECT-MASTER-PLAN-1) |
 | `concepts/README.md` | Markdown, no schema | the concept catalog: one table row per concept, with the folders it is read for (PROJECT-WORK-7) |
 | `concepts/<topic>.md` | Markdown, no schema | one concept: a topic of the product's persistent shared context (PROJECT-WORK-7) |
+| `prompts/**/*.md` | Markdown, no schema | the app's own authoring prompts: how its agents write its product content (the parts of an item, its voice). The harness loads none of them (the Work readers skip the folder) and no harness rule names them; an agent reads them only when its brief names them, after the harness rules and the concepts, and they never loosen either |
 | `brand/index.yaml`, `brand/assets/**` | `work/brand@1` | the product's brand direction over its grammar's token names |
 | `shell/index.yaml` | `work/layout-tree@1` | the app shell every screen sits in (full) |
 | `_resources/{environments,identities,fixtures}/<name>/resource.yaml` | `work/resource@1` | what a run resolves: an environment's origins and allowed effects, an identity's provider and sealed custody (never a secret value), a fixture's seed (full) |

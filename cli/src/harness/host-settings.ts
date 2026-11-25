@@ -6,6 +6,8 @@ import type { MachinesRead } from "./machines.js"
 export interface HostSettings {
     /** config.yaml `host.diskFloorMb`, when the host sets one. */
     readonly diskFloorMb?: number
+    /** config.yaml `host.diskWarnMb`, when the host sets one. */
+    readonly diskWarnMb?: number
     /** Where they were read: config.yaml, or why none was found. */
     readonly source: string
 }
@@ -24,5 +26,6 @@ export const readHostSettings = (read: () => MachinesRead = () => readMachines()
         throw error
     }
     const floor = found.doc.host?.diskFloorMb
-    return { ...(floor === undefined ? {} : { diskFloorMb: floor }), source: found.file }
+    const warn = found.doc.host?.diskWarnMb
+    return { ...(floor === undefined ? {} : { diskFloorMb: floor }), ...(warn === undefined ? {} : { diskWarnMb: warn }), source: found.file }
 }

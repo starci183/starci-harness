@@ -28,6 +28,28 @@ const ready = async (canvasElement: HTMLElement, count = 2) =>
     expect(diagrams).toHaveLength(count);
   }, { timeout: 10000 });
 
+/**
+ * The fit rule (open.ts): at the first view every node of every canvas stands whole inside its frame, and above the controls row (the room's bottom
+ * inset), so no node is cut on any side and no button covers one.
+ */
+const wholeInFrame = async (canvasElement: HTMLElement) =>
+  waitFor(() => {
+    const canvases = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-mermaid-canvas]')];
+    expect(canvases.length).toBeGreaterThan(0);
+    for (const canvas of canvases) {
+      const frame = canvas.getBoundingClientRect();
+      const controls = canvas.querySelector('.starci-graph-diagram-controls')?.getBoundingClientRect();
+      const nodes = [...canvas.querySelectorAll('.react-flow__node')];
+      expect(nodes.length).toBeGreaterThan(0);
+      for (const node of nodes) {
+        const box = node.getBoundingClientRect();
+        if (box.width <= 1 && box.height <= 1) continue;
+        expect(box.left >= frame.left - 1 && box.right <= frame.right + 1 && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1).toBe(true);
+        if (controls !== undefined) expect(box.bottom <= controls.top + 1).toBe(true);
+      }
+    }
+  }, { timeout: 8000 });
+
 const RACE = `sequenceDiagram
   participant R as Lượt đọc chậm
   participant C as Redis
@@ -126,20 +148,61 @@ export const FlowchartAcross: Story = {
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="success"]').length).toBe(2);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="cylinder"]').length).toBe(4);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-group').length).toBe(2);
-    // The routing law: a read-only graph shows no handle dots, and the first view holds the whole drawing, or opens at the readable floor (0.85) from its entry node, which then stands in view.
+    // The routing law: a read-only graph shows no handle dots, and the first view holds the whole drawing, clear of the controls row.
     for (const dot of canvasElement.querySelectorAll('.starci-graph-edge-dot')) expect(getComputedStyle(dot).display).toBe('none');
-    await waitFor(() => {
-      for (const canvas of canvasElement.querySelectorAll<HTMLElement>('[data-grammar-mermaid-canvas]')) {
-        const frame = canvas.getBoundingClientRect();
-        const zoom = new DOMMatrix(getComputedStyle(canvas.querySelector('.react-flow__viewport') as Element).transform).a;
-        // Under the floor the drawing fits whole; at it, only the entry node (the first) must be in view.
-        const nodes = zoom > 0.85 + 0.001 ? [...canvas.querySelectorAll('.react-flow__node')] : [...canvas.querySelectorAll('.react-flow__node')].slice(0, 1);
-        for (const node of nodes) {
-          const box = node.getBoundingClientRect();
-          expect(box.left >= frame.left - 1 && box.right <= frame.right + 1 && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1).toBe(true);
-        }
-      }
-    }, { timeout: 8000 });
+    await wholeInFrame(canvasElement);
+  },
+};
+
+const TALL_TB = `flowchart TB
+  G[Cổng thanh toán] --> S[Server Mây Coffee]
+  S --> P[(Postgres: đơn + outbox)]
+  P e1@--> R[Relay]
+  R e2@--> L[Loyalty]
+  L e3@--> N[Gửi thông báo cộng điểm]
+  class e1,e2,e3 accent`;
+
+/**
+ * A tall drawing (Next UI audit round 3, the lesson question at 390px: the last node, "Loyalty", was cut in half by the frame and the controls row stood
+ * over it). The canvas grows for it, up to 35rem on a phone, and the first view holds every node above the controls.
+ */
+export const TallFirstView: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={TALL_TB} label="Đường tiền về và đường cộng điểm" height="sm" caption="Relay đọc outbox rồi mang event sang Loyalty." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await wholeInFrame(canvasElement);
+  },
+};
+
+const WIDE_SAGA = `flowchart LR
+  C([Lời gọi từ ngoài]) --> O[orders :4001 saga.ts]
+  O -.-> OD[(orders)]
+  O --> PA[payments :4002]
+  O --> ST[stock :4003]
+  O --> NO[notify :4004]
+  PA -.-> PD[(payments)]
+  PA -.-> RD([redis])
+  ST -.-> SD[(stock)]
+  NO -.-> ND[(notify)]
+  class O accent`;
+
+/**
+ * A wide drawing (Next UI audit round 3, the Essentials v2 lesson at 390px: laid out top-down it was still wider than the frame, "stock :4003" clipped
+ * and "notify :4004" with its database outside). The first view is the whole drawing, contain-fitted; the reader zooms in for the words.
+ */
+export const WideFirstView: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={WIDE_SAGA} label="Các dịch vụ của saga đặt hàng" height="md" caption="orders điều phối; mỗi dịch vụ giữ database của nó." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    await wholeInFrame(canvasElement);
   },
 };
 
@@ -190,6 +253,47 @@ export const TonedPaths: Story = {
     // No junction dot, and every edge its own arrowhead.
     expect(canvasElement.querySelectorAll('.starci-graph-edge-join').length).toBe(0);
     expect(canvasElement.querySelectorAll('.starci-graph-edge-arrow').length).toBe(10);
+  },
+};
+
+const SHOP_GIAY = `flowchart LR
+  K[Khách] --> O[orders]
+  subgraph D["Docker trên máy bạn"]
+    O --> P[payments]
+    O --> S[stock]
+    O --> N[notify]
+    O --> OD[(orders db)]
+    P --> PD[(payments db)]
+    S --> SD[(stock db)]
+    N --> ND[(notify db)]
+    P --> R[(redis)]
+  end
+  D@{ icon: "docker" }
+  O@{ icon: "express" }
+  P@{ icon: "express" }
+  S@{ icon: "express" }
+  N@{ icon: "express" }
+  OD@{ icon: "postgresql" }
+  PD@{ icon: "postgresql" }
+  SD@{ icon: "postgresql" }
+  ND@{ icon: "postgresql" }
+  R@{ icon: "redis" }`;
+
+/**
+ * The built-in tech logos (owner 2026-11-26): the shop-giay architecture names its logos only by `R@{ icon: "name" }` and passes no `icons`; Grammar draws
+ * express, postgresql, redis and docker in the node's ink, never a brand colour.
+ */
+export const TechLogos: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" caption="Mỗi dịch vụ Express giữ database Postgres của nó; payments có thêm Redis." />
+    </Both>
+  ),
+  play: async ({ canvasElement }) => {
+    await ready(canvasElement);
+    // Four Express services, four Postgres databases, one Redis and the Docker group: nine node logos and one on the group.
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(10 * 2);
+    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon svg[aria-hidden="true"]').length).toBe(10 * 2);
   },
 };
 
@@ -267,7 +371,7 @@ export const Switch: Story = {
   },
 };
 
-/** A switch of five cases: the exits between the side vertices leave the slanted sides, each with its words clear of the side; the drawing is wider than a phone, so there it opens at the readable floor and the reader pans. */
+/** A switch of five cases: the exits between the side vertices leave the slanted sides, each with its words clear of the side; the drawing is wider than a phone, so there it opens whole under the readable zoom and the reader zooms in. */
 export const SwitchMany: Story = {
   render: () => (
     <Both>

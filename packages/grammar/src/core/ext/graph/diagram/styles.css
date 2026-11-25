@@ -267,6 +267,9 @@
 
 .starci-graph-diagram-group-label {
     position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--grammar-identity-gap);
     inset-block-start: var(--grammar-inline-gap);
     inset-inline-start: var(--grammar-inline-gap);
     color: var(--starci-graph-diagram-ink);

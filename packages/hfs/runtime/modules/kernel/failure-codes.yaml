@@ -3305,19 +3305,6 @@ HFS_APP_GALLERY_DESIGN_PAGE_MISSING:
   kind: check-finding
   localOnly: true
 
-HFS_APP_GALLERY_DESIGN_UNAPPROVED:
-  title: "A screen of a designed area has an approved design"
-  title_vi: "Màn hình thuộc khu thiết kế trước nhưng chưa có bản vẽ được duyệt"
-  meaning_vi: "Khu của màn hình có trong `areas` của .starcistacks/canvas/design.json (khu này vẽ trước rồi mới code), màn hình đã có trong gallery (explain.md hoặc ảnh), nhưng sổ không có mục cho nó hoặc mục chỉ ở trạng thái drafted."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-6): ở khu vẽ trước, không màn hình nào được code trước khi chủ dự án nói \"đẹp\" cho bản vẽ của nó."
-    - "Thêm một trạng thái mới (một thư mục màn hình) mà không vẽ, hoặc đưa khu vào `areas` trước khi các trang của nó được duyệt."
-    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Vẽ màn hình đó trên board bằng /claude-design, chờ chủ dự án duyệt rồi đặt approved; nếu khu chưa thiết kế xong thì bỏ nó khỏi `areas`."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
 HFS_APP_GALLERY_DESIGN_SHOT_MISSING:
   title: "A built design page records and holds its 1440 and 390 shots"
   title_vi: "Trang thiết kế đã built mà thiếu ảnh 1440 hoặc 390"
@@ -3370,19 +3357,6 @@ HFS_APP_GALLERY_ROUTE_AMBIGUOUS:
   kind: check-finding
   localOnly: true
 
-HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED:
-  title: "A change to a screen's source follows an approved canvas page"
-  title_vi: "Mã màn hình đổi nhưng trang canvas chưa được duyệt trước khi code"
-  meaning_vi: "Các commit kể từ nhánh gốc, chỉ mục hoặc cây làm việc đổi mã của một màn hình thuộc khu có trong .starcistacks/canvas/design.json, nhưng trang của màn hình trong sổ không có, chỉ ở trạng thái drafted, hoặc được duyệt (approvedAt) trước lần đổi mã mới nhất; thay đổi cũng không cập nhật mục của trang trong sổ."
-  causes_vi:
-    - "Vi phạm R395 (PROJECT-GALLERY-7): mọi thay đổi giao diện đi theo thứ tự canvas, rồi code, rồi gallery; sửa mã khi bản vẽ chưa được chủ dự án duyệt lại là đảo thứ tự đó."
-    - "Khu chưa quản lý bằng canvas (không có trong areas và không trang nào trong pages) thì không bị xét."
-    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
-  nextStep_vi: "Vẽ lại thay đổi trên canvas bằng /claude-design, chờ chủ dự án nói \"đẹp\" rồi đặt approved với approvedAt mới trong design.json, sau đó mới code; commit cùng thay đổi mục của trang."
-  owner: op-retry
-  kind: check-finding
-  localOnly: true
-
 HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   title: "A final screen records the options its critique weighed"
   title_vi: "Màn hình đã khớp (matches) nhưng explain.md thiếu mục Phương án đã cân nhắc"
@@ -3395,9 +3369,9 @@ HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
   kind: check-finding
 
 HFS_APP_GALLERY_DESIGN_PENDING:
-  title: "A pending screen is skipped by the change gates, listed with its reason"
+  title: "A pending screen is skipped by the UI Audit, listed with its reason"
   title_vi: "Màn hình đánh dấu pending (đã duyệt nhưng chưa dựng được) được liệt kê kèm lý do, và nhắc bỏ dấu khi đã có ảnh thật"
-  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json có `pending: { reason }`: đã duyệt nhưng chưa dựng được vì chờ dữ liệu hoặc API, nằm trên một trạng thái query của route mà code đã đổi. Cổng đổi giao diện (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) và UI Audit bỏ qua nó. Mức info, không bao giờ chặn: mỗi lần chạy liệt kê mọi màn hình pending với lý do, và nhắc bỏ `pending` khi màn hình đã có ảnh thật trong cây làm việc."
+  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json có `pending: { reason }`: đã duyệt nhưng chưa dựng được vì chờ dữ liệu hoặc API, nằm trên một trạng thái query của route mà code đã đổi. UI Audit bỏ qua nó. Mức info, không bao giờ chặn: mỗi lần chạy liệt kê mọi màn hình pending với lý do, và nhắc bỏ `pending` khi màn hình đã có ảnh thật trong cây làm việc."
   causes_vi:
     - "Vi phạm R395 (PROJECT-GALLERY-6 mục 9): pending không phải đường tắt im lặng; nó phải có lý do khác rỗng, và chỉ dùng cho màn hình chưa dựng được."
     - "Màn hình đã được dựng và chụp nhưng design.json vẫn còn pending: cổng đổi giao diện đang bỏ qua một màn hình thật."
@@ -3767,11 +3741,11 @@ HFS_CONTRACT_SNAPSHOT_DRIFT:
   kind: check-finding
 
 HFS_COVERAGE_BELOW:
-  title: "Measured back-end logic file is below 100 percent coverage"
-  title_vi: "Tệp logic back-end trong phạm vi đo chưa đạt độ bao phủ 100 phần trăm"
-  meaning_vi: "Báo cáo lcov được cung cấp không chứng minh mỗi tệp logic trong phạm vi đo của edition đạt 100 phần trăm dòng, hàm và nhánh; phạm vi cùng các tệp ngoài phạm vi được liệt kê riêng. Độ bao phủ câu lệnh do trình chạy unit test kiểm tra."
+  title: "Measured back-end logic is below its coverage bar"
+  title_vi: "Logic back-end trong phạm vi đo chưa đạt mức bao phủ của nó"
+  meaning_vi: "Báo cáo lcov được cung cấp không chứng minh mức bao phủ đã chốt (owner 2026-11-25): mỗi tệp logic trong phạm vi đo đạt ngưỡng tối thiểu mỗi tệp về dòng, hàm và nhánh, và mỗi tầng (A, B, C, khai báo ở hfs.json sides.be.coverageTiers) đạt ngưỡng dòng và nhánh của tầng đó; các con số nằm ở knowledge/sonar-gate.yaml. Phạm vi cùng các tệp ngoài phạm vi được liệt kê riêng. Độ bao phủ câu lệnh do trình chạy unit test kiểm tra."
   causes_vi:
-    - "Có dòng, hàm hoặc nhánh chưa được chạy trong một tệp logic thuộc phạm vi đo"
+    - "Một tệp logic thuộc phạm vi đo dưới ngưỡng tối thiểu mỗi tệp, hoặc một tầng dưới ngưỡng của tầng"
     - "Báo cáo thiếu tệp nguồn, thiếu số liệu, sai định dạng hoặc không đọc được"
   nextStep_vi: "Bổ sung unit test cho tệp được nêu, tạo lại báo cáo lcov đầy đủ rồi chạy starci app check --coverage-from <lcov>; features, cli và webhooks ngoài phạm vi đo vẫn được liệt kê."
   owner: op-retry
@@ -6060,6 +6034,16 @@ HFS_NIVOOS_UNDECLARED:
     - "Vi phạm R436: gói viết bằng SDK nivoos phải được khai báo để dùng hồ sơ lint SDK và bước kiểm tra nivoos package check (PROJECT-BUSINESS-1)."
     - "Gói được chuyển vào từ kho khác mà hfs.json chưa được cập nhật."
   nextStep_vi: "Thêm { \"name\": \"<tên>\" } vào sides.nivoos.packages của hfs.json, hoặc bỏ phụ thuộc vào SDK nếu đó không phải gói nghiệp vụ."
+  owner: op-retry
+  kind: check-finding
+HFS_NIVOOS_SPEC_MISSING:
+  title: "A cell or flow of a business package has no spec"
+  title_vi: "Cell hoặc flow của gói nghiệp vụ chưa có spec"
+  meaning_vi: "Mỗi cell (<tên>.cell.ts) và flow (<tên>.workflow.ts) trong src/ của gói nivoos đã khai báo phải có spec cạnh nó (<tên>.cell.spec.ts, <tên>.flow.spec.ts hoặc <tên>.workflow.spec.ts); gói được đo ở mức bao phủ nghiệp vụ (owner 2026-11-25, BE-TEST-13)."
+  causes_vi:
+    - "Vi phạm R436: cell hoặc flow mới được thêm mà chưa viết spec."
+    - "Spec đặt sai thư mục hoặc sai tên nên không nằm cạnh tệp."
+  nextStep_vi: "Viết spec cạnh tệp được nêu (cell: <tên>.cell.spec.ts, flow: <tên>.flow.spec.ts) rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
 HFS_NIVOOS_PACKAGE_CHECK:

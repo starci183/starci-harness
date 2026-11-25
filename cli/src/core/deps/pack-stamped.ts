@@ -5,7 +5,7 @@ import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
-import { sourceDigest, tail } from "./packages.js"
+import { sourceDigest, sourceDigestParts, tail, type SourceSplit } from "./packages.js"
 import { withManifest } from "./tarball.js"
 
 /**
@@ -15,16 +15,31 @@ import { withManifest } from "./tarball.js"
  */
 export const SOURCE_FIELD = "starciSource"
 
+/**
+ * The manifest field that carries the source digest in parts, for a package that ships a pure-data file the check cache keys on its own: `core` (every tracked
+ * file but the named ones) and one digest per named file. `starciSource` stays the digest of the whole. The cache keys `@starci/hfs` on `core` and its pin data
+ * on its own part, so a Grammar-only release that moves `canon-pins.yaml` never re-runs the structure records (check-cache.md "The fingerprint").
+ */
+export const SOURCE_PARTS_FIELD = "starciSourceParts"
+
+/**
+ * The pure-data files the check cache keys as parts of their own, by package name (the file's path inside the package). Each is read by a narrow set of rules
+ * that run every run, so no cached record depends on it; `@starci/hfs` `cache/fingerprint.mts` SPLIT_PARTS names the same parts and the families that read them.
+ */
+export const SOURCE_SPLITS: Readonly<Record<string, readonly SourceSplit[]>> = {
+    "@starci/hfs": [{ name: "canon-pins", file: "runtime/knowledge/hfs/canon-pins.yaml" }],
+}
+
 /** The digest of a package's source (owned by packages.ts, where the install freshness of a `file:` copy reads it too). */
 export { sourceDigest }
 
 /** A package manifest's text with the source digest stamped (and `gitHead` when given), in its own indent and line ending. */
-export const withSource = (text: string, digest: string, gitHead?: string): string => {
+export const withSource = (text: string, digest: string, gitHead?: string, parts?: Readonly<Record<string, string>>): string => {
     const parsed: unknown = JSON.parse(text)
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Refusal("DEPS_MANIFEST_UNREADABLE", "a package.json holds a JSON object")
     const indent = /^([ \t]+)"/m.exec(text)?.[1] ?? "  "
     const eol = text.includes("\r\n") ? "\r\n" : "\n"
-    const written = JSON.stringify({ ...parsed, ...(gitHead === undefined ? {} : { gitHead }), [SOURCE_FIELD]: digest }, null, indent).replaceAll("\n", eol)
+    const written = JSON.stringify({ ...parsed, ...(gitHead === undefined ? {} : { gitHead }), [SOURCE_FIELD]: digest, ...(parts === undefined ? {} : { [SOURCE_PARTS_FIELD]: parts }) }, null, indent).replaceAll("\n", eol)
     return `${written}${/\r?\n$/.test(text) ? eol : ""}`
 }
 
@@ -75,7 +90,9 @@ export const tarballName = (name: string, version: string): string => `${name.re
 export const stampArchive = async (given: { readonly pkg: WorkspacePackage; readonly root: string; readonly archive: string; readonly scratch: string; readonly name: string; readonly edit?: ((text: string) => string) | undefined; readonly entries?: EntryEdit | undefined; readonly gitHead?: string | undefined }): Promise<string> => {
     const { pkg, root, archive, scratch, name, edit = (text: string) => text, entries, gitHead } = given
     const digest = await sourceDigest(root, pkg.relativeDir)
+    const split = SOURCE_SPLITS[pkg.name]
+    const parts = split === undefined ? undefined : await sourceDigestParts(root, pkg.relativeDir, split)
     const stamped = join(scratch, name)
-    writeFileSync(stamped, withManifest(readFileSync(archive), (text) => withSource(edit(text), digest, gitHead), entries))
+    writeFileSync(stamped, withManifest(readFileSync(archive), (text) => withSource(edit(text), digest, gitHead, parts), entries))
     return stamped
 }

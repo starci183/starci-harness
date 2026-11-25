@@ -130,7 +130,7 @@ import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
-import { changedSince, DESIGN_CHANGE_UNAPPROVED, galleryDesignChangeFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
+import { changedSince } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
@@ -669,7 +669,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const failedBuilds = typed.filter((finding) => ownCodes.includes(String(finding.code)));
     found.set('types', [...withWhy(failedBuilds, readWhy(skillRoot, [...new Set(failedBuilds.map((finding) => String(finding.code)))])), ...typed.filter((finding) => !ownCodes.includes(String(finding.code)))]);
   });
-  // The fast level judges what the lane changed against the base its landing is judged from (the merge-base with origin/dev): its own tests and the design approval.
+  // The fast level judges what the lane changed against the base its landing is judged from (the merge-base with origin/dev): its own tests.
   const laneChanged = level === 'dev' ? changedSince(repoRoot, landingBase(repoRoot, io.env, profile.branch).base) : [];
   if (session !== undefined && selected.has('test') && level === 'dev') {
     bodies.set('test', async (step) => {
@@ -757,16 +757,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
   // The commits since the base, the index and the work tree of a whole run are the judged set of the gallery coupling.
-  // The owner's design approval is a product decision: the fast level keeps it (diff-only, no rule sweep), the full level judges it with the rules.
   if (session !== undefined && ((whole && selected.has('hfs')) || level === 'dev')) {
     const landing = landingBase(repoRoot, io.env, profile.branch);
     const galleryBase = landing.base;
     const galleryChanged = level === 'dev' ? laneChanged : changedSince(repoRoot, galleryBase);
     // the base is stated, so the lane gate (a merge of the lane into origin/dev) and the push gate can be compared: both judge the diff from the merge-base with origin/dev
     lines.push(`  gallery coupling: judged ${galleryChanged.length} file(s) changed since ${galleryBase === null ? 'no base (a root commit)' : galleryBase.slice(0, 10)}, ${landing.source}`);
-    // A screen's source changed without an approved canvas page (PROJECT-GALLERY-7): the same judged set, a canvas-managed screen only.
-    const unapproved = galleryDesignChangeFindings({ repoRoot, changed: galleryChanged, base: galleryBase });
-    if (unapproved.length > 0) extra.push(...withWhy(unapproved as Dynamic[], readWhy(skillRoot, [DESIGN_CHANGE_UNAPPROVED])));
   }
   // An environment declared `cutover: {state: pending}` (PROJECT-STACKS-20): its declaration is judged on every run that selects hfs, uncached, since its expiry reads the clock.
   const today = todayOf();

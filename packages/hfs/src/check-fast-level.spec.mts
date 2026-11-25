@@ -1,5 +1,5 @@
 // The two-level gate (owner 2026-11-22: "rules là k check nhánh khi dev, khi nào push mới check tổng 1 lần sửa 1 lần vẫn hơn"): `app check --level dev` is the FAST
-// level of a landing on dev and runs exactly its gates (types with its builds and codegen, the lane's own tests, db, the design approval), names what it skips and
+// level of a landing on dev and runs exactly its gates (types with its builds and codegen, the lane's own tests, db), names what it skips and
 // that it runs at the main cut; `--level full` (the default) is every gate. The managed pre-push hook routes a push of dev or a lane branch to the fast level and
 // everything else (main, a release tag, another branch) to the full one.
 import test from 'node:test';
@@ -44,7 +44,7 @@ test('the fast level runs exactly its gates and names, first, every gate it skip
   assert.match(first, /nivoos package checks/u);
   assert.match(first, /whole-repo tests and coverage/u);
   assert.match(first, /sonar/u);
-  assert.match(first, /design approval \(HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED\)/u, 'the owner approval stays a dev gate');
+  assert.doesNotMatch(first, /design approval/u, 'the owner approval is no gate');
   assert.match(first, /run once at the main cut \(app check --level full\)/u);
 });
 

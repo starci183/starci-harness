@@ -28,7 +28,8 @@ const report = [
 ];
 
 interface Rec { path: string; lines: number; hits: number }
-interface Rule { target: string; threshold: string }
+interface Rule { type?: string; target: string; threshold: string }
+interface Component { component_id: string; paths: string[]; statuses?: Rule[] }
 const matches = (patterns: string[], file: string) => patterns.some((pattern: string) => globExpression(pattern).test(file));
 const selected = (config: { ignore: string[] }, paths: string[], records: Rec[]) => records.filter(record => matches(paths, record.path) && !matches(config.ignore, record.path));
 const reachesTarget = (records: Rec[], status: Rule) => {
@@ -58,14 +59,19 @@ for (const edition of ['lite'] as const) {
     const retained = selected(config, project.paths, report).map((record: Rec) => record.path);
     assert.deepEqual(retained, measured, 'the provider denominator is exactly the measured logic, including uncovered files');
     const allCovered = report.map(record => measured.includes(record.path) ? { ...record, hits: record.lines } : record);
+    // The project is the ratchet (owner 2026-11-25): never below its base commit, so it states no number.
+    assert.deepEqual([String(project.target), String(project.threshold)], ['auto', '0%']);
+    const patch = config.coverage.status.patch.default;
+    const components: Component[] = config.component_management.individual_components;
     const statuses = [
-      ...Object.values(config.coverage.status as Record<string, { default: Rule & { paths: string[] } }>).map((status) => ({ paths: status.default.paths, rule: status.default })),
-      ...config.component_management.individual_components.flatMap((component: { paths: string[] }) =>
-        config.component_management.default_rules.statuses.map((rule: Rule) => ({ paths: component.paths, rule }))),
+      { paths: patch.paths, rule: patch as Rule },
+      ...components.flatMap((component) => (component.statuses ?? config.component_management.default_rules.statuses).map((rule: Rule) => ({ paths: component.paths, rule }))),
     ];
-    assert.deepEqual(config.component_management.individual_components.map((component: { component_id: string }) => component.component_id), ['api', 'platform']);
+    assert.deepEqual(components.map((component) => component.component_id), ['api', 'platform', 'tier-b'], 'the service components, then one component per tier: every module undeclared is in the default tier B');
+    assert.deepEqual(config.component_management.default_rules.statuses, [{ type: 'patch', target: '80%', threshold: '0%' }]);
+    assert.deepEqual(components.at(-1)?.statuses, [{ type: 'project', target: '75%', threshold: '0%' }, { type: 'patch', target: '80%', threshold: '0%' }]);
     for (const { paths, rule } of statuses) {
-      assert.equal(String(rule.target), '100%');
+      assert.ok(['75%', '80%'].includes(String(rule.target)), `${String(rule.target)} is a bar of the canon`);
       assert.equal(String(rule.threshold), '0%');
       assert.equal(reachesTarget(selected(config, paths, report), rule), false, 'uncovered measured logic still fails project, patch and component gates');
       assert.equal(reachesTarget(selected(config, paths, allCovered), rule), true, 'partial incidental imports do not lower the measured coverage');
@@ -74,7 +80,7 @@ for (const edition of ['lite'] as const) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`rendered Codecov config holds one component per root package, held at the target like the services`, () => {
+  test(`rendered Codecov config holds one component per root package, held at the patch bar like the services`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'codecov-packages-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }], connections: [
         { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'postgres' },
@@ -94,8 +100,9 @@ for (const edition of ['lite'] as const) {
     const packages = components.filter(component => component.component_id.startsWith('package-'));
     assert.deepEqual(packages.map(component => component.component_id), ['package-plugin-registry', 'package-sdk', 'package-ui-kit']);
     for (const component of packages) assert.deepEqual(component.paths, [`packages/${component.component_id.slice('package-'.length)}/src/**`]);
-    assert.deepEqual(components.filter(component => !component.component_id.startsWith('package-')).map(component => component.component_id), ['platform'], 'services and platform are untouched');
-    assert.deepEqual(config.component_management.default_rules.statuses.map((rule: Rule) => rule.target), ['100%', '100%'], 'every component, packages included, is held at the target');
+    assert.deepEqual(components.filter(component => !component.component_id.startsWith('package-')).map(component => component.component_id), ['platform', 'tier-b'], 'services and platform are untouched, and the tier holds the packages');
+    assert.deepEqual(config.component_management.default_rules.statuses.map((rule: Rule) => rule.target), ['80%'], 'every component, packages included, is held at the patch bar');
+    assert.deepEqual(components.at(-1)?.paths, ['packages/plugin-registry/src/**', 'packages/sdk/src/**', 'packages/ui-kit/src/**', 'be/src/modules/platform/clock/**'], 'in the order of the module keys');
   });
 }
 

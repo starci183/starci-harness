@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { CHECK_CACHE_DIR, mainCheckout, samePath } from "../shared/git.js"
-import { laneTrees, liveContext, liveReasons } from "./install-janitor.js"
+import { isGeneratedContextsFile, laneTrees, liveContext, liveReasons } from "./install-janitor.js"
 import type { LaneTree, LiveContext } from "./install-janitor.js"
 import { loadSlotRules, releaseLaneSlots } from "./slots.js"
 import type { SlotRules } from "./slots.js"
@@ -13,7 +13,9 @@ import type { RemovePlan, Removed } from "./worktree-remove.js"
  * succeeded, the lane's worktree is removed to save disk, the branch kept, local and remote. It is the same removal as `starci lane remove`
  * (harness/worktree-remove.ts: the removal lock, every link unlinked as a link, a lstat-checked delete) behind the install janitor's in-use guard
  * (harness/install-janitor.ts `liveReasons`, told the lane just landed): a removal lock, a slot of the lane, a git operation, a process working
- * inside the worktree, uncommitted work, commits after the landed sha keep it. The check-cache records under `.starcistacks/cache/` are no work and
+ * inside the worktree, uncommitted work, commits after the landed sha keep it. A worktree kept only because a process works in it (the agent's own shell, a
+ * shot's browser) or a slot of the moment holds it leaves the marker too, so the next `lane remove` or janitor run finishes it. The check-cache records under
+ * `.starcistacks/cache/` and the generated contexts files (the next gate rewrites them) are no work and
  * are discarded with the worktree.
  *
  * The command runs inside the worktree, and Windows cannot delete a folder a live process stands in. So the process leaves it first (`process.chdir`
@@ -129,12 +131,20 @@ const treeAt = (dir: string, path: string): LaneTree | undefined => laneTrees(di
 /** The path of a `git status --porcelain` line, whether or not its leading space survived the capture. */
 const pathOf = (line: string): string => line.replace(/^\s*\S+\s+/u, "").replace(/^"|"$/gu, "")
 
-/** True for a change of the check-cache records, the one kind of tracked change a landed worktree may lose. */
+/** True for a change a landed worktree may lose: the check-cache records and the generated contexts files (the next gate rewrites them). */
+const isCacheChange = (line: string): boolean => pathOf(line).startsWith(CHECK_CACHE_DIR) || isGeneratedContextsFile(pathOf(line))
 
-const isCacheChange = (line: string): boolean => pathOf(line).startsWith(CHECK_CACHE_DIR)
+/**
+ * Whether a reason the in-use guard gave passes by itself: a process working in the folder (the agent's own shell, a shot's browser), another removal, a slot or
+ * a git operation of the moment. Work and commits after the landed sha do not pass; the lane's owner decides about them.
+ */
+const isPassing = (reason: string): boolean => /^(?:pid \d+ |being removed by |lane \S+ holds |a git operation is under way|the process table could not be read)/u.test(reason)
 
-/** The result of one removal attempt chain: removed, kept for a reason, or busy past the retries. */
-type Attempt = { readonly state: "removed" } | { readonly state: "kept"; readonly reason: string } | { readonly state: "busy"; readonly reason: string }
+/**
+ * The result of one removal attempt chain: removed, kept for a reason that stays until someone acts (`kept`), kept because the worktree is in use right now
+ * (`held`: the next `lane remove` or janitor run finishes it), or busy past the retries.
+ */
+type Attempt = { readonly state: "removed" } | { readonly state: "kept"; readonly reason: string } | { readonly state: "held"; readonly reason: string } | { readonly state: "busy"; readonly reason: string }
 
 /**
  * Judges and removes the worktree of `tree` from `main`: the in-use guard first, then the plan (refusing a non-cache tracked change that appeared since),
@@ -144,7 +154,7 @@ type Attempt = { readonly state: "removed" } | { readonly state: "kept"; readonl
 const attempt = async (tree: LaneTree, given: { readonly dir: string; readonly main: string; readonly laneSha: string; readonly rules: SlotRules }, deps: CleanupDeps): Promise<Attempt> => {
     try {
         const reasons = liveReasons(tree, await deps.live(given.dir, given.rules), given.laneSha === "" ? undefined : given.laneSha, Date.now(), true)
-        if (reasons.length > 0) return { state: "kept", reason: reasons.join("; ") }
+        if (reasons.length > 0) return { state: reasons.every(isPassing) ? "held" : "kept", reason: reasons.join("; ") }
         const plan = await planRemoval(tree.path, given.main, true)
         const work = plan.dirty.filter((line) => !isCacheChange(line))
         if (work.length > 0) return { state: "kept", reason: `uncommitted work (${work.slice(0, 3).map(pathOf).join(", ")})` }
@@ -174,7 +184,7 @@ const attempt = async (tree: LaneTree, given: { readonly dir: string; readonly m
  * `laneSha` is the lane's own sha at the landing, `dir` the lanes folder.
  */
 export const cleanupLanded = async (given: { readonly root: string; readonly lane: string; readonly branch: string; readonly laneSha: string; readonly dir: string; readonly keep: boolean }, deps: CleanupDeps = realCleanupDeps): Promise<LandCleanup> => {
-    if (given.keep) return { removed: false, line: "kept: --keep given" }
+    if (given.keep) return { removed: false, line: `kept: --keep given; remove it when you are done with \`starci lane remove ${given.root} --execute\` (the disk warning of lane gate lists landed worktrees left behind)` }
     try {
         const tree = treeAt(given.dir, given.root)
         if (tree === undefined) return { removed: false, line: `kept: ${given.root} is not a lane worktree under the lanes folder ${given.dir}` }
@@ -187,12 +197,13 @@ export const cleanupLanded = async (given: { readonly root: string; readonly lan
             clearMarker(given.dir, tree.lane)
             return { removed: true, line: "worktree removed" }
         }
-        if (done.state === "kept") return { removed: false, line: `kept: ${done.reason}` }
+        if (done.state === "kept") return { removed: false, line: `kept: ${done.reason}${done.reason.includes("uncommitted work (") ? `; ${tree.path} holds non-generated changes the landing did not take: commit or discard them, then \`starci lane remove ${tree.path} --execute\`` : ""}` }
+        const held = done.state === "held"
         try {
             const marker = leaveMarker(given.dir, { lane: tree.lane, worktree: tree.path, branch: given.branch, laneSha: given.laneSha, at: new Date().toISOString(), reason: done.reason })
-            return { removed: false, line: `kept: busy (${done.reason}); marked for the next lane remove or janitor run`, marker }
+            return { removed: false, line: held ? `kept: ${done.reason}; marked for the next lane remove or janitor run` : `kept: busy (${done.reason}); marked for the next lane remove or janitor run`, marker }
         } catch (error) {
-            return { removed: false, line: `kept: busy (${done.reason}); the marker could not be written (${firstLine(error)}): run starci lane remove ${tree.path} --execute` }
+            return { removed: false, line: `kept: ${held ? "" : "busy "}(${done.reason}); the marker could not be written (${firstLine(error)}): run starci lane remove ${tree.path} --execute` }
         }
     } catch (error) {
         return { removed: false, line: `kept: ${firstLine(error)}` }

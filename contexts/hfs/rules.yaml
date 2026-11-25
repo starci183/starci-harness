@@ -1684,7 +1684,7 @@ rules:
       - {kind: hfs, id: stacks-release}
   - id: R268
     code: HFS_SCHEDULE_UNDECLARED
-    law: Every scheduler, pg_cron schedule and replicated job matches a top-level jobs declaration that invokes a named back-end CLI action.
+    law: Every scheduler, pg_cron schedule and replicated job of a deployed server component matches a top-level jobs declaration that invokes a named back-end CLI action. An app of kind `client-cli` runs on the member's own machine, so its own timers are its process schedule and are not judged.
     failureCodes:
       - HFS_SCHEDULE_UNDECLARED
     enforcers:
@@ -1732,7 +1732,7 @@ rules:
       - {kind: hfs, id: boot-proof}
   - id: R273
     code: HFS_COVERAGE_BELOW
-    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope, and a root package's type module, which that scope leaves out, holds types only.
+    law: "A supplied coverage report proves the coverage bar (owner 2026-11-25, BE-TEST-13): every back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope reaches the per-file floor of lines, functions and branches, and each coverage tier (the modules hfs.json sides.be.coverageTiers puts in it, the default tier the rest) reaches its lines and branches bar as a whole, the numbers being knowledge/sonar-gate.yaml's; a root package's type module, which that scope leaves out, holds types only. These are test and coverage obligations: judged only while the app's test and coverage gates run; an app that declares either off (PROJECT-LINT-4) is not judged and the run reports `off (declared: <reason>)`."
     failureCodes:
       - HFS_COVERAGE_BELOW
     enforcers:
@@ -2438,7 +2438,7 @@ rules:
       - {kind: hfs, id: project-ext}
   - id: R382
     code: HFS_PACKAGE_SLOT_UNPLACED
-    law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
+    law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at its coverage tier (BE-TEST-13) but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
     failureCodes:
       - HFS_PACKAGE_SLOT_UNPLACED
       - HFS_PACKAGE_SLOT_MISSING
@@ -2556,7 +2556,7 @@ rules:
       - {kind: hfs, id: dead-letter-repeat}
   - id: R395
     code: HFS_APP_GALLERY_MISSING
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a screen of an area listed in `areas` with no approved design, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`), and a change to a canvas-managed screen's source in the commits since the base whose design page is missing, only drafted or approved before the change (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`, PROJECT-GALLERY-7; a warning in `--env local`), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`; the design needs no owner approval before code, owner decision 2026-11-25), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
     failureCodes:
       - HFS_APP_GALLERY_MISSING
       - HFS_APP_GALLERY_EXPLAIN_MISSING
@@ -2575,10 +2575,8 @@ rules:
       - UI_AUDIT_CONSIDERED_EMPTY
       - HFS_APP_GALLERY_DESIGN_MANIFEST
       - HFS_APP_GALLERY_DESIGN_PAGE_MISSING
-      - HFS_APP_GALLERY_DESIGN_UNAPPROVED
       - HFS_APP_GALLERY_DESIGN_SHOT_MISSING
       - HFS_APP_GALLERY_DESIGN_SHOT_STALE
-      - HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
       - HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING
       - HFS_APP_GALLERY_DESIGN_PENDING
       - HFS_APP_GALLERY_BOARD_INVALID
@@ -2598,7 +2596,7 @@ rules:
       - {kind: hfs, id: rest-contract}
   - id: R397
     code: BE_CLI_CLIENT
-    law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`)."
+    law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`). A client cli that declares `bundle: true` ships one self-contained file instead: `be/apps/<app>/bundle.mjs` bundles that output into `dist/bundle/<bin>.cjs`, the bin points there, `files` holds `dist/bundle`, `prepack` is `node bundle.mjs` and the manifest lists no runtime dependency; `bundle.mjs` with no declared bundle is refused."
     failureCodes:
       - BE_CLI_CLIENT
     enforcers:
@@ -2741,11 +2739,12 @@ rules:
       - {kind: hfs, id: standard-load}
   - id: R436
     code: HFS_NIVOOS_PACKAGE_MISSING
-    law: "The nivoos packages a project declares (hfs.json `sides.nivoos.packages`, each `{ name, entry?, out? }`, a kebab-case folder `packages/<name>/` once, `entry` defaulting to `src/<name>.package.ts` and `out` to `seed`; declaring one declares the packages side) agree with its tree and its check, each way: a declared package tracks its `package.json`, `tsconfig.json` and entry (HFS_NIVOOS_PACKAGE_MISSING); a root package that depends on the nivoos SDK or its CLI is declared (HFS_NIVOOS_UNDECLARED), since the slot `app.nivoos-package` is what hands its source to the SDK authoring lint profile of `@starci/eslint-canon-be` (Vietnamese copy in string and template literals, the default export of the entry; the canon otherwise whole) and what leaves it unmeasured; and `nivoos package check <entry> --out <out>`, run from the package folder in the `checks` step of `starci app check`, passes: a package that does not type-check, a committed seed or secrets template that differs from a fresh build, or a nivoos CLI that is not installed for it is HFS_NIVOOS_PACKAGE_CHECK, which is never cached."
+    law: "The nivoos packages a project declares (hfs.json `sides.nivoos.packages`, each `{ name, entry?, out? }`, a kebab-case folder `packages/<name>/` once, `entry` defaulting to `src/<name>.package.ts` and `out` to `seed`; declaring one declares the packages side) agree with its tree and its check, each way: a declared package tracks its `package.json`, `tsconfig.json` and entry (HFS_NIVOOS_PACKAGE_MISSING); a root package that depends on the nivoos SDK or its CLI is declared (HFS_NIVOOS_UNDECLARED), since the slot `app.nivoos-package` is what hands its source to the SDK authoring lint profile of `@starci/eslint-canon-be` (Vietnamese copy in string and template literals, the default export of the entry; the canon otherwise whole) and what leaves it unmeasured; and `nivoos package check <entry> --out <out>`, run from the package folder in the `checks` step of `starci app check`, passes: a package that does not type-check, a committed seed or secrets template that differs from a fresh build, or a nivoos CLI that is not installed for it is HFS_NIVOOS_PACKAGE_CHECK, which is never cached. Every cell (`<name>.cell.ts`) and flow (`<name>.workflow.ts`) below the src/ of a declared package has its spec beside it (`<name>.cell.spec.ts`, `<name>.flow.spec.ts` or `<name>.workflow.spec.ts`, HFS_NIVOOS_SPEC_MISSING; owner 2026-11-25, BE-TEST-13). The spec of every cell and flow is a test obligation: judged only while the app's test and coverage gates run; an app that declares either off (PROJECT-LINT-4) is not judged for it."
     failureCodes:
       - HFS_NIVOOS_PACKAGE_MISSING
       - HFS_NIVOOS_UNDECLARED
       - HFS_NIVOOS_PACKAGE_CHECK
+      - HFS_NIVOOS_SPEC_MISSING
     enforcers:
       - {kind: hfs, id: nivoos}
       - {kind: hfs, id: nivoos-package-check}

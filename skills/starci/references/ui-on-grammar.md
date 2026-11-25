@@ -7,9 +7,8 @@ for a `draw` contract (the screen's direction), an `audit` contract and any `cod
 ## Step 0: the canvas page is approved
 
 Before a `draw` contract, an `audit` contract or any `code` contract changes what a screen shows, the app's `.starcistacks/canvas` page for that screen is drawn
-and approved (`design.json` page `approved`, `approvedAt` after the draft), by `/claude-design`. Code follows the approved frames, then the gallery is shot
-and the page moves `built` to `matches`. [PROJECT-GALLERY-7](../../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns the order and the check
-(`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A contract with no page to draw from stops and asks for the drawing; it never codes first.
+(`design.json` page `drafted`; no owner approval is awaited, owner decision 2026-11-25), by `/claude-design`. Code follows the drawn frames, then the gallery is shot
+and the page moves `built` to `matches`. [PROJECT-GALLERY-7](../../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns the order. A contract with no page to draw from stops and asks for the drawing; it never codes first.
 
 ## Resolve the grammar
 

@@ -370,7 +370,6 @@ services:
     mode: hosted
     purpose: Report application coverage through GitHub OIDC.
     auth: oidc
-    target: 100
     components: auto
     required: true
     ci: {wiring: required, workflow: .github/workflows/ci.yml}

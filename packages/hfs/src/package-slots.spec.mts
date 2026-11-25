@@ -1,7 +1,7 @@
 // proves: HFS_PACKAGE_SLOT_UNPLACED
 // proves: HFS_PACKAGE_SLOT_UNPLACED
 // A package's inner slots (PROJECT-LINT-3, R382): the project declares them in ext/manifest.json (packages, by folder) and hfs holds the package's tree to
-// them as it holds the be and fe sides; a package's own slots.yaml is still read; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
+// them as it holds the be and fe sides; a package's own slots.yaml is still read; its coverage follows the slots, every file measured at its coverage tier (BE-TEST-13) but its barrels, its type files and the slots that opt
 // out with a reason.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

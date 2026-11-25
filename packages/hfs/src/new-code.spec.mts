@@ -34,7 +34,7 @@ test('new-code coverage below the minimum main\'s Sonar gate holds is a blocking
   const below = newCodeCoverageFindings(predictions(t, [1, 2, 3], [1, 2, 3, 4]), 'dev');
   assert.equal(below.length, 1);
   assert.equal(below[0]?.['code'], COVERAGE_NEW_CODE);
-  assert.match(String(below[0]?.['message']), /predicted new-code coverage is 75% \(3 of 4 coverable changed lines\), below the 100% main's Sonar gate holds it to: on dev/);
+  assert.match(String(below[0]?.['message']), /predicted new-code coverage is 75% \(3 of 4 coverable changed lines\), below the 80% main's Sonar gate holds it to: on dev/);
   assert.equal(below[0]?.['level'], 'error', 'a plain error, never report-only');
   assert.equal(gateVerdict(below).pass, false, 'one error makes the verdict red');
 });

@@ -9,7 +9,9 @@
 // sonar.sources). A finding on any other path (hfs.json, a workflow, a package under an unindexed root, e2e/, a directory) is filed
 // on the first source file of sonar.sources and its message names the real path, so no finding is dropped.
 // The output is deterministic: rules sorted by id, issues by file, line, rule and message, so two runs over one tree are
-// byte-identical. A finding of level `info` (report-only) is not exported: the gate fails on any imported issue.
+// byte-identical. Only an error is exported, since the gate fails on any imported issue: a finding of level `info` or `warning` (report-only) is not, and
+// neither is a linter warning (an ESLint message of severity 1, a stylelint warning of severity `warning`: a style rule of the canon, PROJECT-LINT-6,
+// owner 2026-11-25), which stays in the app check's own report. The gate's zero for errors is unchanged.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -116,6 +118,8 @@ const stylelintText = (warning: LinterResult): string => String(warning.text ?? 
 // What differs between the two linters' json output: where the file, the findings, the rule and the text are.
 const LINTERS: Readonly<Record<string, {
   engine: string; errorRule: string; file: (result: LinterResult) => unknown; findings: (result: LinterResult) => LinterResult[] | undefined;
+  /** Whether a finding is a warning (report-only, never imported). */
+  warning: (finding: LinterResult) => boolean;
   rule: (finding: LinterResult) => string | undefined; text: (finding: LinterResult) => string; describe: (id: string) => string; describeError: string;
 }>> = Object.freeze({
   eslint: {
@@ -123,6 +127,7 @@ const LINTERS: Readonly<Record<string, {
     errorRule: 'eslint-error',
     file: (result) => result.filePath,
     findings: (result) => result.messages,
+    warning: (message) => message.severity === 1,
     rule: (message) => message.ruleId,
     text: (message) => message.message,
     describe: (id) => `ESLint rule ${id} of the StarCi canon (@starci/eslint-canon-be and @starci/eslint-canon-fe) or of a plugin it composes.`,
@@ -133,6 +138,7 @@ const LINTERS: Readonly<Record<string, {
     errorRule: 'stylelint-error',
     file: (result) => result.source,
     findings: (result) => result.warnings,
+    warning: (warning) => warning.severity === 'warning',
     rule: (warning) => warning.rule,
     text: stylelintText,
     describe: (id) => `Stylelint rule ${id} of the StarCi CSS canon (@starci/stylelint-canon, HFS R61).`,
@@ -161,6 +167,7 @@ export function linterReport(kind: string, results: readonly LinterResult[], { r
     const relative = posix(path.isAbsolute(source) ? path.relative(root, source) : source);
     if (relative.startsWith('..')) continue;
     for (const finding of linter.findings(result) ?? []) {
+      if (linter.warning(finding)) continue;
       const id = linter.rule(finding) || linter.errorRule;
       if (!rules.has(id)) rules.set(id, ruleOf(id, linter.engine, id, id === linter.errorRule ? linter.describeError : linter.describe(id)));
       const primaryLocation = place(relative, linter.text(finding) || id, finding.line, finding.endLine);

@@ -4,7 +4,7 @@
  * A unit spec is a `*.spec.ts` outside the folders that own the other test kinds (`src/tests/{e2e,integration,contract,world}`)
  * only. Only a `<name>.<role>.spec.ts` beside `<name>.<role>.ts` is a legitimate unit spec (R47): of a spec-required unit role
  * (`ruleParams.be.unitRoles`: a service, a cli command) anywhere its slot admits, and of any other LOGIC role (`ruleParams.be.logicRoles`: a policy,
- * a client, a guard, a mapper, ...) inside a slot whose `coverage` is required, where the spec is optional (the file owes 100 per file, not a spec of
+ * a client, a guard, a mapper, ...) inside a slot whose `coverage` is required, where the spec is optional (the file owes its coverage bar per file, not a spec of
  * its own), and so is `<file>.spec.ts` beside a logic file its slot declares (`logic`), measured like a logic role. So is the spec of a door of a
  * feature kind that has no service of its own
  * (`<provider>.webhook.spec.ts`, `<channel>.gateway.spec.ts`, `<channel>.subscription.spec.ts` beside its door, in the kind's slot);
@@ -63,7 +63,7 @@ export const isServiceSpecFile = (hfs: HfsView, filename: string): boolean => /\
  */
 export const unitRoles = (hfs: HfsView): readonly HfsUnitRole[] => hfs.ruleParams.unitRoles ?? []
 
-/** Whether the slot that owns a file is measured at 100 per file (`coverage: required`): the home of the optional specs of the logic roles. */
+/** Whether the slot that owns a file is measured at its coverage tier (BE-TEST-13) (`coverage: required`): the home of the optional specs of the logic roles. */
 const inCoverageSlot = (hfs: HfsView, filename: string): boolean => {
     const slot = hfs.slotOf(filename)
     return slot !== null && hfs.slot(slot)?.coverage === "required"

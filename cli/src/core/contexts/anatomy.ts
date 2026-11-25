@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
@@ -31,8 +31,19 @@ interface AnatomyData {
     readonly planned: readonly PlannedRule[]
 }
 
-/** The knowledge folder: `<runtime root>/contexts`. */
-export const knowledgeDir = (): string => join(runtimeRoot(), "contexts")
+/** The knowledge folder of the harness checkout at `root` (default: the runtime root of the CLI that runs): `<root>/contexts`. */
+export const knowledgeDir = (root: string = runtimeRoot()): string => join(root, "contexts")
+
+/**
+ * The harness checkout a run works on: the nearest folder at or above `cwd` that holds `contexts/hfs/slots.yaml` and `ops/checks.yaml` (so `--cwd <dir>` and a
+ * lane worktree write into themselves, never into the checkout the CLI was built in), else the runtime root of the running CLI. Pure over the disk.
+ */
+export const harnessRootOf = (cwd: string): string => {
+    for (let at = resolve(cwd); ; at = dirname(at)) {
+        if (existsSync(join(at, "contexts", "hfs", "slots.yaml")) && existsSync(join(at, "ops", "checks.yaml"))) return at
+        if (dirname(at) === at) return runtimeRoot()
+    }
+}
 
 /** The gate's lines: one per red gap, then one naming the rules judged only by planned enforcers. */
 const gateNote = (gate: GateVerdict): string => {
@@ -99,6 +110,32 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
 }
 
 /**
+ * Rewrites the generated files of the knowledge tree at `knowledge` that differ from the generator (anatomy.md's block, the slices, the contexts index, the
+ * section indexes) and leaves the others untouched, so a lane's gate commits only real changes. Returns the changed files, relative to the harness root
+ * with forward slashes. anatomy.md is written first: the contexts index records its size.
+ */
+export const regenerateContexts = (knowledge: string): string[] => {
+    const root = join(knowledge, "..")
+    const file = join(knowledge, "project", "anatomy.md")
+    const changed: string[] = []
+    const mark = (path: string): void => {
+        changed.push(relative(root, path).replaceAll("\\", "/"))
+    }
+    const text = lf(readFileSync(file, "utf8"))
+    const { block } = renderAnatomy(knowledge)
+    if (firstDifference(generatedOf(text), block) !== null) {
+        writeFileSync(file, spliceAnatomy(text, block, file))
+        mark(file)
+    }
+    for (const target of wholeFiles(knowledge)) {
+        if (settleWhole(target, false).verdict === "green") continue
+        settleWhole(target, true)
+        mark(target.file)
+    }
+    return changed
+}
+
+/**
  * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
  * pattern front matter, its slices (`anatomy-<side>.md`, the app root and one side, which op files read instead of
  * the whole anatomy), the contexts index (`project/index.md`, every file of the tree, which a Kernel opens instead of the
@@ -118,8 +155,9 @@ export const contextsAnatomyVerb = defineVerb({
         slice: { kind: "boolean", summary: "print the slice of one side (the app root plus that side), as a task reads it" },
         side: { kind: "string", summary: "the side of --slice: be or fe" },
     },
-    run: (_context, flags) => {
-        const knowledge = knowledgeDir()
+    run: (context, flags) => {
+        // The harness checkout of the caller's folder (`--cwd`, a lane worktree), never the checkout the CLI itself was built in.
+        const knowledge = knowledgeDir(harnessRootOf(context.cwd))
         const file = join(knowledge, "project", "anatomy.md")
         if (!existsSync(join(knowledge, "hfs", "slots.yaml"))) throw new Refusal("CONTEXTS_NOT_FOUND", `no hfs/slots.yaml under ${knowledge}`)
         if (flags.slice) {

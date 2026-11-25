@@ -1,10 +1,9 @@
 // gallery-design.mts - R395, the design pass drawn before code (contexts/project/gallery.md PROJECT-GALLERY-6): `.starcistacks/canvas/design.json` records, per gallery screen id
-// `<area>/<screen>`, how far its design has come (drafted, approved by the owner, built, matched against the approved frame). The findings:
+// `<area>/<screen>`, how far its design has come (drafted, approved, built, matched against the frame). No owner approval gates the build (owner decision 2026-11-25): an agent draws, builds, and the owner fixes later. The findings:
 //   HFS_APP_GALLERY_DESIGN_MANIFEST      the manifest is not JSON or not its shape (an error);
 //   HFS_APP_GALLERY_DESIGN_PAGE_MISSING  a built or matched page has no gallery/pages/<area>/<screen>/explain.md;
-//   HFS_APP_GALLERY_DESIGN_UNAPPROVED    a screen of an area listed in `areas` exists in the gallery and has no approved design;
 //   HFS_APP_GALLERY_DESIGN_SHOT_MISSING  a built or matched page records no sha of its 1440 or 390 shot, or the work tree holds shots of it without that width;
-//   HFS_APP_GALLERY_DESIGN_SHOT_STALE    a shot record that predates the approval (a drafted or approved page that carries `shots`), or a shot in the work tree
+//   HFS_APP_GALLERY_DESIGN_SHOT_STALE    a shot record that predates the design (a drafted or approved page that carries `shots`), or a shot in the work tree
 //                                         that is not the one recorded.
 // All but the first are localOnly: a warning in `--env local`, an error in `--env prod`. The shots are never tracked (PROJECT-GALLERY-1 item 5), so the recorded sha
 // is the evidence a fresh checkout judges; the work tree's PNGs are compared with it wherever they exist.
@@ -31,7 +30,7 @@ export interface DesignPage {
   matchedAt?: string;
   board: string;
   shots?: Partial<Record<(typeof DESIGN_WIDTHS)[number], string>>;
-  /** Approved (or drafted) but not buildable yet, e.g. it waits on data or an API: the gates that couple a code change to this screen skip it, and the reason is listed (PROJECT-GALLERY-6 item 9). */
+  /** Approved (or drafted) but not buildable yet, e.g. it waits on data or an API: the UI Audit skips it, and the reason is listed (PROJECT-GALLERY-6 item 9). */
   pending?: { reason: string };
 }
 export interface DesignManifest {
@@ -52,7 +51,7 @@ export const PENDING_UNBUILT = 'HFS_APP_GALLERY_DESIGN_PENDING';
 export const CRITIQUE_SINCE = '2026-11-18T00:00:00+07:00';
 export const CRITIQUE_MISSING = 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING';
 
-/** True from `approved` on: the owner has approved the page's frames. */
+/** True from `approved` on: the page's frames are settled (an `approvedAt` is then recorded). */
 export const isApproved = (status: DesignStatus): boolean => DESIGN_STATUSES.indexOf(status) >= DESIGN_STATUSES.indexOf('approved');
 /** True from `built` on: the page is in code and its shots are recorded. */
 export const isBuilt = (status: DesignStatus): boolean => DESIGN_STATUSES.indexOf(status) >= DESIGN_STATUSES.indexOf('built');
@@ -74,12 +73,12 @@ function pageProblems(id: string, value: unknown, areas: ReadonlySet<string>): s
   if (approved && (typeof approvedAt !== 'string' || !ISO.test(approvedAt) || Number.isNaN(Date.parse(approvedAt)))) problems.push(`the page "${id}" is ${status} without an ISO "approvedAt" timestamp with its zone (e.g. 2026-11-17T09:30:00+07:00; a bare date such as 2026-11-17 is refused)`);
   const matchedAt = page['matchedAt'];
   if (matchedAt !== undefined && (status !== 'matches' || typeof matchedAt !== 'string' || !ISO.test(matchedAt) || Number.isNaN(Date.parse(matchedAt)))) problems.push(`the page "${id}" carries "matchedAt" ${JSON.stringify(matchedAt)}: only a matches page has it, as an ISO timestamp with its zone, set by the reviewer when the final critique is done`);
-  if (!approved && approvedAt !== undefined) problems.push(`the page "${id}" is ${String(status)} and carries "approvedAt": only the owner's approval sets it, a redraw drops it`);
+  if (!approved && approvedAt !== undefined) problems.push(`the page "${id}" is ${String(status)} and carries "approvedAt": only an approved page has it, a redraw drops it`);
   if (typeof page['board'] !== 'string' || !/^https:\/\/\S+$/u.test(page['board'])) problems.push(`the page "${id}" has no "board" (the https link of the published board)`);
   const pending = page['pending'];
   if (pending !== undefined) {
     if (!plain(pending) || Object.keys(pending).some((key) => key !== 'reason')) problems.push(`the page "${id}" has a "pending" that is not exactly { "reason": "<why it cannot be built yet>" }`);
-    else if (typeof pending['reason'] !== 'string' || pending['reason'].trim() === '') problems.push(`the page "${id}" is pending with no reason: say what it waits on (data, an API), because a pending screen is skipped by the change gates`);
+    else if (typeof pending['reason'] !== 'string' || pending['reason'].trim() === '') problems.push(`the page "${id}" is pending with no reason: say what it waits on (data, an API), because a pending screen is skipped by the UI Audit`);
     if (status === 'built' || status === 'matches') problems.push(`the page "${id}" is ${String(status)} and still pending: a built page is not pending, drop "pending"`);
   }
   const shots = page['shots'];
@@ -172,18 +171,11 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
   }
   const pending = Object.entries(manifest.pages).filter(([, page]) => page.pending !== undefined);
   if (pending.length > 0) {
-    findings.push(found(PENDING_UNBUILT, file, `${pending.length} screen${pending.length === 1 ? '' : 's'} pending, skipped by the change gates (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, UI_AUDIT_*): ${pending.map(([id, page]) => `${id} (${page.pending?.reason.trim() ?? ''})`).join('; ')} ${rule}`, { level: 'info' }));
+    findings.push(found(PENDING_UNBUILT, file, `${pending.length} screen${pending.length === 1 ? '' : 's'} pending, skipped by the UI Audit (UI_AUDIT_*): ${pending.map(([id, page]) => `${id} (${page.pending?.reason.trim() ?? ''})`).join('; ')} ${rule}`, { level: 'info' }));
     for (const [id] of pending) {
       const shot = byId.get(id);
-      if (shot !== undefined && shot.shots > 0) findings.push(found(PENDING_UNBUILT, `${params.pages}/${id}`, `the pending screen ${id} has a shot in the work tree, so it is coded: drop "pending" from its entry in ${file} and let the change gates judge it ${rule}`, { level: 'info' }));
+      if (shot !== undefined && shot.shots > 0) findings.push(found(PENDING_UNBUILT, `${params.pages}/${id}`, `the pending screen ${id} has a shot in the work tree, so it is coded: drop "pending" from its entry in ${file} and let the UI Audit judge it ${rule}`, { level: 'info' }));
     }
-  }
-  const areas = new Set(manifest.areas);
-  for (const screen of screens) {
-    const id = `${screen.area}/${screen.screen}`;
-    if (!areas.has(screen.area) || !(screen.shots > 0 || hasExplain(id))) continue;
-    const page = manifest.pages[id];
-    if (page === undefined || !isApproved(page.status)) findings.push(found('HFS_APP_GALLERY_DESIGN_UNAPPROVED', `${params.pages}/${id}`, `the screen ${id} is in the gallery and its area "${screen.area}" is designed first (${file} "areas"), but ${page === undefined ? 'it has no design entry' : 'its design is only drafted'}: draw it on the board and have the owner approve it before it is built ${rule}`, local));
   }
   return findings;
 }

@@ -11,6 +11,9 @@ const CACHE_DIR = ".starcistacks/cache"
 /** The check runs a push may take to settle the cache: the run that writes it, the run that proves it (a record can move once the cache commit changes HEAD), one spare. */
 const MAX_RUNS = 3
 
+/** The finding the pre-push hook's full gate raises when the commit lacks the cache records its run wrote (hfs cache/freshness.mts). */
+export const UNWARMED_CODE = "HFS_CHECK_CACHE_UNWARMED"
+
 /** The check a push of main, a release tag or another branch runs before it pushes: the FULL level, every gate. */
 export const FULL_CHECK_ARGS: readonly string[] = ["app", "check", "--env", "prod", "--level", "full", "--json"]
 
@@ -25,8 +28,8 @@ export interface PushPorts {
     readonly git: (args: readonly string[]) => PushRun
     /** `app check --env prod --level full --json` of the app: exit code and its json report. */
     readonly check: () => PushRun
-    /** `git push <args>`, streaming its hook's output. */
-    readonly push: (args: readonly string[]) => number
+    /** `git push <args>`: its exit code and what git and its hook printed (also said as it ran). */
+    readonly push: (args: readonly string[]) => PushRun
     readonly say: (line: string) => void
 }
 
@@ -72,6 +75,18 @@ const blocking = (stdout: string): Finding[] | null => {
  */
 export const porcelainPath = (line: string): string => (/^ ?\S{1,2} +(.*)$/.exec(line.trimEnd())?.[1] ?? "").trim()
 
+/**
+ * Whether the push sends the commit checked out: no refspec, or every refspec's source is `HEAD` or the current branch. Only then does a cache commit made on HEAD
+ * ride with the push; a push of another commit (the landing's squash, `<sha>:refs/heads/dev`) cannot carry it.
+ */
+export const pushesHead = (args: readonly string[], current: string | undefined): boolean => {
+    const specs = args.filter((arg) => !arg.startsWith("-")).slice(1)
+    return specs.every((spec) => {
+        const source = (spec.includes(":") ? spec.slice(0, spec.indexOf(":")) : spec).replace(/^\+/u, "")
+        return source === "HEAD" || (current !== undefined && (source === current || source === `refs/heads/${current}`))
+    })
+}
+
 /** The paths git lists as changed or untracked outside the cache folder. */
 const dirtyOutsideCache = (ports: PushPorts): string[] =>
     ports.git(["status", "--porcelain", "--untracked-files=all"]).stdout.split("\n").map(porcelainPath).filter((line) => line !== "" && !line.startsWith(`${CACHE_DIR}/`))
@@ -88,7 +103,7 @@ const dirtyCache = (ports: PushPorts): string[] =>
  * nothing, and then `git push` runs, whose hook finds a warm cache and passes. A tree with uncommitted work outside the cache is
  * refused: the records would describe files the push does not carry. Any blocking finding stops the verb before the push, as the hook would.
  */
-export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[], level: CheckLevel = "full"): PushOutcome => {
+export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[], level: CheckLevel = "full", current?: string): PushOutcome => {
     const commits: string[] = []
     const dirty = dirtyOutsideCache(ports)
     if (dirty.length > 0) {
@@ -96,11 +111,20 @@ export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[], level
         ports.say(refusal)
         return { pushed: false, exitCode: 2, commits, runs: 0, refusal }
     }
-    // A landing on dev (every ref dev or a lane branch): the pre-push hook runs the fast level ONCE (app check --level dev), which needs no warm cache, so the verb runs no check of its own.
+    // A landing on dev (every ref dev or a lane branch): the pre-push hook runs the fast level ONCE (app check --level dev), which needs no warm cache, so the verb tries the push with no check of its own.
+    // When the hook instead ran its full gate (a pinned hook, a push it judged as main) and refused the commit for lacking the records that run wrote, the push is no landing the fast level can
+    // settle: the records are in the tree now, so the verb falls into the same round a full push takes (check, commit the records, push) and the lane's commit carries them. Only a push of HEAD can
+    // carry that commit; any other source (the landing's squash) is refused as it was.
     if (level === "dev") {
         ports.say("app push: a landing on dev: the pre-push hook runs app check --level dev once; no warm-up run, the full gate runs at the main cut")
-        const exitCode = ports.push(pushArgs)
-        return { pushed: exitCode === 0, exitCode, commits, runs: 0 }
+        const first = ports.push(pushArgs)
+        if (first.exitCode === 0 || !first.stdout.includes(UNWARMED_CODE)) return { pushed: first.exitCode === 0, exitCode: first.exitCode, commits, runs: 0 }
+        if (!pushesHead(pushArgs, current)) {
+            const refusal = `the pre-push hook refused the cache as unwarmed (${UNWARMED_CODE}) and the push does not send the checked-out commit, so a cache commit cannot ride with it: push from the lane (lane gate --push), then land`
+            ports.say(`app push: ${refusal}`)
+            return { pushed: false, exitCode: first.exitCode, commits, runs: 0, refusal }
+        }
+        ports.say(`app push: the hook ran its full gate and refused the push (${UNWARMED_CODE}); running the warm round: check, commit the cache records, push`)
     }
     for (let runs = 1; runs <= MAX_RUNS; runs += 1) {
         ports.say(`app push: check run ${String(runs)} (app check --env prod --level full)`)
@@ -115,8 +139,8 @@ export const warmAndPush = (ports: PushPorts, pushArgs: readonly string[], level
         const changed = dirtyCache(ports)
         if (changed.length === 0) {
             ports.say(commits.length === 0 ? "app push: the committed cache is warm; pushing" : `app push: ${String(commits.length)} cache commit(s) made; pushing`)
-            const exitCode = ports.push(pushArgs)
-            return { pushed: exitCode === 0, exitCode, commits, runs }
+            const pushed = ports.push(pushArgs)
+            return { pushed: pushed.exitCode === 0, exitCode: pushed.exitCode, commits, runs }
         }
         const head = ports.git(["rev-parse", "--short", "HEAD"]).stdout.trim()
         const added = ports.git(["add", "-A", "--", CACHE_DIR])
@@ -148,7 +172,7 @@ const realPorts = (cwd: string, say: (line: string) => void): PushPorts => {
         push: (args) => {
             const run = captureGitSync(["push", ...args], root)
             for (const text of [run.stdout, run.stderr]) if (text !== "") say(text)
-            return run.exitCode
+            return { exitCode: run.exitCode, stdout: `${run.stdout}\n${run.stderr}` }
         },
         say,
     }
@@ -170,7 +194,7 @@ export const appPushVerb = defineVerb({
         const ports = realPorts(context.cwd, context.progress)
         const branch = ports.git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim()
         const level = levelOfTarget(pushTargetOfArgs(flags.args, branch === "" || branch === "HEAD" ? undefined : branch))
-        const outcome = warmAndPush(ports, flags.args, level)
+        const outcome = warmAndPush(ports, flags.args, level, branch === "" || branch === "HEAD" ? undefined : branch)
         return Promise.resolve({ data: outcome, message: outcome.pushed ? "pushed" : (outcome.refusal ?? "not pushed"), exitCode: outcome.exitCode })
     },
 })

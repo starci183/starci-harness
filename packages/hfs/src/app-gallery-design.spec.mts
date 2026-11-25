@@ -4,15 +4,13 @@
 // proves: HFS_APP_GALLERY_DESIGN_MANIFEST
 // proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING
 // proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING
-// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED
-// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED
 // proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING
 // proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING
 // proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE
 // proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE
 // R395, the design pass drawn before code (rules/gallery-design.mts; contexts/project/gallery.md PROJECT-GALLERY-6): .starcistacks/canvas/design.json records each screen's design status
 // (drafted, approved, built, matches); a built page has its screen and the sha256 of its 1440 and 390 shots, recorded after the approval and equal to the shots in the work tree
-// wherever they exist; a screen of an area listed in `areas` has an approved design. The manifest's shape is an error; the rest are `local` (report-only in `--env local`).
+// wherever they exist; a screen needs no owner approval to be built (owner decision 2026-11-25). The manifest's shape is an error; the rest are `local` (report-only in `--env local`).
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +24,7 @@ import { localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
 import { A15_CODES } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
-const CODES = ['HFS_APP_GALLERY_DESIGN_MANIFEST', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE'];
+const CODES = ['HFS_APP_GALLERY_DESIGN_MANIFEST', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE'];
 const BOARD = 'https://claude.ai/artifact/0123abcd';
 const APPROVED = '2026-11-17T09:30:00+07:00';
 const EXPLAIN = (area: string): string => `---\ntitle: Khách hàng\nroute: /customers\narea: ${area}\n---\nChủ shop tìm lại một khách trong 5 giây.\n\n## Danh sách\nVì sao: tìm theo tên hoặc số điện thoại.\nLuật: PROJECT-GALLERY-2\nGrammar: \`List\`\n`;
@@ -85,7 +83,7 @@ test('parseDesign: the shape, the page ids, the statuses, approvedAt from approv
   assert.match(one({ status: 'approved', board: BOARD }), /without an ISO "approvedAt"/u);
   assert.match(one({ status: 'approved', board: BOARD, approvedAt: 'yesterday' }), /without an ISO "approvedAt"/u);
   assert.match(one({ status: 'approved', board: BOARD, approvedAt: '2026-11-17' }), /a bare date such as 2026-11-17 is refused/u);
-  assert.match(one({ status: 'drafted', board: BOARD, approvedAt: APPROVED }), /only the owner's approval sets it/u);
+  assert.match(one({ status: 'drafted', board: BOARD, approvedAt: APPROVED }), /only an approved page has it/u);
   assert.match(one({ status: 'drafted', board: 'http://x' }), /no "board"/u);
   assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, shots: { '1920': SHOTS['1440'] } }), /width "1920"/u);
   assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, shots: { '1440': 'ABC' } }), /not a lowercase sha256/u);
@@ -110,16 +108,12 @@ for (const edition of ['lite'] as const) {
     assert.equal(found[0]?.local, true);
   });
 
-  test(`a screen of a designed area with no entry or a drafted one is HFS_APP_GALLERY_DESIGN_UNAPPROVED; an area not listed is not judged`, (t) => {
+  test(`a screen of a designed area with no entry or a drafted one is built without any finding: design needs no owner approval`, (t) => {
     const root = app(t, ['customers/list', 'customers/list-empty', 'customers/detail', 'orders/list'], {
       areas: ['customers'],
       pages: { 'customers/list': { status: 'approved', board: BOARD, approvedAt: APPROVED }, 'customers/list-empty': { status: 'drafted', board: BOARD } },
     });
-    const found = design(run(root, edition));
-    assert.deepEqual(codes(found), ['HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED']);
-    assert.deepEqual(found.map((finding) => finding.path).sort(), ['gallery/pages/customers/detail', 'gallery/pages/customers/list-empty']);
-    assert.match(found.map((finding) => finding.message).join('\n'), /has no design entry[\s\S]*only drafted|only drafted[\s\S]*has no design entry/u);
-    assert.ok(found.every((finding) => finding.local === true));
+    assert.deepEqual(codes(design(run(root, edition))), []);
   });
 
   test(`a built page without a recorded sha, or whose work tree holds shots without one width, is HFS_APP_GALLERY_DESIGN_SHOT_MISSING`, (t) => {

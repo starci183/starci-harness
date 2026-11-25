@@ -97,7 +97,7 @@ malformed).
 Why: a fixed case list per dependency kind turns "a good test" into a checklist whose branches add up to full
 coverage.
 
-Enforced by: R273 (per-file coverage); the case list is review only.
+Enforced by: R273 (the coverage bar of BE-TEST-13); the case list is review only.
 
 ## BE-TEST-7 The feature tier is thin and unmeasured
 
@@ -158,21 +158,48 @@ real store.
 
 Enforced by: `tests-no-override` (eslint, and `test-infra-placement` of hfs: an `overrideProvider`, `overrideGuard` or `overrideModule` call under `src/tests/` or in any integration, e2e or contract spec is BE_TEST_TOPOLOGY), `test-infra-placement` (BE_SPEC_WORLD_MISSING), `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R284.
 
-## BE-TEST-13 Coverage is 100 per measured file, from one derivation
+## BE-TEST-13 Coverage is held to tiers, from one derivation
 
 The unit project measures every logic-role file of the measured roots (`src/modules/{domain,integrations,platform}/*`,
-minus `errors/`, `messages/`, `persistence/`), and every file a measured slot declares in `logic`, at 100 lines, branches,
-functions and statements per file. A file that carries logic without a role suffix is declared by its slot, never by a new
-role name. The logic of a root package (every file below the `src/` of `packages/<name>` but its barrels, its type modules `<name>.types.ts` and `<name>-types.ts` and the slots the
+minus `errors/`, `messages/`, `persistence/`), and every file a measured slot declares in `logic`. A file that carries logic
+without a role suffix is declared by its slot, never by a new role name. The `features/` tier is linted (feature-thin, R203), never
+measured; the front end is not measured.
+
+The bar is the owner's (owner 2026-11-25), its numbers stated once, in `@starci/hfs` knowledge/sonar-gate.yaml:
+
+- **Tiers**, each over its modules as a whole: **A** 85% lines and 80% branches (money, authz, the engine core); **B** 75% lines
+  and 65% branches (the product domain); **C** 60% lines (the integrations, the rest of the platform, the console and read modules).
+- **Business packages** (nivoos): 60%, and every cell and flow has a spec.
+- **The patch** (new or changed measured code): at least 80%.
+- **Every measured file**: at least 50% lines, branches, functions and statements.
+- **The project**: never below its base commit (a ratchet, only up).
+
+Which module is in which tier is the app's declaration, since module names differ per app: hfs.json `sides.be.coverageTiers` maps a
+tier to its modules, each `<layer>/<module>` (a `*` inside the module name) or `packages/<name>`; a module it does not name is in the
+default tier, B. An entry without `*` wins over a pattern, a longer pattern over a shorter one, a stricter tier over a looser one.
+
+```json
+"coverageTiers": {
+  "A": ["domain/billing", "domain/identity", "platform/outbox"],
+  "C": ["integrations/*", "platform/*"]
+}
+``` The logic of a root package (every file below the `src/` of `packages/<name>` but its barrels, its type modules `<name>.types.ts` and `<name>-types.ts` and the slots the
 project opts out with a reason, [project/lint.md](../../project/lint.md) PROJECT-LINT-3, [project/README.md](../../project/README.md) PROJECT-3) is
-inside the scope at the same bar, its specs run by the same unit run; a type module declares types only, and one that holds runtime
+inside the scope at the bar of its tier, its specs run by the same unit run; a type module declares types only, and one that holds runtime
 code is refused by R273.
 A root package that has its own `tsconfig.json` is compiled by jest with it, the others with the back end's options ([project/README.md](../../project/README.md) PROJECT-3); the choice is made by the jest preset from the tree, not rendered.
-The scope is rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no file carries a coverage
-ignore.
+The scope and the bar are rendered once into the managed `jest.config.js` (the per-file floor of every measured file),
+`codecov.yml` (the project ratchet, the patch bar, one `tier-<letter>` component per tier at its bar) and `sonar-project.properties`
+(new code at the patch bar); R273 judges the per-file floor and every tier over the merged lcov. No file carries a coverage ignore, and
+there is no waiver: a module below its bar is covered, or the app moves it to the tier that holds it, in hfs.json.
+The bar, the business bar and the spec of every cell and flow are test and coverage obligations: an app that declares its `test` or
+`coverage` gate off ([project/lint.md](../../project/lint.md) PROJECT-LINT-4) is not judged for them, and every run reports the gate as
+`off (declared: <reason>)`, never as passed.
 
-Why: decisions live in the modules' logic, so a per-file bar on exactly those files is meaningful, and one denominator
-everywhere makes a gap visible wherever it is read.
+Why: decisions live in the modules' logic, so a bar on exactly those files is meaningful, and one denominator everywhere makes a gap
+visible wherever it is read. 100 per file could not be reached (the apps had one spec per three to five source files and switched
+their test gates off), and a bar nobody meets is no bar: the tiers ask most of the code where an error costs money or access, and the
+ratchet keeps every app from going back.
 
 Enforced by: R204, R273, R11.
 

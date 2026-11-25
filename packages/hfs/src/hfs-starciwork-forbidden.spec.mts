@@ -48,5 +48,18 @@ for (const edition of ['lite'] as const) {
       'a lite concept folder holds its record only');
     fs.rmSync(path.join(repoRoot, note));
     assert.deepEqual(findings(['.starciwork/.gitignore'], true), [], 'untracked brand and concept folders are legal local Work');
+
+    // The app's own authoring prompts: Markdown at any depth under prompts/, nothing else there.
+    const prompts = ['.starciwork/prompts/README.md', '.starciwork/prompts/shared/voice.md', '.starciwork/prompts/items/part-1/rules.md'];
+    const promptData = '.starciwork/prompts/items/data.yaml';
+    for (const file of [...prompts, promptData]) {
+      fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
+      fs.writeFileSync(path.join(repoRoot, file), '');
+    }
+    assert.deepEqual(findings([...allowed, ...prompts]), [], 'the authoring prompts are legal Work');
+    assert.deepEqual(findings(['.starciwork/.gitignore'], true), [], 'an untracked prompts folder is legal local Work');
+    assert.deepEqual(findings([...prompts, promptData]).map(({ path: file }) => file), [promptData], 'prompts/ holds Markdown only');
+    const all = checkRepo({ repoRoot, declaration, files: [...allowed, ...prompts], tree: false }).findings;
+    assert.deepEqual(all.filter((finding) => prompts.includes(finding.path as string)), [], 'no slot finding names a prompt');
   });
 }

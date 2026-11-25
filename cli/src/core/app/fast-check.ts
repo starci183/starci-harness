@@ -11,7 +11,7 @@ import type { PushTarget } from "../deps/dev-local.js"
  * THE TWO-LEVEL GATE.
  * `app check --level dev` is the FAST level of a landing on dev: the deps check here (local-registry pins accepted for an app that declares
  * hfs.json deps.devAllowsLocalRegistry), then @starci/hfs's fast families (types with its package builds and codegen, the lane's own tests,
- * db, the design approval; packages/hfs/cache/fast-level.mts). `--level full` (the default) is every gate, run once at the main cut: a push
+ * db; packages/hfs/cache/fast-level.mts). `--level full` (the default) is every gate, run once at the main cut: a push
  * of main or a release tag, `release cut`, `release push`, `app release`. One pass per push: a green fast run on a clean tree is remembered by
  * the content of its tree (outside the cache folder), so the pre-push hook of the push that follows `lane gate` finds
  * the same tree judged and does not run it again.

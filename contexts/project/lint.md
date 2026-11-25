@@ -243,7 +243,8 @@ lint plugin of its own (R103).
   (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`, `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382). A package's own
   `slots.yaml` is still read for a package the manifest does not declare.
 - **A business package has its own profile.** A package the project declares under `sides.nivoos` (hfs.json) is the slot `app.nivoos-package`, whose `lintProfile: nivoos` hands its source to the SDK authoring profile of `@starci/eslint-canon-be`: the back-end canon less a short list of relaxations, each with its reason ([business-repo.md](business-repo.md) PROJECT-BUSINESS-1): among them `no-non-ascii-source`, which is not applied to the package at all because its business copy and comments are Vietnamese, and `starci app check` runs `nivoos package check` for it (`HFS_NIVOOS_PACKAGE_CHECK`, R436). The first slot that holds a file still decides: a package the project declares is never also an `ext/manifest.json` `packages` entry.
-- **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
+- **Package coverage follows the slots.** Every file of a package is measured in the back end's unit run at the bar of its coverage tier
+  (`packages/<name>` in hfs.json `sides.be.coverageTiers`, BE-TEST-13), but
   its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.
   A package no declaration names is measured whole but its barrels and type files.
 
@@ -276,6 +277,27 @@ A finding with no fix yet may be exempted, for a short time, by an exception:
 - **The owner's.** An exception requires the owner's approval; `approvedBy` names the owner. An agent never adds, renews or lengthens an exception on its own: it upgrades the dependency, or reports the finding
   and asks.
 - **One judge.** `starci app audit` (`packages/hfs/audit/`) reads the file; R269 only requires the step. The release gate's opt-in audit row runs the same command.
+
+## PROJECT-LINT-6 Lint has zero errors; a rule that catches a bug is an error, a style rule a warning
+
+The owner's decision (owner 2026-11-25): an app lands with **zero lint errors**, and a lint error is only what catches a real bug or holds
+the architecture. Every rule of the canon packages (`@starci/eslint-canon-be`, `@starci/eslint-canon-fe`) ships at one level, which the
+factory asserts and no repository can change:
+
+- **error, blocks a land:** a rule whose finding is a defect or a broken boundary: un-awaited and misused promises, unsafe `any` flows, a
+  non-null assertion, a non-exhaustive switch, a deprecated API, a layer import (module-layering, explicit-surface, project-graph), the thin
+  feature tier (feature-thin, R203), unused code (dead exports, unused locals), and every security, data-access, transport and test-topology rule.
+- **warn, reported and counted, never failing:** a pure style rule, breaking which changes no behaviour and no boundary. The closed list is
+  `STYLE` of `@starci/eslint-canon-be` lib/config.ts, each entry with its reason: `@typescript-eslint/array-type`, `require-export-jsdoc`,
+  `require-enum-member-jsdoc`, `require-public-member-jsdoc`, `no-restated-name-jsdoc`, `no-version-in-name`, `no-default-export`. The front-end
+  canon has no style rule of its own (its one `warn`, the counting cohort `no-spacing-utility`, moves to error when its codemod lands);
+  formatting is Prettier's (`format` gate), never a lint rule.
+
+A rule joins `STYLE` only when its finding changes nothing a user or a module can observe; a rule that catches a bug never moves to warn, and
+nothing is ever `off`. The Sonar way rules are the server's conditions and stay as the scan raises them.
+
+Enforced by: the canon factories (`starciBeConfig`, `starciFeConfig`) refuse a recommendation in which any rule is at another level than its own;
+`starci app check --gate lint` fails on an error finding only.
 
 ## Read with
 

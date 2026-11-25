@@ -92,7 +92,8 @@ test("the config judges a declared package by its own blocks: the canon less the
         const profiled = ruleBlocks.find((block) => JSON.stringify(block.files) === JSON.stringify([["packages/biz/src/**", "**/*.{ts,mts,cts,js,mjs,cjs}"]]))
         assert.ok(profiled !== undefined, "the declared package has its own rule block")
         for (const relaxed of Object.keys(NIVOOS_RELAXED)) assert.equal(relaxed in (profiled.rules ?? {}), false, `${relaxed} is relaxed`)
-        for (const kept of ["starci-be/schema-bounded", "starci-be/require-export-jsdoc", "starci-be/no-inline-object-type", "starci-be/no-default-export"]) assert.equal((profiled.rules ?? {})[kept], "error", `${kept} is kept`)
+        for (const kept of ["starci-be/schema-bounded", "starci-be/no-inline-object-type"]) assert.equal((profiled.rules ?? {})[kept], "error", `${kept} is kept`)
+        for (const kept of ["starci-be/require-export-jsdoc", "starci-be/no-default-export"]) assert.equal((profiled.rules ?? {})[kept], "warn", `${kept} is kept at its canon level, a style warning`)
         assert.equal("starci-be/no-non-ascii-source" in (profiled.rules ?? {}), false, "no-non-ascii-source is not applied to the package")
         for (const reason of Object.values(NIVOOS_RELAXED)) assert.ok(reason.length > 120, "each relaxation says why")
     } finally { app.cleanup() }

@@ -24,6 +24,29 @@ const CONFIG_NAME = /^(hfs\.json|package\.json|tsconfig[^/]*\.json|eslint\.confi
 const HFS_RUN: readonly FamilyId[] = ['hfs', 'secrets', 'wiring', 'db', 'uiaudit'];
 
 /**
+ * The pure-data files of `@starci/hfs` that are parts of their own, by part name, with the families whose cached records read them. The package's source digest
+ * (`starciSource`) covers every tracked file, so a change of one data file would make the `hfs` part differ and re-run every hfs-run family; a data file that only
+ * rules which run every run read is stamped apart (`starciSourceParts`, cli `SOURCE_SPLITS`) and the `hfs` part holds the rest. `canon-pins.yaml` is read by
+ * canon-pins.mts alone: the pin rules (pin-findings.mts `HFS_CANON_PIN_DRIFT`, the pipeline rule's hfs pin) judge it every run and no record is derived from it,
+ * so no family's records depend on it. A data file with a cached reader is never listed here: it stays in the `hfs` part.
+ */
+const SPLIT_PARTS: Readonly<Record<string, readonly FamilyId[]>> = {
+  'canon-pins': [],
+};
+
+/** The manifest field that carries the source digest in parts (core plus each split data file), stamped beside `starciSource`. */
+export const SOURCE_PARTS_FIELD = 'starciSourceParts';
+
+/** The source digest in parts a package manifest carries (its `core` is the digest of every file but the split data files), or undefined when it carries none. */
+export function sourcePartsOf(manifest: Record<string, unknown> | undefined): Readonly<Record<string, string>> | undefined {
+  const parts = manifest?.[SOURCE_PARTS_FIELD];
+  if (parts === null || typeof parts !== 'object' || Array.isArray(parts)) return undefined;
+  const found = parts as Record<string, unknown>;
+  if (typeof found['core'] !== 'string' || found['core'] === '' || sourceOf(manifest) === undefined) return undefined;
+  return Object.fromEntries(Object.entries(found).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== ''));
+}
+
+/**
  * The toolchain of each tool family as the lockfile resolves it: the installed packages whose version can change that family's results while no record keys
  * on them. `test` is the runner (Jest, its transform and the compiler the transform runs); a package a spec loads is in that spec's own record
  * (package-closure.mts), and a program's packages in its `tsc` record.
@@ -71,6 +94,7 @@ function familiesOfConfig(base: string): readonly FamilyId[] {
 export function familiesOfPart(name: string): readonly FamilyId[] {
   if (name === 'cache-format') return FAMILIES;
   if (name === 'hfs') return HFS_RUN;
+  for (const [part, families] of Object.entries(SPLIT_PARTS)) if (name === `hfs:${part}` || name === `pkg:@starci/hfs:${part}`) return families;
   if (name === 'node') return ['test', 'sonar'];
   if (name.startsWith('pkg:@starci/')) return STARCI_FAMILIES[name.slice('pkg:@starci/'.length)] ?? [];
   if (name.startsWith('lock:')) {
@@ -214,7 +238,9 @@ export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new U
   add('cache-format', String(CACHE_FORMAT_VERSION));
   add('node', nodeVersion.split('.')[0] ?? nodeVersion);
   const hfsManifest = readJson(path.join(hfsDir, 'package.json'));
-  add('hfs', sourceOf(hfsManifest) ?? String(hfsManifest?.['version'] ?? 'unknown'));
+  const hfsParts = sourcePartsOf(hfsManifest);
+  add('hfs', hfsParts?.['core'] ?? sourceOf(hfsManifest) ?? String(hfsManifest?.['version'] ?? 'unknown'));
+  for (const part of Object.keys(SPLIT_PARTS)) if (hfsParts?.[part] !== undefined) add(`hfs:${part}`, hfsParts[part] as string);
   if (!installedUnderNodeModules(hfsDir)) { localReasons.push(`@starci/hfs runs from a local folder (${path.basename(path.resolve(hfsDir))})`); registryOnly = false; }
   const lock = lockEntries(root);
   for (const name of installedStarci(root).sort()) {
@@ -222,6 +248,7 @@ export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new U
     const manifest = readJson(path.join(dir, 'package.json'));
     const version = String(manifest?.['version'] ?? 'unknown');
     const source = sourceOf(manifest);
+    const split = sourcePartsOf(manifest);
     const entry = lock[`node_modules/@starci/${name}`];
     const member = workspaceMemberOf(entry, lock);
     if (member !== null) { add(`pkg:@starci/${name}`, `workspace:${member}\0${version}`); continue; }
@@ -229,7 +256,8 @@ export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new U
     try { linked = linked || fs.lstatSync(dir).isSymbolicLink(); } catch { /* absent: not installed */ }
     const reason = localReasonOf(name, entry, linked, source);
     if (reason !== null) { localReasons.push(reason); registryOnly &&= resolvedOnThisMachine(entry?.resolved) && !linked; }
-    add(`pkg:@starci/${name}`, source === undefined ? `${version}\0${entry?.integrity ?? 'local'}` : `source:${source}`);
+    add(`pkg:@starci/${name}`, source === undefined ? `${version}\0${entry?.integrity ?? 'local'}` : `source:${split?.['core'] ?? source}`);
+    if (name === 'hfs') for (const part of Object.keys(SPLIT_PARTS)) if (split?.[part] !== undefined) add(`pkg:@starci/hfs:${part}`, split[part] as string);
   }
   const digests = packageDigests(lock, root);
   for (const [family, toolchain] of Object.entries(LOCK_TOOLCHAIN)) {

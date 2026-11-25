@@ -157,7 +157,10 @@ function walkCodecov(node: unknown, found: CodecovFound, path: string[] = []): v
   if (node === null || typeof node !== 'object') return;
   for (const [key, value] of Object.entries(node)) {
     if ((key === 'target' || key === 'threshold') && (typeof value !== 'object' || value === null)) {
-      const number = key === 'target' && String(value).trim() === 'auto' ? 0 : percentOf(value);
+      // `target: auto` of the project status is the canon's ratchet (owner 2026-11-25): never below the base commit. Anywhere else it holds nothing.
+      const auto = key === 'target' && String(value).trim() === 'auto';
+      if (auto && path.at(-2) === 'project' && path.includes('status')) continue;
+      const number = auto ? 0 : percentOf(value);
       found.numbers.push({ key, value: Number.isNaN(number) ? 0 : number, line: 1 });
     } else if (SETTING_KEYS.has(key)) found.settings.push({ key, value: String(value), line: 1 });
     else if ((key === 'project' || key === 'patch' || key === 'changes') && path.includes('status') && (value === false || String(value) === 'off')) found.settings.push({ key: 'status', value: 'off', line: 1 });

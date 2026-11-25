@@ -2,6 +2,41 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.203 - 2026-11-26
+
+- Changed (h-cache-warm): a packed `@starci/hfs` carries its source digest in parts (`starciSourceParts`: the core and `canon-pins.yaml`) beside the unchanged `starciSource`, so the check cache keys the pins apart (`SOURCE_SPLITS`, `sourceDigestParts`).
+- Fixed (h-cache-warm, `app push`): a push to dev or a lane branch that the pre-push hook refused with HFS_CHECK_CACHE_UNWARMED (its full gate ran) no longer ends the verb: it falls into the check, cache commit, push round when it pushes the checked-out commit, and says why when it pushes another (the landing's squash).
+- Changed (h-lane-hygiene): `contexts anatomy --execute` writes into the harness of `--cwd`; the harness `lane gate` regenerates the generated contexts files and commits only the changed ones with the lane; land cleanup treats stale generated files as no work and says how to finish a worktree a live process holds; `lane gate` warns early when the disk runs low (`host.diskWarnMb`, `heavy.diskWarnMb`).
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.16 (the deploy and rollback jobs install age, so a release tag deploys), @starci/grammar 0.59.4 and @starci/gallery 0.1.28.
+
+## 1.1.0-alpha.202 - 2026-11-25
+
+- Changed: the CLI requires @starci/hfs@6.17.15, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.15, @starci/grammar 0.59.3 (MermaidDiagram always opens the whole drawing, contain-fitted and clear of its controls row) and @starci/gallery 0.1.27.
+
+## 1.1.0-alpha.201 - 2026-11-25
+
+- Changed: the CLI requires @starci/hfs@6.17.14, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.14, @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px; the tab strip's page controls keep their own gutter, MermaidDiagram fits a wide drawing's width or lays it out top-down, the ProportionBar dot on a label's first line, the Disclosure trigger on the start edge) and @starci/gallery 0.1.26.
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.14, @starci/grammar 0.59.2 (EmptyNotice buttons at 40px, the Section head wraps its action at 390px) and @starci/gallery 0.1.26.
+
+## 1.1.0-alpha.200 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.13 (coverage tiers, the managed .gitattributes keeps binaries binary), @starci/jest-preset 2.12.2, @starci/eslint-canon-be 3.28.6 and @starci/eslint-canon-fe 9.22.2.
+
+## 1.1.0-alpha.199 - 2026-11-25
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.13 (the managed .gitattributes keeps binaries binary under the .starcistacks LF rule).
+
+## 1.1.0-alpha.198 - 2026-11-25
+
+- Changed: the CLI requires @starci/hfs@6.17.12, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
+- Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.12 (the app.gallery-look slot, R268 skips client-cli apps), @starci/grammar 0.59.1 and @starci/gallery 0.1.25.
+
 ## 1.1.0-alpha.197 - 2026-11-25
 
 - Changed: the CLI requires @starci/hfs@6.17.11, @starci/seed@0.3.1, @starci/common@1.0.2, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

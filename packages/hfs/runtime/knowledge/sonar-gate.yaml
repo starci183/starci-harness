@@ -2,7 +2,7 @@ schema: starci/sonar-gate@1
 id: sonar-gate
 title: The Sonar quality gate every product is held to
 purpose: |
-  The one place the Sonar thresholds live. A product repository never restates them: its
+  The one place the Sonar and coverage thresholds live. A product repository never restates them: its
   .starcistacks/application-stacks.yaml `services.sonar.qualityGate` names the gate below, and
   scripts/gates/sonar-local.mjs (1) makes the local SonarQube's gate of that name carry exactly these
   conditions and selects it for the project, and (2) judges an op's slice - the lines it changed - against
@@ -25,9 +25,10 @@ newCode:
   # sonar.coverage.exclusions = the complement of the measured files (SonarQube has no coverage inclusions), rendered by starci app sync from the one derivation scripts/hfs/coverage-scope.mts (be/jest.config.js and codecov.yml
   # are rendered from it too; a hand edit of any of them is R204 HFS_COVERAGE_SCOPE_DRIFT). The feature tier, declaration files, tests and
   # fe/ are never coverage targets, so coverage on these conditions is the coverage of the modules' logic alone.
+  # This is THE patch bar (owner 2026-11-25): new or changed measured code reaches 80, here and in codecov.yml's patch status.
   coverage:
     metric: new_coverage
-    minPercent: 100
+    minPercent: 80
   # SonarQube's ignoreSmallChanges floor: 0, so a change of any size is held to duplication.
   ignoreBelowChangedLines: 0
   duplication:
@@ -49,6 +50,8 @@ newCode:
 #   starci-hfs   the repository findings of the gates a run selects (managed files, tree, pins, CI, contracts; the rule id is the finding code)
 #   eslint       ESLint's json over the repository (the BE and FE canon plugins alike, per-file and project-graph rules)
 #   stylelint    stylelint's json over the style glob (front ends)
+# Only errors are imported: a linter warning (a style rule of the canon at `warn`, PROJECT-LINT-6, owner 2026-11-25) and a report-only check finding stay in the
+# app check's report and never reach the gate, so `max: 0` below counts errors and nothing else.
 # The engines share ONE placement rule (a finding on a file Sonar does not index is filed on the first source file); Sonar's own
 # ESLint import (sonar.eslint.reportPaths) is not used because it drops such issues.
 # A SonarQube gate condition cannot filter issues by engine, so the condition is the project's open issues (`violations`,
@@ -65,13 +68,33 @@ overall:
   hotspots:
     metric: security_hotspots_reviewed
     minReviewedPercent: 100
-  # The measured files' coverage (see newCode.coverage), overall and per file: with the exclusions in place each measured file is its
-  # own measure, so one measured file below 100 fails the slice verdict (sonar-local evaluateSlice) and the dashboard verdict
-  # (sonar-local dashboard) although the project average may round to 100. A file outside the scope is never read.
+  # The measured files' coverage (see newCode.coverage), owner 2026-11-25 (BE-TEST-13, R273). `minPercent` is THE per-file floor: every
+  # measured file reaches it on lines, branches, functions and statements (the jest per-file threshold, R273, the slice and dashboard
+  # verdicts of sonar-local). `tiers` are the bars of a group of modules, each the coverage of the group as a whole (R273 over the lcov,
+  # a Codecov component per tier): which module is in which tier is the app's declaration (hfs.json sides.be.coverageTiers), and a module
+  # the app does not name is in `defaultTier`. `business` is the bar of a business package (nivoos), whose every cell and flow has a spec.
+  # `project: ratchet` holds the whole measured scope at the value of its base commit: codecov.yml's project status is `target: auto` with
+  # threshold 0, so the project floor only goes up. A file outside the scope is never read.
   coverage:
     metric: coverage
-    minPercent: 100
+    minPercent: 50
     perFile: true
+    tiers:
+      # A: money, authz and the engine core.
+      A:
+        lines: 85
+        branches: 80
+      # B: the product domain.
+      B:
+        lines: 75
+        branches: 65
+      # C: the integrations, the rest of the platform and the console and read modules.
+      C:
+        lines: 60
+    defaultTier: B
+    business:
+      lines: 60
+    project: ratchet
   # HFS_DUPLICATE_CODE (R21): duplicated lines density of the whole project, the Sonar enforcer of the machine's clone check.
   # SonarJS runs its own token-based detection (sonar.cpd.* minimums are not read for TypeScript), so ruleParams.<profile>.duplicateBlock
   # is enforced by the machine and imported as starci-hfs issues, and this density is the Sonar-side backstop.
@@ -93,9 +116,12 @@ enforcedOps: [backend.implement, interface.implement, code.refactor, code.fix]
 reasoning: |
   Chosen against the four projects the local server holds (whole-project duplicated lines
   1.6 / 2.1 / 1.7 / 0.0 percent), so new code that meets them is at or below what main already carries.
-  coverage 100 on the measured logic files, overall and new code: the unit project already fails below its per-file
-  100 threshold on the `ruleParams.be.logicRoles` files of the `coverage: required` slots; Sonar imports the same run's lcov with the same scope, so the dashboard, the slice
-  verdict and the server gate show the number the runner enforces, file by file. Only the modules' logic counts: business logic
+  coverage tiers (owner 2026-11-25, replacing 100 per file, which no app could reach: NIVO's domain had one spec per five
+  source files): the new code reaches 80 (the patch bar), every measured file 50 (the floor the unit project's per-file threshold
+  enforces on the `ruleParams.be.logicRoles` files of the `coverage: required` slots), each tier of modules its own bar as a whole
+  (A 85/80 lines/branches for money, authz and the engine core; B 75/65 for the product domain; C 60 for the rest) and the project
+  never less than at its base commit. Sonar imports the same run's lcov with the same scope, so the dashboard, the slice verdict
+  and the server gate read the numbers the runner and R273 enforce. Only the modules' logic counts: business logic
   lives there, the feature tier is thin (R203) and proven by integration and e2e, and the front end has no unit tests.
   duplication 3: the Sonar way value; the worst project today is 2.1, so 3 rejects a real copy-paste block and
   passes ordinary work.

@@ -12,9 +12,11 @@
  * `error`, the Sonar way rules over the files the scan judges (scripts/lib/sonar-way.mjs: eslint-plugin-sonarjs and unicorn), and
  * `settings.starci.hfs` - the slot view each path-scoped rule asks instead of a path pattern.
  *
- * NO RULE IS OFF OR WARN. The recommendation itself ships `error`; the factory refuses one that carries anything
- * else, so a rule cannot be published weakened and still look adopted. The factory takes no rule overrides, globs
- * or ignores: there is no parameter through which a repository could weaken the canon.
+ * NO RULE IS OFF. A rule that catches a real bug or holds the architecture (un-awaited promises, unsafe any, layer imports, feature-thin R203,
+ * unused code) ships `error` and blocks a land; a pure style rule (`STYLE`, owner 2026-11-25, PROJECT-LINT-5) ships `warn`: reported and counted
+ * by `starci app check --gate lint`, never failing it. The factory refuses a recommendation in which any rule is at another level than that, so a
+ * rule cannot be published weakened and still look adopted. The factory takes no rule overrides, globs or ignores: there is no parameter through
+ * which a repository could weaken the canon.
  */
 import tsParser from "@typescript-eslint/parser"
 import { OUTSIDE_THE_SCAN_FILES } from "../../runtime/scripts/lib/sonar-syntax-rules.mjs"
@@ -45,7 +47,24 @@ export const IGNORED = Object.freeze(["dist/**", "coverage/**", "**/node_modules
  */
 const ROOT_SCRIPTS = Object.freeze(["*.js", "*.mjs", "*.cjs"])
 
-/** The typescript-eslint rules the canon borrows (BE-CONVENTION 1.17, R72/R73; Sonar S1874, S6551 and S7503 through R235), all `error`. */
+/**
+ * The style rules of the canon (owner 2026-11-25, PROJECT-LINT-5), each with why it is form and not a bug: they ship at `warn`. Every other rule
+ * of the canon and every borrowed rule ships at `error`. A rule joins this list only when breaking it changes no behaviour and no boundary.
+ */
+export const STYLE: Readonly<Record<string, string>> = Object.freeze({
+    "@typescript-eslint/array-type": "Array<T> and T[] are one type to the compiler; the spelling is form",
+    "starci-be/require-export-jsdoc": "a missing JSDoc on an export changes no behaviour; it is documentation form",
+    "starci-be/require-enum-member-jsdoc": "a missing JSDoc on an enum member changes no behaviour; it is documentation form",
+    "starci-be/require-public-member-jsdoc": "a missing JSDoc on a public member changes no behaviour; it is documentation form",
+    "starci-be/no-restated-name-jsdoc": "a JSDoc that restates the name is weak prose, not a defect",
+    "starci-be/no-version-in-name": "a version in a name is naming form; the import graph and behaviour are the same",
+    "starci-be/no-default-export": "a default export is import form; module-layering and explicit-surface hold what the module exposes",
+})
+
+/** The level the canon asks for a rule: `warn` for a style rule (`STYLE`), `error` for every other. */
+export const canonLevel = (name: string): "error" | "warn" => (Object.hasOwn(STYLE, name) ? "warn" : "error")
+
+/** The typescript-eslint rules the canon borrows (BE-CONVENTION 1.17, R72/R73; Sonar S1874, S6551 and S7503 through R235), each at its canon level. */
 export const BORROWED: Recommended = Object.freeze<Recommended>({
     "@typescript-eslint/consistent-type-assertions": ["error", { assertionStyle: "never" }],
     "@typescript-eslint/no-explicit-any": "error",
@@ -53,7 +72,7 @@ export const BORROWED: Recommended = Object.freeze<Recommended>({
     "@typescript-eslint/no-floating-promises": "error",
     "@typescript-eslint/no-misused-promises": "error",
     "@typescript-eslint/switch-exhaustiveness-check": "error",
-    "@typescript-eslint/array-type": ["error", { default: "generic", readonly: "generic" }],
+    "@typescript-eslint/array-type": ["warn", { default: "generic", readonly: "generic" }],
     "@typescript-eslint/no-deprecated": "error",
     "@typescript-eslint/no-base-to-string": "error",
     "@typescript-eslint/require-await": "error",
@@ -93,8 +112,8 @@ export const buildBeConfig = async ({ hfs, plugin, recommended }: {
     const rules = recommended ?? {}
     if (!plugin?.rules) throw new Error("starciBeConfig needs the canon plugin")
     if (Object.keys(rules).length === 0) throw new Error("starciBeConfig received an empty recommendation - a config with no rules is not adoption")
-    const weak = Object.entries(rules).filter(([, setting]) => levelOf(setting) !== "error").map(([name]) => name)
-    if (weak.length > 0) throw new Error(`starciBeConfig refuses a recommendation with rules not at error: ${weak.join(", ")}`)
+    const weak = Object.entries(rules).filter(([name, setting]) => levelOf(setting) !== canonLevel(name)).map(([name]) => name)
+    if (weak.length > 0) throw new Error(`starciBeConfig refuses a recommendation with rules not at their canon level (error; warn for a STYLE rule): ${weak.join(", ")}`)
     // Loaded here, not at import: the rule catalog check imports this package to list its rules and needs no linter plugin.
     const { default: tsPlugin } = await import("@typescript-eslint/eslint-plugin")
     const [{ default: sonarjs }, { default: unicorn }] = await Promise.all([import("eslint-plugin-sonarjs"), import("eslint-plugin-unicorn")])

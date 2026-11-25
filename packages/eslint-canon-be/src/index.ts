@@ -17,7 +17,7 @@
  * leave two names for one rule and no way to tell which a message came from.
  */
 import { extEslintConfigs } from "@starci/hfs/runtime/scripts/lib/project-ext.mjs"
-import { buildBeConfig, buildBePackagesConfig } from "./lib/config.ts"
+import { BORROWED, buildBeConfig, buildBePackagesConfig, canonLevel } from "./lib/config.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as authPassportRecommended, rules as authPassportRules } from "./auth-passport.ts"
 import { recommended as noRawSqlRecommended, rules as noRawSqlRules } from "./no-raw-sql.ts"
@@ -195,11 +195,19 @@ export const rules: Record<string, RuleModule> = Object.fromEntries(
 )
 
 /**
- * The levels this canon asks for: every rule at `error`. There is no `warn` and no burn-down level; a rule with
- * debt is fixed in the repositories before it ships, never published weaker.
+ * The levels this canon asks for: every rule at `error` but the style rules of lib/config.ts `STYLE` (owner 2026-11-25), which ship at
+ * `warn`. There is no burn-down level; a bug or architecture rule with debt is fixed in the repositories before it ships, never published weaker.
  */
 export const recommended: Record<string, RuleEntry> = Object.fromEntries(
     CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),
+)
+
+/**
+ * The level of every rule the canon config sets (its own rules and the borrowed ones), each `error` or `warn` (`STYLE`, owner 2026-11-25): the check cache
+ * of @starci/hfs replays a recorded finding at the level its rule has here, in the canon installed now.
+ */
+export const levels: Readonly<Record<string, "error" | "warn">> = Object.freeze(
+    Object.fromEntries([...Object.keys(recommended), ...Object.keys(BORROWED)].map((name) => [name, canonLevel(name)])),
 )
 
 /** The plugin object, shaped the way a flat config expects it. */

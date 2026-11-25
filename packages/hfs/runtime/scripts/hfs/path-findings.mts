@@ -132,13 +132,14 @@ export function starciworkFinding(file: string, resolver: Resolver, { dir = fals
   if (!resolver.slot('app.starciwork')) return null;
   const p = resolver.classifyPath(file).path;
   if (!p.startsWith('.starciwork/')) return null;
-  // A directory is admitted when the slot admits any file below it (`brand/**`) or the record it holds (`concepts/index.yaml`).
+  // A directory is admitted when the slot admits any file below it (`brand/**`), the record it holds (`concepts/index.yaml`) or its
+  // README (`prompts/README.md` of `prompts/**/*.md`).
   const admits = (probe: string): boolean => {
     const admitted = allowsFile(resolver, probe);
     return admitted?.slot === 'app.starciwork' && admitted.allowed;
   };
-  if (dir ? admits(`${p}/.probe`) || admits(`${p}/index.yaml`) : admits(p)) return null;
-  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: .starciwork holds only workspace.yaml, master-plan.yaml, brand/ and the concepts (concepts/README.md and concepts/<topic>.md; the records concepts/index.yaml and concepts/<name>/index.yaml of an app that still keeps them) (plus .gitignore); remove this path (per-feature Work documents are retired; full also admits shell/, _resources/ and _derived/)` };
+  if (dir ? admits(`${p}/.probe`) || admits(`${p}/index.yaml`) || admits(`${p}/README.md`) : admits(p)) return null;
+  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: .starciwork holds only workspace.yaml, master-plan.yaml, brand/, the concepts (concepts/README.md and concepts/<topic>.md; the records concepts/index.yaml and concepts/<name>/index.yaml of an app that still keeps them) and the app's own authoring prompts (prompts/**/*.md) (plus .gitignore); remove this path (per-feature Work documents are retired; full also admits shell/, _resources/ and _derived/)` };
 }
 
 /** Local Work leftovers, including metadata ignored by an old .gitignore. */

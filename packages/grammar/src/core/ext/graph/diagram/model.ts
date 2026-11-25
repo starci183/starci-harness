@@ -171,7 +171,10 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
         const at = parent.get(group.id)
         const tone = toneOf(group.id, group.classes ?? [], tones)
         const repeat = (group.classes ?? []).includes("foreach")
-        nodes.push({ id: group.id, label: plainLabel(group.title ?? group.id), shape: "container", ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }), ...(repeat ? { repeat } : {}) })
+        // A subgraph keeps the icon `G@{ icon: "docker" }` gives its id, drawn before its name.
+        const named = db.getVertices().get(group.id)?.icon
+        const icon = typeof named === "string" && named.trim() !== "" ? named.trim() : undefined
+        nodes.push({ id: group.id, label: plainLabel(group.title ?? group.id), shape: "container", ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }), ...(repeat ? { repeat } : {}), ...(icon === undefined ? {} : { icon }) })
     }
     for (const vertex of db.getVertices().values()) {
         if (groupIds.has(vertex.id)) continue

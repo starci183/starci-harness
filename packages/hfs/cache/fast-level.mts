@@ -1,7 +1,7 @@
 // fast-level.mts - `starci app check --level dev`, the FAST level of the two-level gate (contexts/project/cicd.md "Gate levels"). A lane landing on dev and a push of dev run
 // only what breaks dev for everyone at once: the type check (the packages it reads built and the app's codegen first, as the types family does), the lane's own
 // business tests (the unit specs its diff adds or touches and the specs whose closure reaches a changed file, Jest's --findRelatedTests by the closure resolver the
-// test family keys on), the database step and the owner's design approval of a changed screen (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, a product decision, diff-only).
+// test family keys on), and the database step (a screen's design needs no owner approval, owner decision 2026-11-25).
 // The CLI adds the deps check. Everything else (the hfs rule sweep, the first audits and the stale or missing ui-audit blocks, the project and nivoos package checks,
 // the whole unit suite and its coverage, lint, format, wiring, sonar, the CI build and the audit) runs ONCE at the main cut, `--level full`, and a red full run is fixed
 // in a hardening lane before the cut. The fast level keeps no test records and judges no coverage: the full level owns both.
@@ -24,7 +24,7 @@ export const checkLevelOf = (value: string | undefined): CheckLevel | undefined 
 export const FAST_FAMILIES: readonly FamilyId[] = ['types', 'test', 'db'];
 
 /** What the fast level runs, by name, in the order of the start line: the CLI's deps check is the last. */
-export const FAST_GATES: readonly string[] = ['types (package builds, codegen, tsc)', "the lane's own tests (changed and related unit specs)", 'db', 'design approval (HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED)', 'deps (the CLI)'];
+export const FAST_GATES: readonly string[] = ['types (package builds, codegen, tsc)', "the lane's own tests (changed and related unit specs)", 'db', 'deps (the CLI)'];
 
 /** What the fast level skips, each run once at the main cut (`app check --level full`). */
 export const FAST_SKIPPED: readonly string[] = [

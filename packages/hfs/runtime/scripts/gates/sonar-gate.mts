@@ -19,8 +19,14 @@ const GATE_FILE = 'knowledge/sonar-gate.yaml';
 export const GATE_SCHEMA = 'starci/sonar-gate@1';
 export const SCAN_SCHEMA_PREFIX = 'starci/sonar-local-scan@';
 
-/** A coverage policy descriptor: the Sonar metric and the per-file minimum percent. */
+/** A coverage policy descriptor: the Sonar metric and the minimum percent (overall: the per-file floor). */
 export interface GateCoverage { metric: string; minPercent: number }
+/** The bar of one coverage tier: the minimum percent of lines, and of branches when the tier names one, over the tier's files as a whole. */
+export interface TierBar { lines: number; branches?: number }
+/** The overall coverage of the gate: the per-file floor plus the tiers (owner 2026-11-25, BE-TEST-13). */
+export interface GateOverallCoverage extends GateCoverage { perFile: true; tiers: Record<string, TierBar>; defaultTier: string; business: TierBar; project: 'ratchet' }
+/** Every coverage number of the canon, read from the gate: the patch bar, the per-file floor, the tiers, the default tier and the business bar. */
+export interface CoverageBar { patch: number; file: number; tiers: Readonly<Record<string, TierBar>>; defaultTier: string; business: TierBar; project: 'ratchet' }
 interface GateMetric { metric: string }
 /** The new-code half of the gate. */
 export interface GateNewCode {
@@ -32,7 +38,7 @@ export interface GateNewCode {
 }
 /** The overall-code half of the gate. */
 export interface GateOverall {
-  coverage?: GateCoverage;
+  coverage?: GateOverallCoverage;
   issues: GateMetric & { max: number; types: Record<string, unknown> };
   hotspots: GateMetric & { minReviewedPercent: number };
   duplication: GateMetric & { maxPercent: number };
@@ -73,8 +79,40 @@ export function loadSonarGate({ base = root, file = null }: { base?: string; fil
     if (!coverage || typeof coverage.metric !== 'string' || !coverage.metric.trim() || !Number.isFinite(coverage.minPercent) || coverage.minPercent < 0 || coverage.minPercent > 100)
       throw new Error(`${file ?? GATE_FILE}: ${area}.coverage requires a metric and minPercent from 0 to 100`);
   }
+  const tierFaults = tierProblems(gate.overall.coverage);
+  if (tierFaults.length > 0) throw new Error(`${file ?? GATE_FILE}: ${tierFaults.join('; ')}`);
   if (!file) cache = { base, gate };
   return gate;
+}
+
+const percentOk = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
+const tierBarOk = (bar: unknown): bar is TierBar => typeof bar === 'object' && bar !== null && percentOk((bar as TierBar).lines) && ((bar as TierBar).branches === undefined || percentOk((bar as TierBar).branches))
+  && Object.keys(bar).every((key) => key === 'lines' || key === 'branches');
+
+/** What is wrong with the overall coverage of a gate: it is per file, names its tiers (each a bar), a default tier among them, the business bar and the ratchet. */
+function tierProblems(coverage: GateOverallCoverage | undefined): string[] {
+  if (coverage === undefined) return [];
+  const tiers = coverage.tiers;
+  const problems: string[] = [];
+  if (coverage.perFile !== true) problems.push('overall.coverage.perFile must be true: minPercent is the per-file floor');
+  if (typeof tiers !== 'object' || tiers === null || Object.keys(tiers).length === 0 || !Object.entries(tiers).every(([name, bar]) => /^[A-Z]$/.test(name) && tierBarOk(bar))) problems.push('overall.coverage.tiers must map each tier (one capital letter) to {lines, branches?}, percents from 0 to 100');
+  else if (!Object.hasOwn(tiers, coverage.defaultTier)) problems.push(`overall.coverage.defaultTier must name one of the tiers (${Object.keys(tiers).join(', ')})`);
+  if (!tierBarOk(coverage.business)) problems.push('overall.coverage.business must be {lines, branches?}');
+  if (coverage.project !== 'ratchet') problems.push('overall.coverage.project must be ratchet: the project floor only goes up');
+  return problems;
+}
+
+/** The coverage numbers of the canon gate (owner 2026-11-25): the one reader every renderer and R273 call, so no number is restated. */
+export function coverageBar(gate: SonarGate = loadSonarGate()): CoverageBar {
+  const overall = gate.overall.coverage as GateOverallCoverage;
+  return Object.freeze({
+    patch: (gate.newCode.coverage as GateCoverage).minPercent,
+    file: overall.minPercent,
+    tiers: Object.freeze({ ...overall.tiers }),
+    defaultTier: overall.defaultTier,
+    business: overall.business,
+    project: overall.project,
+  });
 }
 
 /**
