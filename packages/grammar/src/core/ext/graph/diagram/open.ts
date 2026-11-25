@@ -1,7 +1,15 @@
 /**
- * The first view of a diagram (pure): the whole drawing when it fits at a readable zoom, else the drawing at that floor, anchored at its start so the
- * reader pans on. The floor is the zoom under which the caption-role words of a node or a message drop under 11px (13px x 0.85), so a sequence or a
- * flowchart never opens smaller; only a kind drawn as Mermaid's own SVG (its words are not ours) keeps the canvas's least zoom.
+ * The first view of a diagram (pure). The fit rule (Next UI audit round 3, 2026-11-25: a tall drawing opened at 100% with its last node cut by the frame
+ * and under the controls row; a wide one opened at the readable floor cut on both sides):
+ *
+ * 1. The whole drawing is always in view at the first view: CONTAIN-FIT, zoom = min(1, roomWidth / width, roomHeight / height), centred in the room. No
+ *    node is cut on any side, and the room leaves the controls row (`INSETS.bottom`) clear, so the buttons never stand over the drawing.
+ * 2. Height is bought first: the canvas grows to hold the drawing at its WIDTH fit (`canvasHeight`), up to `TALLEST` (45rem) or `TALLEST_ON_PHONE`
+ *    (35rem, so a finger still reaches the page past it). A tall drawing therefore shrinks only when even the tallest canvas cannot hold it.
+ * 3. Width is bought by the layout: a flowchart or state diagram is laid out top-down on a phone, and elsewhere when that opens it larger than across
+ *    (`betterTopDown`).
+ * 4. What still needs a zoom under `READABLE_ZOOM` (0.85, caption words under 11px) opens whole and small: the reader zooms in with +, pinch or a double
+ *    tap, and reset (0) returns to this view. A cut first view hides a part the reader cannot know is there; a small one only asks for a zoom.
  */
 
 export interface Size {
@@ -14,67 +22,63 @@ export interface Box extends Size {
     readonly y: number
 }
 
-/** The room round the drawing at the first view: the controls row along the bottom (40 + 2 x 8). */
+/** The room round the drawing at the first view: the controls row along the bottom (40 + 2 x 8) stays clear of the drawing. */
 export const INSETS = { top: 16, right: 16, bottom: 64, left: 16 } as const
 
-/** The least zoom of the canvas, the floor of a kind whose words are not ours to size. */
+/** The least zoom the canvas offers to the reader's zoom out; a first view that needs less (a very large drawing) lowers it to its own zoom. */
 export const LEAST_OPEN_ZOOM = 0.2
 
-/** The zoom under which caption-role words (13px) fall under 11px: the floor of a sequence and of a flowchart or state diagram. */
+/** The zoom under which caption-role words (13px) fall under 11px: the readable zoom a layout aims for (a flowchart turned top-down to reach it). */
 export const READABLE_ZOOM = 0.85
 
-/** The tallest the canvas grows to fit a drawing, and on a phone (a finger on it pans, so the page must stay in reach past it). */
+/** The tallest the canvas grows to fit a drawing (45rem), and on a phone (35rem: a finger on it pans, so the page must stay in reach past it). */
 export const TALLEST = 720
-export const TALLEST_ON_PHONE = 480
+export const TALLEST_ON_PHONE = 560
 
-/** The floor of the first view for a drawing kind. */
-export const openFloor = (kind: "graph" | "sequence" | "other"): number => (kind === "other" ? LEAST_OPEN_ZOOM : READABLE_ZOOM)
+/** The frame width under which the canvas keeps to the phone's tallest. */
+const PHONE_FRAME = 480
 
 const roomOf = (frame: Size): Size => ({ width: frame.width - INSETS.left - INSETS.right, height: frame.height - INSETS.top - INSETS.bottom })
 
-/**
- * The zoom of the first view in a frame: the whole drawing when it fits at 100% or less and stays at or over `floor`; else the drawing FITTED TO THE
- * WIDTH when that stays at or over `floor` (Next v0.0.10 audit: a wide flowchart opened at the floor and cut its last node off the canvas although its
- * whole width fitted readably; a drawing taller than the room pans down instead); else `floor`, anchored at the start.
- */
-export const openZoom = (frame: Size, drawing: Size, floor: number = LEAST_OPEN_ZOOM): number => {
+/** The zoom that fits the drawing's width in a frame of that width, at 100% or less. */
+const widthFit = (frameWidth: number, drawing: Size): number => Math.min(1, (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width))
+
+/** The zoom of the first view in a frame: contain-fit, the whole drawing at 100% or less, whatever that zoom is (rule 1). */
+export const openZoom = (frame: Size, drawing: Size): number => {
     const room = roomOf(frame)
-    const widthFit = room.width / Math.max(1, drawing.width)
-    const fit = Math.min(widthFit, room.height / Math.max(1, drawing.height))
-    if (fit >= floor) return Math.min(1, fit)
-    if (widthFit >= floor) return Math.min(1, widthFit)
-    return floor
+    return Math.max(0.01, Math.min(1, room.width / Math.max(1, drawing.width), room.height / Math.max(1, drawing.height)))
 }
 
-/**
- * Whether a graph laid out left to right is laid out again top-down for its frame: its width does not fit the room at the readable zoom, so across it
- * would open cut at the floor (Next v0.0.10 audit). A phone lays every graph out top-down already.
- */
-export const needsTopDown = (frameWidth: number, drawing: Size, floor: number = READABLE_ZOOM): boolean =>
-    (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width) < floor
-
-/** The canvas height for a frame width: the drawing as large as the width lets it (never under `floor`), between the reserved box and the tallest. */
-export const canvasHeight = (frameWidth: number, drawing: Size, reserved: number, floor: number = LEAST_OPEN_ZOOM): number => {
-    const zoom = Math.max(floor, Math.min(1, (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width)))
-    const tallest = frameWidth < 480 ? TALLEST_ON_PHONE : TALLEST
-    return Math.round(Math.max(reserved, Math.min(Math.max(reserved, tallest), drawing.height * zoom + INSETS.top + INSETS.bottom)))
+/** The canvas height for a frame width: the drawing at its width fit plus the insets, between the reserved box and the tallest (rule 2). */
+export const canvasHeight = (frameWidth: number, drawing: Size, reserved: number): number => {
+    const tallest = frameWidth < PHONE_FRAME ? TALLEST_ON_PHONE : TALLEST
+    // Rounded up: a canvas rounded down would leave the height fit a hair under the width fit.
+    return Math.ceil(Math.max(reserved, Math.min(Math.max(reserved, tallest), drawing.height * widthFit(frameWidth, drawing) + INSETS.top + INSETS.bottom)))
 }
 
+/** The zoom a drawing opens at in a frame of that width, once the canvas has grown for it (rules 1 and 2). */
+export const fittedZoom = (frameWidth: number, drawing: Size, reserved = 0): number =>
+    openZoom({ width: frameWidth, height: canvasHeight(frameWidth, drawing, reserved) }, drawing)
+
 /**
- * Where the drawing's origin stands in the frame at the first view, per axis: centred where the drawing fits, else from its start. The start is the
- * drawing's top left (a sequence: its first participant and first message), or `start`'s box (a flowchart's entry node) kept in view: the drawing
- * slides only as far as the entry node's middle needs to stand in the middle of the room.
+ * Whether a graph laid out left to right is better laid out top-down for its frame (rule 3): across it would open under the readable zoom, and top-down it
+ * opens larger. A phone lays every graph out top-down already.
  */
-export const openView = (frame: Size, drawing: Size, floor: number = LEAST_OPEN_ZOOM, start?: Box): { readonly x: number; readonly y: number; readonly zoom: number } => {
-    const zoom = openZoom(frame, drawing, floor)
+export const betterTopDown = (frameWidth: number, across: Size, down: Size): boolean => {
+    const acrossZoom = fittedZoom(frameWidth, across)
+    return acrossZoom < READABLE_ZOOM && fittedZoom(frameWidth, down) > acrossZoom
+}
+
+/** Whether a graph laid out left to right needs a top-down layout tried: its width does not fit the room at the readable zoom. */
+export const needsTopDown = (frameWidth: number, drawing: Size): boolean => (frameWidth - INSETS.left - INSETS.right) / Math.max(1, drawing.width) < READABLE_ZOOM
+
+/** The first view in a frame: the contain-fit zoom, the drawing centred in the room on both axes. */
+export const openView = (frame: Size, drawing: Size): { readonly x: number; readonly y: number; readonly zoom: number } => {
+    const zoom = openZoom(frame, drawing)
     const room = roomOf(frame)
-    const axis = (inset: number, space: number, length: number, at: number | undefined): number => {
-        if (length * zoom <= space) return inset + (space - length * zoom) / 2
-        return at === undefined ? inset : inset + Math.min(0, space / 2 - at * zoom)
-    }
     return {
         zoom,
-        x: axis(INSETS.left, room.width, drawing.width, start === undefined ? undefined : start.x + start.width / 2),
-        y: axis(INSETS.top, room.height, drawing.height, start === undefined ? undefined : start.y + start.height / 2),
+        x: INSETS.left + (room.width - drawing.width * zoom) / 2,
+        y: INSETS.top + (room.height - drawing.height * zoom) / 2,
     }
 }
