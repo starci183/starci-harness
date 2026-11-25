@@ -74,6 +74,10 @@ test('the rule is wired: ROUTE_MISSING ships with the check, the code is localOn
   const slots = new Map(loadSlotManifest().slots.map((slot) => [slot.id, slot]));
   assert.equal(slots.get('app.gallery-routes')?.path, 'gallery/routes.json');
   assert.equal(slots.get('app.gallery-routes')?.tracked, 'tracked');
+  // gallery/look.json is the app's declaration of how its running stack is looked at (starci app look): a tracked file of its own, never an undeclared one.
+  assert.equal(slots.get('app.gallery-look')?.path, 'gallery/look.json');
+  assert.equal(slots.get('app.gallery-look')?.tracked, 'tracked');
+  assert.equal(slots.get('app.gallery-look')?.presence, 'optional');
 });
 
 for (const edition of ['lite'] as const) {

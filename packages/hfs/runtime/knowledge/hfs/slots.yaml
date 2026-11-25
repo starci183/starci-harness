@@ -799,6 +799,17 @@ slots:
     tier: none
     tests: none
     rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING, HFS_APP_GALLERY_ROUTE_AMBIGUOUS]
+  - id: app.gallery-look
+    since: 6.17.12
+    profiles: [app]
+    # How the running stack is looked at (contexts/project/gallery.md PROJECT-GALLERY-7 step 2b): the app's own declaration of each environment's web and api
+    # origin and the seed owner `starci app look` signs in as, the password a custody reference, never a value. Written by the app, read by the look verb.
+    path: gallery/look.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: []
   - id: app.gallery-board
     since: 6.15.0
     profiles: [app]
