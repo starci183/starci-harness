@@ -3385,7 +3385,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-release.spec.mjs}
   - id: R268
     code: "HFS_SCHEDULE_UNDECLARED"
-    law: "Every app scheduler, active pg_cron schedule, selected scheduled component and rendered replicated-job has a matching top-level jobs declaration with its schedule and invocation of a named back-end CLI action. A rendered replicated-job uses the same declared CLI invocation; inline JavaScript and shell chaining are refused. Scheduling is app-owned; a manifest entry never grants host crontab or deployment business logic."
+    law: "Every app scheduler (apps of kind `client-cli` run on the member's machine, so their own timers are their process schedule and are not judged), active pg_cron schedule, selected scheduled component and rendered replicated-job has a matching top-level jobs declaration with its schedule and invocation of a named back-end CLI action. A rendered replicated-job uses the same declared CLI invocation; inline JavaScript and shell chaining are refused. Scheduling is app-owned; a manifest entry never grants host crontab or deployment business logic."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["HFS_SCHEDULE_UNDECLARED"]

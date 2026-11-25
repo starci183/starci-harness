@@ -2,8 +2,12 @@
 
 Versioned history starts at beta; earlier history is in git.
 
-## Unreleased
+## 6.17.12 - 2026-11-25
 
+- The canon pins name @starci/grammar 0.59.1 and @starci/gallery 0.1.25.
+- Added (h-grammar-ext-css, slot `app.gallery-look`, since 6.17.12): `gallery/look.json`, an app's optional declaration of each environment's web and api origin and the seed owner `starci app look` signs in as (the password a custody reference, never a value).
+- Changed (h-schedule-cli-client, R268 HFS_SCHEDULE_UNDECLARED): an app of kind `client-cli` runs on the member's machine, so its own timers are its process schedule and R268 does not judge them.
+- Added (h-work-prompts, slot `app.starciwork`, `runtime/scripts/hfs/path-findings.mts`): `.starciwork/prompts/**/*.md` holds an app's own authoring prompts, the Markdown its agents read when they write its content and only when a brief names them; HFS_ROOT_ENTRY_FORBIDDEN and HFS_SLOT_UNDECLARED no longer push such a folder out of the app, and the Work readers still leave it out, so the harness never loads it. Anything but Markdown there stays HFS_STARCIWORK_LITE_FORBIDDEN.
 - Fixed (t195-grammar-ext, R93 machine `grammar`, `runtime/scripts/hfs/architecture/frontend-grammar.mts`; found by `app check --env prod --level full` on Grammar 0.55): the installed Grammar's optional peers (`optional: true` in `peerDependenciesMeta`: the core ext's `@xyflow/react`, `elkjs`, `d3-force`, `recharts`, `shiki`, ...) no longer count against the selected peers, so Grammar 0.55 no longer reports ARCH_GRAMMAR_CONTRACT_INVALID for every app; the required peers must still equal the selected peers exactly. A style source may import a core-ext stylesheet (`<package>/core/ext/<name>.css`, e.g. `core/ext/graph.css`, `core/ext/markdown.css`) that the installed Grammar declares in `exports`, beside the selected style entry, which must still be imported; any other Grammar CSS path stays ARCH_GRAMMAR_EXPORT_BYPASS. Product source (and so the eslint `grammar-entry` rule, which reports the machine's findings) may import a core-ext code entry (`<package>/core/ext/<name>` or one declared sub-entry, e.g. `core/ext/graph`, `core/ext/markdown/react`) that the installed Grammar exports to a target inside the package; a non-exported ext, a deeper path, an ext stylesheet in TSX, another family's entry and internal files stay refused.
 
 ## 6.17.11 - 2026-11-25

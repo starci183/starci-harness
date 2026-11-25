@@ -1684,7 +1684,7 @@ rules:
       - {kind: hfs, id: stacks-release}
   - id: R268
     code: HFS_SCHEDULE_UNDECLARED
-    law: Every scheduler, pg_cron schedule and replicated job matches a top-level jobs declaration that invokes a named back-end CLI action.
+    law: Every scheduler, pg_cron schedule and replicated job of a deployed server component matches a top-level jobs declaration that invokes a named back-end CLI action. An app of kind `client-cli` runs on the member's own machine, so its own timers are its process schedule and are not judged.
     failureCodes:
       - HFS_SCHEDULE_UNDECLARED
     enforcers:

@@ -1216,6 +1216,15 @@ slots:
     rules:
       - HFS_APP_GALLERY_LINKS
       - HFS_APP_GALLERY_ROUTE_MISSING
+  - id: app.gallery-look
+    profiles:
+      - app
+    path: gallery/look.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: []
   - id: app.gallery-board
     profiles:
       - app
@@ -1422,6 +1431,7 @@ slots:
       - concepts/<topic>.md
       - concepts/index.yaml
       - concepts/<name>/index.yaml
+      - prompts/**/*.md
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY

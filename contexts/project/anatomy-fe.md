@@ -42,6 +42,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395
   - `flows.json` — **app.gallery-flows** optional · R395
   - `routes.json` — **app.gallery-routes** optional · R395
+  - `look.json` — **app.gallery-look** optional
   - `board/{board.yaml,**/*.tsx}` — **app.gallery-board** optional · R395
 - `scripts/`
   - `codegen.mjs` — **app.scripts** optional · R385, R102, R103
