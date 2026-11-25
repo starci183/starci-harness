@@ -56,6 +56,10 @@ the box never changes size. A picture that fails draws a neutral glyph on the pl
 `onLoadStateChange` reports `loading`, `loaded` and `error`. The picture is `loading="lazy"` and `decoding="async"` by default; the first
 screen's picture takes `loading="eager"`.
 
+## A collection of files: MediaGrid
+
+`MediaGrid` (common) draws the files of a collection: `layout="grid"` square previews (an `Image`, a `Video` that plays in place, a sound's player, the kind's glyph for a document) or `layout="list"` hairline rows with a small preview. Each item is `{ id, kind, name, src | null, mime?, poster?, meta?, source?: { label, href }, badge? }`: the name is the button that opens the app's detail (`onOpen`), `meta` one line of facts, `source` the link back to the record that uses the file. `selectedId` marks the open one; `empty` is required; `isLoading` draws tiles of the loaded size. The detail is the app's `Drawer`, never a card in the grid.
+
 ## Owner split
 - **Grammar owns:** the ratio box, the shimmer and error states, `srcset` and `sizes`, the figure, the lightbox and its focus return, the
   radius, the statics resolution.

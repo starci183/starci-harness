@@ -37,6 +37,44 @@
     border-width: 2px;
 }
 
+/* The selected entity: the selection tone on its border (the one accent of the map), a selected file row the soft tone. */
+.starci-graph-entity.starci-erd[data-selected="true"]::after {
+    border-color: var(--accent);
+    border-width: 2px;
+}
+
+.starci-erd-row[data-selected="true"] {
+    background: var(--accent-soft);
+    color: var(--accent-soft-foreground);
+}
+
+/* A file field's name opens its files: a bare button the size of the name, underlined on hover like a link. */
+.starci-erd-file-open {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.starci-erd-file-open:hover {
+    text-decoration: underline;
+}
+
+.starci-erd-file-open:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--grammar-radius-sm);
+}
+
+.starci-erd-file {
+    color: var(--foreground);
+}
+
 .starci-erd:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
