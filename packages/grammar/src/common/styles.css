@@ -14,6 +14,8 @@
 @import "./components-geo-map.css";
 @import "./components-schedule-span.css";
 @import "./components-funnel-chart.css";
+@import "./components-segment-bar.css";
+@import "./components-schema-form.css";
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";
 @import "./components-message-actions.css";
@@ -4398,6 +4400,76 @@
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
     }
+    /*
+     * DRAG AND DROP of a board card (owner canvas, the lead board). The grip: six dots at the card's start edge, drawn only on hover and focus (a card at rest has no handle; the whole
+     * card is the drag source). The origin slot: the card that is being dragged keeps its place as a dashed, emptied card. The lifted card is the drag image: the card face with a soft shadow.
+     * The drop slot: the dashed card-sized place at the head of the stage under the pointer, in the accent (a question the app will ask: the same dashed edge, the accent text), and under the
+     * wide end band the same. No colour is the only cue: the slot says what the drop leads to in words.
+     */
+    .starci-core-board-cards > .starci-core-list-row { position: relative; }
+    .starci-core-list-row-grip {
+        position: absolute;
+        inset-block-start: 50%;
+        inset-inline-start: 0;
+        display: inline-flex;
+        translate: 0 -50%;
+        color: var(--muted);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
+    }
+    .starci-core-list-row:is(:hover, :focus-within)[data-grammar-row-draggable] > .starci-core-list-row-grip { opacity: 1; }
+    .starci-core-list-row[data-grammar-row-draggable] { cursor: grab; }
+    .starci-core-list-row[data-grammar-row-origin="true"] {
+        border: 1px dashed var(--border);
+        background: transparent;
+        cursor: grabbing;
+    }
+    .starci-core-list-row[data-grammar-row-origin="true"] > * { visibility: hidden; }
+    .starci-core-list-row[data-grammar-row-lifted="true"] {
+        position: fixed;
+        inset-block-start: -9999px;
+        inset-inline-start: -9999px;
+        box-shadow: var(--grammar-shadow-popover);
+    }
+    .starci-core-board-slot {
+        display: flex;
+        min-block-size: 5rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-identity-gap);
+        padding: var(--grammar-inline-gap);
+        border: 1.5px dashed var(--accent);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        text-align: center;
+        list-style: none;
+    }
+    .starci-core-board-slot-title { color: var(--accent); font-size: var(--grammar-text-sm); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-sm); }
+    .starci-core-board-slot-detail { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-board-column[data-grammar-drop="true"],
+    .starci-core-board-column[data-grammar-drop="ask"] { background: color-mix(in oklab, var(--accent) 8%, var(--surface-secondary)); outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--starci-core-surface-radius); }
+    /* The end band: a wide dashed place under the columns, there only while a card is dragged. */
+    .starci-core-board-band {
+        display: flex;
+        min-block-size: 3.5rem;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-inline-gap);
+        margin-block-start: var(--grammar-row-gap);
+        padding: var(--grammar-inline-gap);
+        border: 1.5px dashed var(--border);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+        text-align: center;
+    }
+    .starci-core-board-band[data-grammar-drop="true"],
+    .starci-core-board-band[data-grammar-drop="ask"] { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 8%, var(--surface)); color: var(--foreground); }
+    .starci-core-board-band[data-grammar-drop="refused"] { border-color: var(--danger); background: var(--danger-soft); color: var(--danger-soft-foreground); cursor: not-allowed; }
     .starci-core-board-announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
     @media (max-width: 47.999rem) {

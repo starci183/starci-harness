@@ -1,0 +1,63 @@
+/*
+ * Common anatomy for SegmentBar: rows of bars on ONE scale, each a label, a track of HeroUI ProgressBar's own size (md: `--grammar-bar-md`, 8px, at `--grammar-bar-radius-md`;
+ * ramps.css "BARS") whose fill is the row's sum as a share of the longest row and is split into the series' segments, and the row's reading at its end. The legend of the series
+ * stands under the rows. In the quiet colour mode the first series is the ink and every other the muted step, so the chart adds no accent of its own.
+ */
+@layer starci-grammar-common {
+    .starci-core-segment-bar { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); container: starci-core-segment / inline-size; }
+
+    .starci-core-segment-rows { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); margin: 0; padding: 0; list-style: none; }
+
+    .starci-core-segment-row {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: minmax(5rem, 8rem) minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    .starci-core-segment-label { min-width: 0; color: var(--foreground); }
+    .starci-core-segment-value { color: var(--muted); font-variant-numeric: tabular-nums; text-align: end; }
+    .starci-core-segment-label > .starci-core-skeleton-group { inline-size: 6rem; }
+    .starci-core-segment-value > .starci-core-skeleton-group { min-inline-size: 2.5rem; }
+
+    /* The empty track is the measures' one neutral; the fill is as long as the row's share of the longest row. */
+    .starci-core-segment-track {
+        display: block;
+        min-width: 0;
+        block-size: var(--grammar-bar-md);
+        overflow: hidden;
+        border-radius: var(--grammar-bar-radius-md);
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
+    }
+    .starci-core-segment-bar[data-size="sm"] .starci-core-segment-track { block-size: var(--grammar-bar-sm); border-radius: var(--grammar-bar-radius-sm); }
+    .starci-core-segment-bar[data-size="lg"] .starci-core-segment-track { block-size: var(--grammar-bar-lg); border-radius: var(--grammar-bar-radius-lg); }
+    .starci-core-segment-fill { display: flex; inline-size: var(--starci-core-segment-extent); block-size: 100%; }
+    .starci-core-segment { flex: 0 0 var(--starci-core-segment-share); min-inline-size: 0; background: var(--accent); }
+
+    .starci-core-segment-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
+    .starci-core-segment-legend-item { display: inline-flex; align-items: start; gap: var(--grammar-identity-gap); color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-segment-dot { flex: none; inline-size: 0.5rem; block-size: 0.5rem; margin-block-start: calc((1lh - 0.5rem) / 2); border-radius: var(--grammar-radius-pill); background: var(--accent); }
+
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="success"] { background: var(--success); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="info"] { background: var(--info); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="warning"] { background: var(--warning); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="danger"] { background: var(--danger); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="neutral"] { background: var(--muted); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="ink"] { background: color-mix(in oklab, var(--foreground) 72%, var(--surface)); }
+    :is(.starci-core-segment, .starci-core-segment-dot)[data-grammar-tone="muted"] { background: color-mix(in oklab, var(--foreground) 22%, var(--surface)); }
+    .starci-core-segment[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
+
+    /* Where the container is narrow the reading drops under the label so the track keeps its length. */
+    @container starci-core-segment (max-width: 22rem) {
+        .starci-core-segment-row { grid-template-columns: minmax(0, 1fr) auto; }
+        .starci-core-segment-track { grid-column: 1 / -1; grid-row: 2; }
+    }
+
+    @media (forced-colors: active) {
+        .starci-core-segment-track { border: 1px solid CanvasText; }
+        .starci-core-segment { background: CanvasText; }
+    }
+}

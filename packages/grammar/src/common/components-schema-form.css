@@ -1,0 +1,141 @@
+/*
+ * Common anatomy for SchemaForm and the agent surfaces beside it (ApprovalCard, WorkbenchSlot, NoteList, ConflictCard).
+ *
+ * SchemaForm: one control per field of a schema, the label over the control, a field the agent proposes a change to drawing the difference under it, the markers of a form filled by
+ * two hands ("You edited", "Claude is writing") at the end of the label, and a required field left empty carrying its need in the warning ink. The `kv` layout is a card of facts:
+ * the label in a column beside its value or control. Every colour is a semantic token; every gap a spacing step.
+ */
+@layer starci-grammar-common {
+    .starci-core-schema-form { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-card-padding-block); container: starci-core-schema / inline-size; }
+
+    .starci-core-schema-field { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+
+    /* The label with its markers: the title, then the marks at the end of the line, never wrapping the control. */
+    .starci-core-schema-label { display: inline-flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0 var(--grammar-inline-gap); }
+    .starci-core-schema-mark {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface-secondary);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    /* A field the agent is writing: read-only, the box keeps its place, the sheen says it is moving. */
+    .starci-core-schema-field[data-grammar-schema-state="writing"] [data-grammar-field-control="true"] { background: var(--surface-secondary); }
+    /* A required field left empty: the warning edge and its words, never colour alone. */
+    .starci-core-schema-field[data-grammar-schema-state="missing"] [data-grammar-field-control="true"] { border-color: var(--warning); }
+    .starci-core-schema-missing { color: var(--warning-soft-foreground, var(--warning)); }
+    /* A field with the agent's proposal: the control keeps its look; the proposal block under it is the signal. */
+
+    /* The agent's proposal: the value now (struck) over the suggested one, with Accept and Reject. The two lines use the version diff's tones. */
+    .starci-core-schema-proposal {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface-secondary);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+    .starci-core-schema-proposal-head { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-xs); }
+    .starci-core-schema-proposal-line { display: flex; margin: 0; flex-wrap: wrap; gap: 0 var(--grammar-inline-gap); }
+    .starci-core-schema-proposal-name { color: var(--muted); font-size: var(--grammar-text-xs); }
+    .starci-core-schema-proposal-line[data-grammar-diff="removed"] del { color: var(--danger-soft-foreground); text-decoration-thickness: 1px; }
+    .starci-core-schema-proposal-line[data-grammar-diff="added"] ins { color: var(--success-soft-foreground); text-decoration: none; }
+    .starci-core-schema-proposal-actions { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap); }
+
+    /* A group of fields is a fieldset: the legend is its title, the fields keep the form's gap. */
+    .starci-core-schema-group { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-card-padding-block); margin: 0; padding: 0; border: 0; }
+    .starci-core-schema-group-title { padding: 0; margin-block-end: var(--grammar-inline-gap); color: var(--foreground); font-size: var(--grammar-text-sm); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-sm); }
+
+    /* A list of rows: a head with the title, the numbered rows with their actions at the end of their head, an add button and its limit, then the meter. */
+    .starci-core-schema-rows { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+    .starci-core-schema-rows-title { color: var(--foreground); font-size: var(--grammar-text-sm); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-sm); }
+    .starci-core-schema-row-list { display: flex; min-width: 0; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+    .starci-core-schema-row { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); padding-block: var(--grammar-card-padding-block); border-block-start: 1px solid var(--separator); }
+    .starci-core-schema-row-head { display: flex; min-width: 0; align-items: center; gap: var(--grammar-inline-gap); }
+    .starci-core-schema-row-number { color: var(--muted); font-size: var(--grammar-text-sm); font-variant-numeric: tabular-nums; }
+    .starci-core-schema-row-name { min-width: 0; flex: 1 1 auto; color: var(--muted); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-schema-row-actions { display: inline-flex; margin-inline-start: auto; gap: var(--grammar-identity-gap); }
+    /* The fields of a row: the wide ones take the room, the narrow ones (a number, a choice) a fixed measure; below 30rem they stack. */
+    .starci-core-schema-row-fields { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+    @container starci-core-schema (min-width: 30rem) {
+        .starci-core-schema-row-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); align-items: start; }
+        .starci-core-schema-row-fields[data-grammar-schema-columns="wide narrow"] { grid-template-columns: minmax(0, 1fr) 6rem; }
+        .starci-core-schema-row-fields[data-grammar-schema-columns="narrow wide"] { grid-template-columns: 6rem minmax(0, 1fr); }
+    }
+    .starci-core-schema-rows-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); padding-block-start: var(--grammar-inline-gap); border-block-start: 1px solid var(--separator); }
+    .starci-core-schema-rows-limit { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-schema-meter { padding-block-start: var(--grammar-inline-gap); }
+
+    /*
+     * The view layout (`readOnly`, and every field in `kv`): the label in a column beside the value, hairlines between facts; a field left as a control inside it keeps its own box.
+     * Below 30rem the label stands over the value.
+     */
+    .starci-core-schema-form[data-layout="kv"] { gap: 0; }
+    .starci-core-schema-read { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); padding-block: var(--grammar-inline-gap); }
+    .starci-core-schema-read-title { color: var(--muted); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-schema-read-text { min-width: 0; overflow-wrap: anywhere; }
+    .starci-core-schema-read-text[data-grammar-schema-empty="true"], .starci-core-schema-read-empty { color: var(--muted); }
+    .starci-core-schema-read-list { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-schema-read-items { display: flex; margin: 0; padding-inline-start: var(--grammar-inset-card); flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-schema-read-aside, .starci-core-schema-read-total { color: var(--muted); }
+    .starci-core-schema-read-total { font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    @container starci-core-schema (min-width: 30rem) {
+        .starci-core-schema-form[data-layout="kv"] > .starci-core-schema-read,
+        .starci-core-schema-form[data-layout="kv"] > .starci-core-schema-field,
+        .starci-core-schema-form[data-layout="kv"] > .starci-core-schema-rows {
+            display: grid;
+            grid-template-columns: minmax(6rem, 10rem) minmax(0, 1fr);
+            column-gap: var(--grammar-card-padding-inline);
+            align-items: start;
+            padding-block: var(--grammar-inline-gap);
+            border-block-start: 1px solid var(--separator);
+        }
+        .starci-core-schema-form[data-layout="kv"] > .starci-core-schema-read:first-child,
+        .starci-core-schema-form[data-layout="kv"] > .starci-core-schema-field:first-child { border-block-start: 0; }
+    }
+
+    /* --- ApprovalCard: the card of facts, and the quick edit's Save and Cancel under it --- */
+    .starci-core-approval-edit { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap); padding-block-start: var(--grammar-inline-gap); }
+
+    /* --- WorkbenchSlot: the empty state is a plain statement over the fallback, never a centred illustration --- */
+    .starci-core-workbench-slot { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-card-padding-block); }
+    .starci-core-workbench-empty { display: flex; max-inline-size: 40rem; flex-direction: column; gap: var(--grammar-identity-gap); }
+
+    /* --- NoteList: rows on one surface with hairlines, a head of column titles; stacked below 40rem --- */
+    .starci-core-note-list { display: flex; min-width: 0; flex-direction: column; container: starci-core-note / inline-size; }
+    .starci-core-note-rows { display: flex; margin: 0; padding: 0; flex-direction: column; list-style: none; }
+    .starci-core-note-head, .starci-core-note-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: var(--grammar-inline-gap); padding-block: var(--grammar-card-padding-block); }
+    .starci-core-note-row { border-block-start: 1px solid var(--separator); }
+    .starci-core-note-head { display: none; padding-block: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-note-copy { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-note-meta { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-note-text { color: var(--foreground); overflow-wrap: anywhere; }
+    .starci-core-note-scope { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-note-usage { font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-note-usage[data-grammar-note-usage="none"] { color: var(--muted); }
+    .starci-core-note-actions { display: flex; justify-content: flex-end; gap: var(--grammar-identity-gap); }
+    @container starci-core-note (min-width: 40rem) {
+        .starci-core-note-head, .starci-core-note-row { grid-template-columns: minmax(0, 1fr) 9rem 8rem 5rem; column-gap: var(--grammar-card-padding-inline); align-items: center; }
+        .starci-core-note-head { display: grid; }
+    }
+
+    /* --- ConflictCard: two named sides, side by side from 30rem --- */
+    .starci-core-conflict-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--grammar-card-padding-block); }
+    .starci-core-conflict-card { container: starci-core-conflict / inline-size; }
+    @container starci-core-conflict (min-width: 30rem) { .starci-core-conflict-sides { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .starci-core-conflict-side { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); padding: var(--grammar-inline-gap); border-radius: var(--grammar-radius-md); background: var(--surface-secondary); }
+    .starci-core-conflict-side[data-grammar-conflict-side="proposed"] { background: var(--warning-soft); }
+    .starci-core-conflict-side-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-xs); }
+    .starci-core-conflict-side[data-grammar-conflict-side="proposed"] .starci-core-conflict-side-label { color: var(--warning-soft-foreground); }
+    .starci-core-conflict-side-text { margin: 0; overflow-wrap: anywhere; }
+    .starci-core-conflict-side-source { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+}

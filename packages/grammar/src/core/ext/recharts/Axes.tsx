@@ -30,6 +30,7 @@ export const cartesianParts = (
     xKey: string,
     yKey: string,
     seriesLabels?: readonly string[],
+    yMax?: number,
 ) => [
     <CartesianGrid key="grid" vertical={false} stroke={CHART_GRID_STROKE} />,
     <XAxis
@@ -47,6 +48,7 @@ export const cartesianParts = (
         tick={TICK}
         tickLine={false}
         axisLine={false}
+        {...(yMax === undefined ? {} : { domain: [0, yMax] as [number, number] })}
         tickFormatter={(value: number) => formatY(value)}
         width={yAxisLabel === undefined ? Y_WIDTH : Y_WIDTH_TITLED}
         {...(yAxisLabel === undefined ? {} : { label: { value: yAxisLabel, angle: -90, position: "insideLeft", style: { ...AXIS_LABEL_STYLE, textAnchor: "middle" } } })}

@@ -87,6 +87,44 @@
     .starci-core-funnel-bar[data-grammar-tone="danger"] { background: var(--danger); }
     .starci-core-funnel-bar[data-grammar-tone="neutral"] { background: var(--muted); }
 
+    .starci-core-funnel-body { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+
+    /* The quiet colour mode: every fill the ink at a soft step; the one status colour left is the largest drop's words. */
+    .starci-core-funnel-chart[data-grammar-quiet="true"] .starci-core-funnel-bar:not([data-grammar-skeleton="true"]) { background: color-mix(in oklab, var(--foreground) 70%, var(--surface)); }
+
+    /* The side bucket: what left the funnel. In rows it is a text row of its own under the stages, over a hairline. */
+    .starci-core-funnel-lost {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 var(--grammar-inline-gap);
+        padding-block-start: var(--grammar-row-gap);
+        border-block-start: 1px solid var(--separator);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+    .starci-core-funnel-lost-label { color: var(--foreground); font-weight: var(--grammar-weight-medium); }
+    .starci-core-funnel-lost-count { font-variant-numeric: tabular-nums; }
+    .starci-core-funnel-lost-note { flex: 1 1 100%; color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+
+    /*
+     * STEPS: one row, a column per stage. The container (not the viewport) decides: from 36rem of chart width the stages stand side by side, every column one width (so every track is
+     * one width and every fill starts at one edge, as in rows), each column its name, then the count with the step share, then the track; the down arrow is not drawn (the columns
+     * already read left to right). The lost bucket is one more column after a hairline. Narrower, the same markup is the rows layout.
+     */
+    .starci-core-funnel-chart[data-layout="steps"] { container: starci-core-funnel / inline-size; }
+    @container starci-core-funnel (min-width: 36rem) {
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-body { flex-direction: row; align-items: stretch; gap: var(--grammar-card-padding-inline); }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-stages { display: grid; flex: 1 1 auto; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--grammar-inline-gap); }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-stage { justify-content: space-between; }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-head { flex-direction: column; align-items: flex-start; gap: var(--grammar-identity-gap); }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-label { flex: none; color: var(--muted); }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-count { display: block; color: var(--foreground); font-size: var(--grammar-text-lg); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-lg); }
+        .starci-core-funnel-chart[data-layout="steps"] :is(.starci-core-funnel-step-mark, .starci-core-funnel-sep) { display: none; }
+        .starci-core-funnel-chart[data-layout="steps"] .starci-core-funnel-lost { flex: 0 0 auto; flex-direction: column; max-inline-size: 14rem; padding-block-start: 0; padding-inline-start: var(--grammar-card-padding-inline); border-block-start: 0; border-inline-start: 1px solid var(--separator); }
+    }
+
     @media (forced-colors: active) {
         .starci-core-funnel-track { border: 1px solid CanvasText; }
         .starci-core-funnel-bar { background: CanvasText; }

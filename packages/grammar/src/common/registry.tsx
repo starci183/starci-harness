@@ -10,7 +10,7 @@ import {
     SurfaceCard, Tabs, Terminal, Text, InlineStatus, EntitySummaryCard,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
-import { FunnelChart, IntervalChart, Legend } from "./renderers.js"
+import { ApprovalCard, ConflictCard, FunnelChart, IntervalChart, Legend, NoteList, NoteRow, SchemaForm, SegmentBar, WorkbenchSlot } from "./renderers.js"
 import { COMMON_FORMS_COMPONENTS } from "./renderers-forms.js"
 import { COMMON_OVERLAYS_COMPONENTS } from "./renderers-overlays.js"
 import { COMMON_NAVIGATION_COMPONENTS } from "./renderers-navigation.js"
@@ -26,7 +26,8 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    IntervalChart, FunnelChart, Legend,
+    IntervalChart, FunnelChart, Legend, SegmentBar,
+    SchemaForm, ApprovalCard, WorkbenchSlot, NoteList, NoteRow, ConflictCard,
     Badge, Button, CalendarDay, Code, MessageActions, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, ChatFrame, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, ProportionBar, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Fragment, GrammarRoot,
     EntryFrame, GlossaryTerm, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame, MediaGrid,

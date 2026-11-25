@@ -25,6 +25,19 @@ export type FunnelChartStage = {
     readonly stepLabel?: string
 }
 
+/** The bucket beside the stages for what left the funnel (lost, cancelled, sent elsewhere): a label, how many, and the words that split it. */
+export type FunnelChartLost = {
+    /** What the bucket is, e.g. "Not closed". */
+    readonly label: string
+    /** How many left; drawn with the chart's `format`. Not part of the largest-stage scale. */
+    readonly count: number
+    /** The split in the app's words, e.g. "price 3 · no answer 2 · too far 1". */
+    readonly note?: string
+}
+
+/** How the stages are laid out: `rows` (one under another, the default) or `steps` (one row, a column per stage; a narrow container stacks them as rows). */
+export type FunnelChartLayout = "rows" | "steps"
+
 export type FunnelChartProps = NoChildren & {
     /** Names the funnel for assistive technology, e.g. "Leads by stage, last 30 days". */
     readonly label: string
@@ -38,6 +51,15 @@ export type FunnelChartProps = NoChildren & {
     readonly isLoading?: boolean
     /** The read failed: this takes the chart's place. Loading comes first, then error, then empty. */
     readonly error?: ErrorData
+    /**
+     * `steps` draws the compact funnel of one row: each stage a column with its name, its count with the share that came through from the stage before, and a short track under them,
+     * every column one width. A container narrower than 36rem stacks the columns as the `rows` layout. Default `rows`.
+     */
+    readonly layout?: FunnelChartLayout
+    /** The side bucket for what left the funnel, after the last stage (set apart by a hairline in `steps`, a row of its own in `rows`). Never part of the scale of the fills. */
+    readonly lost?: FunnelChartLost
+    /** The quiet colour mode: the fills take the ink (the foreground at a soft step), not the accent or a tone, so a screen that already carries its one accent keeps to the 10% accent budget. */
+    readonly quiet?: boolean
 }
 
 /** Fills of a loading funnel, as shares of the track: a fixed falling run, so the shimmer reads as a funnel. */
@@ -81,7 +103,7 @@ const largestDropAt = (counts: readonly number[]): number | undefined => {
  * danger tone. A list for assistive technology (each item reads "label · count, step, value"), never an image. A funnel whose
  * stages all count zero shows `empty`.
  */
-export const FunnelChart = ({ label, stages, empty, format = String, isLoading: ownLoading, error }: FunnelChartProps) => {
+export const FunnelChart = ({ label, stages, empty, format = String, isLoading: ownLoading, error, layout = "rows", lost, quiet = false }: FunnelChartProps) => {
     const isLoading = useIsLoading(ownLoading)
     const ownsBusy = useRegionOwnsBusy()
     if (!isLoading && error !== undefined) return <ErrorView error={error} />
@@ -99,8 +121,11 @@ export const FunnelChart = ({ label, stages, empty, format = String, isLoading: 
             data-component="FunnelChart"
             data-contract="GAP-1 STATE-8"
             className="starci-core-funnel-chart"
+            data-layout={layout}
+            {...(quiet ? { "data-grammar-quiet": "true" } : {})}
             {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
         >
+            <div className="starci-core-funnel-body">
             <ol className="starci-core-funnel-stages" aria-label={label}>
                 {shown.map((stage, index) => {
                     const count = countOf(stage)
@@ -117,7 +142,7 @@ export const FunnelChart = ({ label, stages, empty, format = String, isLoading: 
                                     ) : (
                                         <>
                                             {stage.label}
-                                            {isLoading ? null : <span className="starci-core-funnel-count"> · {format(count)}</span>}
+                                            {isLoading ? null : <span className="starci-core-funnel-count"><span className="starci-core-funnel-sep"> · </span>{format(count)}</span>}
                                         </>
                                     )}
                                 </span>
@@ -148,6 +173,14 @@ export const FunnelChart = ({ label, stages, empty, format = String, isLoading: 
                     )
                 })}
             </ol>
+            {lost === undefined || isLoading ? null : (
+                <div className="starci-core-funnel-lost" data-grammar-funnel-lost="true">
+                    <span className="starci-core-funnel-lost-label">{lost.label}</span>
+                    <span className="starci-core-funnel-lost-count">{format(countOf({ label: lost.label, count: lost.count }))}</span>
+                    {lost.note === undefined ? null : <span className="starci-core-funnel-lost-note">{lost.note}</span>}
+                </div>
+            )}
+            </div>
         </div>
     )
 }
