@@ -2,6 +2,12 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.60.1 - 2026-11-26
+
+- Fixed (h-offset-pop-parity): Offset Pop covers the renderers that landed after its last pass. The family root sets four Common tokens: `--grammar-border-edge` (the 2px ink outline: code block, GradedChoice answer and key, the other party's message), `--grammar-shadow-popover` and `--grammar-shadow-lift` (the hard offset: a popover, which had kept Common's soft `!important` shadow, the reaction picker, a lifted Board card, the pane trigger) and `--starci-core-surface-radius` (Board columns and cards and a framed EmptyNotice take the family card radius instead of Common's 32px; the `--starci-core-card-radius` hook still wins). The new `components-content.css` adds outlined, offset Board cards with press travel, a dashed origin slot and 2px drop slot and end band, the ink ring on the Progress, ProportionBar, SegmentBar and FunnelChart tracks, pressable GradedChoice answers, outlined SchemaForm marks, proposals and ConflictCard sides, and the pink offset of a `SurfaceCard emphasis="accent"`, which the family's card rule had hidden. A SchemaForm field left empty keeps its warning edge and a field being written keeps its paint, which the family's field box had covered. No API change.
+- Fixed: `offsetPopRuleConformance` claims only what the CSS does. It drops MARGIN-2, OVERFLOW-2, PADDING-3 and PADDING-4 and the DataTable, Calendar and Timeline mentions, which had no rule behind them. FONT-6 now says the display weight resolves to 500.
+- Added: story `Offset Pop/Parity` shows the learning screens (lesson list, practice step, streak and progress, profile, leaderboard) and the content renderers, at 1440 and 390, light and dark, with the family palette. The playbook (`@starci/hfs` knowledge, `grammars/offset-pop/playbook.yaml`) is rewritten against the current API and adds the `lesson-list`, `streak-progress`, `profile` and `leaderboard` shapes.
+
 ## 0.60.0 - 2026-11-26
 
 - Breaking (h-grammar-board-forms): `BoardColumn.canDrop` answers `boardAllow`, `boardRefuse(reason)` or `boardNeedsData(kind)` (was `null` or a reason string). Manual step: wrap each `canDrop` result: `null` becomes `boardAllow`, a string `reason` becomes `boardRefuse(reason)`. `needsData` takes the drop but leaves the card where it was and calls the new `Board onNeedsData(move, kind)` so the app can open a dialog (a booking time, a reason a lead was lost) and move the card itself; `moveLabels.announceAsk` is what a screen reader hears.
