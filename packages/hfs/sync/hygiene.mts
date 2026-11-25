@@ -24,7 +24,6 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
-import { galleryDesignChangeFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { DATA_MANIFEST, copyManifestOf, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { ADAPTER_DIR, ADAPTER_OUTPUTS, RAW_DIR, adapterDriftOf, adapterGuardFindings, isAdapterOutput, isAdapterRepository } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
@@ -102,15 +101,6 @@ function missingSpecFindings(cwd: string, { added = addedFiles(cwd), indexed, ma
   let ts: ReturnType<typeof loadTypescript> = null;
   try { ts = loadTypescript(cwd, import.meta.dirname); } catch { ts = null; }
   return stagedSpecFindings(manifest ?? loadSlotManifest(), added, indexed ?? new Set(trackedFiles(cwd)), { ts, staged });
-}
-
-/** The screens whose source the index changes without an approved canvas page, at an HFS app root with a gallery (report-only: the hook lists them, the range check of `--env prod` refuses). */
-function staleScreenReports(cwd: string): HygieneFinding[] {
-  if (!fs.existsSync(path.join(cwd, 'hfs.json'))) return [];
-  try {
-    const staged = stagedFiles(cwd);
-    return galleryDesignChangeFindings({ repoRoot: cwd, changed: staged, base: 'HEAD' }).map((finding) => ({ file: finding.path, code: finding.code, message: finding.message }));
-  } catch { return []; }
 }
 
 const MAX_STAGED_BYTES = 1024 * 1024;
@@ -252,9 +242,6 @@ export async function runWorkHygiene({ cwd = process.cwd(), out = (line: string)
   const ledgerFindings = await ledgerHygieneFindings(cwd);
   const all = [...findings, ...ledgerFindings];
   for (const finding of all) out(`${finding.code} ${finding.file} ${finding.message}`);
-  // A screen's source staged without an approved canvas page (PROJECT-GALLERY-7) is listed, never blocking here: `starci app check --env prod` (the push hook, CI) judges the commits and errors.
-  const stale = files ? [] : staleScreenReports(cwd);
-  for (const finding of stale) out(`report ${finding.code} ${finding.file} ${finding.message}`);
-  out(`starci app check --staged: ${checked} staged file(s) checked, ${findings.length} finding(s), ${ledgerFindings.length} ledger finding(s)${stale.length > 0 ? `, ${stale.length} gallery report(s)` : ''}`);
+  out(`starci app check --staged: ${checked} staged file(s) checked, ${findings.length} finding(s), ${ledgerFindings.length} ledger finding(s)`);
   return all.length ? 1 : 0;
 }

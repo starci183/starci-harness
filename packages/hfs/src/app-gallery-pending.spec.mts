@@ -1,7 +1,6 @@
 // proves: HFS_APP_GALLERY_DESIGN_PENDING
 // proves: HFS_APP_GALLERY_DESIGN_PENDING
-// A screen design.json marks `pending: { reason }` (approved, not buildable yet: it waits on data or an API, and lives on a query state of a route the code does change) is skipped by the change gate
-// (galleryDesignChangeFindings of rules/gallery-coupling.mts), the normal screen of the same route is still judged, and a pending screen with no reason is refused (rules/gallery-design.mts).
+// A screen design.json marks `pending: { reason }` (not buildable yet: it waits on data or an API) is skipped by the UI Audit, and a pending screen with no reason is refused (rules/gallery-design.mts).
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +9,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { starterDeclaration } from '../scaffold/app.mjs';
-import { changedSince, galleryDesignChangeFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { parseDesign } from '../runtime/scripts/hfs/rules/gallery-design.mjs';
 
 const PAGE = 'fe/apps/web/src/app/[locale]/(console)/premium/page.tsx';
@@ -47,19 +45,6 @@ function app(t: TestContext, pages: Record<string, unknown>): { root: string; ba
   git(root, 'commit', '-q', '-m', 'one');
   return { root, base: git(root, 'rev-parse', 'HEAD').trim() };
 }
-
-test('a changed route flags the normal approved screen with an old approvedAt, not the pending query state of the same route', (t) => {
-  const { root, base } = app(t, { 'premium/plans': entry(), 'premium/qr-payment': entry({ pending: { reason: 'waits on the QR payment API' } }) });
-  write(root, PAGE, 'export default function Premium() { return 1 }\n');
-  const found = galleryDesignChangeFindings({ repoRoot: root, changed: changedSince(root, base), base });
-  assert.equal(found.length, 1);
-  assert.match(found[0]?.message ?? '', /premium\/plans was approved at/u);
-  assert.doesNotMatch(found[0]?.message ?? '', /qr-payment/u);
-  const unmarked = app(t, { 'premium/plans': entry(), 'premium/qr-payment': entry() });
-  write(unmarked.root, PAGE, 'export default function Premium() { return 1 }\n');
-  const both = galleryDesignChangeFindings({ repoRoot: unmarked.root, changed: changedSince(unmarked.root, unmarked.base), base: unmarked.base });
-  assert.match(both[0]?.message ?? '', /premium\/plans .*premium\/qr-payment/u, 'without the mark both are flagged');
-});
 
 test('a pending screen with an empty or missing reason is refused, and a built page cannot be pending', () => {
   for (const pending of [{ reason: '' }, { reason: '   ' }, {}, 'later', { reason: 'x', extra: 1 }]) {
