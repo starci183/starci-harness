@@ -192,6 +192,9 @@ The scope and the bar are rendered once into the managed `jest.config.js` (the p
 `codecov.yml` (the project ratchet, the patch bar, one `tier-<letter>` component per tier at its bar) and `sonar-project.properties`
 (new code at the patch bar); R273 judges the per-file floor and every tier over the merged lcov. No file carries a coverage ignore, and
 there is no waiver: a module below its bar is covered, or the app moves it to the tier that holds it, in hfs.json.
+The bar, the business bar and the spec of every cell and flow are test and coverage obligations: an app that declares its `test` or
+`coverage` gate off ([project/lint.md](../../project/lint.md) PROJECT-LINT-4) is not judged for them, and every run reports the gate as
+`off (declared: <reason>)`, never as passed.
 
 Why: decisions live in the modules' logic, so a bar on exactly those files is meaningful, and one denominator everywhere makes a gap
 visible wherever it is read. 100 per file could not be reached (the apps had one spec per three to five source files and switched

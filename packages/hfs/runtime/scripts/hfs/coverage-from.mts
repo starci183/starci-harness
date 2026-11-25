@@ -59,6 +59,7 @@ function parse(argv: string[]): CoverageFromOpts {
 
 /** Human-readable measured scope, excluded scope and every unmeasured source file; suitable for normal check output. */
 export function formatCoverageReport(report: Parsed): string {
+  if (typeof report.off === 'string') return `coverage: ${report.off}, not run and not counted as passed (gates of .starcistacks/application-stacks.yaml)\n`;
   const roles = report.scope?.roles ?? [];
   const rolePattern = roles.length === 1 ? roles[0] : '{' + roles.join(',') + '}';
   const lines = [

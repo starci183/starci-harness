@@ -11,7 +11,7 @@ import { loadTypescript } from '../../lib/package-at.mjs';
 import { coverageScope, declaredPackageScopes, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { effectiveSlot } from '../slot-presence.mjs';
 import { coverageBar, type CoverageBar } from '../../gates/sonar-gate.mjs';
-import { BUSINESS_TIER, barOf, moduleKeyOf, tierOf, type TierDeclaration } from '../coverage-tiers.mjs';
+import { BUSINESS_TIER, barOf, coverageObligationsOff, moduleKeyOf, tierOf, type TierDeclaration } from '../coverage-tiers.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -267,6 +267,10 @@ export function coverageBelowReport({ repoRoot, files, all, repo, manifest, cove
   const reportPath = typeof coverageFrom === 'string' && coverageFrom ? slash(coverageFrom) : '<lcov>';
   const empty: Record<string, Parsed> = { ok: true, enabled, reportPath, metrics: METRICS, floor: bar.file, measured: [], unmeasured: [], unmeasuredScopes: [], results: [], tiers: [], findings: [] };
   if (!enabled || !repo || !['app', 'be'].some((value) => value === repo.profile)) return empty;
+  // The per-file floor, the tiers and the business bar are test and coverage obligations: an app that declares either gate off (PROJECT-LINT-4) is not judged,
+  // and the report says so (`off`), never a pass. A be-side run reads the declaration of its app root.
+  const off = coverageObligationsOff(repoRoot === undefined ? undefined : repo.profile === 'be' ? path.dirname(path.resolve(repoRoot)) : repoRoot);
+  if (off !== null) return { ...empty, off };
   const boundary = inventory({ files: files!, all: all!, repo, manifest, repoRoot });
   const report: Record<string, Parsed> = { ...empty, ...boundary };
   const reportFailure = (message: string) => { report.findings.push(found(HFS_COVERAGE_BELOW, reportPath, message)); };

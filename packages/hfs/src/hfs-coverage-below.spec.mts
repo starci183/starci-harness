@@ -242,6 +242,32 @@ test('HFS_COVERAGE_BELOW: a business package (hfs.json sides.nivoos) is measured
   assert.match(below.findings.at(-1).message, /coverage tier business \(3 measured files\): lines 11\/21 \(52\.38%\) is below the tier business bar of 60%/);
 });
 
+const GATES_OFF = (gate: 'test' | 'coverage') => [
+  'gates:',
+  ...(gate === 'test' ? ['  test: {run: off, reason: "specs are written after the release"}', '  sonar: {run: off, reason: "reads the coverage"}'] : []),
+  `  coverage: {run: off, reason: "${gate === 'test' ? 'reads the unit run' : 'coverage comes after the release'}"}`,
+  '  codecov: {run: off, reason: "reads the coverage"}',
+  '',
+].join('\n');
+
+test('HFS_COVERAGE_BELOW: the floor, the tiers and the business bar are test and coverage obligations: a declared-off gate judges none of them and says off (declared)', (t) => {
+  for (const gate of ['test', 'coverage'] as const) {
+    const context = fixture(t, 'lite', record(LOGIC, { line: 0 }));
+    const on = coverageBelowReport(context);
+    assert.equal(on.ok, false, 'with the gates on, the file below the floor and its tier are findings');
+    assert.ok(on.findings.length >= 2);
+    fs.mkdirSync(path.join(context.repoRoot, '.starcistacks'), { recursive: true });
+    fs.writeFileSync(path.join(context.repoRoot, '.starcistacks/application-stacks.yaml'), GATES_OFF(gate));
+    const off = coverageBelowReport(context);
+    assert.deepEqual(off.findings, [], `${gate} declared off: no R273 finding`);
+    assert.deepEqual(off.tiers, []);
+    assert.match(off.off, new RegExp(`^${gate}: off \\(declared: `));
+    assert.match(formatCoverageReport(off), /^coverage: (test|coverage): off \(declared: .*not counted as passed/);
+    const side = coverageBelowReport({ ...context, repoRoot: path.join(context.repoRoot, 'be'), repo: context.repo.sides!.be, files: context.files.map((file) => file.slice(3)), coverageFrom: '../coverage/lcov.info' });
+    assert.equal(typeof side.off, 'string', 'a be-side run reads the declaration of its app root');
+  }
+});
+
 test('HFS_COVERAGE_BELOW: manifest coverage changes alter the denominator', (t) => {
   const context = fixture(t, 'lite', record(LOGIC), [LOGIC, POLICY]);
   const changed = { ...manifest, slots: manifest.slots.map((slot) => slot.id === 'be.domain' ? { ...slot, coverage: 'none' } : slot) };

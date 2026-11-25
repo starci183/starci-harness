@@ -12,6 +12,7 @@
 // this module: the codecov.yml render (one component per tier, at the tier's bar), R273 (each tier's lines and branches over the lcov)
 // and the hfs.json shape check (tierDeclarationProblems).
 import { coverageBar, type CoverageBar, type TierBar } from '../gates/sonar-gate.mjs';
+import { declaredGatesOff } from '../lib/stack-declaration.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 
 /** hfs.json `sides.be.coverageTiers`: each tier the app names, with the modules it holds. */
@@ -120,6 +121,22 @@ export const BUSINESS_TIER = 'business';
 
 /** The bar of a tier name: a declared tier's, or the business bar. */
 export const barOf = (tier: string, bar: CoverageBar = coverageBar()): TierBar => (tier === BUSINESS_TIER ? bar.business : bar.tiers[tier] as TierBar);
+
+/** The gates whose obligations the coverage bar is: the unit run (`test`) and its coverage proof (`coverage`). */
+export const COVERAGE_OBLIGATION_GATES = Object.freeze(['test', 'coverage'] as const);
+
+/**
+ * The gate an app declares off (.starcistacks/application-stacks.yaml `gates`, PROJECT-LINT-4) that switches the coverage obligations off, as the line every
+ * report shows for it (`test: off (declared: <reason>)`), or null when both gates run. The coverage tiers, the per-file floor and the business bar (R273) and
+ * the spec of every cell and flow of a business package (HFS_NIVOOS_SPEC_MISSING, R436) are test and coverage obligations: judged only while those gates run,
+ * never as an hfs finding of an app that declared them off.
+ */
+export function coverageObligationsOff(repoRoot: string | undefined): string | null {
+  if (repoRoot === undefined) return null;
+  const off = declaredGatesOff(repoRoot);
+  const gate = COVERAGE_OBLIGATION_GATES.find((name) => off[name] !== undefined);
+  return gate === undefined ? null : `${gate}: off (declared: ${off[gate] as string})`;
+}
 
 /** The Codecov component id of a tier (`tier-a`): no service app, `platform` or `package-<name>` component is ever named so. */
 export const tierComponentId = (tier: string): string => `tier-${tier.toLowerCase()}`;

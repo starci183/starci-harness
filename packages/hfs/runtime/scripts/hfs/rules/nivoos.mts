@@ -6,9 +6,11 @@
 //                                A package listed in hfs.json `publishes` (the platform's own SDK, CLI or catalogue) and the SDK package itself are no business package: exempt.
 //   HFS_NIVOOS_SPEC_MISSING      a cell or flow of a declared package has no spec beside it (owner 2026-11-25, BE-TEST-13): the package's cells and flows are its
 //                                `<name>.cell.ts` and `<name>.workflow.ts` files below src/, the spec of a cell is `<name>.cell.spec.ts` and of a flow
-//                                `<name>.flow.spec.ts` (or `<name>.workflow.spec.ts`), in the same folder.
+//                                `<name>.flow.spec.ts` (or `<name>.workflow.spec.ts`), in the same folder. A test obligation: judged only while the app's test and
+//                                coverage gates run, `off (declared)` when the app switches either off (coverageObligationsOff).
 // The package check itself (`nivoos package check`, HFS_NIVOOS_PACKAGE_CHECK) runs as a step of `starci app check` (cache/nivoos-package-check.mts).
 import { dependsOnNivoosSdk, NIVOOS_SDK_DEPENDENCY, type NivoosPackage } from '../nivoos-side.mjs';
+import { coverageObligationsOff } from '../coverage-tiers.mjs';
 import { found, readJson } from './read.mjs';
 import type { Finding, Repo } from './rule-types.mjs';
 
@@ -25,7 +27,8 @@ export function nivoosFindings({ repoRoot, files, repo }: { repoRoot: string; fi
       if (!tracked.has(`${folder}/${required}`)) findings.push(found('HFS_NIVOOS_PACKAGE_MISSING', `${folder}/${required}`, `hfs.json declares the nivoos package ${entry.name}, but ${folder}/${required} is not tracked: add it, or remove ${entry.name} from sides.nivoos.packages (PROJECT-BUSINESS-1)`, { package: entry.name }));
     }
   }
-  findings.push(...nivoosSpecFindings(declared, tracked));
+  // A spec per cell and flow is a test obligation: not judged while the app declares its test or coverage gate off (PROJECT-LINT-4), which the run reports as off (declared).
+  if (coverageObligationsOff(repoRoot) === null) findings.push(...nivoosSpecFindings(declared, tracked));
   for (const file of files) {
     const match = /^packages\/([^/]+)\/package\.json$/u.exec(file);
     if (match === null || names.has(match[1] as string) || published.has(`packages/${match[1] as string}`)) continue;

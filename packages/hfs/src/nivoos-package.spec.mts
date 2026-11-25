@@ -19,6 +19,7 @@ import { declaredPackageScopes } from '../runtime/scripts/hfs/coverage-scope.mjs
 import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
 import { dependsOnNivoosSdk, nivoosPackagesOf, nivoosSideProblems } from '../runtime/scripts/hfs/nivoos-side.mjs';
 import { nivoosFindings } from '../runtime/scripts/hfs/rules/nivoos.mjs';
+import { coverageObligationsOff } from '../runtime/scripts/hfs/coverage-tiers.mjs';
 import { serviceFindings } from '../runtime/scripts/hfs/rules/services.mjs';
 import { declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { declaredPackagesHfsView } from '../runtime/scripts/hfs/view.mjs';
@@ -142,6 +143,17 @@ test('HFS_NIVOOS_SPEC_MISSING: every cell and flow of a declared package has its
   ], 'a cell without its .cell.spec.ts and a flow whose spec is in another folder are findings; a step, an event and an undeclared package are not');
   assert.match(found[0]!.message, /add packages\/biz\/src\/booking\/tell-booking\.cell\.spec\.ts/);
   assert.match(found[1]!.message, /a flow of the business package biz/);
+  // A spec per cell and flow is a test obligation: an app that declares its test (or coverage) gate off is not judged for it (PROJECT-LINT-4).
+  for (const gates of ['gates:\n  test: {run: off, reason: "specs after the release"}\n  coverage: {run: off, reason: "reads the unit run"}\n  codecov: {run: off, reason: "reads the coverage"}\n  sonar: {run: off, reason: "reads the coverage"}\n',
+    'gates:\n  coverage: {run: off, reason: "coverage after the release"}\n  codecov: {run: off, reason: "reads the coverage"}\n']) {
+    fs.mkdirSync(path.join(repoRoot, '.starcistacks'), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot, '.starcistacks/application-stacks.yaml'), gates);
+    assert.deepEqual(nivoosFindings({ repoRoot, files: tree, repo }).filter((finding) => finding.code === 'HFS_NIVOOS_SPEC_MISSING'), [], 'declared off: no HFS_NIVOOS_SPEC_MISSING');
+    assert.equal(coverageObligationsOff(repoRoot)?.endsWith(')'), true);
+    assert.match(coverageObligationsOff(repoRoot) ?? '', /^(test|coverage): off \(declared: /);
+  }
+  fs.rmSync(path.join(repoRoot, '.starcistacks'), { recursive: true, force: true });
+  assert.equal(nivoosFindings({ repoRoot, files: tree, repo }).length, 2, 'the gates back on: the findings are back');
 });
 
 /** An app root holding `files` (app-relative path -> text), hfs.json declaring the package `biz`. */
