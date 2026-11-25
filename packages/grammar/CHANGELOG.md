@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.61.1 - 2026-11-26
+
+- Fixed (h-offset-pop-seams): every Offset Pop row seam is one 2px ink line, not only a ListRow's. Common gains the token `--grammar-seam-width` (default the hairline, so Core is unchanged); the Offset Pop root binds it to `--offset-pop-outline-width`, and the seams of a disclosure item, note, schema and kv row, schedule and Markdown table row, DataTable row, header line and mobile list row, description pair, upload row, interval row and media list row read it. The family's own `[data-grammar-row]` seam rule is gone: the token carries it. `offsetPopRuleConformance` BOUNDARY-3 and BOUNDARY-5 state the rule. No API change.
+
 ## 0.61.0 - 2026-11-26
 
 - Changed (h-grammar-chat-avatars, NIVO feedback 2): a figure that is a link (`Section kind="figures"`) draws no chevron or arrow; the whole cell is the press target, shown by the pointer cursor and the row hover surface. `DNA-COMMON-FIGURE-LINK-CUE` now says so (it measures zero cue glyphs); `data-grammar-figure-cue` and `.starci-core-figure-cue` are gone.
@@ -28,7 +32,6 @@ Versioned history starts at beta; earlier history is in git.
 - Added: story `Offset Pop/Parity` shows the learning screens (lesson list, practice step, streak and progress, profile, leaderboard) and the content renderers, at 1440 and 390, light and dark, with the family palette. The playbook (`@starci/hfs` knowledge, `grammars/offset-pop/playbook.yaml`) is rewritten against the current API and adds the `lesson-list`, `streak-progress`, `profile` and `leaderboard` shapes.
 
 ## 0.60.0 - 2026-11-26
-
 
 ## 0.60.0 - 2026-11-26
 - Breaking (h-grammar-board-forms): `BoardColumn.canDrop` answers `boardAllow`, `boardRefuse(reason)` or `boardNeedsData(kind)` (was `null` or a reason string). Manual step: wrap each `canDrop` result: `null` becomes `boardAllow`, a string `reason` becomes `boardRefuse(reason)`. `needsData` takes the drop but leaves the card where it was and calls the new `Board onNeedsData(move, kind)` so the app can open a dialog (a booking time, a reason a lead was lost) and move the card itself; `moveLabels.announceAsk` is what a screen reader hears.

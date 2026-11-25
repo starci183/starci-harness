@@ -1227,9 +1227,9 @@
     }
 
     .starci-core-data-table .table__column::after { display: none; }
-    .starci-core-data-table .table__header { border-block-end: 1px solid var(--border); }
-    .starci-core-data-table .table__column { border-block-end: 1px solid var(--border); }
-    .starci-core-data-table .table__row .table__cell { border-block-end: 1px solid var(--separator); border-radius: 0; background: transparent; }
+    .starci-core-data-table .table__header { border-block-end: var(--grammar-seam-width) solid var(--border); }
+    .starci-core-data-table .table__column { border-block-end: var(--grammar-seam-width) solid var(--border); }
+    .starci-core-data-table .table__row .table__cell { border-block-end: var(--grammar-seam-width) solid var(--separator); border-radius: 0; background: transparent; }
 
     /* The footer (the pager) stands a row step under the last row's hairline, with no line of its own, on the content edge. */
     .starci-core-data-table-footer {
@@ -1637,7 +1637,7 @@
         gap: 0.25rem;
         /* The row step to its hairlines, the bleed on its sides, so its words stand on the content edge. */
         padding: var(--grammar-row-gap) var(--starci-core-table-bleed);
-        border-block-end: 1px solid var(--separator);
+        border-block-end: var(--grammar-seam-width) solid var(--separator);
     }
 
     .starci-core-data-table-list-row[data-grammar-table-row-pressable="true"] { cursor: pointer; }
@@ -1692,7 +1692,7 @@
     .starci-core-data-table-list-meta:empty { display: none; }
 
     /* The totals item of the phone list: the last row, on the secondary surface, its figures labelled by their column. */
-    .starci-core-data-table-list-row.starci-core-data-table-list-totals { background: var(--surface-secondary); border-block-start: 1px solid var(--border); border-block-end: 0; }
+    .starci-core-data-table-list-row.starci-core-data-table-list-totals { background: var(--surface-secondary); border-block-start: var(--grammar-seam-width) solid var(--border); border-block-end: 0; }
     .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); }
     .starci-core-data-table-list-totals .starci-core-data-table-list-value { color: var(--default-foreground); font-variant-numeric: tabular-nums; }
 
@@ -1847,7 +1847,7 @@
     }
 
     .starci-core-description-list[data-grammar-description-divided="true"] .starci-core-description-pair + .starci-core-description-pair {
-        border-block-start: 1px solid var(--separator);
+        border-block-start: var(--grammar-seam-width) solid var(--separator);
     }
 
     /* 0.48.0: the term is the label (16 / 400, primary); the value under it is the content (14, secondary). A label never renders like its value. */
