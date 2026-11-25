@@ -266,7 +266,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size and states · Name clash with React's Fragment · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/graph.md](../ui/components/graph.md) · 29 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+- [ui/components/graph.md](../ui/components/graph.md) · 30 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo and the browser proof
   - ids: string;
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 14 KB — Contract: Avatar and IconTile.
@@ -274,7 +274,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/illustration.md](../ui/components/illustration.md) · 3 KB — Contract: Illustration.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/image.md](../ui/components/image.md) · 5 KB — Contract: Image.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules · Eager pictures and the fetch priority
+  - sections: Job · Choose · Variants · Size · States · A collection of files: MediaGrid · Owner split · Rules · Eager pictures and the fetch priority
 - [ui/components/lesson.md](../ui/components/lesson.md) · 7 KB — No contract role yet: these are the parts of a lesson page, each a Grammar component an app places; their look is the Grammar's (`src/common/components-lesson.css`), their words ...
   - sections: Job · Choose · Variants · Code palette · Size · States · Owner split · Accessibility · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 20 KB — Contract: List and Table.
