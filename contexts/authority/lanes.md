@@ -44,10 +44,15 @@ that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each k
 - **One slot per lane per kind.** `slot take`, `slot run` and `lane gate` return the slot the lane already holds, so a retried gate never takes a
   second one. A slot held by `slot run` or `lane gate` is released in a `finally`, on SIGINT, SIGBREAK, SIGHUP and SIGTERM and on `process.exit`.
   On Windows a process killed outright (`taskkill /F`, `process.kill`, a dead parent) runs nothing: its slot records its pid, and the next take reclaims it as `dead`.
-- **Locks with no pid** (a lock line `<lane> <time>` alone) cannot be probed. They are reclaimable (`gone`) once their lane has no worktree: no
-  worktree of the repositories under the slot root exists on disk whose folder ends in `/<lane>` or which has `lane/<lane>` checked out (where the slot root
-  holds no repository, `_land-status/<lane>.json` saying `landed` or `rejected` stands in), or taken before this boot (`rebooted`). Otherwise they are
-  only reported, `old` past `warnMinutes`. Name the lane after its worktree folder or its `lane/<lane>` branch, or such a lock can be reclaimed.
+- **Every slot records its holder.** A take refuses (`SLOT_PID_REQUIRED`, `SLOT_START_UNKNOWN`) to write a lock without a live pid, that process's start time and the
+  host boot; `slot take` needs `--pid`. A script of an app never writes a `_npm-slot-*.lock` itself: it calls `starci slot run npm -- <command>`.
+- **Locks with no pid** (a legacy line `<lane> <time>` that a script wrote itself) are reclaimable (`gone`) once their lane is proven gone: the process table is
+  read, and no process works inside the lane's worktree (its working folder or command line lies in it) or names the holder in its command line, and either no worktree
+  of the repositories under the slot root exists on disk whose folder is `<lane>` or which has `lane/<lane>` checked out (where the slot root holds no repository,
+  `_land-status/<lane>.json` saying `landed` stands in) or that worktree has no live process. A holder name ending in `-<pid>` whose pid is alive and started before
+  the lock keeps it held; a dead suffix pid proves nothing (a lane may be named `h-x-390`). Taken before this boot is `rebooted`. Otherwise the lock is held,
+  `slot list` prints `not reclaimable: <why>` for it (the process that works there, or that nothing was read about its lane), and it is `old` past `warnMinutes`.
+  Each reclaim is logged with its evidence in `_slots.log`. Age alone never reclaims.
 - **A lane lets go of its slots.** `starci lane remove` releases every slot the lane holds, of any kind, as part of the removal (its dry run lists them;
   `--dir` names the slot root). Each release is logged in `_slots.log`.
 - **Never hold a slot while you wait** for a review, an audit or another lane; take it for the run, then let it go.

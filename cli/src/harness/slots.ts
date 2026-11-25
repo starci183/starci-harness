@@ -1,12 +1,14 @@
 import { appendFileSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { hostname, uptime } from "node:os"
-import { join, resolve } from "node:path"
+import { basename, join, resolve } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync, pidAlive } from "../shared/exec.js"
 import { hostFreeMb } from "./heavy.js"
+import { listProcesses } from "./process-table.js"
+import type { HostProcess } from "./process-table.js"
 import { registerRun } from "./runs.js"
 import { sharedStateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
@@ -18,8 +20,10 @@ import { locateOps } from "./ops.js"
  *
  * A slot file holds one line, `<holder> <taken> pid=<pid> start=<pid start> boot=<host boot> host=<host>`, which the lane scripts of
  * a lanes folder read as "<lane> <time>" too. It is taken whole and alone (a hard link of a written file, so nobody reads it half
- * written) and released only by the holder it names. It is reclaimed only on evidence that its holder is gone (`judgeHolder`): the
- * host booted after it was taken, its pid is not alive, or its pid now runs a process started at another time. Age is a warning,
+ * written) and released only by the holder it names. A take refuses to write a line without the holder's pid, its start time and the
+ * host's boot (`slotLine`). It is reclaimed only on evidence that its holder is gone (`judgeHolder`): the host booted after it was taken,
+ * its pid is not alive, or its pid now runs a process started at another time; a legacy line with no pid (written by a script of an app)
+ * once its lane is proven gone (`proveLaneGone`: no worktree or none with a live process, and no process naming the holder). Age is a warning,
  * never a reclaim. A reclaim renames the file aside first, so two reclaimers never both win, and logs its evidence.
  *
  * One slot per lane per kind: a take for a lane that already holds a slot of the kind returns it (re-entrant), so retried gates never
@@ -145,11 +149,15 @@ export const processStartMs = (pid: number): number | null => {
     return run.exitCode === 0 && Number.isFinite(ms) ? ms : null
 }
 
-/** The line a holder writes: `<holder> <taken> [pid=<pid> [start=<iso>]] boot=<iso> host=<host>`. */
-export const slotLine = (holder: string, pid?: number): string => {
-    const start = pid === undefined ? null : processStartMs(pid)
-    const owner = pid === undefined ? "" : ` pid=${String(pid)}${start === null ? "" : ` start=${new Date(start).toISOString()}`}`
-    return `${holder} ${new Date().toISOString()}${owner} boot=${new Date(bootMs()).toISOString()} host=${hostname()}`
+/**
+ * The line a holder writes: `<holder> <taken> pid=<pid> start=<iso> boot=<iso> host=<host>`. Refused without a live pid whose start the OS
+ * reports: a line without them cannot be judged later, and a lock nobody can judge is held until the host reboots.
+ */
+export const slotLine = (holder: string, pid: number | undefined, startOf: (pid: number) => number | null = processStartMs): string => {
+    if (pid === undefined) throw new Refusal("SLOT_PID_REQUIRED", `a slot lock records its holder's pid, start and the host boot; none was given for ${holder} (pass --pid, or use slot run, which records its own)`)
+    const start = startOf(pid) ?? startOf(pid)
+    if (start === null) throw new Refusal("SLOT_START_UNKNOWN", `pid ${String(pid)} is not running or the host does not report its start time: a slot lock must record it (a pid reused later is told apart by it)`)
+    return `${holder} ${new Date().toISOString()} pid=${String(pid)} start=${new Date(start).toISOString()} boot=${new Date(bootMs()).toISOString()} host=${hostname()}`
 }
 
 /** What a slot file says about its holder. */
@@ -190,12 +198,13 @@ export const readHolder = (file: string): SlotHolder | undefined => {
 /**
  * How a slot stands. `held`: its holder may be alive. `old`: held, and older than the kind's warnMinutes (a warning, never a reclaim).
  * Reclaimable, each on evidence: `dead` (its pid is not alive), `reused` (its pid runs a process started at another time),
- * `rebooted` (the host booted after it was taken, so every process of that session is gone).
+ * `rebooted` (the host booted after it was taken, so every process of that session is gone), `gone` (a lock with no pid whose lane has no
+ * worktree, or one with no live process in it, and no process names the holder).
  */
-export type SlotState = "free" | "held" | "old" | "dead" | "reused" | "rebooted"
+export type SlotState = "free" | "held" | "old" | "dead" | "reused" | "rebooted" | "gone"
 
 /** The states a take, or `slot release --stale`, reclaims. */
-export const RECLAIMABLE: ReadonlySet<SlotState> = new Set<SlotState>(["dead", "reused", "rebooted"])
+export const RECLAIMABLE: ReadonlySet<SlotState> = new Set<SlotState>(["dead", "reused", "rebooted", "gone"])
 
 /** One slot as `slot list` shows it. */
 export interface SlotView {
@@ -214,6 +223,8 @@ export interface SlotView {
     readonly alive?: "yes" | "no" | "unknown"
     /** A take or `slot release --stale` would reclaim it now. */
     readonly reclaimable?: boolean
+    /** For a held or old slot: what would make it reclaimable, so nobody has to guess or delete it by hand. */
+    readonly why?: string
 }
 
 /** What the judgement reads from the host. */
@@ -223,6 +234,24 @@ export interface HostProbe {
     readonly hostname: string
     readonly alive: (pid: number) => boolean
     readonly startMs: (pid: number) => number | null
+    /** Whether a lane (a holder name) is proven gone; absent where nothing was read about lanes (the judgement then never says `gone`). */
+    readonly laneGone?: (holder: string) => LaneProof
+}
+
+/** What is known of a lane: gone (with the evidence), or not proven gone (with what keeps it). */
+export interface LaneProof {
+    readonly gone: boolean
+    readonly evidence: string
+}
+
+/** What a lane proof reads: the registered worktrees under the slot root (undefined: no repository there) and the process table (or why it could not be read). */
+export interface LaneFacts {
+    readonly worktrees: readonly KnownWorktree[] | undefined
+    readonly processes: readonly HostProcess[] | string
+    /** The lanes whose status file says `landed` or `rejected`: stands in for worktrees where the slot root holds no repository. */
+    readonly finished: (lane: string) => boolean
+    /** This process, never counted as working in a worktree. */
+    readonly self: number
 }
 
 /** A registered worktree of a repository found under the slot root. */
@@ -263,8 +292,70 @@ export const worktreesUnder = (root: string): { readonly repos: number; readonly
     return repos === 0 ? undefined : { repos, worktrees }
 }
 
-/** The live host. */
+/** The live host, without any reading about lanes (a lock with no pid is then never `gone`). */
 export const liveProbe = (): HostProbe => ({ nowMs: Date.now(), bootMs: bootMs(), hostname: hostname(), alive: pidAlive, startMs: processStartMs })
+
+const slashedLower = (path: string): string => path.replaceAll("\\", "/").toLowerCase()
+const escapeRegex = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+/**
+ * Whether a lane is proven gone, for a lock that records no pid. Not proven while the process table cannot be read, while a process
+ * (not this one) works inside the lane's worktree (its working folder or command line lies in it) or names the holder in its command line.
+ * Gone when the lane has no worktree on disk (no registered worktree of the repositories under the slot root whose folder is named
+ * `<lane>` or has `lane/<lane>` checked out; where the slot root holds no repository its `_land-status/<lane>.json` says landed) or the
+ * worktree has no live process in it. Never age. Pure over `facts`.
+ */
+export const proveLaneGone = (root: string, lane: string, facts: LaneFacts): LaneProof => {
+    if (typeof facts.processes === "string") return { gone: false, evidence: `the process table could not be read (${facts.processes})` }
+    if (facts.worktrees === undefined && !facts.finished(lane)) {
+        return { gone: false, evidence: `no repository under ${root} to say whether lane ${lane} still has a worktree, and no landed status for it` }
+    }
+    const name = lane.toLowerCase()
+    const tree = facts.worktrees?.find((entry) => existsSync(entry.path) && (basename(entry.path).toLowerCase() === name || entry.branch === `lane/${lane}`))
+    const key = tree === undefined ? undefined : slashedLower(tree.path)
+    const named = new RegExp(`(^|[^a-z0-9._-])${escapeRegex(name)}($|[^a-z0-9._-])`)
+    for (const item of facts.processes) {
+        if (item.pid === facts.self) continue
+        const line = slashedLower(item.commandLine)
+        const cwd = item.cwd === null ? "" : slashedLower(item.cwd)
+        if (key !== undefined && (cwd === key || cwd.startsWith(`${key}/`) || line.includes(`${key}/`) || line.endsWith(key))) {
+            return { gone: false, evidence: `pid ${String(item.pid)} ${item.name} works in the worktree ${String(tree?.path)}` }
+        }
+        if (named.test(line)) return { gone: false, evidence: `pid ${String(item.pid)} ${item.name} names ${lane} in its command line` }
+    }
+    return {
+        gone: true,
+        evidence: tree === undefined ? `lane ${lane} has no worktree and no live process names it` : `lane ${lane} has the worktree ${tree.path} but no live process works in it or names the lane`,
+    }
+}
+
+/** Whether `_land-status/<lane>.json` says the lane landed. */
+const landedLane = (root: string, lane: string): boolean => {
+    try {
+        const status: unknown = JSON.parse(readFileSync(join(root, "_land-status", `${lane}.json`), "utf8"))
+        return typeof status === "object" && status !== null && "state" in status && status.state === "landed"
+    } catch {
+        return false
+    }
+}
+
+/** The live host plus what it takes to prove a lane gone: the worktrees under `root` and the process table (with working folders), read once. */
+export const laneProbe = async (root: string): Promise<HostProbe> => {
+    const processes = await listProcesses(true)
+    const worktrees = worktreesUnder(root)?.worktrees
+    const facts: LaneFacts = { worktrees, processes, finished: (lane) => landedLane(root, lane), self: process.pid }
+    return { ...liveProbe(), laneGone: (holder) => proveLaneGone(root, holder, facts) }
+}
+
+/** Whether any slot of the kind records no pid (so a judgement needs `laneProbe`). */
+const hasPidless = (root: string, kind: SlotKind): boolean =>
+    allNumbers(kind).some((n) => {
+        const read = readHolder(slotFile(root, kind, n))
+        return read !== undefined && read.pid === null
+    })
+
+/** The probe a take, a list or a reclaim needs for these kinds: with lane proof only when some lock records no pid. */
+const probeFor = async (root: string, kinds: readonly SlotKind[]): Promise<HostProbe> => (kinds.some((kind) => hasPidless(root, kind)) ? laneProbe(root) : liveProbe())
 
 const isoOf = (ms: number): string => new Date(ms).toISOString()
 
@@ -294,13 +385,35 @@ export const judgeHolder = (kind: SlotKind, holder: SlotHolder, probe: HostProbe
     if (takenBeforeBoot || otherBoot) {
         return { state: "rebooted", evidence: `taken ${holder.at}${holder.bootMs === null ? "" : ` in the boot of ${isoOf(holder.bootMs)}`}; this host booted ${isoOf(probe.bootMs)}` }
     }
-    return aged(holder.pid === null ? "no pid recorded" : `pid ${String(holder.pid)} alive, its start unknown`)
+    if (holder.pid !== null) return aged(`pid ${String(holder.pid)} alive, its start unknown`)
+    return judgePidless(holder, probe, aged)
+}
+
+/**
+ * A lock with no pid (a legacy line `<lane> <iso>` that a script of an app wrote itself). A pid the holder's name ends in (`<name>-<pid>`) that
+ * runs a process started before the lock was taken keeps it held; that name proves nothing when its pid is dead (a lane may be named `h-x-390`).
+ * Otherwise it is `gone` once the lane is proven gone (`proveLaneGone`) and held, with what keeps it, when not.
+ */
+const judgePidless = (
+    holder: SlotHolder,
+    probe: HostProbe,
+    aged: (why: string) => { readonly state: SlotState; readonly evidence: string },
+): { readonly state: SlotState; readonly evidence: string } => {
+    const suffix = /-(\d+)$/.exec(holder.holder)?.[1]
+    const named = suffix === undefined ? undefined : Number(suffix)
+    if (named !== undefined && probe.alive(named)) {
+        const started = probe.startMs(named)
+        if (started === null || started <= Date.parse(holder.at) + START_TOLERANCE_MS) return aged(`no pid recorded; the holder name ends in pid ${String(named)}, which is alive`)
+    }
+    if (probe.laneGone === undefined) return aged("no pid recorded and nothing was read about its lane")
+    const proof = probe.laneGone(holder.holder)
+    return proof.gone ? { state: "gone", evidence: `no pid recorded; ${proof.evidence}` } : aged(`no pid recorded; ${proof.evidence}`)
 }
 
 /** Whether the holder is alive, as far as the judgement knows. */
 const aliveOf = (holder: SlotHolder, state: SlotState, probe: HostProbe): "yes" | "no" | "unknown" => {
     if (holder.host !== null && holder.host !== probe.hostname) return "unknown"
-    if (state === "dead" || state === "reused" || state === "rebooted") return "no"
+    if (state === "dead" || state === "reused" || state === "rebooted" || state === "gone") return "no"
     return holder.pid === null ? "unknown" : "yes"
 }
 
@@ -370,7 +483,7 @@ export interface Taken {
 
 /** How a take waits and whom it records. */
 export interface TakeOptions {
-    /** The process the slot lives as long as; without it the slot is reclaimed only by age. */
+    /** The process the slot lives as long as (required: a take without it is refused SLOT_PID_REQUIRED). */
     readonly pid?: number
     /** Seconds to wait for a free slot; undefined waits until one frees. */
     readonly waitSeconds?: number | undefined
@@ -391,8 +504,7 @@ export const heldBy = (root: string, kind: SlotKind, holder: string): { readonly
 }
 
 /** One pass over the open slots: takes the first free one, reclaiming a holder proven gone first. */
-const takeOnce = (root: string, name: string, kind: SlotKind, holder: string, options: TakeOptions, reclaimed: string[]): { readonly n: number; readonly file: string } | undefined => {
-    const probe = liveProbe()
+const takeOnce = (root: string, name: string, kind: SlotKind, holder: string, options: TakeOptions, reclaimed: string[], probe: HostProbe): { readonly n: number; readonly file: string } | undefined => {
     for (const n of openNumbers(kind, options.freeMb ?? hostFreeMb)) {
         const file = slotFile(root, kind, n)
         if (takeLockFile(file, slotLine(holder, options.pid))) return { n, file }
@@ -418,13 +530,15 @@ const takeOnce = (root: string, name: string, kind: SlotKind, holder: string, op
 export const takeSlot = async (root: string, rules: SlotRules, name: string, holder: string, options: TakeOptions = {}): Promise<Taken> => {
     const kind = slotKind(rules, name)
     checkHolder(holder)
+    // The line is built first, so a take without a pid refuses before it waits or reclaims anything.
+    slotLine(holder, options.pid)
     const started = Date.now()
     const waited = (): number => Math.round((Date.now() - started) / 1000)
     const reclaimed: string[] = []
     // One slot per lane per kind: the lane's own slot is returned, never a second one. One proven gone is reclaimed first.
     const held = options.reuse === false ? undefined : heldBy(root, kind, holder)
     if (held !== undefined) {
-        const judged = judgeHolder(kind, held.holder, liveProbe())
+        const judged = judgeHolder(kind, held.holder, await probeFor(root, [kind]))
         if (RECLAIMABLE.has(judged.state)) {
             if (reclaimSlot(root, held.file, held.holder, `${holder} (pid ${String(process.pid)})`, `${judged.state}: ${judged.evidence}`)) {
                 reclaimed.push(`${String(held.n)}: ${held.holder.content.trim()} (${judged.state}: ${judged.evidence})`)
@@ -441,7 +555,7 @@ export const takeSlot = async (root: string, rules: SlotRules, name: string, hol
     for (;;) {
         const freeMb = (options.freeMb ?? hostFreeMb)()
         const roomy = kind.minFreeMb === undefined || freeMb >= kind.minFreeMb
-        const got = roomy ? takeOnce(root, name, kind, holder, options, reclaimed) : undefined
+        const got = roomy ? takeOnce(root, name, kind, holder, options, reclaimed, await probeFor(root, [kind])) : undefined
         if (got !== undefined) return { kind: name, n: got.n, file: got.file, holder, pid: options.pid ?? null, already: false, reclaimed, waitedSeconds: waited() }
         if (options.waitSeconds !== undefined && waited() >= options.waitSeconds) {
             const why = roomy ? `every ${name} slot is held` : `the host has ${String(freeMb)} MB free, under the ${String(kind.minFreeMb)} MB a ${name} slot needs`
@@ -521,11 +635,13 @@ export const takeLiveLock = (file: string, content: string, say: (line: string) 
 }
 
 /** Reclaims every slot of the given kinds whose holder is proven gone (`RECLAIMABLE`); an `old` one is reported, never removed. */
-export const reclaimStale = (root: string, rules: SlotRules, names: readonly string[], by: string): Released => {
+export const reclaimStale = async (root: string, rules: SlotRules, names: readonly string[], by: string): Promise<Released> => {
     const released: string[] = []
     const kept: string[] = []
-    for (const view of listSlots(root, rules, names)) {
+    const kinds = (names.length === 0 ? Object.keys(rules.kinds) : names).map((name) => slotKind(rules, name))
+    for (const view of listSlots(root, rules, names, await probeFor(root, kinds))) {
         if (view.state === "old") kept.push(`${view.file}: ${String(view.holder)} is old (${String(view.evidence)}); ask its holder`)
+        else if (view.state === "held" && view.pid === null) kept.push(`${view.file}: ${String(view.holder)} not reclaimable: ${String(view.why)}`)
         if (!RECLAIMABLE.has(view.state)) continue
         const read = readHolder(view.file)
         if (read !== undefined && reclaimSlot(root, view.file, read, by, `${view.state}: ${String(view.evidence)}`)) released.push(`${view.file} (${view.state}: ${String(view.evidence)})`)
@@ -534,9 +650,8 @@ export const reclaimStale = (root: string, rules: SlotRules, names: readonly str
 }
 
 /** Every slot of the given kinds (all kinds when none), free ones included. */
-export const listSlots = (root: string, rules: SlotRules, names: readonly string[] = []): SlotView[] => {
+export const listSlots = (root: string, rules: SlotRules, names: readonly string[] = [], probe: HostProbe = liveProbe()): SlotView[] => {
     const kinds = names.length === 0 ? Object.keys(rules.kinds) : names
-    const probe = liveProbe()
     return kinds.flatMap((name) => {
         const kind = slotKind(rules, name)
         return allNumbers(kind).map((n): SlotView => {
@@ -546,7 +661,7 @@ export const listSlots = (root: string, rules: SlotRules, names: readonly string
             if (read === undefined) return { kind: name, n, file, state: "free", burst }
             const ageMinutes = Math.round((probe.nowMs - Date.parse(read.at)) / 60_000)
             const judged = judgeHolder(kind, read, probe)
-            return { kind: name, n, file, state: judged.state, burst, holder: read.holder, at: read.at, ageMinutes, pid: read.pid, evidence: judged.evidence, alive: aliveOf(read, judged.state, probe), reclaimable: RECLAIMABLE.has(judged.state) }
+            return { kind: name, n, file, state: judged.state, burst, holder: read.holder, at: read.at, ageMinutes, pid: read.pid, evidence: judged.evidence, alive: aliveOf(read, judged.state, probe), reclaimable: RECLAIMABLE.has(judged.state), ...(RECLAIMABLE.has(judged.state) ? {} : { why: judged.evidence }) }
         })
     })
 }
