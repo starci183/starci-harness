@@ -315,7 +315,8 @@ const inUse = (db: DatabaseSync, rules: HeavyRules, except: ReadonlySet<string> 
 export const hostLoad = (rules: HeavyRules = loadHeavyRules()): HostLoad => {
     const head = heavySlots(rules).find((slot) => slot.state === "waiting")
     const { running, used } = withGovernor((db) => inUse(db, rules))
-    const commit = commitFloorHeld(freeCommitMb(), rules.commitFloorMb ?? COMMIT_FLOOR_MB, head === undefined ? 0 : plannedOf(rules, head.kind))
+    const commit =
+        commitFloorHeld(freeCommitMb(), rules.commitFloorMb ?? COMMIT_FLOOR_MB, head === undefined || running === 0 ? 0 : commitNeedOf(rules, head.kind, head.weight))
     return admission(rules, { used, running, ...(head === undefined ? {} : { weight: head.weight, what: head.label }), floors: [...heavyFloors(rules, process.cwd()), ...commit], freeMb: hostFreeMb() })
 }
 
@@ -390,8 +391,12 @@ const tryAcquire = (
         const used = running.reduce((sum, row) => sum + rowWeight(rules, row), 0)
         // The commit floor: the planned memory of the commands admitted in the last commitRampSeconds is not in the reading yet, so it is taken off.
         const rampFrom = Date.now() - (rules.commitRampSeconds ?? COMMIT_RAMP_SECONDS) * 1000
-        const rampingMb = running.filter((row) => Date.parse(String(row.at)) >= rampFrom).reduce((sum, row) => sum + plannedOf(rules, String(row.kind)), 0)
-        const commit = commitFloorHeld(commitMb, rules.commitFloorMb ?? COMMIT_FLOOR_MB, plannedOf(rules, slot.kind), rampingMb)
+        const rampingMb = running.filter((row) => Date.parse(String(row.at)) >= rampFrom).reduce((sum, row) => sum + commitNeedOf(rules, String(row.kind), rowWeight(rules, row)), 0)
+        // With no heavy command running, no admission of the governor's can free the commit the head plans: the head then waits only while the free
+        // commit itself is under the floor, never for its own plan, so a command planning more than the host's free commit runs alone instead of
+        // waiting forever (as a weight above the cap does; h-commit-floor-head).
+        const need = running.length === 0 ? 0 : commitNeedOf(rules, slot.kind, slot.weight)
+        const commit = commitFloorHeld(commitMb, rules.commitFloorMb ?? COMMIT_FLOOR_MB, need, rampingMb)
         const load = admission(rules, { used, running: running.length, weight: slot.weight, what: slot.label, floors: [...floors, ...commit], freeMb, ...(totalMb === undefined ? {} : { totalMb }) })
         const order = servingOrder(rows)
         if (order[0]?.id !== slot.id || !load.admits) {
@@ -408,6 +413,16 @@ const dropDead = (db: DatabaseSync, row: Record<string, unknown>, by: string): v
     db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
     const child = row.child_pid === null || row.child_pid === undefined ? null : Number(row.child_pid)
     logEvent(db, { action: "reclaimed", slot: `heavy ${String(row.id)}`, holder: String(row.label), pid: Number(row.pid), childPid: child, command: String(row.label), by, evidence: `dead: pid ${String(row.pid)} is not alive` })
+}
+
+/**
+ * The commit a command is judged to need against heavy.commitFloorMb: its planned MB capped at the slot units it holds (weight x gbPerSlot). A test
+ * run plans every worker's heap cap (23 GB on this host), which is a ceiling its pages never all commit; counting it whole kept the head of the queue
+ * waiting forever on a host with 24 GB free commit (h-commit-floor-head).
+ */
+export const commitNeedOf = (rules: HeavyRules, kind: string, weight?: unknown): number => {
+    const units = Math.min(MAX_WEIGHT, Math.max(1, Number.isFinite(Number(weight)) && Number(weight) > 0 ? Number(weight) : 1))
+    return Math.min(plannedOf(rules, kind), units * rules.gbPerSlot * 1024)
 }
 
 /** The planned MB of a row's kind (`plannedMb`); a kind this copy does not know plans one slot unit. */
