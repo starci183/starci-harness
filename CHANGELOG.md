@@ -6,6 +6,8 @@ Versioned history starts at beta; earlier history is in git.
 
 - Changed (h-cache-warm): a packed `@starci/hfs` carries its source digest in parts (`starciSourceParts`: the core and `canon-pins.yaml`) beside the unchanged `starciSource`, so the check cache keys the pins apart (`SOURCE_SPLITS`, `sourceDigestParts`).
 - Fixed (h-cache-warm, `app push`): a push to dev or a lane branch that the pre-push hook refused with HFS_CHECK_CACHE_UNWARMED (its full gate ran) no longer ends the verb: it falls into the check, cache commit, push round when it pushes the checked-out commit, and says why when it pushes another (the landing's squash).
+- Changed: the CLI requires @starci/hfs@6.17.15, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.15, @starci/grammar 0.59.3 (MermaidDiagram always opens the whole drawing, contain-fitted and clear of its controls row) and @starci/gallery 0.1.27.
 
 ## 1.1.0-alpha.201 - 2026-11-25
