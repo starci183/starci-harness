@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.1.28 - 2026-11-26
+
+- Changed: requires @starci/grammar 0.59.4 (tech logo icons in the Mermaid diagram).
+
 ## 0.1.27 - 2026-11-25
 
 - Changed: requires @starci/grammar 0.59.3 (MermaidDiagram always opens the whole drawing, contain-fitted and clear of its controls row).
