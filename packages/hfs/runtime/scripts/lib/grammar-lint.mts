@@ -5,11 +5,11 @@ import { parseYamlCached } from './yaml-cached.mjs';
 const CATALOG_FILE = new URL('../../knowledge/grammars/index.yaml', import.meta.url);
 
 /**
- * The component/export contract of a Grammar family. `entry` and `styleEntry` are the family's own entries when it declares them
- * (`familyEntries` of its catalog entry: `@starci/grammar/offset-pop`, `@starci/grammar/offset-pop/styles.css`), else the shared contract's.
- * `entries` are every code entry the family admits (its own and the shared one it is defined over, which it re-exports); `styleEntries` every
- * base stylesheet (each family sheet imports the shared anatomy first, so one of them is enough); `themeEntries` the optional default palettes
- * a stylesheet may import beside a base one.
+ * The component/export contract of a Grammar family. `entry` and `styleEntry` are the shared contract's (`@starci/grammar/common`,
+ * `common.css`): every install must export them. `entries` are every code entry the family admits, the shared one first, then the family's own
+ * (`familyEntries` of its catalog entry: `@starci/grammar/offset-pop`, which re-exports Common); `styleEntries` every base stylesheet (each family
+ * sheet imports the shared anatomy first, so one of them is enough); `themeEntries` the optional default palettes a stylesheet may import beside
+ * a base one. A family's own entry is admitted only where the install a source resolves exports it.
  */
 export interface GrammarComponentContract {
   package: string;
@@ -97,14 +97,10 @@ export function grammarContractFor(family: unknown): Readonly<GrammarComponentCo
     throw new Error(`Grammar family ${family} has no valid component contract in knowledge/grammars/index.yaml`);
   }
   const own = familyEntriesOf(selected, contract.package, family);
-  const entry = own?.entry ?? contract.entry;
-  const styleEntry = own?.styleEntry ?? contract.styleEntry;
   return Object.freeze({
     ...(contract as GrammarComponentContract),
-    entry,
-    styleEntry,
-    entries: Object.freeze([...new Set([entry, contract.entry])]),
-    styleEntries: Object.freeze([...new Set([styleEntry, contract.styleEntry])]),
+    entries: Object.freeze([...new Set([contract.entry, ...(own ? [own.entry] : [])])]),
+    styleEntries: Object.freeze([...new Set([contract.styleEntry, ...(own ? [own.styleEntry] : [])])]),
     themeEntries: Object.freeze([...(own?.themeEntries ?? [])]),
     peers: Object.freeze([...contract.peers]),
   });
