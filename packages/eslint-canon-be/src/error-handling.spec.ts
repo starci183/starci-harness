@@ -268,3 +268,28 @@ declare const READY: Error
         ],
     })
 })
+
+test("a catch that logs the failure and then throws is a double log, outside the owners that answer failures", () => {
+    const ERRORS_FILTER = at("src/modules/platform/errors/errors.service.ts")
+    const CQRS_BASE = at("src/modules/platform/cqrs/cqrs.handler.ts")
+    const JOBS_BASE = at("src/modules/platform/jobs/jobs.processor.ts")
+    tester.run("catch-must-account", catchMustAccount, {
+        valid: [
+            // throwing alone, carrying the cause, is the business form: the base or the filter logs it once
+            { filename: SERVICE, code: `${HEAD}try { a() } catch (error) { throw new Error("x", { cause: error }) }` },
+            // logging without throwing handles the failure where it is caught
+            { filename: SERVICE, code: `${HEAD}try { a() } catch (error) { logger.warn("E", { error }) }` },
+            // a throw in a nested function is not one the catch lets escape
+            { filename: SERVICE, code: `${HEAD}try { a() } catch (error) { logger.error("E", error); const f = () => { throw error }; f }` },
+            // the handler bases and the global filter log once and rethrow
+            { filename: CQRS_BASE, code: `${HEAD}try { a() } catch (error) { logger.error("E", error); throw error }` },
+            { filename: JOBS_BASE, code: `${HEAD}try { a() } catch (error) { logger.error("E", error); throw error }` },
+            { filename: ERRORS_FILTER, code: `${HEAD}try { a() } catch (error) { logger.error("E", error); throw error }` },
+        ],
+        invalid: [
+            { filename: SERVICE, code: `${HEAD}try { a() } catch (error) { logger.error("E", error); throw error }`, errors: [{ messageId: "loggedAndThrown" }] },
+            { filename: SERVICE, code: `${HEAD}try { a() } catch (error) { renamed.warn("E"); throw new Error("x", { cause: error }) }`, errors: [{ messageId: "loggedAndThrown" }] },
+            { filename: SERVICE, code: `${HEAD}p.catch((error) => { logger.error("E", error); throw error })`, errors: [{ messageId: "loggedAndThrown" }] },
+        ],
+    })
+})

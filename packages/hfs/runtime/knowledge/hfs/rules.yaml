@@ -672,7 +672,7 @@ rules:
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_LOGGER_REQUIRED"]}
     witness:
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_LOGGER_REQUIRED"]}
-    law: "`platform/logging` exists and its `Logger` port is the only logger; every `catch` logs, rethrows or returns a reasoned outcome, and a log call names its event with a member of an owner's `<owner>.log-events.ts` enum."
+    law: "`platform/logging` exists and its `Logger` port is the only logger; every `catch` logs, rethrows or returns a reasoned outcome, and logs a failure once: outside `platform/errors`, `platform/logging` and the handler bases of `platform/cqrs` and `platform/jobs` a catch never both logs and throws, and no `Logger.error` takes a cause typed as a `DomainError`; a log call names its event with a member of an owner's `<owner>.log-events.ts` enum; and an app whose environment declares `monitoring.logPush` carries the Loki transport (`winston-loki`) in `platform/logging`."
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_LOGGER_REQUIRED"]
@@ -681,6 +681,8 @@ rules:
       - {kind: eslint-be, id: no-error-wording-as-log-identity}
       - {kind: eslint-be, id: no-interpolated-log-message}
       - {kind: eslint-be, id: no-framework-logger}
+      - {kind: eslint-be, id: no-domain-error-logged}
+      - {kind: hfs, id: log-push, at: scripts/hfs/rules/log-push.mjs}
   - id: R41
     code: "BE_DEFAULT_DENY"
     docs: [docs/microservices.md#r41]
