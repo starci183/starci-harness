@@ -303,7 +303,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Leading icon · Compact · Rules
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · The tone of a count · Destination · Collapse control · Selected and hover · Size · States · Owner split · Rules · TopBar start inset and the search slot
-- [ui/components/tabs.md](../ui/components/tabs.md) · 10 KB — Contract: Tabs.
+- [ui/components/tabs.md](../ui/components/tabs.md) · 11 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Filter presets as pills · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 6 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules

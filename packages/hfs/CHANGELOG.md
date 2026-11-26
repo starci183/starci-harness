@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.17 - 2026-11-26
+
+- The canon pins name @starci/grammar 0.60.3 and @starci/gallery 0.1.29.
+
 ## 6.17.16 - 2026-11-26
 
 - The canon pins name @starci/grammar 0.59.4 and @starci/gallery 0.1.28.
