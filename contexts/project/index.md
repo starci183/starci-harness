@@ -60,7 +60,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-INJECTION-1 Infrastructure arrives through an injector; a domain service by class · BE-INJECTION-2 An injector is one shape in its owner's decorators file · BE-INJECTION-3 A port has one injector name per capability · BE-INJECTION-4 No locator, forward reference or property injection · BE-INJECTION-5 No provider ring: a port sits on its own provider · BE-INJECTION-6 A command's composition root declares its boot entry, and the gate composes it
 - [code/be/jobs.md](../code/be/jobs.md) · 19 KB — How every long flow runs: a chain of jobs, each started by a queue outbox row, claimed under a fencing token that every claim bumps, judged by one runner and one retry ladder per ...
   - sections: BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically · BE-JOBS-2 Every write to a claimed job carries the token it was claimed with · BE-JOBS-3 An outside write goes through the effects piece; an outside read needs no intent · BE-JOBS-4 A job is a processor plus steps, both thin · BE-JOBS-5 The fence is proven on real Postgres · BE-JOBS-6 A recurring task is a tick of `platform/jobs`, fired once per minute for the deployment · BE-JOBS-7 One judge, one ladder per class of flow, then a dead letter a person resumes · BE-JOBS-8 The person's "stopped work" page is the app's, over the resume door the jobs platform gives · BE-JOBS-9 A job declares itself, starts from an outbox row and enqueues its next in the transaction that finishes it · BE-JOBS-10 Progress is an optional view of the job rows
-- [code/be/logging.md](../code/be/logging.md) · 3 KB — How a back-end event is recorded: one `Logger` port, enum identities declared by their owner, structured fields.
+- [code/be/logging.md](../code/be/logging.md) · 5 KB — How a back-end event is recorded: one `Logger` port, enum identities declared by their owner, structured fields.
   - sections: BE-LOGGING-1 `platform/logging` owns the one Logger port · BE-LOGGING-2 An event is an owner's enum member; fields are ids and codes · BE-LOGGING-4 Correlation, when the app declares it
 - [code/be/messages.md](../code/be/messages.md) · 2 KB — Where user-facing back-end text lives and which locale a lookup resolves to.
   - sections: BE-MESSAGES-1 One keyed bundle per owner, read through MessageCatalog · BE-MESSAGES-2 The locale is the receiver's, resolved once
@@ -154,7 +154,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/contract.yaml](../grammars/contract.yaml) · 196 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP and 287 more
 - [grammars/contributing.md](../grammars/contributing.md) · 16 KB — How a component enters `@starci/grammar`, or a prop enters a component.
-  - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Render proof · The look, reviewed by a person
+  - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Proof by looking · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 6 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
@@ -174,8 +174,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
-- [hfs/harness.yaml](../hfs/harness.yaml) · 22 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 44 more
+- [hfs/harness.yaml](../hfs/harness.yaml) · 21 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 42 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 174 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13, R14 and 301 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
@@ -190,7 +190,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
 - [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as an app, the business package its agents run from, and the seed standard that gives a ...
   - sections: PROJECT-BUSINESS-1 A business is one repository: an app, its nivoos package and its seed standard
-- [project/check-cache.md](../project/check-cache.md) · 82 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
+- [project/check-cache.md](../project/check-cache.md) · 83 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · Flags, CI and side keys · Read with
   - ids: Machine-local
 - [project/cicd.md](../project/cicd.md) · 56 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
@@ -206,7 +206,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · PROJECT-LINT-5 A production audit exception is time-boxed and the owner's · PROJECT-LINT-6 Lint has zero errors; a rule that catches a bug is an error, a style rule a warning · Read with
 - [project/master-plan-record.md](../project/master-plan-record.md) · 6 KB — A project's Master Plan is the one record of what it decided, why, and the rules every task holds, kept as data in `.starciwork/master-plan.yaml` at the app root.
   - sections: PROJECT-MASTER-PLAN-1 A project keeps its Master Plan as nine layers of data · PROJECT-MASTER-PLAN-2 A brief carries the layers of its op, and a task that contradicts a rule stops and asks · PROJECT-MASTER-PLAN-3 Each rule's enforcement is reported, so the plan shows what the harness holds · Read with
-- [project/monitoring.md](../project/monitoring.md) · 21 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
+- [project/monitoring.md](../project/monitoring.md) · 22 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
   - sections: PROJECT-MONITORING-1 One stack per server, every component a toggle · PROJECT-MONITORING-2 An environment opts in · PROJECT-MONITORING-3 Doors, credentials and alerts · PROJECT-MONITORING-4 Dev parity · PROJECT-MONITORING-5 Each app's own alert bot · PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons · Consul
   - ids: opt-in
 - [project/shared-services.md](../project/shared-services.md) · 13 KB — A managed VPS can run opt-in shared services beside the app stacks, the way it runs the monitoring stack (monitoring.md): one harness-owned stack per service per server, deployed ...
@@ -266,8 +266,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size and states · Name clash with React's Fragment · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/graph.md](../ui/components/graph.md) · 30 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
-  - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo and the browser proof
+- [ui/components/graph.md](../ui/components/graph.md) · 29 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+  - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo
   - ids: string;
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile · Variants · Plates of an initials mark · Size · States · Owner split · Initials, marks and the AI Chip · Rules
@@ -324,9 +324,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
 - [ui/presentation.md](../ui/presentation.md) · 42 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
-- [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
+- [ui/proof.md](../ui/proof.md) · 20 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)
-  - ids: AUDIT-1, AUDIT-2, AUDIT-3, AUDIT-4, code-native
+  - ids: AUDIT-1, AUDIT-2, AUDIT-3, AUDIT-4, GRAMMAR-NO-TESTS, code-native
 - [ui/proof/README.md](../ui/proof/README.md) · 1 KB — Data the proof lenses read.
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 12 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
