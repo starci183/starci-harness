@@ -39,6 +39,14 @@ checkout's path and the project root on explicitly.
 - The host environment (Windows shims, Devin's `ACP_BACKEND`, `robocopy`, PowerShell encodings):
   [contexts/harness/host.md](contexts/harness/host.md).
 
+## Misc work: read misc/ first
+
+Work that is not code and not the harness (filming, cutting and voicing a demo video, a recording, a pitch asset) has its
+know-how in [misc/](misc/README.md), a folder beside `contexts/`. Before doing such a job, read the file its row names:
+
+- Film, record, cut, zoom or voice a product demo (screen clips of an app, mocked "before" scenes, the phone scenes, the
+  automatic camera, the voice-over): [misc/film.md](misc/film.md) — the tech stack and the rules of a shoot.
+
 ## Dev and prod: two flows that never wait for each other
 
 Dev is the fast path and comes first; prod is the slow, careful path and may run later. Neither waits for the other and neither moves the

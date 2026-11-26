@@ -1,5 +1,7 @@
 # Film
 
+> Lives in `misc/` (see [README.md](README.md)); listed in AGENTS.md "Misc work".
+
 How a product demo film of an app is shot, cut and voiced: the real app recorded by code, a few mocked "before" scenes, an
 automatic camera, then the voice last. Written from the NIVO × Hiền Mai Spa film (owner, 2026-11-27). A product's own
 script, characters and copy are its `.starciwork` or its film folder, never this file.
