@@ -487,6 +487,15 @@
     stroke-linecap: butt;
 }
 
+/* The legend's third mark: the node the learner edits, its accent frame in small (the Essentials canvas, owner 2026-11-26). */
+.starci-graph-diagram-kind-edit {
+    inline-size: 14px;
+    block-size: 14px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--accent);
+    border-radius: var(--grammar-radius-sm);
+}
+
 /*
  * Hover focus (owner 2026-11-26): pointing at or focusing a step lights it, its neighbours and the edges between them, and dims the rest; a container
  * keeps its frame. Pointer and keyboard alike; reduced motion drops the fade.
@@ -776,4 +785,10 @@
 [data-grammar-mermaid-svg] :where(.cluster-label text, .cluster-label tspan) {
     fill: var(--muted);
     font-weight: var(--grammar-weight-medium);
+}
+
+/* The node the learner edits (`class O edit`) wears the accent frame, so the eye finds it first; the pencil chip stays beside its words. */
+.starci-graph-diagram-node[data-edit="true"]:not([data-shape="diamond"], [data-shape="cylinder"]) {
+    border-color: var(--accent);
+    border-width: 1.5px;
 }
