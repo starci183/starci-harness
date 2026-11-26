@@ -454,6 +454,19 @@
     border-radius: var(--grammar-radius-md);
 }
 
+/* The canvas is the container the legend chip reads: on a narrow canvas (a phone) its two kinds stack, so it stays clear of the zoom buttons. */
+.starci-graph-diagram-canvas {
+    container: starci-graph-diagram-canvas / inline-size;
+}
+
+@container starci-graph-diagram-canvas (width < 30rem) {
+    .starci-graph-diagram-kinds {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+    }
+}
+
 .starci-graph-diagram-kind {
     display: inline-flex;
     align-items: center;
