@@ -58,7 +58,7 @@ export class JsonLoggerService implements Logger {
     constructor(
         private readonly clock: Clock,
         ids: Ids,
-        private readonly out: Writable,
+        out: Writable,
         private readonly err: Writable,
         options: LoggingOptions = {},
     ) {
