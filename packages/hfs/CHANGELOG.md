@@ -5,6 +5,7 @@ Versioned history starts at beta; earlier history is in git.
 ## 6.17.17 - 2026-11-26
 
 - The canon pins name @starci/grammar 0.60.3 and @starci/gallery 0.1.29.
+- Fixed (h-starciwork-prompts, `templates/app/starciwork.gitignore`): the managed `.starciwork/.gitignore` admits `prompts/`, the slot h-work-prompts declared for an app's own authoring prompts (`.starciwork/prompts/**/*.md`). It still refused the folder, so the commit hook rejected every prompt file with HFS_WORK_AGENT_DATA while `app check` admitted it.
 
 ## 6.17.16 - 2026-11-26
 
