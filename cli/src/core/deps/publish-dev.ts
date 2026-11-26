@@ -19,7 +19,7 @@ import { ensureRegistry, PORT, registryFolder, registryUrl, registryVersions, wr
 import { packStamped } from "./pack-stamped.js"
 import type { EntryEdit } from "./pack-stamped.js"
 import { parseRequested } from "./install-local.js"
-import { buildPackage } from "./packages.js"
+import { buildPackage, installPackage } from "./packages.js"
 import { globalOrder, publishLocalTarball } from "./publish-local.js"
 import { copyPins, dataPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
@@ -249,6 +249,12 @@ const devNumber = (version: string): number => Number(DEV_SUFFIX.exec(version)?.
 
 /** The world an executed dev publish touches: build, publish, the files of this machine. Specs replace it. */
 export interface DevPublishIo {
+    /**
+     * Installs one folder. Every folder a row needs is installed before any is built or packed, as CI's package job installs its whole build order
+     * first: a package whose pack (its `prepack`: typecheck, tests) reads a sibling's files that sort after it (eslint-canon-fe's specs import
+     * eslint-canon-be's fixtures, which import `typescript`) finds that sibling's node_modules in a fresh worktree too.
+     */
+    readonly install?: (pkg: WorkspacePackage) => Promise<void>
     readonly build: (pkg: WorkspacePackage) => Promise<void>
     /** The tree's versions and whether a registry serves one: a sibling the dev line does not carry is pinned at the tree's version when served (publish-pins.ts). */
     readonly treePins?: { readonly tree: ReadonlyMap<string, string>; readonly served: (name: string, version: string) => boolean }
@@ -320,10 +326,32 @@ export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly p
     const broken = new Map<string, string>()
     const missing = new Map<string, string>()
     const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+    const install = io.install
+    if (install !== undefined) {
+        await inOrder(order.filter((dir) => needed.has(dir)), async (dir) => {
+            const pkg = packages.find((one) => one.relativeDir === dir)
+            if (pkg === undefined) return
+            try {
+                await install(pkg)
+            } catch (error) {
+                io.say(`INSTALL FAILED ${pkg.name}: ${message(error)}`)
+                broken.set(dir, `the install failed: ${causeLine(message(error))}`)
+            }
+        })
+    }
     await inOrder(order.filter((dir) => needed.has(dir)), async (dir) => {
         const pkg = packages.find((one) => one.relativeDir === dir)
         if (pkg === undefined) return
         const row = plan.rows.find((one) => one.dir === dir)
+        const ownBreak = broken.get(dir)
+        if (ownBreak !== undefined) {
+            if (row !== undefined) {
+                io.say(`NOT publishing ${row.package}@${row.version}: ${ownBreak}`)
+                failed.push({ package: row.package, version: row.version, reason: ownBreak })
+                missing.set(row.package, ownBreak)
+            }
+            return
+        }
         const brokenNeed = (row === undefined ? [] : needs(dir)).find((need) => need !== dir && broken.has(need))
         const missingPin = row === undefined ? undefined : [...(given.requires?.(row.package) ?? [])].find((name) => missing.has(name))
         const blocked = brokenNeed === undefined ? missingPin === undefined ? undefined : `it pins ${missingPin}, whose dev build was not made` : `its build prerequisite ${brokenNeed} did not build`
@@ -481,6 +509,7 @@ const planOrPublish = async (given: { readonly root: string; readonly since?: st
         requires: (name) => nodes.find((node) => node.name === name)?.requires ?? new Set<string>(),
         io: {
             treePins,
+            install: (pkg) => installPackage({ name: pkg.name, folder: pkg.dir }),
             build: (pkg) => buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined }),
             publish: (pkg, row, edit, entries) => publishDevCopy(root, pkg, row, edit, entries, npmrc),
             files, say,
