@@ -11,7 +11,7 @@ Every bar-like data mark (`Meter` and its segments, `Progress` and its steps, `P
 `DonutChart` ring) is HeroUI v3 ProgressBar's own track: sm 4px, md 8px (the default), lg 12px, at the vendor's corner for that
 size (a quarter, a half, three quarters of `--radius`), never a full pill and never a height of the grammar's own; a donut's ring is
 the md track thick, its diameter a chart size (64, 120, 160). The steps are the `--grammar-bar-*` tokens (owner: `@starci/grammar`
-`src/common/ramps.css` "BARS"; spec `specs/bar-sizes.spec.mts`). Why: a bar is read against the vendor's own progress bars on the
+`src/common/ramps.css` "BARS"; story shots at 390 and 1440). Why: a bar is read against the vendor's own progress bars on the
 same screen, and a grammar-invented height reads as a second component. The empty track keeps the measures' one neutral
 (`--starci-core-track`, [toast-alert](toast-alert.md)), since the vendor's `--default` vanishes on a white theme.
 
@@ -24,7 +24,7 @@ Choice `data-views.choose.view`: which view a set of items takes. The first row 
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| board | the items move through named stages and the reader scans each stage | `Board`: one column per stage with its count, each item an object card; an empty stage says so in place; a card is dragged (grip on hover and focus, origin slot, lifted card, drop slot with the stage's `dropHint`, an `endBand` after the last stage) and a stage answers a drop `boardAllow`, `boardRefuse(reason)` or `boardNeedsData(kind)` (list-table.md "Board") | `DNA-COMMON-BOARD-ONE-WIDTH` |
+| board | the items move through named stages and the reader scans each stage | `Board`: one column per stage with its count, each item an object card; an empty stage says so in place; a card is dragged by mouse, touch (a long press; held at an edge it scrolls the stages), keyboard or screen reader through react-aria (grip on hover and focus, always on touch; origin slot, lifted card, drop slot with the stage's `dropHint`, an `endBand` after the last stage) and a stage answers a drop `boardAllow`, `boardRefuse(reason)` or `boardNeedsData(kind)` (list-table.md "Board") | `DNA-COMMON-BOARD-ONE-WIDTH` |
 | schedule | each item belongs to a time or a place on two axes (a week by hour, a month, people by day) | `ScheduleGrid`: columns and rows named, items placed by both; a phone reads it as an agenda; an entry from a list beside the grid is dragged in with `startScheduleDrag` from the `DragItem` and arrives at `onDrop` with source `outside`, and the keyboard path is to pick it in the list and press a cell (`onCellPress`) | `DNA-COMMON-SCHEDULE-HEADINGS` |
 | bars | a handful of amounts is compared on one scale (per day, per channel) | `BarChart` of the charts extension ([charts](charts.md)); core draws no chart | [charts](charts.md) |
 | trend | the shape of one measure over time, small enough to sit beside a number or in a row | `Sparkline` of the charts extension ([charts](charts.md)); under a figure it is `Figure.trendChart` (the app passes the ext `Sparkline`) | [charts](charts.md) |

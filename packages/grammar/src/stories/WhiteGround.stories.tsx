@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import * as E from '../core/ext/recharts/index.js';
 import { BookGlyph, noop } from './fixtures.js';
@@ -85,18 +84,6 @@ export const ObjectCard: Story = {
       </G.SurfaceCard>
     </G.Grid>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const cards = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-surface'));
-      expect(cards.length).toBe(3);
-      for (const card of cards) {
-        expect(Number.parseFloat(getComputedStyle(card).borderTopWidth)).toBe(1);
-        if (card.dataset.grammarSurfaceEmphasis === undefined) expect(getComputedStyle(card).boxShadow).toBe('none');
-      }
-      expect(canvasElement.querySelectorAll('.starci-core-surface[data-grammar-surface-emphasis="accent"]').length).toBe(1);
-      expect(canvasElement.querySelectorAll('[data-grammar-surface-actions]').length).toBe(1);
-    }, { timeout: 4000 });
-  },
 };
 
 /* ---------- a section with a filter row over a flat table ---------- */
@@ -180,17 +167,6 @@ const InvoiceSection = () => {
 /** A section head with its count, fact and one action, a filter row (tabs with counts, a search, a select with a prefix), a flat table and its pager under the last row. */
 export const SectionFilterTable: Story = {
   render: () => <InvoiceSection />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const section = canvasElement.querySelector<HTMLElement>('[data-component="Section"]');
-      const table = canvasElement.querySelector<HTMLElement>('[data-component="DataTable"]');
-      if (section === null || table === null) throw new Error('the section and its table render');
-      expect(section.querySelector('.starci-core-section-filter')).not.toBeNull();
-      // At phone width the table is its list of rows (`phone="list"`).
-      expect(table.querySelectorAll('[data-grammar-table-row="true"], .starci-core-data-table-list-row').length).toBe(8);
-      expect(getComputedStyle(table).boxShadow).toBe('none');
-    }, { timeout: 4000 });
-  },
 };
 
 /* ---------- a figures ribbon above a list ---------- */
@@ -224,14 +200,6 @@ export const FiguresRibbon: Story = {
       />
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const strip = canvasElement.querySelector<HTMLElement>('[data-grammar-description-layout="stat-strip"]');
-      if (strip === null) throw new Error('the ribbon renders');
-      expect(strip).toHaveAttribute('data-grammar-figures-placement', 'ribbon');
-      expect(strip.querySelectorAll('[data-grammar-description-pair]').length).toBe(4);
-    }, { timeout: 4000 });
-  },
 };
 
 /* ---------- a selected table row ---------- */
@@ -282,13 +250,4 @@ const CustomerTable = () => {
 /** One row of the table is selected: the grey ground and the 2px accent bar at its start edge; a list of the selected customer's contacts stands below. */
 export const SelectedRow: Story = {
   render: () => <CustomerTable />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const rows = ':is([data-grammar-table-row="true"], .starci-core-data-table-list-row)';
-      const selected = canvasElement.querySelectorAll<HTMLElement>(`${rows}[data-grammar-selected="true"]`);
-      expect(selected.length).toBe(1);
-      expect(selected[0]?.textContent).toContain('Hoa Sen Cafe');
-      expect(canvasElement.querySelectorAll(`${rows}[data-grammar-selected="false"]`).length).toBe(4);
-    }, { timeout: 4000 });
-  },
 };

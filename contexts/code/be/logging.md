@@ -42,13 +42,12 @@ Enforced by: `no-framework-logger`, `no-console`, and the R40 tree check `log-pu
 Each owner declares `<owner>.log-events.ts` (`export enum OrdersLogEvent { ShipFailed = "orders.ship_failed" }`, each
 member documented); the first argument of a log call is such a member, never a sentence. A failure is logged with the
 caught value as `cause` and plain fields: `this.logger.error(OrdersLogEvent.ShipFailed, cause, { workspaceId, orderId })`.
-No value typed `Secret`, no token, request body or personal identifier is logged. A handler does not log what it
-throws; its base logs it once (BE-CQRS-3).
+No value typed `Secret`, no token, request body or personal identifier is logged. Who logs a failure, and that it is
+logged once and never as a `DomainError`, is [error.md](error.md) BE-ERROR-4's alone.
 
 Why: a stable identity is searchable and alertable, and a cause keeps the stack.
 
-Enforced by: `no-interpolated-log-message`, `no-error-wording-as-log-identity`, `no-domain-error-logged`, the
-`loggedAndThrown` case of `catch-must-account` (R40, BE-ERROR-4), `no-secret-in-log` (R71).
+Enforced by: `no-interpolated-log-message`, `no-error-wording-as-log-identity` (R40), `no-secret-in-log` (R71).
 
 ## BE-LOGGING-4 Correlation, when the app declares it
 

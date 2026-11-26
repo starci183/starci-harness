@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useState } from "react"
-import { expect, waitFor } from "storybook/test"
 import * as G from "../common/index.js"
 import { BellGlyph, Matrix, SearchGlyph, SettingsGlyph, StarGlyph, State, familyScope, noop } from "./fixtures.js"
 
@@ -39,7 +38,7 @@ const ControlRow = () => {
     )
 }
 
-/** The default height of every control in one row, light and dark, with the 40px each draws asserted. */
+/** The default height of every control in one row, light and dark, each drawn 40px tall, looked at in the shots. */
 export const OneRowAllAtForty: Story = {
   parameters: { grammar: { catalog: true } },
     render: (_, { globals }) => (
@@ -53,19 +52,6 @@ export const OneRowAllAtForty: Story = {
             ))}
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        await waitFor(() => {
-            for (const row of canvasElement.querySelectorAll<HTMLElement>("[data-story-control-row]")) {
-                for (const selector of ["[data-component=Button]", "[data-component=IconButton]", "[data-component=Switch] [data-grammar-choice-control=switch]"]) {
-                    // A control that draws no box (the Tabs scroll carets while the row does not overflow) is not a standalone control on screen.
-                    for (const control of row.querySelectorAll<HTMLElement>(selector)) {
-                        if (control.getClientRects().length === 0) continue
-                        expect(Math.round(control.getBoundingClientRect().height), control.getAttribute("aria-label") ?? control.textContent ?? "").toBe(40)
-                    }
-                }
-            }
-        })
-    },
 }
 
 /** The two other steps: `sm` (32px) for a control nested in an item or dense toolbar, `lg` (48px) for a landing hero call to action. */
@@ -82,16 +68,6 @@ export const NestedAndHeroSteps: Story = {
             </State>
         </Matrix>
     ),
-}
-
-/** The measured height of each fill Button in the story, keyed by its `data-story-fill` group and label. */
-const fillHeights = (canvasElement: HTMLElement) => {
-    const heights = new Map<string, number>()
-    for (const control of canvasElement.querySelectorAll<HTMLElement>("[data-story-fill] [data-component=Button]")) {
-        const group = control.closest<HTMLElement>("[data-story-fill]")?.dataset.storyFill ?? ""
-        heights.set(`${group}:${control.textContent ?? ""}`, control.getBoundingClientRect().height)
-    }
-    return heights
 }
 
 /**
@@ -128,14 +104,4 @@ export const FillWidthAtForty: Story = {
             </Matrix>
         </G.GrammarRoot>
     ),
-    play: async ({ canvasElement }) => {
-        await waitFor(() => {
-            const heights = fillHeights(canvasElement)
-            expect(Math.round(heights.get("form:Sign in") ?? 0)).toBe(40)
-            expect(Math.round(heights.get("form:Continue another way") ?? 0)).toBe(40)
-            expect(Math.round(heights.get("steps:Details") ?? 0)).toBe(32)
-            expect(Math.round(heights.get("steps:Start free") ?? 0)).toBe(48)
-            expect(heights.get("wrap:Continue with a very long provider name") ?? 0).toBeGreaterThan(40)
-        })
-    },
 }

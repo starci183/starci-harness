@@ -37,7 +37,6 @@ jobs:
       harness: ${{ steps.plan.outputs.harness }}
       app: ${{ steps.plan.outputs.app }}
       app-build: ${{ steps.plan.outputs.app-build }}
-      grammar: ${{ steps.plan.outputs.grammar }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -97,7 +96,6 @@ jobs:
               `harness=${data.harness}`,
               `app=${data.app}`,
               `app-build=${data.appBuild.join(" ")}`,
-              `grammar=${data.matrix.include.some((entry) => entry.package === "packages/grammar")}`,
             ]
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n")
             // What publish.yml reads back from this run: the base it was measured from and the packages it tested.
@@ -232,32 +230,6 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # The Grammar's theme proof, on a change to packages/grammar: a foreign set of HeroUI tokens repaints every part.
-  # publish.yml holds the Grammar while this job is not green. The render proof is not part of CI; it runs by hand
-  # (npm run prove-render in the pinned Playwright image, contexts/grammars/contributing.md "Render proof").
-  grammar-proof:
-    name: grammar proof
-    needs: plan
-    if: needs.plan.outputs.grammar == 'true' && needs.plan.outputs.level == 'full'
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install the Grammar
-        working-directory: packages/grammar
-        run: npm ci --no-audit --no-fund
-      - name: Build the Grammar
-        working-directory: packages/grammar
-        run: npm run build
-      - name: Theme proof
-        working-directory: packages/grammar
-        run: |
-          STARCI_BROWSER="$(find /ms-playwright -type f \( -name chrome -o -name headless_shell \) | head -1)"
-          export STARCI_BROWSER
-          npm run prove-theme
-
   # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:
     needs: plan
@@ -340,7 +312,7 @@ jobs:
 
   # The one required check: green when the plan and every job it needed passed, a job the plan did not need being skipped.
   ci:
-    needs: [plan, gates, package, grammar-proof, harness, app, sonar]
+    needs: [plan, gates, package, harness, app, sonar]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -447,6 +447,9 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts`.
 A PDF document is shown ONLY with `PdfViewer` of `@starci/grammar/core/ext/pdf` (pdfjs-dist, an optional peer, loaded lazily; see `src/core/ext/pdf/README.md`).
 A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
+With `onMove` a Board card moves between stages by react-aria's drag and drop: a mouse drag, a long press and drag on a touch screen (a card
+held at the stages' edge scrolls them a stage at a time), Enter on a focused card or a screen reader's activation then Tab and Enter, and
+Alt with an arrow for one step; each stage answers through `canDrop` (`boardAllow`, `boardRefuse(reason)`, `boardNeedsData(kind)`).
 
 ```tsx
 <Board label="Sales pipeline" columns={stages} isLoading={isLoading} error={error} />
@@ -913,8 +916,8 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   family's default theme as HeroUI tokens (`:root, .light` and `.dark`), in the first layer
   (`starci-grammar-theme`). They are optional: import one after `@heroui/styles` and write your own tokens after it, or
   skip it. Offset Pop's signature is geometry (outline width, the hard offset, radii) and `--offset-pop-shadow-ink`, the
-  colour of the offset, which reads `--foreground` when unset. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
-  part follows, by computed style in a headless Chromium (`npm run prove-theme` after `npm run build`).
+  colour of the offset, which reads `--foreground` when unset. That every part follows an app's tokens is looked at in the stories
+  (`npm run shoot`, light and dark), never asserted.
 - **App-overridable Grammar tokens.** Two defaults live in Grammar's base layer (`src/common/ramps.css`), so an app's brand CSS can
   override them on its root and Grammar's CSS follows; Grammar reads only the token, never a literal value.
   `--starci-core-surface-radius` is the radius of every card surface (SurfaceCard of every kind, Board and its columns, the block
@@ -957,10 +960,24 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 
 ```sh
 npm run typecheck
-npm test                 # typecheck + build; the package has no spec suites
+npm test                 # typecheck + the static checks (check:*) + lint + build; no spec, no test runner
 npm run build-storybook  # static Storybook for the authored component and family stories
+npm run shoot            # every story at 390 and 1440, light and dark, into shots/ for a person to look at
 npm pack --dry-run
 ```
+
+## No tests
+
+The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless".
+
+The Grammar carries no `*.spec.*`, no `*.test.*`, no snapshot, no `specs/`, `tests/`, `e2e/` or `proof/` folder and no
+test-runner config (`jest`, `vitest`, `playwright`). A Grammar change is proven by looking: its Storybook stories shot at 390
+and 1440 in light and dark, and the UI audit of the app screens that use it. Shoot them with `npm run build-storybook` then
+`npm run shoot [title filter]` (pictures in `shots/`, never committed; it never fails on a check). A story's `play` holds no
+assertion: it only drives the hover, open or typing a picture needs. `npm test` is typecheck, the static checks,
+lint and build. The rule is [contexts/ui/proof.md](../../contexts/ui/proof.md) GRAMMAR-NO-TESTS, and the harness shape's gate
+slot `never.grammar-tests` ([contexts/hfs/harness.yaml](../../contexts/hfs/harness.yaml), CI's `check shape`) refuses such a
+file with `SHAPE_FORBIDDEN` and no exception.
 
 ## Contributing
 
@@ -971,7 +988,7 @@ can hold an old build that still looks valid.
 
 **Build stamp.** `npm run build` ends with `scripts/build-stamp.mts`, which writes
 `dist/.build-stamp.json`: the package version, a digest of the source (everything under `src/`
-except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mts`
+except stories, plus `tsconfig.build.json`, `scripts/copy-css.mts`
 and the `exports` and `files` fields of `package.json`), a digest of the built files, and the build
 time. The stamp ships in the tarball.
 

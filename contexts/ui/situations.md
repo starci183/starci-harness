@@ -7,9 +7,8 @@ looks right. The Choose tables of [components](components/README.md) and the rul
 [composition](composition.md) own the finer decisions; this table routes to them and is not cited itself, except the
 [loading](loading.md) page, which has no other owner.
 
-A story is a Storybook id (`<title>--<export>`, lowercased) and names the baseline picture `core-light-<id>.png` under
-[packages/grammar/proof/baselines](../../packages/grammar/proof/README.md), so a row's reference image is its story. A baseline
-detects change and approves no look; the owner's eye does ([proof](proof.md#who-holds-each-proof)). A cell that says
+A story is a Storybook id (`<title>--<export>`, lowercased), so a row's reference image is its story, shot at 390 and 1440 in light
+and dark. A shot approves no look; the owner's eye does ([proof](proof.md#who-holds-each-proof)). A cell that says
 `none yet` is a gap to close with a story, not a judgement.
 
 ## The situations

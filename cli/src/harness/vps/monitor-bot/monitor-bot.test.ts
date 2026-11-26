@@ -15,7 +15,7 @@ import { prometheus } from "./clients.js"
 import type { Alertmanager, Docker, Fetch, Matcher, Prometheus, Sample, Series } from "./clients.js"
 import { commandText, parseCommand, parseDuration } from "./commands.js"
 import type { Command } from "./commands.js"
-import { accessOf, parseAdmins, parseConfig } from "./config.js"
+import { accessOf, normalizeUsername, parseAdmins, parseConfig } from "./config.js"
 import type { BotEntry } from "./config.js"
 import { daysToFull, dailyReport } from "./handlers.js"
 import type { Sources } from "./handlers.js"
@@ -25,6 +25,7 @@ import { bar, escapeHtml, fitMessage, formatBytes, formatDuration, formatNumber,
 import { everyDay, localDate, nextDaily } from "./schedule.js"
 import type { Keyboard, Telegram, Update } from "./telegram.js"
 import { replyMarkup } from "./telegram.js"
+import { alertQueue, memoryStore, parseStore, storeText } from "./owners.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -94,7 +95,7 @@ void test("the commands parse into checked arguments; another bot's mention, pla
     }
 })
 
-const entry = (over: Partial<BotEntry> = {}): BotEntry => ({ slot: 0, project: "nivo", env: "production", stack: "nivo-production", tokenFile: "/run/secrets/alerts_0", chat: 42, admins: [], ...over })
+const entry = (over: Partial<BotEntry> = {}): BotEntry => ({ slot: 0, project: "nivo", env: "production", stack: "nivo-production", tokenFile: "/run/secrets/alerts_0", chat: 42, owner: null, admins: [], ...over })
 
 void test("only the owner chat is answered; a write needs a listed admin, or the owner chat's own user with no list", () => {
     assert.equal(accessOf(entry(), 7, 7), "none", "another chat is ignored")
@@ -346,4 +347,62 @@ void test("the bot's code imports Node's built-ins and its own folder only: the 
         const text = readFileSync(join(here, "..", "..", "..", "..", "src", "harness", "vps", "monitor-bot", name), "utf8")
         for (const [, from] of text.matchAll(/^import[^"]*"([^"]+)"/gm)) assert.match(from ?? "", /^(?:node:[a-z/]+|\.\/[a-z-]+\.js)$/, `${name} imports ${from ?? ""}`)
     }
+})
+
+/** A private message of a Telegram user with a username. */
+const fromUser = (id: number, username: string, text: string, date = NOW / 1000): Update => ({ update_id: 3, message: { message_id: 11, date, text, chat: { id, type: "private" }, from: { id, username } } })
+
+void test("an owner username: alerts wait until that user (any case) writes in private; the chat is learned, confirmed, persisted and the queue flushed", async () => {
+    const { sources } = fakeSources()
+    const telegram = fakeTelegram()
+    const persisted: string[] = []
+    const store = memoryStore(new Map(), (text) => persisted.push(text))
+    const queue = alertQueue(2)
+    const deps: BotDeps = { telegram: telegram.client, username: "nivo_monitor_bot", sources, id: () => "k", log: () => undefined, store, queue }
+    const owned = [entry({ chat: null, owner: "starci183" }), entry({ slot: 1, env: "staging", stack: "nivo-staging", chat: null, owner: "starci183" })]
+    const bot = createBot(owned, deps)
+    const firing = (name: string): WebhookPayload => parsePayload(payload([{ status: "firing", labels: { alertname: name, stack: "nivo-production" }, annotations: { summary: name }, startsAt: "2026-11-21T00:58:00Z", endsAt: "" }]))
+    for (const name of ["A1", "A2", "A3"]) await bot.notify(0, firing(name))
+    assert.equal(telegram.sent.length, 0, "nobody to post to yet: accepted and queued")
+    assert.equal(bot.state().queued, 2, "the queue is bounded")
+    assert.deepEqual(bot.chats(), [])
+    await bot.handle(fromUser(77, "mallory_x", "/start"))
+    await bot.handle({ update_id: 4, message: { message_id: 12, date: NOW / 1000, text: "/start", chat: { id: -500, type: "group" }, from: { id: 78, username: "StarCi183" } } })
+    assert.equal(telegram.sent.length, 0, "another user, or the owner in a group, learns nothing and gets nothing")
+    await bot.handle(fromUser(42, "StarCi183", "/start", (NOW - 3_600_000) / 1000))
+    assert.match(telegram.sent[0]?.html ?? "", /^✅ Đã kết nối cảnh báo cho <b>nivo production, nivo staging<\/b>/, "a backlog /start still connects")
+    assert.deepEqual(telegram.sent.slice(1, 3).map((sent) => /<b>(A\d)<\/b>/.exec(sent.html)?.[1]), ["A2", "A3"], "the queued alerts follow, oldest first")
+    assert.match(telegram.sent[3]?.html ?? "", /1 cảnh báo cũ hơn của nivo\/production đã bị bỏ/)
+    assert.ok(telegram.sent.every((sent) => sent.chat === 42))
+    assert.deepEqual(bot.chats(), [42])
+    assert.deepEqual([...parseStore(persisted.at(-1) ?? "")].map(([key, found]) => [key, found.username, found.chat]), [["nivo/production", "starci183", 42], ["nivo/staging", "starci183", 42]])
+    const before = telegram.sent.length
+    await bot.handle(fromUser(99, "starci183", "/status"))
+    assert.equal(telegram.sent.length, before, "a learned chat is pinned: another account under the same username is ignored")
+    await bot.notify(1, firing("B1"))
+    assert.equal(telegram.sent.at(-1)?.chat, 42, "from now on the alerts go to the learned chat")
+    await bot.handle(fromUser(42, "starci183", "/help"))
+    assert.match(telegram.sent.at(-1)?.html ?? "", /\/status/, "the owner chat is answered")
+})
+
+void test("the learned chats survive a restart; a changed owner drops the old chat; a legacy chat is never overridden", async () => {
+    const text = storeText(new Map([["nivo/production", { username: "starci183", chat: 42, at: "2026-11-26T00:00:00.000Z" }]]))
+    const restarted = memoryStore(parseStore(text), null)
+    assert.equal(restarted.get("nivo/production", "starci183"), 42)
+    assert.equal(restarted.get("nivo/production", "someone_else"), null, "the config names another owner now: learned again")
+    assert.deepEqual([...parseStore('{"chats":{"x/y":{"username":"ok_name","chat":"7"}}}')], [], "a broken entry is dropped")
+    assert.deepEqual([...parseStore("not json")], [])
+    const { sources } = fakeSources()
+    const telegram = fakeTelegram()
+    const bot = createBot([entry({ chat: 42, owner: "starci183" })], { telegram: telegram.client, username: "nivo_monitor_bot", sources, id: () => "k", log: () => undefined, store: memoryStore(new Map(), null) })
+    await bot.handle(fromUser(99, "starci183", "/start"))
+    assert.equal(telegram.sent.length, 0, "a sealed chat (legacy) stays the one chat")
+    assert.equal(normalizeUsername("@StarCi183"), "starci183")
+    assert.equal(normalizeUsername("@ab"), null)
+    const base = { server: "sv-1", telegram: "https://api.telegram.org", prometheus: "http://p:9090", loki: null, alertmanager: "http://a:9093", docker: "http://d:2375", grafana: null, renderer: false, listen: 9095, memoryAlertPercent: 90, diskAlertPercent: 85, reportHour: 8, reportOffsetMinutes: 420, state: "/home/node/owner-chats.json" }
+    const one = (over: Record<string, unknown>): string => JSON.stringify({ ...base, bots: [{ slot: 0, project: "n", env: "p", stack: "n-p", tokenFile: "/t", admins: "", ...over }] })
+    assert.deepEqual(parseConfig(one({ chat: null, owner: "@StarCi183" })).bots[0]?.owner, "starci183")
+    assert.equal(parseConfig(one({ chat: null, owner: "starci183" })).state, "/home/node/owner-chats.json")
+    assert.throws(() => parseConfig(one({ chat: null, owner: null })), /names neither a chat nor an owner/)
+    assert.throws(() => parseConfig(one({ chat: null, owner: "x y" })), /owner is no Telegram username/)
 })

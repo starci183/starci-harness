@@ -16,6 +16,8 @@ import type { CheckInput } from './hfs-graph.mjs';
  *   label-in-grid        a labelled card repeated by a `.map` in a `Grid kind="cards"` (a repeated tile has no label).
  *
  * A finding carries `crossFile: true` when the two elements are drawn in different files, which is what one-file lint cannot see.
+ * A card written directly in a card in one file (no component between them) is the one-file lint's alone (R340 surface-depth) and is never
+ * reported here: one nesting reaches one rule.
  */
 export const SURFACE_NESTING_RULE_IDS = ['FE_SURFACE_NESTING'];
 
@@ -59,6 +61,7 @@ export function checkSurfaceNesting(input: Pick<CheckInput, 'graph'> & { context
   const graph = new RenderGraph(input.context.ts, input.graph);
   const found = new Map<string, Violation>();
   const report = (element: RenderElement, outer: RenderElement | null, kind: string, message: string, ancestors: readonly Ancestor[], stack: readonly string[]): void => {
+    if (kind === 'card-in-card' && outer !== null && outer.file === element.file && stack.length <= 1) return;
     const where = graph.locate(element);
     const key = `${where.path}:${where.line}:${where.column}:${kind}`;
     if (found.has(key)) return;

@@ -299,6 +299,34 @@ nothing is ever `off`. The Sonar way rules are the server's conditions and stay 
 Enforced by: the canon factories (`starciBeConfig`, `starciFeConfig`) refuse a recommendation in which any rule is at another level than its own;
 `starci app check --gate lint` fails on an error finding only.
 
+## PROJECT-LINT-7 One condition has one check, and one capability has one owner
+
+A condition is judged by one rule and one engine, so a finding is reported once and a removed check cannot live on in a second place:
+
+- **The engine follows the fact.** What can be read inside one source file (code shape, imports, names, comments, test markers) is the lint
+  engines' (`eslint-canon-be`, `eslint-canon-fe`, the Grammar lint, `stylelint-canon`), so an editor shows it where it is written. What needs
+  the tree, a configuration, a declaration, a stack, a catalog or the whole import graph is `@starci/hfs`'s (enforcers `hfs` and `machine`).
+  Sonar keeps only its own gate conditions; a stock or Sonar rule that duplicates a canon rule is listed as owned by it (`SONAR_WAY_OWNED`).
+- **A rule both engines judge splits the condition.** It says in its `split` what each reads, and on a TypeScript source file the lint's
+  finding wins: `starci app check` drops its own copy (`architecture/surface.mts` `LINT_ENFORCERS`).
+- **One finding code belongs to one rule**, and one check serves one rule unless the catalog's `sharedEnforcers` says why one module reports
+  several rules' codes. A duplicate is resolved by keeping the better-placed check; the codes apps already name stay stable, folded into the
+  kept rule as its failure codes.
+- **One capability has one owner.** Checking an app is `starci app check` alone (the release gate, the lane gate, the hooks, the sync and CI
+  call it with flags or families); installing, building, publishing, merging, removing a worktree and reading the check cache each have one
+  module, and every other verb calls it instead of running its own copy. [harness/capabilities.yaml](../harness/capabilities.yaml) names each
+  capability, its owner and the reimplementations still to fold in, a list that only shrinks.
+- **The two rule catalogs agree.** [hfs/rules.yaml](../hfs/rules.yaml) and the runtime's `knowledge/hfs/rules.yaml` hold the same rules, codes
+  and lint enforcers, so a check removed from one is removed from both.
+
+Why: every earlier sweep removed duplicates by hand, and nothing declared what each check covers, so a new lane added a second check of a
+condition it could not see was already judged, and a check removed from one catalog stayed in the other.
+
+Enforced by: the dry run of `starci contexts anatomy` (`cli/src/core/contexts/anatomy-gate.ts` `oneOwnerGaps`, `catalogDrift`;
+`capability-owners.ts` `capabilityGaps`), which CI and the release gate run: a rule without `covers`, two rules covering one condition or
+carrying one code, an engine that does not match the enforcers, a silent `split`, an undeclared shared enforcer, catalog drift and a
+capability implemented outside its owner are each red.
+
 ## Read with
 
 [README.md](README.md) (the profiles a project picks), [anatomy.md](anatomy.md) (the packages each gate judges),

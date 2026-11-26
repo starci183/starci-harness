@@ -76,7 +76,9 @@ type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
 
 /**
  * A row that can be moved by dragging, with a keyboard alternative (Alt + arrow keys). A `Board` supplies it to its rows; an app
- * rarely writes it. The row keeps its look at rest: the grip (six dots at the start edge) shows on hover and on focus only.
+ * rarely writes it. The drag is react-aria's `useDrag`: a mouse, a touch screen's long press, Enter on the focused row and a screen
+ * reader's activation all start it, and `onDragStart` and `onDragEnd` run for each. The row keeps its look at rest: the grip (six dots
+ * at the start edge) shows on hover and on focus, and always on a touch screen, where there is no hover.
  */
 export type RowDrag = {
     readonly onDragStart: () => void

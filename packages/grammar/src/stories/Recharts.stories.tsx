@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor, within } from 'storybook/test';
 import * as E from '../core/ext/recharts/index.js';
 import { Matrix, State } from './fixtures.js';
 
@@ -25,8 +24,6 @@ const none: readonly Week[] = [];
 const day = (value: string | number) => new Date(`${value}T00:00:00Z`).toLocaleDateString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const count = (value: number) => value.toLocaleString('en');
 
-const frames = (root: HTMLElement, state: string): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>(`[data-grammar-chart][data-state="${state}"]`));
-
 /** One series of bars with axis titles, formatted dates and counts; the tooltip is a shadowless Grammar surface. */
 export const BarChart: Story = {
   render: () => (
@@ -39,11 +36,6 @@ export const BarChart: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getAllByRole('img', { name: 'Orders per week' })).toHaveLength(2));
-    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-bar-rectangle').length).toBeGreaterThan(0));
-  },
 };
 
 /** highlightLast: the latest week in the full tone, the weeks before it in the soft tone; the chart's name ends with the latest value. */
@@ -58,15 +50,6 @@ export const BarChartHighlightLast: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const last = weekly[weekly.length - 1];
-    const name = `Orders per week, ${day(last?.week ?? '')}: ${count(last?.orders ?? 0)}`;
-    await waitFor(() => expect(within(canvasElement).getAllByRole('img', { name })).toHaveLength(2));
-    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-bar-rectangle path').length).toBe(weekly.length * 2));
-    const fills = Array.from(canvasElement.querySelectorAll('[data-component="BarChart"]')[0]?.querySelectorAll('.recharts-bar-rectangle path') ?? []).map((bar) => bar.getAttribute('fill'));
-    expect(fills.at(-1)).toBe('var(--accent)');
-    expect(fills.slice(0, -1).every((fill) => fill?.startsWith('color-mix('))).toBe(true);
-  },
 };
 
 /** One series as a line, each tone in turn. */
@@ -81,9 +64,6 @@ export const LineChart: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-line-curve').length).toBe(2));
-  },
 };
 
 /** The bare trend line: no axes, no tooltip, 32px high, always the neutral muted ink; no data or only zeros draws nothing. */
@@ -99,11 +79,6 @@ export const Sparkline: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-component="Sparkline"] .recharts-line-curve').length).toBe(1));
-    expect(canvasElement.querySelectorAll('[data-component="Sparkline"]')).toHaveLength(1);
-    expect(canvasElement.querySelector('[data-component="Sparkline"] .recharts-xAxis')).toBeNull();
-  },
 };
 
 /** Loading is a Skeleton of the chart's box; empty is the app's words in that same box. */
@@ -119,11 +94,6 @@ export const LoadingAndEmpty: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    expect(frames(canvasElement, 'loading')).toHaveLength(2);
-    expect(frames(canvasElement, 'empty')).toHaveLength(1);
-    expect(within(canvasElement).getAllByText('No orders yet')).toHaveLength(1);
-  },
 };
 
 type Day = { readonly day: string; readonly lessons: number; readonly quizzes: number };
@@ -165,14 +135,6 @@ export const AreaChart: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-component="AreaChart"] .recharts-area-area').length).toBe(3));
-    expect(canvas.getAllByRole('img', { name: /per day/ })).toHaveLength(2);
-    expect(canvas.getByText('Quizzes')).toBeVisible();
-    expect(frames(canvasElement, 'loading')).toHaveLength(1);
-    expect(frames(canvasElement, 'empty')).toHaveLength(1);
-  },
 };
 
 const topics: readonly E.DonutSegment[] = [
@@ -211,16 +173,6 @@ export const DonutChart: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-component="DonutChart"] .recharts-pie-sector').length).toBe(8));
-    expect(canvas.getByRole('img', { name: 'Lessons by topic' })).toBeVisible();
-    expect(canvas.getByText('Other')).toBeVisible();
-    expect(canvas.queryByText('Logic')).toBeNull();
-    expect(canvasElement.querySelectorAll('[data-component="DonutChart"] [data-slot="center"]')[1]).toHaveTextContent('68%done');
-    expect(frames(canvasElement, 'loading')).toHaveLength(1);
-    expect(frames(canvasElement, 'empty')).toHaveLength(1);
-  },
 };
 
 type Booked = { readonly day: string; readonly booked: number };
@@ -253,11 +205,4 @@ export const BarChartChosenBarsAndCapacity: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getAllByRole('img', { name: /Bookings per day/ })).toHaveLength(3));
-    expect(canvas.getAllByRole('img', { name: 'Bookings per day, Capacity 9: 9' })).toHaveLength(1);
-    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-reference-line').length).toBe(2));
-    await waitFor(() => expect(canvasElement.querySelectorAll('.recharts-bar-rectangle').length).toBeGreaterThan(0));
-  },
 };

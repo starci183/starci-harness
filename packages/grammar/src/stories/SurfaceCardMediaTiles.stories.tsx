@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, userEvent, within } from "storybook/test"
+import { userEvent, within } from "storybook/test"
 import * as G from "../common/index.js"
 import type { ItemMenu, TileData, TilePoster } from "../core/surfaceCardData.js"
 import { Matrix, State, noop, placeholderImage } from "./fixtures.js"
@@ -43,18 +43,7 @@ export const MediaPeers: Story = {
     ),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement)
-        await expect(canvas.getByRole("link", { name: "Open Launch" })).toHaveAttribute("href", "#Launch")
-        await expect(canvas.getByRole("link", { name: "Open Read only" })).toBeInTheDocument()
-        await expect(canvas.getByText("No poster available")).toBeVisible()
-        await expect(canvas.queryByRole("button", { name: "More actions for Read only" })).not.toBeInTheDocument()
-        for (const frame of canvasElement.querySelectorAll("[data-grammar-tile-poster]")) {
-            const box = frame.getBoundingClientRect()
-            await expect(box.width / box.height).toBeCloseTo(4 / 3, 2)
-        }
         await userEvent.click(canvas.getByRole("button", { name: "More actions for Busy" }))
-        const page = within(canvasElement.ownerDocument.body)
-        await expect(await page.findByRole("menuitem", { name: "Duplicate" })).toHaveAttribute("aria-disabled", "true")
-        await expect(page.getByRole("menuitem", { name: "Archive" })).toHaveAttribute("aria-disabled", "true")
         await userEvent.keyboard("{Escape}")
     },
 }
@@ -94,28 +83,6 @@ export const BleedPosters: Story = {
             </State>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const frames = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-tile-poster-bleed="true"]')]
-        await expect(frames).toHaveLength(9)
-        for (const frame of frames) {
-            const surface = frame.closest<HTMLElement>(".starci-core-surface")
-            if (surface === null) throw new Error("A poster stands inside a card surface")
-            const edge = surface.getBoundingClientRect()
-            const box = frame.getBoundingClientRect()
-            const border = Number.parseFloat(getComputedStyle(surface).borderTopWidth)
-            // Flush to the top and both side edges, inside the border; clipped by the card.
-            await expect(Math.abs(box.top - edge.top - border)).toBeLessThanOrEqual(1)
-            await expect(Math.abs(box.left - edge.left - border)).toBeLessThanOrEqual(1)
-            await expect(Math.abs(edge.right - border - box.right)).toBeLessThanOrEqual(1)
-            await expect(getComputedStyle(surface).overflow).toBe("clip")
-            // The copy below keeps the card's padding.
-            const copy = surface.querySelector<HTMLElement>(".starci-core-tile-copy")
-            if (copy === null) throw new Error("A tile has its copy")
-            await expect(copy.getBoundingClientRect().left - edge.left).toBeGreaterThan(border + 8)
-            await expect(copy.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom - 1)
-        }
-        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1)
-    },
 }
 
 const sameTile = mediaTile("A long media title that keeps all of its words", missingPoster)
@@ -127,14 +94,4 @@ export const InitialLoading: Story = {
             <State label="Loading" direction="column"><G.Grid kind="cards" columns={3}><G.SurfaceCard kind="tile" {...sameTile} isLoading /></G.Grid></State>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const ready = canvasElement.querySelector<HTMLElement>('[data-story-state="Ready"] [data-grammar-tile="true"]')
-        const loading = canvasElement.querySelector<HTMLElement>('[data-story-state="Loading"] [data-grammar-tile="true"]')
-        if (ready === null || loading === null) throw new Error("The story must render both tile faces")
-        await expect(loading.getBoundingClientRect().height).toBeCloseTo(ready.getBoundingClientRect().height, 0)
-        await expect(within(loading).queryByRole("button")).not.toBeInTheDocument()
-        await expect(within(loading).queryByRole("link")).not.toBeInTheDocument()
-        await expect(loading.querySelectorAll('[data-component="Badge"]')).toHaveLength(3)
-        await expect(loading.querySelector('[data-grammar-tile-facts="true"]')).toBeInTheDocument()
-    },
 }

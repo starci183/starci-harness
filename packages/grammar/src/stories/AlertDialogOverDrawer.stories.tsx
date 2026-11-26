@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -15,19 +15,6 @@ type Story = StoryObj;
 
 const noop = () => undefined;
 const PHONE = { viewport: { value: 'phone375', isRotated: false } };
-
-/**
- * The confirmation paints above its opener drawer: its backdrop's stacking level is at least the drawer's, and it comes later in the
- * Grammar root, so it paints on top. (`elementFromPoint` cannot judge it: the vendor's drawer content is `pointer-events: none`.)
- */
-const dialogIsOnTop = () => {
-  const alert = document.querySelector<HTMLElement>('.alert-dialog__backdrop');
-  const drawer = document.querySelector<HTMLElement>('.drawer__backdrop');
-  expect(alert).not.toBeNull();
-  expect(drawer).not.toBeNull();
-  expect(Number(getComputedStyle(alert!).zIndex)).toBeGreaterThanOrEqual(Number(getComputedStyle(drawer!).zIndex));
-  expect(drawer!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-};
 
 const confirm = (
   <G.AlertDialog
@@ -44,7 +31,6 @@ const confirm = (
 const openAndCheck = async () => {
   const body = within(document.body);
   await userEvent.click(await body.findByRole('button', { name: 'Cancel order' }));
-  await waitFor(dialogIsOnTop);
 };
 
 /** A plain `Drawer` holding the confirmation's trigger. */

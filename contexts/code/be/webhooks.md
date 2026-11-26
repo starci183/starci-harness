@@ -101,4 +101,4 @@ intake; a combined verify-and-record method proves the refusal in its service sp
 Why: the door has no logic; the risk is the wiring: raw body, headers, the real scheme and the transaction behind the
 intake.
 
-Enforced by: R155, R284.
+Enforced by: R155.

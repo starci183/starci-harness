@@ -48,10 +48,17 @@ void test("the FAST level installs and builds each build order once, then typech
     assert.ok(!steps.some((step) => step.startsWith("lint ")), "a landing on dev lints nothing: lint belongs to the release (full) gate")
 })
 
-void test("a package with bundles:check runs it at the FAST level, then its npm test", () => {
-    const hfs = { "packages/hfs": { build: "tsc", typecheck: "tsc --noEmit", "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check", test: "npm run typecheck && node-test" } }
+void test("a package with bundles:check runs it at the FAST level, then its npm test; a typecheck its test already runs is not run twice", () => {
+    const hfs = { "packages/hfs": { build: "tsc", typecheck: "tsc --noEmit", "bundles:check": "node scripts/sync-bundles.mjs --check", test: "npm run typecheck && node-test" } }
     const steps = named(harnessGateSteps(plan({ packages: [{ name: "@starci/hfs", dir: "packages/hfs", build: ["packages/hfs"] }] }), "dev", (dir): Readonly<Record<string, string>> => (dir === "packages/hfs" ? hfs["packages/hfs"] : {})))
-    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "typecheck packages/hfs", "declarations packages/hfs", "bundles packages/hfs", "test packages/hfs"])
+    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "declarations packages/hfs", "bundles packages/hfs", "test packages/hfs"])
+})
+
+void test("the FULL level lints a package once: a lint its npm test already runs is not a second step", () => {
+    const pkg = { "packages/mail": { build: "tsc", typecheck: "tsc --noEmit", lint: "eslint .", test: "npm run typecheck && npm run lint && node --test" } }
+    const steps = named(harnessGateSteps(plan({ packages: [{ name: "@starci/mail", dir: "packages/mail", build: ["packages/mail"] }] }), "full", (dir): Readonly<Record<string, string>> => (dir === "packages/mail" ? pkg["packages/mail"] : {})))
+    assert.ok(!steps.includes("lint packages/mail") && !steps.includes("typecheck packages/mail"), steps.join(", "))
+    assert.ok(steps.includes("test packages/mail"))
 })
 
 void test("an affected CLI is installed, built and typechecked at the FAST level, never tested", () => {
@@ -155,4 +162,19 @@ void test("a red package test at the FAST level is a blocking finding `lane gate
     assert.ok(ran.includes("test packages/gallery"), "a red test skips nothing after it")
     const read = blockingFindings(JSON.stringify({ ok: false, data: gate }))
     assert.deepEqual(read?.map((finding) => [finding.code, finding.path, finding.message.split("\n")[0]]), [["HARNESS_GATE_TEST", "packages/grammar", "test in packages/grammar failed: 1 failing: renders the empty state"]])
+})
+
+void test("long failing names never push the last lines out: the names line and each tail line are cut, and all 15 last lines are kept", () => {
+    const step: GateStep = { dir: "packages/eslint-grammar-offset-pop", kind: "test" }
+    const names = Array.from({ length: 6 }, (_, n) => `not ok ${String(n + 1)} - group ${String(n)}: ${"a long description of what the test proves ".repeat(8)}`)
+    const tail = Array.from({ length: 40 }, (_, line) => `line ${String(line)} ${"y".repeat(300)}`)
+    const message = failureMessage(step, [...names, ...tail].join("\n"))
+    const [first = "", ...rest] = message.split("\n")
+    assert.ok(message.length <= 2400)
+    assert.match(first, /^test in packages\/eslint-grammar-offset-pop failed: 6 failing: group 0: /)
+    assert.ok(first.length <= 600, "the names line is capped")
+    assert.equal(rest.length, 15, "all 15 last lines fit")
+    assert.match(rest[0] ?? "", /^line 25 y+…$/)
+    assert.match(rest.at(-1) ?? "", /^line 39 y+…$/)
+    assert.equal(findingLines({ code: "HARNESS_GATE_TEST", path: step.dir, message }).length, 16)
 })

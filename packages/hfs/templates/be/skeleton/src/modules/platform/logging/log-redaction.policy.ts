@@ -8,11 +8,21 @@ export const REDACTED = "[redacted]"
  * is replaced, the key is kept so the line still says one was there. Matched on the name without case and punctuation, at its
  * end, so `tokenCount` or `sessionId` stay readable.
  */
-const SECRET_ENDINGS = Object.freeze(["password", "passwd", "secret", "token", "authorization", "cookie", "apikey", "privatekey", "credentials"])
+const SECRET_ENDINGS = Object.freeze([
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "authorization",
+    "cookie",
+    "apikey",
+    "privatekey",
+    "credentials",
+])
 
 /** True when `key` names a credential. */
 const isSecretKey = (key: string): boolean => {
-    const plain = key.toLowerCase().replace(/[^a-z0-9]/g, "")
+    const plain = key.toLowerCase().replaceAll(/[^a-z0-9]/g, "")
     return SECRET_ENDINGS.some((ending) => plain.endsWith(ending))
 }
 

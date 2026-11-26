@@ -173,7 +173,13 @@ export const botCodeFiles = (dir: string = botCodeDir()): Record<string, string>
     return Object.fromEntries(names.map((name) => [`monitor-bot/${name}`, readFileSync(join(dir, name), "utf8").replace(/\n\/\/# sourceMappingURL=.*\s*$/, "\n")]))
 }
 
-/** The monitor bot's config (monitor-bot/config.ts parseConfig): the stack's addresses and one entry per bot, its chat and admins left as placeholders the server fills. */
+/** Where the monitor bot keeps the owner chats it learned: on its volume (components.yaml monitor-bot `volumes`), so a restart keeps them. */
+export const BOT_STATE_FILE = "/home/node/owner-chats.json"
+
+/**
+ * The monitor bot's config (monitor-bot/config.ts parseConfig): the stack's addresses and one entry per bot, its owner username plain, its chat
+ * and admins left as placeholders the server fills (the chat with null when the member seals none: the bot learns it from the owner).
+ */
 export const botConfig = (policy: VpsPolicy, server: string, bots: readonly AlertBot[], options: { readonly loki: boolean; readonly grafana: string | null }): string => {
     const config = {
         server,
@@ -190,9 +196,10 @@ export const botConfig = (policy: VpsPolicy, server: string, bots: readonly Aler
         diskAlertPercent: policy.health.diskAlertPercent,
         reportHour: BOT_REPORT.hour,
         reportOffsetMinutes: BOT_REPORT.offsetMinutes,
-        bots: bots.map((bot, slot) => ({ slot, project: bot.project, env: bot.env, stack: bot.stack, tokenFile: `/run/secrets/${tokenFile(slot)}`, chat: chatPlaceholder(slot), admins: adminsPlaceholder(slot) })),
+        state: BOT_STATE_FILE,
+        bots: bots.map((bot, slot) => ({ slot, project: bot.project, env: bot.env, stack: bot.stack, tokenFile: `/run/secrets/${tokenFile(slot)}`, chat: chatPlaceholder(slot), owner: bot.owner, admins: adminsPlaceholder(slot) })),
     }
-    // The chat id is a JSON number once filled: its placeholder is written unquoted.
+    // The chat id is a JSON number (or null) once filled: its placeholder is written unquoted.
     return `${JSON.stringify(config, null, 2).replaceAll(/"(__STARCI_ALERTS_CHAT_\d+__)"/g, "$1")}\n`
 }
 
@@ -315,6 +322,9 @@ export const renderMonitor = (policy: VpsPolicy, dir: string, components: Readon
     // With the monitor bot on, Alertmanager's receivers are webhooks to it and the bot holds the tokens and chat ids; else the receivers are
     // Alertmanager's own telegram_configs. Either way the chat ids are filled on the server from the opened members (alertBotLines).
     const viaBot = on("monitor-bot")
+    // Alertmanager's own telegram receivers need the sealed chat; a bot that has only its owner username is routed by the monitor bot alone
+    // (the run holds it by name otherwise: alerts.ts routableAlerts).
+    if (!viaBot && facts.alertBots.some((bot) => !bot.chat)) throw new Refusal("OPS_INVALID", "an alert bot with an owner username and no sealed chat needs the monitor bot (routableAlerts holds it)")
     const bots = facts.alertBots.length > 0
     const filled: FilledFile[] = []
     if (on("alertmanager")) {

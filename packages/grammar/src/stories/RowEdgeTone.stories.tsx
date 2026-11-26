@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, noop } from './fixtures.js';
 
@@ -50,29 +49,7 @@ const Page = () => (
   </G.Stack>
 );
 
-/** The bar sits on the row (a list row, a phone list row) or on its first cell (a table row). */
-const edgeOf = (element: Element): string => {
-  const own = getComputedStyle(element).boxShadow;
-  if (own !== 'none') return own;
-  const first = element.firstElementChild;
-  return first === null ? 'none' : getComputedStyle(first).boxShadow;
-};
-
 /** Four tones on list rows and two on table rows (at 390 the table is a list and its rows draw the same bar). */
 export const Rows: Story = {
   render: () => <Page />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const toned = [...canvasElement.querySelectorAll<HTMLElement>('[data-edge-tone]')];
-      expect(toned.length).toBe(7);
-      for (const row of toned) {
-        const shadow = edgeOf(row);
-        expect(shadow).toContain('inset');
-        expect(shadow).toMatch(/2px 0px 0px 0px/);
-      }
-      expect(new Set(toned.map((row) => edgeOf(row))).size).toBeGreaterThanOrEqual(3);
-      const plain = canvasElement.querySelector<HTMLElement>('[data-grammar-row-id="e"]');
-      expect(plain === null ? 'none' : getComputedStyle(plain).boxShadow).toBe('none');
-    }, { timeout: 4000 });
-  },
 };

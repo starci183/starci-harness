@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { hostname, tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
-import { withHeavySlot } from "../../harness/heavy.js"
 import { takeLiveLock } from "../../harness/slots.js"
 import { inOrder } from "../../harness/sequential.js"
 import { loadLocalSettings, localSettingsPath, writeDevSyncLocal } from "../../harness/local-settings.js"
@@ -16,12 +15,12 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 import { affectedBy } from "../release/affected.js"
 import { isHarnessCheckout } from "../release/harness-checkout.js"
 import { NPMJS_FLAGS } from "./local-refs.js"
-import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryFolder, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
+import { ensureRegistry, PORT, registryFolder, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
 import { packStamped } from "./pack-stamped.js"
 import type { EntryEdit } from "./pack-stamped.js"
 import { parseRequested } from "./install-local.js"
-import { buildPackage, installPackage, tail } from "./packages.js"
-import { globalOrder } from "./publish-local.js"
+import { buildPackage, installPackage } from "./packages.js"
+import { globalOrder, publishLocalTarball } from "./publish-local.js"
 import { copyPins, dataPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
 export { PIN_FIELDS } from "./publish-pins.js"
@@ -251,9 +250,8 @@ const devNumber = (version: string): number => Number(DEV_SUFFIX.exec(version)?.
 /** The world an executed dev publish touches: build, publish, the files of this machine. Specs replace it. */
 export interface DevPublishIo {
     /**
-     * Installs one folder. Every folder a row needs is installed before any is built or packed, as CI's package job installs its whole build order
-     * first: a package whose pack (its `prepack`: typecheck, tests) reads a sibling's files that sort after it (eslint-canon-fe's specs import
-     * eslint-canon-be's fixtures, which import `typescript`) finds that sibling's node_modules in a fresh worktree too.
+     * Installs one folder, right before its build. Every folder a row needs is installed and built, in order, before any row is packed (executeDevPlan),
+     * so a package whose pack (its `prepack`: typecheck, tests) reads a sibling ordered after it finds that sibling installed in a fresh worktree too.
      */
     readonly install?: (pkg: WorkspacePackage) => Promise<void>
     readonly build: (pkg: WorkspacePackage) => Promise<void>
@@ -312,8 +310,8 @@ export const causeLine = (message: string): string => {
 }
 
 /**
- * Executes a plan: builds what the rows need in `order` (a row's build prerequisites included), publishes each row's copy with its dev manifest and counts
- * each build. A row whose build or publish fails is reported and the run goes on with the rest: only the rows that need it (a build prerequisite, or a
+ * Executes a plan in two passes: first it installs and builds every folder the rows need in `order` (a row's build prerequisites included), then it
+ * publishes each row's copy with its dev manifest and counts each build. A row whose build or publish fails is reported and the run goes on with the rest: only the rows that need it (a build prerequisite, or a
  * package of the line it pins, `requires`) are left out with it, since their copies would pin a dev build that does not exist. `devSync.local` then names
  * what was published, keeping the overlay's entry of a package not made. The record moves to `head` only when every row was published, so the next run
  * measures from the last complete publish and makes the missing builds again (each rerun takes new numbers; nothing is replaced).
@@ -327,56 +325,48 @@ export const executeDevPlan = async (given: { readonly plan: DevPlan; readonly p
     const broken = new Map<string, string>()
     const missing = new Map<string, string>()
     const message = (error: unknown): string => (error instanceof Error ? error.message : String(error))
-    const install = io.install
-    if (install !== undefined) {
-        await inOrder(order.filter((dir) => needed.has(dir)), async (dir) => {
-            const pkg = packages.find((one) => one.relativeDir === dir)
-            if (pkg === undefined) return
-            try {
-                await install(pkg)
-            } catch (error) {
-                io.say(`INSTALL FAILED ${pkg.name}: ${message(error)}`)
-                broken.set(dir, `the install failed: ${causeLine(message(error))}`)
-            }
-        })
-    }
-    await inOrder(order.filter((dir) => needed.has(dir)), async (dir) => {
-        const pkg = packages.find((one) => one.relativeDir === dir)
+    const dirs = order.filter((dir) => needed.has(dir))
+    const named = (dir: string): WorkspacePackage | undefined => packages.find((one) => one.relativeDir === dir)
+    // Every folder a row needs is installed and built, in order, before any row is packed: CI's package job installs and builds its whole build order
+    // before it tests and packs. A pack runs its package's `prepack` (eslint-canon-fe's: typecheck and the specs, which read eslint-canon-be's fixtures and
+    // its install, a `file:` copy of hfs's built runtime), so a sibling ordered after the row must already be installed against the built siblings it copies.
+    await inOrder(dirs, async (dir) => {
+        const pkg = named(dir)
         if (pkg === undefined) return
-        const row = plan.rows.find((one) => one.dir === dir)
-        const ownBreak = broken.get(dir)
-        if (ownBreak !== undefined) {
-            if (row !== undefined) {
-                io.say(`NOT publishing ${row.package}@${row.version}: ${ownBreak}`)
-                failed.push({ package: row.package, version: row.version, reason: ownBreak })
-                missing.set(row.package, ownBreak)
-            }
+        const brokenNeed = needs(dir).find((need) => need !== dir && broken.has(need))
+        if (brokenNeed !== undefined) {
+            broken.set(dir, `its build prerequisite ${brokenNeed} did not build`)
             return
         }
-        const brokenNeed = (row === undefined ? [] : needs(dir)).find((need) => need !== dir && broken.has(need))
-        const missingPin = row === undefined ? undefined : [...(given.requires?.(row.package) ?? [])].find((name) => missing.has(name))
-        const blocked = brokenNeed === undefined ? missingPin === undefined ? undefined : `it pins ${missingPin}, whose dev build was not made` : `its build prerequisite ${brokenNeed} did not build`
-        if (blocked !== undefined && row !== undefined) {
-            io.say(`NOT publishing ${row.package}@${row.version}: ${blocked}`)
-            failed.push({ package: row.package, version: row.version, reason: blocked })
-            missing.set(row.package, blocked)
-            broken.set(dir, blocked)
+        try {
+            await io.install?.(pkg)
+        } catch (error) {
+            io.say(`INSTALL FAILED ${pkg.name}: ${message(error)}`)
+            broken.set(dir, `the install failed: ${causeLine(message(error))}`)
             return
         }
         io.say(`building ${pkg.name}`)
         try {
             await io.build(pkg)
         } catch (error) {
-            const reason = `the build failed: ${causeLine(message(error))}`
             io.say(`BUILD FAILED ${pkg.name}: ${message(error)}`)
-            broken.set(dir, reason)
-            if (row !== undefined) {
-                failed.push({ package: row.package, version: row.version, reason })
-                missing.set(row.package, reason)
-            }
+            broken.set(dir, `the build failed: ${causeLine(message(error))}`)
+        }
+    })
+    await inOrder(dirs, async (dir) => {
+        const pkg = named(dir)
+        const row = plan.rows.find((one) => one.dir === dir)
+        if (pkg === undefined || row === undefined) return
+        const own = broken.get(dir)
+        const brokenNeed = needs(dir).find((need) => need !== dir && broken.has(need))
+        const missingPin = [...(given.requires?.(row.package) ?? [])].find((name) => missing.has(name))
+        const blocked = own ?? (brokenNeed === undefined ? missingPin === undefined ? undefined : `it pins ${missingPin}, whose dev build was not made` : `its build prerequisite ${brokenNeed} did not build`)
+        if (blocked !== undefined) {
+            io.say(`NOT publishing ${row.package}@${row.version}: ${blocked}`)
+            failed.push({ package: row.package, version: row.version, reason: blocked })
+            missing.set(row.package, blocked)
             return
         }
-        if (row === undefined) return
         io.say(`publishing ${row.package}@${row.version} (${row.why})`)
         try {
             await io.publish(pkg, row, (text) => devManifest(text, row.version, withTreePins(text, plan.pins, io.treePins)), devDataEdit(plan.pins, io.treePins))
@@ -404,10 +394,7 @@ const publishDevCopy = async (root: string, pkg: WorkspacePackage, row: DevRow, 
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
     try {
         const tarball = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit, entries })
-        const published = await withHeavySlot("build", `npm publish ${row.package}@${row.version}`, pkg.dir, {}, (held) => captureNpm(["publish", tarball, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(PORT)], scratch, held.options))
-        if (published.exitCode !== 0) throw new Refusal("PUBLISH_LOCAL_FAILED", `npm publish of ${row.package}@${row.version} to ${registryUrl(PORT)} failed:\n${tail(published.stdout, published.stderr)}`)
-        const view = await captureNpm(["view", `${row.package}@${row.version}`, "version", ...registryFlags(PORT)], scratch)
-        if (view.exitCode !== 0 || view.stdout.trim() !== row.version) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable from ${registryUrl(PORT)} after publishing`)
+        await publishLocalTarball({ tarball, dir: pkg.dir, name: row.package, version: row.version, port: PORT, npmrc, scratch })
     } finally {
         rmSync(scratch, { recursive: true, force: true })
     }

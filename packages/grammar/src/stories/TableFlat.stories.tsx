@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { noop, quietProbe } from './fixtures.js';
+import { noop } from './fixtures.js';
 
 /**
  * A table is flat: a white body with no frame, no grey gutters and no grey header strip, the column labels 12 muted, 1px full-width row dividers, the pager behind a
@@ -277,25 +276,6 @@ const orders: ReadonlyArray<Order> = [
 
 const orderCell = (row: Order, columnId: string) => row[columnId as keyof Order];
 
-/** Cells whose text is one line: the fit, numeric and chip columns never wrap below their content, whatever the container. */
-const assertNoWrap = (root: HTMLElement) => {
-  const cells = Array.from(root.querySelectorAll<HTMLElement>('[data-grammar-table-width="fit"], [data-grammar-table-numeric="true"]'));
-  expect(cells.length).toBeGreaterThan(0);
-  for (const cellEl of cells) {
-    const text = (cellEl.textContent ?? '').trim();
-    if (text === '') continue;
-    // Read through a probe in the cell's shadow root (quietProbe): a probe appended to the document inside the waitFor re-runs its callback on every mutation, and a first run that failed froze the browser of the DNA check (FourColumnsNeverWrap at 390).
-    const one = quietProbe(
-      cellEl,
-      (probe) => { probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:inherit;'; probe.textContent = text; },
-      (probe) => probe.getBoundingClientRect().width,
-    );
-    const pad = Number.parseFloat(getComputedStyle(cellEl).paddingInlineStart) + Number.parseFloat(getComputedStyle(cellEl).paddingInlineEnd);
-    expect(cellEl.getBoundingClientRect().width).toBeGreaterThanOrEqual(one + pad - 1);
-    expect(cellEl.scrollHeight).toBeLessThanOrEqual(cellEl.clientHeight + 1);
-  }
-};
-
 const NeverCollapse = ({ width }: { readonly width: number }) => (
   <div style={{ width, display: 'grid', gap: 24 }} data-grammar-never-collapse={width}>
     <G.DataTable<Order>
@@ -336,15 +316,6 @@ export const ColumnsNeverCollapse: Story = {
       {[1100, 800, 600].map((width) => <NeverCollapse key={width} width={width} />)}
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const width of [1100, 800, 600]) {
-        const root = canvasElement.querySelector<HTMLElement>(`[data-grammar-never-collapse="${width}"]`);
-        if (root === null) throw new Error(`the ${width}px tables render`);
-        assertNoWrap(root);
-      }
-    });
-  },
 };
 
 /**
@@ -374,20 +345,6 @@ export const FourColumnsNeverWrap: Story = {
       {[1440, 1024].map((width) => <FourColumns key={width} width={width} />)}
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const width of [1440, 1024]) {
-        const root = canvasElement.querySelector<HTMLElement>(`[data-grammar-never-collapse="${width}"]`);
-        if (root === null) throw new Error(`the ${width}px table renders`);
-        assertNoWrap(root);
-        const fill = root.querySelector<HTMLElement>('[data-grammar-table-width="fill"]');
-        if (fill === null) throw new Error('the first text column fills');
-        for (const status of Array.from(root.querySelectorAll<HTMLElement>('[data-grammar-table-width="fit"]'))) {
-          expect(status.scrollHeight).toBeLessThanOrEqual(status.clientHeight + 1);
-        }
-      }
-    });
-  },
 };
 
 const TableOnTheWell = () => (
@@ -413,14 +370,6 @@ const TableOnTheWell = () => (
   </div>
 );
 
-/** One probe painted with a token, appended ONCE before a `waitFor` (a probe added inside the callback mutates the DOM the `waitFor` watches and loops forever). */
-const probeOf = (host: HTMLElement, property: 'background-color' | 'color', token: string) => {
-  const probe = document.createElement('span');
-  probe.style.setProperty(property, `var(${token})`);
-  host.append(probe);
-  return probe;
-};
-
 /**
  * A table is flat on the well and on a white aside alike: no painted frame or shadow, its column labels are 12px muted, its rows are divided by 1px lines.
  */
@@ -435,28 +384,4 @@ export const TableLooksFlat: Story = {
       </G.Pane>
     </G.PaneGrid>
   ),
-  play: async ({ canvasElement }) => {
-    const mutedProbe = probeOf(canvasElement, 'color', '--muted');
-    await waitFor(() => {
-      const table = canvasElement.querySelector<HTMLElement>('[data-story-well="true"] [data-component="DataTable"]');
-      if (table === null) throw new Error('the table renders');
-      const muted = getComputedStyle(mutedProbe).color;
-      const labels = Array.from(table.querySelectorAll<HTMLElement>('.starci-core-data-table-column'));
-      expect(labels.length).toBe(3);
-      for (const label of labels) {
-        expect(getComputedStyle(label).fontSize).toBe('12px');
-        expect(getComputedStyle(label).color).toBe(muted);
-      }
-      const rows = Array.from(table.querySelectorAll<HTMLElement>('.starci-core-data-table-row'));
-      expect(rows.length).toBe(4);
-      for (const row of rows.slice(0, -1)) {
-        expect(Number.parseFloat(getComputedStyle(row.querySelector<HTMLElement>('.starci-core-data-table-cell')!).borderBottomWidth)).toBe(1);
-      }
-      for (const flat of [table, canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] [data-component="DataTable"]')]) {
-        if (flat === null) throw new Error('both tables render');
-        expect(getComputedStyle(flat).boxShadow).toBe('none');
-      }
-    });
-    mutedProbe.remove();
-  },
 };

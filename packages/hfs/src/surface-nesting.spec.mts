@@ -40,6 +40,10 @@ test('a card drawn in a card across files is found at the inner card, with the f
   assert.deepEqual(result.violations.map((v) => [v['kind'], v.path, v['crossFile']]), [['card-in-card', 'a/Inner.tsx', true]]);
 });
 
+test("a card written directly in a card in one file is the one-file lint's (R340), never a second finding here", () => {
+  assert.deepEqual(kinds({ 'a/One.tsx': `${G}export const One = () => <SurfaceCard label="o"><SurfaceCard label="i" /></SurfaceCard>;` }), []);
+});
+
 test('a component that never places children does not draw them, and a card beside a card is fine', () => {
   assert.deepEqual(kinds({
     'a/Shell.tsx': `${G}export const Shell = ({ children }) => <SurfaceCard label="Outer" />;`,

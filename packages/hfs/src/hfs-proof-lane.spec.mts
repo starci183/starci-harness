@@ -45,11 +45,11 @@ const spec = (scenarios: string[]) => scenarios.map((id, index) => {
 const find = (fixture: Fixture, patterns: string[]) => proofLaneFindings({ ...fixture, repo: declaration(patterns) });
 const proofFindings = (result: ReturnType<typeof checkRepo>) => result.findings.filter((finding) => ['BE_LITE_PROOF_LANE_MISSING', 'BE_PATTERN_SPEC_MISSING'].includes(finding.code));
 
-test('BE_LITE_PROOF_LANE_MISSING: every declared lite pattern without integration specs is refused', (t) => {
+test('BE_PATTERN_SPEC_MISSING: every declared pattern without integration specs is refused once per scenario, never twice with the lane code', (t) => {
   const fixture = tree(t, {});
   for (const pattern of Object.keys(SCENARIOS)) {
     const findings = find(fixture, [pattern]);
-    assert.deepEqual(findings.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').map((finding) => finding.path), ['hfs.json']);
+    assert.deepEqual(findings.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING'), []);
     assert.deepEqual(findings.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').map((finding) => finding.scenario), ids([pattern]));
     assert.ok(findings.every((finding) => finding.level === 'error'));
   }
@@ -72,7 +72,7 @@ test('BE_PATTERN_SPEC_MISSING: a present lane still owes every exact scenario ti
   assert.deepEqual(find(fixture, []), []);
 });
 
-test('BE_LITE_PROOF_LANE_MISSING: e2e, contract, unit and front-end specs cannot supply the integration lane', (t) => {
+test('BE_PATTERN_SPEC_MISSING: e2e, contract, unit and front-end specs cannot supply the integration lane, and the lane code is never a second finding', (t) => {
   const files = [
     'be/src/tests/e2e/queue/proofs.e2e-spec.ts',
     'be/src/tests/contract/queue/proofs.contract-spec.ts',
@@ -82,7 +82,7 @@ test('BE_LITE_PROOF_LANE_MISSING: e2e, contract, unit and front-end specs cannot
   ];
   const fixture = tree(t, Object.fromEntries(files.map((file) => [file, spec(ids(['queue']))])));
   const findings = find(fixture, ['queue']);
-  assert.equal(findings.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, 1);
+  assert.equal(findings.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, 0);
   assert.equal(findings.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').length, (SCENARIOS.queue as string[]).length);
 });
 
@@ -115,7 +115,7 @@ test('BE_PATTERN_SPEC_MISSING: titles may use literal templates and proofs may b
   const rootPass = { ...fixture, files: ['hfs.json'], all: fixture.files };
   assert.deepEqual(find(rootPass, ['projection']), [], 'the app-root pass reads the full tracked tree');
   const untracked = { ...fixture, files: [] };
-  assert.equal(find(untracked, ['projection'])[0]?.code, 'BE_LITE_PROOF_LANE_MISSING', 'files on disk alone are not tracked proof');
+  assert.equal(find(untracked, ['projection'])[0]?.code, 'BE_PATTERN_SPEC_MISSING', 'files on disk alone are not tracked proof');
 });
 
 test('BE_PATTERN_SPEC_MISSING: the manifest supplies scenario ids, including saga when configured', (t) => {
@@ -132,6 +132,13 @@ test('BE_PATTERN_SPEC_MISSING: the manifest supplies scenario ids, including sag
   assert.ok(findings.every((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING'));
 });
 
+test('BE_LITE_PROOF_LANE_MISSING: a declared pattern with no scenario to name and no integration spec is refused once', (t) => {
+  const manifest = structuredClone(loadSlotManifest());
+  manifest.ruleParams.be.patternScenarios.projection = [];
+  const findings = proofLaneFindings({ ...tree(t, {}), repo: declaration(['projection']), manifest });
+  assert.deepEqual(findings.map((finding) => finding.code), ['BE_LITE_PROOF_LANE_MISSING']);
+});
+
 test('BE_LITE_PROOF_LANE_MISSING: no patterns, non-pattern capabilities and side passes add no findings', (t) => {
   const fixture = tree(t, {});
   assert.deepEqual(find(fixture, []), []);
@@ -145,19 +152,18 @@ test('BE_PATTERN_SPEC_MISSING: starci app check wires the proof lane', (t) => {
     const empty = tree(t, { 'hfs.json': JSON.stringify(repo) });
     const missing = proofFindings(checkRepo({ ...empty, declaration: repo, tree: false }));
     assert.deepEqual(missing.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').map((finding) => finding.scenario as string).sort((a, b) => a.localeCompare(b)), ids(['projection']).sort((a, b) => a.localeCompare(b)));
-    assert.equal(missing.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, 1);
+    assert.equal(missing.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, 0, 'one missing proof, one finding: the scenarios name it');
     const passing = tree(t, { 'hfs.json': JSON.stringify(repo), [SPEC]: spec(ids(['projection'])) });
     assert.deepEqual(proofFindings(checkRepo({ ...passing, declaration: repo, tree: false })), []);
     const e2e = tree(t, { 'hfs.json': JSON.stringify(repo), 'be/src/tests/e2e/projection/proofs.e2e-spec.ts': spec(ids(['projection'])) });
-    assert.equal(proofFindings(checkRepo({ ...e2e, declaration: repo, tree: false })).length, 3);
+    assert.equal(proofFindings(checkRepo({ ...e2e, declaration: repo, tree: false })).length, ids(['projection']).length);
   }
 });
 
-test('R284 owns BE_LITE_PROOF_LANE_MISSING once and R155 retains BE_PATTERN_SPEC_MISSING', () => {
+test('R155 owns both proof codes: BE_PATTERN_SPEC_MISSING and the former R284 code BE_LITE_PROOF_LANE_MISSING', () => {
   const catalog = loadRuleCatalog();
-  const lane = catalog.rules.find((rule) => rule.id === 'R284');
-  assert.equal(lane?.code, 'BE_LITE_PROOF_LANE_MISSING');
-  assert.deepEqual(lane?.failureCodes, ['BE_LITE_PROOF_LANE_MISSING']);
+  assert.equal(catalog.rules.find((rule) => rule.id === 'R284'), undefined);
+  assert.deepEqual(catalog.rules.filter((rule) => rule.failureCodes.includes('BE_LITE_PROOF_LANE_MISSING')).map((rule) => rule.id), ['R155']);
   assert.deepEqual(catalog.rules.filter((rule) => rule.failureCodes.includes('BE_PATTERN_SPEC_MISSING')).map((rule) => rule.id), ['R155']);
   assert.deepEqual(catalog.rules.find((rule) => rule.id === 'R155')?.enforcers, [
     { kind: 'hfs', id: 'proof-lane', at: 'scripts/hfs/rules/proof-lane.mjs', planned: false },

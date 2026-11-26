@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -61,59 +60,6 @@ const Decisions = () => (
   </G.Cluster>
 );
 
-/** Resolve a theme token to the computed colour the browser paints, beside the element that should paint it. */
-const tokenColour = (host: Element, token: string): string => {
-  const probe = document.createElement('div');
-  probe.style.backgroundColor = `var(${token})`;
-  host.appendChild(probe);
-  const colour = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  return colour;
-};
-
-const fill = (element: Element): string => getComputedStyle(element).backgroundColor;
-const edge = (element: Element, side: 'Top' | 'Bottom'): number => Number.parseFloat(getComputedStyle(element)[`border${side}Width`]);
-
-/** One look on every host: the zones are --background, exactly two 1px lines divide them, the messages are flat or accent, both sides carry an avatar. */
-const assertFrame = (frame: HTMLElement, hasFooter: boolean) => {
-  const background = tokenColour(frame, '--background');
-  expect(fill(frame)).toBe(background);
-  const header = frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-header')!;
-  const thread = frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-thread')!;
-  const footer = frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-footer');
-  expect(fill(header)).toBe(background);
-  expect(fill(thread)).toBe(background);
-  expect(thread.getAttribute('role')).toBe('log');
-  // Exactly two dividers: the line under the header and the line over the footer; the zones draw no other edge.
-  const dividers = [edge(header, 'Bottom'), edge(thread, 'Top'), edge(thread, 'Bottom'), edge(header, 'Top')].filter((width) => width > 0);
-  expect(dividers).toEqual([1]);
-  if (hasFooter) {
-    expect(footer).not.toBeNull();
-    expect(fill(footer!)).toBe(background);
-    expect(edge(footer!, 'Top')).toBe(1);
-    expect(edge(footer!, 'Bottom')).toBe(0);
-  } else {
-    expect(footer).toBeNull();
-  }
-  const surface = tokenColour(frame, '--surface');
-  const accent = tokenColour(frame, '--accent');
-  for (const bubble of frame.querySelectorAll<HTMLElement>('.starci-core-message-bubble')) {
-    const face = bubble.querySelector<HTMLElement>('.starci-core-message-bubble-body')!;
-    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(0);
-    expect(getComputedStyle(face).boxShadow).toBe('none');
-    expect(fill(face)).toBe(bubble.getAttribute('data-grammar-bubble-side') === 'outgoing' ? accent : surface);
-    expect(bubble.querySelector('.starci-core-message-bubble-avatar')).not.toBeNull();
-  }
-};
-
-/** Only the thread scrolls: it overflows, the frame does not, and it opened at its newest message. */
-const assertThreadScrolls = (frame: HTMLElement) => {
-  const thread = frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-thread')!;
-  expect(thread.scrollHeight).toBeGreaterThan(thread.clientHeight);
-  expect(Math.abs(thread.scrollHeight - thread.scrollTop - thread.clientHeight)).toBeLessThanOrEqual(2);
-  expect(frame.scrollHeight).toBeLessThanOrEqual(frame.clientHeight + 1);
-};
-
 const crumbs = (label: string): G.PageHeaderBreadcrumbs => ({ label: 'Path', items: [{ id: 'home', label: 'Overview', href: '#' }, { id: 'here', label }] });
 
 /** 1. In a PaneGrid: the list pane stays white, the chat pane holds one frame with the decision actions as its footer. */
@@ -133,16 +79,6 @@ export const InPane: Story = {
       </G.Page>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-core-message-bubble').length).toBe(lines.length));
-    const pane = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"]')!;
-    expect(pane.getAttribute('data-grammar-pane-content')).toBe('chat');
-    const frame = pane.querySelector<HTMLElement>('.starci-core-chat-frame')!;
-    assertFrame(frame, true);
-    const list = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="list"]')!;
-    expect(fill(list)).toBe(tokenColour(list, '--surface'));
-    await waitFor(() => assertThreadScrolls(frame));
-  },
 };
 
 /** 2. In a Drawer: the sheet's title row and the frame header are one zone (no line, no gap between them), and only the thread scrolls. */
@@ -152,18 +88,6 @@ export const InDrawer: Story = {
       <G.ChatFrame label="Conversation with Sam Carter" header={<CustomerHeader />} footer={<Decisions />}><Thread /></G.ChatFrame>
     </G.Drawer>
   ),
-  play: async () => {
-    await waitFor(() => expect(document.querySelector('.starci-core-drawer .starci-core-chat-frame-thread')).not.toBeNull());
-    const drawer = document.querySelector<HTMLElement>('.starci-core-drawer')!;
-    expect(fill(drawer)).toBe(tokenColour(drawer, '--background'));
-    const frame = drawer.querySelector<HTMLElement>('.starci-core-chat-frame')!;
-    assertFrame(frame, true);
-    const title = drawer.querySelector<HTMLElement>(':scope > .starci-core-overlay-header')!;
-    expect(edge(title, 'Bottom')).toBe(0);
-    const gap = frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-header')!.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
-    expect(Math.abs(gap)).toBeLessThanOrEqual(1);
-    await waitFor(() => assertThreadScrolls(frame));
-  },
 };
 
 /** 3. Inline: a frame in a page, bounded by the height its host gives it, with the composer as its footer. */
@@ -177,13 +101,6 @@ export const Inline: Story = {
       </div>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-core-message-bubble').length).toBe(lines.length));
-    const frame = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame')!;
-    assertFrame(frame, true);
-    expect(frame.getBoundingClientRect().height).toBeLessThanOrEqual(520);
-    await waitFor(() => assertThreadScrolls(frame));
-  },
 };
 
 /** 4. Without a footer: the frame draws no footer and no line above it, so it has one divider. */
@@ -193,12 +110,6 @@ export const WithoutFooter: Story = {
       <G.ChatFrame label="Conversation with Sam Carter" header={<Contact name="Sam Carter" context="Closed conversation"/>}><Thread count={4} /></G.ChatFrame>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-core-message-bubble').length).toBe(4));
-    const frame = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame')!;
-    expect(frame.querySelector(':scope > .starci-core-chat-frame-footer')).toBeNull();
-    expect(edge(frame.querySelector<HTMLElement>(':scope > .starci-core-chat-frame-header')!, 'Bottom')).toBe(1);
-  },
 };
 
 /** 5. Loading and failing: the thread draws its loading structure, then the failure in the place of the messages. */

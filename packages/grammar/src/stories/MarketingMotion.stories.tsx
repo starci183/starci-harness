@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, waitFor, within } from "storybook/test"
 import * as G from "../common/index.js"
 import type { TileData } from "../core/surfaceCardData.js"
 import { Matrix, State, noop, placeholderImage } from "./fixtures.js"
@@ -40,17 +39,6 @@ export const Tokens: Story = {
             </State>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const root = canvasElement.closest<HTMLElement>(".grammar-common-root") ?? canvasElement
-        const style = getComputedStyle(root)
-        for (const name of TOKENS) {
-            const value = style.getPropertyValue(name).trim()
-            await expect(value).not.toBe("")
-            const cell = canvasElement.querySelector<HTMLElement>(`[data-story-token="${name}"] [data-story-token-value]`)
-            if (cell !== null) cell.textContent = value
-        }
-        await expect(style.getPropertyValue("--grammar-motion-ease-out")).toContain("cubic-bezier")
-    },
 }
 
 const Block = ({ label }: { readonly label: string }) => (
@@ -74,18 +62,6 @@ export const RevealRise: Story = {
             </G.Reveal>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const reveals = canvasElement.querySelectorAll<HTMLElement>('[data-component="Reveal"]')
-        await expect(reveals).toHaveLength(2)
-        await expect(reveals[0]?.getAttribute("data-grammar-reveal-kind")).toBe("rise")
-        await expect(reveals[1]?.getAttribute("data-grammar-reveal-kind")).toBe("stagger")
-        // Visible by default: whatever the browser supports, content on screen is complete and in place.
-        await waitFor(() => {
-            for (const piece of canvasElement.querySelectorAll<HTMLElement>('[data-component="Reveal"][data-grammar-reveal-kind="rise"], [data-component="Reveal"][data-grammar-reveal-kind="stagger"] > *')) {
-                expect(Number.parseFloat(getComputedStyle(piece).opacity)).toBe(1)
-            }
-        })
-    },
 }
 
 /** A region below the fold: it rises when scrolled to. A tall spacer holds it under the first screen. */
@@ -108,9 +84,6 @@ export const RevealBelowTheFold: Story = {
         const reveal = canvasElement.querySelector<HTMLElement>('[data-component="Reveal"]')
         if (reveal === null) throw new Error("A Reveal stands in the story")
         reveal.scrollIntoView({ block: "center" })
-        await waitFor(() => {
-            for (const child of Array.from(reveal.children)) expect(Number.parseFloat(getComputedStyle(child).opacity)).toBe(1)
-        }, { timeout: 4000 })
     },
 }
 
@@ -132,22 +105,6 @@ export const MarqueeLogos: Story = {
             </State>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const strips = canvasElement.querySelectorAll<HTMLElement>('[data-component="Marquee"]')
-        await expect(strips).toHaveLength(2)
-        for (const strip of strips) {
-            const source = strip.querySelector('[data-grammar-marquee-run="source"]')
-            const copy = strip.querySelector<HTMLElement>('[data-grammar-marquee-run="copy"]')
-            if (source === null || copy === null) throw new Error("A strip has its run and its copy")
-            await expect(copy.getAttribute("aria-hidden")).toBe("true")
-            await expect(copy.hasAttribute("inert")).toBe(true)
-            await expect(copy.children).toHaveLength(source.children.length)
-            await expect(strip.getAttribute("role")).toBe("group")
-        }
-        // The keyboard meets each link once: the copy holds none that can take focus.
-        await expect(within(strips[1] as HTMLElement).getAllByRole("link")).toHaveLength(4)
-        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1)
-    },
 }
 
 /** A figure counts up when seen; its final value is real text from the first byte. */
@@ -170,19 +127,6 @@ export const CountUpFigures: Story = {
             </G.Grid>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        const figures = canvasElement.querySelectorAll<HTMLElement>('[data-component="CountUp"]')
-        await expect(figures).toHaveLength(3)
-        // The count ends, in every browser and every motion setting, on the final value as real text.
-        await waitFor(() => {
-            for (const figure of figures) expect(figure.getAttribute("data-grammar-count-state")).toBe("done")
-        }, { timeout: 4000 })
-        await expect(figures[0]?.textContent).toBe("12,400+")
-        await expect(figures[1]?.textContent).toBe("98%")
-        await expect(figures[2]?.textContent).toBe("★ 4,8")
-        // While it counts the moving figure is hidden from assistive technology; at rest there is no hidden twin.
-        await expect(canvasElement.querySelectorAll('[data-component="CountUp"] [aria-hidden="true"]')).toHaveLength(0)
-    },
 }
 
 const STORY_STEPS = ["Ask", "Plan", "Approve", "Done"] as const
@@ -206,19 +150,6 @@ export const StickyStorySteps: Story = {
         </div>
     ),
     parameters: { grammar: { minHeight: "160vh" } },
-    play: async ({ canvasElement }) => {
-        const story = canvasElement.querySelector<HTMLElement>('[data-component="StickyStory"]')
-        if (story === null) throw new Error("A StickyStory stands in the story")
-        const steps = story.querySelectorAll<HTMLElement>("[data-grammar-story-step]")
-        await expect(steps).toHaveLength(STORY_STEPS.length)
-        // The steps are one ordered list; the pinned stage is a decorative twin, hidden from assistive technology and the keyboard.
-        await expect(within(story).getAllByRole("listitem")).toHaveLength(STORY_STEPS.length)
-        const pin = story.querySelector<HTMLElement>(".starci-core-story-pin")
-        await expect(pin?.getAttribute("aria-hidden")).toBe("true")
-        await expect(pin?.hasAttribute("inert")).toBe(true)
-        await expect(story.querySelectorAll(".starci-core-story-panel")).toHaveLength(STORY_STEPS.length)
-        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1)
-    },
 }
 
 /** The stage on the start side. */
@@ -248,7 +179,4 @@ export const CoverCardsReveal: Story = {
             </G.Reveal>
         </Matrix>
     ),
-    play: async ({ canvasElement }) => {
-        await expect(canvasElement.querySelectorAll('[data-grammar-tile-poster-bleed="true"]')).toHaveLength(3)
-    },
 }

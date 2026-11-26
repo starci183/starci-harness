@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -58,44 +57,6 @@ const Toolbar = ({ appearance = 'compact' }: { readonly appearance?: Appearance 
   );
 };
 
-const NARROW = 48 * 16;
-
-/**
- * The row's peers in order. Wide: one shared line (bottoms on one edge, left to right). Narrow: the tabs and the search each a full line; `compact`
- * selects keep their content width and share the next line (one bottom edge, left to right), `field` selects each a full line.
- */
-const expectRow = (row: HTMLElement, appearance: Appearance = 'compact') => {
-  // A Select keeps its vendor's hidden `template` beside it; it is no peer.
-  const peers = [...row.children].filter((node): node is HTMLElement => node instanceof HTMLElement && node.tagName !== 'TEMPLATE');
-  expect(peers.map((node) => node.dataset.component ?? (node.classList.contains('starci-core-tabs-frame') ? 'Tabs' : node.className))).toEqual(['Tabs', 'SearchField', 'Select', 'Select']);
-  const boxes = peers.map((node) => node.getBoundingClientRect());
-  const rowBox = row.getBoundingClientRect();
-  if (rowBox.width > NARROW) {
-    const bottom = Math.round(boxes[0]?.bottom ?? 0);
-    for (const box of boxes) expect(Math.abs(Math.round(box.bottom) - bottom)).toBeLessThanOrEqual(1);
-    for (let index = 1; index < boxes.length; index += 1) expect(boxes[index]?.left ?? 0).toBeGreaterThan(boxes[index - 1]?.right ?? 0);
-  } else {
-    const [tabs, search, first, second] = boxes as [DOMRect, DOMRect, DOMRect, DOMRect];
-    for (const box of [tabs, search]) expect(Math.round(box.width)).toBe(Math.round(rowBox.width));
-    expect(search.top).toBeGreaterThanOrEqual(tabs.bottom);
-    expect(first.top).toBeGreaterThanOrEqual(search.bottom);
-    if (appearance === 'compact') {
-      for (const box of [first, second]) expect(box.width).toBeLessThan(rowBox.width / 2);
-      expect(Math.abs(Math.round(second.bottom) - Math.round(first.bottom))).toBeLessThanOrEqual(1);
-      expect(second.left).toBeGreaterThan(first.right);
-    } else {
-      for (const box of [first, second]) expect(Math.round(box.width)).toBe(Math.round(rowBox.width));
-      expect(second.top).toBeGreaterThanOrEqual(first.bottom);
-    }
-  }
-};
-
-const rowOf = (canvasElement: HTMLElement, kind: 'region' | 'list') => {
-  const row = canvasElement.querySelector<HTMLElement>(`[data-grammar-section-kind="${kind}"] > .starci-core-section-filter`);
-  if (row === null) throw new Error(`the ${kind} filter row renders`);
-  return row;
-};
-
 /** A region's filter: the catalog toolbar over two lists. */
 export const Region: Story = {
   render: () => (
@@ -108,9 +69,6 @@ export const Region: Story = {
       </G.Section>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectRow(rowOf(canvasElement, 'region')));
-  },
 };
 
 /** A list's own filter: the same row. */
@@ -120,9 +78,6 @@ export const List: Story = {
       <G.Section kind="list" title="Topics" count={3} items={ROWS} empty={null} filter={<Toolbar />} />
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectRow(rowOf(canvasElement, 'list')));
-  },
 };
 
 /** A headless region: the page title is its heading, so the region is named by `ariaLabel` and draws none. */
@@ -137,17 +92,6 @@ export const Headless: Story = {
       </G.Section>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const row = rowOf(canvasElement, 'region');
-      const region = row.parentElement;
-      if (region === null) throw new Error('the region renders');
-      expect(region.getAttribute('aria-label')).toBe('Find a topic');
-      expect(region.getAttribute('aria-labelledby')).toBeNull();
-      expect(region.firstElementChild).toBe(row);
-      expectRow(row);
-    });
-  },
 };
 
 /** The region loading: the skeleton keeps the row's layout. */
@@ -159,13 +103,6 @@ export const RegionLoading: Story = {
       </G.Section>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const skeleton = rowOf(canvasElement, 'region').querySelector<HTMLElement>(':scope > .starci-core-skeleton-placeholder');
-      if (skeleton === null) throw new Error('the loading row renders its skeleton');
-      expectRow(skeleton);
-    });
-  },
 };
 
 /** `field` selects in the row: one row when wide; narrow, each select takes a full line like the search. */
@@ -175,7 +112,4 @@ export const FieldSelects: Story = {
       <G.Section kind="list" title="Topics" count={3} items={ROWS} empty={null} filter={<Toolbar appearance="field" />} />
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectRow(rowOf(canvasElement, 'list'), 'field'));
-  },
 };

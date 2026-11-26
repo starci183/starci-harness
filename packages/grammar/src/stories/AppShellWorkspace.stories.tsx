@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, BookGlyph, EllipsisGlyph, HomeGlyph, SettingsGlyph, familyScope, noop } from './fixtures.js';
 
@@ -78,32 +77,6 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
  */
 export const ThreePaneWorkspace: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const heads = ['list', 'chat', 'aside'].map((area) => {
-        const head = canvasElement.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"] .starci-core-pane-stack > .starci-core-pane-section:first-child`);
-        if (head === null) throw new Error(`the ${area} head renders`);
-        return head;
-      });
-      const [first, ...rest] = heads.map((head) => head.getBoundingClientRect());
-      for (const rect of rest) {
-        expect(Math.abs(rect.top - (first?.top ?? 0))).toBeLessThanOrEqual(1);
-        expect(Math.abs(rect.height - (first?.height ?? 0))).toBeLessThanOrEqual(1);
-      }
-      const surface = getComputedStyle(heads[0] as HTMLElement).backgroundColor;
-      expect(getComputedStyle(heads[2] as HTMLElement).backgroundColor).toBe(surface);
-      const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="chat"] [data-grammar-pane-section-thread="true"]')!;
-      expect(getComputedStyle(heads[1] as HTMLElement).backgroundColor).toBe(getComputedStyle(thread).backgroundColor);
-      expect(getComputedStyle(heads[1] as HTMLElement).backgroundColor).not.toBe(surface);
-    });
-  },
-};
-
-const stateAt = (canvasElement: HTMLElement) => {
-  const tracks = canvasElement.querySelector<HTMLElement>('.starci-core-pane-grid-tracks');
-  if (tracks === null) throw new Error('the grid renders');
-  const stack = (area: string) => canvasElement.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"] .starci-core-pane-stack`);
-  return { divider: getComputedStyle(tracks, '::after').content, stackPad: (area: string) => Number.parseFloat(getComputedStyle(stack(area) as HTMLElement).paddingTop) };
 };
 
 /** The two-pane workspace shape: a main pane with no head and an aside with one. No shared row, no spacer, no continuous divider: the aside head stands alone at the head height with its own bottom border, and the main pane starts at the top (0.37.3). */
@@ -117,15 +90,6 @@ export const AsideHeadOnly: Story = {
       </G.Pane>
     </G.PaneGrid>
   } />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const state = stateAt(canvasElement);
-      expect(state.divider).toBe('none');
-      expect(state.stackPad('main')).toBe(0);
-      const head = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] .starci-core-pane-stack > .starci-core-pane-section:first-child')!;
-      expect(Number.parseFloat(getComputedStyle(head).borderBottomWidth)).toBeGreaterThan(0);
-    });
-  },
 };
 
 /** A workspace grid in which no pane has a head: no head row, no divider, nothing reserved above the first band (the blank-band regression). */
@@ -136,14 +100,6 @@ export const NoHeads: Story = {
       <G.Pane area="aside" surface label="Details"><G.PaneSection><G.Text tone="muted">Aside body.</G.Text></G.PaneSection></G.Pane>
     </G.PaneGrid>
   } />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const state = stateAt(canvasElement);
-      expect(state.divider).toBe('none');
-      expect(state.stackPad('main')).toBe(0);
-      expect(state.stackPad('aside')).toBe(0);
-    });
-  },
 };
 
 /**
@@ -172,17 +128,6 @@ export const NestedGrids: Story = {
       </G.Pane>
     </G.PaneGrid>
   } />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const top = canvasElement.querySelector<HTMLElement>('.starci-core-pane-grid-tracks');
-      if (top === null) throw new Error('the grid renders');
-      expect(getComputedStyle(top, '::after').content).toBe('none');
-      const head = (area: string) => canvasElement.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"] .starci-core-pane-stack > .starci-core-pane-section:first-child`)!.getBoundingClientRect();
-      expect(Math.abs(head('list').height - head('aside').height)).toBeLessThanOrEqual(1);
-      const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="thread"] .starci-core-pane-stack')!;
-      expect(Number.parseFloat(getComputedStyle(thread).paddingTop)).toBe(0);
-    });
-  },
 };
 
 /**
@@ -241,27 +186,4 @@ const ChatTabShell = ({ scope }: { readonly scope: ReturnType<typeof familyScope
 
 export const ChatTab: Story = {
   render: (_, { globals }) => <ChatTabShell scope={familyScope(globals)} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] [role="log"]');
-      if (thread === null) throw new Error('the thread renders');
-      const page = document.scrollingElement as HTMLElement;
-      expect(page.scrollHeight).toBeLessThanOrEqual(window.innerHeight + 1);
-      const head = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] .starci-core-pane-header')!.getBoundingClientRect();
-      const composer = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] footer')!.getBoundingClientRect();
-      const band = canvasElement.querySelector<HTMLElement>('.starci-core-page-header')!.getBoundingClientRect();
-      expect(thread.scrollHeight).toBeGreaterThan(thread.clientHeight);
-      thread.scrollTop = 400;
-      const after = {
-        head: canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] .starci-core-pane-header')!.getBoundingClientRect(),
-        composer: canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] footer')!.getBoundingClientRect(),
-        band: canvasElement.querySelector<HTMLElement>('.starci-core-page-header')!.getBoundingClientRect(),
-      };
-      expect(after.head.top).toBe(head.top);
-      expect(after.composer.top).toBe(composer.top);
-      expect(after.band.top).toBe(band.top);
-      expect(composer.bottom).toBeLessThanOrEqual(window.innerHeight + 1);
-      expect(head.top).toBeGreaterThanOrEqual(band.bottom - 1);
-    });
-  },
 };

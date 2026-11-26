@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { Refusal } from "../../shared/errors.js"
 import { pidAlive } from "../../shared/exec.js"
-import { captureGit, currentBranch, mainCheckout, samePath } from "../../shared/git.js"
+import { currentBranch, mainCheckout, samePath, gitOutcome as git } from "../../shared/git.js"
 import { listPackages } from "../../shared/workspace.js"
 import { landPaths, releaseLockFile, takeDevLock } from "../../harness/lane-state.js"
 import { lockScope } from "../../harness/land-profile.js"
@@ -80,10 +80,6 @@ export interface HotfixLanded {
     readonly health: string
 }
 
-const git = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
 
 const firstLine = (text: string): string => (text.split(/\r?\n/).find((line) => line.trim() !== "") ?? "").slice(0, 300)
 

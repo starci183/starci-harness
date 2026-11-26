@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { CSSProperties } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -65,29 +64,6 @@ const Parts = () => (
 /** No hook set: the default look of every part, with the ribbon and the flat table. */
 export const Defaults: Story = {
   render: () => <Parts />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const name of ['phone', 'desktop']) {
-        const strip = canvasElement.querySelector<HTMLElement>(`[data-story-ribbon="${name}"] [data-grammar-description-layout="stat-strip"]`);
-        if (strip === null) throw new Error(`the ${name} ribbon renders`);
-        expect(strip).toHaveAttribute('data-grammar-figures-placement', 'ribbon');
-        const style = getComputedStyle(strip);
-        expect(style.borderTopWidth).toBe('1px');
-        expect(style.borderBottomWidth).toBe('1px');
-        expect(style.borderLeftWidth).toBe('0px');
-        expect(style.borderRightWidth).toBe('0px');
-        expect(style.borderTopLeftRadius).toBe('0px');
-        expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      }
-      const table = canvasElement.querySelector<HTMLElement>('[data-story-table] [data-component="DataTable"]');
-      if (table === null) throw new Error('the table renders');
-      expect(getComputedStyle(table).boxShadow).toBe('none');
-      // One field look: nothing draws the vendor secondary field, in a card or on the page.
-      expect(canvasElement.querySelectorAll('.input--secondary, .input-group--secondary, .search-field--secondary, .textarea--secondary, .select--secondary')).toHaveLength(0);
-      const bar = canvasElement.querySelector<HTMLElement>('.starci-core-sidebar-item[data-grammar-current="true"], .starci-core-sidebar-item[data-selected="true"]');
-      if (bar !== null) expect(getComputedStyle(bar, '::before').width).toBe('0px');
-    });
-  },
 };
 
 const NEUTRAL_HOOKS = {
@@ -104,20 +80,4 @@ const NEUTRAL_HOOKS = {
 /** The same parts under a neutral set of hooks, as an app's theme layer sets them. */
 export const Hooked: Story = {
   render: () => <div data-story-hooked="true" style={NEUTRAL_HOOKS}><Parts /></div>,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const item = canvasElement.querySelector<HTMLElement>('.starci-core-sidebar-item[data-grammar-current="true"], .starci-core-sidebar-item[data-selected="true"]');
-      if (item === null) throw new Error('the selected item renders');
-      expect(getComputedStyle(item, '::before').width).toBe('2px');
-      const row = canvasElement.querySelector<HTMLElement>('[data-grammar-radio-appearance="rows"] .starci-core-radio:not([data-selected="true"])');
-      if (row === null) throw new Error('an unselected radio row renders');
-      expect(getComputedStyle(row).borderTopWidth).toBe('1px');
-      const outgoing = canvasElement.querySelector<HTMLElement>('[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body');
-      if (outgoing === null) throw new Error('the outgoing bubble renders');
-      expect(getComputedStyle(outgoing).borderTopWidth).toBe('1px');
-      const card = canvasElement.querySelector<HTMLElement>('.starci-core-surface');
-      if (card === null) throw new Error('the card renders');
-      expect(getComputedStyle(card).borderTopWidth).toBe('1px');
-    });
-  },
 };

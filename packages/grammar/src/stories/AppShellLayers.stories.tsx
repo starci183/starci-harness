@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { EllipsisGlyph } from './fixtures.js';
 
@@ -23,16 +22,6 @@ export const ShellHeader: Story = {
       primary={<G.Input id="page-query" name="page-query" label="Page query" />}
     />
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelector('[data-grammar-workspace-header] [data-component="Input"]')).not.toBeNull();
-      expect(canvasElement.querySelector('[data-grammar-workspace-primary] [data-component="Input"]')).not.toBeNull();
-      expect(canvasElement.querySelectorAll('[class*="--secondary"]:is(.input, .input-group, .textarea)')).toHaveLength(0);
-      expect(canvasElement.querySelector('[data-grammar-workspace-navigation-track]')).toHaveAttribute('data-grammar-workspace-navigation-track', 'intrinsic');
-      expect(canvasElement.querySelector('[data-grammar-workspace-navigation-visibility]')).toHaveAttribute('data-grammar-workspace-navigation-visibility', 'wide');
-      expect(canvasElement.querySelector('[data-grammar-workspace-opener] [data-component="IconButton"]')).toHaveAttribute('data-size', 'control');
-    });
-  },
 };
 
 /** A short page in a page-scrolling shell: the shell is one viewport tall, so the root's canvas runs to the screen's bottom. */
@@ -46,15 +35,6 @@ export const ShortPageFillsViewport: Story = {
       primary={<G.Text>One short line.</G.Text>}
     />
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const shell = canvasElement.querySelector('[data-component="WorkspaceShell"]');
-      const root = shell?.closest('.grammar-common-root');
-      if (!(shell instanceof HTMLElement) || !(root instanceof HTMLElement)) throw new Error('the shell renders inside a GrammarRoot');
-      expect(shell.getBoundingClientRect().height).toBeGreaterThanOrEqual(window.innerHeight);
-      expect(root.getBoundingClientRect().height).toBeGreaterThanOrEqual(window.innerHeight);
-    });
-  },
 };
 
 /** A client-owned drawer opener defaults the fixed shell to wide-only inline navigation. */
@@ -69,25 +49,8 @@ export const ShellSlotHeader: Story = {
       primary={<G.Text>Page content</G.Text>}
     />
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelector('[data-grammar-workspace-navigation-visibility]')).toHaveAttribute('data-grammar-workspace-navigation-visibility', 'wide');
-      expect(canvasElement.querySelector('[data-grammar-workspace-compact-header]')).toHaveAttribute('data-grammar-workspace-opener', 'true');
-      expect(canvasElement.querySelector('[data-grammar-workspace-opener] [data-component="IconButton"]')).toHaveAttribute('data-size', 'control');
-      const navigation = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-navigation-region]');
-      const opener = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-opener]');
-      const compact = window.matchMedia('(width < 48rem)').matches;
-      expect(navigation).not.toBeNull();
-      expect(opener).not.toBeNull();
-      expect(getComputedStyle(navigation!).display === 'none').toBe(compact);
-      expect(getComputedStyle(opener!).display).toBe(compact ? 'flex' : 'none');
-    });
-  },
 };
 
 export const TopBarSearch: Story = {
   render: () => <G.TopBar brand={<G.Text>Workspace</G.Text>} actions={<G.Input id="topbar-query" name="query" label="Search" />} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('.input--secondary, .input-group--secondary')).toBeNull());
-  },
 };

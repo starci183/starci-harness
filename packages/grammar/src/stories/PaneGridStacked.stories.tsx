@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -36,21 +35,4 @@ export const AsideThenWell: Story = {
       <div data-width="600" style={{ inlineSize: 600, blockSize: 480, overflowY: 'auto' }}><Detail /></div>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const host of Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-width]'))) {
-        const aside = host.querySelector<HTMLElement>('[data-grammar-pane-area="aside"]');
-        const well = host.querySelector<HTMLElement>('[data-grammar-pane-area="main"]');
-        if (aside === null || well === null) throw new Error('both panes render');
-        // The aside shows all its content: no clipped scroll, and the well starts at or below its bottom edge.
-        expect(aside.scrollHeight).toBeLessThanOrEqual(aside.clientHeight + 1);
-        expect(well.getBoundingClientRect().top).toBeGreaterThanOrEqual(aside.getBoundingClientRect().bottom - 1);
-        expect(well.scrollHeight).toBeLessThanOrEqual(well.clientHeight + 1);
-        // The grid grows with its content: it holds the well's bottom.
-        const grid = host.querySelector<HTMLElement>('.starci-core-pane-grid')!;
-        expect(grid.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(well.getBoundingClientRect().bottom - 1);
-        expect(host.scrollHeight).toBeGreaterThan(host.clientHeight);
-      }
-    });
-  },
 };

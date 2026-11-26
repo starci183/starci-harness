@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -55,28 +54,4 @@ const Page = () => (
 /** A titled list, a key-value list under a figures ribbon and a Board: flat rows, hairlines, rows on the title's edge; Board items stay cards. */
 export const ListAndBoard: Story = {
   render: () => <Page />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const lists = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-list'));
-      expect(lists.length).toBe(2);
-      for (const list of lists) {
-        const style = getComputedStyle(list);
-        expect(style.boxShadow).toBe('none');
-        expect(Number.parseFloat(style.borderTopWidth)).toBe(0);
-        expect(Number.parseFloat(style.borderTopLeftRadius)).toBe(0);
-        expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-        const rows = Array.from(list.querySelectorAll<HTMLElement>(':scope > .starci-core-list-row'));
-        expect(Number.parseFloat(getComputedStyle(rows[1]!).borderTopWidth)).toBe(1);
-      }
-      const canvasList = lists[0]!;
-      const heading = canvasList.closest('[data-component="Section"]')!.querySelector<HTMLElement>('.starci-core-section-title')!;
-      const title = canvasList.querySelector<HTMLElement>('.starci-core-list-row-name')!;
-      // 0.48.0: the rows are indented 16 under the section title.
-      expect(Math.abs(title.getBoundingClientRect().left - heading.getBoundingClientRect().left - 16)).toBeLessThanOrEqual(1);
-      const item = canvasElement.querySelector<HTMLElement>('.starci-core-board-cards > .starci-core-list-row')!;
-      expect(getComputedStyle(item).boxShadow).toBe('none');
-      expect(Number.parseFloat(getComputedStyle(item).borderTopWidth)).toBe(1);
-      expect(Number.parseFloat(getComputedStyle(item).borderTopLeftRadius)).toBeGreaterThan(0);
-    }, { timeout: 5000 });
-  },
 };

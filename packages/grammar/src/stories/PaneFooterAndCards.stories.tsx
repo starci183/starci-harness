@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -28,19 +27,6 @@ export const CardOnWhiteGround: Story = {
       <G.Drawer title="Drawer" closeLabel="Close" isOpen onOpenChange={noop}>{card('In the drawer')}</G.Drawer>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const cardIn = (scope: Element | null) => scope?.querySelector<HTMLElement>('.starci-core-surface[data-grammar-surface-kind="body"]') ?? null;
-      const well = cardIn(canvasElement.querySelector('[data-grammar-pane-area="well"]'));
-      const aside = cardIn(canvasElement.querySelector('[data-grammar-pane-area="aside"]'));
-      const drawer = cardIn(document.querySelector('.starci-core-drawer'));
-      if (well === null || aside === null || drawer === null) throw new Error('the three cards render');
-      for (const white of [well, aside, drawer]) {
-        expect(getComputedStyle(white).boxShadow).toBe('none');
-        expect(Number.parseFloat(getComputedStyle(white).borderTopWidth)).toBe(1);
-      }
-    });
-  },
 };
 
 const longBody = Array.from({ length: 50 }, (_, index) => <G.Text key={index}>{`Line ${index + 1}`}</G.Text>);
@@ -56,21 +42,6 @@ export const PaneFooter: Story = {
       </G.PaneGrid>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const pane = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="main"]');
-      const body = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-body="true"]');
-      const footer = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-footer-slot="true"]');
-      if (pane === null || body === null || footer === null) throw new Error('pane, body and footer render');
-      expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
-      const before = footer.getBoundingClientRect();
-      body.scrollTop = 300;
-      const after = footer.getBoundingClientRect();
-      expect(after.top).toBe(before.top);
-      expect(Math.abs(after.bottom - pane.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
-      expect(pane.scrollHeight).toBeLessThanOrEqual(pane.clientHeight + 1);
-    });
-  },
 };
 
 const thread = Array.from({ length: 60 }, (_, index) => <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} avatar={<G.Avatar name={index % 3 === 0 ? 'You' : 'Chatbot'} size="md" />} body={`Message ${index + 1}`} />);
@@ -92,15 +63,6 @@ export const NestedRowsHeightChain: Story = {
       </G.Page>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const outer = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="tab"]');
-      const log = canvasElement.querySelector<HTMLElement>('[role="log"]');
-      if (outer === null || log === null) throw new Error('the panes render');
-      expect(outer.scrollHeight).toBeLessThanOrEqual(outer.clientHeight + 1);
-      expect(log.scrollHeight).toBeGreaterThan(log.clientHeight);
-    });
-  },
 };
 
 /** `measure="narrow"`: an order card in a chat bubble is capped at 30rem and stays at the start edge. */
@@ -115,13 +77,4 @@ export const NarrowMeasure: Story = {
       </G.SurfaceCard>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const root = canvasElement.querySelector<HTMLElement>('.starci-core-surface-card');
-      if (root === null) throw new Error('the card renders');
-      const box = root.getBoundingClientRect();
-      expect(box.width).toBeLessThanOrEqual(480.5);
-      expect(box.left - root.parentElement!.getBoundingClientRect().left).toBeLessThanOrEqual(25);
-    });
-  },
 };

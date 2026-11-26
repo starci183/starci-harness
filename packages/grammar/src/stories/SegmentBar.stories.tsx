@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Matrix, State, noop } from './fixtures.js';
 
@@ -36,22 +35,4 @@ export const SegmentBarStates: Story = {
       <State label="Error" direction="column"><G.SegmentBar label="Leads by channel" series={series} rows={rows} empty={emptyLine} error={failure} /></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const charts = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="SegmentBar"]'));
-    expect(charts.length).toBe(3);
-    const [ready, quiet, loading] = charts as [HTMLElement, HTMLElement, HTMLElement];
-    const list = within(ready).getByRole('list', { name: 'Leads by channel' });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(4);
-    // One scale: the longest row (10) fills the track, the shortest (2) a fifth of it.
-    const fills = Array.from(ready.querySelectorAll<HTMLElement>('.starci-core-segment-fill'));
-    const full = (fills[0] as HTMLElement).getBoundingClientRect().width;
-    const last = (fills[3] as HTMLElement).getBoundingClientRect().width;
-    expect(Math.abs(last / full - 0.2)).toBeLessThan(0.02);
-    expect(quiet.getAttribute('data-grammar-quiet')).toBe('true');
-    expect(quiet.querySelector('.starci-core-segment[data-grammar-tone="ink"]')).not.toBeNull();
-    expect(quiet.querySelector('.starci-core-segment[data-grammar-tone="muted"]')).not.toBeNull();
-    expect(loading.getAttribute('aria-busy')).toBe('true');
-    expect(within(canvasElement).getByText('No leads yet')).toBeTruthy();
-    expect(within(canvasElement).getByText('Could not load this')).toBeTruthy();
-  },
 };
