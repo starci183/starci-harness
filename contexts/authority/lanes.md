@@ -28,22 +28,28 @@ resort. Every slot of the host is a row of ONE store, machine.sqlite, that every
 "Machine-wide slots"), so `slot list` shows the same slots from a lane, the lanes folder or an app.
 
 Two layers bound the host's work. The heavy-command governor ([cli/README.md](../../cli/README.md) "Heavy-command governor") is the owner's
-rule: one heavy slot per 16 GB of the host's RAM (`heavy.gbPerSlot`, 4 on a 64 GB host), and each heavy command (a tsc, an eslint, a build, an
-install, a test run) holds one while it runs, whichever checkout or installed CLI starts it; a gate that runs several in turn takes one for each
-step, and a running web or api server takes none. Nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else
-`heavy.diskFloorMb`), nor while the free commit, less what the commands just admitted and the command itself plan, is under `heavy.commitFloorMb` of
-ops/liveness.yaml. The lane slots of `ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a
-shot or a look), `stack` (the shared stack and its main checkout). Early in every `lane gate`, while the drive still has room, a warning shows when the lanes
+rule (2026-11-26), in his words:
+
+> "bỏ mấy luật như còn trống bao nhiêu, đơn giản có 16 slots cứ chiếm được và làm xong trả job thế thôi, vì chắc chắn sẽ dư ram"
+
+and of the commit floor: "bỏ cái này đi, đang chiếm thì chạy luôn". The host has one heavy slot per `gbPerSlot` GB of its physical RAM (`heavy.gbPerSlot`
+of the host's config.yaml, absent 4: 16 on a 64 GB host, 32 on 128 GB), never a fixed number, and each heavy command (a tsc, an eslint, a build, an
+install, a test run) holds ONE while it runs, whichever checkout or installed CLI starts it, and gives it back when it ends; a gate that runs several in
+turn takes one for each step, and a running web or api server takes none. No free-RAM, free-commit or seat-memory rule holds anything. The one floor
+kept: nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else `heavy.diskFloorMb`), since a full drive
+corrupts git and the sqlite stores; the per-kind heap caps stay too, as process limits (`--max-old-space-size`), never admission. The lane slots of
+`ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look), `stack` (the shared
+stack and its main checkout). Early in every `lane gate`, while the drive still has room, a warning shows when the lanes
 drive has under `host.diskWarnMb` free (config.yaml, else `heavy.diskWarnMb` of ops/liveness.yaml, 50 GB; never under the floor): it lists the landed lanes whose
-worktrees can be removed and the command that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each kind has a count, and some a burst
-opened only with free RAM.
+worktrees can be removed and the command that removes each, and deletes nothing (cli/src/harness/disk-warning.ts). Each kind has a count, every slot of it open whatever
+the host's free memory.
 
 | verb | does |
 |---|---|
 | `starci slot run <kind> -- <command...>` | holds a slot for exactly the command's life, recording this process and the command's own pid as its child; npm and npx run through the governor |
 | `starci slot take <kind> --pid <pid>` | holds a slot until released; `--pid` names the long-lived process it belongs to (in Git Bash, `$(cat /proc/$$/winpid)`) |
 | `starci slot release <kind>` | releases the lane's own slots, each only once read and found to name the lane |
-| `starci slot list [kind\|heavy] [--events N]` | every lane slot (lane, pid, child, age, command, alive, state, reclaimable) and every heavy slot (id, units, pid, child, age, command), from any folder |
+| `starci slot list [kind\|heavy] [--events N]` | every lane slot (lane, pid, child, age, command, alive, state, reclaimable) and every heavy slot (id, pid, child, age, command), from any folder |
 | `starci slot release <kind\|all> --stale` | reclaims every slot whose holder is proven gone |
 | `starci slot kill <kind> <n> [--execute]`, `starci slot kill heavy <id> [--execute]` | the last resort: kills the process tree of the one process the slot maps to and frees the slot |
 

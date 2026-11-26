@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { gb, heavyFloors, heavySlots, heldWhy, hostLoad, kindWeights, loadHeavyRules, seatHolds, seatHoldWhy, seatRoom, starvation } from "../../harness/heavy.js"
-import type { HeavyKind, HeavyRules, HeavySlot, HostLoad, SeatHold, Starvation } from "../../harness/heavy.js"
+import { gb, heavyFloors, heavySlots, heldWhy, hostLoad, hostSlots, loadHeavyRules, starvation } from "../../harness/heavy.js"
+import type { HeavyRules, HeavySlot, HostLoad, Starvation } from "../../harness/heavy.js"
 import { memoryHolders } from "../../harness/host-holders.js"
 import type { Holders } from "../../harness/host-holders.js"
 import { openExistingLedger, stateBase } from "../../harness/ledger.js"
@@ -17,21 +17,18 @@ interface LoadRow extends HeavySlot {
     readonly rssMb: number | null
     /** How long a queued command has waited, in seconds; null for a running one. */
     readonly waitedSeconds: number | null
-    /** Why a queued command is not admitted now ("free RAM 2.6 GB below reserve 4 GB"); null for a running one. */
+    /** Why a queued command is not admitted now ("16 of 16 slots in use"); null for a running one. */
     readonly why: string | null
 }
 
 interface LoadData {
     readonly load: HostLoad
-    /** The slot units of the host. */
+    /** The slots of the host: its physical RAM over `gbPerSlot`, computed once (`hostSlots`), and where gbPerSlot came from. */
     readonly slots: number
-    /** The units each kind holds on this host (`heavyWeight`), lightest first. */
-    readonly weights: readonly { readonly kind: HeavyKind; readonly weight: number }[]
+    readonly gbPerSlot: number
+    readonly gbPerSlotSource: string
     readonly running: readonly LoadRow[]
     readonly queue: readonly LoadRow[]
-    readonly seat: { readonly ok: boolean; readonly freeMb: number; readonly floorMb: number }
-    /** The queued tasks whose worker seat the RAM floor holds, each with since when and why. */
-    readonly seatHolds: readonly (SeatHold & { readonly why: string })[]
     readonly starvation: Starvation
     /** Who holds the memory: the top processes by working set, managed (the harness's) or not, command lines clipped and redacted. */
     readonly holders: Holders
@@ -136,19 +133,20 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
 
 /**
  * `starci host load`: the host's heavy-command semaphore as it stands: the load that admits, the slots in use, the queue with how
- * long each waited and why, the seat floor's holds, each heavy child's memory, and who holds the host's memory (harness/host-holders.ts).
+ * long each waited and why, each heavy child's memory, and who holds the host's memory (harness/host-holders.ts).
  */
 export const hostLoadVerb = defineVerb({
     path: ["host", "load"],
-    summary: "show the host's heavy-command governor: the slot units (one per heavy.gbPerSlot GB of RAM), the units in use and the weight of each kind, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+    summary: "show the host's heavy-command governor: N of M slots in use (one slot per heavy.gbPerSlot GB of the host's RAM, config.yaml, default 4; one heavy command holds one), the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
     effect: "read",
     roles: EVERYONE,
     schema: "starci/host-load@1",
     flags: {},
     run: async () => {
         const rules = loadHeavyRules()
-        const load = hostLoad(rules)
-        const slots = heavySlots(rules)
+        const host = hostSlots()
+        const load = hostLoad(rules, host.slots)
+        const slots = heavySlots()
         const [rss, holders] = await Promise.all([residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid]))), memoryHolders(slots)])
         const nowMs = Date.now()
         const head = slots.find((slot) => slot.state === "waiting")
@@ -159,19 +157,16 @@ export const hostLoadVerb = defineVerb({
                 ...slot,
                 rssMb: slot.childPid === null ? null : (rss.get(slot.childPid) ?? null),
                 waitedSeconds: queued ? Math.max(0, Math.round((nowMs - Date.parse(slot.at)) / 1000)) : null,
-                why: queued ? (heldWhy(rules, load.used, heavyFloors(rules, slot.cwd), slot.weight, slot.label) ?? turn) : null,
+                why: queued ? (heldWhy(load.used, heavyFloors(rules, slot.cwd), host.slots) ?? turn) : null,
             }
         })
-        const starved = starvation(rules)
+        const starved = starvation()
         const scanner = await scannerLoad(rules)
-        const holds = seatHolds().map((hold) => ({ ...hold, why: seatHoldWhy(hold) }))
         const held = heldWorktrees()
-        const weights = kindWeights(rules)
-        const data: LoadData = { load, slots: load.cap, weights, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), seat: seatRoom(rules), seatHolds: holds, starvation: starved, holders, scanner, heldWorktrees: held }
+        const data: LoadData = { load, slots: load.cap, gbPerSlot: host.gbPerSlot, gbPerSlotSource: host.source, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), starvation: starved, holders, scanner, heldWorktrees: held }
         const heldTable = held.length === 0 ? [] : [`held worktrees (${String(held.length)}), retried by worktree gc:`, formatTable([["WORKTREE", "ATTEMPT", "RETRY", "HELD BY"], ...held.map((one) => [one.path, String(one.attempt), one.nextAt, one.holders])])]
-        const runningTable = data.running.length === 0 ? [`running (0): none`] : [`running (${String(data.running.length)}):`, formatTable([["KIND", "UNITS", "LABEL", "PID", "CHILD", "RSS MB", "SINCE"], ...data.running.map((row) => [row.kind, String(row.weight), row.label, String(row.pid), row.childPid === null ? "-" : String(row.childPid), row.rssMb === null ? "-" : String(row.rssMb), row.at])])]
-        const queueTable = data.queue.length === 0 ? [`queue (0): none`] : [`queue (${String(data.queue.length)}):`, formatTable([["KIND", "UNITS", "LABEL", "PID", "WAITED", "WHY"], ...data.queue.map((row) => [row.kind, String(row.weight), row.label, String(row.pid), waited(row.waitedSeconds ?? 0), row.why ?? "-"])])]
-        const holdTable = holds.length === 0 ? [] : [`seat holds (${String(holds.length)}):`, formatTable([["TASK", "REPO", "WAITED", "WHY"], ...holds.map((hold) => [hold.task, hold.repo, waited(Math.max(0, Math.round((nowMs - Date.parse(hold.since)) / 1000))), hold.why])])]
+        const runningTable = data.running.length === 0 ? [`running (0): none`] : [`running (${String(data.running.length)}):`, formatTable([["KIND", "LABEL", "PID", "CHILD", "RSS MB", "SINCE"], ...data.running.map((row) => [row.kind, row.label, String(row.pid), row.childPid === null ? "-" : String(row.childPid), row.rssMb === null ? "-" : String(row.rssMb), row.at])])]
+        const queueTable = data.queue.length === 0 ? [`queue (0): none`] : [`queue (${String(data.queue.length)}):`, formatTable([["KIND", "LABEL", "PID", "WAITED", "WHY"], ...data.queue.map((row) => [row.kind, row.label, String(row.pid), waited(row.waitedSeconds ?? 0), row.why ?? "-"])])]
         const groupsSuffix = holders.unmanagedGroups === "" ? "" : ` (${holders.unmanagedGroups})`
         const holderLines =
             holders.unreadable === null
@@ -180,14 +175,11 @@ export const hostLoadVerb = defineVerb({
                       formatTable([["PID", "NAME", "WS MB", "MANAGED", "GROUP", "COMMAND"], ...holders.top.map((item) => [String(item.pid), item.name, String(item.workingSetMb), item.managed ? "managed" : "unmanaged", item.group, item.command])]),
                   ]
                 : [`who holds memory: unknown, the process table could not be read (${holders.unreadable})`]
-        const okText = data.seat.ok ? "allowed" : `held: free RAM ${gb(data.seat.freeMb)} below seat floor ${gb(data.seat.floorMb)}`
         const message = [
-            `heavy commands: ${String(load.running)} running, ${load.reason}, ${String(load.free)} free now (one unit per heavy.gbPerSlot ${String(rules.gbPerSlot)} GB of RAM); free RAM ${String(load.freeMb)} MB`,
-            `units a command holds: ${weights.map((one) => `${one.kind} ${String(one.weight)}`).join(", ")} (its planned MB in units, from 1 to 3)`,
-            `seat launches: ${okText} (floor ${String(data.seat.floorMb)} MB)`,
+            `heavy commands: ${String(load.used)} of ${String(load.cap)} slots in use, ${String(load.free)} free now${load.floors.length === 0 ? "" : `; held: ${load.floors.join("; ")}`}`,
+            `slots: one per ${String(host.gbPerSlot)} GB of this host's RAM (${host.source}), one heavy command holds one; free RAM ${gb(load.freeMb)}, shown, never judged`,
             ...runningTable,
             ...queueTable,
-            ...holdTable,
             ...heldTable,
             ...holderLines,
             ...(scanner?.ownerCommand == null

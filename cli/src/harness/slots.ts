@@ -6,7 +6,6 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync, killPidTree, pidAlive } from "../shared/exec.js"
-import { hostFreeMb } from "./heavy.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 import { registerRun } from "./runs.js"
@@ -38,8 +37,6 @@ import { locateOps } from "./ops.js"
 const kindSchema = z.strictObject({
     count: z.number().int().positive(),
     file: z.string().min(1),
-    burst: z.strictObject({ count: z.number().int().positive(), minFreeMb: z.number().int().positive() }).optional(),
-    minFreeMb: z.number().int().positive().optional(),
     warnMinutes: z.number().positive(),
     pollSeconds: z.number().positive(),
     heavy: z.enum(["tsc", "eslint", "test", "build", "install", "uat"]).optional(),
@@ -55,7 +52,7 @@ const slotsSchema = z
     })
     .superRefine((rules, issues) => {
         for (const [name, kind] of Object.entries(rules.kinds)) {
-            if (kind.count + (kind.burst?.count ?? 0) > 1 && !kind.file.includes("{n}")) issues.addIssue({ code: "custom", message: `kinds.${name}.file must hold {n}: the kind has more than one slot` })
+            if (kind.count > 1 && !kind.file.includes("{n}")) issues.addIssue({ code: "custom", message: `kinds.${name}.file must hold {n}: the kind has more than one slot` })
         }
     })
 
@@ -403,15 +400,8 @@ export const reclaimSlot = (file: string, judged: SlotHolder, by: string, eviden
     return true
 }
 
-/** The slot numbers of a kind open now: its count, and its burst while the host has the burst's free memory. */
-const openNumbers = (kind: SlotKind, freeMb: () => number): number[] => {
-    const base = Array.from({ length: kind.count }, (_, index) => index + 1)
-    if (kind.burst === undefined || freeMb() < kind.burst.minFreeMb) return base
-    return [...base, ...Array.from({ length: kind.burst.count }, (_, index) => kind.count + index + 1)]
-}
-
-/** Every slot number a kind has, burst included. */
-const allNumbers = (kind: SlotKind): number[] => Array.from({ length: kind.count + (kind.burst?.count ?? 0) }, (_, index) => index + 1)
+/** Every slot number a kind has, 1 to its count: all open whatever the host's free memory (no free-RAM gate, owner 2026-11-26). */
+const allNumbers = (kind: SlotKind): number[] => Array.from({ length: kind.count }, (_, index) => index + 1)
 
 /** Removes a lock file whose content is still `read`'s; false when it changed under the release. */
 const releaseIfSame = (file: string, read: SlotHolder): boolean => {
@@ -541,7 +531,6 @@ export interface SlotView {
     readonly where: string
     readonly source: "store" | "foreign" | "free"
     readonly state: SlotState
-    readonly burst: boolean
     readonly holder?: string
     readonly at?: string
     readonly ageMinutes?: number
@@ -569,7 +558,6 @@ const viewOf = (name: string, kind: SlotKind, n: number, read: SlotHolder, probe
         where: at.where,
         source: at.source,
         state: judged.state,
-        burst: n > kind.count,
         holder: read.holder,
         at: read.at,
         ageMinutes: Math.round((probe.nowMs - Date.parse(read.at)) / 60_000),
@@ -598,7 +586,7 @@ export const listSlots = (root: string, rules: SlotRules, names: readonly string
             const files = foreign.filter((lock) => lock.kind === name && lock.n === n)
             const fileViews = files.map((lock) => viewOf(name, kind, n, lock.read, probe, { where: lock.file, source: "foreign" }))
             if (row !== undefined) return [viewOf(name, kind, n, holderOfRow(row), probe, { where: whereOfRow(name, n), source: "store", row }), ...fileViews]
-            return fileViews.length > 0 ? fileViews : [{ kind: name, n, where: "", source: "free", state: "free", burst: n > kind.count }]
+            return fileViews.length > 0 ? fileViews : [{ kind: name, n, where: "", source: "free", state: "free" }]
         })
     })
 }
@@ -629,7 +617,6 @@ export interface TakeOptions {
     /** Return the slot the holder already holds instead of taking a second one (the default; false takes a further one). */
     readonly reuse?: boolean
     readonly say?: (line: string) => void
-    readonly freeMb?: () => number
     /** How a pid's start is read (a seam for the specs); this process's own start is known without asking. */
     readonly startOf?: (pid: number) => number | null
 }
@@ -689,7 +676,7 @@ const foreignBusy = async (root: string, rules: SlotRules, name: string, by: str
  */
 const takeOnce = async (root: string, rules: SlotRules, name: string, base: Omit<SlotRow, "n" | "takenAt">, options: TakeOptions, reclaimed: string[], by: string): Promise<SlotRow | undefined> => {
     const kind = slotKind(rules, name)
-    const open = openNumbers(kind, options.freeMb ?? hostFreeMb)
+    const open = allNumbers(kind)
     const foreign = await foreignBusy(root, rules, name, by, reclaimed, options.say)
     const insert = (): SlotRow | undefined =>
         withSlotStore((db) => {
@@ -724,7 +711,7 @@ const takeOnce = async (root: string, rules: SlotRules, name: string, base: Omit
 
 /**
  * Takes a slot of `name` for `holder`, as a row of the host store naming the ONE process it lives as long as (`options.pid`, required, with its OS
- * start), waiting every `pollSeconds` for one to free and for the kind's `minFreeMb`; a holder proven gone is reclaimed on the way. One slot per lane
+ * start), waiting every `pollSeconds` for one to free; a holder proven gone is reclaimed on the way. One slot per lane
  * and kind: the lane's own slot is returned when its process is this one or one this process runs under; held by another live process of the lane, the
  * take waits for it. Refused SLOT_BUSY once `waitSeconds` pass.
  */
@@ -761,9 +748,6 @@ export const takeSlot = async (root: string, rules: SlotRules, name: string, hol
             } else if (await runsUnder(own.pid)) return { kind: name, n: own.n, where: whereOfRow(name, own.n), holder, pid: own.pid, already: true, reclaimed, waitedSeconds: waited() }
             else why = `lane ${holder} holds ${name} slot ${String(own.n)} under pid ${String(own.pid)} (${own.command}); one slot per lane and kind`
         }
-        const freeMb = (options.freeMb ?? hostFreeMb)()
-        const roomy = kind.minFreeMb === undefined || freeMb >= kind.minFreeMb
-        if (why === undefined && !roomy) why = `the host has ${String(freeMb)} MB free, under the ${String(kind.minFreeMb)} MB a ${name} slot needs`
         if (why === undefined) {
             const got = await takeOnce(root, rules, name, base, options, reclaimed, by)
             if (got !== undefined) return { kind: name, n: got.n, where: whereOfRow(name, got.n), holder, pid, already: false, reclaimed, waitedSeconds: waited() }
@@ -953,7 +937,7 @@ export interface LaneSlot {
     readonly content: string
 }
 
-/** Every slot of every kind the lane holds, burst included: its rows and the foreign files naming it. */
+/** Every slot of every kind the lane holds: its rows and the foreign files naming it. */
 export const slotsOfLane = (root: string, rules: SlotRules, lane: string): LaneSlot[] => {
     const kinds = Object.keys(rules.kinds)
     const rows = withSlotStore((db) => slotRows(db, kinds)).filter((row) => row.lane === lane)

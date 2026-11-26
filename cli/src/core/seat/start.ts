@@ -4,7 +4,6 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
 import type { BriefFiles } from "../../harness/brief.js"
-import { clearSeatHolds, recordSeatHold, seatRoom } from "../../harness/heavy.js"
 import { inTransaction, now, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { recordOutcome } from "../../harness/circuit.js"
@@ -506,16 +505,6 @@ const syncCheckout = async (db: DatabaseSync, root: string, claim: { readonly ta
     })
 }
 
-/** Refuses a launch while free RAM is under the seat floor, recording the hold; an admitting floor ends every hold. */
-const assertSeatRoom = (root: string, task: { readonly id: string }, given: { readonly dryRun?: boolean | undefined }): void => {
-    const room = seatRoom()
-    if (!room.ok && given.dryRun !== true) {
-        recordSeatHold(root, task.id, room)
-        throw new Refusal("SEAT_RAM_LOW", `free RAM ${String(room.freeMb)} MB is under the seat floor ${String(room.floorMb)} MB; task ${task.id} stays queued, launch it once memory is free`)
-    }
-    if (room.ok) clearSeatHolds()
-}
-
 /**
  * Launches one Orca worker on a queued task. The claim comes first, in one BEGIN IMMEDIATE transaction (queued -> running, a
  * new attempt, an open seat carrying the launch record), so two concurrent starts cannot both launch; only then is Orca called.
@@ -527,10 +516,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
     try {
         const task = getTask(db, given.task)
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
-        // Every agent terminal costs memory: nothing launches while free RAM is under the seat floor (ops/liveness.yaml heavy.seatFreeMb).
-        // The hold is recorded (since when, on what memory) so `workflow status` and the starvation ticket can name it; the floor
-        // admitting again ends every hold.
-        assertSeatRoom(root, task, given)
+        // No free-RAM floor holds a launch (owner, 2026-11-26): a queued task launches; its heavy commands take the host's slots.
         // Every Op of a workflow works in a worktree of its own, cut from the branch of the workflow's worktree (or of the folder
         // --worktree names), and lands back on it; a task outside a workflow runs where --worktree says, else in this repository.
         const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)

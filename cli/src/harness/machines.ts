@@ -47,9 +47,18 @@ const hostSettingsSchema = z.strictObject({
     diskWarnMb: z.number().int().nonnegative().optional(),
 })
 
+/**
+ * The heavy-command tuning of this host (contexts/harness/host.md "Host settings"): never a slot count. The slots are always this host's physical RAM
+ * over `gbPerSlot`, computed once when a CLI process starts (harness/heavy.ts hostSlots); absent, 4 GB a slot (64 GB is 16 slots, 128 GB is 32).
+ */
+const heavySettingsSchema = z.strictObject({
+    gbPerSlot: z.number().int().positive().optional(),
+})
+
 const fileSchema = z.strictObject({
     schema: z.literal("starci/machines@1"),
     host: hostSettingsSchema.optional(),
+    heavy: heavySettingsSchema.optional(),
     machines: z.record(z.string().regex(MACHINE_NAME), machineSchema).default({}),
 })
 

@@ -325,9 +325,9 @@ const applyGenerated = async (root: string, checkout: string, workflowId: string
     return detail
 }
 
-// A launch refused for one of these reasons spent nothing and is the harness's to retry, never the Kernel's to act on: low memory,
-// or a caller that may not act as the Kernel's terminal (refused before Orca, or fenced by Orca).
-const LAUNCH_WAIT_CODES: ReadonlySet<string> = new Set(["SEAT_RAM_LOW", CONSUMER_NOT_CALLER, CONSUMER_FENCED])
+// A launch refused for one of these reasons spent nothing and is the harness's to retry, never the Kernel's to act on: a caller that may
+// not act as the Kernel's terminal (refused before Orca, or fenced by Orca).
+const LAUNCH_WAIT_CODES: ReadonlySet<string> = new Set([CONSUMER_NOT_CALLER, CONSUMER_FENCED])
 
 /**
  * Launches one queued node task: first the project's worker cap (routing.yaml projectMaxWorkers, counted with the Supervisor's

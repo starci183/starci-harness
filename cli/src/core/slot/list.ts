@@ -1,5 +1,5 @@
 import { EVERYONE, defineVerb } from "../../shared/verb.js"
-import { heavySlots, legacyHeavyRows, loadHeavyRules } from "../../harness/heavy.js"
+import { heavySlots, legacyHeavyRows } from "../../harness/heavy.js"
 import type { HeavySlot } from "../../harness/heavy.js"
 import { machinePath } from "../../harness/ledger.js"
 import { recentEvents } from "../../harness/slot-store.js"
@@ -11,7 +11,7 @@ const minutesSince = (at: string | undefined): string => (at === undefined ? "?"
 
 /** One lane slot as a line: number, state, lane, pid, child, age, command, and where a foreign lock lies. */
 const laneLine = (slot: SlotView): string => {
-    const name = `${slot.kind} ${String(slot.n)}${slot.burst ? " (burst)" : ""}`
+    const name = `${slot.kind} ${String(slot.n)}`
     if (slot.source === "free") return `${name}: free`
     const pid = slot.pid === null || slot.pid === undefined ? "pid none" : `pid ${String(slot.pid)}`
     const child = slot.childPid === null || slot.childPid === undefined ? "" : ` child ${String(slot.childPid)}`
@@ -21,9 +21,9 @@ const laneLine = (slot: SlotView): string => {
     return `${name}: ${slot.state} lane ${String(slot.holder)} ${pid}${child} age ${String(slot.ageMinutes)} min alive ${String(slot.alive)} reclaimable ${slot.reclaimable === true ? "yes" : "no"}${command}${foreign}${why}`
 }
 
-/** One heavy slot as a line: id, state, units, pid, child, age, command (its label), and an older copy's row marked. */
+/** One heavy slot as a line: id, state, pid, child, age, command (its label), and an older copy's row marked. */
 const heavyLine = (slot: HeavySlot): string =>
-    `heavy ${slot.id}: ${slot.state} ${slot.kind} ${String(slot.weight)} unit(s) pid ${String(slot.pid)}${slot.childPid === null ? "" : ` child ${String(slot.childPid)}`} age ${minutesSince(slot.at)} min command ${slot.label}${slot.source === "foreign" ? " [older copy's governor.sqlite, counted, never written]" : ""}`
+    `heavy ${slot.id}: ${slot.state} ${slot.kind} pid ${String(slot.pid)}${slot.childPid === null ? "" : ` child ${String(slot.childPid)}`} age ${minutesSince(slot.at)} min command ${slot.label}${slot.source === "foreign" ? " [older copy's governor.sqlite, counted, never written]" : ""}`
 
 /**
  * `starci slot list [kind]`: every slot of the host store (machine.sqlite, the same file from every folder and CLI copy): the lane slots with their lane,
@@ -32,7 +32,7 @@ const heavyLine = (slot: HeavySlot): string =>
 export const slotListVerb = defineVerb({
     path: ["slot", "list"],
     summary:
-        "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, units, pid, child, age, command); a held slot says why it is not reclaimable",
+        "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, pid, child, age, command); a held slot says why it is not reclaimable",
     effect: "read",
     roles: EVERYONE,
     schema: "starci/slot-list@2",
@@ -47,8 +47,7 @@ export const slotListVerb = defineVerb({
         const store = machinePath()
         const laneKinds = flags.kind === undefined ? [] : flags.kind === "heavy" ? undefined : [flags.kind]
         const slots = laneKinds === undefined ? [] : listSlots(root, rules, laneKinds, await slotProbe(root, rules, laneKinds))
-        const heavyRules = loadHeavyRules()
-        const heavy = flags.kind === undefined || flags.kind === "heavy" ? [...heavySlots(heavyRules), ...legacyHeavyRows(heavyRules)] : []
+        const heavy = flags.kind === undefined || flags.kind === "heavy" ? [...heavySlots(), ...legacyHeavyRows()] : []
         const limit = positiveInt("events", flags.events)
         const events = limit === undefined ? [] : recentEvents(limit)
         const lines = [

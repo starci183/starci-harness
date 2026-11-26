@@ -1,15 +1,14 @@
 # The machine-wide lane slots: how many lanes run one kind of job at once (an install, a gate, a shot, the shared stack) across every checkout
-# and agent of a host; each heavy command inside a job also takes one of the host's heavy slots (ops/liveness.yaml heavy, one per gbPerSlot GB of
-# RAM) while it runs. Read by
+# and agent of a host; each heavy command inside a job also takes one of the host's heavy slots (ops/liveness.yaml heavy: one per gbPerSlot GB of the
+# host's RAM, config.yaml, default 4) while it runs. Read by
 # cli/src/harness/slots.ts (`starci slot take|release|list|run|kill`, `starci lane gate`, `starci gallery shoot` and `starci app look`). A slot is one row of
 #   `lane_slots` in the host store (machine.sqlite, the same file for every CLI copy and folder), naming the ONE process it lives as long as (pid and start),
 #   its command and its child; taken in one transaction, deleted the moment that process lets it go, released only by the holder it names.
 # root: the lanes folder (land status, the dev lock, run records); null is `<shared harness state>/slots`. STARCI_LANES_DIR and a verb's --dir override it,
 #   and the lane verbs (`lane gate`, `lane status`) fall back to it when neither is given. A lock file `file` there (an older copy's, or a script's) is foreign:
 #   never written, honoured as holding its number while its holder is not proven gone.
-# Each kind: `count` numbered slots (`file` with {n}: the name of a foreign lock file of slot n); `burst` more slots, numbered after them, open only while the host has
-#   `burst.minFreeMb` free; `minFreeMb` the free memory every take of the kind waits for; `pollSeconds` how often a waiting take tries
-#   again; `heavy` the heavy-command kind (ops/liveness.yaml heavy.caps) an npm command run under the slot is governed as.
+# Each kind: `count` numbered slots (`file` with {n}: the name of a foreign lock file of slot n), every one open whatever the host's free memory (no
+#   free-RAM gate, owner 2026-11-26: "bỏ mấy luật như còn trống bao nhiêu"); `pollSeconds` how often a waiting take tries again; `heavy` the heavy-command kind (ops/liveness.yaml heavy.caps) an npm command run under the slot is governed as.
 # A slot is reclaimed only on evidence that its holder is gone: the host booted after it was taken, its pid is not alive, or its pid now belongs
 #   to a process started at another time. Age is never evidence: a slot older than `warnMinutes` is reported as old (`slot list`), never removed.
 #   `slot kill` kills the process tree of a slot's proven holder as a last resort. Every take, release, reclaim and kill is logged with its evidence in
@@ -31,9 +30,8 @@ janitor:
   dirs: [node_modules, .next, dist, .turbo]
 kinds:
   npm:
-    count: 3
+    count: 4
     file: "_npm-slot-{n}.lock"
-    burst: { count: 1, minFreeMb: 10240 }
     warnMinutes: 30
     pollSeconds: 60
     heavy: install
@@ -43,10 +41,8 @@ kinds:
     warnMinutes: 120
     pollSeconds: 5
   shoot:
-    count: 3
+    count: 6
     file: "_shoot-slot-{n}.lock"
-    burst: { count: 3, minFreeMb: 10240 }
-    minFreeMb: 6144
     warnMinutes: 30
     pollSeconds: 15
   stack:
