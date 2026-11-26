@@ -284,26 +284,32 @@ const defaultBase = async (root: string): Promise<string | undefined> => {
     return undefined
 }
 
+/** What the deprecated `starci release gate` prints on stderr before it runs `starci check` with the same flags. */
+export const renamedGateNotice = (level: string | undefined): string => `renamed: use starci check${level === "full" ? " --release" : ""}`
+
 /**
- * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level
- * `lane gate` runs when the harness lands on dev (the affected packages' own `npm test`, as CI's package jobs; not the CLI's suite); `--level full` is the gate of the train's dev -> main merge, tests included.
+ * `starci check [--release]`: the harness's own check (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level
+ * `lane gate` runs when the harness lands on dev (the affected packages' own `npm test`, as CI's package jobs; not the CLI's suite); `--release`, the same
+ * as `--level full`, is the check of the train's dev -> main merge, tests included. `starci release gate` is its deprecated spelling.
  */
-export const releaseGateVerb = defineVerb({
-    path: ["release", "gate"],
-    summary: "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+export const checkVerb = defineVerb({
+    path: ["check"],
+    summary: "the harness's own check (starci release gate is its deprecated spelling): --release (= --level full, the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates; --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/release-gate@1",
     flags: {
+        release: { kind: "boolean", summary: "the release check of the train: the same as --level full" },
         level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)" },
         base: { kind: "string", summary: "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it" },
     },
     run: async (context, flags) => {
-        const level = flags.level ?? "dev"
+        if (flags.release === true && flags.level !== undefined && flags.level !== "full") throw new Refusal("CLI_USAGE", `--release is the full level; it takes no --level ${flags.level}`)
+        const level = flags.release === true ? "full" : (flags.level ?? "dev")
         if (level !== "dev" && level !== "full") throw new Refusal("CLI_USAGE", `--level is dev or full, not "${level}"`)
-        assertPosixSh("release gate")
+        assertPosixSh("check")
         const root = await repositoryRoot(context.cwd)
-        if (!isHarnessCheckout(root)) throw new Refusal("RELEASE_GATE_NOT_HARNESS", `${root} is not the harness checkout (cli/, contexts/README.md, packages/); an app gates with starci app check --level dev|full`)
+        if (!isHarnessCheckout(root)) throw new Refusal("RELEASE_GATE_NOT_HARNESS", `${root} is not the harness checkout (cli/, contexts/README.md, packages/); an app checks with starci app check [--level dev|full] [--release]`)
         const base = level === "full" ? undefined : (flags.base ?? (await defaultBase(root)))
         const plan = await affectedBy(root, base ?? "", undefined)
         const all = listPackages(root)
@@ -316,5 +322,16 @@ export const releaseGateVerb = defineVerb({
             ...gate.findings.flatMap((finding) => findingLines(finding)),
         ]
         return { data: gate, message: lines.join("\n"), exitCode: gate.verdict === "green" ? 0 : 1 }
+    },
+})
+
+/** `starci release gate`: the deprecated spelling of `starci check`; it prints the rename on stderr and runs the same check with the same flags. */
+export const releaseGateVerb = defineVerb({
+    ...checkVerb,
+    path: ["release", "gate"],
+    summary: "renamed: use starci check (--level dev) or starci check --release (--level full); this deprecated spelling prints the rename and runs the same check",
+    run: async (context, flags) => {
+        process.stderr.write(`${renamedGateNotice(flags.release === true ? "full" : flags.level)}\n`)
+        return checkVerb.run(context, flags)
     },
 })

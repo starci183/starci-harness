@@ -143,7 +143,7 @@ export const staleCli = async (root: string, cliRoot: string, base: string): Pro
 
 /**
  * The gate of a harness lane: no root install, codegen or app hook. Under a gate slot the lane's own running CLI runs the harness FAST gate
- * (`release gate --level dev`) measured from where the lane forks from the dev commit it merged, and with --push a green gate is followed by
+ * (`starci check --level dev`) measured from where the lane forks from the dev commit it merged, and with --push a green gate is followed by
  * `git push origin HEAD:<branch>` (the harness has no pre-push hook that would run it again).
  */
 const gateHarness = async (given: { readonly root: string; readonly lane: string; readonly branch: string; readonly ref: string; readonly merging: boolean; readonly push: boolean; readonly slots: string; readonly rules: ReturnType<typeof loadSlotRules>; readonly wait: number | undefined; readonly say: (line: string) => void }): Promise<HarnessGated> => {
@@ -193,7 +193,7 @@ export const laneGateVerb = defineVerb({
         keep: { kind: "boolean", summary: "with --land: keep the lane's worktree after the landing (default: once dev is pushed it is removed to save disk, the branch kept, local and remote; a worktree in use, with uncommitted non-cache work, or still busy after retries is kept and the one line says why)" },
         wait: { kind: "string", summary: "seconds to wait for each slot before SLOT_BUSY (default: until one frees)" },
         dir: { kind: "string", summary: "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)" },
-        profile: { kind: "string", summary: "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push" },
+        profile: { kind: "string", summary: "app or harness (default: harness in the harness checkout, else app): the harness gates with starci check --level dev and pushes with git push" },
     },
     run: async (context, flags) => {
         if (flags.land && !flags.push) throw new Refusal("CLI_USAGE", "--land lands a pushed, gated lane: give --push too")

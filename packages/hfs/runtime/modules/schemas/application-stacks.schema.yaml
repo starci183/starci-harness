@@ -147,7 +147,7 @@ properties:
           type: string
           minLength: 1
   release:
-    description: Release gates of the app (starci app release gate and push); packages/hfs/release/gate.mjs is the authority for the fields.
+    description: Release gates of the app (the rows of starci app check --release, and starci app release push); packages/hfs/release/gate.mjs is the authority for the fields.
     type: object
   database:
     description: 'Database cutover data (starci app db migrate, adopt and post-cutover; adopt: optional mapping with only legacyHistory, a list of the legacy history tables db adopt leaves out of its schema compare); packages/hfs/db/migrate.mjs is the authority for the fields. reset: optional mapping with only backupMaxAgeHours (finite positive number; default 24 hours).'

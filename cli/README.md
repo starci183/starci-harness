@@ -366,7 +366,7 @@ the units in use and free, the weight of every kind, and the units of each runni
 ancestors' rows out of its count, since they wait on it. `starci app check` holds no row: each heavy child of its steps (a tsc program, an ESLint chunk,
 the jest run, a CI build step, the boot proof, the contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it
 (`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`); the room it hands @starci/hfs for its parallel children (`heavyRoomMb`) is how many eslint
-children the free units admit, at least one, times the eslint cap, so it starts as many as can be admitted at once. `starci app release gate` reaches `hfsCommandRunner` the same way. A CI
+children the free units admit, at least one, times the eslint cap, so it starts as many as can be admitted at once. `starci app check --release` reaches `hfsCommandRunner` the same way. A CI
 runner (`CI` set) keeps no queue and no lock: its one job runs at once.
 
 Process limits, never admission: each child runs below normal priority, a node tool under `--max-old-space-size` of its kind's `heavy.caps` (`heapFor`), a
