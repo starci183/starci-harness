@@ -989,7 +989,10 @@ BE_LOGGER_REQUIRED:
     - "catch chỉ gọi console hoặc một đối tượng không có kiểu Logger, vốn không phải logger port"
     - "logger.info(`Checkout ${id} failed`) thay vì logger.info(OrderLogEvent.CheckoutFailed, { id })"
     - "new Logger('X') của @nestjs/common"
-  nextStep_vi: "Ném lại lỗi, ghi log bằng logger của platform/logging, hoặc trả outcome có kiểu mang cause; op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
+    - "catch vừa logger.error(...) vừa throw ngoài platform/errors, platform/logging và các base handler (cqrs, jobs): một lỗi bị ghi log hai lần"
+    - "logger.error(..., cause) với cause có kiểu DomainError: một lời từ chối đã khai báo bị đếm như sự cố"
+    - "một môi trường khai báo monitoring.logPush nhưng be/src/modules/platform/logging không import winston-loki"
+  nextStep_vi: "Ném lại lỗi, ghi log bằng logger của platform/logging, hoặc trả outcome có kiểu mang cause; code nghiệp vụ chỉ throw, filter toàn cục và base handler ghi log một lần; op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
   owner: op-retry
   kind: check-finding
 

@@ -10,7 +10,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
-import { noFrameworkLogger, noInterpolatedLogMessage, noErrorWordingAsLogIdentity, recommended, rules } from "./observability.ts"
+import { noDomainErrorLogged, noFrameworkLogger, noInterpolatedLogMessage, noErrorWordingAsLogIdentity, recommended, rules } from "./observability.ts"
 
 const tester = typedTester()
 const SRC = at("src/modules/domain/order/order.service.ts")
@@ -125,5 +125,39 @@ test("OBSERVABILITY-5: a failure log carries the exception's code, not only its 
           { filename: SPEC, code: withPrelude("try { run() } catch (error) { logger.warn(OrderLogEvent.CheckoutRetried, { detail: error.message }) }"), errors: [{ messageId: "wordingOnly" }] },
         ],
       })
+  })
+})
+
+test("BE-ERROR-4: a DomainError is answered by the errors filter, never logged as a failure", () => {
+  const HEAD = [
+    'import type { Logger } from "@modules/platform/logging/logging.port"',
+    'import { DomainError } from "@modules/platform/errors"',
+    'enum OrderErrorCode { NotShippable = "ORDER_NOT_SHIPPABLE" }',
+    "class OrderError extends DomainError<OrderErrorCode> {}",
+    "declare const logger: Logger",
+    "declare const caught: unknown",
+    "declare const either: OrderError | TypeError",
+    "declare const refusal: OrderError",
+    "",
+  ].join("\n")
+  tester.run("no-domain-error-logged", noDomainErrorLogged, {
+    valid: [
+      // an unknown caught value is never judged: only its type could say it is a refusal
+      { filename: SRC, code: `${HEAD}logger.error("orders.failed", caught)` },
+      { filename: SRC, code: `${HEAD}logger.error("orders.failed", new TypeError("x"))` },
+      // a union that may be a system failure is logged
+      { filename: SRC, code: `${HEAD}logger.error("orders.failed", either)` },
+      // a refusal recorded as an info field is not a failure log
+      { filename: SRC, code: `${HEAD}logger.info("orders.refused", { code: refusal.code })` },
+      // platform/errors owns the one unknown-failure path
+      { filename: at("src/modules/platform/errors/errors.service.ts"), code: `${HEAD}logger.error("errors.unhandled", refusal)` },
+    ],
+    invalid: [
+      { filename: SRC, code: `${HEAD}logger.error("orders.failed", refusal)`, errors: [{ messageId: "logged" }] },
+      { filename: SRC, code: `${HEAD}logger.error("orders.failed", new OrderError({ code: OrderErrorCode.NotShippable }))`, errors: [{ messageId: "logged" }] },
+      // narrowed by instanceof, the caught value is a refusal
+      { filename: SRC, code: `${HEAD}if (caught instanceof OrderError) logger.error("orders.failed", caught)`, errors: [{ messageId: "logged" }] },
+      { filename: SPEC, code: `${HEAD}logger.error("orders.failed", refusal)`, errors: [{ messageId: "logged" }] },
+    ],
   })
 })

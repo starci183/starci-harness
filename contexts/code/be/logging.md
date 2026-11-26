@@ -17,7 +17,8 @@ port's console client.
 Why: a back end without a mandatory logger can pass every check and record nothing when it fails, and a second library
 is a second format for the collector.
 
-Enforced by: `no-framework-logger` (R40), `infra-import-owner` (R90).
+Enforced by: `no-framework-logger`, `no-console`, and the R40 tree check `log-push` (an environment that declares
+`monitoring.logPush` with no `winston-loki` import in `platform/logging`) (R40); `infra-import-owner` (R90).
 
 ## BE-LOGGING-2 An event is an owner's enum member; fields are ids and codes
 
@@ -29,7 +30,8 @@ throws; its base logs it once (BE-CQRS-3).
 
 Why: a stable identity is searchable and alertable, and a cause keeps the stack.
 
-Enforced by: `no-interpolated-log-message`, `no-error-wording-as-log-identity` (R40), `no-secret-in-log` (R71).
+Enforced by: `no-interpolated-log-message`, `no-error-wording-as-log-identity`, `no-domain-error-logged`, the
+`loggedAndThrown` case of `catch-must-account` (R40, BE-ERROR-4), `no-secret-in-log` (R71).
 
 ## BE-LOGGING-4 Correlation, when the app declares it
 
