@@ -476,3 +476,57 @@
     flex: none;
 }
 
+
+/*
+ * The shapes of the spine layout (`shapeOf`, owner 2026-11-26), read from a step's kind: an action a rounded card (above), an if a diamond, a switch a flat
+ * hexagon with its count badge, a wait a pill (its clock), an end a stadium, a parallel step a square-cornered rectangle, a step that runs another workflow
+ * a hexagon with a dashed outline. Every shape keeps its ports at the middles of its box's sides.
+ */
+.starci-graph-node:is([data-shape="pill"], [data-shape="stadium"]) {
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-node:is([data-shape="pill"], [data-shape="stadium"]) .starci-graph-node-body {
+    padding-inline: 0.75rem;
+}
+
+.starci-graph-node[data-shape="rect"] {
+    border-radius: var(--grammar-radius-2xs);
+}
+
+.starci-graph-node:is([data-shape="hexagon"], [data-shape="call"]) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.starci-graph-node:is([data-shape="hexagon"], [data-shape="call"]) .starci-graph-node-body {
+    padding-inline: 1.5rem;
+}
+
+.starci-graph-shape-outline {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.starci-graph-shape-outline polygon {
+    fill: var(--surface);
+    stroke: var(--starci-graph-tone);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.starci-graph-node[data-shape="call"] .starci-graph-shape-outline polygon,
+.starci-graph-node--todo .starci-graph-shape-outline polygon {
+    stroke-dasharray: 5 4;
+}
+
+.starci-graph-node:is([data-shape="hexagon"], [data-shape="call"])[data-selected="true"] .starci-graph-shape-outline polygon {
+    stroke: var(--starci-graph-tone-select, var(--starci-graph-tone));
+    stroke-width: 2;
+    fill: color-mix(in oklab, var(--starci-graph-tone-select, var(--starci-graph-tone)) 8%, var(--surface));
+}

@@ -27,19 +27,28 @@ export interface GraphPosition {
 export type GraphPositions = Readonly<Record<string, GraphPosition>>
 
 /**
- * What a step is, which sets the tone of its icon tile: an `event` happens, an `action` does a step, a `condition` forks the work through its
- * output ports, an `ask` needs a person, a `wait` waits and an `end` closes a path. `trigger`, `execute` and `output` read as `event`, `action` and `end`.
+ * What a step is, which sets the tone of its icon tile and, in the spine layout, its shape: an `event` happens, an `action` does a step, a `condition`
+ * forks the work through its output ports (an if, or a `switch` of three or more cases), an `ask` needs a person, a `wait` waits, a `parallel` step forks
+ * branches that run at once, a `call` runs another workflow and an `end` closes a path. `trigger`, `execute` and `output` read as `event`, `action` and `end`.
  */
-export type FlowKind = "event" | "action" | "condition" | "ask" | "wait" | "end" | "trigger" | "execute" | "output"
+export type FlowKind = "event" | "action" | "condition" | "switch" | "ask" | "wait" | "parallel" | "call" | "end" | "trigger" | "execute" | "output"
 
-/** The outline of a node: a `card` (the default) or a decision `diamond` with its label inside and its ports at its vertices. */
-export type FlowShape = "card" | "diamond"
+/**
+ * The outline of a node. `card` a rounded rectangle (an action, the default); `diamond` a decision (an if: its label inside, yes out of the bottom vertex,
+ * no out of the right one); `hexagon` a flat hexagon (a switch: its count badge, one exit into a hollow split bar); `pill` round-ended (a wait, with a clock
+ * when it has no icon of its own); `stadium` round-ended (an end); `rect` a square-cornered rectangle (a parallel step, with solid fork and join bars);
+ * `call` a hexagon with a dashed outline (a step that runs another workflow). The spine layout reads the shape from the kind when it is left out; ports
+ * stay at the midpoints of the shape's box.
+ */
+export type FlowShape = "card" | "diamond" | "hexagon" | "pill" | "stadium" | "rect" | "call"
 
 /** A named output of a step, e.g. "Yes" and "No" on a condition. An edge leaves from it by `sourcePort` (its id). `tone: "danger"` is an error output. */
 export interface FlowPort {
     readonly id: string
     readonly label: string
     readonly tone?: "danger"
+    /** The case a switch takes when no other matches (its "else"): drawn last, in the rightmost column, dotted. */
+    readonly isDefault?: boolean
 }
 
 /** A small pill under a step's title; at most three are drawn, the rest is one "+N" pill. */
@@ -118,6 +127,27 @@ export interface FlowNode {
 /** How an edge is drawn: `taken` (the run went this way: solid, success), `fallback` (the road when the awaited thing does not happen: dashed), `skipped` (not taken: faded and dotted), `back` (returns to an earlier step: dashed, curved). */
 export type GraphEdgeVariant = "taken" | "fallback" | "skipped" | "back"
 
+/**
+ * What an edge means in the flow, which sets its look and where it attaches (the spine layout): the run state (`variant`, or the states of its ends) still
+ * says how far the run went, the kind says which road it is.
+ *
+ * - `ok`: the plain next step (solid, neutral). Leaves by the bottom-mid of its source, enters the top-mid of its target.
+ * - `yes`: the main answer of a decision (solid success green, stronger). Bottom-mid out, straight down the column.
+ * - `no`: the other answer of a decision (dotted grey). Right-mid out, into a column on the right.
+ * - `loop`: returns to an earlier step (dashed accent, a "↻" before its words). Left-mid out, up a lane on the left, into left-mid.
+ * - `timeout`: the road taken when a wait runs out (round amber dots). Right-mid out.
+ * - `refused`, `declined`: a person or a service said no (thin red dashes). Right-mid out.
+ * - `parallel`: one of the branches that run at the same time (solid neutral, from a fork bar to a join bar).
+ * - `case`: one case of a switch (solid neutral, from the switch's hollow split bar straight down its column; the case the run took bold, with a check).
+ * - `default`: the switch's case when none matches (grey dots, the rightmost column).
+ *
+ * Left out, the kind is read from the edge: `variant: "back"` is `loop`, `variant: "fallback"` is `timeout`, the first port of a decision `yes` and its
+ * others `no`, out of a switch `case` (its `isDefault` port `default`), two or more plain edges out of one step that is not a decision `parallel`, anything
+ * else `ok`.
+ */
+export const GRAPH_EDGE_KINDS = ["ok", "yes", "no", "loop", "timeout", "refused", "declined", "parallel", "case", "default"] as const
+export type GraphEdgeKind = (typeof GRAPH_EDGE_KINDS)[number]
+
 export interface GraphEdge {
     /** Left out, it is `source->target`. */
     readonly id?: string
@@ -129,6 +159,8 @@ export interface GraphEdge {
     readonly sourcePort?: string
     /** Left out, an edge is drawn from the run: it flows while its source runs, waits (amber, still) while its source waits, and an untaken branch of a decision is `skipped`. */
     readonly variant?: GraphEdgeVariant
+    /** What the edge means (see `GraphEdgeKind`): its look and the side of its ends it attaches to. Left out, it is read from the edge. */
+    readonly kind?: GraphEdgeKind
     /** A slot not filled yet: dashed, muted. */
     readonly placeholder?: boolean
 }
@@ -168,8 +200,8 @@ export interface FlowLegendItem {
     readonly shape?: "diamond"
     /** A node state (its border and tone). */
     readonly status?: FlowStatus
-    /** An edge style: a variant, or `running` (flows) or `wait` (amber, still). */
-    readonly edge?: GraphEdgeVariant | "running" | "wait"
+    /** An edge style: a variant, `running` (flows) or `wait` (amber, still), or an edge kind (`yes`, `no`, `loop`, `timeout`, ...). */
+    readonly edge?: GraphEdgeVariant | GraphEdgeKind | "running" | "wait"
 }
 
 /** The renderer of a node's link: the app's router link. It must render one anchor-like element that takes `className` and `children`. */

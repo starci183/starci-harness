@@ -1,4 +1,4 @@
-import type { FlowKind, FlowKindTones, FlowStatus, FlowStatusInput, GraphEdgeVariant, GraphTone } from "../types.js"
+import type { FlowKind, FlowKindTones, FlowStatus, FlowStatusInput, GraphEdgeKind, GraphEdgeVariant, GraphTone } from "../types.js"
 import type { BadgeTone, MarkState } from "../../../index.js"
 
 /** Each status draws in one Grammar tone: the node border, the status mark and the edge that leaves it. */
@@ -29,14 +29,17 @@ export const normalizeStatus = (status: FlowStatusInput | undefined): FlowStatus
 export const statusTone = (status: FlowStatus): GraphTone => STATUS_TONE[status]
 
 /** The six kinds a step can be; `trigger`, `execute` and `output` are the older names of `event`, `action` and `end`. */
-export type StepKind = "event" | "action" | "condition" | "ask" | "wait" | "end"
+export type StepKind = "event" | "action" | "condition" | "switch" | "ask" | "wait" | "parallel" | "call" | "end"
 
 const KIND_ALIASES: Readonly<Record<FlowKind, StepKind>> = {
     event: "event",
     action: "action",
     condition: "condition",
+    switch: "switch",
     ask: "ask",
     wait: "wait",
+    parallel: "parallel",
+    call: "call",
     end: "end",
     trigger: "event",
     execute: "action",
@@ -50,8 +53,11 @@ export const KIND_TONES: Readonly<Record<StepKind, GraphTone>> = {
     event: "accent",
     action: "success",
     condition: "warning",
+    switch: "warning",
     ask: "danger",
     wait: "default",
+    parallel: "default",
+    call: "info",
     end: "success",
 }
 
@@ -81,6 +87,9 @@ export const edgeStyleOf = (variant: GraphEdgeVariant | undefined, sourceStatus:
 
 /** The class of an edge in a style; the stylesheet draws the colour and the dash from it. */
 export const edgeClassName = (style: EdgeStyle): string => `starci-graph-edge starci-graph-edge--${style}`
+
+/** The classes of an edge's kind (see `GraphEdgeKind`): its colour, weight and dash, under the run's own (a running edge still flows, a skipped one fades). */
+export const edgeKindClassName = (kind: GraphEdgeKind): string => `starci-graph-edge--kinded starci-graph-edge--kind-${kind}`
 
 /** The accessible name of a node: its label, then its status in the app's words. */
 export const nodeAriaLabel = (label: string, statusWord: string): string => `${label}, ${statusWord}`

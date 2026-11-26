@@ -62,12 +62,33 @@ export interface LinkEnds {
     readonly labelAt?: "TAIL" | "CENTER"
     /** A back edge: it returns to an earlier step; ELK routes it round the others in a lane of its own. */
     readonly back?: boolean
+    /** What the edge means (a `GraphEdgeKind`): the spine layout reads it to pick the sides the edge attaches to. */
+    readonly kind?: string
 }
 
 /** The route ELK gave an edge, in the frame of its island, and the box it reserved for the label. */
 export interface Route {
     readonly points: readonly (readonly [number, number])[]
     readonly label?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+    /**
+     * How the route ends, when the layout decided it (the spine layout): `arrow` at its target, `join` on another edge's line at a junction dot (a merge
+     * point), `bar` on a merge bar (no mark: the bar carries the one arrow).
+     */
+    readonly end?: "arrow" | "join" | "bar"
+}
+
+/** A fork or merge bar of the spine layout: a short thick line across the gap between two rows, and for a merge bar the one arrow down into its target. */
+export interface Bar {
+    readonly id: string
+    /** The left end and the middle of the bar's thickness, in the canvas frame. */
+    readonly x: number
+    readonly y: number
+    readonly width: number
+    /** A merge bar's arrow: from the bar at `stemX` down to the target's top at `stemTo`. */
+    readonly stemX?: number
+    readonly stemTo?: number
+    /** `solid` (a parallel fork, a join, a merge) or `hollow` (a switch's split bar: an outline only). Default solid. */
+    readonly look?: "solid" | "hollow"
 }
 
 /** The size of a label's box, from its words. */
@@ -89,6 +110,8 @@ export interface FlowLayout {
     readonly routes: Readonly<Record<string, Route>>
     /** Where each output port of a node ended, by `portKey`, in the frame of its node. */
     readonly ports: Readonly<Record<string, GraphPosition>>
+    /** The fork and merge bars (the spine layout). */
+    readonly bars?: readonly Bar[]
 }
 
 export const portKey = (node: string, port: string): string => `${node}::port::${port}`
@@ -169,7 +192,7 @@ const elkPorts = (node: SizedNode): ElkPort[] | undefined => {
     })
 }
 
-interface Tree {
+export interface Tree {
     readonly byId: ReadonlyMap<string, SizedNode>
     readonly kids: ReadonlyMap<string, readonly string[]>
     readonly parent: ReadonlyMap<string, string>
@@ -177,7 +200,7 @@ interface Tree {
 }
 
 /** The containment of the nodes: a node whose parent is unknown, or would make a cycle, stands at the top. */
-const treeOf = (nodes: readonly SizedNode[]): Tree => {
+export const treeOf = (nodes: readonly SizedNode[]): Tree => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const parent = new Map<string, string>()
     for (const node of nodes) {
@@ -196,20 +219,20 @@ const treeOf = (nodes: readonly SizedNode[]): Tree => {
     return { byId, kids, parent, roots }
 }
 
-const isAncestor = (tree: Tree, ancestor: string, id: string): boolean => {
+export const isAncestor = (tree: Tree, ancestor: string, id: string): boolean => {
     for (let at = tree.parent.get(id); at !== undefined; at = tree.parent.get(at)) if (at === ancestor) return true
     return false
 }
 
 /** The top node of the tree that holds `id`. */
-const rootOf = (tree: Tree, id: string): string => {
+export const rootOf = (tree: Tree, id: string): string => {
     let at = id
     for (let up = tree.parent.get(at); up !== undefined; up = tree.parent.get(at)) at = up
     return at
 }
 
 /** The groups of top nodes joined by an edge (an edge into a container's child joins that container). */
-const islandsOf = (tree: Tree, links: readonly LinkEnds[]): readonly (readonly string[])[] => {
+export const islandsOf = (tree: Tree, links: readonly LinkEnds[]): readonly (readonly string[])[] => {
     const group = new Map<string, string>(tree.roots.map((id) => [id, id]))
     const find = (id: string): string => {
         let at = id
