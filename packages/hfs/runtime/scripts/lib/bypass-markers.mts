@@ -12,8 +12,12 @@
 import { langOf, lexSource, splitLines } from './js-lex.mjs';
 import type { LexComment, LexString } from './js-lex.mjs';
 
-/** A bypass marker found in a text: its 1-based line, its label and the text that carries it. */
-export interface BypassHit { line: number; label: string; text: string }
+/**
+ * A bypass marker found in a text: its 1-based line, its label and the text that carries it. `via` tells a suppression comment
+ * ('comment') or a skipped or focused test ('test') of a source file apart from the other markers: the product rule leaves those two to the
+ * canon lint of a TypeScript source file (R18 no-inline-suppression, R48 spec-no-skip), so one marker reaches one rule.
+ */
+export interface BypassHit { line: number; label: string; text: string; via?: 'comment' | 'test' }
 /** The kind of file the markers are read in. */
 export type BypassFileKind = 'code' | 'shell' | 'workflow' | 'dockerfile' | 'manifest';
 /** Anything with a `test(text)`: a pattern, or a predicate on the line. */
@@ -214,7 +218,7 @@ function commentHits(comments: readonly LexComment[]): BypassHit[] {
     const opening = waiting && comment.text.trim() !== '';
     if (opening) waiting = false;
     const directive = commentDirective(comment, opening);
-    return directive ? [{ line: comment.line, label: directive, text: comment.text.trim() }] : [];
+    return directive ? [{ line: comment.line, label: directive, text: comment.text.trim(), via: 'comment' as const }] : [];
   });
 }
 
@@ -308,11 +312,11 @@ function codeHits(file: string, text: string): BypassHit[] {
   const hits = commentHits(comments);
   const tests = spec ? [...ANYWHERE_TESTS, ...SPEC_TESTS] : ANYWHERE_TESTS.slice(0, 2);
   splitLines(code).forEach((content, index) => {
-    for (const label of labelsOf(tests, content)) hits.push({ line: index + 1, label, text: (sourceLines[index] ?? '').trim() });
+    for (const label of labelsOf(tests, content)) hits.push({ line: index + 1, label, text: (sourceLines[index] ?? '').trim(), via: 'test' });
   });
   if (!spec) hits.push(...exitHits(code, sourceLines));
   for (const piece of strings) {
-    if (spec && indexedMarker(piece, code)) hits.push({ line: piece.line, label: 'a skipped or focused test', text: piece.text });
+    if (spec && indexedMarker(piece, code)) hits.push({ line: piece.line, label: 'a skipped or focused test', text: piece.text, via: 'test' });
     if (!spec && exitHandler(piece, code)) hits.push({ line: piece.line, label: 'a process exit handler that resets the exit code', text: piece.text });
   }
   const seen = new Set<number>();

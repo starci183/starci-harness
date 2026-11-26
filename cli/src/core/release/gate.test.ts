@@ -48,10 +48,17 @@ void test("the FAST level installs and builds each build order once, then typech
     assert.ok(!steps.some((step) => step.startsWith("lint ")), "a landing on dev lints nothing: lint belongs to the release (full) gate")
 })
 
-void test("a package with bundles:check runs it at the FAST level, then its npm test", () => {
-    const hfs = { "packages/hfs": { build: "tsc", typecheck: "tsc --noEmit", "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check", test: "npm run typecheck && node-test" } }
+void test("a package with bundles:check runs it at the FAST level, then its npm test; a typecheck its test already runs is not run twice", () => {
+    const hfs = { "packages/hfs": { build: "tsc", typecheck: "tsc --noEmit", "bundles:check": "node scripts/sync-bundles.mjs --check", test: "npm run typecheck && node-test" } }
     const steps = named(harnessGateSteps(plan({ packages: [{ name: "@starci/hfs", dir: "packages/hfs", build: ["packages/hfs"] }] }), "dev", (dir): Readonly<Record<string, string>> => (dir === "packages/hfs" ? hfs["packages/hfs"] : {})))
-    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "typecheck packages/hfs", "declarations packages/hfs", "bundles packages/hfs", "test packages/hfs"])
+    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "declarations packages/hfs", "bundles packages/hfs", "test packages/hfs"])
+})
+
+void test("the FULL level lints a package once: a lint its npm test already runs is not a second step", () => {
+    const pkg = { "packages/mail": { build: "tsc", typecheck: "tsc --noEmit", lint: "eslint .", test: "npm run typecheck && npm run lint && node --test" } }
+    const steps = named(harnessGateSteps(plan({ packages: [{ name: "@starci/mail", dir: "packages/mail", build: ["packages/mail"] }] }), "full", (dir): Readonly<Record<string, string>> => (dir === "packages/mail" ? pkg["packages/mail"] : {})))
+    assert.ok(!steps.includes("lint packages/mail") && !steps.includes("typecheck packages/mail"), steps.join(", "))
+    assert.ok(steps.includes("test packages/mail"))
 })
 
 void test("an affected CLI is installed, built and typechecked at the FAST level, never tested", () => {

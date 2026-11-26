@@ -1,13 +1,12 @@
 import { captureNpm, captureTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
-import { captureGit, mainCheckout } from "../../shared/git.js"
+import { captureGit, mainCheckout, gitOutcome as gitOut, mergeOrAbort } from "../../shared/git.js"
 import { Refusal } from "../../shared/errors.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { landPaths, releaseLockFile, squashMessage, takeDevLock, writeStatus } from "../../harness/lane-state.js"
 import { MIGRATIONS_FOLDER, appCli, lockScope } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
 import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
-import { prepareTree } from "../../harness/prepare-tree.js"
 import { publishDev } from "../deps/publish-dev.js"
 import type { DevPublishData } from "../deps/publish-dev.js"
 import { requestDevSync } from "../dev/sync-runner.js"
@@ -53,29 +52,29 @@ export interface LandDeps {
     readonly watchCi: (root: string, dir: string, sha: string, lanes: readonly string[], say: (line: string) => void) => Promise<void>
 }
 
-const gitOut = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
 
 const tail = (run: ToolRun): string => `${run.stdout}\n${run.stderr}`.trim().split("\n").slice(-5).join(" ").slice(0, 600)
 
-/** The fast re-check after dev moved: the app's codegen and its typecheck script, or the harness CLI's typecheck, each under the heavy governor. */
+/** The re-check of an app's merged tree: the types family of its own `starci app check` (codegen, then the tsc programs), never a second typecheck of its own. */
+export const APP_RECHECK_ARGS: readonly string[] = ["app", "check", "--gate", "types", "--env", "prod"]
+
+/**
+ * The fast re-check after dev moved: an app's `starci app check --gate types` (the one owner of checking, contexts/project/lint.md PROJECT-LINT-7),
+ * or the harness CLI's typecheck under the heavy governor.
+ */
 export const realRecheck = async (root: string, profile: LandProfileName, lane: string): Promise<string | undefined> => {
     if (profile === "harness") {
         const run = await withHeavySlot("tsc", `lane gate --land ${lane}: cli typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--prefix", "cli"], root, held.options))
         return run.exitCode === 0 ? undefined : `npm run typecheck (cli) exited ${String(run.exitCode)}: ${tail(run)}`
     }
-    const codegen = await prepareTree(root, `lane gate --land ${lane}`, ["codegen"])
-    if (codegen.failure !== undefined) return `${codegen.failure.command} exited ${String(codegen.failure.exitCode)}: ${codegen.failure.output.split("\n").slice(-3).join(" ")}`
-    const run = await withHeavySlot("tsc", `lane gate --land ${lane}: typecheck`, root, {}, (held) => captureNpm(["run", "typecheck", "--silent", "--if-present"], root, held.options))
-    return run.exitCode === 0 ? undefined : `npm run typecheck exited ${String(run.exitCode)}: ${tail(run)}`
+    const run = await captureTool(process.execPath, [appCli(root), ...APP_RECHECK_ARGS], root)
+    return run.exitCode === 0 ? undefined : `starci ${APP_RECHECK_ARGS.join(" ")} exited ${String(run.exitCode)}: ${tail(run)}`
 }
 
 export const realLandDeps: LandDeps = {
     recheck: realRecheck,
     push: (root, profile, sha) =>
-        profile === "harness" ? captureTool("git", ["push", "origin", `${sha}:refs/heads/dev`], root) : captureTool(process.execPath, [appCli(root), "app", "push", "origin", `${sha}:refs/heads/dev`], root),
+        profile === "harness" ? captureGit(["push", "origin", `${sha}:refs/heads/dev`], root) : captureTool(process.execPath, [appCli(root), "app", "push", "origin", `${sha}:refs/heads/dev`], root),
     publish: (root, sha, say) => publishDev({ root, head: sha, execute: true, say }),
     requestSync: requestDevSync,
     watchCi: (root, dir, sha, lanes, say) => startDevCiWatch(root, dir, sha, lanes, say),
@@ -94,12 +93,8 @@ export const landLane = async (given: { readonly root: string; readonly lane: st
         const fetched = await gitOut(root, ["fetch", "-q", "origin"])
         if (!fetched.ok) throw new Refusal("LANE_LAND_FETCH", `git fetch origin: ${fetched.err}`)
         const base = (await gitOut(root, ["rev-parse", "origin/dev"])).out
-        const merge = await gitOut(root, ["merge", "--no-edit", "origin/dev"])
-        if (!merge.ok) {
-            const files = (await gitOut(root, ["diff", "--name-only", "--diff-filter=U"])).out.split("\n").filter((file) => file !== "")
-            await gitOut(root, ["merge", "--abort"])
-            throw new Refusal("LANE_LAND_CONFLICT", files.length > 0 ? `origin/dev (${base.slice(0, 10)}) conflicts with ${lane} in ${files.join(", ")}: merge origin/dev in the lane, resolve, commit, then run lane gate --push --land again` : `git merge origin/dev: ${merge.err}`)
-        }
+        const merge = await mergeOrAbort(root, "origin/dev")
+        if (!merge.ok) throw new Refusal("LANE_LAND_CONFLICT", merge.files.length > 0 ? `origin/dev (${base.slice(0, 10)}) conflicts with ${lane} in ${merge.files.join(", ")}: merge origin/dev in the lane, resolve, commit, then run lane gate --push --land again` : `git merge origin/dev: ${merge.err}`)
         const rechecked = given.gatedBase !== base
         if (rechecked) {
             say(`dev moved since the gate (${given.gatedBase?.slice(0, 10) ?? "no merge"} -> ${base.slice(0, 10)}): fast re-check of the merged tree`)

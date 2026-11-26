@@ -305,4 +305,4 @@ adapter:
   forbids: [kafkajs]
   proof: >-
     Unit specs as full; declaring event-bus requires integration specs titled `event-bus/<scenario>: ...` for every declared
-    scenario on the local db service (`npm run db:start`, R284). Lite has no e2e world.
+    scenario on the local db service (`npm run db:start`, R155). Lite has no e2e world.

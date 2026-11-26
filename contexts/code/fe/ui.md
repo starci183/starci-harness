@@ -17,7 +17,7 @@ Why: two apps built from the same grammar and knowledge must come out the same; 
 a fork, and a defect shimmed in one app stays in the grammar for every other.
 
 Enforced by: R93 (`grammar-entry`, `vendor-primitive-has-named-owner`), R321 (`no-grammar-shim`), R62
-(`no-native-form-control`, `no-native-img`; grammar `no-raw-structural-element`), R319 (`single-commit-per-render`,
+(`no-native-form-control`; grammar `no-raw-structural-element`; a raw `<img>` is the grammar `no-raw-media`, R442), R319 (`single-commit-per-render`,
 `no-commit-in-collection-item`),
 R320 (`control-height`), R313-R317 (grammar `navbar-control-size`), R318.
 

@@ -99,7 +99,7 @@ An app declaring `realtime` proves `subscriber-receives-push`, `foreign-topic-is
 
 Why: the door has no logic; the risk is delivery, isolation and leaks on a real connection.
 
-Enforced by: R155, R284.
+Enforced by: R155.
 
 ## BE-REALTIME-8 One generic door streams the progress of jobs, current state first
 

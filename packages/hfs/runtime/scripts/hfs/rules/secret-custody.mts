@@ -89,10 +89,13 @@ export function sealedSecretCustodyFindings({ repoRoot, files, repo }: { repoRoo
 
 /**
  * Drop-in extension of secretFindings for scripts/hfs/check.mts. When an L17 finding identifies the same file/line as
- * the generic R06 scanner (a complete JWT, for example), the specific code wins so one physical issue is emitted once.
+ * the generic R06 scanner (a complete JWT, for example), the specific code wins so one physical issue is emitted once. A forbidden
+ * custody path at the app root that R06 already refuses by its path (a root .env, secrets.env or .secrets/ file) stays R06's
+ * HFS_PLAINTEXT_SECRET alone, never also HFS_LITE_SECRET_CUSTODY.
  */
 export function sealedSecretFindings(input: Parsed) {
   const ordinary = secretFindings(input);
-  const custody = sealedSecretCustodyFindings(input);
+  const refusedByPath = new Set(ordinary.map(item => item.path));
+  const custody = sealedSecretCustodyFindings(input).filter(item => !(item.pattern === 'lite-forbidden-entry' && refusedByPath.has(item.path)));
   return [...ordinary.filter(item => !((item.pattern === 'jwt' || item.pattern === 'password-connection-string') && inSecretFreeTree(input.repo, item.path))), ...custody];
 }
