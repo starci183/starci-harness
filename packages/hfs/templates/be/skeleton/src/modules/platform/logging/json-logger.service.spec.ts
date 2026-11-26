@@ -196,7 +196,8 @@ const startLoki = async (): Promise<{ server: Server; url: string; bodies: Array
         })
     })
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
-    const { port } = server.address() as AddressInfo
+    const address: AddressInfo | string | null = server.address()
+    const port = typeof address === "object" && address !== null ? address.port : 0
     return { server, url: `http://127.0.0.1:${String(port)}`, bodies }
 }
 
