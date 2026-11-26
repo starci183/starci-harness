@@ -137,6 +137,8 @@ import { ticketShowVerb } from "./core/ticket/show.js"
 import { ticketTakeVerb } from "./core/ticket/take.js"
 import { devSyncVerb } from "./core/dev/sync.js"
 import { devSyncRunnerVerb } from "./core/dev/sync-runner.js"
+import { devPromoteVerb } from "./core/dev/promote.js"
+import { laneIntoVerb } from "./core/lane/into.js"
 import { laneRemoveVerb } from "./core/lane/remove.js"
 import { lanePruneInstallsVerb } from "./core/lane/prune-installs.js"
 import { opsReapVerb } from "./core/ops/reap.js"
@@ -309,9 +311,11 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     ticketCloseVerb,
     ticketAnswerVerb,
     laneStatusVerb,
+    laneIntoVerb,
     laneCiWatchVerb,
     devSyncVerb,
     devSyncRunnerVerb,
+    devPromoteVerb,
     laneGateVerb,
     hotfixLandVerb,
     hotfixStatusVerb,

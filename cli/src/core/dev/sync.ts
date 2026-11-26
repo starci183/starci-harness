@@ -8,7 +8,7 @@ import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { installLocal, installRecordFile, installUnitOf, parseRequested, readInstallRecord, writeInstallRecord } from "../deps/install-local.js"
-import { stageTree, stagedOutputs, stagedTrackedChanges, swapStaged } from "./stage.js"
+import { OLD, outermost, removeAside, stageTree, stagedOutputs, stagedTrackedChanges, swapStaged } from "./stage.js"
 import { declaredProcesses, processesOfApp } from "./declared.js"
 import type { Swapped } from "./stage.js"
 import type { InstallRecord } from "../deps/install-local.js"
@@ -41,6 +41,21 @@ const UNMIGRATED = "starci-dev-sync-unmigrated"
  * fast-forwarded the checkout, so the next sync sees no commit to move: this mark makes it install, build, migrate and restart again whole.
  */
 const UNSWAPPED = "starci-dev-sync-unswapped"
+
+/**
+ * Marks the checkout at `root` so its next sync installs, migrates and restarts whole (the UNSWAPPED and UNMIGRATED marks a failed swap or migration
+ * leaves): what the runner's watchdog writes when it ends a stalled sync whose steps it cannot tell were done. Never throws.
+ */
+export const markResyncWhole = async (root: string, why: string): Promise<void> => {
+    for (const mark of [UNSWAPPED, UNMIGRATED]) {
+        const file = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", mark])).out
+        try {
+            if (file !== "") writeFileSync(file, `${why}\n`)
+        } catch {
+            // the next sync still finds the stalled status
+        }
+    }
+}
 
 /** Files no running process reads: a change of these alone restarts nothing. */
 const INERT = (file: string): boolean => file.endsWith(".md") || file.startsWith(".starciwork/") || file.startsWith(".github/") || file.startsWith("gallery/")
@@ -110,6 +125,11 @@ export interface DevSyncRequest {
     readonly since?: string
     /** With `since`, a hotfix that touched no lockfile, migration, schema or workspace package: the api and web restart on their own build, the prepare scripts do not run. */
     readonly light?: boolean
+    /**
+     * Told when the sync stopped stack processes (`stopped`, before node_modules is written) and when they run again or the sync ended (`running`): the
+     * window in which the debounced runner's watchdog (core/dev/sync-runner.ts) is armed, since a stall there leaves the app's dev stack down.
+     */
+    readonly onStack?: (state: "stopped" | "running") => void
 }
 
 /** How many times a sync runs `npm ci` when it dies on a file something holds. */
@@ -208,10 +228,27 @@ export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realD
     const root = await repositoryRoot(request.checkout)
     // One sync of a checkout at a time, whoever asks (two landings, a hand run): a second one waits for the first. A dry run writes nothing and takes no lock.
     if (!request.execute) return devSyncLocked(request, deps, root)
-    return withSyncLock(syncLockFile(root), request.say, () => devSyncLocked(request, deps, root), deps.pause)
+    return withSyncLock(
+        syncLockFile(root),
+        request.say,
+        async () => {
+            const aside: string[] = []
+            try {
+                return await devSyncLocked(request, deps, root, aside)
+            } finally {
+                request.onStack?.("running")
+                // What the swap replaced is deleted only now, with the stack running again (and still under the sync lock): a node_modules delete takes minutes.
+                if (aside.length > 0) {
+                    const removed = await removeAside(root, aside)
+                    request.say(`removed what the swap replaced, after the restart: ${removed.removed.join(", ") || "nothing"}${removed.held.length > 0 ? `; held, left for the next sync: ${removed.held.join(", ")}` : ""}`)
+                }
+            }
+        },
+        deps.pause,
+    )
 }
 
-const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: string): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
+const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: string, replacedAside: string[] = []): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
     assertNpm(root)
     const lines: string[] = []
     const say = (line: string): void => {
@@ -310,8 +347,12 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         const tracked = await stage.tracked(staging)
         staged = { staging, outputs: await stage.outputs(staging), tracked: [...new Set([...tracked, ...ownFiles.filter((file) => existsSync(join(staging, file)))])].toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0)) }
         say(`staged build ready: ${String(staged.outputs.length)} built path(s) to swap in`)
+        // An earlier swap's replaced entries that could not be removed then go now, while the stack still serves: the swap never deletes with it stopped.
+        const earlier = await removeAside(root, outermost(staged.outputs).map((entry) => `${entry}${OLD}`))
+        if (earlier.removed.length > 0 || earlier.held.length > 0) say(`removed an earlier swap's leftovers before the stop: ${earlier.removed.join(", ") || "none"}${earlier.held.length > 0 ? `; still held: ${earlier.held.join(", ")}` : ""}`)
     }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
+    if (stopped.length > 0) request.onStack?.("stopped")
     // The previous overlay as it stands (its manifests, its lockfiles and its record), taken before the committed pins come back for the fast-forward: an
     // install that fails before the new node_modules is in place puts the checkout back on its commit with these, so they match the install put back.
     const previous = record === undefined || keepsOverlay ? undefined : { record, files: ownFiles.map((file) => ({ file, text: readText(join(root, file)) })) }
@@ -379,7 +420,8 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
                 rmSync(installRecordFile(staged.staging), { force: true })
             }
             rmSync(join(root, UNPREPARED), { force: true })
-            say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.leftover.length > 0 ? `; left for the next sync (held): ${swapped.leftover.join(", ")}` : ""}`)
+            replacedAside.push(...swapped.aside)
+            say(`swapped the staged build in: ${String(swapped.moved.length)} path(s) moved, ${String(swapped.relinked)} workspace link(s) re-pointed${swapped.copied.length > 0 ? `, ${swapped.copied.join(", ")} copied` : ""}${swapped.aside.length > 0 ? `; ${String(swapped.aside.length)} replaced path(s) aside, removed after the restart` : ""}`)
         }
         if (stage !== undefined && staged !== undefined) {
             // The swapped install must load: a package that does not resolve (a nested `picocolors` of `postcss`, say) is not left for the web's first

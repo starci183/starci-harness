@@ -1,4 +1,5 @@
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, unlinkSync } from "node:fs"
+import { rm } from "node:fs/promises"
 import { basename, dirname, join, relative, resolve, sep } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit } from "../../shared/git.js"
@@ -144,13 +145,16 @@ export interface Swapped {
     readonly moved: readonly string[]
     readonly copied: readonly string[]
     readonly relinked: number
-    /** Replaced entries that could not be removed (a held file): left as `<entry>.starci-old`, removed by the next sync. */
-    readonly leftover: readonly string[]
+    /**
+     * The replaced entries, renamed `<entry>.starci-old` and not yet removed: deleting a whole node_modules takes minutes on Windows, so `dev sync` removes them
+     * with `removeAside` once the stack runs again, never while it is stopped.
+     */
+    readonly aside: readonly string[]
 }
 
 /**
  * Moves the staged outputs into the checkout and copies the tracked files the staged install changed. Each replaced entry is renamed aside first and
- * removed once every move succeeded; a move that fails moves back everything moved before it, puts the replaced entries back and refuses DEV_SYNC_SWAP.
+ * returned in `aside` once every move succeeded, for `removeAside` after the restart; a move that fails moves back everything moved before it, puts the replaced entries back and refuses DEV_SYNC_SWAP.
  */
 export const swapStaged = async (staging: string, root: string, listed: readonly string[], tracked: readonly string[], fs: SwapFs = realSwapFs, pause: (ms: number) => Promise<void> = (ms) => new Promise((done) => setTimeout(done, ms))): Promise<Swapped> => {
     // A path inside another listed path moves with it.
@@ -182,13 +186,26 @@ export const swapStaged = async (staging: string, root: string, listed: readonly
     for (const file of tracked) fs.copy(join(staging, file), join(root, file))
     let relinked = 0
     for (const entry of outputs.filter((one) => basename(one) === "node_modules")) relinked += relinkInto(join(root, entry), staging, root).length
-    const leftover: string[] = []
-    for (const { entry } of done.filter((one) => one.replaced)) {
+    return { moved: done.map((one) => one.entry), copied: tracked, relinked, aside: done.filter((one) => one.replaced).map((one) => `${one.entry}${OLD}`) }
+}
+
+/**
+ * Removes the entries a swap left aside (`<entry>.starci-old` under `root`) without blocking the event loop (the delete of a node_modules takes minutes on
+ * Windows, and a synchronous one froze the sync and its watchdog with the stack stopped). Each entry that cannot be removed (a held file) stays for the next
+ * sync, which removes it before it stops anything. Never throws.
+ */
+export const removeAside = async (root: string, entries: readonly string[]): Promise<{ readonly removed: readonly string[]; readonly held: readonly string[] }> => {
+    const removed: string[] = []
+    const held: string[] = []
+    for (const entry of entries) {
+        const path = join(root, entry)
+        if (!existsSync(path)) continue
         try {
-            fs.remove(join(root, `${entry}${OLD}`))
+            await rm(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 })
+            removed.push(entry)
         } catch {
-            leftover.push(`${entry}${OLD}`)
+            held.push(entry)
         }
     }
-    return { moved: done.map((one) => one.entry), copied: tracked, relinked, leftover }
+    return { removed, held }
 }

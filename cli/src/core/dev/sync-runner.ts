@@ -14,7 +14,7 @@ import type { DevSyncSettings } from "../../harness/local-settings.js"
 import { listProcesses } from "../../harness/process-table.js"
 import type { HostProcess } from "../../harness/process-table.js"
 import { takeLiveLock } from "../../harness/slots.js"
-import { devSync } from "./sync.js"
+import { devSync, markResyncWhole } from "./sync.js"
 import { appCli, readStackProcesses } from "./stack-stop.js"
 
 /**
@@ -167,7 +167,14 @@ export interface RunnerDeps {
     readonly sleep: (ms: number) => Promise<void>
     /** Stops the stray dev servers of the checkout; the lines saying which. */
     readonly strays: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
-    readonly sync: (checkout: string, settings: DevSyncSettings) => Promise<{ readonly exitCode?: number; readonly data: { readonly to: string; readonly restart: string } }>
+    /** One `dev sync --execute`; `watch` hears each line it says and when it holds stack processes stopped (the watchdog's window). */
+    readonly sync: (checkout: string, settings: DevSyncSettings, watch: SyncWatch) => Promise<{ readonly exitCode?: number; readonly data: { readonly to: string; readonly restart: string } }>
+    /** Ends this runner after a stalled sync, so the stalled steps never go on beside the next sync (process.exit by default). */
+    readonly exit?: (code: number) => void
+    /** Marks the checkout so the next sync redoes the install, the migration and the restart whole (core/dev/sync.ts markResyncWhole). */
+    readonly markWhole?: (checkout: string, why: string) => Promise<void>
+    /** How often the watchdog looks (default 30 s). */
+    readonly watchEveryMs?: number
     readonly settings: () => DevSyncSettings
     /** After a sync, green or failed: the declared processes nothing listens for (a stack a moved checkout left down) are brought up; the lines saying what. */
     readonly ensureUp?: (checkout: string, settings: DevSyncSettings) => Promise<readonly string[]>
@@ -194,11 +201,32 @@ const realStrays = async (checkout: string, settings: DevSyncSettings): Promise<
     return strayDevServers(table, checkout, pids, process.pid, await listenersOn(ports)).map((row) => `${killPidTree(row.pid) ? "stopped" : "could not stop"} stray dev server pid ${String(row.pid)} (${row.commandLine.slice(0, 120)})`)
 }
 
+/** What a sync tells the runner's watchdog: each line it says, and when it holds stack processes stopped. */
+export interface SyncWatch {
+    readonly progress: (line: string) => void
+    readonly onStack: (state: "stopped" | "running") => void
+}
+
 export const realRunnerDeps: RunnerDeps = {
     now: Date.now,
     sleep: (ms) => sleep(ms),
     strays: realStrays,
-    sync: (checkout, settings) => devSync({ checkout, local: settings.local, env: settings.env, execute: true, restart: true, processes: settings.processes, say: (line) => { process.stdout.write(`${new Date().toISOString()} ${line}\n`) } }),
+    sync: (checkout, settings, watch) =>
+        devSync({
+            checkout,
+            local: settings.local,
+            env: settings.env,
+            execute: true,
+            restart: true,
+            processes: settings.processes,
+            say: (line) => {
+                watch.progress(line)
+                process.stdout.write(`${new Date().toISOString()} ${line}\n`)
+            },
+            onStack: watch.onStack,
+        }),
+    exit: (code) => process.exit(code),
+    markWhole: markResyncWhole,
     settings: () => loadLocalSettings().devSync,
     ensureUp: realEnsureUp,
 }
@@ -218,6 +246,44 @@ export const reasonLine = (message: string): string => {
 const SWAP_RETRY_MS = 20_000
 /** How long a waiting runner sleeps before it reads the mark again, at most. */
 const WAIT_STEP_MS = 15_000
+
+/** The refusal of a sync the watchdog ended: stack processes stopped and no step said anything for devSync.stallMinutes. */
+export const DEV_SYNC_STALLED = "DEV_SYNC_STALLED"
+
+/**
+ * Runs one sync under the watchdog: while the sync holds stack processes stopped, a look every `everyMs` that finds no line said for `stallMs` ends the
+ * wait with DEV_SYNC_STALLED, naming the last line (the step that stalled). Outside that window nothing is judged: a sync may wait in the heavy queue as
+ * long as the host is busy while the stack keeps serving.
+ */
+export const watchedSync = async <T>(run: (watch: SyncWatch) => Promise<T>, now: () => number, stallMs: number, everyMs: number): Promise<T> => {
+    let last = now()
+    let lastLine = "the sync started"
+    let stopped = false
+    let timer: ReturnType<typeof setInterval> | undefined
+    const stalled = new Promise<never>((_, reject) => {
+        timer = setInterval(() => {
+            if (stopped && now() - last >= stallMs) reject(Object.assign(new Error(`no step progressed for ${String(Math.round((now() - last) / 60_000))} min with stack processes stopped; the last step said: ${lastLine.slice(0, 300)}`), { code: DEV_SYNC_STALLED }))
+        }, everyMs)
+    })
+    const watch: SyncWatch = {
+        progress: (line) => {
+            last = now()
+            lastLine = line
+        },
+        onStack: (state) => {
+            stopped = state === "stopped"
+            last = now()
+        },
+    }
+    const running = run(watch)
+    // A sync the watchdog gave up on may still settle later: its outcome is no longer anyone's.
+    running.catch(() => undefined)
+    try {
+        return await Promise.race([running, stalled])
+    } finally {
+        clearInterval(timer)
+    }
+}
 
 /**
  * The runner's loop, under the checkout's runner lock: wait out the debounce window of the newest mark, stop the checkout's stray dev servers, sync once,
@@ -253,16 +319,18 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
             write({ state: "syncing", reason: wanted.reason })
             let failed = false
             let swapRefused = false
+            let stalledSync = false
             try {
                 const strays = await deps.strays(checkout, settings)
                 for (const line of strays) say(line)
-                const done = await deps.sync(checkout, settings)
+                const done = await watchedSync((watch) => deps.sync(checkout, settings, watch), deps.now, settings.stallMinutes * 60_000, deps.watchEveryMs ?? 30_000)
                 failed = (done.exitCode ?? 0) !== 0
                 if (!failed) for (const line of (await deps.ensureUp?.(checkout, settings)) ?? []) say(line)
                 write(failed ? { state: "failed", reason: `${wanted.reason}; dev sync moved to ${done.data.to.slice(0, 10)} but the restart failed (read the stack log)`, to: done.data.to } : { state: "synced", reason: `${wanted.reason}; restart ${done.data.restart}`, to: done.data.to })
             } catch (error) {
                 failed = true
                 swapRefused = typeof error === "object" && error !== null && "code" in error && error.code === "DEV_SYNC_SWAP"
+                stalledSync = typeof error === "object" && error !== null && "code" in error && error.code === DEV_SYNC_STALLED
                 const code = typeof error === "object" && error !== null && "code" in error ? `${String(error.code)}: ` : ""
                 const message = error instanceof Error ? error.message : String(error)
                 write({ state: "failed", reason: `${wanted.reason}; dev sync refused: ${code}${reasonLine(message)}` })
@@ -276,6 +344,15 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
                 } catch (error) {
                     say(`after the failed sync the stack could not be checked: ${error instanceof Error ? error.message : String(error)}`)
                 }
+            }
+            // A stalled sync may still be stuck inside a step: the checkout is marked to be redone whole and this runner ends, so the stuck step never runs on
+            // beside the next sync, which the standing mark (dev sync-runner --request) or the next landing starts.
+            if (stalledSync) {
+                await deps.markWhole?.(checkout, "stalled")
+                say(`the watchdog ended the stalled sync: the stack was brought up again and the checkout is marked to sync whole; this runner exits (starci dev sync-runner --request --dir ${checkout} starts the next one)`)
+                releaseLock(paths.lock)
+                deps.exit?.(1)
+                return written
             }
             // A refused swap (a file held while the staged build moved in) leaves the checkout on the new commit with the old install; the sync marks that
             // itself (core/dev/sync.ts UNSWAPPED), so one more sync, after the holder had a moment to let go, redoes the install whole. Once per mark.

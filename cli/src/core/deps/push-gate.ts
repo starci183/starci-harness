@@ -2,7 +2,7 @@ import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import { locateTree } from "../../shared/tree.js"
-import { declaresDevLocal, devLocalNote, EXACT_VERSION, landsOnDev, namesLocalRegistry } from "./dev-local.js"
+import { declaresDevLocal, devLocalNote, EXACT_VERSION, integrationRefs, landsOnDev, namesLocalRegistry } from "./dev-local.js"
 import type { DevLocalCode, PushTarget } from "./dev-local.js"
 import { judgeLocalRegistry, NPMJS_FLAGS } from "./local-refs.js"
 import { PORT, registryVersions } from "./local-registry.js"
@@ -68,7 +68,7 @@ const published = async (root: string, name: string, spec: string): Promise<bool
  * `release push`, `release cut` and `app release` pass no target, so they always refuse.
  */
 export const judgePush = async (root: string, revision = "HEAD", options: PushGateOptions = {}): Promise<PushJudgement> => {
-    const devLocal = landsOnDev(options.target) && (await declaresDevLocal(root, revision))
+    const devLocal = landsOnDev(options.target, integrationRefs(root)) && (await declaresDevLocal(root, revision))
     const accepted = new Set<DevLocalCode>()
     await judgeLocalRegistry(root, revision, (found) => {
         if (!devLocal || !found.every((one) => namesLocalRegistry(one.url))) return false

@@ -1,4 +1,5 @@
-import { git } from "../../shared/git.js"
+import { captureGitSync, git } from "../../shared/git.js"
+import { landIntoForRepo } from "../../harness/local-settings.js"
 import { LOOPBACK, PORT } from "./local-registry.js"
 
 /**
@@ -7,7 +8,7 @@ import { LOOPBACK, PORT } from "./local-registry.js"
  * may then carry exact local-registry pins of the harness packages and the lockfile entries their install writes, so dev runs the
  * unreleased output at once. The push gate accepts DEPS_PIN_UNPUBLISHED for a version the local registry serves,
  * DEPS_LOCAL_REGISTRY_COMMITTED for references to that registry only, and DEPS_LOCK_INTEGRITY, and prints one note naming them.
- * Only a push whose every target ref is dev or a lane branch qualifies: `release push`, `release cut`, `app release`, a prod deploy and a
+ * Only a push whose every target ref is dev, a lane branch or the integration branch the lanes land into (landInto of the local settings) qualifies: `release push`, `release cut`, `app release`, a prod deploy and a
  * push of main, a release branch or a tag pass no such target and keep refusing (a prod cut holds npm versions). No environment bypass.
  */
 export const DEPS_KEY = "deps"
@@ -34,9 +35,21 @@ export const prePushTarget = (text: string): PushTarget => ({
         .map((parts) => parts[2] ?? ""),
 })
 
-/** True when the push lands on dev: at least one ref, and every ref is dev or a lane branch (which lands on dev). Main, a release branch or a tag in the same push disqualify it. */
-export const landsOnDev = (target: PushTarget | undefined): boolean =>
-    target !== undefined && target.refs.length > 0 && target.refs.every((ref) => ref === DEV_REF || LANE_REF.test(ref))
+/**
+ * True when the push lands on dev: at least one ref, and every ref is dev, a lane branch (which lands on dev) or one of `integration`, the repository's
+ * integration branch a lane lands into instead (`refs/heads/dev2`, `integrationRefs`), whose content reaches dev by `starci dev promote`. Main, a release
+ * branch or a tag in the same push disqualify it.
+ */
+export const landsOnDev = (target: PushTarget | undefined, integration: readonly string[] = []): boolean =>
+    target !== undefined && target.refs.length > 0 && target.refs.every((ref) => ref === DEV_REF || LANE_REF.test(ref) || integration.includes(ref))
+
+/** The integration branch the lanes of the repository at `root` land into, as a ref (`landInto` of the local settings), or none when they land on dev. Never throws. */
+export const integrationRefs = (root: string): readonly string[] => {
+    const listed = captureGitSync(["worktree", "list", "--porcelain"], root)
+    const main = listed.exitCode === 0 ? listed.stdout.split(/\r?\n/).find((line) => line.startsWith("worktree "))?.slice("worktree ".length).trim() : undefined
+    const into = landIntoForRepo(main ?? root)
+    return into === "dev" ? [] : [`refs/heads/${into}`]
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
 

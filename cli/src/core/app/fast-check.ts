@@ -33,8 +33,8 @@ export const fastTarget = (pushRefs: string | undefined): PushTarget => {
     return given !== undefined && given.refs.length > 0 ? given : { refs: ["refs/heads/dev"] }
 }
 
-/** The level a push of `target` is judged at: dev when every ref is dev or a lane branch (it lands on dev), else full. */
-export const levelOfTarget = (target: PushTarget | undefined): CheckLevel => (landsOnDev(target) ? "dev" : "full")
+/** The level a push of `target` is judged at: dev when every ref is dev, a lane branch or the repository's integration branch `integration` names (each lands on a dev line), else full. */
+export const levelOfTarget = (target: PushTarget | undefined, integration: readonly string[] = []): CheckLevel => (landsOnDev(target, integration) ? "dev" : "full")
 
 /**
  * The remote refs `git push <args>` updates, as git would read them from the command line: each `src:dst` names dst, a bare `src` itself

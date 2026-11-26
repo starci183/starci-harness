@@ -8,11 +8,19 @@ import { machinesBase } from "./machines.js"
 /**
  * The settings of this machine alone: `<shared state base>/local-settings.json` (the harness main checkout's `.runtime/`, git-ignored, or
  * STARCI_LOCAL_ROOT), never committed and never read by CI. Today it holds the dev flow after a landing (`devSync`): whether a landing
- * runs `starci dev sync` on the app's main dev checkout, and how. An absent file is every default (auto-sync off).
+ * runs `starci dev sync` on the app's main dev checkout, and how, and which branch its lanes land into (`landInto`). An absent file is every default (auto-sync off).
  */
 export const LOCAL_SETTINGS_FILE = "local-settings.json"
 
+/**
+ * A branch a lane may land into (contexts/project/branches.md PROJECT-BRANCH-4): `dev`, or an integration branch a repository's lanes land into
+ * instead (`dev2`), which reaches `dev` only by `starci dev promote`. Never `main`, which moves only by a release (PROJECT-BRANCH-1).
+ */
+export const landBranchSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9._-]+)*$/u, "a branch name").refine((name) => name !== "main" && !name.startsWith("lane/"), "main moves only by a release and lane/* are the lanes' own branches")
+
 const devSyncSchema = z.object({
+    /** The branch this machine's lanes land into (default dev); a repository's entry of `repos` overrides it. */
+    landInto: landBranchSchema.default("dev"),
     /** After a lane lands on dev, run `dev sync --execute` on the app's main dev checkout (default off). */
     afterLand: z.boolean().default(false),
     /** The dev checkout to sync (default: the app's main checkout). */
@@ -21,6 +29,11 @@ const devSyncSchema = z.object({
     env: z.string().min(1).default("dev"),
     /** Consecutive landings inside this window give one sync, after the last of them (default 120 s). */
     debounceSeconds: z.number().int().min(0).default(120),
+    /**
+     * The runner's watchdog (core/dev/sync-runner.ts): while a sync holds stack processes stopped, this long with no step said ends the sync as stalled,
+     * brings the stack up again and leaves the checkout marked so the next sync redoes it whole (default 20 min).
+     */
+    stallMinutes: z.number().int().min(1).default(20),
     /** Harness packages the sync keeps installed from the local registry (`dev sync --local <pkg>`, or `<pkg>@<exact version>`); empty restores the registry versions. */
     local: z.array(z.string().min(1)).default([]),
     /** The stack processes of each side: a change under be/ restarts `be`, under fe/ restarts `fe`, anything else both. */
@@ -35,6 +48,8 @@ const devSyncSchema = z.object({
             z.string().min(1),
             z.object({
                 afterLand: z.boolean().default(true),
+                /** The branch the repository's lanes land into: `dev` (the default), or an integration branch that `starci dev promote` fast-forwards dev to. */
+                landInto: landBranchSchema.optional(),
                 checkout: z.string().min(1).optional(),
                 env: z.string().min(1).optional(),
                 debounceSeconds: z.number().int().min(0).optional(),
@@ -107,7 +122,19 @@ export const devSyncForRepo = (settings: DevSyncSettings, repo: string): DevSync
     if (entries.length === 0) return settings
     const own = entries.find(([key]) => repoKey(key) === repoKey(repo))?.[1]
     if (own === undefined) return { ...settings, afterLand: false, checkout: undefined }
-    return { ...settings, afterLand: own.afterLand, checkout: own.checkout, env: own.env ?? settings.env, debounceSeconds: own.debounceSeconds ?? settings.debounceSeconds, processes: own.processes ?? settings.processes }
+    return { ...settings, afterLand: own.afterLand, landInto: own.landInto ?? settings.landInto, checkout: own.checkout, env: own.env ?? settings.env, debounceSeconds: own.debounceSeconds ?? settings.debounceSeconds, processes: own.processes ?? settings.processes }
+}
+
+/**
+ * The branch the lanes of `repo` (its main checkout) land into: its `devSync.repos` entry's `landInto`, else the machine-wide `devSync.landInto`, else `dev`.
+ * Unreadable settings give `dev`, so a damaged file never moves a landing off dev. Never throws.
+ */
+export const landIntoForRepo = (repo: string, file?: string): string => {
+    try {
+        return devSyncForRepo(loadLocalSettings(file).devSync, repo).landInto
+    } catch {
+        return "dev"
+    }
 }
 
 /** Reads this machine's settings; an absent file is every default, a damaged one is LOCAL_SETTINGS_INVALID naming the file. */

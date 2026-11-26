@@ -10,7 +10,7 @@ import { captureGitSync } from "../../shared/git.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
 import type { HostProcess } from "../../harness/process-table.js"
-import { readRunnerStatus, readWanted, reasonLine, requestDevSync, runDevSyncRunner, runnerPaths, settingsForCheckout, strayDevServers } from "./sync-runner.js"
+import { DEV_SYNC_STALLED, readRunnerStatus, readWanted, reasonLine, requestDevSync, runDevSyncRunner, runnerPaths, settingsForCheckout, strayDevServers, watchedSync } from "./sync-runner.js"
 import type { RunnerDeps } from "./sync-runner.js"
 
 const repo = (t: { after: (fn: () => void) => void }): string => {
@@ -190,4 +190,60 @@ void test("a refusal whose first line only opens its reason keeps the reason in 
     const written = await runDevSyncRunner(checkout, paths, deps, (line) => said.push(line))
     assert.match(written[0]?.reason ?? "", /dev sync refused: DEPS_INSTALL_FAILED: dev sync: npm ci in D:\/app failed: npm error code ENOSPC$/u)
     assert.ok(said.includes("  npm error syscall write"), said.join("\n"))
+})
+
+void test("the watchdog judges only the window with stack processes stopped: a long quiet wait before the stop passes, a quiet stop past stallMs ends as DEV_SYNC_STALLED", async () => {
+    let clock = 0
+    const quietBeforeStop = await watchedSync(async (watch) => {
+        clock += 60 * 60_000
+        await new Promise((settle) => setTimeout(settle, 30))
+        watch.onStack("stopped")
+        watch.progress("swapped the staged build in")
+        watch.onStack("running")
+        return "synced"
+    }, () => clock, 20 * 60_000, 5)
+    assert.equal(quietBeforeStop, "synced", "an hour in the heavy queue with the stack serving is no stall")
+    await assert.rejects(
+        watchedSync((watch) => {
+            watch.onStack("stopped")
+            watch.progress("fast-forwarded the checkout")
+            clock += 21 * 60_000
+            return new Promise<string>(() => undefined)
+        }, () => clock, 20 * 60_000, 5),
+        (error: { code?: string; message?: string }) => error.code === DEV_SYNC_STALLED && (error.message ?? "").includes("fast-forwarded the checkout"),
+    )
+})
+
+void test("a stalled sync is written failed with its reason, the stack is brought up, the checkout marked whole, and the runner ends", async (t) => {
+    const checkout = repo(t)
+    const paths = await runnerPaths(checkout)
+    await requestDevSync(checkout, "lane-a landed", () => undefined, () => Promise.resolve(1))
+    writeFileSync(paths.wanted, JSON.stringify({ at: new Date(0).toISOString(), reason: "lane-a landed" }))
+    const log: string[] = []
+    let clock = 10 * 60_000
+    const deps: RunnerDeps = {
+        ...fakeDeps(log, { start: clock }),
+        now: () => clock,
+        settings: () => ({ ...SETTINGS, stallMinutes: 1 }),
+        sync: (_checkout, _settings, watch) => {
+            watch.onStack("stopped")
+            clock += 2 * 60_000
+            return new Promise(() => undefined)
+        },
+        ensureUp: () => {
+            log.push("ensureUp")
+            return Promise.resolve(["app stack up exited 0"])
+        },
+        markWhole: () => {
+            log.push("markWhole")
+            return Promise.resolve()
+        },
+        exit: (code) => log.push(`exit ${String(code)}`),
+        watchEveryMs: 5,
+    }
+    const written = await runDevSyncRunner(checkout, paths, deps)
+    assert.deepEqual(log, ["ensureUp", "markWhole", "exit 1"])
+    assert.equal(written[0]?.state, "failed")
+    assert.match(String(written.at(0)?.reason), /DEV_SYNC_STALLED/u)
+    assert.equal(existsSync(paths.lock), false)
 })

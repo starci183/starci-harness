@@ -536,7 +536,7 @@ void test("with the staging seam the new tree is installed and built before the 
         tracked: () => Promise.resolve([]),
         swap: () => {
             log.push("swap")
-            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, aside: [] })
         },
     }
     const target = gitIn(pusher, "rev-parse", "HEAD")
@@ -573,7 +573,7 @@ void test("a swap that fails keeps the previous commit with the install put back
         tracked: () => Promise.resolve([]),
         swap: () => {
             log.push("swap")
-            if (!refuse) return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+            if (!refuse) return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, aside: [] })
             refuse = false
             return Promise.reject(new Refusal("DEV_SYNC_SWAP", "the staged build could not be moved: ENOENT"))
         },
@@ -635,7 +635,7 @@ void test("the swap takes every manifest and lockfile the previous overlay had c
         tracked: () => Promise.resolve([]),
         swap: (_staging, _root, _outputs, tracked) => {
             copied = tracked
-            return Promise.resolve({ moved: ["node_modules"], copied: tracked, relinked: 0, leftover: [] })
+            return Promise.resolve({ moved: ["node_modules"], copied: tracked, relinked: 0, aside: [] })
         },
     }
     const done = await devSync(request(checkout, { execute: true, restart: true }), fakeDeps([], { stage }))
@@ -668,7 +668,7 @@ void test("a staged install that does not resolve is refused before anything sto
         },
         outputs: () => Promise.resolve(["node_modules"]),
         tracked: () => Promise.resolve([]),
-        swap: () => Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] }),
+        swap: () => Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, aside: [] }),
     }
     const log: string[] = []
     const miss: NonNullable<DevSyncDeps["smoke"]> = () => [{ from: "node_modules/next/node_modules/postcss", name: "picocolors", reason: "a dependency of postcss that is not found in any node_modules up the chain" }]
@@ -699,7 +699,7 @@ void test("a swapped install that does not resolve (picocolors from next/node_mo
         tracked: () => Promise.resolve([]),
         swap: () => {
             log.push("swap")
-            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, leftover: [] })
+            return Promise.resolve({ moved: ["node_modules"], copied: [], relinked: 0, aside: [] })
         },
     }
     let swapped = true

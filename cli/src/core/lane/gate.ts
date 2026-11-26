@@ -2,11 +2,10 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../../shared/errors.js"
-import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges, gitOutcome as gitOut, mergeOrAbort } from "../../shared/git.js"
+import { captureTool } from "../../shared/exec.js"
+import { captureGitSync, currentBranch, mainCheckout, repositoryRoot, trackedWorkChanges, gitOutcome as gitOut, mergeOrAbort } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
-import { withHeavySlot } from "../../harness/heavy.js"
 import { blockingFindings, isOutOfMemory, lanesDir } from "../../harness/lane-state.js"
 import type { LaneFinding } from "../../harness/lane-state.js"
 import { loadSlotRules, slotRoot, withSlot } from "../../harness/slots.js"
@@ -14,7 +13,8 @@ import { cancelLaneGate } from "../../harness/supersede.js"
 import { harnessProfile, profileNameFor } from "../../harness/land-profile.js"
 import type { LandProfileName } from "../../harness/land-profile.js"
 import { devSyncForRepo, loadLocalSettings } from "../../harness/local-settings.js"
-import { cacheLaneInstall, followsBase, sharedInstall } from "../../harness/shared-install.js"
+import { installWorktree } from "../../harness/lane-install.js"
+import { landBranchSchema, landIntoForRepo } from "../../harness/local-settings.js"
 import { laneHolder, waitSeconds } from "../slot/holder.js"
 import { PREPARE_SCRIPTS, prepareTree } from "../../harness/prepare-tree.js"
 import { landLane } from "./land-direct.js"
@@ -75,6 +75,14 @@ const devSyncCheckoutOf = (root: string): string | undefined => {
     }
 }
 
+/** The branch a lane of the repository at `repo` lands into: `--into` (refused CLI_USAGE when it is no land branch), else the local settings' landInto. */
+export const landInto = (flag: string | undefined, repo: string): string => {
+    if (flag === undefined) return landIntoForRepo(repo)
+    const parsed = landBranchSchema.safeParse(flag)
+    if (!parsed.success) throw new Refusal("CLI_USAGE", `--into ${flag}: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`)
+    return parsed.data
+}
+
 /** The app's own pinned CLI: a lane is judged with the harness its app pins (contexts/authority/lanes.md), never a global one. */
 const appCli = (root: string): string => join(root, "node_modules", "starci-harness", "dist", "main.js")
 
@@ -106,7 +114,7 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
 const gateLines = (data: LaneGate): string[] => [
     `${data.lane}: ${data.mode} ${data.verdict}${data.profile === "app" && data.mode === "check" && data.verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
     ...data.findings.slice(0, 20).flatMap((finding) => findingLines(finding)),
-    ...(data.landed === null ? [] : [`landed on dev as ${data.landed.sha.slice(0, 10)}${data.landed.rechecked ? " (re-checked: dev had moved)" : ""}${data.landed.publishNote === undefined ? "" : `; ${data.landed.publishNote}`}; dev sync ${data.landed.syncs.length === 0 ? "not requested" : `marked for ${data.landed.syncs.join(", ")}`}`]),
+    ...(data.landed === null ? [] : [`landed on ${data.landed.into} as ${data.landed.sha.slice(0, 10)}${data.landed.rechecked ? ` (re-checked: ${data.landed.into} had moved)` : ""}${data.landed.publishNote === undefined ? "" : `; ${data.landed.publishNote}`}; dev sync ${data.landed.syncs.length === 0 ? "not requested" : `marked for ${data.landed.syncs.join(", ")}`}`]),
     ...(data.cleanup === null ? [] : [data.cleanup.line]),
     ...(data.timings.length === 0 ? [] : [`timings: ${data.timings.map((each) => `${each.phase} ${String(each.seconds)}s`).join(", ")}${data.installSource === "none" ? "" : ` (node_modules: ${data.installSource})`}`]),
 ]
@@ -175,17 +183,18 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
  */
 export const laneGateVerb = defineVerb({
     path: ["lane", "gate"],
-    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
+    summary: "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod --level dev (the fast level of a landing on dev: deps, types, the lane's own tests, db; the full gate runs once at the main cut), or --push app push (its pre-push hook runs the fast level once), and --land land it on dev at once (under the dev lock: merge the newest origin/dev, a fast re-check only when dev moved since the gate, ONE squashed commit pushed to dev, never forced; a conflict stops for the lane to fix; then the harness dev publish and the debounced dev sync); a repository whose lanes land into an integration branch (devSync.repos.<repo>.landInto of the local settings, or --into <branch>) merges and lands on that branch instead, under its own lock, with no dev sync and no harness dev publish (starci dev promote moves dev to it); a new gate of the same lane first cancels the lane's running gate (kills its process tree, releases its slot)",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/lane-gate@1",
     flags: {
         lane: { kind: "string", summary: "the lane name (default: STARCI_LANE, else the branch lane/<lane>)", positional: true },
-        ref: { kind: "string", summary: "the ref merged before the gate (default: origin/dev)" },
+        ref: { kind: "string", summary: "the ref merged before the gate (default: origin/<the land branch>, origin/dev unless the repository lands into an integration branch)" },
+        into: { kind: "string", summary: "the branch to merge and land into, overriding devSync.repos.<repo>.landInto of the local settings (default dev): an integration branch (dev2) lands under its own lock, marks no dev sync and publishes no harness dev line; dev takes it with starci dev promote" },
         "skip-merge": { kind: "boolean", summary: "gate the tree as it is, merging nothing" },
         install: { kind: "boolean", summary: "run npm ci whatever the merge changed" },
         push: { kind: "boolean", summary: "instead of the check, app push origin HEAD:<branch> under the gate slot: it runs the check, commits the cache records and pushes once" },
-        land: { kind: "boolean", summary: "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (the app's app check --gate types, the harness CLI's typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync" },
+        land: { kind: "boolean", summary: "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (the app's app check --gate types, the harness CLI's typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync; with an integration branch (--into, landInto) all of it happens on that branch, and neither the dev publish nor the dev sync follows" },
         keep: { kind: "boolean", summary: "with --land: keep the lane's worktree after the landing (default: once dev is pushed it is removed to save disk, the branch kept, local and remote; a worktree in use, with uncommitted non-cache work, or still busy after retries is kept and the one line says why)" },
         wait: { kind: "string", summary: "seconds to wait for each slot before SLOT_BUSY (default: until one frees)" },
         dir: { kind: "string", summary: "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)" },
@@ -216,11 +225,14 @@ export const laneGateVerb = defineVerb({
         if (cancelled.length > 0) {
             say(`superseded by ${head.slice(0, 10)}: cancelled the running gate of ${lane} (${cancelled.map((run) => `pid ${String(run.pid)}`).join(", ")}) and released its slot`)
         }
-        const ref = flags.ref ?? "origin/dev"
+        // The branch the lane merges and lands into: --into, else the repository's landInto of the local settings, else dev (contexts/project/branches.md PROJECT-BRANCH-4).
+        const into = landInto(flags.into, await mainCheckout(root))
+        if (into !== "dev") say(`land branch: ${into} (${flags.into === undefined ? "landInto of the local settings" : "--into"}); dev moves to it only by starci dev promote`)
+        const ref = flags.ref ?? `origin/${into}`
         const merged = merging ? await mergeRef(root, ref, say) : null
-        // The dev commit the gate judged the lane on: --land re-checks only when dev moved past it.
+        // The commit the gate judged the lane on: --land re-checks only when the land branch moved past it.
         const gatedBase = merged === null ? undefined : (await gitOut(root, ["rev-parse", ref])).out
-        const land = async (green: boolean): Promise<LaneLanded | null> => (flags.land && green ? landLane({ root, lane, branch, profile: profileName, dir: lanesDir(flags.dir), gatedBase, say }) : null)
+        const land = async (green: boolean): Promise<LaneLanded | null> => (flags.land && green ? landLane({ root, lane, branch, profile: profileName, dir: lanesDir(flags.dir), gatedBase, into, say }) : null)
         // After a landing the worktree is removed (harness/land-cleanup.ts) unless --keep; the command leaves it first, and the one line it prints says what happened.
         const tidy = async (landed: LaneLanded | null): Promise<LandCleanup | null> => (landed === null ? null : cleanupLanded({ root, lane, branch, laneSha: landed.laneSha, dir: lanesDir(flags.dir), keep: flags.keep }))
         const profileName = profileNameFor(root, flags.profile)
@@ -243,25 +255,7 @@ export const laneGateVerb = defineVerb({
         const installed = await needsInstall(root, merged, flags.install)
         let installSource: LaneGate["installSource"] = "none"
         if (installed) {
-            await timed("install", () => withSlot(slots, rules, "npm", lane, { waitSeconds: wait, say }, async (taken) => {
-                const runScript = async (script: string): Promise<boolean> => (await withHeavySlot("install", `lane gate ${lane}: npm run ${script}`, root, {}, (held) => captureNpm(["run", script, "--ignore-scripts", "--silent"], root, held.options))).exitCode === 0
-                if (flags.install) say("--install: npm ci, no shared install")
-                else {
-                    const shared = await sharedInstall(root, { lanes: slots, say, runScript, devSyncCheckout: devSyncCheckoutOf(root) })
-                    if (shared.status === "linked") {
-                        installSource = "shared"
-                        say(`node_modules from the shared install ${shared.key} (${String(shared.files)} files, ${String(shared.copied)} copied, ${String(Math.round(shared.ms / 100) / 10)}s), no npm ci; lifecycle: ${shared.scripts.join(", ") || "none"} (npm slot ${String(taken.n)})`)
-                        return
-                    }
-                    say(`shared install not used (${shared.reason}); npm ci`)
-                }
-                say(`npm ci (npm slot ${String(taken.n)})`)
-                installSource = "npm ci"
-                const run = await withHeavySlot("install", `lane gate ${lane}: npm ci`, root, { onSpawn: taken.spawned }, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], root, held.options))
-                if (run.exitCode !== 0) throw new Refusal("LANE_GATE_INSTALL", `npm ci exited ${String(run.exitCode)}${isOutOfMemory(run.exitCode, run.stderr) ? " (out of memory: run it again once the host has RAM)" : ""}: ${run.stderr.split("\n").slice(-3).join(" ")}`)
-                // A lane whose lockfiles equal the dev line's holds the install every next lane wants: cache it once.
-                if (!flags.install && followsBase(root, ref)) say(await cacheLaneInstall(root, slots))
-            }))
+            installSource = await timed("install", () => installWorktree({ root, holder: lane, slots, rules, wait, ref, force: flags.install, devSyncCheckout: devSyncCheckoutOf(root), say }))
             writeFileSync(join(root, INSTALL_MARK), (await gitOut(root, ["hash-object", "package-lock.json"])).out)
         }
         // The workspace packages are built after an install only: a tree whose install did not move keeps the builds it already has.
