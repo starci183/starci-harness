@@ -785,7 +785,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "alerts": {
-          "summary": "`alerts discover-chat --env <env>`: after /start to the environment's own alert bot, find the private chat that wrote and seal ALERTS_TELEGRAM_CHAT_ID into its alert member (monitoring.alerts.telegram.member), to the member's own recipients; never the harness bot",
+          "summary": "`alerts setup --env <env> --owner @username`: declare the environment's own alert bot (monitoring.alerts.telegram: member and the owner's plain Telegram username), seal its token at a masked prompt when the member lacks it, and name the bot to Start: the server's monitor bot learns the owner's chat from that message; `alerts discover-chat --env <env>` (legacy) seals ALERTS_TELEGRAM_CHAT_ID instead; never the harness bot",
           "flags": [
             {
               "name": "env",
@@ -794,9 +794,24 @@ export const CATALOG = {
               "required": true
             },
             {
+              "name": "owner",
+              "type": "string",
+              "summary": "setup: the owner's Telegram username (@name); kept from the config when omitted"
+            },
+            {
+              "name": "member",
+              "type": "string",
+              "summary": "setup: the sealed member of the token (default: the declared one, else alerts)"
+            },
+            {
+              "name": "token",
+              "type": "boolean",
+              "summary": "setup: ask and seal the token again even when the member holds one"
+            },
+            {
               "name": "chat",
               "type": "string",
-              "summary": "the chat id to seal when several chats wrote to the bot"
+              "summary": "discover-chat: the chat id to seal when several chats wrote to the bot"
             }
           ],
           "positional": [

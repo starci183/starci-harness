@@ -104,7 +104,7 @@ driving the real runner through `useTestWorld`.
 
 Why: the fence is a runtime property; only a stale worker resuming after reassignment shows it holds.
 
-Enforced by: R155, R284.
+Enforced by: R155.
 
 ## BE-JOBS-6 A recurring task is a tick of `platform/jobs`, fired once per minute for the deployment
 

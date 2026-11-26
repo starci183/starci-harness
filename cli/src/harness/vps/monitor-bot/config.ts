@@ -1,8 +1,9 @@
 /**
  * The config of the monitor bot (`/app/config.json`, a swarm config `vps monitor up` writes and the server fills): the stack's addresses and
- * one entry per app bot. A bot's token is a swarm secret read by file; its owner chat and admins are filled on the server from the app's
- * sealed alert member (ALERTS_TELEGRAM_CHAT_ID, and ALERTS_TELEGRAM_ADMIN_IDS when it holds one). Read and checked by hand: the container
- * has Node's built-ins only.
+ * one entry per app bot. A bot's token is a swarm secret read by file; its admins (and, for a legacy member, its owner chat) are filled on
+ * the server from the app's sealed alert member (ALERTS_TELEGRAM_ADMIN_IDS, ALERTS_TELEGRAM_CHAT_ID). An entry names its owner by the plain
+ * Telegram username of `monitoring.alerts.telegram.owner` instead: the bot learns that user's chat when he writes to it (owners.ts). Read and
+ * checked by hand: the container has Node's built-ins only.
  */
 import { asArray, at } from "./json.js"
 import { STACK_NAME } from "./queries.js"
@@ -14,8 +15,10 @@ export interface BotEntry {
     readonly env: string
     readonly stack: string
     readonly tokenFile: string
-    /** The one chat the bot answers and posts to (ALERTS_TELEGRAM_CHAT_ID). */
-    readonly chat: number
+    /** The one chat the bot answers and posts to when the member seals it (ALERTS_TELEGRAM_CHAT_ID, legacy); null: learned from `owner`. */
+    readonly chat: number | null
+    /** The owner's Telegram username, lower case without its `@` (`monitoring.alerts.telegram.owner`); null: `chat` alone. */
+    readonly owner: string | null
     /** The Telegram user ids that may run a write command; empty: the owner chat's own user, when it is a private chat. */
     readonly admins: readonly number[]
 }
@@ -37,7 +40,19 @@ export interface BotConfig {
     /** The daily report: its hour and the zone's offset from UTC in minutes (Asia/Ho_Chi_Minh is +420, no daylight saving). */
     readonly reportHour: number
     readonly reportOffsetMinutes: number
+    /** The file the learned owner chats persist in (a volume of the container), or null: kept in memory only. */
+    readonly state: string | null
     readonly bots: readonly BotEntry[]
+}
+
+/** A Telegram username as the owner writes it (`@name` or `name`), lower case without its `@`: 5 to 32 letters, digits and underscores, a letter first. */
+export const USERNAME = /^[a-z][a-z0-9_]{4,31}$/
+
+/** The username of a config or a message, normalised (case-insensitive: Telegram matches usernames that way), or null when it is none. */
+export const normalizeUsername = (raw: unknown): string | null => {
+    if (typeof raw !== "string") return null
+    const name = raw.trim().replace(/^@/, "").toLowerCase()
+    return USERNAME.test(name) ? name : null
 }
 
 
@@ -75,13 +90,18 @@ export const parseConfig = (text: string): BotConfig => {
         if (!STACK_NAME.test(stack)) fail(`bots[${String(index)}].stack`, "is no swarm stack name")
         const chat = at(bot, "chat")
         const admins = at(bot, "admins")
+        const ownerRaw = at(bot, "owner")
+        const owner = ownerRaw === null || ownerRaw === undefined ? null : (normalizeUsername(ownerRaw) ?? fail(`bots[${String(index)}].owner`, "is no Telegram username"))
+        const chatId = chat === null ? null : typeof chat === "number" && Number.isSafeInteger(chat) ? chat : fail(`bots[${String(index)}].chat`, "is no Telegram chat id (the server did not fill it)")
+        if (chatId === null && owner === null) fail(`bots[${String(index)}]`, "names neither a chat nor an owner username")
         return {
             slot: int(bot, "slot", 0, 99),
             project: str(bot, "project"),
             env: str(bot, "env"),
             stack,
             tokenFile: str(bot, "tokenFile"),
-            chat: typeof chat === "number" && Number.isSafeInteger(chat) ? chat : fail(`bots[${String(index)}].chat`, "is no Telegram chat id (the server did not fill it)"),
+            chat: chatId,
+            owner,
             admins: parseAdmins(typeof admins === "string" ? admins : ""),
         }
     })
@@ -99,6 +119,7 @@ export const parseConfig = (text: string): BotConfig => {
         diskAlertPercent: int(raw, "diskAlertPercent", 1, 100),
         reportHour: int(raw, "reportHour", 0, 23),
         reportOffsetMinutes: int(raw, "reportOffsetMinutes", -720, 840),
+        state: at(raw, "state") === null || at(raw, "state") === undefined ? null : str(raw, "state"),
         bots: entries,
     }
 }
@@ -107,11 +128,12 @@ export const parseConfig = (text: string): BotConfig => {
 export type Access = "none" | "read" | "write"
 
 /**
- * The access of a message or a button press: only the owner chat is answered at all; a write needs the sender among the admins, or, with no
- * admin listed, the sender being the owner chat itself (a private chat, whose id is its user's id).
+ * The access of a message or a button press: only the owner chat is answered at all (`entry.chat`, the sealed one or the one learned from the
+ * owner username; null, not known yet: nobody); a write needs the sender among the admins, or, with no admin listed, the sender being the
+ * owner chat itself (a private chat, whose id is its user's id).
  */
 export const accessOf = (entry: Pick<BotEntry, "chat" | "admins">, chat: number, from: number | undefined): Access => {
-    if (chat !== entry.chat) return "none"
+    if (entry.chat === null || chat !== entry.chat) return "none"
     if (from === undefined) return "read"
     const admin = entry.admins.length > 0 ? entry.admins.includes(from) : from === entry.chat
     return admin ? "write" : "read"

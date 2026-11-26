@@ -82,7 +82,7 @@ slot or rule is the authority, not this page.
 - No browser journey and no test world in CI: both are allowed and run only on request, on a local machine (R12, R212). Owners:
   slots `app.browser`, `app.browser-config` (opt-in).
 - Boot is proved by compiling the real AppModule graph with doubles, once a scan of the same graph found no provider ring,
-  and each async pattern by its proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
+  and each async pattern by its proof lane. Owners: R272, R401, R155; [code/be/test.md](../code/be/test.md) BE-TEST-12,
   [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
 - Integration specs run against the local db service; contract specs are
   optional. An app may also carry e2e flows, `src/tests/e2e/<flow>/*.e2e-spec.ts`, that boot the full app(s) through

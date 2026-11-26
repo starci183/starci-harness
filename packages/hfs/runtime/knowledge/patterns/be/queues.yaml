@@ -269,7 +269,7 @@ adapter:
   forbids: [kafkajs]
   proof: >-
     Unit specs as full (queue-outbox, relay and worker services, the BullMQ client against a mocked factory); declaring queue
-    requires integration specs titled `queue/<scenario>: ...` for every declared scenario on the local db service (R284,
+    requires integration specs titled `queue/<scenario>: ...` for every declared scenario on the local db service (R155,
     which runs no container of its own): the outbox, its commit boundary, the relay identity and the tick's minute claim are Postgres
     facts proved there with the real outbox writer and relay, and the queue transport records what the relay hands to BullMQ
     (the job id is the outbox id). BullMQ itself is covered by the unit spec of the BullMQ client, which also proves the

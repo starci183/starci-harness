@@ -133,7 +133,7 @@ export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar
 export const SLOT_FREE_RULES = Object.freeze([
   "client-no-server-import", "no-server-action", "no-dangerous-html", "response-cookie-attributes", "require-export-jsdoc", "no-vietnamese-in-source",
   "no-hardcoded-endpoint-fallback", "no-runtime-namespace", "list-item-has-key", "no-index-key", "no-inline-literal-prop-in-list", "prefer-arrow-export",
-  "handler-on-prefix", "no-native-form-control", "no-native-img", "image-has-size", "no-second-i18n-stack", "html-lang-from-locale", "no-null-suspense-fallback",
+  "handler-on-prefix", "no-native-form-control", "image-has-size", "no-second-i18n-stack", "html-lang-from-locale", "no-null-suspense-fallback",
   "no-native-anchor", "no-inline-parameter-type", "no-hand-rolled-polling", "no-copy-in-call", "no-alert", "no-failure-collapse",
   "outcome-kinds-exhaustive", "no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import",
   "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params", 

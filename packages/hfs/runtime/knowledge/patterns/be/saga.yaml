@@ -265,6 +265,6 @@ adapter:
     - {port: saga state store, adapter: "the same table and version fence, created by a db migration"}
   proof: >-
     The orchestrator's unit spec (<saga>.saga.service.spec.ts) as full; declaring saga requires integration specs titled
-    `saga/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R284), including each compensation path with
+    `saga/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R155), including each compensation path with
     failure injection and the final state read back. The e2e world remains full-only.
   see: [knowledge/patterns/be/event-bus.yaml]

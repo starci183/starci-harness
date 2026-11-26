@@ -104,7 +104,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "prepack": "npm run build",
     "bundles": "npm run build && node scripts/sync-bundles.mjs",
-    "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check",
+    "bundles:check": "node scripts/sync-bundles.mjs --check",
     "test": "npm run typecheck && npm run build && node scripts/node-test.mjs \"src/*.spec.mts\""
   }
 }

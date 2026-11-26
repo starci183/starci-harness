@@ -4,6 +4,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
+import { CAPABILITIES_FILE, capabilityGaps } from "./capability-owners.js"
 import { judgeRuleDocs } from "./knowledge-gates.js"
 import type { KnowledgeFinding } from "./knowledge-gates.js"
 
@@ -13,6 +14,14 @@ export const GAP_CODES = {
     "enforcer-kind-unknown": "ANATOMY_ENFORCER_KIND_UNKNOWN",
     "law-path-unresolved": "ANATOMY_LAW_PATH_UNRESOLVED",
     "rule-no-doc": "ANATOMY_RULE_NO_DOC",
+    "rule-covers-missing": "ANATOMY_RULE_COVERS_MISSING",
+    "rule-covers-duplicate": "ANATOMY_RULE_COVERS_DUPLICATE",
+    "rule-engine-mismatch": "ANATOMY_RULE_ENGINE_MISMATCH",
+    "code-two-rules": "ANATOMY_CODE_TWO_RULES",
+    "enforcer-two-rules": "ANATOMY_ENFORCER_TWO_RULES",
+    "catalog-drift": "ANATOMY_CATALOG_DRIFT",
+    "capability-reimplemented": "ANATOMY_CAPABILITY_REIMPLEMENTED",
+    "capability-known-stale": "ANATOMY_CAPABILITY_KNOWN_STALE",
 } as const
 type GapKind = keyof typeof GAP_CODES
 
@@ -39,15 +48,114 @@ export interface GateVerdict {
 
 const catalogSchema = z.object({
     enforcerKinds: z.record(z.string(), z.string()),
+    sharedEnforcers: z.record(z.string(), z.string()).optional(),
     rules: z.array(
         z.object({
             id: z.string(),
             code: z.string(),
             law: z.string().optional(),
+            failureCodes: z.array(z.string()).optional(),
+            covers: z.string().optional(),
+            split: z.string().optional(),
             enforcers: z.array(z.object({ kind: z.string(), id: z.string(), status: z.literal("planned").optional() })).optional(),
         }),
     ),
 })
+type Catalog = z.infer<typeof catalogSchema>
+type CatalogRule = Catalog["rules"][number]
+
+/** The runtime's own rule catalog, as far as the one-owner gate compares it: ids, codes and enforcers. */
+const runtimeCatalogSchema = z.object({
+    enforcerKinds: z.record(z.string(), z.unknown()).optional(),
+    rules: z.array(z.object({ id: z.string(), code: z.string(), failureCodes: z.array(z.string()).optional(), enforcers: z.array(z.object({ kind: z.string(), id: z.string() })).optional() })),
+})
+
+/** The runtime catalog, beside the knowledge folder in the harness checkout (absent in a bare knowledge tree). */
+export const RUNTIME_CATALOG = join("packages", "hfs", "runtime", "knowledge", "hfs", "rules.yaml")
+
+/** The engine of an enforcer kind: the lint engines judge code inside one file, hfs and the machine the repository, Sonar its gate. */
+const engineOf = (kind: string): "code" | "repo" | "quality" => (/^(?:eslint-|stylelint$|grammar-lint$)/.test(kind) ? "code" : kind === "sonar" ? "quality" : "repo")
+
+/** The engine a rule's enforcers make it: `review` with none, `split` when a lint engine and hfs or the machine both judge it. */
+export const engineOfRule = (rule: Pick<CatalogRule, "enforcers">): string => {
+    const engines = new Set((rule.enforcers ?? []).map((enforcer) => engineOf(enforcer.kind)))
+    if (engines.size === 0) return "review"
+    if (engines.has("code") && engines.has("repo")) return "split"
+    return [...engines].sort().join("+")
+}
+
+/**
+ * The one-owner gaps of the catalog (contexts/project/lint.md PROJECT-LINT-7): every rule declares the condition it covers and the engine that
+ * owns it, no two rules cover one condition or carry one failure code, a rule two engines judge says how they split it, and an enforcer serves
+ * one rule unless `sharedEnforcers` says why it serves several.
+ */
+export const oneOwnerGaps = (catalog: Pick<Catalog, "rules" | "sharedEnforcers">): Gap[] => {
+    const red: Gap[] = []
+    const covers = new Map<string, string>()
+    const codes = new Map<string, string>()
+    const enforcers = new Map<string, string[]>()
+    for (const rule of catalog.rules) {
+        if (rule.covers === undefined || rule.covers.trim() === "") red.push(gap("rule-covers-missing", rule.id, `${rule.id} declares no covers: name the condition it owns as <engine>/<condition>`))
+        else {
+            const owner = covers.get(rule.covers)
+            if (owner !== undefined) red.push(gap("rule-covers-duplicate", rule.id, `${rule.id} and ${owner} both cover ${rule.covers}: one condition has one rule; merge them and keep the better-placed check`))
+            else covers.set(rule.covers, rule.id)
+            const engine = engineOfRule(rule)
+            const declared = rule.covers.split("/")[0]
+            if (declared !== engine) red.push(gap("rule-engine-mismatch", rule.id, `${rule.id} covers ${rule.covers}, but its enforcers make it ${engine}: correct covers or move the check to the engine that owns the condition`))
+            if (engine === "split" && (rule.split ?? "").trim() === "") red.push(gap("rule-engine-mismatch", rule.id, `${rule.id} is judged by a lint engine and by hfs or the machine and its split says nothing: say what each reads, or keep one`))
+        }
+        for (const code of new Set([rule.code, ...(rule.failureCodes ?? [])])) {
+            const owner = codes.get(code)
+            if (owner !== undefined && owner !== rule.id) red.push(gap("code-two-rules", code, `${code} is carried by ${owner} and ${rule.id}: a failure code belongs to one rule`))
+            else codes.set(code, rule.id)
+        }
+        for (const enforcer of rule.enforcers ?? []) {
+            const key = `${enforcer.kind}:${enforcer.id}`
+            enforcers.set(key, [...(enforcers.get(key) ?? []), rule.id])
+        }
+    }
+    for (const [key, rules] of enforcers) {
+        const distinct = [...new Set(rules)]
+        if (distinct.length > 1 && catalog.sharedEnforcers?.[key] === undefined) red.push(gap("enforcer-two-rules", key, `${key} is an enforcer of ${distinct.join(", ")}: one check judges one condition; keep it under one rule, or say in sharedEnforcers why one module reports several rules' codes`))
+    }
+    for (const key of Object.keys(catalog.sharedEnforcers ?? {})) {
+        if ((enforcers.get(key)?.length ?? 0) < 2) red.push(gap("enforcer-two-rules", key, `sharedEnforcers names ${key}, which no longer serves two rules: delete the entry`))
+    }
+    return red
+}
+
+const sortedSet = (values: readonly string[]): string => [...new Set(values)].sort().join(", ")
+
+/**
+ * Where this catalog and the runtime's disagree: a rule only one of them holds (the runtime's rules judged only by runtime-only kinds aside),
+ * its code, its failure codes, or its lint enforcers. Two hand-kept catalogs that drift let a removed check live on in one of them.
+ */
+export const catalogDrift = (catalog: Pick<Catalog, "rules" | "enforcerKinds">, runtime: z.infer<typeof runtimeCatalogSchema>): Gap[] => {
+    const red: Gap[] = []
+    const ours = new Map(catalog.rules.map((rule) => [rule.id, rule]))
+    const theirs = new Map(runtime.rules.map((rule) => [rule.id, rule]))
+    const judgedHere = (kind: string): boolean => kind in catalog.enforcerKinds
+    // A lint kind only one catalog declares (the Grammar package's own lint is the contexts catalog's) is compared by neither.
+    const judgedByBoth = (kind: string): boolean => judgedHere(kind) && (runtime.enforcerKinds === undefined || kind in runtime.enforcerKinds)
+    const lint = (list: readonly { readonly kind: string; readonly id: string }[] | undefined): string => sortedSet((list ?? []).filter((one) => judgedByBoth(one.kind) && engineOf(one.kind) === "code").map((one) => `${one.kind}:${one.id}`))
+    for (const [id, rule] of theirs) {
+        const enforcers = rule.enforcers ?? []
+        const runtimeOnly = enforcers.length > 0 && enforcers.every((one) => !judgedHere(one.kind))
+        if (!ours.has(id) && !runtimeOnly) red.push(gap("catalog-drift", id, `${id} (${rule.code}) is in the runtime catalog and not in hfs/rules.yaml`))
+    }
+    for (const [id, rule] of ours) {
+        const other = theirs.get(id)
+        if (other === undefined) {
+            red.push(gap("catalog-drift", id, `${id} (${rule.code}) is in hfs/rules.yaml and not in the runtime catalog`))
+            continue
+        }
+        if (other.code !== rule.code) red.push(gap("catalog-drift", id, `${id} is ${rule.code} here and ${other.code} in the runtime catalog`))
+        if (sortedSet([rule.code, ...(rule.failureCodes ?? [])]) !== sortedSet([other.code, ...(other.failureCodes ?? [])])) red.push(gap("catalog-drift", id, `${id}'s failure codes differ: [${sortedSet(rule.failureCodes ?? [])}] here, [${sortedSet(other.failureCodes ?? [])}] in the runtime catalog`))
+        if (lint(rule.enforcers) !== lint(other.enforcers)) red.push(gap("catalog-drift", id, `${id}'s lint enforcers differ: [${lint(rule.enforcers)}] here, [${lint(other.enforcers)}] in the runtime catalog`))
+    }
+    return red
+}
 
 const readParsed = <T>(file: string, schema: z.ZodType<T>): T => {
     if (!existsSync(file)) throw new Refusal("KNOWLEDGE_INVALID", `${file} does not exist`)
@@ -121,6 +229,10 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
             if (why !== undefined) red.push(gap("law-path-unresolved", rule.id, `${rule.id}'s law cites ${cited}, which ${why}`))
         }
     }
+    red.push(...oneOwnerGaps(catalog))
+    const runtimeFile = join(knowledge, "..", RUNTIME_CATALOG)
+    if (existsSync(runtimeFile)) red.push(...catalogDrift(catalog, readParsed(runtimeFile, runtimeCatalogSchema)))
+    red.push(...capabilityGaps(join(knowledge, ".."), join(knowledge, CAPABILITIES_FILE)).map((found) => gap(found.kind, found.subject, found.detail)))
     const knowledgeFindings: KnowledgeFinding[] = judgeRuleDocs(knowledge)
     red.push(...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail)))
     return { red, planned }

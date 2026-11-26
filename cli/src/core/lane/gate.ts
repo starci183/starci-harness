@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGit, captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
+import { captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges, gitOutcome as gitOut, mergeOrAbort } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
@@ -63,10 +63,6 @@ export interface LaneGate {
     readonly cleanup: LandCleanup | null
 }
 
-const gitOut = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
 
 /** The dev checkout this machine's local settings name for the repository of `root` (the dev sync's), when they name one. */
 const devSyncCheckoutOf = (root: string): string | undefined => {
@@ -87,12 +83,8 @@ const mergeRef = async (root: string, ref: string, say: (line: string) => void):
     const fetched = await gitOut(root, ["fetch", "-q", remote])
     if (!fetched.ok) throw new Refusal("LANE_GATE_FETCH", `git fetch ${remote}: ${fetched.err}`)
     const before = (await gitOut(root, ["rev-parse", "HEAD"])).out
-    const merge = await gitOut(root, ["merge", "--no-edit", ref])
-    if (!merge.ok) {
-        const files = (await gitOut(root, ["diff", "--name-only", "--diff-filter=U"])).out.split("\n").filter((file) => file !== "")
-        await gitOut(root, ["merge", "--abort"])
-        throw new Refusal("LANE_GATE_CONFLICT", files.length > 0 ? `merging ${ref} conflicts in ${files.join(", ")}: resolve it by hand, commit, then run lane gate again` : `git merge ${ref}: ${merge.err}`)
-    }
+    const merge = await mergeOrAbort(root, ref)
+    if (!merge.ok) throw new Refusal("LANE_GATE_CONFLICT", merge.files.length > 0 ? `merging ${ref} conflicts in ${merge.files.join(", ")}: resolve it by hand, commit, then run lane gate again` : `git merge ${ref}: ${merge.err}`)
     const after = (await gitOut(root, ["rev-parse", "HEAD"])).out
     say(before === after ? `${ref} is already merged` : `merged ${ref}: ${before.slice(0, 10)} -> ${after.slice(0, 10)}`)
     return { ref, before, after }
@@ -189,7 +181,7 @@ export const laneGateVerb = defineVerb({
         "skip-merge": { kind: "boolean", summary: "gate the tree as it is, merging nothing" },
         install: { kind: "boolean", summary: "run npm ci whatever the merge changed" },
         push: { kind: "boolean", summary: "instead of the check, app push origin HEAD:<branch> under the gate slot: it runs the check, commits the cache records and pushes once" },
-        land: { kind: "boolean", summary: "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (codegen and typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync" },
+        land: { kind: "boolean", summary: "after a green push, land the lane on dev now: under the dev lock merge the newest origin/dev, re-check (the app's app check --gate types, the harness CLI's typecheck) only when dev moved since the gate, squash into ONE commit on dev and push it (never forced); a conflict refuses LANE_LAND_CONFLICT with its files; then the harness publishes its dev line and the dev checkout is marked for its debounced sync" },
         keep: { kind: "boolean", summary: "with --land: keep the lane's worktree after the landing (default: once dev is pushed it is removed to save disk, the branch kept, local and remote; a worktree in use, with uncommitted non-cache work, or still busy after retries is kept and the one line says why)" },
         wait: { kind: "string", summary: "seconds to wait for each slot before SLOT_BUSY (default: until one frees)" },
         dir: { kind: "string", summary: "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)" },

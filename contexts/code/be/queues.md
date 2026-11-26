@@ -66,4 +66,4 @@ Redis.
 
 Why: atomicity and once-only firing are runtime facts.
 
-Enforced by: R155, R284.
+Enforced by: R155.

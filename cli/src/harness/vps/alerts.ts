@@ -5,11 +5,13 @@ import { openMachine } from "../ledger.js"
 import { shellQuote } from "./ssh.js"
 
 /**
- * The alerts of a server go to the bot of each app it runs, never the harness bot (ops/telegram.yaml). An app environment names its bot with `monitoring.alerts.telegram.member`
- * of its .starcistacks/application-stacks.yaml: a sealed member of that environment (its server, backup and CI recipients) holding
- * ALERTS_TELEGRAM_BOT_TOKEN and ALERTS_TELEGRAM_CHAT_ID. This machine never opens it: `vps monitor up` ships the member's ciphertext to the
- * server, whose own key opens it there, into a swarm secret (the token, read by file) and the receiver's chat id. Which keys a member holds is
- * read from its sops envelope, whose key names are plain; no value is read here.
+ * The alerts of a server go to the bot of each app it runs, never the harness bot (ops/telegram.yaml). An app environment names its bot with
+ * `monitoring.alerts.telegram` of its .starcistacks/application-stacks.yaml: `member`, a sealed member of that environment (its server, backup
+ * and CI recipients) holding ALERTS_TELEGRAM_BOT_TOKEN, and `owner`, the owner's plain Telegram username. The monitor bot learns the owner's
+ * chat on the server when he first writes to the bot (monitor-bot/owners.ts). A member that seals ALERTS_TELEGRAM_CHAT_ID (legacy) still names
+ * the chat itself. This machine never opens the member: `vps monitor up` ships its ciphertext to the server, whose own key opens it there,
+ * into a swarm secret (the token, read by file) and, when sealed, the chat id. Which keys a member holds is read from its sops envelope,
+ * whose key names are plain; no value is read here.
  */
 
 /** The keys of an app's alert-bot member (equal to @starci/hfs stack/monitoring.mts ALERT_BOT_KEYS). */
@@ -24,7 +26,13 @@ export const ALERT_BOT_ADMINS_KEY = "ALERTS_TELEGRAM_ADMIN_IDS"
 /** Where the server's own age identity lives (@starci/hfs stack/server-key.mts SERVER_AGE_IDENTITY). */
 export const SERVER_AGE_IDENTITY = "/root/.config/sops/age/keys.txt"
 
-/** One app environment on a server with its own alert bot ready: both keys sealed. */
+/** A Telegram username as the owner writes it: `@name` or `name`, 5 to 32 letters, digits and underscores, a letter first. */
+export const TELEGRAM_USERNAME = /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/
+
+/** The owner username of a config value, lower case without its `@` (Telegram matches usernames case-insensitively), or null when it is none. */
+export const ownerUsernameOf = (value: unknown): string | null => (typeof value === "string" && TELEGRAM_USERNAME.test(value.trim()) ? value.trim().replace(/^@/, "").toLowerCase() : null)
+
+/** One app environment on a server with its own alert bot ready: its token sealed, and its chat sealed or its owner username declared. */
 export interface AlertBot {
     readonly project: string
     readonly env: string
@@ -35,6 +43,10 @@ export interface AlertBot {
     readonly sealed: string
     /** Whether the member holds ALERT_BOT_ADMINS_KEY. */
     readonly admins: boolean
+    /** Whether the member seals the chat (ALERT_BOT_KEYS.chat, legacy); without it the monitor bot learns the chat of `owner`. */
+    readonly chat: boolean
+    /** The owner's Telegram username (`monitoring.alerts.telegram.owner`), lower case without its `@`, or null. */
+    readonly owner: string | null
 }
 
 /** The alert bots of a server and what holds the rest of its alerts. */
@@ -94,12 +106,14 @@ export const appAlertBots = (root: string, serverRecipient: string | null): { re
             lacking.push(`${project}/${env}: ${member} holds no ${ALERT_BOT_KEYS.token} (the bot the owner makes with BotFather)`)
             continue
         }
-        if (!keys.includes(ALERT_BOT_KEYS.chat)) {
-            lacking.push(`${project}/${env}: ${member} holds no ${ALERT_BOT_KEYS.chat} (/start the bot, then starci app alerts discover-chat --env ${env})`)
+        const owner = ownerUsernameOf(fieldAt(value, "monitoring.alerts.telegram.owner"))
+        const chat = keys.includes(ALERT_BOT_KEYS.chat)
+        if (!chat && owner === null) {
+            lacking.push(`${project}/${env} names no owner (environments.${env}.monitoring.alerts.telegram.owner: "@<username>"; starci app alerts setup --env ${env})`)
             continue
         }
         const stack = fieldAt(value, "deploy.stack")
-        bots.push({ project, env, stack: typeof stack === "string" && stack !== "" ? stack : `${project}-${env}`, file: memberFile, sealed, admins: keys.includes(ALERT_BOT_ADMINS_KEY) })
+        bots.push({ project, env, stack: typeof stack === "string" && stack !== "" ? stack : `${project}-${env}`, file: memberFile, sealed, admins: keys.includes(ALERT_BOT_ADMINS_KEY), chat, owner })
     }
     return { bots, lacking, envs }
 }
@@ -148,10 +162,23 @@ export const serverAlerts = (projects: readonly string[], roots: readonly string
     return { bots, lacking }
 }
 
+/**
+ * The bots a run can route, given whether the monitor bot runs: it learns an owner's chat, so without it (Alertmanager's own telegram
+ * receivers) a bot whose member seals no chat is held, by name.
+ */
+export const routableAlerts = (alerts: ServerAlerts, monitorBot: boolean): ServerAlerts => {
+    if (monitorBot) return alerts
+    const unroutable = alerts.bots.filter((bot) => !bot.chat)
+    return {
+        bots: alerts.bots.filter((bot) => bot.chat),
+        lacking: [...alerts.lacking, ...unroutable.map((bot) => `${bot.project}/${bot.env}: its owner @${bot.owner ?? "?"} is connected by the monitor bot, which is off on this server (--with monitor-bot)`)],
+    }
+}
+
 /** The receiver name of a bot. */
 const receiverOf = (bot: AlertBot): string => `${bot.project}-${bot.env}`.replaceAll(/[^a-z0-9-]/g, "-")
 
-/** The placeholder of a bot's chat id in alertmanager.yml, filled on the server from the opened member. */
+/** The placeholder of a bot's chat id in alertmanager.yml or the monitor bot's config, filled on the server from the opened member (`null` in the config when the member seals none). */
 export const chatPlaceholder = (slot: number): string => `__STARCI_ALERTS_CHAT_${String(slot)}__`
 
 /** The swarm secret file a bot's token is mounted at. */
@@ -227,8 +254,13 @@ export const alertBotLines = (bots: readonly AlertBot[], base: string, marker: s
             marker,
             `chmod 600 ${sealedFile}`,
             `T="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_KEYS.token}"]' ${sealedFile})" || { echo "the server key does not open the alert bot of ${name}" >&2; exit 7; }`,
-            `K="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_KEYS.chat}"]' ${sealedFile})" || { echo "the server key does not open the alert chat of ${name}" >&2; exit 7; }`,
-            `printf '%s' "$K" | grep -Eqx -- '-?[0-9]+' || { echo "the alert chat of ${name} is no Telegram chat id" >&2; exit 7; }`,
+            // A member without the chat (an owner username): the monitor bot's config takes null and the bot learns the chat (never alertmanager.yml: routableAlerts).
+            ...(bot.chat
+                ? [
+                      `K="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_KEYS.chat}"]' ${sealedFile})" || { echo "the server key does not open the alert chat of ${name}" >&2; exit 7; }`,
+                      `printf '%s' "$K" | grep -Eqx -- '-?[0-9]+' || { echo "the alert chat of ${name} is no Telegram chat id" >&2; exit 7; }`,
+                  ]
+                : [`K=null`]),
             bot.admins
                 ? `A="$(SOPS_AGE_KEY_FILE=${identity} sops -d --extract '["${ALERT_BOT_ADMINS_KEY}"]' ${sealedFile} | tr -d ' ')" || { echo "the server key does not open the admin ids of ${name}" >&2; exit 7; }`
                 : `A=""`,

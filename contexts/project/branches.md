@@ -40,8 +40,8 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
    the fast level once; the records the run wrote are committed by it).
 2. Green and pushed, the lane lands at once. Under the repository's dev lock (`<lanes>/_dev-push.lock`; the harness's `_dev-push-harness.lock`),
    it fetches and merges the newest `origin/dev` into the lane. When dev moved since the gate's merge, the merged tree is re-checked fast: the
-   app's `codegen` and `typecheck` scripts (the harness: the CLI's typecheck), under the heavy governor; the whole gate never runs twice. When dev
-   did not move, nothing is re-checked.
+   app's own `starci app check --gate types --env prod` (codegen and the tsc programs; the harness: the CLI's typecheck under the heavy governor);
+   the whole gate never runs twice. When dev did not move, nothing is re-checked.
 3. The lane is squashed into ONE commit on `dev`: the lane's merged tree with `origin/dev` as its parent, its message naming the lane with its
    branch and sha and carrying one `Landed-lane: <lane> <sha>` trailer. It is pushed as a fast-forward of `dev` (an app's through `app push`, the
    harness's with `git push`), never forced; the lock is released whatever happens.

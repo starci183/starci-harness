@@ -30,11 +30,11 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R60, FE-I18N-3 | a catalog for every declared locale and none for another; the same keys in each | a | `rules/i18n-locales.mts` (`FE_I18N_LOCALE_MISSING`), `rules/frontend-tree.mts:22` (`FE_I18N_CATALOG`) |
 | R106 | every key read exists in every locale; every key is read | a | machine `architecture/i18n-keys.mts` |
 | R109, BE-COMMENT-3 | JSDoc on every public member | a | eslint `require-public-member-jsdoc` |
-| R112 | an integration spec per integration (full) | a | `rules/integration-specs.mts:22`; the law is `editions: [full]`, lite proves through R284 |
+| R112 | an integration spec per integration (full) | a | `rules/integration-specs.mts:22`; the law is `editions: [full]`, lite proves through R155 |
 | R143, R144, R145 | workspaces, lockfile, `nest-cli.json` projects per declared app | a | `rules/monorepo.mts:24` |
 | R147 | the ops cli app when a connection or ops command exists | a | `rules/cli.mts:20` |
 | R151 | a class per vendored event entry and an entry per class | a | `rules/event-bus.mts:17` |
-| R155, R284 | a `<pattern>/<scenario>` test per declared pattern scenario | a | `rules/event-bus.mts:18`, `rules/proof-lane.mts:11`; an undeclared pattern's platform slot is `HFS_SLOT_NOT_ENABLED` |
+| R155 | a `<pattern>/<scenario>` test per declared pattern scenario | a | `rules/event-bus.mts:18`, `rules/proof-lane.mts:11`; an undeclared pattern's platform slot is `HFS_SLOT_NOT_ENABLED` |
 | R165 | a `role: service` component per api or worker app (multi-service) | a | `rules/services.mts:33` |
 | R166 | `events.json` per service | a | `rules/event-tables.mts:7` |
 | R167, BE-SERVICES-4 | an e2e spec per consumed event | a | `rules/services.mts:35` |
@@ -89,7 +89,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 - **Unit spec presence over the whole tree (R47, R281).** The pre-commit check holds new files; the tree is held by eslint and
   coverage, which PROJECT-LINT-4 lets an app switch off while its product is not settled. An hfs check would overrule that
   declaration, so presence stays with the gates the app runs.
-- **Integration specs in lite (R112).** The law is `editions: [full]`; lite proves its integrations and patterns through R284.
+- **Integration specs in lite (R112).** The law is `editions: [full]`; lite proves its integrations and patterns through R155.
   Extending it is a change of the law, not a missing check.
 - **Pinned contract copies (R177).** Whether a contract is published is not in the tree, so the absence of its pin cannot be decided.
 - **Concept coverage per folder (PROJECT-WORK-7).** No law requires it; adding one is the owner's decision.

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { isAbsolute, join } from "node:path"
-import { captureGitSync } from "../../shared/git.js"
+import { CHECK_CACHE_DIR, captureGitSync } from "../../shared/git.js"
 import { Refusal } from "../../shared/errors.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { landsOnDev, prePushTarget } from "../deps/dev-local.js"
@@ -26,7 +26,6 @@ export type CheckLevel = "full" | "dev"
 const porcelainPath = (line: string): string => (/^ ?\S{1,2} +(.*)$/.exec(line.trimEnd())?.[1] ?? "").trim()
 
 /** The cache folder of an app: its records never change what the fast level judged. */
-const CACHE_DIR = ".starcistacks/cache/"
 
 /** The target a dev-level check judges for: the refs of the push (the hook's stdin), else dev itself. */
 export const fastTarget = (pushRefs: string | undefined): PushTarget => {
@@ -148,10 +147,10 @@ const memoDir = (root: string): string | undefined => {
 export const treeMemoKey = (root: string, salt: string): string | undefined => {
     const status = captureGitSync(["status", "--porcelain", "--untracked-files=no"], root)
     if (status.exitCode !== 0) return undefined
-    if (status.stdout.split("\n").map(porcelainPath).some((file) => file !== "" && !file.startsWith(CACHE_DIR))) return undefined
+    if (status.stdout.split("\n").map(porcelainPath).some((file) => file !== "" && !file.startsWith(CHECK_CACHE_DIR))) return undefined
     const listed = captureGitSync(["ls-tree", "-r", "HEAD"], root)
     if (listed.exitCode !== 0) return undefined
-    const content = listed.stdout.split(/\r?\n/).filter((line) => { const file = line.split("\t")[1]; return file !== undefined && !file.startsWith(CACHE_DIR) }).join("\n")
+    const content = listed.stdout.split(/\r?\n/).filter((line) => { const file = line.split("\t")[1]; return file !== undefined && !file.startsWith(CHECK_CACHE_DIR) }).join("\n")
     return createHash("sha256").update(`${salt}\n${content}`).digest("hex")
 }
 

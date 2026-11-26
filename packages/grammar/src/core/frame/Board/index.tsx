@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode, type RefObject } from "react"
+import { useDrop } from "react-aria-components"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { ListRow } from "../../composite/ListRow/index.js"
 import { Heading } from "../../leaf/Heading/index.js"
@@ -11,6 +12,12 @@ import { FilterRow } from "../Section/index.js"
 
 /** How long a refused move's reason stays written in its column (ms); it was announced when it happened. */
 const REFUSAL_SHOWN_MS = 5000
+/** The share of the scroller's width at each edge where a held card scrolls the stages (a phone shows one stage at a time). */
+const EDGE_SHARE = 0.15
+/** The least edge in px, so a narrow board still has a place to hold the card. */
+const EDGE_MIN_PX = 32
+/** The least time between two scroll steps of a held drag (ms): one stage per step, never a run-away scroll. */
+const EDGE_STEP_MS = 600
 
 /** One column of a board: a stage that holds items. */
 export type BoardColumn = {
@@ -26,9 +33,10 @@ export type BoardColumn = {
     /**
      * What this stage answers to the item of `move`: `boardAllow` lets it in, `boardRefuse(reason)` refuses it with the reason in the app's words ("Add a quote before it can be won"),
      * and `boardNeedsData(kind)` takes the drop but needs more from the person first (a booking time, a reason a lead was lost): the card stays where it was, `onMove` does not run
-     * and the app gets `onNeedsData(move, kind)` to open its dialog, then moves the card itself when the dialog is confirmed. A refusing column still takes the pointer (the drag shows it
-     * cannot drop there and the reason shows in the column): the card springs back, `onMove` does not run, and the reason is announced (`role="status"`) and handed to `onRefuse`. The
-     * keyboard move is held to the same answer. Pure: it runs on every drag-over. Left out, the stage lets every item in.
+     * and the app gets `onNeedsData(move, kind)` to open its dialog, then moves the card itself when the dialog is confirmed. A refusing column is still a place the drag
+     * reaches, by pointer, touch, keyboard or screen reader, so it can say no: while the card is over it the column wears the refusal outline and writes the reason; dropped there, the card
+     * stays where it was, `onMove` does not run, and the reason is announced (`role="status"`), stays written a few seconds and is handed to `onRefuse`. The Alt and arrow move is held
+     * to the same answer. Pure: it runs on every render of a drag. Left out, the stage lets every item in.
      */
     readonly canDrop?: (move: BoardMove) => BoardDropAnswer
     /**
@@ -103,9 +111,11 @@ export type BoardProps = {
     /** The read failed: this takes the board's place, in its region. Loading comes first, then error. */
     readonly error?: ErrorData
     /**
-     * Items move between stages: by dragging a card onto a column (which highlights as the drop place), and by the keyboard
-     * (Alt + the left or right arrow on a focused card moves it to the neighbour stage and announces it). The board keeps no
-     * order of its own; the app applies the move and passes the new columns. Give `moveLabels` with it.
+     * Items move between stages: by dragging a card onto a column (which highlights as the drop place) with a mouse, or a long press and a
+     * drag on a touch screen; by react-aria's keyboard and screen-reader drag (Enter on a focused card, or activating it with a screen reader,
+     * then Tab to a stage and Enter to drop, Escape to cancel); and by Alt + the left or right arrow on a focused card, which moves it to the
+     * neighbour stage and announces it. The board keeps no order of its own; the app applies the move and passes the new columns. Give
+     * `moveLabels` with it.
      */
     readonly onMove?: (move: BoardMove) => void
     readonly moveLabels?: BoardMoveLabels
@@ -123,27 +133,132 @@ type Resolved = { readonly move: BoardMove; readonly answer: Exclude<BoardDropAn
 /** One place a card can be dropped: a stage, or the end band. */
 type Target = { readonly id: string; readonly title: string; readonly canDrop?: (move: BoardMove) => BoardDropAnswer }
 
+/** How the place under a dragged card reads: a refusal, a question the app will ask, or a plain drop. */
+type DropState = "refused" | "ask" | "true"
+
+/** What a drop place asks of the board while a card is dragged. */
+type DropPlace = {
+    /** Whether a card of this board is in flight and may land here (any place but its own stage). */
+    readonly accepts: (placeId: string) => boolean
+    readonly enter: (placeId: string) => void
+    readonly exit: (placeId: string) => void
+    readonly drop: (placeId: string) => void
+}
+
+type BoardDrop = {
+    readonly ref: RefObject<HTMLDivElement | null>
+    readonly dropProps: HTMLAttributes<HTMLElement>
+}
+
+/**
+ * One drop place on react-aria's `useDrop`: the native drag of a mouse or a touch screen (dragenter, dragover and drop, with the WebKit and
+ * Chrome Android quirks handled), and the virtual drag of a keyboard or a screen reader, which focuses each place in turn (Tab), drops with
+ * Enter and cancels with Escape. A place that refuses the card still takes it, so its reason can be said: the board answers on the drop.
+ */
+const useBoardDrop = (placeId: string, place: DropPlace | null): BoardDrop => {
+    const ref = useRef<HTMLDivElement | null>(null)
+    const { dropProps } = useDrop({
+        ref,
+        isDisabled: place === null,
+        getDropOperation: () => (place?.accepts(placeId) === true ? "move" : "cancel"),
+        onDropEnter: () => place?.enter(placeId),
+        onDropExit: () => place?.exit(placeId),
+        onDrop: () => place?.drop(placeId),
+    })
+    return { ref, dropProps }
+}
+
+type StageProps = {
+    readonly column: BoardColumn
+    readonly rows: readonly ListRowData[]
+    readonly isLoading: boolean
+    readonly state: DropState | undefined
+    /** The reason written under the head: the refusing stage's while the card is over it, and a refused drop's for a few seconds. */
+    readonly refusal: string | undefined
+    readonly place: DropPlace | null
+}
+
+/** One stage: the tinted column with its head, its refusal note and its cards (or its empty state), and a drop place while cards move. */
+const BoardStage = ({ column, rows, isLoading, state, refusal, place }: StageProps) => {
+    const { ref, dropProps } = useBoardDrop(column.id, place)
+    const slot = state === undefined || state === "refused" ? null : (
+        <li className="starci-core-board-slot" data-grammar-board-slot={state} aria-hidden="true">
+            {column.dropHint === undefined ? null : <span className="starci-core-board-slot-title">{column.dropHint.title}</span>}
+            {column.dropHint?.detail === undefined ? null : <span className="starci-core-board-slot-detail">{column.dropHint.detail}</span>}
+        </li>
+    )
+    return (
+        <div
+            ref={ref}
+            className="starci-core-board-column"
+            {...(state === undefined ? {} : { "data-grammar-drop": state })}
+            // A keyboard or screen-reader drag focuses the stage it would drop on and reads its name.
+            {...(place === null ? {} : { role: "group", "aria-label": column.title, tabIndex: -1 })}
+            {...dropProps}
+        >
+            <div className="starci-core-board-column-head" data-contract="GAP-2">
+                <Heading level={3} isLoading={isLoading}>{column.title}</Heading>
+                {column.count === undefined || isLoading ? null : <span className="starci-core-board-count" data-grammar-board-count="true">{column.count}</span>}
+            </div>
+            {refusal === undefined ? null : <p className="starci-core-board-refusal" data-grammar-board-refusal="true">{refusal}</p>}
+            {rows.length === 0 && slot === null ? <div className="starci-core-board-cards" data-contract="GAP-2"><div className="starci-core-board-empty">{column.empty}</div></div> : (
+                <ul className="starci-core-board-cards" role="list" aria-label={column.title} data-contract="GAP-2">
+                    {slot}
+                    {rows.map((row) => <ListRow key={row.id} row={row} />)}
+                </ul>
+            )}
+        </div>
+    )
+}
+
+/** The end band: a wide drop place under the stages, drawn only while a card is dragged. */
+const BoardBand = ({ band, state, place }: { readonly band: BoardEndBand; readonly state: DropState | undefined; readonly place: DropPlace | null }) => {
+    const { ref, dropProps } = useBoardDrop(band.id, place)
+    return (
+        <div
+            ref={ref}
+            className="starci-core-board-band"
+            data-grammar-board-band="true"
+            {...(state === undefined ? {} : { "data-grammar-drop": state })}
+            {...(place === null ? {} : { role: "group", tabIndex: -1, ...(typeof band.label === "string" ? { "aria-label": band.label } : {}) })}
+            {...dropProps}
+        >
+            {band.label}
+        </div>
+    )
+}
+
+/** The person asked for less motion: a scroll step jumps instead of gliding. */
+const prefersReducedMotion = (): boolean => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
 /**
  * Items in stages: peer columns side by side that scroll as one row, each column a tinted surface (`--surface-secondary`) with its title and
  * a count chip in its head and its items as white cards (a sales pipeline, a hiring funnel, a task board). An item is a real object, so it is
  * a card: the Board draws each `ListRow` on its own card face (a `<ul>` of rows per column, never `SurfaceCard`). Columns share one width from 16rem, and snap into view as the row
  * scrolls, so a phone shows one stage at a time. Each column answers for its own empty state; a loading board draws the
  * columns it was given with placeholder rows (three each when it was given none). With `onMove` a card moves between stages
- * by drag or by keyboard, and a card with `onPress` opens by pressing anywhere on it. A card shows its grip (six dots) on hover and focus; while one is dragged it leaves an
- * origin slot (a dashed, emptied place) where it stood, travels as a lifted card with a soft shadow, and the stage under it opens a drop slot (a dashed card-sized place with the
- * stage's `dropHint`). An `endBand` is one more place after the last stage, shown only while dragging.
+ * by drag or by keyboard, and a card with `onPress` opens by pressing anywhere on it. The drag is react-aria's (`useDrag`, `useDrop`): a mouse drags a card at once, a touch
+ * screen lifts it on a long press, and a card held near the left or right edge of the stages scrolls them one stage at a time; a keyboard starts it with Enter on a focused
+ * card and a screen reader by activating the card, then Tab walks the stages, Enter drops and Escape cancels; Alt and an arrow move a focused card to the neighbour stage in
+ * one step. A card shows its grip (six dots) on hover and focus, and always on a touch screen; while one is dragged it leaves an origin slot (a dashed, emptied place) where it
+ * stood, travels as a lifted card with a soft shadow, and the stage under it opens a drop slot (a dashed card-sized place with the stage's `dropHint`). An `endBand` is one more
+ * place after the last stage, shown only while dragging.
  */
 export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextLabel, isLoading: ownLoading, error, onMove, moveLabels, onRefuse, onNeedsData, endBand }: BoardProps) => {
     const isLoading = useIsLoading(ownLoading)
     const [draggingId, setDraggingId] = useState<string | null>(null)
-    const [overColumn, setOverColumn] = useState<string | null>(null)
+    /** The card in flight, read at once by the drop places: a drag starts and is judged before React renders again. */
+    const draggingRef = useRef<string | null>(null)
+    const [overPlace, setOverPlace] = useState<string | null>(null)
     const [announcement, setAnnouncement] = useState("")
-    /** The column a drag is over and the reason it refuses the dragged card; read again at drag end, when the card has sprung back. */
+    /** A refused drop's reason, written in its column for a few seconds after it was announced. */
     const [refusal, setRefusal] = useState<{ readonly columnId: string; readonly reason: string } | null>(null)
-    const refusalRef = useRef<Resolved | null>(null)
     const clearRefusalTimer = useRef<number | undefined>(undefined)
     useEffect(() => () => { if (clearRefusalTimer.current !== undefined) window.clearTimeout(clearRefusalTimer.current) }, [])
     const root = useRef<HTMLDivElement | null>(null)
+    const scroller = useRef<HTMLDivElement | null>(null)
+    /** When the last edge step ran (the drag event clock); the first step of a drag is never held back. */
+    const lastStep = useRef(Number.NEGATIVE_INFINITY)
     const refocus = useRef<string | null>(null)
 
     // A moved card remounts in its new column: give the focus back to it so the keyboard can keep moving it.
@@ -217,21 +332,36 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
         announceFor(itemId, toId, false)
         onMove({ itemId, fromColumnId: from.id, toColumnId: to.id })
     }
+    const endDrag = () => {
+        draggingRef.current = null
+        setDraggingId(null)
+        setOverPlace(null)
+    }
+    /** The drop places' side of a drag: a card of this board lands on any place but its own stage; a refusing place still takes it and answers on the drop. */
+    const place: DropPlace | null = movable ? {
+        accepts: (placeId) => {
+            const id = draggingRef.current
+            return id !== null && columnOf(id)?.id !== placeId
+        },
+        enter: (placeId) => setOverPlace(placeId),
+        exit: (placeId) => setOverPlace((current) => (current === placeId ? null : current)),
+        drop: (placeId) => {
+            const id = draggingRef.current
+            endDrag()
+            if (id !== null) move(id, placeId)
+        },
+    } : null
     const rowsOf = (column: BoardColumn, index: number): readonly ListRowData[] => {
         if (isLoading && column.items.length === 0) return Array.from({ length: LOADING_ROWS }, (_, rowIndex) => ({ id: `loading-${rowIndex}`, title: " " }))
         if (!movable) return column.items
         return column.items.map((row) => ({
             ...row,
             drag: {
-                onDragStart: () => setDraggingId(row.id),
-                onDragEnd: () => {
-                    // A drop a column refused never fired `drop` (the drag was not cancelled over it), so the card has sprung back and the reason is said here.
-                    const refused = refusalRef.current
-                    refusalRef.current = null
-                    setDraggingId(null)
-                    setOverColumn(null)
-                    if (refused !== null && refused.answer.kind === "refuse") refuse(refused.move, refused.answer.reason)
+                onDragStart: () => {
+                    draggingRef.current = row.id
+                    setDraggingId(row.id)
                 },
+                onDragEnd: endDrag,
                 onMoveKey: (direction) => {
                     const target = targets[index + (direction === "next" ? 1 : -1)]
                     if (target !== undefined) move(row.id, target.id)
@@ -241,53 +371,54 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
             },
         }))
     }
-    const dropProps = (placeId: string) => movable ? {
-        onDragOver: (event: DragEvent<HTMLElement>) => {
-            if (draggingId === null) return
-            if (overColumn !== placeId) setOverColumn(placeId)
-            const resolved = resolve(draggingId, placeId)
-            if (resolved !== null && resolved.answer.kind === "refuse") {
-                // Not cancelling the event leaves the column no drop place: the pointer shows it, the card springs back, and `drop` never fires.
-                event.dataTransfer.dropEffect = "none"
-                refusalRef.current = resolved
-                if (refusal?.columnId !== placeId) setRefusal({ columnId: placeId, reason: resolved.answer.reason })
-                return
-            }
-            event.preventDefault()
-            event.dataTransfer.dropEffect = "move"
-            refusalRef.current = null
-            if (refusal !== null) setRefusal(null)
-        },
-        onDragLeave: (event: DragEvent<HTMLElement>) => {
-            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-            setOverColumn((current) => current === placeId ? null : current)
-            if (refusalRef.current?.move.toColumnId === placeId) refusalRef.current = null
-            setRefusal((current) => current?.columnId === placeId && draggingId !== null ? null : current)
-        },
-        onDrop: (event: DragEvent<HTMLElement>) => {
-            event.preventDefault()
-            const id = draggingId ?? event.dataTransfer.getData("text/plain")
-            setDraggingId(null)
-            setOverColumn(null)
-            if (id !== "") move(id, placeId)
-        },
-    } : {}
     /** How the place under the drag reads: a refusal, a question the app will ask, or a plain drop. */
-    const dropState = (placeId: string): "refused" | "ask" | "true" | undefined => {
-        if (overColumn !== placeId || draggingId === null) return undefined
-        if (refusal?.columnId === placeId) return "refused"
+    const dropState = (placeId: string): DropState | undefined => {
+        if (overPlace !== placeId || draggingId === null) return undefined
         const resolved = resolve(draggingId, placeId)
+        if (resolved?.answer.kind === "refuse") return "refused"
         if (resolved?.answer.kind === "needsData") return "ask"
         return "true"
     }
-    const originColumnId = draggingId === null ? undefined : columnOf(draggingId)?.id
+    /** The reason a column writes: the refusing stage under the card says why at once, and a refused drop's reason stays a few seconds. */
+    const refusalOf = (placeId: string): string | undefined => {
+        if (draggingId !== null && overPlace === placeId) {
+            const resolved = resolve(draggingId, placeId)
+            if (resolved?.answer.kind === "refuse") return resolved.answer.reason
+        }
+        return refusal?.columnId === placeId ? refusal.reason : undefined
+    }
+    /**
+     * A card held near the left or right edge of the stages scrolls them one stage at a time: on a phone the stage it is meant for is
+     * off screen, and a touch drag has no wheel. Read in the capture phase, since each drop place stops the drag-over it handles.
+     */
+    const scrollAtEdge = (event: DragEvent<HTMLDivElement>) => {
+        const node = scroller.current
+        if (node === null || draggingRef.current === null || node.scrollWidth <= node.clientWidth) return
+        const box = node.getBoundingClientRect()
+        if (event.clientY < box.top || event.clientY > box.bottom) return
+        const edge = Math.max(EDGE_MIN_PX, box.width * EDGE_SHARE)
+        const direction = event.clientX > box.right - edge ? 1 : event.clientX < box.left + edge ? -1 : 0
+        if (direction === 0 || event.timeStamp - lastStep.current < EDGE_STEP_MS) return
+        const stage = node.querySelector<HTMLElement>(".starci-core-board-column")
+        if (stage === null) return
+        lastStep.current = event.timeStamp
+        node.scrollBy({ left: direction * stage.offsetWidth, behavior: prefersReducedMotion() ? "auto" : "smooth" })
+    }
     const bandState = endBand === undefined ? undefined : dropState(endBand.id)
 
     return (
         <LoadingScope isLoading={isLoading}>
-          <div ref={root} data-tier="frame" data-component="Board" data-grammar-board-state={isLoading ? "loading" : "ready"} {...(draggingId === null ? {} : { "data-grammar-board-dragging": "true" })}>
+          <div
+            ref={root}
+            data-tier="frame"
+            data-component="Board"
+            data-grammar-board-state={isLoading ? "loading" : "ready"}
+            {...(draggingId === null ? {} : { "data-grammar-board-dragging": "true" })}
+            {...(movable ? { onDragOverCapture: scrollAtEdge } : {})}
+          >
             {header}
             <HorizontalScrollRegionPart
+                ref={scroller}
                 aria-label={label}
                 carets={false}
                 overflow="needed"
@@ -297,48 +428,20 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
                 {...(isLoading ? { "aria-busy": true } : {})}
             >
                 <div className="starci-core-board-columns" data-contract="GAP-3">
-                    {shown.map((column, index) => {
-                        const state = originColumnId === column.id && dropState(column.id) === "true" ? undefined : dropState(column.id)
-                        const rows = rowsOf(column, index)
-                        const slot = state === undefined || state === "refused" ? null : (
-                            <li className="starci-core-board-slot" data-grammar-board-slot={state} aria-hidden="true">
-                                {column.dropHint === undefined ? null : <span className="starci-core-board-slot-title">{column.dropHint.title}</span>}
-                                {column.dropHint?.detail === undefined ? null : <span className="starci-core-board-slot-detail">{column.dropHint.detail}</span>}
-                            </li>
-                        )
-                        return (
-                            <div
-                                key={column.id}
-                                className="starci-core-board-column"
-                                {...(state === undefined ? {} : { "data-grammar-drop": state })}
-                                {...dropProps(column.id)}
-                            >
-                                <div className="starci-core-board-column-head" data-contract="GAP-2">
-                                    <Heading level={3} isLoading={isLoading}>{column.title}</Heading>
-                                    {column.count === undefined || isLoading ? null : <span className="starci-core-board-count" data-grammar-board-count="true">{column.count}</span>}
-                                </div>
-                                {refusal?.columnId === column.id ? <p className="starci-core-board-refusal" data-grammar-board-refusal="true">{refusal.reason}</p> : null}
-                                {rows.length === 0 && slot === null ? <div className="starci-core-board-cards" data-contract="GAP-2"><div className="starci-core-board-empty">{column.empty}</div></div> : (
-                                    <ul className="starci-core-board-cards" role="list" aria-label={column.title} data-contract="GAP-2">
-                                        {slot}
-                                        {rows.map((row) => <ListRow key={row.id} row={row} />)}
-                                    </ul>
-                                )}
-                            </div>
-                        )
-                    })}
+                    {shown.map((column, index) => (
+                        <BoardStage
+                            key={column.id}
+                            column={column}
+                            rows={rowsOf(column, index)}
+                            isLoading={isLoading}
+                            state={dropState(column.id)}
+                            refusal={refusalOf(column.id)}
+                            place={place}
+                        />
+                    ))}
                 </div>
             </HorizontalScrollRegionPart>
-            {endBand === undefined || draggingId === null ? null : (
-                <div
-                    className="starci-core-board-band"
-                    data-grammar-board-band="true"
-                    {...(bandState === undefined ? {} : { "data-grammar-drop": bandState })}
-                    {...dropProps(endBand.id)}
-                >
-                    {endBand.label}
-                </div>
-            )}
+            {endBand === undefined || draggingId === null ? null : <BoardBand band={endBand} state={bandState} place={place} />}
             {moveLabels === undefined && !targets.some((target) => target.canDrop !== undefined) ? null : <span className="starci-core-board-announce" role="status" aria-live="polite">{announcement}</span>}
           </div>
         </LoadingScope>

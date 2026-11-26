@@ -60,7 +60,7 @@ nothing is sent for a rollback, a failing consumer is retried then buried, and a
 
 Why: delivery behaviour is invisible to a linter; a run against the real db service is the only proof.
 
-Enforced by: R155 BE_PATTERN_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
+Enforced by: R155 BE_PATTERN_SPEC_MISSING (and BE_LITE_PROOF_LANE_MISSING when no integration spec exists).
 
 ## BE-EVENT-BUS-6 Fan out on pgmq topics, dedupe on a business key and park poison per consumer
 
