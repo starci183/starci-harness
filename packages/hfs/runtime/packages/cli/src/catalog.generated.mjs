@@ -183,6 +183,28 @@ export const CATALOG = {
           "positional": [],
           "json": "flag"
         }
+      },
+      "self": {
+        "summary": "the harness's own check (starci release gate is its deprecated spelling): --release (= --level full, the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates; --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+        "flags": [
+          {
+            "name": "release",
+            "type": "boolean",
+            "summary": "the release check of the train: the same as --level full"
+          },
+          {
+            "name": "level",
+            "type": "string",
+            "summary": "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)"
+          },
+          {
+            "name": "base",
+            "type": "string",
+            "summary": "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it"
+          }
+        ],
+        "positional": [],
+        "json": "flag"
       }
     },
     "release": {
@@ -286,12 +308,17 @@ export const CATALOG = {
           "json": "flag"
         },
         "gate": {
-          "summary": "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, and runs the publish checks (declarations name .js, bundles:check), no test suite; --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+          "summary": "renamed: use starci check (--level dev) or starci check --release (--level full); this deprecated spelling prints the rename and runs the same check",
           "flags": [
+            {
+              "name": "release",
+              "type": "boolean",
+              "summary": "the release check of the train: the same as --level full"
+            },
             {
               "name": "level",
               "type": "string",
-              "summary": "dev (default: the packages changed since --base and their dependents, built and typechecked, no tests) or full (everything, with lint, tests and CI's light gates)"
+              "summary": "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)"
             },
             {
               "name": "base",
@@ -614,7 +641,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate: dev is the FAST level of a landing on dev (a lane push, a push of dev and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs) and db; it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
+          "summary": "--release is the release check (formerly app release gate, now its deprecated alias): every row of the release on a clean HEAD, reusing the committed check cache while the newest cache verify is green and running fresh otherwise or with --fresh (--full no longer means fresh), then with --execute the L4 record and the annotated tag; without --release, run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate: dev is the FAST level of a landing on dev (a lane push, a push of dev and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs) and db; it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -734,7 +761,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "release": {
-          "summary": "run the app's release gates and write the L4 record and tag (or back-fill an urgent release), or push branch and tag atomically (or the urgent path)",
+          "summary": "push branch and tag atomically (or the urgent path); `release gate` is renamed `starci app check --release` and still runs it after printing the rename",
           "flags": [],
           "positional": [
             {
@@ -905,7 +932,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [],
@@ -2296,7 +2323,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "load": {
-          "summary": "show the host's heavy-command governor: the slots (one per heavy.gbPerSlot GB of RAM) and how many run, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+          "summary": "show the host's heavy-command governor: the slot units (one per heavy.gbPerSlot GB of RAM), the units in use and the weight of each kind, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
           "flags": [],
           "positional": [],
           "json": "flag"
@@ -3555,7 +3582,7 @@ export const CATALOG = {
             {
               "name": "profile",
               "type": "string",
-              "summary": "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push"
+              "summary": "app or harness (default: harness in the harness checkout, else app): the harness gates with starci check --level dev and pushes with git push"
             }
           ],
           "positional": [
@@ -3588,7 +3615,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root whose slots of the lane are released (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder whose foreign slot lock files of the lane are released too (its store rows always are; default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
             },
             {
               "name": "execute",
@@ -3781,7 +3808,8 @@ export const CATALOG = {
             {
               "name": "pid",
               "type": "string",
-              "summary": "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot"
+              "summary": "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot",
+              "required": true
             },
             {
               "name": "wait",
@@ -3791,7 +3819,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3804,7 +3832,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "release": {
-          "summary": "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, or taken before this boot), logging the evidence; age never reclaims",
+          "summary": "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, taken before this boot, or a pid-less lock whose lane is proven gone), logging the evidence; age never reclaims",
           "flags": [
             {
               "name": "lane",
@@ -3824,7 +3852,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3837,12 +3865,17 @@ export const CATALOG = {
           "json": "flag"
         },
         "list": {
-          "summary": "list the machine-wide slots (every kind, or one) with lane, age, holder alive (yes, no, unknown), pid, state and whether it is reclaimable: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process), rebooted (taken before this boot) or gone (an old-helper lock whose lane has no worktree)",
+          "summary": "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, units, pid, child, age, command); a held slot says why it is not reclaimable",
           "flags": [
+            {
+              "name": "events",
+              "type": "string",
+              "summary": "also print the newest N slot events (taken, released, reclaimed, killed, with who and the evidence)"
+            },
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3854,8 +3887,36 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "kill": {
+          "summary": "the last resort on a slot: kill the process tree of the one process it maps to (a lane slot: its holder; heavy <id>: the heavy command, else its holder) and free the slot, logged in slot_events with what was killed; refuses a free slot, a pid now running another program (SLOT_KILL_REUSED) or a holder whose start cannot be matched (SLOT_KILL_UNPROVEN); a holder already gone is only reclaimed; dry until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "kill and free; without it, print what would be killed"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "slot",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
         "run": {
-          "summary": "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot records this process's pid and is released when the command ends, so a killed run never leaves it held",
+          "summary": "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot, a row of machine.sqlite, records this process's pid and start and the command's own pid as its child, and is released the moment the command ends (its exit, an error or a signal); a run killed outright leaves a row whose pid is dead, reclaimed at the next take or list",
           "flags": [
             {
               "name": "lane",
@@ -3875,7 +3936,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3927,7 +3988,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [

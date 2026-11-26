@@ -1,7 +1,9 @@
-// index.mts - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
-// parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
-//   starci app release gate [--execute] [--sha <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
+// index.mts - `starci app check --release` (the release check), `starci app release push` and the plumbing the release and database verbs share: the
+// context built from the app's IO, strict flag parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and
+// --json output and the exit-code mapping.
+//   starci app check --release [--execute] [--fresh] [--sha <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
 //   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
+// `starci app release gate` is the deprecated spelling of `app check --release`: it prints RENAMED_GATE on stderr and runs the same check.
 // `harness` of the app IO ({ version, role, openTicket }) is what the starci CLI hands in: the caller's role an urgent record names and the ticket
 // queue a red back-fill files into.
 // Every action is a dry run unless --execute is given. A refusal is a StackError (exit 2); a failed step returns ok false (exit 1).
@@ -40,8 +42,8 @@ export interface VerbIo {
   harness?: { version?: string | undefined; role?: string | undefined; openTicket?: ((ticket: unknown) => unknown) | undefined } | undefined;
 }
 
-/** The flags of one verb ({ boolean, value }); the parser refuses every other. */
-export interface FlagSpec { boolean: readonly string[]; value: readonly string[] }
+/** The flags of one verb ({ boolean, value }); the parser refuses every other. `retired` names accepted flags the usage no longer prints. */
+export interface FlagSpec { boolean: readonly string[]; value: readonly string[]; retired?: readonly string[] }
 
 /** The parsed flags of a verb: a boolean flag is true, a value flag its string. */
 export type VerbFlags = Record<string, string | boolean | undefined>;
@@ -125,10 +127,12 @@ type Harness = VerbIo['harness'];
 interface ReleaseAction { spec: FlagSpec; run: (ctx: VerbContext, flags: VerbFlags, harness: Harness) => VerbResult | Promise<VerbResult> }
 
 const ACTIONS: Record<string, ReleaseAction> = {
+  // `--fresh` ignores the cache (every family recomputed); `--full` is accepted and changes nothing: the release check always runs every row, and it no longer
+  // means fresh (contexts/project/check-cache.md "The release").
   gate: {
-    spec: { boolean: ['--execute', '--json', '--full'], value: ['--sha', '--tag-prefix', '--backfill'] },
+    spec: { boolean: ['--execute', '--json', '--fresh', '--full'], value: ['--sha', '--tag-prefix', '--backfill'], retired: ['--full'] },
     run: (ctx, flags, harness) => releaseGate(ctx, loadReleaseConfig(ctx.cwd), {
-      execute: flags.execute === true, source: flags.sha, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket, full: flags.full === true,
+      execute: flags.execute === true, source: flags.sha, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket, fresh: flags.fresh === true, full: flags.full === true,
     }),
   },
   push: {
@@ -146,13 +150,28 @@ const ACTIONS: Record<string, ReleaseAction> = {
 /** The flags of each release action ({ boolean, value }): the parser refuses every other flag, and the usage of `starci app` is generated from them. */
 export const RELEASE_FLAGS = Object.freeze(Object.fromEntries(Object.entries(ACTIONS).map(([name, action]) => [name, action.spec])));
 
-/** Runs `starci app release <gate|push>`; `io` is the app IO (cwd, stdout, stderr, env, sops, stackIo). Returns the exit code. */
+/** The flag of `starci app check` that runs the release check. */
+export const RELEASE_CHECK_FLAG = '--release';
+/** What the deprecated `starci app release gate` prints on stderr before it runs the release check. */
+export const RENAMED_GATE = 'renamed: use starci app check --release';
+
+/**
+ * Runs `starci app check --release` (argv without `--release`): the release check, every row of the release on a clean HEAD, then the L4 record and the
+ * annotated tag with --execute (gate.mts releaseGate). Returns the exit code.
+ */
+export async function releaseCheckMain(argv: string[], io: VerbIo = {}): Promise<number> {
+  const gate = ACTIONS.gate as ReleaseAction;
+  return runVerb({ label: 'starci app check --release', name: 'gate', io, argv, spec: gate.spec, run: (ctx, flags) => gate.run(ctx, flags, io.harness) });
+}
+
+/** Runs `starci app release <push|gate>`; `io` is the app IO (cwd, stdout, stderr, env, sops, stackIo). `gate` is the deprecated alias of `app check --release`. Returns the exit code. */
 export async function releaseMain(argv: string[], io: VerbIo = {}): Promise<number> {
   const first = argv[0] as string;
   const action = Object.hasOwn(ACTIONS, first) ? ACTIONS[first] ?? null : null;
   if (!action) {
-    contextOf(io).stderr('starci app release: takes gate or push\n');
+    contextOf(io).stderr('starci app release: takes push (the release check is starci app check --release)\n');
     return EXIT.refused;
   }
+  if (first === 'gate') contextOf(io).stderr(`${RENAMED_GATE}\n`);
   return runVerb({ label: 'starci app release', name: first, io, argv: argv.slice(1), spec: action.spec, run: (ctx, flags) => action.run(ctx, flags, io.harness) });
 }

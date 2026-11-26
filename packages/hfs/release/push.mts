@@ -27,9 +27,9 @@ const greenRecord = (record: any, head: string, tag: string): boolean => record?
 /** The explicit release command gate: the annotated tag on HEAD whose L4 record names head and tag. Returns { tag } or { reason }. */
 function gateState(ctx: VerbContext, head: string, prefix: string, expected: string): { tag: string; reason?: undefined } | { tag?: undefined; reason: string } {
   const tags = annotatedOnHead(ctx, prefix);
-  if (!tags.includes(expected)) return { reason: `no ANNOTATED tag ${expected} (the package.json version) on HEAD${tags.length > 0 ? `, which carries ${tags.join(', ')}` : ''}: run starci app release gate --execute first` };
+  if (!tags.includes(expected)) return { reason: `no ANNOTATED tag ${expected} (the package.json version) on HEAD${tags.length > 0 ? `, which carries ${tags.join(', ')}` : ''}: run starci app check --release --execute first` };
   const file = path.join(releaseDir(ctx), `${head}.l4.json`);
-  if (!fs.existsSync(file)) return { reason: `no L4 record ${file}: run starci app release gate --execute first` };
+  if (!fs.existsSync(file)) return { reason: `no L4 record ${file}: run starci app check --release --execute first` };
   const record = readRecord(file);
   return greenRecord(record, head, expected) ? { tag: expected } : { reason: `the L4 record does not name head ${head.slice(0, 10)} and ${expected} with every gate green` };
 }

@@ -114,14 +114,27 @@ test('the printed plan says which rows reuse the app-check verdict and which run
   assert.deepEqual([children(plain), governed], [[], []], 'a dry run runs nothing');
 });
 
-test('--full runs the app-check row as --fresh and the covered rows still reuse it', async (t) => {
+test('--fresh runs the app-check row as --fresh and the covered rows still reuse it', async (t) => {
   const { ctx, plain, governed } = world(t);
-  const result = await releaseGate(ctx(), configOf(), { execute: true, full: true, platform: 'linux' });
+  const result = await releaseGate(ctx(), configOf(), { execute: true, fresh: true, platform: 'linux' });
   assert.equal(result.ok, true, result.lines!.join('\n'));
   assert.deepEqual(children(plain), ['npx starci app check --env prod --fresh']);
   assert.equal(governed.length, 0, 'no default row is a governed world layer (R12)');
-  assert.match(result.lines!.join('\n'), /full gate \(--full\): the app-check row runs `app check --env prod --fresh`[^\n]*covers reuse that verdict/u);
+  assert.match(result.lines!.join('\n'), /fresh \(--fresh\): the app-check row runs `app check --env prod --fresh`[^\n]*covers reuse that verdict/u);
   assert.equal(recordOf(result).gates.filter((row) => row.reused).length, COVERED_ROWS.length);
+  assert.deepEqual((recordOf(result) as unknown as { cache: unknown }).cache, { use: 'fresh', because: 'asked', verify: null }, 'the L4 record says the release ran fresh and why');
+});
+
+test('a red cache verify runs the release fresh instead of refusing it; --full alone keeps the diff-only run', async (t) => {
+  const red = world(t);
+  const locked = await releaseGate(red.ctx(), configOf(), { execute: true, platform: 'linux', readLock: () => ({ state: 'locked', line: 'HFS_CHECK_CACHE_VERIFY_LOCKED: red' }) });
+  assert.equal(locked.ok, true, locked.lines!.join('\n'));
+  assert.deepEqual(children(red.plain), ['npx starci app check --env prod --fresh']);
+  assert.equal((recordOf(locked) as unknown as { cache: { because: string } }).cache.because, 'verify-locked');
+  const full = world(t);
+  const kept = await releaseGate(full.ctx(), configOf(), { execute: true, full: true, platform: 'linux', readLock: () => ({ state: 'open', line: 'cache verify   green' }) });
+  assert.equal(kept.ok, true, kept.lines!.join('\n'));
+  assert.deepEqual(children(full.plain), ['npx starci app check --env prod'], '--full is no fresh run');
 });
 
 test('a red app-check row stops the gate: no covered row runs or is reused, no world layer, no record, no tag', async (t) => {
