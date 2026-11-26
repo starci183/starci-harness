@@ -24,7 +24,7 @@
         border-top-width: var(--offset-pop-outline-width);
     }
 
-    /* Pressing a card to drag it is the family's press travel: the shadow collapses into the move. */
+    /* Pressing a card to drag it (a mouse press, or a touch screen's long press) is the family's press travel: the shadow collapses into the move. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row[data-grammar-row-draggable]:active {
         box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-y));
@@ -135,10 +135,12 @@
     }
 
     /* ---------------------------------------------------------------- motion and contrast */
+    /* Less motion: a pressed card or option keeps its place and its shadow changes at once, the long press of a touch drag included. */
     @media (prefers-reduced-motion: reduce) {
         .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row,
         .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option {
             transform: none;
+            transition: none;
         }
     }
 
