@@ -48,9 +48,10 @@ What the (B) tile carries depends on the reader's question:
 
 A workflow (and a run or thread of it) wears ONE tile wherever it stands (owner 2026-11-27, "logo workflow phải đồng nhất"): its page head (`size="head"`),
 its run's page head, and every list row that names it (`leading: { icon, activity }`). It is `IconTile source activity`: the workflow's OWN icon on the
-square identity plate, toned by what it is doing, never by the app: `idle` (also done) the accent's soft pair, the brand; `running` the warning's soft
-pair, amber; `error` (failed, stopped, needs a person) the danger SOLID, the white glyph on the full danger plate, so a stop never reads as the brand's
-red. The status still trails as (A). This supersedes, for a workflow's own mark only, the round (B) "which thing is which?" tile and its green running;
+ROUND plate at every size (owner 2026-11-27, final), toned by what it is doing, never by the app and never the brand's accent: each activity is its
+role's soft pair, the role's soft foreground glyph on its soft plate (Grammar tokens, no hex): `idle` (also done) info; `running` warning, with a
+warning arc spinning round the plate's edge (the run page head's spinner in warning; under reduced motion it stands still as a full ring); `error`
+(failed, stopped, needs a person) danger, soft too, never a solid plate. The status still trails as (A). This supersedes, for a workflow's own mark only, the (B) "which thing is which?" tile and its green running;
 a step, a graph node and a Timeline keep (B).
 - Laws: `DNA-COMMON-ICON-TILE-ROUND`, `DNA-COMMON-STATUS-MARK-40`, `DNA-COMMON-INLINE-STATUS-NO-PLATE`, `DNA-COMMON-TIMELINE-STATUS-TILE`. Story `Status marks`.
 

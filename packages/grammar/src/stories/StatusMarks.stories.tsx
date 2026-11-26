@@ -94,8 +94,8 @@ export const WhichIsWhich: Story = {
 };
 
 /**
- * (C) The subject tile (0.64.1, owner 2026-11-27 "logo workflow đồng nhất"): a workflow's own icon on ONE square tile wherever it stands, toned by what it
- * is doing: idle (and done) the brand, running amber, error the danger solid. The page head wears the 48 tile, a row the 40 one.
+ * (C) The subject tile (0.64.1, owner 2026-11-27 "logo workflow đồng nhất"): a workflow's own icon on ONE round tile wherever it stands, toned by what it
+ * is doing, each its role's soft pair: idle (and done) info, running warning with a warning arc spinning round it, error the danger solid. The page head wears the 48 tile, a row the 40 one.
  */
 export const SubjectTile: Story = {
   render: () => (

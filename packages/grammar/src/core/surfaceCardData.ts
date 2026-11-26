@@ -69,8 +69,8 @@ export type ItemLeading =
      */
     | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly activity?: never }
     /**
-     * A row of a subject the app runs (0.64.1, a workflow, a run of it): the subject's own icon on its SQUARE tile of what it is doing (`IconTile activity`,
-     * idle the brand, running amber, error solid danger), the same tile its page head wears. The status still trails as an `InlineStatus`.
+     * A row of a subject the app runs (0.64.1, a workflow, a run of it): the subject's own icon on its ROUND tile of what it is doing (`IconTile activity`,
+     * idle info, running warning with a spinning warning arc, error danger, each its soft pair), the same tile its page head wears. The status still trails as an `InlineStatus`.
      */
     | { readonly icon: IconSource; readonly activity: TileActivity; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly state?: never }
     | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never }

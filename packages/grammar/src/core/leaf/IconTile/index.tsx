@@ -43,29 +43,29 @@ type IconTileIdentity = IconTileShared & {
 
 /**
  * What a SUBJECT tile is doing (0.64.1, owner 2026-11-27 "logo workflow phải đồng nhất"): one look for a workflow (or any subject the app runs) wherever it
- * stands, a page head, a run head, a list row. `idle` (also done) is the brand: the glyph in the accent on the accent's soft plate; `running` is amber: the
- * warning's soft pair; `error` (failed, stopped, needs a person) is the danger SOLID: the white glyph on the full danger plate, so it never reads as the brand's red.
+ * stands, a page head, a run head, a list row, always on the ROUND plate (owner 2026-11-27 "tất cả ô logo đều tròn"). Every activity is its role's SOFT pair (owner 2026-11-27, final): `idle` (also done) info, `running` warning with a warning arc spinning
+ * round the plate (still under reduced motion), `error` (failed, stopped, needs a person) danger. Never the brand's accent, never a solid plate.
  */
 export const TILE_ACTIVITIES = ["idle", "running", "error"] as const
 export type TileActivity = (typeof TILE_ACTIVITIES)[number]
 
-/** The tone pair each activity paints: its tone, and whether the plate is the tone's soft pair or its solid one. */
-export const TILE_ACTIVITY_LOOK: Readonly<Record<TileActivity, { readonly tone: "accent" | "warning" | "danger"; readonly emphasis: "soft" | "solid" }>> = {
-    idle: { tone: "accent", emphasis: "soft" },
+/** The tone pair each activity paints: its role, always on that role's soft pair. */
+export const TILE_ACTIVITY_LOOK: Readonly<Record<TileActivity, { readonly tone: "info" | "warning" | "danger"; readonly emphasis: "soft" }>> = {
+    idle: { tone: "info", emphasis: "soft" },
     running: { tone: "warning", emphasis: "soft" },
-    error: { tone: "danger", emphasis: "solid" },
+    error: { tone: "danger", emphasis: "soft" },
 }
 
 /**
  * The activity of a subject from the state of its run (the status-mark states): running is running, error is error, and every other state (done,
- * waiting on a person's approval, skipped, not run) is the subject at rest, the brand. An app with a run's state passes it through this, never its own map.
+ * waiting on a person's approval, skipped, not run) is the subject at rest (info). An app with a run's state passes it through this, never its own map.
  */
 export const MARK_STATE_ACTIVITY: Readonly<Record<MarkState, TileActivity>> = {
     done: "idle", running: "running", waiting: "idle", error: "error", skipped: "idle", notRun: "idle",
 }
 
 /**
- * (C) A subject tile (0.64.1): the app's glyph of a subject (a workflow's own icon) on the square plate of what it is doing (`TILE_ACTIVITY_LOOK`), the
+ * (C) A subject tile (0.64.1): the app's glyph of a subject (a workflow's own icon) on the round plate of what it is doing (`TILE_ACTIVITY_LOOK`), the
  * one tile of that subject everywhere: `size="head"` beside a page title, `row` (default) leading a list row. `tone` is the activity's, never the app's.
  */
 type IconTileActivity = IconTileShared & {
@@ -143,7 +143,7 @@ const IdentityTile = ({
     const tone: string = state !== undefined ? MARK_STATE_TONE[state] : look !== undefined ? look.tone : slot !== undefined ? "slot" : (ownTone as IconTileTone)
     const showsArtwork = !isLoading && artwork != null
     const custom = useCustomTone(tone, SLOT_AND_BUILT_IN_TONES)
-    const toneRule = isLoading || showsArtwork || look?.emphasis === "solid" ? undefined : (TONE_CONTRACT as Record<string, string | undefined>)[tone]
+    const toneRule = isLoading || showsArtwork ? undefined : (TONE_CONTRACT as Record<string, string | undefined>)[tone]
     return (
         <span
             ref={custom.ref}
@@ -163,6 +163,7 @@ const IdentityTile = ({
             {isLoading ? null : showsArtwork ? artwork : source === undefined ? null : (
                 <Icon source={source} usage={size === "head" ? "head" : "row"} {...(ariaLabel === undefined ? {} : { ariaLabel })} />
             )}
+            {activity === "running" && !isLoading && !showsArtwork ? <span className="starci-core-icon-tile-ring" data-grammar-activity-ring="true" aria-hidden /> : null}
         </span>
     )
 }

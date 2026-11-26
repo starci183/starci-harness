@@ -5544,12 +5544,24 @@
     }
 
     /*
-     * A subject tile's activity (0.64.1, `IconTile activity`): idle the accent's soft pair, running the warning's (amber), error the danger SOLID (the
-     * foreground glyph on the full plate), so a stopped workflow never reads as the brand's own red. The soft pairs are the tone rules above.
+     * A subject tile's activity (0.64.1, `IconTile activity`, owner 2026-11-27 final): each activity is its role's soft pair, the tone rules above:
+     * idle (and done) info, running warning, error danger. Never the accent, never a solid plate.
      */
-    .starci-core-icon-tile[data-grammar-emphasis="solid"][data-tone="danger"][data-artwork="false"][data-loading="false"] {
-        background: var(--danger);
-        color: var(--danger-foreground);
+    /*
+     * Every subject tile is ROUND (owner 2026-11-27 "tất cả ô logo đều tròn"), at both sizes; a running one wears the status mark's spinning ring on
+     * the plate's edge in the warning tone (the run page head's spinner in the activity's colour). Under reduced motion the arc stops (a still full ring, as the status mark).
+     */
+    .starci-core-icon-tile[data-grammar-activity] {
+        position: relative;
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring {
+        border-block-start-color: var(--warning);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring { animation: none; border-color: var(--warning); }
     }
 
     /*
