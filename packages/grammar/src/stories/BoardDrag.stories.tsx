@@ -67,7 +67,9 @@ const boxOf = (root: ParentNode, selector: string): HTMLElement => {
   if (found === null) throw new Error(`no element for ${selector}`);
   return found;
 };
-const dragEvent = (type: string, transfer: DataTransfer) => new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer });
+/** A script-made `DataTransfer` keeps `effectAllowed` at "none" (only a real drag may set it), which react-aria's drop places read as no drop: the picture's drag says "move" as a real one does. */
+const asMove = (transfer: DataTransfer): DataTransfer => Object.defineProperty(transfer, 'effectAllowed', { configurable: true, get: () => 'move' });
+const dragEvent = (type: string, transfer: DataTransfer) => new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: asMove(transfer) });
 const settle = () => new Promise<void>((resolve) => { setTimeout(resolve, 50); });
 
 /** Dragging a card: the origin slot where it stood, the drop slot with its hint in the stage under it, and the end band that appears only now. */

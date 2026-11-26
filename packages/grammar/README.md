@@ -445,6 +445,9 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 a legend of value and share, past six parts folded into `otherLabel`, default "Other") and `Sparkline` of `@starci/grammar/core/ext/recharts`.
 A PDF document is shown ONLY with `PdfViewer` of `@starci/grammar/core/ext/pdf` (pdfjs-dist, an optional peer, loaded lazily; see `src/core/ext/pdf/README.md`).
 A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
+With `onMove` a Board card moves between stages by react-aria's drag and drop: a mouse drag, a long press and drag on a touch screen (a card
+held at the stages' edge scrolls them a stage at a time), Enter on a focused card or a screen reader's activation then Tab and Enter, and
+Alt with an arrow for one step; each stage answers through `canDrop` (`boardAllow`, `boardRefuse(reason)`, `boardNeedsData(kind)`).
 
 ```tsx
 <Board label="Sales pipeline" columns={stages} isLoading={isLoading} error={error} />
