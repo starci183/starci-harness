@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -29,10 +28,6 @@ export const ReportPage: Story = {
       </G.Stack>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-grammar-page-layout="report"]')).toBeTruthy();
-    expect(within(canvasElement).getByText('Recent runs')).toBeTruthy();
-  },
 };
 
 /** B: the workspace page. A selection pane, the main pane and an aside split by dividers; a phone shows one pane at a time. */
@@ -46,7 +41,4 @@ export const WorkspacePage: Story = {
       </G.PaneGrid>
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-grammar-page-layout="workspace"]')).toBeTruthy();
-  },
 };

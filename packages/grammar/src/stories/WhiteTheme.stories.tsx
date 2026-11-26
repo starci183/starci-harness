@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type CSSProperties } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -81,29 +80,6 @@ const PageView = () => (
 /** No hook set: the default look. The page head's content takes the body's measure, so both start on one edge at every width. */
 export const Defaults: Story = {
   render: () => <PageView />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const head = canvasElement.querySelector<HTMLElement>('[data-component="PageHeader"] > [data-component="PageContainer"]');
-      const body = canvasElement.querySelector<HTMLElement>('[data-grammar-page-body]');
-      if (head === null || body === null) throw new Error('the page renders');
-      expect(Math.round(head.getBoundingClientRect().left)).toBe(Math.round(body.getBoundingClientRect().left));
-      const link = canvasElement.querySelector<HTMLElement>('[data-component="Link"][data-grammar-link-variant="inline"]');
-      if (link === null) throw new Error('the link renders');
-      expect(getComputedStyle(link).textDecorationLine).toBe('none');
-      const filter = canvasElement.querySelector<HTMLElement>('[data-grammar-section-kind="region"] > .starci-core-section-filter');
-      if (filter === null) throw new Error('the region filter row renders');
-      expect(getComputedStyle(filter).boxShadow).toBe('none');
-      // One look (0.43.0): the list is flat by default, its rows on the title's edge.
-      const list = canvasElement.querySelector<HTMLElement>('.starci-core-section-list');
-      const title = list?.closest('[data-component="Section"]')?.querySelector<HTMLElement>('h2, h3, h4');
-      const row = list?.querySelector<HTMLElement>('.starci-core-list-row-copy');
-      if (list == null || title == null || row == null) throw new Error('the list renders');
-      expect(getComputedStyle(list).borderTopLeftRadius).toBe('0px');
-      expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      // 0.48.0: the row copy is indented 16 under the section title.
-      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left) + 16);
-    });
-  },
 };
 
 const WHITE_HOOKS = {
@@ -116,19 +92,4 @@ const WHITE_HOOKS = {
 export const White: Story = {
   parameters: { grammar: { bleed: true, rootStyle: WHITE_HOOKS } },
   render: () => <PageView />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const list = canvasElement.querySelector<HTMLElement>('.starci-core-section-list');
-      const title = list?.closest('[data-component="Section"]')?.querySelector<HTMLElement>('h2, h3, h4');
-      const row = list?.querySelector<HTMLElement>('.starci-core-list-row-copy');
-      if (list === null || list === undefined || title === null || title === undefined || row === null || row === undefined) throw new Error('the list renders');
-      expect(getComputedStyle(list).borderTopLeftRadius).toBe('0px');
-      expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      // 0.48.0: the row copy is indented 16 under the section title.
-      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left) + 16);
-      const card = canvasElement.querySelector<HTMLElement>('.starci-core-surface');
-      if (card === null) throw new Error('the card renders');
-      expect(getComputedStyle(card).borderTopLeftRadius).toBe('12px');
-    });
-  },
 };

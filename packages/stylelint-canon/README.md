@@ -61,7 +61,7 @@ refreshes the snapshots.
 ## No gate judges an app's colours
 
 The brand layer is the app's theme. No rule here measures a contrast, a palette or a pairing of light and dark; the
-family's own defaults (`@starci/grammar/<family>/theme.css`) are proved in the package's own render proof, for the family's
+family's own defaults (`@starci/grammar/<family>/theme.css`) are looked at in the package's own stories, for the family's
 sake, and block nothing in an app. Status tones follow HeroUI's soft pairing (`--<tone>-soft`, `--<tone>-soft-foreground`).
 
 ## Not covered

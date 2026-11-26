@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { lazy, Suspense } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BellGlyph, noop, placeholderImage, textContrast } from './fixtures.js';
+import { BellGlyph, noop, placeholderImage } from './fixtures.js';
 
 /**
  * FIGURES, ROWS, BANDS AND PAGES (0.48.0). A figure that is a link shows a chevron and a hover fill at rest. On a phone a rows-list row puts its status chips
@@ -13,12 +12,6 @@ import { BellGlyph, noop, placeholderImage, textContrast } from './fixtures.js';
 const meta: Meta = { title: 'Surfaces/Figures, rows, bands and pages (0.48.0)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
-
-const one = (root: ParentNode, selector: string): HTMLElement => {
-  const found = root.querySelector<HTMLElement>(selector);
-  if (found === null) throw new Error(`no element for ${selector}`);
-  return found;
-};
 
 /** Three figures, the first two links: a linked figure draws no chevron or arrow, the whole cell is the target (pointer cursor, hover surface); the third is not a link. */
 export const FigureLinkCue: Story = {
@@ -35,17 +28,6 @@ export const FigureLinkCue: Story = {
       />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const pairs = [...canvasElement.querySelectorAll<HTMLElement>(".starci-core-description-pair")];
-      expect(pairs).toHaveLength(3);
-      // No chevron, arrow or cue glyph anywhere in the strip; the linked cells are the press targets.
-      expect(canvasElement.querySelectorAll('[data-grammar-figure-cue="true"]')).toHaveLength(0);
-      expect(pairs.map((pair) => pair.querySelector(".starci-core-figure-link") !== null)).toEqual([true, true, false]);
-      expect(getComputedStyle(pairs[0] as HTMLElement).cursor).toBe("pointer");
-      expect(getComputedStyle(pairs[2] as HTMLElement).cursor).not.toBe("pointer");
-    });
-  },
 };
 
 const ROWS: ReadonlyArray<G.SectionRow> = [
@@ -61,23 +43,6 @@ export const ListRowPhoneWrap: Story = {
       <G.Section kind="list" title="Việc cần làm" items={ROWS} empty={null} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const rows = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-list-row')];
-      expect(rows).toHaveLength(3);
-      for (const number of canvasElement.querySelectorAll<HTMLElement>('.starci-core-leading-number')) expect(getComputedStyle(number).fontWeight).toBe('400');
-      const narrow = (rows[0]?.closest('.starci-core-section')?.getBoundingClientRect().width ?? 1000) <= 448;
-      if (!narrow) return;
-      for (const row of rows) {
-        const title = one(row, '.starci-core-list-row-name').getBoundingClientRect();
-        for (const part of row.querySelectorAll<HTMLElement>(':scope > :is(.starci-core-list-row-trail, .starci-core-list-row-actions)')) {
-          const box = part.getBoundingClientRect();
-          expect(box.top).toBeGreaterThanOrEqual(title.bottom - 1);
-          expect(Math.abs(box.left - title.left)).toBeLessThanOrEqual(1);
-        }
-      }
-    }, { timeout: 4000 });
-  },
 };
 
 /** A key-value list and a rows list, loading with no row yet: the placeholder rows have the height of the real rows of the same layout. */
@@ -90,18 +55,6 @@ export const SectionSkeletonShape: Story = {
       <G.Section kind="list" layout="keyValue" title="Đã tải" items={[{ id: 'a', title: 'Gói', value: 'Pro' }, { id: 'b', title: 'Hạn', value: '12/2026' }, { id: 'c', title: 'Chỗ', value: '5' }]} empty={null} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const lists = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-list')];
-      expect(lists).toHaveLength(4);
-      const heights = lists.map((list) => [...list.querySelectorAll<HTMLElement>(':scope > .starci-core-list-row')].map((row) => Math.round(row.getBoundingClientRect().height)));
-      // Loading rows and loaded rows of one layout are one box, within 2px.
-      for (const [loading, loaded] of [[heights[0], heights[1]], [heights[2], heights[3]]] as const) {
-        expect(loading?.length).toBe(3);
-        loading?.forEach((height, index) => expect(Math.abs(height - (loaded?.[index] ?? 0))).toBeLessThanOrEqual(2));
-      }
-    }, { timeout: 4000 });
-  },
 };
 
 const Band = ({ tone, children }: { readonly tone: 'accent' | 'inverse'; readonly children: React.ReactNode }) => (
@@ -122,23 +75,6 @@ export const ButtonOnBands: Story = {
       </Band>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const buttons = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-button-ground]')];
-      expect(buttons).toHaveLength(4);
-      for (const button of buttons) {
-        const band = getComputedStyle(button.closest('[data-story-band]') as HTMLElement).backgroundColor;
-        const style = getComputedStyle(button);
-        // The label keeps the band's own pair contrast (4.5:1 where the theme's pair reaches it) against what it is drawn on: the fill, or the band
-        // through a transparent outline button. The theme owns the pair; the button only never loses contrast against it.
-        const pair = textContrast(button.closest('[data-story-band]') as HTMLElement);
-        expect(textContrast(button)).toBeGreaterThanOrEqual(Math.min(4.5, pair) - 0.05);
-        // The primary is filled with the band's foreground; the others are an outline, transparent inside.
-        if (button.getAttribute('data-grammar-variant') === 'primary') expect(style.backgroundColor).not.toBe(band);
-        else expect([style.backgroundColor, style.borderTopWidth]).toEqual(['rgba(0, 0, 0, 0)', '1px']);
-      }
-    });
-  },
 };
 
 /** An eager hero image with a high fetch priority: it is never held at opacity 0 and no shimmer covers it while it loads. */
@@ -148,15 +84,6 @@ export const ImageEagerPaint: Story = {
       <G.Image src={placeholderImage('Hero')} alt="Ảnh bìa" ratio="16:9" loading="eager" fetchPriority="high" />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const image = one(canvasElement, 'img.starci-core-image-element');
-      expect(image.getAttribute('fetchpriority')).toBe('high');
-      expect(image.getAttribute('loading')).toBe('eager');
-      expect(getComputedStyle(image).opacity).toBe('1');
-      expect(canvasElement.querySelector('.starci-core-image-skeleton')).toBeNull();
-    });
-  },
 };
 
 const LazyGrid = lazy(async () => ({ default: G.PaneGrid }));
@@ -174,10 +101,4 @@ export const PagePaneGridMarker: Story = {
       </G.Page>
     </Suspense>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelector('[data-component="PaneGrid"]')).not.toBeNull();
-      expect(G.PaneGrid.displayName).toBe('PaneGrid');
-    }, { timeout: 4000 });
-  },
 };

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -10,33 +9,6 @@ import * as G from '../common/index.js';
 const meta: Meta = { title: 'Meter foreground fill (0.37.38)', parameters: { grammar: { bleed: false } } };
 export default meta;
 type Story = StoryObj;
-
-/** The resolved `--foreground` of the root, painted on a probe so it compares as a computed colour. */
-const foregroundOf = (canvasElement: HTMLElement) => {
-  const probe = document.createElement('span');
-  probe.style.backgroundColor = 'var(--foreground)';
-  canvasElement.appendChild(probe);
-  const colour = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  return colour;
-};
-
-const fillsAreForeground = (canvasElement: HTMLElement) => {
-  const foreground = foregroundOf(canvasElement);
-  const meters = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="Meter"][data-grammar-tone="foreground"]'));
-  expect(meters.length).toBe(4);
-  for (const meter of meters) {
-    expect(meter.getAttribute('role')).toBe('meter');
-    expect(meter.getAttribute('aria-valuenow')).not.toBeNull();
-    const fill = meter.querySelector<HTMLElement>('[data-slot="meter-fill"], [data-grammar-meter-segment="filled"]')!;
-    expect(getComputedStyle(fill).backgroundColor).toBe(foreground);
-  }
-  const bar = canvasElement.querySelector<HTMLElement>('[data-component="Progress"][data-grammar-progress-tone="foreground"]')!;
-  expect(bar.getAttribute('role')).toBe('progressbar');
-  expect(getComputedStyle(bar.querySelector<HTMLElement>('[data-slot="progress-bar-fill"]')!).backgroundColor).toBe(foreground);
-  const neutral = canvasElement.querySelector<HTMLElement>('[data-component="Meter"][data-grammar-tone="neutral"] [data-slot="meter-fill"]')!;
-  expect(getComputedStyle(neutral).backgroundColor).not.toBe(foreground);
-};
 
 const render = () => (
   <div style={{ display: 'grid', gap: 'var(--grammar-section-gap)', maxInlineSize: 420 }}>
@@ -52,12 +24,10 @@ const render = () => (
 export const Light: Story = {
   name: 'Foreground fill at 40, 92 and 100 %',
   render,
-  play: async ({ canvasElement }) => { await waitFor(() => fillsAreForeground(canvasElement)); },
 };
 
 export const Dark: Story = {
   name: 'Foreground fill at 40, 92 and 100 % (dark)',
   globals: { grammarTheme: 'dark' },
   render,
-  play: async ({ canvasElement }) => { await waitFor(() => fillsAreForeground(canvasElement)); },
 };

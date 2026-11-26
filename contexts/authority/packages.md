@@ -90,12 +90,12 @@ repository installs them as it installs a harness package: `starci deps install-
 ## Grammar edits are content only
 
 A Grammar edit changes content: a component, its CSS, its props, and a story for a state it newly renders. Its proof is
-the package's `typecheck`, its literal lint and `build` (`npm test` runs exactly those). The lint is ESLint and Stylelint config
+the package's `typecheck`, its static checks (`check:*`), its literal lint and `build` (`npm test` runs exactly those), and the look of its stories. The lint is ESLint and Stylelint config
 (`eslint.config.ts`, `stylelint.config.ts`): a component or stylesheet holds no hardcoded colour, radius, type size, shadow,
-motion, opacity or off-scale spacing, and reads a token or a ramp of `src/common/ramps.css`. It adds no spec suite or test helper;
-it runs no Storybook plays and no DNA measurement locally; it bumps and re-pins only `@starci/grammar`. The plays and the DNA gate are
-CI's ([ci.md](ci.md)), and a defect is fixed in the component, and the rule changes only if the rule was wrong. Apps on the Grammar keep no
+motion, opacity or off-scale spacing, and reads a token or a ramp of `src/common/ramps.css`. It adds no spec, test, snapshot, test folder, test helper or test-runner config ([proof](../ui/proof.md) GRAMMAR-NO-TESTS, the owner on 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless"; the shape gate slot `never.grammar-tests` refuses one);
+it runs no DNA measurement locally; it bumps and re-pins only `@starci/grammar`. Its look is proven by its story shots (`npm run shoot`) and the
+owner's eye, the DNA gate is run on demand ([ci.md](ci.md)), and a defect is fixed in the component, and the rule changes only if the rule was wrong. Apps on the Grammar keep no
 front-end tests either (`SHARED-TEST-1`).
 
-Other packages keep their specs ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-2): a rule change is written with the
+Other packages keep their specs ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-2, from which the Grammar alone is exempt): a rule change is written with the
 spec that holds it, and CI runs it.

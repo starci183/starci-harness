@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { quietProbe } from './fixtures.js';
 
 /**
  * The status tones side by side (0.37.5, owner: "success must use the success colour"). A success Badge and StatusDot read the HeroUI `success` tokens exactly
  * (`--success-soft` and `--success-soft-foreground` for the chip, `--success` for the dot): Core maps `success` to nothing else. A product that paints
- * them lime has overridden `--success` in its own brand sheet; the play compares the chip's ink and tint with the tokens.
+ * them lime has overridden `--success` in its own brand sheet.
  */
 const meta: Meta = { title: 'Surfaces/Status tones' };
 export default meta;
@@ -29,14 +27,4 @@ export const SideBySide: Story = {
       </G.Cluster>
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const badge = canvasElement.querySelector<HTMLElement>('[data-component="Badge"][data-tone="success"]');
-      if (badge === null) throw new Error('the success badge renders');
-      const want = quietProbe(canvasElement, (probe) => { probe.style.color = 'var(--success-soft-foreground)'; probe.style.backgroundColor = 'var(--success-soft)'; }, (probe) => ({ color: getComputedStyle(probe).color, backgroundColor: getComputedStyle(probe).backgroundColor }));
-      const got = getComputedStyle(badge);
-      expect(got.color).toBe(want.color);
-      expect(got.backgroundColor).toBe(want.backgroundColor);
-    });
-  },
 };

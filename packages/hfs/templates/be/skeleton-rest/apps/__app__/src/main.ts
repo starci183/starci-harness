@@ -4,7 +4,14 @@ import { SystemClockService } from "@modules/platform/clock"
 import { EnvSource } from "@modules/platform/config"
 import { applyHttpSecurity } from "@modules/platform/http-security"
 import { SystemIds } from "@modules/platform/ids"
-import { applyCorrelation, createJsonLogger, createNestLogger, LOGGER, LoggingLogEvent, type Logger } from "@modules/platform/logging"
+import {
+    applyCorrelation,
+    createJsonLogger,
+    createNestLogger,
+    LOGGER,
+    LoggingLogEvent,
+    type Logger,
+} from "@modules/platform/logging"
 import { AppModule } from "./app.module"
 import { read{{appPascal}}Env } from "./{{app}}.env"
 import { OPENAPI } from "./openapi"

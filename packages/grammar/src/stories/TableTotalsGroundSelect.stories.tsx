@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -49,15 +48,6 @@ const TOTALS: G.DataTableTotals = {
   values: { amount: money(INVOICES.reduce((sum, row) => sum + row.amount, 0)), paid: money(INVOICES.reduce((sum, row) => sum + row.paid, 0)) },
 };
 
-const boxOf = (root: ParentNode, selector: string): HTMLElement => {
-  const found = root.querySelector<HTMLElement>(selector);
-  if (found === null) throw new Error(`no element for ${selector}`);
-  return found;
-};
-
-/** Whether the table drew itself as the phone list (under 768px a table of three or more columns is a list). */
-const isList = (root: ParentNode): boolean => boxOf(root, '[data-component="DataTable"]').getAttribute('data-grammar-table-list') === 'true';
-
 const Footer = () => (
   <G.Pagination label="Invoice pages" page={1} pageCount={3} onPageChange={() => undefined} previousLabel="Previous" nextLabel="Next" pageLabel={(n) => `Page ${n}`} summary="1-8 of 21 invoices" />
 );
@@ -74,35 +64,6 @@ export const Totals: Story = {
       </G.Section>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const totals = boxOf(canvasElement, '[data-grammar-table-totals="true"]');
-      expect(totals.textContent).toContain('Total');
-      expect(totals.textContent).toContain(TOTALS.values.amount as string);
-      expect(totals.textContent).toContain(TOTALS.values.paid as string);
-      if (isList(canvasElement)) {
-        const items = [...canvasElement.querySelectorAll('[role="listitem"]')];
-        expect(items[items.length - 1]).toBe(totals);
-        return;
-      }
-      // The figures stand under their columns: right edges equal to the rows' (end-aligned numerals).
-      const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row="true"]')];
-      expect(rows.length).toBe(INVOICES.length);
-      for (const column of ['amount', 'paid']) {
-        const own = boxOf(totals, `[data-grammar-column-id="${column}"]`).getBoundingClientRect();
-        const first = boxOf(rows[0] as HTMLElement, `[data-grammar-column-id="${column}"]`).getBoundingClientRect();
-        expect(Math.abs(own.right - first.right)).toBeLessThan(1);
-        expect(Math.abs(own.left - first.left)).toBeLessThan(1);
-      }
-      // Sticky: the body scrolls (the rows overflow 15rem), the totals row is still inside the visible region at the foot.
-      const scroll = boxOf(canvasElement, '.starci-core-data-table-scroll');
-      expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
-      const stuck = boxOf(totals, 'td, [role="gridcell"]');
-      expect(getComputedStyle(stuck).position).toBe('sticky');
-      expect(stuck.getBoundingClientRect().bottom).toBeLessThanOrEqual(scroll.getBoundingClientRect().bottom + 1);
-      expect(stuck.getBoundingClientRect().top).toBeGreaterThan(scroll.getBoundingClientRect().top);
-    }, { timeout: 4000 });
-  },
 };
 
 /** Totals in a table as tall as its rows, and the states that draw none: loading, an error and an empty table keep the totals out. */
@@ -114,11 +75,6 @@ export const TotalsStates: Story = {
       <G.DataTable<Invoice> label="Empty" columns={COLUMNS} rows={[]} renderCell={cell} totals={TOTALS} emptyContent="No invoices." />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelectorAll('[data-grammar-table-totals="true"]').length).toBe(1);
-    }, { timeout: 4000 });
-  },
 };
 
 /**
@@ -131,24 +87,6 @@ export const RowGround: Story = {
       <G.DataTable<Invoice> label="Invoices by status" columns={COLUMNS} rows={INVOICES.slice(0, 6)} renderCell={cell} emptyContent="No invoices." />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const toned = [...canvasElement.querySelectorAll<HTMLElement>('[data-ground-tone]')];
-      expect(toned.length).toBe(4);
-      const grounds = new Set<string>();
-      for (const row of toned) {
-        const own = getComputedStyle(row).backgroundColor;
-        expect(own).not.toBe('rgba(0, 0, 0, 0)');
-        grounds.add(own);
-      }
-      expect(grounds.size).toBe(4);
-      const plain = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row="true"]:not([data-ground-tone]), .starci-core-data-table-list-row:not([data-ground-tone])')][0];
-      expect(getComputedStyle(plain as HTMLElement).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      // The danger row draws the 2px edge as well.
-      const danger = boxOf(canvasElement, '[data-ground-tone="danger"]');
-      expect(danger.getAttribute('data-edge-tone')).toBe('danger');
-    }, { timeout: 4000 });
-  },
 };
 
 const SelectableList = () => {
@@ -189,46 +127,24 @@ export const LongPressSelects: Story = {
   play: async ({ canvasElement }) => {
     // The list is drawn once the viewport is read (after mount): below 768px wait for it.
     const phone = window.innerWidth < 768;
-    await waitFor(() => {
-      expect(canvasElement.querySelector('[data-component="DataTable"]')).not.toBeNull();
-      expect(isList(canvasElement)).toBe(phone);
-      expect(canvasElement.querySelectorAll(phone ? '.starci-core-data-table-list-row' : '[data-grammar-table-selection="true"]').length).toBeGreaterThan(0);
-    }, { timeout: 4000 });
     if (!phone) return;
     const rows = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-data-table-list-row')];
-    expect(rows.length).toBe(5);
-    const list = boxOf(canvasElement, '.starci-core-data-table-list');
-    expect(list.getAttribute('data-grammar-selecting')).toBe('false');
     // A short press selects nothing.
     press(rows[0] as HTMLElement, 'pointerdown');
     await wait(120);
     press(rows[0] as HTMLElement, 'pointerup');
     rows[0]?.click();
-    expect(rows[0]?.getAttribute('data-grammar-selected')).toBe('false');
     // A long press selects the row and starts selecting.
     press(rows[1] as HTMLElement, 'pointerdown');
     await wait(650);
     press(rows[1] as HTMLElement, 'pointerup');
     rows[1]?.click();
-    await waitFor(() => {
-      expect(rows[1]?.getAttribute('data-grammar-selected')).toBe('true');
-      expect(list.getAttribute('data-grammar-selecting')).toBe('true');
-      const box = boxOf(rows[1] as HTMLElement, 'input[type="checkbox"]') as HTMLInputElement;
-      expect(box.checked).toBe(true);
-      expect(box.getAttribute('aria-label')).toBe('Select Thu Trang Studio');
-      expect(boxOf(canvasElement, '[role="status"]').textContent).toBe('1 selected');
-    }, { timeout: 2000 });
     // While selecting, a press on another row toggles it.
     rows[3]?.click();
-    await waitFor(() => {
-      expect(rows[3]?.getAttribute('data-grammar-selected')).toBe('true');
-      expect(boxOf(canvasElement, '[role="status"]').textContent).toBe('2 selected');
-    }, { timeout: 2000 });
     // A drift cancels the press.
     press(rows[4] as HTMLElement, 'pointerdown');
     press(rows[4] as HTMLElement, 'pointermove', { clientX: rows[4]!.getBoundingClientRect().left + 120, clientY: rows[4]!.getBoundingClientRect().top + 60 });
     await wait(650);
     press(rows[4] as HTMLElement, 'pointerup');
-    expect(rows[4]?.getAttribute('data-grammar-selected')).toBe('false');
   },
 };

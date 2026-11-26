@@ -21,7 +21,7 @@ async function app(t: TestContext, argv: string[]): Promise<{ code: number; out:
 
 test('app check --release runs the release check and prints no rename notice', async (t) => {
   const run = await app(t, ['check', '--release', '--fresh']);
-  assert.match(run.err, /^starci app check --release: package\.json is not readable JSON/mu);
+  assert.match(run.err, /^starci app check --release: RELEASE_PACKAGE_UNREADABLE: package\.json is not readable JSON/mu);
   assert.ok(!run.err.includes(RENAMED_GATE));
 });
 

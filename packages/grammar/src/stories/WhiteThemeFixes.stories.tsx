@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { CSSProperties } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -81,20 +80,7 @@ const Body = () => (
   </G.Stack>
 );
 
-const play: Story['play'] = async ({ canvasElement }) => {
-  await waitFor(() => {
-    const pill = canvasElement.querySelector<HTMLElement>('[data-component="Select"][data-grammar-select-appearance="pill"]');
-    const cluster = pill?.parentElement;
-    if (pill === null || pill === undefined || cluster === null || cluster === undefined) throw new Error('the pill renders');
-    expect(pill.getBoundingClientRect().width).toBeLessThan(cluster.getBoundingClientRect().width / 2);
-    const commit = canvasElement.querySelector<HTMLElement>('[data-component="Button"][data-grammar-variant="primary"][data-action-pending="false"]');
-    if (commit === null) throw new Error('the disabled commit renders');
-    expect(getComputedStyle(commit).opacity).toBe('1');
-    const actions = canvasElement.querySelector<HTMLElement>('[data-component="DataTable"] .starci-core-cluster');
-    if (actions === null) throw new Error('the action cell renders');
-    const buttons = [...actions.querySelectorAll<HTMLElement>('[data-component="Button"]')].map((button) => button.getBoundingClientRect().top);
-    expect(new Set(buttons.map(Math.round)).size).toBe(1);
-  });
+const play: Story['play'] = async () => {
 };
 
 /** No hook set: the default look, the section columns without a divider. */

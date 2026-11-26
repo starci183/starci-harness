@@ -32,7 +32,7 @@ const FAMILIES: Record<Family, { readonly css: string; readonly Root: (props: Gr
 
 /**
  * The family's own default palette (`@starci/grammar/<family>/theme.css`), which an app imports or replaces with its own tokens. The stories draw on HeroUI's neutral
- * tokens (the baselines of the render proof), so the palette is opt-in: `globals=grammarPalette:family`. The DNA gate asks for it, because laws such as ink on pink and the
+ * tokens (the neutral look every story is shot in), so the palette is opt-in: `globals=grammarPalette:family`. The DNA gate asks for it, because laws such as ink on pink and the
  * Offset Pop sticker are about the family's palette, not the vendor's blue.
  */
 const PALETTES: Record<Family, string | undefined> = { common: undefined, core: coreThemeCss, 'offset-pop': offsetPopThemeCss };
@@ -122,7 +122,7 @@ const preview: Preview = {
       },
     },
     grammarPalette: {
-      description: "neutral: HeroUI tokens (the render proof); family: the family's own theme.css",
+      description: "neutral: HeroUI tokens (the shots); family: the family's own theme.css",
       toolbar: {
         title: 'Palette',
         icon: 'photo',

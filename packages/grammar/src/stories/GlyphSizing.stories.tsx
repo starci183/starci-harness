@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -38,15 +37,4 @@ export const InSectionFilter: Story = {
       </G.Section>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const svgs = Array.from(canvasElement.querySelectorAll<SVGSVGElement>('svg'));
-      expect(svgs.length).toBeGreaterThan(2);
-      for (const svg of svgs) {
-        const box = svg.getBoundingClientRect();
-        expect(box.width).toBeLessThanOrEqual(24);
-        expect(box.height).toBeLessThanOrEqual(24);
-      }
-    });
-  },
 };

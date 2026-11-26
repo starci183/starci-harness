@@ -196,7 +196,7 @@ void test("a failed package is reported and the rest of the line is published: o
     }
 })
 
-void test("every folder a row needs is installed before any is built or packed, so a pack that reads a later sibling finds its install; a failed install leaves out that row and what needs it", async () => {
+void test("every folder a row needs is installed and built, in order, before any row is packed, so a pack that reads a later sibling finds it installed and built; a failed install leaves out that row and what needs it", async () => {
     const folder = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
     try {
         const files = { record: join(folder, "dev-publish.json"), counter: join(folder, "dev-counter.json"), settings: join(folder, "local-settings.json") }
@@ -220,7 +220,7 @@ void test("every folder a row needs is installed before any is built or packed, 
                         return Promise.resolve()
                     },
                     publish: (_pkg, row) => {
-                        assert.ok(events.includes("install packages/jest-preset"), `${row.package} is packed after every folder it needs is installed`)
+                        assert.ok(events.includes("build packages/jest-preset"), `${row.package} is packed after every folder it needs is installed and built`)
                         events.push(`publish ${row.package}`)
                         return Promise.resolve()
                     },
@@ -229,8 +229,9 @@ void test("every folder a row needs is installed before any is built or packed, 
                 },
             })
         const green = await run(undefined)
-        const firstBuild = events.findIndex((event) => event.startsWith("build "))
-        assert.ok(events.slice(0, firstBuild).includes("install packages/jest-preset"), "the later sibling is installed before the first build")
+        const firstPublish = events.findIndex((event) => event.startsWith("publish "))
+        assert.ok(events.slice(firstPublish).every((event) => event.startsWith("publish ")), "every install and build comes before the first pack")
+        assert.ok(events.indexOf("install packages/jest-preset") < events.indexOf("build packages/jest-preset"), "a folder is installed right before its build")
         assert.deepEqual(green.failed, [])
         events.length = 0
         const red = await run("packages/eslint-canon-fe")
