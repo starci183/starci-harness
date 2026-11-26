@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import * as G from '../common/index.js';
 
 /**
- * FormGrid: rows of fields aligned on the control line. The shots show the field anatomy order (label, control,
+ * FormGrid: rows of fields aligned on the control line. Each story draws the field anatomy order (label, control,
  * description) and neighbouring controls of one row sharing their top edge and height, whatever their neighbours carry.
  */
 const meta: Meta = {

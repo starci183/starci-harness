@@ -171,22 +171,32 @@ runtime dependency on the other. An app installs the target Grammar first, and t
 **The CHANGELOG says which.** Every Grammar release that changes an app-facing API names its migration in its CHANGELOG entry: either
 "codemod: vXXXX" (the codemod of that release), "no codemod needed", or "manual steps" followed by the steps.
 
-## Proof by looking
+## Proof by reading
 
-Lint passing says nothing about looks. Before review:
+Lint passing says nothing about looks, and a picture proves nothing a reader of the code cannot see: the Grammar takes no shots
+([proof](../ui/proof.md) GRAMMAR-NO-TESTS, the owner on 2026-11-26: "Grammar chụp hình làm gì code ra story dc r? Đọc code là dc
+mà? Bỏ vụ chụp hình đi, xoá luôn"). A Grammar lane that changes a component changes, in the same lane, its four records:
 
-1. Shoot every story it touches in **both families** (Core and Offset Pop), in **light and dark**, at **390 and 1440** wide
-   (`npm run build-storybook`, then `npm run shoot [title] --family=core|offset-pop` in `packages/grammar`), and look at each picture. The Grammar carries no tests, no pixel baselines and no test runner ([proof](../ui/proof.md) GRAMMAR-NO-TESTS,
-   the owner on 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless"); the pictures are looked at, never diffed.
-2. Measure the static laws with `starci dna check --storybook packages/grammar/storybook-static`; add a narrow container (a drawer or a rail) if it answers its container.
-3. With **real content**: the longest translated label, an empty value, a large count. Lorem ipsum hides the failure.
-4. Beside its **neighbours**: in a card, a pane and a row of controls.
-5. With a **foreign theme**: HeroUI's tokens set to an unrelated palette, radius and font, looked at to see nothing is hard-coded.
+1. **The code**: the component's folder under `src/<family>/` (its TSX and its CSS).
+2. **Its stories**: a story under `src/stories/` that names the component draws every state the change adds or moves, in **both
+   families** (Core and Offset Pop) and **light and dark** through the Storybook toolbar, with **real content** (the longest
+   translated label, an empty value, a large count; Lorem ipsum hides the failure), **beside its neighbours** (in a card, a pane and a
+   row of controls) and, where paint is in question, under a **foreign theme** (HeroUI's tokens set to an unrelated palette, radius and
+   font). The story is the proof; a state no story draws is unproven.
+3. **Its contract row**: the component's role in [contract.yaml](contract.yaml) (`roles[]`, its `dna` ids and the `mustKeep` laws
+   it owns), rewritten to what the component does now.
+4. **Its family section**: the part of [common.md](common.md), [core.md](core.md) or [offset-pop.md](offset-pop.md) that says how that
+   family fills the role, rewritten the same way (CONTRIB-6).
 
-Every law must be measured, not merely pass: a law with zero matches is not exercised.
+The harness FAST gate (`starci check --level dev`) prints a `grammar-proof` notice for a component changed without a story that
+names it, or without a change to `contract.yaml` or its family's context; the notice does not fail the gate, and the reviewer reads
+it. Before review, measure the static laws with `starci dna check --storybook packages/grammar/storybook-static` (it reads the
+rendered DOM of the stories and takes no picture); add a narrow container (a drawer or a rail) to a story if the component answers its
+container. Every law must be measured, not merely pass: a law with zero matches is not exercised.
 
-## The look, reviewed by a person
+## Review of a Grammar change
 
-In the change, link the story shots and the UI audit of the app screens that use it. A person reads the screens, in the state a reader would see them, and
-accepts or rejects. The owner reviews anything that changes how a component looks. A green check does not stand in for this, and a rejection
-means a rule is missing or wrong: the fix lands in a type, a law or the rule, then the component.
+The reviewer reads the four records above, never a picture: the code against its contract row and family section, the stories for
+every state the change claims. The owner reviews anything that changes how a component looks. A green check does not stand in for
+this, and a rejection means a rule is missing or wrong: the fix lands in a type, a law or the rule, then the component. The UI audit of
+the app screens that use the component is the app's own proof ([project/gallery.md](../project/gallery.md)), run in the app.

@@ -38,7 +38,7 @@ const ControlRow = () => {
     )
 }
 
-/** The default height of every control in one row, light and dark, each drawn 40px tall, looked at in the shots. */
+/** The default height of every control in one row, light and dark, each drawn 40px tall. */
 export const OneRowAllAtForty: Story = {
   parameters: { grammar: { catalog: true } },
     render: (_, { globals }) => (

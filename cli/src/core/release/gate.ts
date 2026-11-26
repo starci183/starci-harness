@@ -11,6 +11,7 @@ import { assertPosixSh } from "../../shared/posix-sh.js"
 import { installPackage, tail } from "../deps/packages.js"
 import { affectedBy } from "./affected.js"
 import type { Affected } from "./affected.js"
+import { grammarProofNoticesIn } from "./grammar-proof.js"
 import { isHarnessCheckout } from "./harness-checkout.js"
 
 /**
@@ -318,13 +319,16 @@ export const checkVerb = defineVerb({
         const all = listPackages(root)
         const scriptsOf = (dir: string): Readonly<Record<string, string>> => all.find((pkg) => pkg.relativeDir === dir)?.scripts ?? {}
         const gate = await runHarnessGate(root, plan, level, scriptsOf, runStep, context.progress)
+        // A Grammar component changed without its story or its contract and context (contexts/grammars/contributing.md "Proof by reading"): a notice for the review, never red.
+        const notices = level === "dev" ? grammarProofNoticesIn(root, plan.changed) : []
         const ran = gate.steps.filter((step) => step.ok !== "skipped").length
         const lines = [
             ...gate.summary,
             `${level} gate ${gate.verdict}: ${String(ran)} step(s) ran, ${String(gate.steps.length - ran)} skipped behind a red build`,
             ...gate.findings.flatMap((finding) => findingLines(finding)),
+            ...notices.map((notice) => `notice ${notice}`),
         ]
-        return { data: gate, message: lines.join("\n"), exitCode: gate.verdict === "green" ? 0 : 1 }
+        return { data: { ...gate, notices }, message: lines.join("\n"), exitCode: gate.verdict === "green" ? 0 : 1 }
     },
 })
 

@@ -18,28 +18,37 @@ A claim names its enforcer (CONTRIB-8). Two things check a look by machine, and 
 | --- | --- | --- | --- |
 | Type and lint | a wrong composition: illegal children and props, the R-numbered rules of [hfs/rules.yaml](../hfs/rules.yaml) | on every check of an app and of the package | judges how a legal tree looks |
 | `starci dna check --storybook` | the static laws of [contract.yaml](../grammars/contract.yaml) `mustKeep` (`DNA-*`): a box, a style, a relation, a count measured on the rendered DOM of a built Storybook | on demand against `packages/grammar/storybook-static`; CI does not run it yet. It opens every story with `grammarPalette:family` (the family's own `theme.css`, the palette the laws about ink on pink and the sticker are about; the stories otherwise keep the neutral HeroUI tokens), a page that freezes the browser is a `red` problem of its own and the run goes on, and `--shard i/n` splits a long run over several browsers (add up the `--out` reports); a static law that names `context.widths` (the phone laws, `DNA-COMMON-CONTROLS-PHONE-40` and the header laws) is also judged at those widths, 320, 360 and 390, whatever `--widths` says | judges taste or an app's colours |
-| `npm run shoot` (packages/grammar) | the pictures of the stories of a built Storybook, at 390 and 1440, light and dark, scale 2, into `shots/` (a play only drives the hover, open or typing a picture needs) | by hand, on every Grammar change | checks anything: it never fails on a check and always exits 0 |
-| The owner's eye | the pictures `npm run shoot` takes, the UI audit of the app screens, and the scored lenses TASTE and UX below | at review | is replaced by a green check |
+| Review of a Grammar change | the component's code, its stories, its row in [contract.yaml](../grammars/contract.yaml) and its section in the family's context, read as written (GRAMMAR-NO-TESTS) | at review of every Grammar lane | takes a picture of the Grammar |
+| The owner's eye | the UI audit of the app screens and the scored lenses TASTE and UX below | at review | is replaced by a green check |
 
 An id below that no row holds by machine is the owner's eye or a UAT run: it says so in its Instrument or Key column.
 
-### GRAMMAR-NO-TESTS The Grammar carries no tests
+### GRAMMAR-NO-TESTS The Grammar carries no tests and no shots
 
-The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless".
+The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless", then "Grammar chụp hình làm gì code ra story dc r? Đọc
+code là dc mà? Bỏ vụ chụp hình đi, xoá luôn".
 
 `packages/grammar` carries no `*.spec.*`, no `*.test.*`, no snapshot (`*.snap.json`), no `specs/`, `spec/`, `tests/`, `test/`,
-`__tests__/`, `e2e/` or `proof/` folder, no spec tsconfig and no test-runner config (`jest`, `vitest`, `playwright`), and no pixel
-baseline. A Grammar change is proven by looking: its Storybook stories shot at 390 and 1440 in light and dark with `npm run shoot` in
-`packages/grammar` (after `npm run build-storybook`; the pictures land in `shots/`, never committed), and the UI audit of the app
-screens that use it, read by the owner's eye. A story's `play` function holds no assertion (`expect`, `waitFor` as a check, a
-hand-written `throw` on a measured value): it exists only to drive the hover, open or typing a picture needs. No theme proof,
-render proof or play runner judges the Grammar. Its `npm test` is typecheck, the static checks (`check:loading`, `check:client`,
-`check:tones`, `check:type`, `check:hooks`, `check:libraries`), lint and build; CI and `release gate` call that one command.
+`__tests__/`, `e2e/` or `proof/` folder, no spec tsconfig and no test-runner config (`jest`, `vitest`, `playwright`), no pixel
+baseline, and no screenshot: no shoot script, no `shots/` folder, no picture committed as evidence. A Grammar lane takes no
+pictures of the Grammar and links none. A Grammar change is proven by what it writes, read in review: the component's code, its
+stories (the state each story draws is the proof that the component draws it), its row in
+[contract.yaml](../grammars/contract.yaml) and its section in the family's context ([common.md](../grammars/common.md),
+[core.md](../grammars/core.md) or [offset-pop.md](../grammars/offset-pop.md)); [grammars/contributing.md](../grammars/contributing.md)
+"Proof by reading" says what a lane changes. A story's `play` function holds no assertion (`expect`, `waitFor` as a check, a
+hand-written `throw` on a measured value): it exists only to drive the hover, open or typing the story needs. No theme proof,
+render proof, play runner or shot judges the Grammar. Its `npm test` is typecheck, the static checks (`check:loading`,
+`check:client`, `check:tones`, `check:type`, `check:hooks`, `check:libraries`), lint and build; CI and `starci check` call that one
+command. The UI audit and gallery shots of an app's screens are the app's proof ([project/gallery.md](../project/gallery.md)) and
+are not touched by this rule.
 
-Enforcer: the harness shape's gate slot `never.grammar-tests` ([contexts/hfs/harness.yaml](../hfs/harness.yaml)) refuses such a file
-`SHAPE_FORBIDDEN` in CI's `check shape` row, with no exception and no dated waiver; its spec is in the harness CLI's own suite
-(`cli/src/core/check/shape-grammar-tests.test.ts`), never in the Grammar. A rule that asks a package for specs does not reach the
-Grammar: it is exempt by this rule, for the owner's reason above. This rule is the Grammar's only; every other package keeps its specs.
+Enforcer: the harness shape's gate slots `never.grammar-tests` and `never.grammar-shots` ([contexts/hfs/harness.yaml](../hfs/harness.yaml))
+refuse such a file `SHAPE_FORBIDDEN` in CI's `check shape` row, with no exception and no dated waiver; the spec of the first is in the
+harness CLI's own suite (`cli/src/core/check/shape-grammar-tests.test.ts`), never in the Grammar. The harness FAST gate
+(`starci check --level dev`) prints a `grammar-proof` notice for each Grammar component a lane changes without a story that names it or
+without a change to `contract.yaml` or its family's context (cli/src/core/release/grammar-proof.ts); the notice never fails the gate,
+and the review reads it. A rule that asks a package for specs or shots does not reach the Grammar: it is exempt by this rule, for the
+owner's reasons above. This rule is the Grammar's only; every other package keeps its specs.
 
 ## Lenses and verdicts
 

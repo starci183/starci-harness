@@ -9,7 +9,7 @@ import { Text } from '../core/leaf/Text/index.js';
 /**
  * The AI chat extension (`@starci/grammar/core/ext/chat`): `AiChatThread` over assistant-ui's external store runtime, every part Grammar.
  * The words are the ones an app passes in `labels` (here Vietnamese, as an app would). States: empty, a conversation with a code block and a
- * tool call, streaming (live tokens, stop in place of send), the proposed result, approving, and a closed session. Shot at 1440 and 390.
+ * tool call, streaming (live tokens, stop in place of send), the proposed result, approving, and a closed session.
  */
 const meta: Meta = { title: 'Navigation & Data/AI chat', parameters: { layout: 'fullscreen' } };
 export default meta;

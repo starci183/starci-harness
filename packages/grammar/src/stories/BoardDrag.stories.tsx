@@ -126,7 +126,7 @@ export const Refused: Story = {
   },
 };
 
-/** The drag held mid-air (the proof picture): the origin slot, the drop slot with its hint in the stage under the pointer, and the end band. */
+/** The drag held mid-air: the origin slot, the drop slot with its hint in the stage under the pointer, and the end band. */
 export const MidDrag: Story = {
   render: () => <Pipeline />,
   play: async ({ canvasElement }) => {

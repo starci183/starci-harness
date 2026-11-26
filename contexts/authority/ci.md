@@ -1,7 +1,7 @@
 # Tier 3: CI
 
 CI is the critic. After a green wave ([wave.md](wave.md)) is pushed to main, CI runs the full suite: unit tests with
-coverage, build, Sonar. The Grammar has no proof job: it carries no tests and is proven by looking ([ui/proof.md](../ui/proof.md) GRAMMAR-NO-TESTS). A newer push cancels the run
+coverage, build, Sonar. The Grammar has no proof job: it carries no tests and no shots and is proven by its code, its stories and its contract, read in review ([ui/proof.md](../ui/proof.md) GRAMMAR-NO-TESTS). A newer push cancels the run
 still going on main (the new run tests the whole tree); a cancelled run is not green and not red, `starci check ci` reports it `cancelled`. The
 workflow [.github/workflows/publish.yml](../../.github/workflows/publish.yml), never cancelled, then publishes every package version
 not on npm yet whose own jobs were green, from the tarballs those jobs packed, and moves, tests and publishes the CLI, so the push that carries a

@@ -1,7 +1,7 @@
 name: ci
 
 # Two lines (contexts/project/branches.md PROJECT-BRANCH-3): `dev`, where every harness lane lands, runs the FAST level (the plan's
-# packages built and tested, the CLI typechecked and tested, the light gates; no sonar, no Grammar theme proof, no CLI lint); `main`, moved once per
+# packages built and tested, the CLI typechecked and tested, the light gates; no sonar, no CLI lint); `main`, moved once per
 # release train, runs the FULL level. publish.yml listens to main's runs only, so nothing of dev ever reaches npm.
 on:
   push:

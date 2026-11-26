@@ -914,8 +914,8 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   family's default theme as HeroUI tokens (`:root, .light` and `.dark`), in the first layer
   (`starci-grammar-theme`). They are optional: import one after `@heroui/styles` and write your own tokens after it, or
   skip it. Offset Pop's signature is geometry (outline width, the hard offset, radii) and `--offset-pop-shadow-ink`, the
-  colour of the offset, which reads `--foreground` when unset. That every part follows an app's tokens is looked at in the stories
-  (`npm run shoot`, light and dark), never asserted.
+  colour of the offset, which reads `--foreground` when unset. That every part follows an app's tokens is read in its code and its
+  stories (light and dark), never asserted and never shot.
 - **App-overridable Grammar tokens.** Two defaults live in Grammar's base layer (`src/common/ramps.css`), so an app's brand CSS can
   override them on its root and Grammar's CSS follows; Grammar reads only the token, never a literal value.
   `--starci-core-surface-radius` is the radius of every card surface (SurfaceCard of every kind, Board and its columns, the block
@@ -960,22 +960,23 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 npm run typecheck
 npm test                 # typecheck + the static checks (check:*) + lint + build; no spec, no test runner
 npm run build-storybook  # static Storybook for the authored component and family stories
-npm run shoot            # every story at 390 and 1440, light and dark, into shots/ for a person to look at
 npm pack --dry-run
 ```
 
-## No tests
+## No tests, no shots
 
-The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless".
+The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless", then "Grammar chụp hình làm gì code ra story dc r? Đọc
+code là dc mà? Bỏ vụ chụp hình đi, xoá luôn".
 
-The Grammar carries no `*.spec.*`, no `*.test.*`, no snapshot, no `specs/`, `tests/`, `e2e/` or `proof/` folder and no
-test-runner config (`jest`, `vitest`, `playwright`). A Grammar change is proven by looking: its Storybook stories shot at 390
-and 1440 in light and dark, and the UI audit of the app screens that use it. Shoot them with `npm run build-storybook` then
-`npm run shoot [title filter]` (pictures in `shots/`, never committed; it never fails on a check). A story's `play` holds no
-assertion: it only drives the hover, open or typing a picture needs. `npm test` is typecheck, the static checks,
-lint and build. The rule is [contexts/ui/proof.md](../../contexts/ui/proof.md) GRAMMAR-NO-TESTS, and the harness shape's gate
-slot `never.grammar-tests` ([contexts/hfs/harness.yaml](../../contexts/hfs/harness.yaml), CI's `check shape`) refuses such a
-file with `SHAPE_FORBIDDEN` and no exception.
+The Grammar carries no `*.spec.*`, no `*.test.*`, no snapshot, no `specs/`, `tests/`, `e2e/` or `proof/` folder, no
+test-runner config (`jest`, `vitest`, `playwright`), and no screenshot: no shoot script, no pixel baseline, no picture committed
+as evidence. A Grammar change is proven by what it writes, read in review: the component's code, its stories, its row in
+[contexts/grammars/contract.yaml](../../contexts/grammars/contract.yaml) and its section in the family's context
+(`contexts/grammars/common.md`, `core.md` or `offset-pop.md`). A story's `play` holds no assertion: it only drives the hover,
+open or typing the story needs. `npm test` is typecheck, the static checks, lint and build. The rule is
+[contexts/ui/proof.md](../../contexts/ui/proof.md) GRAMMAR-NO-TESTS; the harness shape's gate slots `never.grammar-tests` and
+`never.grammar-shots` ([contexts/hfs/harness.yaml](../../contexts/hfs/harness.yaml), CI's `check shape`) refuse such a file with
+`SHAPE_FORBIDDEN` and no exception.
 
 ## Contributing
 

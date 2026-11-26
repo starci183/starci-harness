@@ -138,7 +138,7 @@ Modelled on Messenger. The owner asked for "hover ra icon… như facebook, 3 c�
 - **Names** are the app's i18n (`labels`): "Bày tỏ cảm xúc", "Trả lời", "Thêm".
 - **Not on engine cards** (approval, stop): they keep their own buttons.
 
-Story `Navigation & Data/Avatar initials and message actions`, shot at 390 and 1440 in light and dark.
+Story `Navigation & Data/Avatar initials and message actions`.
 
 ## Variants
 None. `side` is whose message it is, not a style.

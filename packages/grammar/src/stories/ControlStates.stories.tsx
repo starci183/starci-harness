@@ -4,7 +4,7 @@ import * as G from "../common/index.js"
 
 /*
  * The standard state set of every control family, one story per family, each state in its own labelled cell
- * (`data-control-state`). The shots show each state drawn as that state: a filled value,
+ * (`data-control-state`). Each cell draws its state as that state: a filled value,
  * a disabled control, an invalid field with its message, a loading skeleton that is inert and busy.
  *
  * - Input family (Input, Textarea, NumberField, SearchField) and Select family (Select, ComboBox):

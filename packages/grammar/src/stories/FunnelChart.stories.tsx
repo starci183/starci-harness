@@ -4,8 +4,8 @@ import { Matrix, State, noop } from './fixtures.js';
 
 /**
  * FunnelChart: stages in order, each "label · count" with the step into it (the down arrow icon and "60%") over a HeroUI ProgressBar md track (8px), the largest
- * drop in the danger ink; bars follow HeroUI ProgressBar sizes. Each story draws a state
- * shot at 1440 and at 390 (`npm run shoot`). The stages are generic (a name and a count); nothing
+ * drop in the danger ink; bars follow HeroUI ProgressBar sizes. Each story draws a state.
+ * The stages are generic (a name and a count); nothing
  * here is a product word.
  */
 const meta: Meta = { title: 'Navigation & Data/Funnel chart', parameters: { layout: 'padded' } };

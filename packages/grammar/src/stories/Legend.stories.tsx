@@ -3,8 +3,8 @@ import * as G from '../common/index.js';
 import { Matrix, State } from './fixtures.js';
 
 /**
- * Legend: a one-line key that maps each tone to its words. Each story draws a state, shot at 1440 and
- * at 390 (`npm run shoot`). The words are generic (a status of any record); nothing here is a product word.
+ * Legend: a one-line key that maps each tone to its words. Each story draws a state.
+ * The words are generic (a status of any record); nothing here is a product word.
  */
 const meta: Meta = { title: 'Navigation & Data/Legend', parameters: { layout: 'padded' } };
 export default meta;

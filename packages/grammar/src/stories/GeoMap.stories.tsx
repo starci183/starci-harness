@@ -6,7 +6,7 @@ import { Matrix, State, noop } from './fixtures.js';
 
 /**
  * GeoMap: points with a count on a tile ground, zoom and pan, clusters that open on press, and a list for assistive technology.
- * Each story draws a state, shot at 1440 and at 390 (`npm run shoot`). The tiles here are drawn
+ * Each story draws a state. The tiles here are drawn
  * from a data address that writes the tile's own z/x/y, so a story needs no network and no key; an app points `tiles.url` at the
  * tile route it serves (a PMTiles archive behind `/tiles/vn/{z}/{x}/{y}.png`, say).
  */

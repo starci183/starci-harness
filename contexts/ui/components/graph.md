@@ -293,8 +293,8 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    would lie along another edge's run slides clear (`separateEnds` in `diagram/graph.ts`), a step three or more edges enter is wide enough for them, and the
    canvas cuts no route short (`dedupeRuns` with `join: false`), so no junction dot is drawn.
 
-Proof: by looking (GRAMMAR-NO-TESTS, [proof](../proof.md)): the graph stories and the `npm run ext:demo` routes, shot at 390 and 1440 in light and
-dark, show no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, every stretch drawn once, each edge its own line, a
+Proof: by reading (GRAMMAR-NO-TESTS, [proof](../proof.md)): the graph stories and the `npm run ext:demo` routes draw, in light and
+dark, no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, every stretch drawn once, each edge its own line, a
 branch as an if/else with its words at the split, and a decision's main branch under it. Known gap: the one-bend route is refused where it would cross a
 node, and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends.
 
