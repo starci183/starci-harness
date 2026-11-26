@@ -43,6 +43,15 @@ What the (B) tile carries depends on the reader's question:
 - **Never A and B as two large circles side by side.** The pattern: B leads the row, A and the word trail it.
 - A graph node (`@starci/grammar/core/ext/graph`) follows (B): its kind icon on the state's plate, the status chip as (A); its status border stays.
 - The **hand-composed** lens ([../../project/gallery.md](../../project/gallery.md) PROJECT-GALLERY-8) flags a hand-drawn status circle.
+
+## (C) The subject tile of a workflow
+
+A workflow (and a run or thread of it) wears ONE tile wherever it stands (owner 2026-11-27, "logo workflow phải đồng nhất"): its page head (`size="head"`),
+its run's page head, and every list row that names it (`leading: { icon, activity }`). It is `IconTile source activity`: the workflow's OWN icon on the
+square identity plate, toned by what it is doing, never by the app: `idle` (also done) the accent's soft pair, the brand; `running` the warning's soft
+pair, amber; `error` (failed, stopped, needs a person) the danger SOLID, the white glyph on the full danger plate, so a stop never reads as the brand's
+red. The status still trails as (A). This supersedes, for a workflow's own mark only, the round (B) "which thing is which?" tile and its green running;
+a step, a graph node and a Timeline keep (B).
 - Laws: `DNA-COMMON-ICON-TILE-ROUND`, `DNA-COMMON-STATUS-MARK-40`, `DNA-COMMON-INLINE-STATUS-NO-PLATE`, `DNA-COMMON-TIMELINE-STATUS-TILE`. Story `Status marks`.
 
 ## Variants

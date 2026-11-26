@@ -79,7 +79,10 @@ export type ListRowProps = NoChildren & {
 
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
     if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "md"} isDecorative />
-    if (leading.icon !== undefined) return leading.state === undefined ? <IconTile source={leading.icon} /> : <IconTile source={leading.icon} state={leading.state} />
+    if (leading.icon !== undefined) {
+        if (leading.activity !== undefined) return <IconTile source={leading.icon} activity={leading.activity} />
+        return leading.state === undefined ? <IconTile source={leading.icon} /> : <IconTile source={leading.icon} state={leading.state} />
+    }
     return <LeadingNumber position={leading.position} {...(leading.format === undefined ? {} : { format: leading.format })} />
 }
 

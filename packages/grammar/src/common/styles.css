@@ -5544,6 +5544,15 @@
     }
 
     /*
+     * A subject tile's activity (0.64.1, `IconTile activity`): idle the accent's soft pair, running the warning's (amber), error the danger SOLID (the
+     * foreground glyph on the full plate), so a stopped workflow never reads as the brand's own red. The soft pairs are the tone rules above.
+     */
+    .starci-core-icon-tile[data-grammar-emphasis="solid"][data-tone="danger"][data-artwork="false"][data-loading="false"] {
+        background: var(--danger);
+        color: var(--danger-foreground);
+    }
+
+    /*
      * --- Status marks (0.55.0, owner "chốt"): (B) the round 40px tile, `data-grammar-mark="status"`, always `data-size="md"`; its plate tone is
      * the state's. Case 1 carries the status glyph at 20px (check, x or a small ring; the ring spins while running); case 2 the subject icon, and a running subject wears a
      * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (1em of the words beside it, the text-sized glyph rule) and its words in the state's ink, no plate.
