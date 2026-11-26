@@ -58,17 +58,30 @@ refusal; the door then throws it with `unwrapOutcome(outcome, <C>Error)`. "Absen
 alias (`type OptionalOrder = OrderRow | null`), not an error, when absence is a normal answer. Never `throw new Error`,
 a framework HTTP exception, or a platform error thrown out of a domain.
 
-Why: one throw per refusal keeps services short, the handler's base logs it once, and the filter maps it by kind; a
+Why: one throw per refusal keeps services short, the filter maps it by kind without logging it (BE-ERROR-4), and a
 union is worth its weight only where code reads it.
 
 Enforced by: `throw-domain-error` (R38); the Outcome-versus-throw choice is review only.
 
-## BE-ERROR-4 Every catch accounts for the error and keeps the cause
+## BE-ERROR-4 Business code throws; a failure is logged once, where it is answered
 
-A `catch` rethrows, calls the `Logger`, or returns a value that carries the cause; a replacement error passes the
-caught value as `cause`. No empty or ignoring catch.
+Business code (features, domain, integrations) just throws its capability's `DomainError` subclass with a code: no
+`try`/`catch` to log, no log at the call site. The failure travels to the one place that answers it:
 
-Why: a swallowed error turns a real failure into an unexplained state with no trace.
+- the global handler of `platform/errors` (`ErrorsFilter`, `@Catch()`, with `ErrorsService.describe`, BE-ERROR-5) maps a
+  `DomainError` to its code and status and logs nothing, since a declared refusal is an answer, not a failure; anything
+  else is an unexpected or system failure, logged once there (`logger.error(ErrorsLogEvent.Unhandled, error)`, stamped with
+  the request's correlation id) and answered as a generic 500;
+- a CQRS or job handler logs once in its base (`platform/cqrs` `cqrs.handler.ts`, the job processor base of `platform/jobs`)
+  and rethrows, logging only what is not a `DomainError`.
+
+A `catch` exists only where the code handles the failure: it rethrows, returns a value that carries the cause, or
+handles it and records it through the `Logger`; a replacement error passes the caught value as `cause`. No empty or
+ignoring catch. A catch never both logs and throws outside those answering owners, and no `Logger.error` takes a cause
+typed as a `DomainError`: either is the same failure logged twice, or a refusal counted as a failure.
+
+Why: a swallowed error turns a real failure into an unexplained state with no trace, and a failure logged at every
+layer it crosses, or a refusal logged as an error, buries the one line an alert should fire on.
 
 ```ts
 .catch((cause: unknown) => {
@@ -76,7 +89,12 @@ Why: a swallowed error turns a real failure into an unexplained state with no tr
 })
 ```
 
-Enforced by: `catch-must-account`, `replacement-throw-carries-cause` (R40, R108).
+Enforced by: `catch-must-account` (its `loggedAndThrown` case refuses log-and-throw outside `platform/errors`,
+`platform/logging`, `platform/cqrs` and `platform/jobs`), `replacement-throw-carries-cause`, `no-domain-error-logged`
+(R40, R108); the global filter's presence is `error-masked` (R39). Known gap: a catch that only logs a failure it could
+have let travel to the filter passes `catch-must-account`, since the lint cannot tell a best-effort side effect that
+must not fail its caller (a usage stamp, a notification) from a failure that should have reached the filter; that
+choice is held by review.
 
 ## BE-ERROR-5 One REST filter and one GraphQL formatter answer every failure
 

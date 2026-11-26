@@ -178,8 +178,8 @@ that is refused or fails is written to the runner's status with its reason, and 
 
 **The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
 "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` with
-`lane gate --push --land` under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks and publish checks, no test
-suite; then the squashed commit with `git push`), and each landing that changed a published package goes to the local registry as the dev line and
+`lane gate --push --land` under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks, publish checks and the
+`npm test` of each affected package, as CI's package jobs, never the CLI's suite; then the squashed commit with `git push`), and each landing that changed a published package goes to the local registry as the dev line and
 into the apps' dev checkouts by their debounced syncs. npm sees only the
 train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
 `starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on

@@ -13,6 +13,7 @@
  * OBSERVABILITY-4 and -5 are judgements a rule cannot make. Whether a log records a decision or merely an arrival
  * needs to know what the code is FOR, and no parser knows that.
  */
+import { derivesFromErrorBase, typeOf } from "./lib/declared.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { baseName, enumsOf, isLoggerCall, isOwnedBy } from "./lib/ports.ts"
 import { isPackageType } from "./lib/types.ts"
@@ -243,11 +244,48 @@ export const noErrorWordingAsLogIdentity: RuleModule = {
   },
 }
 
+// -- BE-ERROR-4: a refusal is answered, never logged -------------------------------------------------
+
+/**
+ * A `DomainError` is a declared refusal: the global errors filter maps it to its code and status and logs nothing, and the
+ * handler bases log only what is not one. A `Logger.error` whose cause is typed as a `DomainError` subclass (built in place,
+ * held in a variable of that type, or narrowed by `instanceof`) logs a refusal as a failure, so the alerts count ordinary
+ * answers. Judged by the cause's TYPE: an `unknown` caught value is never reported. `platform/errors`, which owns the one
+ * unknown-failure path, is not judged.
+ */
+export const noDomainErrorLogged: RuleModule = {
+  meta: {
+    type: "problem",
+    docs: { description: "BE-ERROR-4: a `DomainError` is answered by the errors filter, never logged as a failure." },
+    schema: [],
+    messages: {
+      logged:
+        "This logs a `DomainError` as a failure. A declared refusal is answered by the global errors filter with its code and status and is not logged; only an unexpected failure is, once, where it is answered (the handler base or `ErrorsService.describe`). Throw it and drop the log.",
+    },
+  },
+  create(context) {
+    if (isOwnedBy(hfsOf(context), context.filename || context.getFilename(), "platform", "errors")) return {}
+    return {
+      CallExpression(node) {
+        if (!isLoggerCall(context, node)) return
+        if (node.callee.type !== "MemberExpression" || node.callee.property.type !== "Identifier" || node.callee.property.name !== "error") return
+        const cause = node.arguments[1]
+        if (!cause || cause.type === "SpreadElement") return
+        const type = typeOf(context, cause)
+        if (!type) return
+        const parts = type.isUnion() ? type.types : [type]
+        if (parts.every((part) => derivesFromErrorBase(context, part))) context.report({ node: cause, messageId: "logged" })
+      },
+    }
+  },
+}
+
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-framework-logger": noFrameworkLogger,
   "no-interpolated-log-message": noInterpolatedLogMessage,
   "no-error-wording-as-log-identity": noErrorWordingAsLogIdentity,
+  "no-domain-error-logged": noDomainErrorLogged,
 } satisfies Rules
 
 /**
@@ -260,4 +298,5 @@ export const recommended: Recommended = {
   "starci-be/no-framework-logger": "error",
   "starci-be/no-interpolated-log-message": "error",
   "starci-be/no-error-wording-as-log-identity": "error",
+  "starci-be/no-domain-error-logged": "error",
 }

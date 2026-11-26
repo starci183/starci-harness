@@ -6,7 +6,7 @@ import { isHarnessCheckout } from "../core/release/harness-checkout.js"
  * What `lane gate` runs depends on the repository it lands on. An app (the default) is judged with its own pinned CLI (`app check --env prod --level dev`,
  * then `app push origin HEAD:<branch>`, whose pre-push hook runs the fast level once). The harness repository itself has no root install and no app hook: its
  * gate is the harness FAST gate (`release gate --level dev`: the build and typecheck of the packages the lane changed and of their dependents and the publish
- * checks, no test suite) run by the lane's own CLI, and its push is a plain `git push origin HEAD:<branch>`.
+ * checks, and each affected package's own `npm test` as CI's package jobs run it, never the CLI's suite) run by the lane's own CLI, and its push is a plain `git push origin HEAD:<branch>`.
  */
 export type LandProfileName = "app" | "harness"
 

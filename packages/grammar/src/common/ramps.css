@@ -162,9 +162,26 @@
         --grammar-hairline: 1px;
         /* The ground of a brand logo (Avatar kind="logo"): white in both themes, so a logo keeps its own colours. */
         --grammar-logo-surface: #fff;
+        --grammar-logo-ink: #0a0a0a;
+        /* The brand colours of the channel badge (Avatar channel), from simple-icons; TikTok and X are black, so they take the logo ink. */
+        --grammar-channel-messenger: #0866ff;
+        --grammar-channel-instagram: #ff0069;
+        --grammar-channel-facebook: #0866ff;
+        --grammar-channel-whatsapp: #25d366;
+        --grammar-channel-telegram: #26a5e4;
+        --grammar-channel-zalo: #0068ff;
+        --grammar-channel-gmail: #ea4335;
+        --grammar-channel-line: #00c300;
+        --grammar-channel-viber: #7360f2;
+        --grammar-channel-wechat: #07c160;
+        --grammar-channel-youtube: #ff0000;
+        --grammar-channel-discord: #5865f2;
+        --grammar-channel-googlechat: #34a853;
         --grammar-stroke-fine: 1.5px;
         --grammar-ring-width: 2px;
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
+        /* The width of a seam between two rows of a list, a table or a stack of records; the family that draws its edges heavier re-binds it once. */
+        --grammar-seam-width: var(--grammar-hairline);
         --grammar-separator-edge: var(--grammar-hairline) solid var(--separator);
         /* The 1px border edge of an outlined part with no fill (0.52.0: the other party's message), as one border value. */
         --grammar-border-edge: var(--grammar-hairline) solid var(--border);

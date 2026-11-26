@@ -29,7 +29,7 @@
         grid-template-columns: subgrid;
         align-items: center;
         padding-block: var(--grammar-inline-gap);
-        border-block-end: var(--grammar-hairline) solid var(--separator);
+        border-block-end: var(--grammar-seam-width) solid var(--separator);
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
     }

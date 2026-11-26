@@ -143,7 +143,10 @@ One verb gates and lands (PROJECT-BRANCH-2):
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
 gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
-dependents, the CLI and the desktop app when affected, and the publish checks; the typechecks of those folders run together, each `tsc` on its own heavy slot; no test suite, which runs only in the train's full gate), with `--push`
+dependents, the CLI and the desktop app when affected, the publish checks, and the `npm test` of each of those packages that declares one, as CI's
+`package (...)` jobs run it; the typechecks of those folders run together, each `tsc` on its own heavy slot, and each package test takes a heavy `test` slot; the CLI's
+own suite runs only in the train's full gate: [project/branches.md](../project/branches.md) PROJECT-BRANCH-3 item 2). A red package test refuses the gate with
+`HARNESS_GATE_TEST`, the failing test names and the run's last lines, before anything is pushed; with `--push`
 pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`. Before that gate the lane's own tree is brought up to the generator: `lane gate` regenerates the
 generated contexts files (`contexts/project/index.md`, anatomy.md's block and slices, every `*-sections.md`: what `starci contexts anatomy --execute` writes, and
 what the train's full gate compares) and commits those that changed with the lane (cli/src/harness/lane-generated.ts), so a lane that edits a page never lands a

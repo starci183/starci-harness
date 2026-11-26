@@ -154,8 +154,10 @@ tokens the family root sets once, so no renderer needs a rule of its own:
 and the small offset, and the press collapses it. Progress, ProportionBar, SegmentBar and FunnelChart
 tracks get the ink ring, and Meter keeps its own track. Open GradedChoice answers are pressable
 stickers. SchemaForm marks, the agent's proposal and ConflictCard sides are outlined. A
-`SurfaceCard emphasis="accent"` throws its offset in pink, because it is the chosen card. List seams
-stay Common's hairline. An app sets the `--starci-core-card-radius` hook to change the card radius;
+`SurfaceCard emphasis="accent"` throws its offset in pink, because it is the chosen card. Every row seam (a
+list row, a disclosure item, a note, schema or schedule row, a DataTable row and its mobile list, a description pair, an
+upload or media row, an interval row) is one 2px ink line: the family root sets Common's `--grammar-seam-width` to
+`--offset-pop-outline-width`, and Core leaves it the 1px hairline. An app sets the `--starci-core-card-radius` hook to change the card radius;
 it never restyles a renderer.
 
 ## Client-side navigation
@@ -876,11 +878,14 @@ or 3rem, respectively, so icons, avatars and group grids keep labels in one colu
 </SurfaceCard>
 ```
 
-For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, Zalo style). It is one
-round Avatar-sized mark at `sm`, `md`, `lg` or `control`, and each tile shows that member's initials on
-their own colour (or their image): one member fills it, two are halves, three are a half over two
-quarters, four are a 2 by 2 grid. From five members three remain and the fourth tile reads `+N`, the
-members that do not fit (`+2` for five). Each tile has a ring in the surface colour. Members accept
+For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, Zalo style). It is the square of one
+Avatar (`sm` 24 or `md` 40) holding small ROUND member avatars set close in a 2 by 2 cluster, not clipped by one big circle:
+one member fills it, two stand on the diagonal, three are two over one, four or more are three members and a count cell that
+reads the number of members (4, 5, 29). `photo` replaces the cluster with the group's own picture. Each member keeps its initials
+on its own colour (or its image) and a ring in the surface colour where the circles touch. `Avatar channel="messenger"` (and
+zalo, instagram, ...) adds a small round channel badge on a customer's avatar; `MessageFrame` draws a structured chat frame as one
+compact card (title, a status dot only for a real state, field rows, up to three actions) and falls back to its text line for an
+unknown kind; `MessageBubble format="markdown"` draws safe Markdown; `ChatFrame empty` centres an empty thread. Members accept
 `seed`, `kind`, a `mark` (an icon on a brand-colour circle, for a provider or a channel, mixed freely with people)
 `tone="danger"` (a ring for a broken account) and a custom `fallback` for the loading image. `max` is the number of slots,
 "+N" included (default 4): up to `max - 1` items show and the last slot is "+N", in both layouts (the grid never exceeds

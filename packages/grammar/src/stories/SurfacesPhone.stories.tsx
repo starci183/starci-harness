@@ -13,7 +13,7 @@ const meta: Meta = { title: 'Surfaces/Figures, rows, bands and pages (0.48.0)', 
 export default meta;
 type Story = StoryObj;
 
-/** Three figures, the first two links: their terms end with the chevron of a pressable row, text-sized (1em of the term); the third, not a link, has none. */
+/** Three figures, the first two links: a linked figure draws no chevron or arrow, the whole cell is the target (pointer cursor, hover surface); the third is not a link. */
 export const FigureLinkCue: Story = {
   render: () => (
     <div style={{ maxInlineSize: 720 }}>
@@ -21,9 +21,9 @@ export const FigureLinkCue: Story = {
         kind="figures"
         title="Hôm nay"
         items={[
-          { id: 'orders', term: 'Đơn mới', value: 12, href: '#orders' },
-          { id: 'chats', term: 'Tin chưa đọc', value: 5, href: '#chats' },
-          { id: 'rate', term: 'Tỉ lệ chốt', value: '18', unit: '%' },
+          { id: "orders", term: "Đơn mới", value: 12, href: "#orders" },
+          { id: "chats", term: "Tin chưa đọc", value: 5, href: "#chats" },
+          { id: "rate", term: "Tỉ lệ chốt", value: "18", unit: "%" },
         ]}
       />
     </div>
